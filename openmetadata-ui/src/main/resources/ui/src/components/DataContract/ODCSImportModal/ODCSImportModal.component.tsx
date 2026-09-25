@@ -350,6 +350,44 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     [isODCSFormat, parseODCSContent, parseOpenMetadataContent]
   );
 
+  const clearSchemaObjects = useCallback(() => {
+    setSchemaObjects([]);
+    setHasMultipleObjects(false);
+    setSelectedObjectName('');
+  }, []);
+
+  // ODCS documents may carry several schema objects; pick the one matching the
+  // entity when there is a choice, and fall back to a cleared selection if the
+  // document cannot be parsed at all.
+  const applyOdcsSchemaObjects = useCallback(
+    async (content: string) => {
+      try {
+        const parseResult: ODCSParseResult = await parseODCSYaml(content);
+        const objects = parseResult.schemaObjects ?? [];
+        setSchemaObjects(objects);
+        setHasMultipleObjects(parseResult.hasMultipleObjects ?? false);
+
+        if (objects.length === 1) {
+          setSelectedObjectName(objects[0]);
+
+          return;
+        }
+
+        if (objects.length > 1) {
+          const matchingObject = entityName
+            ? objects.find(
+                (obj) => obj.toLowerCase() === entityName.toLowerCase()
+              )
+            : undefined;
+          setSelectedObjectName(matchingObject ?? '');
+        }
+      } catch {
+        clearSchemaObjects();
+      }
+    },
+    [entityName, clearSchemaObjects]
+  );
+
   const processFile = useCallback(
     async (file: File) => {
       const reader = new FileReader();
@@ -359,48 +397,34 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         setFileName(file.name);
 
         const parsed = parseYamlContent(content);
-        if (parsed) {
-          setParsedContract(parsed);
-          setParseError(null);
-
-          if (isODCSFormat) {
-            try {
-              const parseResult: ODCSParseResult = await parseODCSYaml(content);
-              const objects = parseResult.schemaObjects ?? [];
-              setSchemaObjects(objects);
-              setHasMultipleObjects(parseResult.hasMultipleObjects ?? false);
-
-              if (objects.length === 1) {
-                setSelectedObjectName(objects[0]);
-              } else if (objects.length > 1) {
-                const matchingObject = entityName
-                  ? objects.find(
-                      (obj) => obj.toLowerCase() === entityName.toLowerCase()
-                    )
-                  : undefined;
-                setSelectedObjectName(matchingObject ?? '');
-              }
-            } catch {
-              setSchemaObjects([]);
-              setHasMultipleObjects(false);
-              setSelectedObjectName('');
-            }
-          }
-        } else {
+        if (!parsed) {
           setParsedContract(null);
           setParseError(
             isODCSFormat
               ? t('message.invalid-odcs-contract-format')
               : t('message.invalid-openmetadata-contract-format')
           );
-          setSchemaObjects([]);
-          setHasMultipleObjects(false);
-          setSelectedObjectName('');
+          clearSchemaObjects();
+
+          return;
+        }
+
+        setParsedContract(parsed);
+        setParseError(null);
+
+        if (isODCSFormat) {
+          await applyOdcsSchemaObjects(content);
         }
       };
       reader.readAsText(file);
     },
-    [parseYamlContent, isODCSFormat, entityName, t]
+    [
+      parseYamlContent,
+      isODCSFormat,
+      t,
+      clearSchemaObjects,
+      applyOdcsSchemaObjects,
+    ]
   );
 
   const handleDropFiles = useCallback(

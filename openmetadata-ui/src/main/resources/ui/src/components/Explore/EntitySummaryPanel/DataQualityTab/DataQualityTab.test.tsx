@@ -23,7 +23,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityTest } from '../../../common/DataQualitySection/DataQualitySection.interface';
 import DataQualityTab from './DataQualityTab';
-import { MockTabItem, TranslationOptions } from './DataQualityTab.interface';
+import { TranslationOptions } from './DataQualityTab.interface';
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -92,21 +92,6 @@ jest.mock('antd', () => {
           {children}
         </div>
       )),
-    Tabs: jest
-      .fn()
-      .mockImplementation(({ items, activeKey, onChange, ...props }) => (
-        <div data-active-key={activeKey} data-testid="tabs" {...props}>
-          <div data-testid="tab-headers">
-            {items.map((item: MockTabItem) => (
-              <div data-testid={`tab-${item.key}`} key={item.key}>
-                {item.label}
-                <button onClick={() => onChange?.(item.key)}>change</button>
-              </div>
-            ))}
-          </div>
-          {items.find((item: MockTabItem) => item.key === activeKey)?.children}
-        </div>
-      )),
     Typography: {
       Text: jest
         .fn()
@@ -134,7 +119,7 @@ jest.mock('antd', () => {
 });
 
 // Mock child components
-jest.mock('../../../common/DataQualitySection', () => {
+jest.mock('../../../common/DataQualitySection/DataQualitySection', () => {
   return jest
     .fn()
     .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
@@ -260,21 +245,34 @@ jest.mock('../../../../utils/RouterUtils', () => ({
   getTestCaseDetailPagePath: jest.fn().mockReturnValue('/test-case-path'),
 }));
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(({ owners, placeHolder }) => {
-    if (owners && owners.length > 0) {
-      const owner = owners[0];
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest
+    .fn()
+    .mockImplementation(
+      ({
+        owners,
+        placeHolder,
+      }: {
+        owners?: Array<{ id?: string; displayName?: string; name?: string }>;
+        placeHolder?: string;
+      }) => {
+        if (owners && owners.length > 0) {
+          return (
+            <>
+              {owners.map((owner, i) => (
+                <span key={owner.id ?? i}>
+                  <div data-testid="avatar">Avatar</div>
+                  <span>{owner.displayName || owner.name}</span>
+                </span>
+              ))}
+            </>
+          );
+        }
 
-      return (
-        <div data-testid="owner-label">
-          <div data-testid="avatar">{owner.displayName?.charAt(0) || 'U'}</div>
-          <span>{owner.displayName || owner.name || 'Unknown'}</span>
-        </div>
-      );
-    }
-
-    return <span data-testid="owner-placeholder">{placeHolder || '--'}</span>;
-  }),
+        return placeHolder ? <span>{placeHolder}</span> : null;
+      }
+    ),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';
@@ -690,8 +688,12 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('tab-data-quality')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-incidents')).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /label.data-quality/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /label.incident-plural/ })
+      ).toBeInTheDocument();
     });
 
     it('should switch to incidents tab', async () => {
@@ -699,9 +701,9 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
       expect(
@@ -714,14 +716,14 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
-      const dataQualityTab = screen
-        .getByTestId('tab-data-quality')
-        .querySelector('button') as HTMLElement;
+      const dataQualityTab = screen.getByRole('tab', {
+        name: /label.data-quality/,
+      });
       fireEvent.click(dataQualityTab);
 
       expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
@@ -747,9 +749,9 @@ describe('DataQualityTab', () => {
         screen.getByTestId('data-quality-section');
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
     });
 
@@ -986,9 +988,9 @@ describe('DataQualityTab', () => {
       render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
-        const incidentsTab = screen
-          .getByTestId('tab-incidents')
-          .querySelector('button') as HTMLElement;
+        const incidentsTab = screen.getByRole('tab', {
+          name: /label.incident-plural/,
+        });
         fireEvent.click(incidentsTab);
 
         const assignedButton = screen.getByRole('button', {
@@ -1022,9 +1024,9 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
       // Verify incidents tab content is displayed

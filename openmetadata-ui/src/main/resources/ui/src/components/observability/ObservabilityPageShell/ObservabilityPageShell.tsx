@@ -47,14 +47,12 @@ const ObservabilityPageShell = ({
         className
       )}>
       <DocumentTitle title={pageTitle} />
-      <div
-        className="tw:shrink-0 tw:px-4"
-        data-testid="observability-page-header">
+      <div className="tw:shrink-0" data-testid="observability-page-header">
         {header}
       </div>
       <div
         className={classNames(
-          'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-4',
+          'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-2 tw:py-4',
           contentClassName
         )}
         data-testid="observability-page-content">

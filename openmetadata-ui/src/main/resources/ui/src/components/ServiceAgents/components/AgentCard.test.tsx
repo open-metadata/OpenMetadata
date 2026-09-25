@@ -245,9 +245,7 @@ describe('AgentCard', () => {
     renderCard(baseAgent);
 
     expect(screen.getByText('label.recent-runs-sentence')).toBeInTheDocument();
-    expect(
-      screen.getAllByTitle(/message.run-status-click-details/)
-    ).toHaveLength(3);
+    expect(screen.getAllByTestId('agent-run-dot')).toHaveLength(3);
   });
 
   it('should render the run dots in the order given, oldest to newest', () => {
@@ -320,7 +318,7 @@ describe('AgentCard', () => {
   it('should pass the clicked run id to onRunDetails', () => {
     renderCard(baseAgent);
 
-    const dots = screen.getAllByTitle(/message.run-status-click-details/);
+    const dots = screen.getAllByTestId('agent-run-dot');
     fireEvent.click(dots[1]);
 
     expect(mockOnRunDetails).toHaveBeenCalledWith(baseAgent, 'run-b');

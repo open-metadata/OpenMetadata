@@ -34,8 +34,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -1844,5 +1846,60 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           imported.getReviewers().size(),
           "Glossary reviewer count should match");
     }
+  }
+
+  // Domain filter (#31173): GET /glossaries?domain=<fqn> must scope the list by domain.
+
+  private record DomainGlossary(Domain domain, Glossary glossary) {}
+
+  private DomainGlossary seedGlossaryInDomain(TestNamespace ns, String suffix) {
+    final Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("domain-" + suffix))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain " + suffix));
+    final Glossary glossary =
+        createEntity(
+            createRequest(ns.prefix("glossary-" + suffix), ns)
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    return new DomainGlossary(domain, glossary);
+  }
+
+  // High limit so a busy shared test instance cannot page a target glossary out of the results.
+  private List<Glossary> listGlossariesByDomain(String domainFqn) {
+    return listEntities(new ListParams().setDomain(domainFqn).setLimit(1000000)).getData();
+  }
+
+  @Test
+  void test_listGlossaries_domainFilterIncludesGlossaryInThatDomain(TestNamespace ns) {
+    final DomainGlossary seeded = seedGlossaryInDomain(ns, "a");
+    final List<Glossary> listed = listGlossariesByDomain(seeded.domain().getFullyQualifiedName());
+    assertTrue(
+        listed.stream().anyMatch(g -> g.getId().equals(seeded.glossary().getId())),
+        "Glossary in the domain must be listed when filtering by that domain");
+  }
+
+  @Test
+  void test_listGlossaries_domainFilterExcludesGlossaryInOtherDomain(TestNamespace ns) {
+    final DomainGlossary target = seedGlossaryInDomain(ns, "a");
+    final DomainGlossary other = seedGlossaryInDomain(ns, "b");
+    final List<Glossary> listed = listGlossariesByDomain(target.domain().getFullyQualifiedName());
+    assertFalse(
+        listed.stream().anyMatch(g -> g.getId().equals(other.glossary().getId())),
+        "Glossary in another domain must not be listed when filtering by this domain");
+  }
+
+  @Test
+  void test_listGlossaries_emptyDomainReturnsUnfiltered(TestNamespace ns) {
+    final DomainGlossary seeded = seedGlossaryInDomain(ns, "a");
+    // Empty domain must be treated as no filter, not resolved as an FQN (which would 404).
+    final List<Glossary> listed =
+        listEntities(new ListParams().setDomain("").setLimit(1000000)).getData();
+    assertTrue(
+        listed.stream().anyMatch(g -> g.getId().equals(seeded.glossary().getId())),
+        "Empty domain filter must not 404 and must return glossaries");
   }
 }

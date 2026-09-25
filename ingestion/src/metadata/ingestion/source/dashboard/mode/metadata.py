@@ -266,21 +266,7 @@ class ModeSource(DashboardServiceSource):
                 if not raw_query:
                     continue
 
-                database_name = cast("str | None", data_source.get(client.DATABASE))
-                if (
-                    prefix_database_name
-                    and database_name
-                    and prefix_database_name.lower() != str(database_name).lower()
-                ):
-                    logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
-                    continue
-
-                search_database_name = prefix_database_name or database_name
-                if not search_database_name:
-                    logger.warning(
-                        "Skipping Mode query lineage because its data source does not provide a database name"
-                    )
-                    continue
+                connection_database_name = cast("str | None", data_source.get(client.DATABASE))
 
                 lineage_parser = LineageParser(
                     raw_query,
@@ -294,11 +280,42 @@ class ModeSource(DashboardServiceSource):
                 if not to_entity:
                     continue
                 for table in lineage_parser.source_tables:
-                    database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
-                    database_schema_name = self.check_database_schema_name(database_schema_name)
+                    table_details = fqn.split_table_name(str(table))
+                    # A `database.schema.table` reference carries its own database. Only fall back
+                    # to the data source's connection database when the query left it unqualified.
+                    database_name = table_details.get("database") or connection_database_name
+                    database_schema_name = self.check_database_schema_name(table_details.get("database_schema"))
+                    table_name = table_details.get("table")
+                    if not table_name:
+                        continue
 
-                    if prefix_table_name and table and prefix_table_name.lower() != str(table).lower():
-                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != str(database_name).lower()
+                    ):
+                        logger.debug(
+                            "[%s] Database %s does not match prefix %s",
+                            query_hash,
+                            database_name,
+                            prefix_database_name,
+                        )
+                        continue
+
+                    search_database_name = prefix_database_name or database_name
+                    if not search_database_name:
+                        logger.warning(
+                            "[%s] Skipping Mode table %s because neither the query nor its data source "
+                            "provides a database name",
+                            query_hash,
+                            table_name,
+                        )
+                        continue
+
+                    if prefix_table_name and table_name and prefix_table_name.lower() != str(table_name).lower():
+                        logger.debug(
+                            "[%s] Table %s does not match prefix %s", query_hash, table_name, prefix_table_name
+                        )
                         continue
 
                     if (
@@ -315,7 +332,7 @@ class ModeSource(DashboardServiceSource):
                         database_name=search_database_name,
                         schema_name=prefix_schema_name or database_schema_name,
                         service_name=prefix_service_name or "*",
-                        table_name=prefix_table_name or table,
+                        table_name=prefix_table_name or table_name,
                     )
                     from_entities = cast(
                         "list[Table] | None",

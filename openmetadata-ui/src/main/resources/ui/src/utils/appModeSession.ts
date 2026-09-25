@@ -15,7 +15,7 @@
  * Whether an app-mode (AI) session is currently active — the user entered the
  * AI experience (e.g. via an AI-only deep link) and has not left it yet. When
  * true, `AppRouter` renders the app-mode shell (`AppModeRoutes` /
- * `AssistantLayout`) even though the stored `useAppMode()` is still the default,
+ * `AppShell`) even though the stored `useAppMode()` is still the default,
  * and — crucially — keeps rendering it across in-app navigation to shared routes
  * (`/explore`, …). The shell is torn down only when the session itself ends
  * (leaving the experience), not per-route: navigating from `/conversations` to

@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -1939,5 +1940,74 @@ public class SystemResourceIT {
     assertTrue(
         teamRules.stream()
             .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")));
+  }
+
+  @Test
+  void test_updateSecurityConfig_emailFirstFieldsRoundTrip() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String originalSecurityConfigJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/security/config",
+                null,
+                RequestOptions.builder().build());
+
+    try {
+      SecurityConfiguration legacyConfig = buildBasicSecurityConfig();
+      SecurityConfiguration legacyUpdated = putSecurityConfig(client, legacyConfig);
+      assertNull(legacyUpdated.getAuthenticationConfiguration().getEmailClaim());
+      assertNull(legacyUpdated.getAuthenticationConfiguration().getDisplayNameClaim());
+      assertNull(legacyUpdated.getAuthorizerConfiguration().getBotDomain());
+
+      SecurityConfiguration emailFirstConfig = buildBasicSecurityConfig();
+      emailFirstConfig.getAuthenticationConfiguration().withEmailClaim("email");
+      emailFirstConfig.getAuthenticationConfiguration().withDisplayNameClaim("name");
+      emailFirstConfig
+          .getAuthorizerConfiguration()
+          .withAllowedEmailDomains(Set.of("open-metadata.org"))
+          .withBotDomain("bots.open-metadata.org");
+
+      SecurityConfiguration emailFirstUpdated = putSecurityConfig(client, emailFirstConfig);
+      assertEquals("email", emailFirstUpdated.getAuthenticationConfiguration().getEmailClaim());
+      assertEquals(
+          "name", emailFirstUpdated.getAuthenticationConfiguration().getDisplayNameClaim());
+      assertEquals(
+          Set.of("open-metadata.org"),
+          emailFirstUpdated.getAuthorizerConfiguration().getAllowedEmailDomains());
+      assertEquals(
+          "bots.open-metadata.org", emailFirstUpdated.getAuthorizerConfiguration().getBotDomain());
+      assertEquals(
+          legacyConfig.getAuthorizerConfiguration().getPrincipalDomain(),
+          emailFirstUpdated.getAuthorizerConfiguration().getPrincipalDomain());
+
+      SecurityConfiguration reverted = putSecurityConfig(client, buildBasicSecurityConfig());
+      assertNull(reverted.getAuthenticationConfiguration().getEmailClaim());
+      assertNull(reverted.getAuthenticationConfiguration().getDisplayNameClaim());
+      assertNull(reverted.getAuthorizerConfiguration().getBotDomain());
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/security/config",
+              originalSecurityConfigJson,
+              RequestOptions.builder().build());
+    }
+  }
+
+  private SecurityConfiguration putSecurityConfig(
+      OpenMetadataClient client, SecurityConfiguration config) throws Exception {
+    String updatedJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/system/security/config",
+                MAPPER.writeValueAsString(config),
+                RequestOptions.builder().build());
+    assertNotNull(updatedJson);
+    return MAPPER.readValue(updatedJson, SecurityConfiguration.class);
   }
 }

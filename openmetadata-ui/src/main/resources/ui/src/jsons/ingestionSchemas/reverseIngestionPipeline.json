@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "reverseIngestionPipeline",
   "javaType": "org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline",
   "description": "Apply a set of operations on a service",
@@ -45,7 +44,6 @@
           "description": "The configuration for the operation to be applied",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Reverse Ingestion Description Config",
               "type": "object",
               "description": "Configuration for updating descriptions",
@@ -63,7 +61,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Reverse Ingestion Owner Config",
               "type": "object",
               "description": "Configuration for updating owners",
@@ -75,11 +72,9 @@
                 },
                 "addedOwners": {
                   "description": "Added owners to be applied",
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Entity Reference List",
                   "type": "array",
                   "items": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "title": "Entity Reference",
                     "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
                     "type": "object",
@@ -136,7 +131,6 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Reverse Ingestion Tags Config",
               "type": "object",
               "description": "Configuration for updating tags",
@@ -153,7 +147,6 @@
                   "description": "Added tags to be applied",
                   "type": "array",
                   "items": {
-                    "$schema": "http://json-schema.org/draft-07/schema#",
                     "title": "TagLabel",
                     "description": "This schema defines the type for labeling an entity with a Tag.",
                     "type": "object",
@@ -265,14 +258,12 @@
                       },
                       "metadata": {
                         "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
-                        "$schema": "http://json-schema.org/draft-07/schema#",
                         "title": "TagLabelMetadata",
                         "type": "object",
                         "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
                         "properties": {
                           "recognizer": {
                             "description": "Metadata about the recognizer that automatically applied this tag",
-                            "$schema": "http://json-schema.org/draft-07/schema#",
                             "title": "TagLabelRecognizerMetadata",
                             "type": "object",
                             "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",

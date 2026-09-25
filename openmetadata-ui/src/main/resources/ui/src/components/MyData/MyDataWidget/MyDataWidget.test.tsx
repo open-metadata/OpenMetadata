@@ -85,8 +85,9 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn().mockReturnValue('/user/test'),
 }));
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <span>OwnerLabel</span>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../../constants/Widgets.constant', () => ({

@@ -51,6 +51,18 @@ const StoryWithLocale = ({
     }
   }, [locale]);
 
+  // Portaled overlays (modals, dropdowns, tooltips) mount on document.body,
+  // outside the wrapper div below, so the inline `.dark-mode` class never
+  // reaches them. Mirror the theme onto the document root so portal content
+  // follows it too. `both` leaves the root light — portals can only resolve one
+  // theme, and each side-by-side column scopes its own inline `.dark-mode`.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark-mode', theme === 'dark');
+
+    return () => root.classList.remove('dark-mode');
+  }, [theme]);
+
   if (theme === 'both') {
     return (
       <div className="tw:grid tw:grid-cols-1 tw:gap-4">

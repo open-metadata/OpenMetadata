@@ -51,7 +51,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   noDataPlaceholderText,
   chartType = 'line',
 }: ProfilerDetailsCardProps) => {
-  const { grid } = useChartColors();
+  const { axis, grid } = useChartColors();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const { showBrush, endIndex } = useMemo(() => {
@@ -112,7 +112,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   axisLine={false}
                   dataKey="name"
                   padding={{ left: 16, right: 16 }}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fill: axis, fontSize: 12 }}
                   tickLine={false}
                 />
 
@@ -120,7 +120,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   allowDataOverflow
                   axisLine={false}
                   padding={{ top: 16, bottom: 16 }}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fill: axis, fontSize: 12 }}
                   tickFormatter={(props) =>
                     axisTickFormatter(props, tickFormatter)
                   }

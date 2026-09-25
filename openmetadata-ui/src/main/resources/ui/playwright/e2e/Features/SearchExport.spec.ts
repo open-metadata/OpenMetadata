@@ -315,7 +315,10 @@ test.describe(
         );
 
         await page.getByTestId('sample_data').click();
-        await expect(page.getByTestId('sample_data-checkbox')).toBeChecked();
+        await expect(page.getByTestId('sample_data')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await clickUpdateButtonIfVisible(page);
         await filteredQueryPromise;

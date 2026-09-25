@@ -228,6 +228,30 @@ describe('studio edit ports', () => {
     expect(style).not.toHaveProperty('port');
     expect(style).not.toHaveProperty('ports');
   });
+
+  it('draws a metric as a muted, dashed node without an edit handle', () => {
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'model',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [],
+      inputNodes: [studioNode({ id: 'metric-churn-rate', type: 'metric' })],
+      isEditMode: true,
+      layoutType: LayoutEngine.Dagre,
+      selectedNodeId: null,
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+      studioMode: true,
+    });
+
+    const style = result.current.graphData.nodes?.[0]?.style;
+
+    expect(style).toMatchObject({
+      lineDash: [4, 3],
+      studioEditMode: false,
+      studioNodeKind: 'metric',
+    });
+  });
 });
 
 // Mirrors the subset of GlossaryTermRelationSettings the backend seeds via the

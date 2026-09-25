@@ -53,6 +53,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 }));
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
       return source;
@@ -94,34 +95,41 @@ jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
     .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Breadcrumbs: jest.fn(({ items = [] }) => (
-    <nav data-testid="breadcrumbs">
-      {items.map(
-        (item: {
-          id: string;
-          label: string;
-          href: string;
-          icon?: (props: { className?: string }) => ReactElement;
-        }) => {
-          const Icon = item.icon;
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
 
-          return (
-            <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
-              {Icon && (
-                <span data-testid="breadcrumb-icon">
-                  <Icon className="breadcrumb-icon" />
-                </span>
-              )}
-              {item.label}
-            </a>
-          );
-        }
-      )}
-    </nav>
-  )),
-  Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
-}));
+  return {
+    Breadcrumbs: jest.fn(({ items = [] }) => (
+      <nav data-testid="breadcrumbs">
+        {items.map(
+          (item: {
+            id: string;
+            label: string;
+            href: string;
+            icon?: (props: { className?: string }) => ReactElement;
+          }) => {
+            const Icon = item.icon;
+
+            return (
+              <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
+                {Icon && (
+                  <span data-testid="breadcrumb-icon">
+                    <Icon className="breadcrumb-icon" />
+                  </span>
+                )}
+                {item.label}
+              </a>
+            );
+          }
+        )}
+      </nav>
+    )),
+    Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+    Owner: jest.fn().mockReturnValue(null),
+    toOwnerRef: actual.toOwnerRef,
+    toOwnerRefs: actual.toOwnerRefs,
+  };
+});
 
 const baseSource: ExploreSearchCardProps['source'] = {
   id: 'base-1',

@@ -22,6 +22,7 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
+import APIClient from './axiosClient';
 import {
   DriveAssetEntityTypes,
   GetDirectoriesParams,
@@ -29,7 +30,6 @@ import {
   GetSpreadsheetParams,
   GetWorksheetsParams,
 } from './driveAPI.interface';
-import APIClient from './index';
 
 const BASE_URL = '/drives';
 

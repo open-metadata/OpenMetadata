@@ -26,7 +26,7 @@ import {
 import { ContractValidation } from '../generated/entity/datacontract/contractValidation';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/dataContracts';
 const APPLICATION_YAML_CONTENT_TYPE = 'application/yaml';

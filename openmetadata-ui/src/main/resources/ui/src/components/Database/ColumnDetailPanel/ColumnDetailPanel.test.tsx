@@ -229,15 +229,6 @@ jest.mock('../../common/Loader/Loader', () => ({
   )),
 }));
 
-jest.mock('../../AlertBar/AlertBar', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(({ message, type }) => (
-    <div data-testid="alert-bar" data-type={type}>
-      {message}
-    </div>
-  )),
-}));
-
 jest.mock('../../Entity/EntityRightPanel/EntityRightPanelVerticalNav', () => ({
   __esModule: true,
   default: jest
@@ -271,13 +262,19 @@ jest.mock(
   })
 );
 
-jest.mock('../../Explore/EntitySummaryPanel/LineageTab', () => ({
-  LineageTabContent: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="lineage-tab">Lineage Tab</div>),
-}));
+jest.mock(
+  '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="lineage-tab">Lineage Tab</div>
+      )),
+  })
+);
 
-jest.mock('./KeyProfileMetrics', () => ({
+jest.mock('./KeyProfileMetrics/KeyProfileMetrics.component', () => ({
   KeyProfileMetrics: jest
     .fn()
     .mockImplementation(() => (
@@ -959,11 +956,12 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
-          expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveTextContent('Update failed');
+          expect(showErrorToast).toHaveBeenCalled();
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -1069,11 +1067,15 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
-          expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveTextContent('Network error');
+          expect(showErrorToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'Network error' }),
+            expect.any(String)
+          );
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -1102,11 +1104,13 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
-          'Tags update failed'
+        expect(showErrorToast).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Tags update failed' }),
+          expect.any(String)
         );
       });
     });
@@ -1133,18 +1137,20 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
-          'Glossary terms update failed'
+        expect(showErrorToast).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Glossary terms update failed' }),
+          expect.any(String)
         );
       });
     });
   });
 
-  describe('AlertBar Functionality', () => {
-    it('should show success alert on successful description update', async () => {
+  describe('Toast Functionality', () => {
+    it('should show success toast on successful description update', async () => {
       const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
@@ -1164,16 +1170,19 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
+        expect(showSuccessToast).toHaveBeenCalledWith(
           'server.update-entity-success - {"entity":"label.description"}'
         );
       });
     });
 
-    it('should show success alert on successful tags update', async () => {
+    it('should show success toast on successful tags update', async () => {
       const onColumnFieldUpdate = jest.fn().mockResolvedValue(mockColumn);
 
       const { getByTestId } = render(
@@ -1193,16 +1202,19 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
-        expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveTextContent(
+        expect(showSuccessToast).toHaveBeenCalledWith(
           'server.update-entity-success - {"entity":"label.tag-plural"}'
         );
       });
     });
 
-    it('should show error alert with correct message on update failure', async () => {
+    it('should show error toast with correct message on update failure', async () => {
       const errorMessage = 'Custom error message';
       const onColumnFieldUpdate = jest.fn().mockImplementation(
         () =>
@@ -1230,28 +1242,31 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
+      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+
       await waitFor(
         () => {
-          const alertBar = getByTestId('alert-bar');
-
-          expect(alertBar).toBeInTheDocument();
-          expect(alertBar).toHaveAttribute('data-type', 'error');
-          expect(alertBar).toHaveTextContent(errorMessage);
+          expect(showErrorToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: errorMessage }),
+            expect.any(String)
+          );
         },
         { timeout: 200 }
       );
     });
 
-    it('should not show alert bar initially', async () => {
-      const { queryByTestId, getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} />
+    it('should not show a toast initially', async () => {
+      const { showErrorToast, showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
       );
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
 
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
       });
 
-      expect(queryByTestId('alert-bar')).not.toBeInTheDocument();
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(showSuccessToast).not.toHaveBeenCalled();
     });
   });
 

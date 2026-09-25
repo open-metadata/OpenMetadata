@@ -64,13 +64,14 @@ const LogViewerLiveIndicator: FunctionComponent<
   const { t } = useTranslation();
 
   return isReconnecting ? (
-    <span
-      aria-label={t('label.reconnecting')}
-      className="lvm-dot lvm-dot--reconnecting"
-      data-testid="log-viewer-reconnecting-indicator"
-      role="status"
-      title={t('label.reconnecting')}
-    />
+    <Tooltip title={t('label.reconnecting')}>
+      <span
+        aria-label={t('label.reconnecting')}
+        className="lvm-dot lvm-dot--reconnecting"
+        data-testid="log-viewer-reconnecting-indicator"
+        role="status"
+      />
+    </Tooltip>
   ) : (
     <span
       aria-label={t('label.live')}

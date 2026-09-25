@@ -45,7 +45,10 @@ import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
@@ -55,7 +58,6 @@ import {
 } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getOptionalFields } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -392,7 +394,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                 record.fullyQualifiedName ?? record.name,
                 serviceName
               )}>
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchTerm)
               )}
             </Link>
@@ -426,7 +428,9 @@ const Services = ({ serviceName }: ServicesProps) => {
         filters: serviceTypeFilters,
         render: (serviceType) => (
           <span className="font-normal text-grey-body">
-            {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+            {renderHighlightedText(
+              highlightSearchText(serviceType, searchTerm)
+            )}
           </span>
         ),
       },

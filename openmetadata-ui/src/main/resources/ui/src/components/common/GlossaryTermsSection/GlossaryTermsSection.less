@@ -79,29 +79,6 @@
         flex-wrap: wrap;
         gap: var(--om-space-8);
         width: 100%;
-
-        .selected-glossary-term-chip {
-          background-color: @blue-29;
-          border: 1px solid @blue-30;
-          border-radius: var(--om-radius-lg);
-          padding: var(--om-space-5) var(--om-space-6);
-          display: flex;
-          align-items: center;
-          gap: var(--om-space-5);
-          height: 26px;
-
-          .glossary-term-icon {
-            height: 12px;
-            width: 12px;
-            flex-shrink: 0;
-          }
-
-          .glossary-term-name {
-            font-weight: var(--om-font-weight-regular);
-            font-size: var(--om-font-size-xs);
-            color: @tag-text;
-          }
-        }
       }
     }
 
@@ -111,7 +88,7 @@
         min-height: 40px !important;
         border-radius: var(--om-radius-md) !important;
         border: 1px solid @grey-22 !important;
-        background-color: @white !important;
+        background-color: var(--om-color-bg-surface) !important;
         padding: var(--om-space-4) var(--om-space-2) !important;
         .ant-select-selector {
           border: none !important;
@@ -129,34 +106,6 @@
         display: flex;
         flex-wrap: wrap;
         gap: var(--om-space-8);
-
-        .glossary-term-item {
-          display: flex;
-          align-items: center;
-          gap: var(--om-space-5);
-          padding: var(--om-space-5) var(--om-space-6);
-          height: 26px;
-          border-radius: var(--om-radius-lg);
-
-          min-width: 0;
-          background-color: @blue-29;
-          border: 1px solid @blue-30;
-          .glossary-term-icon {
-            width: 12px;
-            height: 12px;
-            color: @tag-text;
-            flex-shrink: 0;
-          }
-
-          .glossary-term-name {
-            color: @tag-text;
-            font-size: var(--om-font-size-xs);
-            font-weight: var(--om-font-weight-regular);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-        }
 
         .show-more-terms-button {
           display: flex;
@@ -183,26 +132,5 @@
         }
       }
     }
-  }
-}
-
-// Container for glossary terms select dropdown
-.glossary-terms-select-container {
-  min-width: 450px;
-  width: 100%;
-}
-.glossary-term-select-popover {
-  width: 285px;
-  padding-bottom: 0;
-  .ant-popover-inner {
-    border-radius: var(--om-radius-2xl);
-  }
-  .ant-popover-inner-content {
-    padding: var(--om-space-8) var(--om-space-12);
-    padding-bottom: 0;
-  }
-  .ant-list-sm .ant-list-item {
-    padding: var(--om-space-8) var(--om-space-12);
-    align-items: center;
   }
 }

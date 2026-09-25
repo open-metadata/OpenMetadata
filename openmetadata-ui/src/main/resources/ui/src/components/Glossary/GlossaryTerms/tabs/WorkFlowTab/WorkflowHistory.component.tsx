@@ -10,10 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Empty, Typography } from 'antd';
+import {
+  Card,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  memo,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
@@ -36,17 +48,42 @@ import {
   getShortRelativeTime,
 } from '../../../../../utils/date-time/DateTimeUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
-import { handleKeyboardActivation } from '../../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
 
-const { Text } = Typography;
-
 interface WorkflowHistoryProps {
   glossaryTerm?: GlossaryTerm;
 }
+
+interface WorkflowHistoryContainerProps {
+  isWidget: boolean;
+  className?: string;
+  children: ReactNode;
+  'data-testid'?: string;
+}
+
+// The right-panel widget is a card of its own; inside the status popover the
+// popover already is the surface, so the content renders bare.
+const WorkflowHistoryContainer = ({
+  isWidget,
+  className,
+  children,
+  'data-testid': dataTestId,
+}: WorkflowHistoryContainerProps) =>
+  isWidget ? (
+    <Card
+      className={classNames('tw:w-full tw:px-5 tw:pt-4.5 tw:pb-3', className)}
+      data-testid={dataTestId}
+      size="sm">
+      {children}
+    </Card>
+  ) : (
+    <div className={className} data-testid={dataTestId}>
+      {children}
+    </div>
+  );
 
 const WorkflowHistory = memo(
   ({ glossaryTerm: propGlossaryTerm }: WorkflowHistoryProps) => {
@@ -201,69 +238,68 @@ const WorkflowHistory = memo(
 
     const workflowContent = useMemo(() => {
       const workflowHistoryLabel = t('label.workflow-history');
+      const isWidget = !propGlossaryTerm;
 
       if (isLoading) {
         return (
-          <div
-            className={classNames('flex-center h-40', {
-              'workflow-history-widget-rightPanel': !propGlossaryTerm,
-            })}>
+          <WorkflowHistoryContainer
+            className="flex-center h-40"
+            isWidget={isWidget}>
             <Loader size="small" />
-          </div>
+          </WorkflowHistoryContainer>
         );
       }
 
       if (isEmpty(workflowHistory)) {
         return (
-          <div
-            className={classNames('workflow-history-widget', {
-              'workflow-history-widget-rightPanel': !propGlossaryTerm,
-            })}>
-            <Empty
-              description={
-                <Text className="text-grey-muted">
-                  {t('label.no-entity-available', {
-                    entity: workflowHistoryLabel,
-                  })}
-                </Text>
-              }
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          </div>
+          <WorkflowHistoryContainer
+            className="workflow-history-widget"
+            isWidget={isWidget}>
+            <div className="tw:relative tw:min-h-24">
+              <EmptyPlaceholder
+                title={t('label.no-entity-available', {
+                  entity: workflowHistoryLabel,
+                })}
+                variant="blank"
+                width="100%"
+              />
+            </div>
+          </WorkflowHistoryContainer>
         );
       }
 
       return (
-        <div
-          className={classNames('workflow-history-widget', {
-            'workflow-history-widget-rightPanel': !propGlossaryTerm,
-          })}
-          data-testid="workflow-history-widget">
-          <div
+        <WorkflowHistoryContainer
+          className="workflow-history-widget"
+          data-testid="workflow-history-widget"
+          isWidget={isWidget}>
+          <AriaButton
+            aria-expanded={!isCollapsed}
             aria-label={workflowHistoryLabel}
-            className=" cursor-pointer d-flex flex-col w-full gap-2"
-            role="button"
-            tabIndex={0}
-            onClick={toggleCollapse}
-            onKeyDown={handleKeyboardActivation(toggleCollapse)}>
-            <div className="workflow-header d-flex justify-between align-center w-full">
-              <div className="d-flex align-center gap-2">
-                <Text className="workflow-title">{workflowHistoryLabel}</Text>
-              </div>
-              <Text className="workflow-counter">
+            className="tw:flex tw:w-full tw:cursor-pointer tw:flex-col tw:gap-2 tw:rounded-md tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2"
+            onPress={toggleCollapse}>
+            <div className="workflow-header tw:flex tw:w-full tw:items-center tw:justify-between">
+              <Typography
+                as="span"
+                className="tw:text-primary"
+                size="text-sm"
+                weight="medium">
+                {workflowHistoryLabel}
+              </Typography>
+              <Typography as="span" className="tw:text-tertiary" size="text-sm">
                 {completedSteps}/{totalSteps}
-              </Text>
+              </Typography>
             </div>
-            <div className="workflow-progress w-full">
+            <div className="workflow-progress tw:w-full">
               <div className="workflow-steps">{workflowSteps}</div>
             </div>
-          </div>
+          </AriaButton>
           {!isCollapsed && (
             <div className="workflow-timeline flex flex-col">
               {workflowHistory.map(renderTimelineItem)}
             </div>
           )}
-        </div>
+        </WorkflowHistoryContainer>
       );
     }, [
       isLoading,

@@ -9,6 +9,7 @@ import type {
 import { forwardRef, isValidElement } from 'react';
 import {
   Button as AriaButton,
+  Focusable as AriaFocusable,
   OverlayArrow as AriaOverlayArrow,
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
@@ -121,12 +122,23 @@ export const Tooltip = ({
 }: TooltipProps) => {
   const resolvedDelay = delay ?? 300;
 
+  // A disabled control fires no pointer or focus events, so react-aria never
+  // opens the tooltip on it - precisely backwards for the common case, where
+  // the tooltip exists to explain *why* the control is disabled. antd wrapped
+  // disabled children in its own listener element for this reason.
+  const isDisabledChild =
+    isValidElement<{ isDisabled?: boolean; disabled?: boolean }>(children) &&
+    Boolean(children.props.isDisabled ?? children.props.disabled);
+
   // Determine whether the child needs to be wrapped in a focusable AriaButton.
   // Non-focusable HTML string elements (span, div, svg, …) can't serve as
   // react-aria tooltip anchors on their own; wrap them automatically.
   // Providing triggerClassName or onTriggerPress is an explicit signal to wrap
   // even React component children (e.g. icon components).
   const shouldWrap = (() => {
+    if (isDisabledChild) {
+      return true;
+    }
     if (triggerClassName !== undefined || onTriggerPress !== undefined) {
       return true;
     }
@@ -138,8 +150,39 @@ export const Tooltip = ({
     return typeof type === 'string' && !NATIVELY_FOCUSABLE_HTML.has(type);
   })();
 
+  const disabledWrapClassName =
+    // No `w-max`: that pinned the wrapper to max-content, so a disabled
+    // full-width trigger shrank where the same trigger enabled would not.
+    // `triggerClassName` still wins via cx if a consumer needs to set width.
+    'tw:inline-flex tw:cursor-not-allowed tw:*:pointer-events-none';
+
   const trigger_ = shouldWrap ? (
-    excludeTriggerFromTabOrder ? (
+    isDisabledChild ? (
+      // A span rather than AriaButton: the child is already a button, and
+      // nesting one inside another is invalid HTML. The child also has to stop
+      // swallowing pointer events, or the wrapper never sees the hover.
+      //
+      // `excludeTriggerFromTabOrder` still applies here, and collapses to the
+      // same shape as the non-disabled branch below: a bare span, with no
+      // `tabIndex` and no `Focusable`. Deliberately not `tabIndex={-1}` - that
+      // stays programmatically focusable and so remains reachable by Ant
+      // Design's FocusTrap.restoreFocus(), which is the problem that branch
+      // exists to avoid. Opting out of the tab order costs the same keyboard
+      // affordance there as here; the two paths make the same trade.
+      excludeTriggerFromTabOrder ? (
+        <span className={cx(disabledWrapClassName, triggerClassName)}>
+          {children}
+        </span>
+      ) : (
+        <AriaFocusable>
+          <span
+            className={cx(disabledWrapClassName, triggerClassName)}
+            tabIndex={0}>
+            {children}
+          </span>
+        </AriaFocusable>
+      )
+    ) : excludeTriggerFromTabOrder ? (
       // Use a plain span instead of AriaButton when the trigger is explicitly
       // excluded from the tab order. AriaButton with tabindex="-1" is still
       // programmatically focusable, so Ant Design FocusTrap.restoreFocus() can

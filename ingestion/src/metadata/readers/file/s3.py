@@ -38,7 +38,7 @@ def return_s3_storage_options(config_source: S3Config) -> dict[str, Any]:
     if connection_args.awsSecretAccessKey:
         storage_options["secret"] = connection_args.awsSecretAccessKey.get_secret_value()
     if connection_args.awsSessionToken:
-        storage_options["token"] = connection_args.awsSessionToken
+        storage_options["token"] = connection_args.awsSessionToken.get_secret_value()
 
     client_kwargs = {}
     if connection_args.endPointURL:

@@ -74,10 +74,9 @@ test.describe('Domain Owner Management', () => {
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
-      const ownerItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      const ownerItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
       const maxRetries = 5;
 
       for (let retry = 0; retry < maxRetries; retry++) {
@@ -224,10 +223,9 @@ test.describe('Domain Expert Management', () => {
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
       const maxRetries = 5;
 
       for (let retry = 0; retry < maxRetries; retry++) {
@@ -413,10 +411,9 @@ test.describe('Data Product UI Operations', () => {
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
-      const ownerItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      const ownerItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
       const maxRetries = 5;
 
       for (let retry = 0; retry < maxRetries; retry++) {

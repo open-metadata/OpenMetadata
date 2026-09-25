@@ -144,6 +144,37 @@ if (typeof global.DataTransfer === 'undefined') {
 }
 
 /**
+ * Blob#text polyfill — jsdom 20's Blob does not implement `text()` (or
+ * `arrayBuffer()`), so any code reading Blob content via `content.text()`
+ * (e.g. FilePreviewer's TextRenderer/MarkdownRenderer) hangs in tests.
+ * FileReader.readAsText is implemented, so wrap it in a promise.
+ */
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
+  Blob.prototype.text = function text() {
+    return new Promise((resolve, reject) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
+
+if (
+  typeof Blob !== 'undefined' &&
+  typeof Blob.prototype.arrayBuffer !== 'function'
+) {
+  Blob.prototype.arrayBuffer = function arrayBuffer() {
+    return new Promise((resolve, reject) => {
+      const reader = new window.FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
+
+/**
  * mock react-i18next
  */
 jest.mock('react-i18next', () => ({

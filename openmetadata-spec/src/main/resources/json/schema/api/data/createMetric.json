@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createMetric.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateMetricRequest",
   "description": "Create Metric entity request",
   "type": "object",
@@ -73,11 +73,29 @@
     "assets": {
       "description": "Data assets (tables, dashboards, etc.) this metric is computed on or applies to.",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null
+      "default": null,
+      "deprecated": true,
+      "$comment": "@deprecated Use PUT /v1/metrics/{name}/assets/add to link assets after creating the metric"
+    },
+    "parent": {
+      "description": "Fully qualified name of the parent metric this metric is a variant of.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "metricGroup": {
+      "description": "Fully qualified name of the Metric Group this metric hierarchy belongs to. Children inherit their parent's group.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "owners": {
       "description": "Owners of this metric",
       "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "experts": {
+      "description": "List of fully qualified user names for users who are experts in this metric.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
       "default": null
     },
     "reviewers": {

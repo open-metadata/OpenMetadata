@@ -12,7 +12,6 @@
  */
 
 import { AxiosResponse } from 'axios';
-import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
@@ -21,6 +20,7 @@ import { LoginConfiguration } from '../generated/configuration/loginConfiguratio
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
+import axiosClient from './axiosClient';
 
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
 export { RelationCardinality };

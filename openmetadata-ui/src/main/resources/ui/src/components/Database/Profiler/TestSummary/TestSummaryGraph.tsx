@@ -170,7 +170,7 @@ function TestSummaryGraph({
   testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
-  const { grid } = useChartColors();
+  const { axis, grid } = useChartColors();
   const { setShowAILearningBanner } = useTestCaseStore();
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
@@ -392,7 +392,7 @@ function TestSummaryGraph({
 
   return (
     <ResponsiveContainer
-      className="bg-white custom-test-summary-graph"
+      className="tw:bg-primary custom-test-summary-graph"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
       <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
@@ -404,7 +404,7 @@ function TestSummaryGraph({
           padding={{ left: 8, right: 8 }}
           scale="time"
           textAnchor="end"
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={(date) =>
             formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
           }
@@ -414,6 +414,7 @@ function TestSummaryGraph({
           allowDataOverflow
           domain={['min', 'max']}
           padding={{ top: 8, bottom: 8 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={formatYAxis}
           width={80}
         />

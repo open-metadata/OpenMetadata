@@ -42,11 +42,13 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { validateWorkflowConfig } from '../../../utils/WorkflowConfigUtils';
 import {
+  reconcileDataAssetFilters,
   serializeDataAssetFilters,
   serializeEventBasedFilters,
   serializePeriodicBatchFilters,
 } from '../../../utils/WorkflowSerializationUtils';
-import { FormActionButtons, WorkflowConfigFormV1 } from './forms';
+import { FormActionButtons } from './forms/FormActionButtons';
+import { WorkflowConfigFormV1 } from './forms/WorkflowConfigFormV1';
 
 const computeStartNodeConfig = (
   node: Node,
@@ -178,10 +180,25 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const updateConfig = useCallback(
     <K extends keyof NodeConfig>(key: K, value: NodeConfig[K]) => {
-      setLocalConfig((prevConfig) => ({
-        ...(prevConfig || effectiveConfig),
-        [key]: value,
-      }));
+      setLocalConfig((prevConfig) => {
+        const base = prevConfig || effectiveConfig;
+
+        if (key !== 'dataAssets') {
+          return { ...base, [key]: value };
+        }
+
+        // Each filter is bound to the asset type it was created for.
+        const assets = (value as string[]) ?? [];
+
+        return {
+          ...base,
+          dataAssets: assets,
+          dataAssetFilters: reconcileDataAssetFilters(
+            base.dataAssetFilters,
+            assets
+          ),
+        };
+      });
 
       if (key === 'name') {
         setLocalName(value as string);

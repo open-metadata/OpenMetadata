@@ -24,6 +24,7 @@ import {
   useAppModeSidebarRecentRail,
 } from '../appModeExtensions';
 import { IconComponent } from '../AppModule.types';
+import DomainScopeControl from './DomainScopeControl';
 import MoreNavPopover from './MoreNavPopover';
 import { MainNavItem } from './navConfig';
 import SidebarBrand from './SidebarBrand';
@@ -167,7 +168,11 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
             data-testid="ask-rail-expand-btn"
             type="button"
             onClick={onToggle}>
-            <ExpandPanelIcon height={20} width={20} />
+            <ExpandPanelIcon
+              className="tw:text-fg-quaternary"
+              height={20}
+              width={20}
+            />
           </button>
         </div>
       </div>
@@ -191,6 +196,9 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
       ) : null}
 
       <div className="ask-rail__profile">
+        <div className="ask-rail__domain" data-testid="ask-rail-domain-scope">
+          <DomainScopeControl variant="rail" />
+        </div>
         {footerSlots.length > 0 ? (
           footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
         ) : (

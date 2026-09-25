@@ -254,7 +254,7 @@ public class ApplicationHandler {
         .forEach(
             eventSub -> {
               try {
-                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, true);
+                EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
               } catch (Exception e) {
                 throw new RuntimeException(e);
               }

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/feed/announcement.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Announcement",
   "description": "An Announcement is a time-bound notification associated with a data asset. It has a start and end time and is displayed to users viewing the asset during that period.",
   "javaInterfaces": ["org.openmetadata.schema.NamedEntityInterface"],

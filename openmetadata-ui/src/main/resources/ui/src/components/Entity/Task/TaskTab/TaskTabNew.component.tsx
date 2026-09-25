@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -95,6 +96,8 @@ import {
 } from '../../../../rest/taskFormSchemasAPI';
 import {
   closeTask as closeTaskAPI,
+  deleteTaskComment,
+  editTaskComment,
   patchTask,
   resolveTask as resolveTaskAPI,
   Task,
@@ -128,6 +131,7 @@ import {
   fetchOptions,
   generateOptions,
 } from '../../../../utils/TaskAssigneeUtils';
+import { resolveCommentPermissions } from '../../../../utils/TaskCommentUtils';
 import {
   applyTaskFormSchemaDefaults,
   getDefaultTaskFormSchema,
@@ -148,13 +152,12 @@ import {
 } from '../../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
+import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -1606,6 +1609,18 @@ export const TaskTabNew = ({
     setIsEditAssignee(true);
   };
 
+  const editAssigneeButton = shouldEditAssignee ? (
+    <EditIconButton
+      className="p-0"
+      data-testid="edit-assignees"
+      size="small"
+      title={t('label.edit-entity', {
+        entity: t('label.assignee-plural'),
+      })}
+      onClick={handleEditClick}
+    />
+  ) : null;
+
   function renderTaskHeader() {
     return isTaskTestCaseResult ? (
       <TaskTabIncidentManagerHeaderNewFromTask task={task} />
@@ -1721,26 +1736,15 @@ export const TaskTabNew = ({
                       <Typography.Text className="text-grey-body">
                         {getEntityName(task?.assignees[0])}
                       </Typography.Text>
-                      {shouldEditAssignee && (
-                        <EditIconButton
-                          className="p-0"
-                          data-testid="edit-assignees"
-                          size="small"
-                          title={t('label.edit-entity', {
-                            entity: t('label.assignee-plural'),
-                          })}
-                          onClick={handleEditClick}
-                        />
-                      )}
+                      {editAssigneeButton}
                     </div>
                   ) : (
-                    <OwnerLabel
-                      isAssignee
+                    <Owner
                       hasPermission={shouldEditAssignee}
                       isCompactView={false}
                       owners={task?.assignees}
+                      selectorContent={editAssigneeButton}
                       showLabel={false}
-                      onEditClick={handleEditClick}
                     />
                   )}
                 </Col>
@@ -1833,18 +1837,50 @@ export const TaskTabNew = ({
 
     return (
       <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-        {sortedComments.map((comment, index, arr) => (
-          <TaskCommentCard
-            closeFeedEditor={closeFeedEditor}
-            comment={comment}
-            isLastReply={index === arr.length - 1}
-            key={comment.id}
-            task={task}
-          />
-        ))}
+        {sortedComments.map((comment, index, arr) => {
+          const { canEdit, canDelete } = resolveCommentPermissions(
+            currentUser,
+            comment
+          );
+
+          return (
+            <CommentCard
+              canDelete={canDelete}
+              canEdit={canEdit}
+              closeFeedEditor={closeFeedEditor}
+              isLastReply={index === arr.length - 1}
+              key={comment.id}
+              reply={comment}
+              onDelete={async () => {
+                try {
+                  await deleteTaskComment(task.id, comment.id);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  // The REST helpers throw without surfacing anything of their
+                  // own. Rethrow after toasting so the card leaves the
+                  // confirmation open for a retry instead of dismissing it as
+                  // though the delete had succeeded.
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
+              }}
+              onEdit={async (message) => {
+                try {
+                  await editTaskComment(task.id, comment.id, message);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
+              }}
+            />
+          );
+        })}
       </Col>
     );
-  }, [task, closeFeedEditor, isPostsLoading]);
+  }, [task, closeFeedEditor, isPostsLoading, currentUser, fetchUpdatedThread]);
 
   useEffect(() => {
     closeFeedEditor();

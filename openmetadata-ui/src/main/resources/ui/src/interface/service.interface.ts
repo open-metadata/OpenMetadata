@@ -57,6 +57,7 @@ import {
 } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
+import type { FieldFocusMeta } from '../hooks/useFieldFocusManagement';
 
 export interface IngestionSchedule {
   repeatFrequency: string;
@@ -149,7 +150,7 @@ export interface IngestionWorkflowFormProps {
   className?: string;
   hideFooter?: boolean;
   onCancel: () => void;
-  onFocus: (fieldId: string) => void;
+  onFocus: (fieldId: string, schemaMeta?: FieldFocusMeta) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
   // Fired once the lazily loaded RJSF templates have resolved and the form is

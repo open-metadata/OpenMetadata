@@ -145,7 +145,35 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {testId}
       </button>
     ),
+    Owner: jest.fn(() => <div data-testid="owner-label" />),
+    PageLayout: {
+      PageHeader: ({
+        footer,
+        meta,
+        subtitle,
+        title,
+        actions,
+      }: {
+        footer?: ReactNode;
+        meta?: ReactNode;
+        subtitle?: string;
+        title: string;
+        actions?: ReactNode;
+      }) => (
+        <div data-testid="page-header">
+          <span>{title}</span>
+          <span data-testid="page-header-subtitle">{subtitle}</span>
+          <div data-testid="header-metadata">{meta}</div>
+          <div data-testid="header-actions">{actions}</div>
+          {footer}
+        </div>
+      ),
+    },
     Tabs,
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 
@@ -177,10 +205,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: () => <span data-testid="owner-label" />,
-}));
-
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
   __esModule: true,
   default: ({
@@ -203,34 +227,6 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
       </div>
     ) : null,
 }));
-
-jest.mock(
-  '../../../components/common/HeaderShell/HeaderShell.component',
-  () => ({
-    __esModule: true,
-    default: ({
-      footer,
-      meta,
-      subtitle,
-      title,
-      actions,
-    }: {
-      footer?: ReactNode;
-      meta?: ReactNode;
-      subtitle?: string;
-      title: string;
-      actions?: ReactNode;
-    }) => (
-      <div data-testid="page-header">
-        <span>{title}</span>
-        <span data-testid="page-header-subtitle">{subtitle}</span>
-        <div data-testid="header-metadata">{meta}</div>
-        <div data-testid="header-actions">{actions}</div>
-        {footer}
-      </div>
-    ),
-  })
-);
 
 jest.mock('./AlertAiForm.component', () => ({
   __esModule: true,
@@ -426,7 +422,7 @@ describe('AlertDetailsPage', () => {
     render(<AlertDetailsPage />);
 
     // The meta slot must carry both the owner label and the event-stat block
-    // (this row regressed to an empty/stacked layout during the HeaderShell
+    // (this row regressed to an empty/stacked layout during the PageHeader
     // migration when it lost its horizontal wrapper).
     const metaRow = screen.getByTestId('header-metadata');
 

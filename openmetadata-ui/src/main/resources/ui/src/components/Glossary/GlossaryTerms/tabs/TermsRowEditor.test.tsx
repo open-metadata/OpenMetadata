@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,51 +11,48 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
-import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { TagSource } from '../../../../generated/entity/data/container';
+import { GlossaryPickerValue } from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import { TermsRowEditorProps } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
 
-jest.mock('../../../../rest/glossaryAPI', () => ({
-  searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
+const mockPicker = jest.fn();
+
+jest.mock('../../../common/GlossaryTermPicker/GlossaryTermPicker', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    mockPicker(props);
+
+    return (
+      <button
+        aria-label="glossary term picker"
+        data-testid={props['data-testid'] as string}
+        onClick={() => {
+          const picked = [
+            {
+              tagFQN: 'Glossary.OtherTerm',
+              name: 'OtherTerm',
+              source: TagSource.Glossary,
+            } as GlossaryPickerValue,
+          ];
+          // The row reads the second argument, which keeps the source entity.
+          (
+            props.onChange as (
+              terms: GlossaryPickerValue[],
+              nodes: GlossaryPickerValue[]
+            ) => void
+          )(picked, picked);
+        }}
+      />
+    );
+  },
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const React = require('react');
 
   return {
-    Autocomplete: Object.assign(
-      ({
-        children,
-        items,
-        onSearchChange,
-      }: {
-        children: (item: { id: string; label: string }) => React.ReactNode;
-        items: Array<{ id: string; label: string }>;
-        onSearchChange?: (v: string) => void;
-      }) =>
-        React.createElement(
-          'div',
-          { 'data-testid': 'autocomplete' },
-          React.createElement('input', {
-            'data-testid': 'autocomplete-input',
-            onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-              onSearchChange?.(e.target.value),
-          }),
-          (items ?? []).map((item) => children(item))
-        ),
-      {
-        Item: ({ label, id }: { label: string; id: string }) =>
-          React.createElement('div', { 'data-testid': `option-${id}` }, label),
-      }
-    ),
     Button: ({
       children,
       iconLeading: _iconLeading,
@@ -113,7 +110,6 @@ const editorProps: TermsRowEditorProps = {
     { id: 'row-2', relationType: 'synonymOf', terms: [] },
   ],
   excludeFQN: 'Glossary.CurrentTerm',
-  preloadedTerms: [],
   relationTypeOptions: [
     { id: 'relatedTo', label: 'Related To' },
     { id: 'synonymOf', label: 'Synonym Of' },
@@ -124,51 +120,75 @@ const editorProps: TermsRowEditorProps = {
   onRemove: jest.fn(),
 };
 
+const singleRow = [{ id: 'row-1', relationType: 'relatedTo', terms: [] }];
+
 describe('TermsRow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders the row with the given rowId', () => {
-    render(
-      <TermsRowEditor
-        {...editorProps}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
-      />
-    );
+    render(<TermsRowEditor {...editorProps} rows={singleRow} />);
 
     expect(screen.getByTestId('relation-row-row-1')).toBeInTheDocument();
   });
 
-  it('renders the autocomplete for terms', () => {
+  it('renders the term picker for the row', () => {
+    render(<TermsRowEditor {...editorProps} rows={singleRow} />);
+
+    expect(screen.getByTestId('term-picker-row-1')).toBeInTheDocument();
+  });
+
+  it('excludes the current term from the picker', () => {
+    render(<TermsRowEditor {...editorProps} rows={singleRow} />);
+
+    expect(mockPicker).toHaveBeenCalledWith(
+      expect.objectContaining({ excludeFqns: ['Glossary.CurrentTerm'] })
+    );
+  });
+
+  it('reports picked terms as term items', () => {
+    render(<TermsRowEditor {...editorProps} rows={singleRow} />);
+
+    fireEvent.click(screen.getByTestId('term-picker-row-1'));
+
+    expect(editorProps.onTermsChange).toHaveBeenCalledWith('row-1', [
+      expect.objectContaining({
+        value: 'Glossary.OtherTerm',
+        label: 'OtherTerm',
+      }),
+    ]);
+  });
+
+  it('seeds the picker with the terms the row already holds', () => {
     render(
       <TermsRowEditor
         {...editorProps}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
+        rows={[
+          {
+            id: 'row-1',
+            relationType: 'relatedTo',
+            terms: [{ value: 'Glossary.Seeded', label: 'Seeded' }],
+          },
+        ]}
       />
     );
 
-    expect(screen.getByTestId('term-autocomplete-row-1')).toBeInTheDocument();
+    expect(mockPicker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: [expect.objectContaining({ tagFQN: 'Glossary.Seeded' })],
+      })
+    );
   });
 
   it('renders the remove button', () => {
-    render(
-      <TermsRowEditor
-        {...editorProps}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
-      />
-    );
+    render(<TermsRowEditor {...editorProps} rows={singleRow} />);
 
     expect(screen.getByTestId('remove-row-row-1')).toBeInTheDocument();
   });
 
   it('calls onRemove with the rowId when remove button is clicked', () => {
-    render(
-      <TermsRowEditor
-        {...editorProps}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
-      />
-    );
+    render(<TermsRowEditor {...editorProps} rows={singleRow} />);
 
     fireEvent.click(screen.getByTestId('remove-row-row-1'));
 
@@ -176,12 +196,7 @@ describe('TermsRow', () => {
   });
 
   it('calls onRelationTypeChange when relation type select changes', () => {
-    render(
-      <TermsRowEditor
-        {...editorProps}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
-      />
-    );
+    render(<TermsRowEditor {...editorProps} rows={singleRow} />);
 
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'synonymOf' },
@@ -191,81 +206,6 @@ describe('TermsRow', () => {
       'row-1',
       'synonymOf'
     );
-  });
-
-  it('excludes the excludeFQN term from dropdown options', () => {
-    render(
-      <TermsRowEditor
-        {...editorProps}
-        preloadedTerms={[
-          {
-            id: 'term-1',
-            name: 'CurrentTerm',
-            fullyQualifiedName: 'Glossary.CurrentTerm',
-          } as GlossaryTerm,
-          {
-            id: 'term-2',
-            name: 'OtherTerm',
-            fullyQualifiedName: 'Glossary.OtherTerm',
-          } as GlossaryTerm,
-        ]}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
-      />
-    );
-
-    expect(screen.queryByTestId('option-Glossary.CurrentTerm')).toBeNull();
-    expect(screen.getByTestId('option-Glossary.OtherTerm')).toBeInTheDocument();
-  });
-
-  it('searches for terms when typing in the autocomplete', async () => {
-    (searchGlossaryTermsPaginated as jest.Mock).mockResolvedValueOnce({
-      data: [
-        {
-          id: 'term-3',
-          name: 'SearchResult',
-          fullyQualifiedName: 'Glossary.SearchResult',
-        },
-      ],
-    });
-
-    render(
-      <TermsRowEditor
-        {...editorProps}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
-      />
-    );
-
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('autocomplete-input'), {
-        target: { value: 'Search' },
-      });
-    });
-
-    await waitFor(
-      () => {
-        expect(searchGlossaryTermsPaginated).toHaveBeenCalledWith(
-          expect.objectContaining({ q: 'Search' })
-        );
-      },
-      { timeout: 500 }
-    );
-  });
-
-  it('clears searched terms when autocomplete input is emptied', async () => {
-    render(
-      <TermsRowEditor
-        {...editorProps}
-        rows={[{ id: 'row-1', relationType: 'relatedTo', terms: [] }]}
-      />
-    );
-
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('autocomplete-input'), {
-        target: { value: '' },
-      });
-    });
-
-    expect(searchGlossaryTermsPaginated).not.toHaveBeenCalled();
   });
 });
 

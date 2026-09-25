@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -43,7 +44,8 @@ import org.openmetadata.service.util.ChildFieldResolver;
  * <p>Written as characterization pins against the pre-consolidation switch, then carried across the
  * migration to the registry unchanged, which is what proves the migration preserved behavior. Two
  * exceptions, both deliberate: pipelines now return task names rather than empty (the registry gives
- * them child coverage), and metric still returns empty because it is not a registry type.
+ * them child coverage), and metric returns its own FQN, the behaviour that arrived with
+ * metric-to-column lineage. Metric and dashboard are carve-outs, not registry types.
  */
 class LineageChildrenNamesTest {
 
@@ -337,9 +339,24 @@ class LineageChildrenNamesTest {
   }
 
   @Test
-  void metric_unsupported_returnsEmpty() throws Exception {
+  void metric_returnsItsOwnFqnAsTheSingleColumnEndpoint() throws Exception {
+    // A metric has no child collection: it is the leaf a column feeds, so its own FQN is the only
+    // valid column endpoint. That makes it a carve-out rather than a registry type, and it is what
+    // lets a column point at a metric in lineage.
     try (MockedStatic<Entity> ignored = mockedEntity()) {
-      assertEquals(Set.of(), invokeGetChildrenNames(ref(Entity.METRIC)));
+      EntityReference metric = ref(Entity.METRIC).withFullyQualifiedName("metricSvc.total_sales");
+      assertEquals(Set.of("metricSvc.total_sales"), invokeGetChildrenNames(metric));
+    }
+  }
+
+  @Test
+  void metric_withNoFqn_returnsASetThatMatchesNoColumn() throws Exception {
+    // A singleton rather than Set.of: a null FQN must not throw here, and the resulting set then
+    // rejects every candidate column, which is the behaviour the lineage check wants.
+    try (MockedStatic<Entity> ignored = mockedEntity()) {
+      Set<String> names = invokeGetChildrenNames(ref(Entity.METRIC));
+      assertEquals(1, names.size());
+      assertFalse(names.contains("any.column"));
     }
   }
 }

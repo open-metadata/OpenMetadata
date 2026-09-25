@@ -39,7 +39,7 @@ import {
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import './Extensions/File/file-node.less';
-import { slashMenuPluginKey } from './Extensions/slash-command';
+import { slashMenuPluginKey } from './Extensions/slash-command/slashCommand';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
 const PROSEMIRROR_EDITABLE_SELECTOR = '.ProseMirror[contenteditable="true"]';

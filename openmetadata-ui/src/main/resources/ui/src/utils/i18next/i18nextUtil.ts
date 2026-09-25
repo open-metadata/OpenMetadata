@@ -25,6 +25,8 @@ export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
 export const getInitOptions = (): InitOptions => {
   return {
     supportedLngs: Object.values(SupportedLocales),
+    ns: ['translation', 'core'],
+    defaultNS: 'translation',
     resources: {
       'en-US': { translation: enUS },
     },

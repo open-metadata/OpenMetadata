@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DataFactoryConnection",
   "description": "Azure Data Factory Connection Config",
   "type": "object",
@@ -48,7 +47,6 @@
     "configSource": {
       "title": "Azure Data Factory Configuration",
       "description": "Available sources to fetch metadata.",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
       "properties": {

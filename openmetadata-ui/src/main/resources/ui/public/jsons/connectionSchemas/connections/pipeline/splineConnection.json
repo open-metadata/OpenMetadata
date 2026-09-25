@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SplineConnection",
   "description": "Spline Metadata Database Connection Config",
   "type": "object",

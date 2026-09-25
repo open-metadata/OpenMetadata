@@ -124,6 +124,9 @@ describe('Test NotificationBox Component', () => {
     });
     const tabs = await screen.findAllByRole('tab');
     await act(async () => {
+      fireEvent.click(tabs[1]);
+    });
+    await act(async () => {
       fireEvent.click(tabs[0]);
     });
     jest.advanceTimersByTime(NOTIFICATION_READ_TIMER);

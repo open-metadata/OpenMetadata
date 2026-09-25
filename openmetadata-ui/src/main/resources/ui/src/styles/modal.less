@@ -46,3 +46,17 @@
 .ant-popover-inner-content {
   width: 100%;
 }
+
+// antd Tree paints @component-background (bg-primary); inside a popover it
+// would punch a darker hole in the bg-surface overlay.
+.ant-popover-inner .ant-tree,
+.ant-popover-inner .ant-tree .ant-tree-switcher {
+  background: transparent;
+}
+
+// Match the core Popover edge: on bg-surface in dark an antd popover has no
+// visible boundary without it. Outline (not border) so the box size is unchanged.
+.dark-mode .ant-popover-inner {
+  border-radius: var(--om-radius-xl);
+  outline: 1px solid var(--color-border-secondary_alt);
+}

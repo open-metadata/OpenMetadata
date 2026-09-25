@@ -18,7 +18,10 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 
 const table = new TableClass();
 
@@ -49,27 +52,29 @@ test(
     const columnRowSelector = `[data-row-key$="${firstColumnName}"]`;
 
     // Add PII.Sensitive tag to the first column
-    await page.click(
+    await page.waitForLoadState('domcontentloaded');
+    const addTagTrigger = page.locator(
       `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="add-tag"]`
     );
+    await openClassificationTagPicker(page, addTagTrigger);
 
     const tagSearchResponse = page.waitForResponse(
       '/api/v1/search/query?q=*Sensitive*'
     );
-    await page.fill('[data-testid="tag-selector"] input', 'Sensitive');
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill('Sensitive');
     await tagSearchResponse;
 
-    await page.click('[data-testid="tag-PII.Sensitive"]');
-
-    await expect(
-      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-    ).toContainText('Sensitive');
+    await page.getByTestId('tree-node-PII.Sensitive').click();
 
     const saveTagResponse = page.waitForResponse('/api/v1/columns/name/**');
-    await page.click('[data-testid="saveAssociatedTag"]');
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await saveTagResponse;
 
-    await page.locator('.ant-select-dropdown').waitFor({ state: 'detached' });
+    await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
     // Verify the tag was added successfully
     await expect(
@@ -79,22 +84,20 @@ test(
     ).toContainText('Sensitive');
 
     // Now try to add a mutually exclusive tag (PII.NonSensitive) to the same column
-    // The edit button is inside tags-container
-    await page.click(
+    const editTagTrigger = page.locator(
       `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="tags-container"] [data-testid="edit-button"]`
     );
+    await openClassificationTagPicker(page, editTagTrigger);
 
     const tagSearchResponse2 = page.waitForResponse(
       '/api/v1/search/query?q=*NonSensitive*'
     );
-    await page.fill('[data-testid="tag-selector"] input', 'NonSensitive');
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill('NonSensitive');
     await tagSearchResponse2;
 
-    await page.click('[data-testid="tag-PII.NonSensitive"]');
-
-    await expect(
-      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-    ).toContainText('NonSensitive');
+    await page.getByTestId('tree-node-PII.NonSensitive').click();
 
     // Wait for the API call which should return an error
     const errorResponse = page.waitForResponse(
@@ -102,13 +105,15 @@ test(
         response.url().includes('/api/v1/columns/name/') &&
         response.status() >= 400
     );
-    await page.click('[data-testid="saveAssociatedTag"]');
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await errorResponse;
 
     await toastNotification(page, /mutually exclusive/i);
 
-    // Verify that the dropdown closes after error
-    await expect(page.locator('.ant-select-dropdown')).not.toBeVisible();
+    // Verify that the picker closes after error
+    await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
     // Verify that the original tag is still present
     await expect(

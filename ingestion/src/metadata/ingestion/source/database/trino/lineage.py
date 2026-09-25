@@ -97,6 +97,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                     f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
                     f"for lineage queries"
                 )
+            self.warn_if_query_log_truncated(total_fetched, "lineage")
 
     def get_cross_database_fqn_from_service_names(self) -> list[str]:
         database_service_names = self.source_config.crossDatabaseServiceNames  # pyright: ignore[reportAttributeAccessIssue]

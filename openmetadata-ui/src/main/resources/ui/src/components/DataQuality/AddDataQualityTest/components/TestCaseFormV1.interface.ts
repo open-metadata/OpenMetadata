@@ -49,6 +49,14 @@ export interface TestCaseFormDrawerProps {
 export interface TestCaseFormContext {
   selectedDefinition?: TestDefinition;
   selectedTableData?: Table;
+  /**
+   * Raw FQN of the selected table, straight from the form field. Available
+   * synchronously, unlike `selectedTableData`, which is fetched from it — and
+   * `canCreatePipeline` is gated on this, so consumers building a pipeline
+   * payload must prefer it or they will read `undefined` while the fetch is in
+   * flight (or has failed).
+   */
+  selectedTableFqn?: string;
   selectedColumn?: string;
   selectedTestLevel: TestLevel;
   generateName: () => string;
@@ -108,6 +116,8 @@ export interface FormValues {
   parameterValues?: Array<{ name: string; value: string }>;
   dimensionColumns?: Array<string | FormSelectItem>;
   topDimensions?: number;
+  // Holds the name of the selected dimension entity, system or custom.
+  dataQualityDimension?: string | FormSelectItem;
   // Scheduler fields
   pipelineName?: string;
   cron?: string;

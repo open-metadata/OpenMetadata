@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { fireEvent, render, screen } from '@testing-library/react';
 import TabsLabel from './TabsLabel.component';
 import { TabsLabelProps } from './TabsLabel.interface';
 
@@ -72,5 +73,50 @@ describe('TabsLabel component', () => {
     expect(count).toBeVisible();
     expect(count.textContent).toStrictEqual('5');
     expect(screen.queryByTestId('loading-skeleton')).not.toBeInTheDocument();
+  });
+
+  it('Count badge follows tab selection inside a card tab list', () => {
+    render(
+      <Tabs defaultSelectedKey="first">
+        <Tabs.List aria-label="tabs" type="underline" variant="card">
+          <Tabs.Item id="first">
+            <TabsLabel count={2} id="first" name="First" />
+          </Tabs.Item>
+          <Tabs.Item id="second">
+            <TabsLabel count={4} id="second" isActive={false} name="Second" />
+          </Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    );
+
+    const badge = (id: string) =>
+      screen.getByTestId(id).querySelector('[data-testid="count"] > span');
+
+    expect(badge('first')).toHaveClass('bg-primary', 'text-white');
+    expect(badge('second')).toHaveClass('ant-tag');
+
+    fireEvent.click(screen.getByRole('tab', { name: /Second/ }));
+
+    expect(badge('second')).toHaveClass('bg-primary', 'text-white');
+    expect(badge('first')).toHaveClass('ant-tag');
+  });
+
+  it('Count badge stays neutral inside a non-card tab list', () => {
+    render(
+      <Tabs defaultSelectedKey="first">
+        <Tabs.List aria-label="tabs" type="underline">
+          <Tabs.Item id="first">
+            <TabsLabel count={2} id="first" name="First" />
+          </Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    );
+
+    const badge = screen
+      .getByTestId('first')
+      .querySelector('[data-testid="count"] > span');
+
+    expect(badge).not.toHaveClass('bg-primary');
+    expect(badge).not.toHaveClass('ant-tag');
   });
 });

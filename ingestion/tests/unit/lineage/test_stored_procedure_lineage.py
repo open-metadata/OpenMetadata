@@ -766,3 +766,102 @@ class TestMatchProcedureDisambiguation:
             result.query_by_procedure.query_database_name: result.procedure.database.name for result in results
         }
         assert attributed == {"db_c": "db_c", "db_a": "db_a"}
+
+
+class TestProcedureBodyUnavailable:
+    """Query history whose procedure body the engine cannot hand back.
+
+    SQL Server returns NULL text from `sys.dm_exec_sql_text()` for encrypted and CLR
+    modules, so PROCEDURE_TEXT arrives NULL. The body is only ever a fallback for
+    deriving the procedure name, and such a row already carries both the name and the
+    query, so it must still produce lineage instead of failing the workflow.
+    """
+
+    @staticmethod
+    def _row(procedure_name, procedure_text):
+        row = {
+            "PROCEDURE_NAME": procedure_name,
+            "QUERY_TYPE": "INSERT",
+            "QUERY_TEXT": "INSERT INTO fct_sales SELECT order_id, amount FROM raw_orders",
+            "QUERY_DATABASE_NAME": "db_a",
+            "QUERY_SCHEMA_NAME": "dbo",
+            "PROCEDURE_TEXT": procedure_text,
+            "PROCEDURE_START_TIME": datetime(2026, 8, 19),
+            "PROCEDURE_END_TIME": datetime(2026, 8, 19),
+        }
+        mock_row = Mock()
+        mock_row._asdict.return_value = row
+        mock_row.keys.return_value = list(row.keys())
+        return mock_row
+
+    def test_null_body_is_yielded_instead_of_failing_the_workflow(self):
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [self._row("usp_load_fct_sales", None)]
+
+        yielded = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == ["usp_load_fct_sales"]
+        assert yielded[0].procedure_text is None
+        mixin.status.failed.assert_not_called()
+
+    def test_null_body_and_null_name_is_tolerated(self):
+        """Nothing identifies the procedure, so the producer will skip the row, but
+        falling back to parsing a NULL body must not raise."""
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [self._row(None, None)]
+
+        yielded = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == [None]
+        mixin.status.failed.assert_not_called()
+
+    def test_name_is_still_derived_from_the_body_when_present(self):
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+            self._row(None, "CALL db_a.dbo.usp_load_fct_sales()")
+        ]
+
+        yielded = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == ["usp_load_fct_sales"]
+
+    def test_producer_attributes_lineage_for_a_null_body_procedure(self):
+        """The encrypted procedure of issue #32064 reaches the lineage producer."""
+        mixin = TestableStoredProcedureMixin()
+        procedure = TestMatchProcedureDisambiguation._procedure("usp_load_fct_sales", "db_a", "dbo")
+        mixin.metadata.paginate_es.return_value = iter([procedure])
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [self._row("usp_load_fct_sales", None)]
+
+        results = list(mixin.procedure_lineage_producer())
+
+        assert [result.procedure for result in results] == [procedure]
+
+    def test_an_unreadable_row_does_not_take_the_rest_of_the_batch_with_it(self):
+        """The producer consumes this as a generator, so an exception that escapes here
+        silently drops every remaining row while the run still reports success."""
+        mixin = TestableStoredProcedureMixin()
+        unreadable = Mock()
+        unreadable._asdict.side_effect = RuntimeError("row adapter blew up")
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+            unreadable,
+            self._row("usp_after_the_unreadable_row", None),
+        ]
+
+        yielded = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == ["usp_after_the_unreadable_row"]
+        assert mixin.status.failed.call_count == 1
+
+    def test_unusable_row_names_the_procedure_it_came_from(self):
+        """A row that really is unusable still has to say which procedure it belongs to,
+        otherwise the failure is undiagnosable on a server with thousands of procedures."""
+        mixin = TestableStoredProcedureMixin()
+        row = self._row("usp_broken", None)
+        row._asdict.return_value["QUERY_TEXT"] = None
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [row]
+
+        yielded = list(mixin.yield_stored_procedure_queries())
+
+        assert yielded == []
+        reported = mixin.status.failed.call_args.args[0]
+        assert "usp_broken" in reported.error

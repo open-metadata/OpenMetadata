@@ -475,7 +475,7 @@ test.describe.configure({ timeout: 300000 });
 Use this structure for all generated tests:
 
 ```typescript
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../support/fixtures/base";
 import { performAdminLogin } from "../../utils/admin";
 import { redirectToHomePage } from "../../utils/common";
 import { sidebarClick } from "../../utils/sidebar";

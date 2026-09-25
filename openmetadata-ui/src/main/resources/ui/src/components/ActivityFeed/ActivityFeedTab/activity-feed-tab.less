@@ -38,7 +38,7 @@
     height: @user-profile-page-panel-height;
     overflow-y: scroll;
     border-radius: var(--om-radius-xl);
-    background-color: var(--tw-color-bg-primary);
+    background-color: var(--om-color-bg-surface);
     display: flex;
     flex-direction: column;
     border: 1px solid @grey-15;
@@ -54,7 +54,7 @@
     min-width: 0;
     height: @user-profile-page-panel-height;
     overflow-y: scroll;
-    background-color: var(--tw-color-bg-primary);
+    background-color: var(--om-color-bg-surface);
     border-radius: var(--om-radius-xl);
     border: 1px solid @grey-15;
 
@@ -142,7 +142,7 @@
 
   .activity-feed-card-message {
     padding: var(--om-space-20);
-    background-color: var(--tw-color-bg-primary);
+    background-color: var(--om-color-bg-surface);
     width: inherit;
     margin-top: var(--om-space-2);
     border: 0.5px solid var(--om-color-gray-blue-100);
@@ -204,7 +204,7 @@
   }
 
   .activity-feed-card-new-right-panel {
-    background-color: var(--tw-color-bg-primary);
+    background-color: var(--om-color-bg-surface);
     border: none;
   }
 
@@ -486,11 +486,42 @@
 }
 
 .reply-card {
-  padding-top: @padding-lg;
+  // Symmetric, so the divider below a reply sits midway between it and the
+  // next one rather than flush against the text it follows. Matches the
+  // padding of the comments container these sit in.
+  padding-top: var(--om-space-16);
+  padding-bottom: var(--om-space-16);
 }
 
 .reply-card-border-bottom {
   border-bottom: 0.5px solid var(--om-legacy-color-e4e4e4);
+}
+
+// .feed-actions is absolutely positioned at a fixed top: 24px, which only
+// lined up while this card's padding was also 24px. It now uses 16px, so pull
+// the bar up to match - otherwise it hangs below the author row and covers the
+// first line of the comment. Scoped to the reply card so the conversation
+// card, which keeps its own spacing, is unaffected.
+// A reply renders its actions inside the author row rather than floating them
+// over the card, so undo the shared absolute positioning here. Keeping them in
+// normal flow is what stops the bar overlapping the comment text - it can no
+// longer be mispositioned relative to a padding or line-height it doesn't know
+// about.
+.reply-card .feed-actions.ant-space {
+  position: static;
+  padding-top: var(--om-space-2);
+  padding-bottom: var(--om-space-2);
+}
+
+// Tooltips render into a portal on document.body, so this has to sit in a
+// stylesheet that every component rendering `timestamp-tooltip` pulls in -
+// both ActivityFeedcardNew and CommentCard import this file. Without it the
+// tooltip keeps antd's default white text on the white background its `color`
+// prop sets, i.e. an empty bubble.
+.timestamp-tooltip {
+  .ant-tooltip-inner {
+    color: var(--om-color-text-primary);
+  }
 }
 
 .reply-message {
@@ -516,7 +547,7 @@
 .no-description-suggestion-card {
   padding: var(--om-space-20);
   border: 0.5px solid var(--om-color-gray-blue-100);
-  background: var(--tw-color-bg-primary);
+  background: var(--om-color-bg-surface);
   border-radius: var(--om-radius-xl);
   margin-top: var(--om-space-16);
 }

@@ -14,7 +14,6 @@
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +34,7 @@ import {
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
-import { EntityTabs } from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
@@ -45,6 +44,7 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -89,7 +89,6 @@ const AddIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [activeField, setActiveField] = useState<string>('');
   const addIngestionRef = useRef<AddIngestionHandle>(null);
 
   const isSettingsPipeline = useMemo(
@@ -101,7 +100,10 @@ const AddIngestionPage = () => {
 
   const fetchServiceDetails = async () => {
     try {
-      const response = await getServiceByFQN(serviceCategory, serviceFQN);
+      // `owners` is needed to pre-fill the agent's Owners field.
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      });
       if (response) {
         setServiceData(response as DataObj);
       } else {
@@ -239,14 +241,8 @@ const AddIngestionPage = () => {
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
-  };
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
 
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(
@@ -338,6 +334,7 @@ const AddIngestionPage = () => {
       focusedMode
       isWorkflow
       activeField={activeField}
+      activeFieldMeta={activeFieldMeta}
       serviceName={serviceData?.serviceType ?? ''}
       serviceType={getServiceType(serviceCategory as ServiceCategory)}
       workflowType={ingestionType as PipelineType}

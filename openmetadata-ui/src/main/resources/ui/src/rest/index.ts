@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,29 +11,14 @@
  *  limitations under the License.
  */
 
-import axios from 'axios';
-import Qs from 'qs';
-import { getApiBaseUrl } from './apiBaseUrl';
-import {
-  attachEtagInterceptor,
-  DISABLE_ETAG_CONDITIONAL_READS_KEY,
-} from './etagInterceptor';
-
-const axiosClient = axios.create({
-  baseURL: getApiBaseUrl(),
-  paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'comma' }),
-});
-
-// Client-side If-None-Match support paired with the server's ETagResponseFilter. Saves the
-// response body bytes + a JSON parse + a render on entity GET revisits within a session.
-// Attached here (before AuthProvider's interceptors) so it sits closest to the wire and
-// every other interceptor sees the resolved 304→200-with-cached-body translation.
-// Skipped when the session opts out (see DISABLE_ETAG_CONDITIONAL_READS_KEY).
-if (
-  typeof localStorage === 'undefined' ||
-  localStorage.getItem(DISABLE_ETAG_CONDITIONAL_READS_KEY) !== 'true'
-) {
-  attachEtagInterceptor(axiosClient);
-}
-
-export default axiosClient;
+/**
+ * Compatibility forward for openmetadata-collate, which imports
+ * `openmetadata-ui/src/rest/index` from 46 of its own REST modules. The client
+ * lives in ./axiosClient; this file exists only so that downstream specifier
+ * keeps resolving, and re-exporting does not create a second client because the
+ * module body runs once for the resolved file.
+ *
+ * Nothing in this repo should import it — no-internal-barrel-imports will flag
+ * the call site. Delete this file once Collate points at ./axiosClient.
+ */
+export { default } from './axiosClient';

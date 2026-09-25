@@ -12,6 +12,7 @@
 import logging
 from types import SimpleNamespace
 
+from airflow.exceptions import DagNotFound
 from flask import Flask
 
 from openmetadata_managed_apis.operations import delete, last_dag_logs
@@ -23,26 +24,8 @@ class FakeDagModel:
         return SimpleNamespace(get_task_instances=lambda: [SimpleNamespace(task_id="task", try_number=1)])
 
 
-class FakeQuery:
-    def filter(self, *_args):
-        return self
-
-    def delete(self):
-        return 0
-
-
-class FakeSession:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_args):
-        return None
-
-    def query(self, *_args):
-        return FakeQuery()
-
-    def commit(self):
-        return None
+def raise_dag_not_found(dag_id):
+    raise DagNotFound(dag_id)
 
 
 def test_unsupported_task_log_reader_is_logged(monkeypatch, caplog):
@@ -70,7 +53,7 @@ def test_unsupported_task_log_reader_is_logged(monkeypatch, caplog):
 def test_partial_dag_deletion_is_logged(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(delete, "AIRFLOW_DAGS_FOLDER", str(tmp_path / "dags"))
     monkeypatch.setattr(delete, "DAG_GENERATED_CONFIGS", str(tmp_path / "configs"))
-    monkeypatch.setattr(delete.settings, "Session", FakeSession)
+    monkeypatch.setattr(delete, "delete_dag", raise_dag_not_found)
 
     with (
         Flask(__name__).app_context(),

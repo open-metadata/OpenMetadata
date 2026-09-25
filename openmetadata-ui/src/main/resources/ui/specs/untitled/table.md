@@ -40,7 +40,7 @@ optional selection checkbox column, **`TableRowActionsDropdown`**.
 
 | Part | `tw:` utility |
 | --- | --- |
-| Card surface | `tw:bg-primary` `tw:rounded-xl` `tw:shadow-xs` `tw:outline-1 tw:outline-secondary` |
+| Card surface | `tw:bg-surface` `tw:rounded-xl` `tw:shadow-card` `tw:outline-1 tw:outline-subtle` |
 | Header row | `tw:bg-secondary` `tw:h-9`(sm)/`tw:h-11`(md) |
 | Header label | `tw:text-xs` `tw:font-semibold` `tw:text-quaternary` |
 | Row / cell divider | `tw:after:bg-border-secondary` (pseudo, no layout) |

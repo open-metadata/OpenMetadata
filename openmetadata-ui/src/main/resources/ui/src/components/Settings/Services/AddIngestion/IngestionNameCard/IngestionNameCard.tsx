@@ -12,18 +12,21 @@
  */
 
 import { Input } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface IngestionNameCardProps {
   displayName: string;
   onDisplayNameChange: (value: string) => void;
   onFocus?: (fieldName: string) => void;
+  children?: ReactNode;
 }
 
 const IngestionNameCard = ({
   displayName,
   onDisplayNameChange,
   onFocus,
+  children,
 }: IngestionNameCardProps) => {
   const { t } = useTranslation();
 
@@ -37,7 +40,7 @@ const IngestionNameCard = ({
       <div className="tw:mt-0.5 tw:text-xs tw:text-tertiary">
         {t('message.name-this-ingestion-description')}
       </div>
-      <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
+      <div className="tw:my-3 tw:h-px tw:bg-border-secondary" />
       <Input
         isRequired
         id="ingestion-display-name"
@@ -48,6 +51,8 @@ const IngestionNameCard = ({
         onChange={onDisplayNameChange}
         onFocus={() => onFocus?.('displayName')}
       />
+
+      {children && <div className="tw:mt-4">{children}</div>}
     </div>
   );
 };

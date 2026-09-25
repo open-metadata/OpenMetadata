@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AzureOpenAIConnection",
   "description": "Azure OpenAI Service Connection Config",
   "type": "object",

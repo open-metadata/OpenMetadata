@@ -62,8 +62,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * SpEL matchers for alert filtering rules. A matcher returns {@code false} when it cannot evaluate
- * and must never throw for a well-formed event: it runs inside a change-event batch whose offset is
- * committed either way, so an escaping exception silently discards every other event in that batch.
+ * and must never throw for a well-formed event: {@code AlertUtil.isChangeEventAllowed} treats an
+ * escaping exception as "not allowed" and dead-letters that event, so a throw silently costs the
+ * alert a delivery it should have made.
  */
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -319,25 +320,11 @@ public class AlertsRuleEvaluator {
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean filterByTableNameTestCaseBelongsTo(List<String> tableFqns) {
-    if (changeEvent == null) {
-      return false;
-    }
-    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
-      return true;
-    }
-    TestCase testCase = (TestCase) getEntity(changeEvent);
-    String parentFqn = resolveParentTableFqn(testCase);
-    return parentFqn != null && tableFqns.contains(parentFqn);
-  }
-
-  private String resolveParentTableFqn(TestCase testCase) {
-    if (testCase.getEntityFQN() != null) {
-      return testCase.getEntityFQN();
-    }
-    if (testCase.getEntityLink() != null) {
-      return MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN();
-    }
-    return null;
+    TestCase testCase = (TestCase) eventEntityOfType(TEST_CASE);
+    // The link's entity, not entityFQN, which is <table>.<column> for a column-level test.
+    return testCase != null
+        && tableFqns.contains(
+            MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
   }
 
   @Function(
@@ -781,6 +768,25 @@ public class AlertsRuleEvaluator {
         || CONVERSATION.equals(changeEvent.getEntityType());
   }
 
+  // The event's entity of entityType: the entity itself, or for a comment, the entity it is on.
+  private EntityInterface eventEntityOfType(String entityType) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
+      return null;
+    }
+    return switch (changeEvent.getEntityType()) {
+      case null -> null;
+      case THREAD, CONVERSATION -> feedSubjectOfType(entityType);
+      default -> entityType.equals(changeEvent.getEntityType()) ? getEntity(changeEvent) : null;
+    };
+  }
+
+  private EntityInterface feedSubjectOfType(String entityType) {
+    EntityReference subject = feedSubject();
+    return subject != null && entityType.equals(subject.getType())
+        ? Entity.getEntityOrNull(subject, "", Include.NON_DELETED)
+        : null;
+  }
+
   private boolean feedSubjectMatchesType(List<String> entityTypes) {
     EntityReference subject = feedSubject();
     return subject != null && entityTypes.contains(subject.getType());
@@ -899,19 +905,12 @@ public class AlertsRuleEvaluator {
       examples = {"filterByEntityNameDataContractBelongsTo({'service.database.schema.table1'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public Boolean filterByEntityNameDataContractBelongsTo(List<String> entityFqns) {
-    if (changeEvent == null || !changeEvent.getEntityType().equals(DATA_CONTRACT)) {
-      return false;
-    }
-    try {
-      DataContract dataContract =
-          JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
-      if (dataContract.getEntity() == null) {
-        return false;
-      }
-      return entityFqns.contains(dataContract.getEntity().getFullyQualifiedName());
-    } catch (Exception e) {
-      LOG.warn("Failed to parse DataContract from change event", e);
-      return false;
-    }
+    DataContract dataContract = (DataContract) eventEntityOfType(DATA_CONTRACT);
+    // The UI creates contracts with an id-only entity reference, so the FQN can be absent.
+    String coveredFqn =
+        dataContract == null || dataContract.getEntity() == null
+            ? null
+            : dataContract.getEntity().getFullyQualifiedName();
+    return coveredFqn != null && entityFqns.contains(coveredFqn);
   }
 }

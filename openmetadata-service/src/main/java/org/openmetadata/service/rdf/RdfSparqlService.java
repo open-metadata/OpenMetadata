@@ -55,6 +55,15 @@ public final class RdfSparqlService {
         : inferredQuery(query.sparql(), format, inference.externalName);
   }
 
+  /**
+   * Runs an already-validated SELECT as SPARQL JSON, bypassing any configured default inference so
+   * results reflect exactly the projected dataset.
+   */
+  public String selectJsonWithoutInference(final String sparql) {
+    return SparqlQueryLimits.requireBoundedOutput(
+        repository.executeSparqlQueryDirect(sparql, ResultFormat.JSON.mediaType));
+  }
+
   public void update(final String sparql) {
     requireQuery(sparql, "SPARQL update body is required");
     SparqlQueryLimits.requireBoundedText(sparql);

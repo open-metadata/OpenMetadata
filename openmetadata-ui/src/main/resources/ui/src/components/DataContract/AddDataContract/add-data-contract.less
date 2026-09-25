@@ -13,21 +13,7 @@
 
 @import (reference) '../../../styles/variables.less';
 
-.ant-tabs.ant-tabs-left.contract-tabs {
-  .ant-tabs-content-holder {
-    flex: 1;
-    padding: @size-lg;
-    border-radius: 0 var(--om-radius-lg) var(--om-radius-lg) var(--om-radius-lg);
-
-    .ant-tabs-tabpane {
-      margin-top: 0;
-      border: none;
-      padding: 0;
-      background: var(--tw-color-bg-primary);
-      height: initial;
-      overflow: initial;
-    }
-  }
+.contract-tabs {
   .contract-prev-button,
   .contract-next-button {
     display: flex;
@@ -60,9 +46,6 @@
       }
     }
   }
-  .ant-tabs-left-content {
-    height: 100%;
-  }
   .ant-checkbox-checked {
     .ant-checkbox-inner {
       background-color: @primary-1;
@@ -84,77 +67,6 @@
         border: 1px solid @primary-color;
       }
     }
-  }
-  .ant-tabs-nav {
-    width: 200px;
-    height: initial;
-    border: none;
-    padding: 0;
-    padding-top: var(--om-space-20);
-    background: transparent;
-
-    .ant-tabs-nav-list {
-      width: 100%;
-
-      .ant-tabs-tab {
-        width: 100%;
-        padding: var(--om-space-16) var(--om-space-20);
-        margin: 0;
-        border: none;
-        border-radius: var(--om-radius-lg) 0 0 var(--om-radius-lg);
-        background: transparent;
-        color: @de-active-color;
-        font-weight: var(--om-font-weight-medium);
-        transition: all var(--om-duration-200) ease;
-
-        & + .ant-tabs-tab {
-          margin-top: var(--om-space-8);
-        }
-
-        &:hover {
-          background: @grey-36;
-          color: @blue-43;
-        }
-
-        &.ant-tabs-tab-active {
-          background: @grey-37;
-          color: @blue-42;
-          border-right: 3px solid @blue-42;
-
-          .ant-tabs-tab-btn {
-            color: @blue-42;
-            font-weight: var(--om-font-weight-semibold);
-          }
-        }
-
-        .ant-tabs-tab-btn {
-          width: 100%;
-          text-align: left;
-          font-size: var(--om-font-size-sm);
-          line-height: 20px;
-
-          &:focus {
-            color: inherit;
-          }
-        }
-      }
-    }
-
-    .ant-tabs-ink-bar {
-      display: none;
-    }
-  }
-
-  .ant-tabs-tabpane {
-    padding: var(--om-space-24);
-    background: var(--tw-color-bg-primary);
-  }
-
-  // Content area styling
-  .ant-tabs-content {
-    background: var(--tw-color-bg-primary);
-    min-height: 500px;
-    border-radius: 0 var(--om-radius-lg) var(--om-radius-lg) var(--om-radius-lg);
   }
   .schema-table-name {
     color: @grey-600;

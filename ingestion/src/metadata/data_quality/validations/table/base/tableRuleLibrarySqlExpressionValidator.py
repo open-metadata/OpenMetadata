@@ -42,6 +42,9 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
 class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
     """Validator for table-level SQL Expression based rules in the Rule Library."""
 
+    # The rule's SQL is executed as written, so the sampler never sees it.
+    BYPASSES_SAMPLER = True
+
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
     def _get_user_params(self) -> dict[str, str]:

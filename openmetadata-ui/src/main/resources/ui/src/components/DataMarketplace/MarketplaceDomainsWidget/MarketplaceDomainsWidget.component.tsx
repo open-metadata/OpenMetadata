@@ -33,8 +33,8 @@ import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketp
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import { useFormDrawerWithHook } from '../../common/atoms/drawer';
-import { CreatePlaceholder } from '../../common/EmptyPlaceholder';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 import Loader from '../../common/Loader/Loader';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,

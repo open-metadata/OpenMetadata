@@ -35,7 +35,6 @@ import {
   ASSET_RELATION_TYPE,
   GLOSSARY_COLORS,
   METRIC_NODE_TYPE,
-  OBSERVED_LINEAGE_EDGE_KIND,
   projectOntologyRelationsToAssets,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
@@ -223,8 +222,7 @@ export function useOntologyGraphDerived({
       });
       filteredEdges.forEach((edge) => {
         if (
-          (edge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND ||
-            edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND) &&
+          edge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND &&
           glossaryNeighborIds.has(edge.from) &&
           glossaryNeighborIds.has(edge.to)
         ) {

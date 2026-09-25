@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/pipelineExecutionTrendList.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Pipeline Execution Trend List",
   "description": "List of pipeline execution trends over a time period",
   "type": "object",

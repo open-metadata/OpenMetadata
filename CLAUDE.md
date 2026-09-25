@@ -185,3 +185,7 @@ sign-off) when the agent-facing config decays:
 - **doc-size budgets** — this file > 200 lines, ARCHITECTURE.md > 300, any single rule > 100;
 - **rule globs** — a `.claude/rules/**` `paths:` glob matching zero files;
 - **generated-doc freshness** — `docs/generated/**` out of date with its source.
+
+## Git commit conventions
+- Never add "Co-Authored-By" lines or any AI-attribution trailers to commit messages. 
+- The commit is authored by me; you are a tool, not a co-author.

@@ -10,8 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { waitForPageLoaded } from './polling';
+
+/**
+ * Wait out skeleton placeholders.
+ *
+ * `waitForPageLoaded` clears loader *spinners*, which is a different thing: a
+ * widget that renders `<Skeleton />` while its query is in flight shows no
+ * spinner, so the page reads as settled while half of it is still grey blocks.
+ * A screenshot taken then records the skeletons, and the baseline only matches
+ * while the next run is equally slow — which is how `data-quality.png` came to
+ * hold a half-loaded page.
+ *
+ * Matched on the class rather than a testid because core-components' `Skeleton`
+ * exposes none; `tw:animate-pulse` is what it always renders, and the substring
+ * match sidesteps escaping the `tw:` prefix in a CSS selector.
+ */
+const waitForSkeletonsToResolve = async (page: Page) => {
+  await expect
+    .poll(() => page.locator('[class*="animate-pulse"]').count(), {
+      timeout: 30_000,
+      message:
+        'Skeleton placeholders never resolved, so the screenshot would have recorded a half-loaded page',
+    })
+    .toBe(0);
+};
 
 export const FIXED_DATE = new Date('2026-01-15T10:00:00.000Z');
 
@@ -27,7 +51,7 @@ const FREEZE_CSS = `
     animation: none !important;
     transition: none !important;
   }
-  html { scroll-behavior: auto !important; }
+  * { scroll-behavior: auto !important; }
 `;
 
 /**
@@ -45,6 +69,18 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.clock.setFixedTime(FIXED_DATE);
   await page.goto(path);
   await waitForPageLoaded(page);
+  await waitForSkeletonsToResolve(page);
   await page.addStyleTag({ content: FREEZE_CSS });
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    (document.scrollingElement ?? document.documentElement).scrollTo(0, 0);
+    // Entity pages and drawers can scroll independently of the document.
+    document
+      .querySelectorAll<HTMLElement>('body, body *')
+      .forEach((element) => {
+        if (element.scrollTop || element.scrollLeft) {
+          element.scrollTo(0, 0);
+        }
+      });
+  });
 };

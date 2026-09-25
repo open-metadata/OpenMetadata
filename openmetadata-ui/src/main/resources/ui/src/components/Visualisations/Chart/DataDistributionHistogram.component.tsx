@@ -44,7 +44,7 @@ const DataDistributionHistogram = ({
   noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
-  const { cursorFill, grid, primary } = useChartColors();
+  const { axis, cursorFill, grid, primary } = useChartColors();
 
   const renderHorizontalGridLine = useMemo(
     () => createHorizontalGridLineRenderer(),
@@ -143,14 +143,14 @@ const DataDistributionHistogram = ({
                     axisLine={false}
                     dataKey="name"
                     padding={{ left: 16, right: 16 }}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fill: axis, fontSize: 12 }}
                     tickLine={false}
                   />
                   <YAxis
                     allowDataOverflow
                     axisLine={false}
                     padding={{ top: 16, bottom: 16 }}
-                    tick={{ fontSize: 12 }}
+                    tick={{ fill: axis, fontSize: 12 }}
                     tickFormatter={(props) => axisTickFormatter(props)}
                     tickLine={false}
                   />

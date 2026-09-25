@@ -25,9 +25,7 @@ import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidg
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { MlModelDetailPageTabProps } from './MlModel/MlModelClassBase';
@@ -200,12 +198,4 @@ export const getMlModelWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       widgetConfig={widgetConfig}
     />
   );
-};
-
-export const extractMlModelFeatures = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): MlFeature[] => {
-  const mlModel = data as Partial<Mlmodel>;
-
-  return mlModel.mlFeatures ?? [];
 };

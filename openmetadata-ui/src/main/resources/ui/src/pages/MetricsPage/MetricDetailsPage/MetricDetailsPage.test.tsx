@@ -12,7 +12,13 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   OperationPermission,
@@ -73,16 +79,21 @@ const mockMetric = {
   name: 'metric',
   fullyQualifiedName: 'sample_data.metric',
   followers: [],
+  metricType: 'COUNT',
+  unitOfMeasurement: 'DOLLARS',
+  owners: [{ id: 'owner-1', name: 'alice', type: 'user' }],
 };
 
 const mockGetMetricByFqn = jest.fn().mockResolvedValue(mockMetric);
+
+const mockPatchMetric = jest.fn();
 
 jest.mock('../../../rest/metricsAPI', () => ({
   getMetricByFqn: (...args: unknown[]) => mockGetMetricByFqn(...args),
   addMetricFollower: jest.fn(),
   removeMetricFollower: jest.fn(),
   updateMetricVote: jest.fn(),
-  patchMetric: jest.fn(),
+  patchMetric: (...args: unknown[]) => mockPatchMetric(...args),
 }));
 
 jest.mock('../../../utils/RecentActivityUtils', () => ({
@@ -109,14 +120,38 @@ jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
   __esModule: true,
   default: jest
     .fn()
-    .mockImplementation(({ metricDetails, metricPermissions }) => (
-      <div data-testid="metric-details">
-        <span data-testid="metric-name">{metricDetails?.name}</span>
-        <span data-testid="metric-permissions">
-          {JSON.stringify(metricPermissions)}
-        </span>
-      </div>
-    )),
+    .mockImplementation(
+      ({ metricDetails, metricPermissions, onMetricUpdate }) => (
+        <div data-testid="metric-details">
+          <span data-testid="metric-name">{metricDetails?.name}</span>
+          <span data-testid="metric-type">
+            {metricDetails?.metricType ?? 'cleared'}
+          </span>
+          <span data-testid="metric-unit">
+            {metricDetails?.unitOfMeasurement ?? 'cleared'}
+          </span>
+          <span data-testid="metric-owners">
+            {(metricDetails?.owners ?? [])
+              .map((owner: { name: string }) => owner.name)
+              .join(',') || 'none'}
+          </span>
+          <span data-testid="metric-permissions">
+            {JSON.stringify(metricPermissions)}
+          </span>
+          <button
+            data-testid="clear-definition"
+            onClick={() =>
+              onMetricUpdate({
+                ...metricDetails,
+                metricType: undefined,
+                unitOfMeasurement: undefined,
+              })
+            }>
+            clear definition
+          </button>
+        </div>
+      )
+    ),
 }));
 
 const renderPage = () =>
@@ -235,5 +270,36 @@ describe('MetricDetailsPage', () => {
         expect.objectContaining({ enabled: true })
       )
     );
+  });
+
+  it('clears definition scalars the PATCH response drops, without losing relationship fields', async () => {
+    setMockPermissions({ ViewBasic: true, EditAll: true });
+    // A PATCH response carries only the default field set: the cleared scalars
+    // are absent because the server removed them, `owners` because it was never
+    // requested. The two must not be treated the same way.
+    mockPatchMetric.mockResolvedValue({
+      id: 'metric-id-1',
+      name: 'metric',
+      fullyQualifiedName: 'sample_data.metric',
+      version: 0.2,
+    });
+
+    renderPage();
+
+    await screen.findByTestId('metric-details');
+
+    expect(screen.getByTestId('metric-type')).toHaveTextContent('COUNT');
+    expect(screen.getByTestId('metric-unit')).toHaveTextContent('DOLLARS');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('clear-definition'));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('metric-type')).toHaveTextContent('cleared')
+    );
+
+    expect(screen.getByTestId('metric-unit')).toHaveTextContent('cleared');
+    expect(screen.getByTestId('metric-owners')).toHaveTextContent('alice');
   });
 });

@@ -83,7 +83,7 @@ Schema file names use `lowerCamelCase`:
 ### Required Fields
 Every connection schema must have:
 - `$id` with full URI path
-- `$schema`: `http://json-schema.org/draft-07/schema#`
+- `$schema`: `https://json-schema.org/draft/2020-12/schema`
 - `title`: PascalCase connection name
 - `javaType`: Full Java class path
 - `type`: `"object"`

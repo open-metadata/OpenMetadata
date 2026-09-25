@@ -30,7 +30,7 @@ const LastRunBannerLayout = ({
       data-testid={config.testId}
       role="status">
       <div
-        className={`tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-start ${config.summaryClassName}`}
+        className="tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-start"
         data-testid="test-case-last-run-summary">
         <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-start tw:gap-4">
           <FeaturedIcon
@@ -42,12 +42,12 @@ const LastRunBannerLayout = ({
             icon={config.icon}
             radius="lg"
             shape="square"
-            size="sm"
+            size="md"
           />
           <div className="tw:min-w-0 tw:flex-1">
-            <p className="tw:m-0 tw:text-sm tw:leading-snug">
+            <p className="tw:m-0 tw:text-base tw:leading-snug">
               <span
-                className="tw:text-sm tw:font-medium tw:text-primary"
+                className="tw:text-base tw:font-medium tw:text-primary"
                 data-testid="test-case-last-run-prefix">
                 {t('label.last-run')}
               </span>{' '}

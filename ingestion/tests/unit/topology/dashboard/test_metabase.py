@@ -18,7 +18,9 @@ import re
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -41,7 +43,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -52,6 +54,8 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     DatasetQuery,
     MetabaseChart,
     MetabaseDashboardDetails,
+    MetabaseDatabase,
+    MetabaseDatabaseDetails,
     MetabaseTable,
     Native,
 )
@@ -188,6 +192,52 @@ EXPECTED_CHART_LINEAGE = AddLineageRequest(
 MOCK_DASHBOARD_DETAILS = MetabaseDashboardDetails(
     description="SAMPLE DESCRIPTION", name="test_db", id="1", card_ids=["1", "2", "3"]
 )
+
+MOCK_MSSQL_SERVICE = DatabaseService(
+    id="1e2b4b6c-8f4a-4d3e-9c1a-5f6d7e8a9b0c",
+    name="MyMSSQLService",
+    fullyQualifiedName=FullyQualifiedEntityName("MyMSSQLService"),
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.Mssql,
+)
+
+MOCK_CONNECTION_DATABASE = "SalesDB"
+
+# `Orders` is 3-part and matches the connection database, `Customers` is 3-part and does not,
+# and `LocalOrders` is the 2-part control that has no database of its own to carry.
+CROSS_DATABASE_QUERY = (
+    "SELECT o.OrderId, c.Name, l.Total "
+    "FROM SalesDB.dbo.Orders o WITH(NOLOCK) "
+    "LEFT JOIN [CRM_DB].dbo.Customers c (NOLOCK) ON c.customer_id = o.customer_id "
+    "LEFT JOIN dbo.LocalOrders l (NOLOCK) ON l.OrderId = o.OrderId"
+)
+
+CROSS_DATABASE_TABLES = {
+    "mymssqlservice.salesdb.dbo.orders": "3f6e5d4c-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+    "mymssqlservice.crm_db.dbo.customers": "4a7f6e5d-2b3c-4d5e-6f7a-8b9c0d1e2f3a",
+    "mymssqlservice.salesdb.dbo.localorders": "5b8a7f6e-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
+}
+
+
+def build_cross_database_catalog() -> dict[str, Table]:
+    return {
+        table_fqn: Table.model_construct(
+            id=Uuid(table_id),
+            fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+            columns=[],
+        )
+        for table_fqn, table_id in CROSS_DATABASE_TABLES.items()
+    }
+
+
+def search_cross_database_catalog(catalog: dict[str, Table]):
+    """Stand-in for the ES lookup: a table is only found under the FQN it really has."""
+
+    def search(*_args, fqn_search_string: str = "", **_kwargs):
+        match = catalog.get(fqn_search_string.lower())
+        return [match] if match else []
+
+    return search
 
 
 EXPECTED_DASHBOARD = [
@@ -687,3 +737,75 @@ WHERE 1 = 1
         assert "FROM t" in result
         assert "ORDER BY id" in result
         assert "WHERE" not in result
+
+
+class TestMetabaseCrossDatabaseLineage:
+    """A `database.schema.table` reference has to be looked up under the database the SQL
+    names, not the data source's connection database (issue #28444)."""
+
+    @pytest.fixture
+    def metabase_source(self):
+        with (
+            patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+            patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+        ):
+            config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+            source = MetabaseSource.create(
+                mock_config["source"],
+                OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+            )
+        source.client = SimpleNamespace(
+            get_database=lambda *_: MetabaseDatabase(details=MetabaseDatabaseDetails(db=MOCK_CONNECTION_DATABASE)),
+        )
+        source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        return source
+
+    @staticmethod
+    def _lineage_sources(metabase_source, db_service_prefix: str) -> set[str]:
+        catalog = build_cross_database_catalog()
+        chart = MetabaseChart(
+            id="2",
+            name="cross db chart",
+            database_id="1",
+            dataset_query=DatasetQuery(type="native", native=Native(query=CROSS_DATABASE_QUERY)),
+        )
+        metabase_source.charts_dict = {"2": chart}
+
+        def get_by_name(entity, *_args, **_kwargs):
+            if entity is DatabaseService:
+                return MOCK_MSSQL_SERVICE
+            return EXAMPLE_DASHBOARD if entity is LineageDashboard else None
+
+        metabase_source.metadata = MagicMock()
+        metabase_source.metadata.get_by_name = MagicMock(side_effect=get_by_name)
+        metabase_source.metadata.search_in_any_service = MagicMock(side_effect=search_cross_database_catalog(catalog))
+
+        results = list(
+            metabase_source.yield_dashboard_lineage_details(
+                dashboard_details=MetabaseDashboardDetails(name="test_db", id="1", card_ids=["2"]),
+                db_service_prefix=db_service_prefix,
+            )
+        )
+
+        assert [res.left for res in results if res.left] == []
+        fqn_by_id = {table_id: table_fqn for table_fqn, table_id in CROSS_DATABASE_TABLES.items()}
+        lineage_sources = {str(res.right.edge.fromEntity.id.root) for res in results if res.right}
+        return {fqn_by_id[table_id] for table_id in lineage_sources}
+
+    def test_source_tables_resolve_under_the_database_the_sql_names(self, metabase_source):
+        resolved = self._lineage_sources(metabase_source, MOCK_MSSQL_SERVICE.name.root)
+
+        assert resolved == set(CROSS_DATABASE_TABLES)
+
+    def test_database_prefix_is_matched_against_the_database_the_sql_names(self, metabase_source):
+        resolved = self._lineage_sources(
+            metabase_source,
+            f"{MOCK_MSSQL_SERVICE.name.root}.{MOCK_CONNECTION_DATABASE}",
+        )
+
+        # `Customers` is qualified to CRM_DB, so the SalesDB prefix must filter it out while the
+        # SalesDB-qualified and unqualified tables still resolve.
+        assert resolved == {
+            "mymssqlservice.salesdb.dbo.orders",
+            "mymssqlservice.salesdb.dbo.localorders",
+        }

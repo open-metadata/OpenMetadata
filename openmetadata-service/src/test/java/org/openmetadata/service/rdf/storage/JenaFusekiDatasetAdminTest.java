@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.rdf.storage;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,6 +29,8 @@ import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +39,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 
 /**
- * Exercises the Fuseki admin surface blue/green rebuilds depend on — dataset existence, creation,
+ * Exercises the Fuseki admin surface blue/green rebuilds depend on — dataset existence, readiness,
  * deletion and the Prometheus scrape — against a stub server, so the request shapes and the
  * status-code handling are pinned without a container.
  */
@@ -44,11 +47,22 @@ import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 class JenaFusekiDatasetAdminTest {
 
   private static final String DATASET_PATH = "/openmetadata";
+  private static final Pattern PROBE_SUBJECT = Pattern.compile("<urn:uuid:[^>]+>");
+  private static final Map<String, String> EXTENSION_HEADERS =
+      Map.of(
+          FusekiWriteCapabilities.DEADLINE, "50000",
+          FusekiWriteCapabilities.LIMIT, "67108864",
+          FusekiWriteCapabilities.UNION, "true",
+          FusekiWriteCapabilities.QUERY, "50000",
+          FusekiWriteCapabilities.UPDATE, "50000");
 
   private HttpServer server;
   private final List<String> requests = new CopyOnWriteArrayList<>();
+  private final List<String> updates = new CopyOnWriteArrayList<>();
   private final Map<String, Integer> statusByPath = new ConcurrentHashMap<>();
   private volatile BiFunction<String, String, String> bodyForPath = (method, path) -> "";
+  private volatile Map<String, String> optionsHeaders = EXTENSION_HEADERS;
+  private volatile boolean askAnswer = true;
 
   @BeforeEach
   void startStub() throws Exception {
@@ -58,25 +72,33 @@ class JenaFusekiDatasetAdminTest {
   }
 
   private void handle(HttpExchange exchange) throws java.io.IOException {
-    exchange.getRequestBody().readAllBytes();
+    String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
     String method = exchange.getRequestMethod();
     String path = exchange.getRequestURI().getPath();
     requests.add(method + " " + path);
+    if (hasHeader(exchange, "Content-Type", "application/sparql-update")) {
+      updates.add(request);
+    }
     int status =
         statusByPath.getOrDefault(method + " " + path, statusByPath.getOrDefault(path, 200));
     byte[] body = bodyForPath.apply(method, path).getBytes(StandardCharsets.UTF_8);
+    if (hasHeader(exchange, "Accept", "sparql-results")) {
+      body = ("{\"head\":{},\"boolean\":" + askAnswer + "}").getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "application/sparql-results+json");
+    }
     if (method.equals("OPTIONS")) {
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.DEADLINE, "50000");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.LIMIT, "67108864");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UNION, "true");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.QUERY, "50000");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UPDATE, "50000");
+      optionsHeaders.forEach(exchange.getResponseHeaders()::set);
     }
     exchange.sendResponseHeaders(status, body.length == 0 ? -1 : body.length);
     if (body.length > 0) {
       exchange.getResponseBody().write(body);
     }
     exchange.close();
+  }
+
+  private static boolean hasHeader(HttpExchange exchange, String name, String fragment) {
+    String value = exchange.getRequestHeaders().getFirst(name);
+    return value != null && value.contains(fragment);
   }
 
   @AfterEach
@@ -153,6 +175,103 @@ class JenaFusekiDatasetAdminTest {
       assertThrows(IllegalStateException.class, () -> storage.createDatasetIfMissing("build_b"));
       assertFalse(requests.contains("POST /$/datasets"));
     }
+  }
+
+  @Test
+  @DisplayName("a dataset on Fuseki without the OpenMetadata extension is usable")
+  void datasetWithoutTheExtensionIsUsable() {
+    optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
+    try (JenaFusekiStorage storage = storage()) {
+      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+    }
+  }
+
+  @Test
+  @DisplayName("a path answered without a Fuseki request id names the dataset that was probed")
+  void pathWithoutADatasetIsReportedAsMissing() {
+    optionsHeaders = Map.of();
+    try (JenaFusekiStorage storage = storage()) {
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+      assertTrue(failure.getMessage().contains("'build_a' does not exist"), failure.getMessage());
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "readiness writes a probe into a named graph, sees it without GRAPH, then removes it")
+  void readinessProbesTheUnionDefaultGraphAndRemovesTheProbe() {
+    try (JenaFusekiStorage storage = storage()) {
+      assertDoesNotThrow(storage::ensureStorageReady);
+
+      assertProbeWrittenThenRemoved();
+    }
+  }
+
+  @Test
+  @DisplayName("a build dataset whose default graph hides named graphs fails and is left clean")
+  void buildDatasetWithoutUnionDefaultGraphFailsAndIsLeftClean() {
+    try (JenaFusekiStorage storage = storage()) {
+      askAnswer = false;
+      requests.clear();
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+
+      assertTrue(failure.getMessage().contains("tdb2:unionDefaultGraph"), failure.getMessage());
+      assertTrue(failure.getMessage().contains("'build_a'"), failure.getMessage());
+      assertTrue(requests.contains("POST /build_a"), requests.toString());
+      assertProbeWrittenThenRemoved();
+    }
+  }
+
+  @Test
+  @DisplayName("a dataset that rejects SPARQL updates fails readiness naming the status")
+  void datasetRejectingUpdatesFailsNamingTheStatus() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST /build_a", 400);
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+
+      assertTrue(
+          failure.getMessage().contains("did not accept a SPARQL update (HTTP 400)"),
+          failure.getMessage());
+      assertTrue(failure.getMessage().contains("'build_a'"), failure.getMessage());
+    }
+  }
+
+  @Test
+  @DisplayName("a probe write with an unknown outcome is still removed, since it may land later")
+  void probeWriteWithAnUnknownOutcomeIsStillRemoved() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST /build_a", 503);
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+
+      assertTrue(
+          failure.getMessage().contains("did not accept a SPARQL update (HTTP 503)"),
+          failure.getMessage());
+      assertProbeWrittenThenRemoved();
+    }
+  }
+
+  private void assertProbeWrittenThenRemoved() {
+    assertEquals(2, updates.size(), updates.toString());
+    assertTrue(updates.getFirst().contains("INSERT DATA"), updates.getFirst());
+    assertTrue(updates.getLast().contains("DELETE DATA"), updates.getLast());
+    assertEquals(probeSubject(updates.getFirst()), probeSubject(updates.getLast()));
+  }
+
+  private static String probeSubject(String update) {
+    Matcher subject = PROBE_SUBJECT.matcher(update);
+    assertTrue(subject.find(), update);
+    return subject.group();
   }
 
   @Test

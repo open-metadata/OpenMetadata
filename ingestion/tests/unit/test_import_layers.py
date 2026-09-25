@@ -25,7 +25,9 @@ _CONFIG = _INGESTION_DIR / ".importlinter"
 
 # Regular packages, so grimp reaches them by walking the `metadata` root and they do not
 # need declaring. Every other subpackage is a namespace portion and must be declared.
-_REACHED_VIA_METADATA_ROOT = frozenset({"core", "domain", "great_expectations", "profiler", "sdk", "utils"})
+_REACHED_VIA_METADATA_ROOT = frozenset(
+    {"core", "domain", "entity_resolution", "great_expectations", "profiler", "sdk", "utils"}
+)
 
 # Spans layers: custom_pydantic sits below metadata.generated because every generated model
 # imports it, while the rest is framework-level. Layering it would need overlapping layers.

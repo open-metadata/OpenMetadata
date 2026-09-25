@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
+import { Avatar, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -116,8 +116,8 @@ import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.int
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import { DataProductMetadataModal } from '../DataProductMetadataModal';
-import { ODPSImportModal } from '../ODPSImportModal';
+import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
+import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
@@ -1075,24 +1075,39 @@ const DataProductsDetailsPage = ({
           <div className="data-product-details-page-tabs tw:w-full">
             <div className="tw:p-5">
               <Tabs
-                destroyInactiveTabPane
-                activeKey={currentTab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
-                onChange={handleTabChange}
-              />
+                selectedKey={getRenderedActiveTab(tabs, currentTab)}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List
+                  actions={
+                    isExpandViewSupported && (
+                      <AlignRightIconButton
+                        className={isTabExpanded ? 'rotate-180' : ''}
+                        title={
+                          isTabExpanded
+                            ? t('label.collapse')
+                            : t('label.expand')
+                        }
+                        onClick={toggleTabExpanded}
+                      />
+                    )
+                  }
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </div>
           </div>
         </GenericProvider>

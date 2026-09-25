@@ -13,6 +13,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
+import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import IncidentDetails from './IncidentDetails.component';
 import LastRunBannerLayout from './LastRunBannerLayout.component';
 import LastRunTime from './LastRunTime.component';
@@ -33,8 +34,10 @@ import {
 } from './TestCaseLastRunBanner.utils';
 
 const TestCaseLastRunBanner = ({
+  hasEditStatusPermission,
   incidentTask,
   nextRunTimestamp,
+  onAcknowledge,
   parameterValues,
   testCaseResult,
   testCaseStatus: authoritativeTestCaseStatus,
@@ -109,11 +112,17 @@ const TestCaseLastRunBanner = ({
       description={<RunDescription description={description} />}
       footer={
         <IncidentDetails
+          canAcknowledge={
+            Boolean(hasEditStatusPermission) &&
+            testCaseStatusData?.testCaseResolutionStatusType ===
+              TestCaseResolutionStatusTypes.New
+          }
           config={config}
           description={incidentMetadata.description}
           incidentId={incidentMetadata.id}
           incidentLink={incidentLink}
           statusConfig={incidentMetadata.statusConfig}
+          onAcknowledge={onAcknowledge}
         />
       }
       rightSection={

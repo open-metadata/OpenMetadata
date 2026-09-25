@@ -15,9 +15,11 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../../utils/StringUtils';
 import { TeamHierarchyNameCell } from './TeamHierarchyNameCell';
 
 jest.mock('antd', () => {
@@ -49,6 +51,7 @@ jest.mock('../../../../../utils/EntityNameUtils', () => ({
 
 jest.mock('../../../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn((text: string) => text),
+  renderHighlightedText: jest.fn((text: string) => text ?? ''),
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
@@ -68,8 +71,8 @@ const mockHighlightSearchText = highlightSearchText as jest.MockedFunction<
 const mockGetTeamsWithFqnPath = getTeamsWithFqnPath as jest.MockedFunction<
   typeof getTeamsWithFqnPath
 >;
-const mockStringToHTML = stringToHTML as jest.MockedFunction<
-  typeof stringToHTML
+const mockRenderHighlightedText = renderHighlightedText as jest.MockedFunction<
+  typeof renderHighlightedText
 >;
 
 const mockTeam = {
@@ -130,13 +133,17 @@ describe('TeamHierarchyNameCell', () => {
     expect(screen.getByTestId('team-name-LocalTeam')).toBeInTheDocument();
   });
 
-  it('passes display name and search term through highlight and stringToHTML', () => {
-    mockHighlightSearchText.mockReturnValue('<mark>Eng</mark>ineering');
+  it('passes display name and search term through highlight and renderHighlightedText', () => {
+    mockHighlightSearchText.mockReturnValue(
+      '<span class="text-highlighter">Eng</span>ineering'
+    );
 
     renderCell({ record: mockTeam, searchTerm: 'Eng' });
 
     expect(mockHighlightSearchText).toHaveBeenCalledWith('Engineering', 'Eng');
-    expect(mockStringToHTML).toHaveBeenCalledWith('<mark>Eng</mark>ineering');
+    expect(mockRenderHighlightedText).toHaveBeenCalledWith(
+      '<span class="text-highlighter">Eng</span>ineering'
+    );
   });
 
   it('does not wrap with Tooltip when text is not truncated', () => {

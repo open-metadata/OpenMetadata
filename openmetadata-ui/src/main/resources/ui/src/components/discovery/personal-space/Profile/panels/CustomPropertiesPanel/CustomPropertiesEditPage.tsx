@@ -25,7 +25,6 @@ import {
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { uniq } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -34,14 +33,10 @@ import {
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
 } from '../../../../../../constants/CustomProperty.constants';
-import { Type } from '../../../../../../generated/entity/type';
+import { Config } from '../../../../../../generated/type/customProperty';
 import {
-  Config,
-  CustomProperty,
-} from '../../../../../../generated/type/customProperty';
-import {
-  getTypeByFQN,
-  updateType,
+  CustomPropertyChanges,
+  updateCustomPropertyByName,
 } from '../../../../../../rest/metadataTypeAPI';
 import {
   showErrorToast,
@@ -105,7 +100,6 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
-  const [typeDetail, setTypeDetail] = useState<Type | undefined>();
 
   const propertyTypeName = property.propertyType.name ?? '';
   const isEnum = propertyTypeName === 'enum';
@@ -182,22 +176,6 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
     form,
   ]);
 
-  const fetchTypeDetail = useCallback(async () => {
-    if (!entityType.fullyQualifiedName) {
-      return;
-    }
-    try {
-      const detail = await getTypeByFQN(entityType.fullyQualifiedName);
-      setTypeDetail(detail);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    }
-  }, [entityType.fullyQualifiedName]);
-
-  useEffect(() => {
-    fetchTypeDetail();
-  }, [fetchTypeDetail]);
-
   const displayNameField: FieldProp = useMemo(
     () => ({
       name: 'displayName',
@@ -261,11 +239,13 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
 
   const handleSubmit = useCallback(
     async (data: EditCustomPropertyFormValues) => {
-      if (!typeDetail) {
+      if (!entityType.fullyQualifiedName) {
         return;
       }
 
-      let customPropertyConfig = property.customPropertyConfig;
+      // Only the enum and entity-reference configs are edited here; leaving it
+      // unset for other types keeps a concurrent config change intact.
+      let customPropertyConfig: CustomPropertyChanges['customPropertyConfig'];
 
       if (isEnum && data.enumConfig) {
         const newValues = data.enumConfig.map(toId);
@@ -281,25 +261,28 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
         };
       }
 
-      const updatedProperty: CustomProperty = {
-        ...property,
-        displayName: data.displayName,
-        description: data.description,
-        customPropertyConfig,
-      };
-
-      const updatedProperties = (typeDetail.customProperties ?? []).map(
-        (prop) => (prop.name === property.name ? updatedProperty : prop)
-      );
-
-      const patch = compare(
-        { ...typeDetail },
-        { ...typeDetail, customProperties: updatedProperties }
-      );
-
       setIsSaving(true);
       try {
-        await updateType(typeDetail.id ?? '', patch);
+        const updated = await updateCustomPropertyByName(
+          entityType.fullyQualifiedName,
+          property.name,
+          {
+            displayName: data.displayName,
+            description: data.description,
+            customPropertyConfig,
+          }
+        );
+
+        if (!updated) {
+          showErrorToast(
+            t('server.update-entity-error', {
+              entity: t('label.custom-property'),
+            })
+          );
+
+          return;
+        }
+
         showSuccessToast(
           t('server.update-entity-success', {
             entity: t('label.custom-property'),
@@ -312,7 +295,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
         setIsSaving(false);
       }
     },
-    [isEnum, isEntityRef, onSuccess, property, t, typeDetail]
+    [entityType.fullyQualifiedName, isEnum, isEntityRef, onSuccess, property, t]
   );
 
   return (

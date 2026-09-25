@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/userTask/userApprovalTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateRecognizerFeedbackApprovalTask",
   "description": "Defines a Task to approve recognizer feedback on a Tag.",
   "javaInterfaces": [
@@ -84,7 +84,6 @@
       "type": "array",
       "items": { "type":  "string" },
       "default": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 4
     },
@@ -115,7 +114,6 @@
       "type": "array",
       "items": { "type":  "string" },
       "default": ["updatedBy"],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -123,7 +121,6 @@
       "type": "array",
       "items": { "type":  "string" },
       "default": ["true", "false"],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

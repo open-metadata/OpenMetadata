@@ -30,15 +30,17 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
+import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
 class IngestionPipelineMigrationEntryPointTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("migrationEntryPoints")
-  void runDataMigrationBackfillsLegacySourceConfigTypes(
+  void runDataMigrationRunsSharedSettingsRepairs(
       String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
@@ -52,12 +54,17 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConversationReferenceMigration.class);
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<OntologyMigration> ontologyMigration = mockStatic(OntologyMigration.class);
+        MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
+            mockStatic(DataContractEntityReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
-            mockStatic(IngestionPipelineMigrationUtil.class)) {
+            mockStatic(IngestionPipelineMigrationUtil.class);
+        MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
+            mockStatic(SearchTermBoostRepair.class)) {
       migration.runDataMigration();
 
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
+      searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
     }
   }
 

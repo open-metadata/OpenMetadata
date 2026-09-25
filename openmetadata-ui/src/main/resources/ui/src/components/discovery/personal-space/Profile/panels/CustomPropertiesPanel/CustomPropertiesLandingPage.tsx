@@ -24,11 +24,12 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { useAuth } from '../../../../../../hooks/authHooks';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
+import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import {
   ENTITY_GROUP_MAP,
@@ -42,23 +43,28 @@ const CustomPropertiesLandingPage: React.FC<
 > = ({ onSelectEntityType }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { isAdminUser } = useAuth();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
+  const hasTypeViewPermission = userPermissions.hasViewPermissions(
+    ResourceEntity.TYPE,
+    permissions
+  );
+
   const items = useMemo<SettingMenuItem[]>(() => {
+    if (!hasTypeViewPermission) {
+      return [];
+    }
     const menu = globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
       permissions,
-      isAdminUser
+      true
     );
     const customPropsCategory = menu.find(
       (m: SettingMenuItem) =>
         m.key === GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
     );
 
-    return (customPropsCategory?.items ?? []).filter(
-      (item: SettingMenuItem) => item.isProtected
-    );
-  }, [permissions, isAdminUser]);
+    return customPropsCategory?.items ?? [];
+  }, [permissions, hasTypeViewPermission]);
 
   const grouped = useMemo(() => {
     const byGroup = groupBy(items, (item: SettingMenuItem) => {

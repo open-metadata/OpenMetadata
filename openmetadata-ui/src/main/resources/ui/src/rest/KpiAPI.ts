@@ -19,8 +19,8 @@ import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 import { DataInsightCustomChartResult } from './DataInsightAPI';
-import APIClient from './index';
 
 export type KpiResultParam = {
   startTs: number;

@@ -25,8 +25,8 @@ import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../../utils/StringUtils';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -87,7 +87,7 @@ const EntityHeaderTitle = ({
 
   const entityName = useMemo(
     () =>
-      stringToHTML(
+      renderHighlightedText(
         showOnlyDisplayName
           ? getEntityName({
               displayName,
@@ -138,7 +138,9 @@ const EntityHeaderTitle = ({
 
     return (
       <div className="d-flex items-center gap-2">
-        <Tooltip placement="bottom" title={stringToHTML(displayName ?? name)}>
+        <Tooltip
+          placement="bottom"
+          title={renderHighlightedText(displayName ?? name)}>
           <Typography.Text
             ellipsis
             className={classNames(
@@ -147,7 +149,7 @@ const EntityHeaderTitle = ({
               'm-b-0 d-block display-xs font-semibold'
             )}
             data-testid="entity-header-display-name">
-            {stringToHTML(displayName ?? name)}
+            {renderHighlightedText(displayName ?? name)}
           </Typography.Text>
         </Tooltip>
         {badges}

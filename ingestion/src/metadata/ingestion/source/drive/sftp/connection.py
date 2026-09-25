@@ -22,9 +22,11 @@ from paramiko import SFTPClient, Transport
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
-    BasicAuth,
-    KeyAuth,
+from metadata.generated.schema.entity.services.connections.drive.sftp.basicAuth import (
+    UsernamePasswordAuthentication,
+)
+from metadata.generated.schema.entity.services.connections.drive.sftp.keyAuth import (
+    PrivateKeyAuthentication,
 )
 from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
     SftpConnection as SftpConnectionConfig,
@@ -98,13 +100,13 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
 
             auth_type = connection.authType
 
-            if isinstance(auth_type, BasicAuth):
+            if isinstance(auth_type, UsernamePasswordAuthentication):
                 password = auth_type.password.get_secret_value() if auth_type.password else None
                 transport.connect(
                     username=auth_type.username,
                     password=password,
                 )
-            elif isinstance(auth_type, KeyAuth):
+            elif isinstance(auth_type, PrivateKeyAuthentication):
                 private_key_str = auth_type.privateKey.get_secret_value()
                 passphrase = (
                     auth_type.privateKeyPassphrase.get_secret_value() if auth_type.privateKeyPassphrase else None

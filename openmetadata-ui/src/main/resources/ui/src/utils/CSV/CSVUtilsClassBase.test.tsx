@@ -73,14 +73,6 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/common/AsyncSelectList/TreeAsyncSelectList',
-  () => ({
-    __esModule: true,
-    default: jest.fn(),
-  })
-);
-
-jest.mock(
   '../../components/common/DomainSelectableList/DomainSelectableList.component',
   () => ({
     __esModule: true,

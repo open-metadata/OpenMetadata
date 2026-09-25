@@ -17,15 +17,16 @@ import sys
 import traceback
 from collections.abc import Callable
 from enum import Enum  # noqa: TC003
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.domain.table_reference import normalize_table_reference
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.serviceType import ServiceType  # noqa: TC001
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
@@ -33,6 +34,9 @@ from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
 from metadata.utils.singleton import Singleton
+
+if TYPE_CHECKING:
+    from metadata.domain.table_reference import TableReference
 
 logger = utils_logger()
 
@@ -87,6 +91,22 @@ def get_module_dir(type_: str) -> str:
     -> clickhouse
     """
     return type_.split(TYPE_SEPARATOR)[0]  # noqa: PLC0207
+
+
+def import_table_reference_normalizer(
+    service_type: ServiceType, connection_type: str
+) -> Callable[["TableReference"], "TableReference"]:
+    """Load optional connector naming without importing its source or driver."""
+    module_name = (
+        f"metadata.ingestion.source.{service_type.name.lower()}.{get_module_dir(connection_type.lower())}.naming"
+    )
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name and (exc.name == module_name or module_name.startswith(exc.name + ".")):
+            return normalize_table_reference
+        raise
+    return module.normalize_table_reference
 
 
 def get_module_name(type_: str) -> str:

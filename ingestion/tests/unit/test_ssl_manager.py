@@ -485,6 +485,108 @@ class MssqlSSLManagerTest(TestCase):
 
         ssl_manager.cleanup_temp_files()
 
+    def _pytds_connection(self, **kwargs):
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+
+        return MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pytds,
+            **kwargs,
+        )
+
+    def test_setup_ssl_pytds_trust_server_certificate_drops_host_validation(self):
+        """pytds always verifies the chain against the CA it is given, so host
+        validation is the only check trustServerCertificate can drop."""
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(
+            trustServerCertificate=True,
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIs(updated_connection.connectionArguments.root["validate_host"], False)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_keeps_host_validation_by_default(self):
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(sslConfig={"caCertificate": "caCertificateData"})
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertNotIn("validate_host", updated_connection.connectionArguments.root)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_encrypt_without_a_ca_certificate_warns(self):
+        """pytds enables TLS only when a CA certificate is supplied. Encrypt on its
+        own cannot be honoured, and the connection must not claim otherwise."""
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(encrypt=True)
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertNotIn("cafile", updated_connection.connectionArguments.root)
+        mock_logger.warning.assert_called_once()
+        self.assertIn("will NOT be encrypted", mock_logger.warning.call_args.args[0])
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_encrypt_with_a_ca_certificate_is_silent(self):
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(encrypt=True, sslConfig={"caCertificate": "caCertificateData"})
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIsNotNone(updated_connection.connectionArguments.root["cafile"])
+        mock_logger.warning.assert_not_called()
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pymssql_warns_that_tls_settings_are_inert(self):
+        """pymssql takes no TLS parameters: FreeTDS configuration decides."""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pymssql,
+            encrypt=True,
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertDictEqual(updated_connection.connectionArguments.root, {})
+        mock_logger.warning.assert_called_once()
+        self.assertIn("mssql+pymssql", mock_logger.warning.call_args.args[0])
+
+        ssl_manager.cleanup_temp_files()
+
 
 class Db2SSLManagerTest(TestCase):
     """

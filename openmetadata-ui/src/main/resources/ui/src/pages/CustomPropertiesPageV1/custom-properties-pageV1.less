@@ -18,3 +18,15 @@
   border-radius: @border-rad-sm;
   overflow: hidden;
 }
+
+// The custom-properties table renders on TableV2 with a fixed horizontal
+// extent (scroll.x), so when the settings content is narrower than that extent
+// the table shows a horizontal scrollbar. Its height nudges the page's vertical
+// scrollbar on; the vertical scrollbar's width then narrows the content and
+// re-triggers the horizontal overflow — the two toggle each other and the table
+// visibly flickers. Reserving the vertical scrollbar's gutter keeps the content
+// width constant, so the horizontal overflow no longer oscillates. Scoped via
+// :has() to this page's scroller only, to avoid shifting other pages' layout.
+.page-layout-v1-vertical-scroll:has(.entity-custom-properties-table) {
+  scrollbar-gutter: stable;
+}

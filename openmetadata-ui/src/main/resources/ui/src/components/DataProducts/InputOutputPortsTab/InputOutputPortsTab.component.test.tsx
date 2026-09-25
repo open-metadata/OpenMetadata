@@ -28,12 +28,14 @@ jest.mock('../../../rest/dataProductAPI', () => ({
   getDataProductPortsView: jest.fn(),
 }));
 
-jest.mock('./PortsLineageView', () => ({
-  PortsLineageView: () => <div data-testid="ports-lineage-view" />,
+jest.mock('./PortsLineageView/PortsLineageView.component', () => ({
+  __esModule: true,
+  default: () => <div data-testid="ports-lineage-view" />,
 }));
 
-jest.mock('./PortsListView', () => ({
-  PortsListView: () => <div data-testid="ports-list-view" />,
+jest.mock('./PortsListView/PortsListView.component', () => ({
+  __esModule: true,
+  default: () => <div data-testid="ports-list-view" />,
 }));
 
 jest.mock('../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer', () => ({

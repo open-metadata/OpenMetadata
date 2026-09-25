@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import type { ButtonProps } from 'antd';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
@@ -108,25 +109,26 @@ export const CommentIconButton = ({
   );
 };
 
+interface AlignRightIconButtonProps {
+  title: string;
+  className?: string;
+  onClick?: () => void;
+}
+
 export const AlignRightIconButton = ({
   title,
   className,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <Button
-        className={classNames('border-none tab-expand-icon', className)}
-        data-testid="tab-expand-button"
-        icon={<ExpandIcon />}
-        size={size}
-        type="text"
-        {...props}
-      />
-    </Tooltip>
-  );
-};
+  onClick,
+}: AlignRightIconButtonProps) => (
+  <ButtonUtility
+    className={className}
+    color="tertiary"
+    data-testid="tab-expand-button"
+    icon={ExpandIcon}
+    tooltip={title}
+    onClick={onClick}
+  />
+);
 
 export const CardExpandCollapseIconButton = ({
   title,

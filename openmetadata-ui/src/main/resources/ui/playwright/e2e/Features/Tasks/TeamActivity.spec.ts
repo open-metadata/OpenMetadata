@@ -407,7 +407,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
       const notificationBox = page.locator('.notification-box');
 
       if (await notificationBox.isVisible()) {
-        const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+        const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
         if (await tasksTab.isVisible()) {
           await tasksTab.click();
@@ -618,7 +618,7 @@ test.describe('Team Activity - Notifications', () => {
 
       if (await notificationBox.isVisible()) {
         // Look for Tasks tab
-        const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+        const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
         if (await tasksTab.isVisible()) {
           await tasksTab.click();

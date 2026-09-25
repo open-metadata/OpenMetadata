@@ -270,6 +270,65 @@ describe('useIncidentManagerListPage', () => {
     );
   });
 
+  // The grouped view writes its dimension to the same query string as this
+  // table's filters — the two must not drive each other's requests.
+  describe('groupBy in the shared query string', () => {
+    const fetchMock = getListTestCaseIncidentStatusFromSearch as jest.Mock;
+
+    it('should not refetch the incident list when only the dimension changes', async () => {
+      mockLocation.search = QueryString.stringify({
+        assignee: 'user1',
+        groupBy: 'testDefinition',
+      });
+      fetchMock.mockClear();
+
+      const { rerender } = renderHook(() => useIncidentManagerListPage({}));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      expect(fetchMock.mock.calls[0][0]).not.toHaveProperty('groupBy');
+
+      mockLocation.search = QueryString.stringify({
+        assignee: 'user1',
+        groupBy: 'owner',
+      });
+
+      await act(async () => {
+        rerender();
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('should still refetch, without the dimension, when a filter changes', async () => {
+      mockLocation.search = QueryString.stringify({
+        assignee: 'user1',
+        groupBy: 'owner',
+      });
+      fetchMock.mockClear();
+
+      const { rerender } = renderHook(() => useIncidentManagerListPage({}));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      mockLocation.search = QueryString.stringify({
+        assignee: 'user2',
+        groupBy: 'owner',
+      });
+
+      await act(async () => {
+        rerender();
+      });
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+      expect(fetchMock.mock.calls[1][0]).toEqual(
+        expect.objectContaining({ assignee: 'user2' })
+      );
+      expect(fetchMock.mock.calls[1][0]).not.toHaveProperty('groupBy');
+    });
+  });
+
   it('should navigate when the date-range descriptor onChange is called', () => {
     const { result } = renderHook(() => useIncidentManagerListPage({}));
 

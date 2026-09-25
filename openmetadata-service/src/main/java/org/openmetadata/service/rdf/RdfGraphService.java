@@ -29,7 +29,7 @@ import org.openmetadata.service.Entity;
 /** Application service for RDF entity, graph, lineage, and glossary representations. */
 public final class RdfGraphService {
 
-  private static final int MIN_GRAPH_DEPTH = 1;
+  private static final int MIN_GRAPH_DEPTH = 0;
   private static final int MAX_GRAPH_DEPTH = 5;
   private static final String SPARQL_JSON = "application/sparql-results+json";
   private final RdfRepository repository;

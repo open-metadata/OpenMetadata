@@ -1,5 +1,6 @@
 import { cx } from '@/utils/cx';
 import type { NavItemDividerType, NavItemType } from '../config';
+import type { NavItemSize } from './nav-item';
 import { NavItemBase } from './nav-item';
 
 interface NavListProps {
@@ -9,9 +10,16 @@ interface NavListProps {
   className?: string;
   /** List of items to display. */
   items: (NavItemType | NavItemDividerType)[];
+  /** Text and icon size passed to every item. Defaults to `md`. */
+  size?: NavItemSize;
 }
 
-export const NavList = ({ activeUrl, items, className }: NavListProps) => {
+export const NavList = ({
+  activeUrl,
+  items,
+  className,
+  size = 'md',
+}: NavListProps) => {
   return (
     <ul
       className={cx(
@@ -35,12 +43,13 @@ export const NavList = ({ activeUrl, items, className }: NavListProps) => {
           return (
             <details
               className="tw:appearance-none tw:py-0.5"
-              key={item.label}
+              key={item.href ?? item.label}
               open={isChildActive}>
               <NavItemBase
                 badge={item.badge}
                 href={item.href}
                 icon={item.icon}
+                size={size}
                 type="collapsible">
                 {item.label}
               </NavItemBase>
@@ -48,11 +57,12 @@ export const NavList = ({ activeUrl, items, className }: NavListProps) => {
               <dd>
                 <ul className="tw:py-0.5">
                   {item.items.map((childItem) => (
-                    <li className="tw:py-0.5" key={childItem.label}>
+                    <li className="tw:py-0.5" key={childItem.href}>
                       <NavItemBase
                         badge={childItem.badge}
                         current={activeUrl === childItem.href}
                         href={childItem.href}
+                        size={size}
                         type="collapsible-child">
                         {childItem.label}
                       </NavItemBase>
@@ -65,12 +75,15 @@ export const NavList = ({ activeUrl, items, className }: NavListProps) => {
         }
 
         return (
-          <li className="tw:py-0.5" key={item.label}>
+          // Keyed by href: labels (e.g. entity display names) need not be unique.
+          <li className="tw:py-0.5" key={item.href ?? item.label}>
             <NavItemBase
               badge={item.badge}
               current={activeUrl === item.href}
+              dataTestId={item.dataTestId}
               href={item.href}
               icon={item.icon}
+              size={size}
               type="link">
               {item.label}
             </NavItemBase>

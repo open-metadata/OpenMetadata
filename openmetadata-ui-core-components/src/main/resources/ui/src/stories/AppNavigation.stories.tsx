@@ -80,8 +80,8 @@ const sampleNavItemsCompact = [
 /** Full-width sidebar with logo, nav items, and account card at the bottom. */
 export const DefaultSidebar: Story = {
   render: () => (
-    <div className="tw:flex tw:h-screen tw:bg-secondary">
-      <nav className="tw:flex tw:w-72 tw:flex-col tw:border-r tw:border-secondary tw:bg-primary">
+    <div className="tw:flex tw:h-screen tw:bg-secondary tw:dark:bg-primary">
+      <nav className="tw:flex tw:w-72 tw:flex-col tw:border-r tw:border-secondary tw:bg-primary tw:dark:bg-secondary">
         <div className="tw:flex tw:h-16 tw:items-center tw:px-6">
           <Home01 className="tw:size-8 tw:text-fg-primary" />
         </div>
@@ -110,8 +110,8 @@ export const DefaultSidebar: Story = {
 /** Collapsed icon-only sidebar. Used for space-constrained layouts or as a secondary sidebar variant. */
 export const CollapsedIconSidebar: Story = {
   render: () => (
-    <div className="tw:flex tw:h-screen tw:bg-secondary">
-      <nav className="tw:flex tw:w-16 tw:flex-col tw:items-center tw:border-r tw:border-secondary tw:bg-primary tw:py-4">
+    <div className="tw:flex tw:h-screen tw:bg-secondary tw:dark:bg-primary">
+      <nav className="tw:flex tw:w-16 tw:flex-col tw:items-center tw:border-r tw:border-secondary tw:bg-primary tw:dark:bg-secondary tw:py-4">
         <div className="tw:mb-4 tw:flex tw:h-10 tw:w-10 tw:items-center tw:justify-center">
           <Home01 className="tw:size-8 tw:text-fg-primary" />
         </div>
@@ -161,9 +161,9 @@ export const TogglableSidebar: Story = {
     const [collapsed, setCollapsed] = useState(false);
 
     return (
-      <div className="tw:flex tw:h-screen tw:bg-secondary">
+      <div className="tw:flex tw:h-screen tw:bg-secondary tw:dark:bg-primary">
         <nav
-          className={`tw:flex tw:flex-col tw:border-r tw:border-secondary tw:bg-primary tw:transition-all tw:duration-200 ${
+          className={`tw:flex tw:flex-col tw:border-r tw:border-secondary tw:bg-primary tw:dark:bg-secondary tw:transition-all tw:duration-200 ${
             collapsed ? 'tw:w-16 tw:items-center' : 'tw:w-72'
           }`}>
           <div
@@ -233,8 +233,8 @@ export const TogglableSidebar: Story = {
 /** Sidebar with a nested collapsible section expanded by default. */
 export const WithNestedNavigation: Story = {
   render: () => (
-    <div className="tw:flex tw:h-screen tw:bg-secondary">
-      <nav className="tw:flex tw:w-72 tw:flex-col tw:border-r tw:border-secondary tw:bg-primary">
+    <div className="tw:flex tw:h-screen tw:bg-secondary tw:dark:bg-primary">
+      <nav className="tw:flex tw:w-72 tw:flex-col tw:border-r tw:border-secondary tw:bg-primary tw:dark:bg-secondary">
         <div className="tw:flex tw:h-16 tw:items-center tw:px-6">
           <Home01 className="tw:size-8 tw:text-fg-primary" />
         </div>
@@ -276,8 +276,8 @@ export const WithBadges: Story = {
     ];
 
     return (
-      <div className="tw:flex tw:h-screen tw:bg-secondary">
-        <nav className="tw:flex tw:w-72 tw:flex-col tw:border-r tw:border-secondary tw:bg-primary">
+      <div className="tw:flex tw:h-screen tw:bg-secondary tw:dark:bg-primary">
+        <nav className="tw:flex tw:w-72 tw:flex-col tw:border-r tw:border-secondary tw:bg-primary tw:dark:bg-secondary">
           <div className="tw:flex tw:h-16 tw:items-center tw:px-6">
             <Home01 className="tw:size-8 tw:text-fg-primary" />
           </div>

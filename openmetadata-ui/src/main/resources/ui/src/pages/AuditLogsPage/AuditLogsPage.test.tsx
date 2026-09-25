@@ -222,8 +222,9 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
     ));
 });
 
-jest.mock('../../components/AuditLog', () => ({
-  AuditLogFilters: jest.fn().mockImplementation(({ onFiltersChange }) => (
+jest.mock('../../components/AuditLog/AuditLogFilters.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ onFiltersChange }) => (
     <div data-testid="audit-log-filters">
       <button
         data-testid="apply-filter"
@@ -242,7 +243,11 @@ jest.mock('../../components/AuditLog', () => ({
       </button>
     </div>
   )),
-  AuditLogList: jest
+}));
+
+jest.mock('../../components/AuditLog/AuditLogList.component', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ isLoading, logs }) => (
       <div data-testid="audit-log-list">

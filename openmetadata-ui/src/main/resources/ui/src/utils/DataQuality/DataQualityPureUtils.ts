@@ -13,6 +13,7 @@
 import { compare, type Operation } from 'fast-json-patch';
 import {
   cloneDeep,
+  has,
   isArray,
   isEmpty,
   isNil,
@@ -36,18 +37,20 @@ import type { StatusData } from '../../components/DataQuality/ChartWidgets/Statu
 import type { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import type { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { DEFAULT_DIMENSIONS_DATA } from '../../constants/DataQuality.constants';
+import { DATA_QUALITY_DIMENSION_INDEX_FIELD } from '../../constants/DataQualityDimension.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import { DataQualityDimensions } from '../../enums/DataQuality.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import type {
+  EntityReference,
   TestCase,
   TestCaseParameterValue,
 } from '../../generated/tests/testCase';
 import {
-  DataQualityDimensions,
   TestDataType,
   type TestDefinition,
 } from '../../generated/tests/testDefinition';
@@ -119,12 +122,41 @@ export const createTestCaseParameters = (
     : params;
 };
 
+/**
+ * The form holds the dimension by name; the test case holds a reference to the dimension
+ * entity. An unchanged name keeps the existing reference so no patch operation is emitted,
+ * and a new one is sent without an id — the server resolves the dimension by name and fails
+ * the request if it does not exist.
+ */
+const toDimensionReference = (
+  dimensionName: string | undefined,
+  testCase: TestCase
+): EntityReference | undefined => {
+  if (!dimensionName) {
+    return undefined;
+  }
+  if (testCase.dataQualityDimension?.name === dimensionName) {
+    return testCase.dataQualityDimension;
+  }
+
+  return {
+    type: 'dataQualityDimension',
+    name: dimensionName,
+    fullyQualifiedName: dimensionName,
+  } as EntityReference;
+};
+
 export interface CreateUpdatedTestCasePatchArgs {
   testCase: TestCase;
   value: TestCaseFormType;
   createTestCaseObject: Partial<CreateTestCase>;
   showOnlyParameter?: boolean;
   isComputeRowCountFieldVisible: boolean;
+  /**
+   * Dimension the test case inherits from its test definition, used to tell an
+   * untouched prefill apart from a deliberate override.
+   */
+  inheritedDimension?: string;
 }
 
 const resolvePatchedDescription = (
@@ -171,12 +203,43 @@ const resolvePatchedTopDimensions = (
   return value.topDimensions ?? undefined;
 };
 
+/**
+ * The dimension field is rendered (and prefilled) in both the full form and the
+ * parameter-only drawer — it is part of the parameter box on the test case result
+ * page — so a submitted empty value means the user cleared the override and the
+ * patch must drop it. Only a missing key counts as untouched.
+ *
+ * A test case that carries no dimension of its own inherits the one of its test
+ * definition, and that inherited value is what the field is prefilled with.
+ * Submitting it back unchanged — editing a parameter, say — must leave the test
+ * case inheriting instead of pinning today's default as an override, so it
+ * counts as untouched too.
+ */
+const resolvePatchedDimension = (
+  testCase: TestCase,
+  value: TestCaseFormType,
+  inheritedDimension: string | undefined
+): EntityReference | undefined => {
+  if (!has(value, 'dataQualityDimension')) {
+    return testCase.dataQualityDimension;
+  }
+
+  const isUntouchedInheritedValue =
+    isUndefined(testCase.dataQualityDimension) &&
+    value.dataQualityDimension === inheritedDimension;
+
+  return isUntouchedInheritedValue
+    ? testCase.dataQualityDimension
+    : toDimensionReference(value.dataQualityDimension, testCase);
+};
+
 export const createUpdatedTestCasePatch = ({
   testCase,
   value,
   createTestCaseObject,
   showOnlyParameter,
   isComputeRowCountFieldVisible,
+  inheritedDimension,
 }: CreateUpdatedTestCasePatchArgs): Operation[] => {
   const tierTag = testCase.tags ? getTierTags(testCase.tags) : undefined;
   const rebuiltTags = [
@@ -195,6 +258,11 @@ export const createUpdatedTestCasePatch = ({
     tags: resolvePatchedTags(showOnlyParameter, rebuiltTags, testCase),
     dimensionColumns: resolvePatchedDimensionColumns(testCase, value),
     topDimensions: resolvePatchedTopDimensions(testCase, value),
+    dataQualityDimension: resolvePatchedDimension(
+      testCase,
+      value,
+      inheritedDimension
+    ),
   };
 
   return compare(testCase, updatedTestCase);
@@ -399,12 +467,12 @@ const buildDataQualityDimensionFilter = (dimension: string) => {
   if (dimension === DataQualityDimensions.NoDimension) {
     return {
       bool: {
-        must_not: [{ exists: { field: 'dataQualityDimension' } }],
+        must_not: [{ exists: { field: DATA_QUALITY_DIMENSION_INDEX_FIELD } }],
       },
     };
   }
 
-  return { term: { dataQualityDimension: dimension } };
+  return { term: { [DATA_QUALITY_DIMENSION_INDEX_FIELD]: dimension } };
 };
 
 type EsFilterClause = Record<string, unknown>;
@@ -868,10 +936,14 @@ export const transformToTestCaseStatusByDimension = (
   );
 
   inputData.forEach((item) => {
+    // The report keys each row by the aggregated Elasticsearch field name, not by the
+    // bucketName -- see SearchAggregation, which collects `field` into `dimensions`. The
+    // sibling `testCaseResult.testCaseStatus` key is the same shape.
     const {
       document_count,
       'testCaseResult.testCaseStatus': status,
-      dataQualityDimension = DataQualityDimensions.NoDimension,
+      [DATA_QUALITY_DIMENSION_INDEX_FIELD]:
+        dataQualityDimension = DataQualityDimensions.NoDimension,
     } = item;
     const count = parseInt(document_count, 10);
 

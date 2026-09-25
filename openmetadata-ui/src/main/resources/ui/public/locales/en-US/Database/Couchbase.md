@@ -30,6 +30,6 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Bucket > Schema > Table
 ```
-In the case of Couchbase, if you don't provide bucket name then by default it will ingest all availabe buckets.
+In the case of Couchbase, if you don't provide bucket name then by default it will ingest all available buckets.
 $$
 

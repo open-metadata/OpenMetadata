@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,8 @@ import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.messaging.SaslMechanismType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -74,6 +77,29 @@ abstract class TestEntityMasker {
         JsonUtils.convertValue(
                 ((MysqlConnection) unmasked.getConnection()).getAuthType(), basicAuth.class)
             .getPassword());
+  }
+
+  /**
+   * A secret declared inside a JSON-schema array - {@code mcpConnection.servers[].apiKey} - used to
+   * be skipped entirely, because the masker only recursed into OpenMetadata objects and a
+   * {@code List} is neither one of those nor an annotated leaf.
+   */
+  @Test
+  void testArrayNestedSecretIsMaskedAndRoundTrips() {
+    McpConnection mcpConnection =
+        new McpConnection()
+            .withServers(List.of(new McpServerConfig().withName("server").withApiKey(PASSWORD)));
+    McpConnection masked =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(mcpConnection, "Mcp", ServiceType.MCP);
+    assertNotNull(masked);
+    assertEquals(getMaskedPassword(), masked.getServers().getFirst().getApiKey());
+    McpConnection unmasked =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(masked, mcpConnection, "Mcp", ServiceType.MCP);
+    assertEquals(PASSWORD, unmasked.getServers().getFirst().getApiKey());
   }
 
   @Test

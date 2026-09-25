@@ -23,6 +23,7 @@ jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.name || ''),
 }));
 jest.mock('./EntitySearchUtils', () => ({
+  renderHighlightedText: jest.fn((text) => text ?? ''),
   highlightSearchText: jest.fn((text, searchText) => {
     if (searchText) {
       return text.replace(

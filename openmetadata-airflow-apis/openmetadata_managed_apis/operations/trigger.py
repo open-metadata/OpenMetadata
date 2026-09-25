@@ -40,6 +40,9 @@ def trigger(
         "dag_id": dag_id,
         "run_id": run_id,
         "conf": conf,
+        # A run is unique per (dag_id, logical_date); truncating to the second would make a
+        # second trigger in the same second collide with the first.
+        "replace_microseconds": False,
     }
 
     # In Airflow 3.x and 2.2+, execution_date was replaced with logical_date

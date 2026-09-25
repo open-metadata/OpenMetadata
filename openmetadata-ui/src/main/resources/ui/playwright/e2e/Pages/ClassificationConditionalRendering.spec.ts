@@ -85,9 +85,9 @@ test('Should render correct content when switching between classifications', asy
 }) => {
   await classification1.visitPage(page);
 
-  await expect(page.locator('.activeCategory')).toContainText(
-    classification1.data.displayName
-  );
+  await expect(
+    page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+  ).toContainText(classification1.data.displayName);
   await expect(page.getByTestId('table')).toContainText(tag1.data.name);
 
   const tagsResponse = page.waitForResponse(
@@ -101,9 +101,9 @@ test('Should render correct content when switching between classifications', asy
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.locator('.activeCategory')).toContainText(
-    classification2.data.displayName
-  );
+  await expect(
+    page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+  ).toContainText(classification2.data.displayName);
   await expect(page.getByTestId('header')).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible();
   await expect(page.getByTestId('table')).toContainText(tag2.data.name);

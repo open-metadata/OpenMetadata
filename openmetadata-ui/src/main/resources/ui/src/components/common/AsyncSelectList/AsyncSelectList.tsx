@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  ClassificationTag,
+  GlossaryTag,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import {
   Button,
   Empty,
@@ -36,8 +40,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
-import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
@@ -232,15 +234,15 @@ const AsyncSelectList: FC<
         EntityType.GLOSSARY_TERM;
     const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
-    const chip = (
+    return (
       <TagComponent
         closeButtonTestId="remove-tags"
         color={tag.style?.color}
         data-testid={`selected-tag-${tagDisplayName}`}
         icon={tag.style?.iconURL}
         label={tagLabel}
-        maxWidth={140}
         size="sm"
+        tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
         onDelete={
           isDerived
             ? undefined
@@ -250,14 +252,6 @@ const AsyncSelectList: FC<
               }
         }
       />
-    );
-
-    return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}>
-        <TooltipTrigger>{chip}</TooltipTrigger>
-      </Tooltip>
-    ) : (
-      chip
     );
   };
 

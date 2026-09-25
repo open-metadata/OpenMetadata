@@ -199,3 +199,62 @@ Scopes: openid profile email
 
 **User mapping issues:** Review your JWT principal claims configuration to ensure proper user identification.
 $$
+
+$$section
+### Email Claim $(id="emailClaim")
+
+- **Definition:** Name of the JWT claim containing the user's email address.
+- **Default:** "email"
+- **Example:** email
+- **Why it matters:** Enables the simplified email-first identity flow. When configured, replaces the complex `jwtPrincipalClaims` resolution with a straightforward email-based lookup.
+- **Note:**
+  - When set, users are identified by email instead of username-based claim resolution
+  - Usernames are auto-generated from the email prefix (e.g., `john.doe@company.com` -> `john.doe`)
+  - If two users share the same email prefix across domains, a random suffix is appended (e.g., `john.doe_x7k2`)
+  - Falls back to legacy `jwtPrincipalClaims` flow if this claim is not found in the token
+$$
+
+$$section
+### Display Name Claim $(id="displayNameClaim")
+
+- **Definition:** Name of the JWT claim containing the user's display name.
+- **Default:** "name"
+- **Example:** name, given_name, displayName
+- **Why it matters:** Used to populate the user's display name in OpenMetadata when using the email-first flow.
+- **Note:** Only used when Email Claim is configured. Falls back to the email prefix if not found.
+$$
+
+$$section
+### Admin Emails $(id="adminEmails")
+
+- **Definition:** List of email addresses that should be granted admin privileges.
+- **Example:** ["admin@company.com", "security-lead@company.com"]
+- **Why it matters:** Preferred replacement for Admin Principals. Uses full email addresses for unambiguous admin designation.
+- **Note:**
+  - Takes precedence over Admin Principals if both are configured
+  - Case-insensitive matching (admin@Company.com matches admin@company.com)
+  - If a matching user already exists, they are promoted to admin
+  - If no user exists, a new admin account is created with a username derived from the email
+$$
+
+$$section
+### Allowed Email Domains $(id="allowedEmailDomains")
+
+- **Definition:** List of email domains allowed to authenticate.
+- **Example:** ["company.com", "subsidiary.com"]
+- **Why it matters:** Restricts which email domains can log in. If empty, all domains are allowed.
+- **Note:**
+  - Takes precedence over the legacy Enforce Principal Domain / Allowed Domains settings
+  - Users with email addresses outside these domains will be rejected at login
+  - Case-insensitive domain matching
+$$
+
+$$section
+### Bot Domain $(id="botDomain")
+
+- **Definition:** Email domain used for system-created bot accounts.
+- **Default:** "openmetadata.org"
+- **Example:** openmetadata.org
+- **Why it matters:** Separates bot email domain from user email domain. Bots get emails like `ingestion-bot@{botDomain}`.
+- **Note:** Replaces the use of Principal Domain for bot email construction.
+$$

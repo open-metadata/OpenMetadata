@@ -13,8 +13,22 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { mockAlertDetails } from '../../../../mocks/Alerts.mock';
+import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { MOCK_FILTER_RESOURCES } from '../../../../test/unit/mocks/observability.mock';
+import alertsClassBase from '../../../../utils/AlertsClassBase';
 import AlertConfigDetails from './AlertConfigDetails';
+
+const mockGetResourcePermission = jest.fn();
+
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn(() => ({
+    getResourcePermission: mockGetResourcePermission,
+  })),
+}));
+
+jest.mock('../../../../rest/notificationtemplateAPI', () => ({
+  getAllNotificationTemplates: jest.fn().mockResolvedValue({ data: [] }),
+}));
 
 jest.mock('../../../../rest/observabilityAPI', () => ({
   getResourceFunctions: jest.fn().mockImplementation(() => ({
@@ -51,6 +65,46 @@ jest.mock(
 jest.mock('../../DestinationFormItem/DestinationFormItemFormBridge', () =>
   jest.fn().mockImplementation(() => <div>DestinationFormItem</div>)
 );
+
+describe('AlertConfigDetails notification template permissions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest
+      .spyOn(alertsClassBase, 'getAddAlertFormExtraWidgets')
+      .mockReturnValue({ template: jest.fn() });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const renderDetails = async () => {
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={mockAlertDetails}
+          isNotificationAlert={false}
+        />
+      );
+    });
+  };
+
+  it('should fetch templates when ViewAll is granted on the template resource', async () => {
+    mockGetResourcePermission.mockResolvedValue({ ViewAll: true });
+
+    await renderDetails();
+
+    expect(getAllNotificationTemplates).toHaveBeenCalled();
+  });
+
+  it('should not fetch templates when ViewAll is denied on the template resource', async () => {
+    mockGetResourcePermission.mockResolvedValue({ ViewBasic: true });
+
+    await renderDetails();
+
+    expect(getAllNotificationTemplates).not.toHaveBeenCalled();
+  });
+});
 
 describe('AlertConfigDetails', () => {
   it('should render the component', async () => {

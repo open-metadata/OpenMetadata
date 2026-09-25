@@ -13,11 +13,16 @@
 
 package org.openmetadata.service.security.jwt;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
+import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
+import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
+import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
@@ -35,7 +40,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +77,8 @@ public class JWTTokenGenerator {
   @Getter private String issuer;
   @Getter private String kid;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+  private List<String> principalClaims = List.of();
+  private Map<String, String> principalClaimsMapping = Map.of();
 
   private JWTTokenGenerator() {
     /* Private constructor for singleton */
@@ -101,10 +110,15 @@ public class JWTTokenGenerator {
     }
   }
 
-  /** Expected to be initialized only once during application start */
+  /** Called at application start and again whenever the security configuration is reloaded. */
   public void init(
-      AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
+      AuthenticationConfiguration authenticationConfiguration,
       JWTTokenConfiguration jwtTokenConfiguration) {
+    principalClaims = listOrEmpty(authenticationConfiguration.getJwtPrincipalClaims());
+    principalClaimsMapping =
+        buildPrincipalClaimsMapping(authenticationConfiguration.getJwtPrincipalClaimsMapping());
+    AuthenticationConfiguration.TokenValidationAlgorithm algorithm =
+        authenticationConfiguration.getTokenValidationAlgorithm();
     try {
       if (jwtTokenConfiguration.getRsaprivateKeyFilePath() != null
           && !jwtTokenConfiguration.getRsaprivateKeyFilePath().isEmpty()
@@ -127,6 +141,24 @@ public class JWTTokenGenerator {
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
     }
+  }
+
+  /**
+   * Compatibility overload for callers that predate {@link #init(AuthenticationConfiguration,
+   * JWTTokenConfiguration)} - openmetadata-collate's {@code SupportAwareAuthenticatorTest} at the
+   * time of writing. It carries no principal-claim configuration, so tokens minted afterwards hold
+   * only the standard identity claims. Remove once no downstream caller is left.
+   */
+  @Deprecated(forRemoval = true)
+  public void init(
+      AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
+      JWTTokenConfiguration jwtTokenConfiguration) {
+    LOG.warn(
+        "JWTTokenGenerator initialized without an AuthenticationConfiguration; "
+            + "minted tokens carry only the standard identity claims");
+    init(
+        new AuthenticationConfiguration().withTokenValidationAlgorithm(algorithm),
+        jwtTokenConfiguration);
   }
 
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
@@ -243,19 +275,16 @@ public class JWTTokenGenerator {
       }
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
       Algorithm algorithm = getAlgorithm(tokenValidationAlgorithm, null, privateKey);
-      var tokenBuilder =
-          JWT.create()
-              .withIssuer(issuer)
-              .withKeyId(kid)
-              .withClaim(SUBJECT_CLAIM, userName)
-              .withClaim(ROLES_CLAIM, roles.stream().toList())
-              .withClaim(EMAIL_CLAIM, email)
-              .withClaim(IS_BOT_CLAIM, isBot)
-              .withClaim(TOKEN_TYPE, tokenType.value())
-              .withClaim(USERNAME, userName)
-              .withClaim(PREFERRED_USERNAME, userName)
-              .withIssuedAt(new Date(System.currentTimeMillis()))
-              .withExpiresAt(expires);
+      JWTCreator.Builder tokenBuilder = JWT.create();
+      identityClaims(userName, email).forEach(tokenBuilder::withClaim);
+      tokenBuilder
+          .withIssuer(issuer)
+          .withKeyId(kid)
+          .withClaim(ROLES_CLAIM, roles.stream().toList())
+          .withClaim(IS_BOT_CLAIM, isBot)
+          .withClaim(TOKEN_TYPE, tokenType.value())
+          .withIssuedAt(new Date(System.currentTimeMillis()))
+          .withExpiresAt(expires);
 
       if (scopes != null && !scopes.isEmpty()) {
         tokenBuilder.withClaim(SCOPE_CLAIM, String.join(" ", scopes));
@@ -271,6 +300,55 @@ public class JWTTokenGenerator {
     } catch (Exception e) {
       throw new JWTCreationException(
           "Failed to generate JWT Token. Please check your OpenMetadata Configuration.", e);
+    }
+  }
+
+  /**
+   * Identity claims shaped the way {@code SecurityUtil.findUserNameFromClaims}, {@code
+   * findEmailFromClaims} and {@code validateDomainEnforcement} read them under this deployment's
+   * principal-claim configuration, so a token we issue resolves to the user it was minted for - the
+   * same (name, email) the identity provider's token yields for that user.
+   *
+   * <p>{@code preferred_username} carries the email because that is what identity providers put
+   * there (Okta login, Azure UPN); a bare name there resolved to an empty domain under enforcement
+   * and to a synthesized {@code name@principalDomain} email that contradicted the user's real one
+   * (#29142). {@code sub} and {@code username} stay the bare name - the stable subject - unless the
+   * deployment's claim order reads one of them first, see {@link #putConfiguredPrincipalClaims}.
+   */
+  private Map<String, String> identityClaims(String userName, String email) {
+    String principal = nullOrEmpty(email) ? userName : email;
+    Map<String, String> claims = new LinkedHashMap<>();
+    claims.put(SUBJECT_CLAIM, userName);
+    claims.put(USERNAME, userName);
+    if (!nullOrEmpty(email)) {
+      claims.put(EMAIL_CLAIM, email);
+    }
+    claims.put(PREFERRED_USERNAME, principal);
+    putConfiguredPrincipalClaims(claims, userName, principal);
+    return claims;
+  }
+
+  /**
+   * A deployment may resolve principals from claims we do not otherwise mint ({@code upn}, {@code
+   * mail}, ...). With a mapping, the username claim gets the bare name and the email claim the
+   * email - the email wins if both map to one claim, which is how the provider's token looks too.
+   * With an order, the first claim gets the email - even {@code sub} or {@code username}: a
+   * deployment that resolves principals from that claim first has an identity provider whose value
+   * there is the email-shaped login, and the first-match lookup must land on a value with a domain.
+   */
+  private void putConfiguredPrincipalClaims(
+      Map<String, String> claims, String userName, String principal) {
+    if (!principalClaimsMapping.isEmpty()) {
+      String usernameClaim = principalClaimsMapping.get(USERNAME_CLAIM_KEY);
+      String emailClaim = principalClaimsMapping.get(EMAIL_CLAIM_KEY);
+      if (!nullOrEmpty(usernameClaim)) {
+        claims.put(usernameClaim, userName);
+      }
+      if (!nullOrEmpty(emailClaim)) {
+        claims.put(emailClaim, principal);
+      }
+    } else if (!principalClaims.isEmpty()) {
+      claims.put(principalClaims.getFirst(), principal);
     }
   }
 

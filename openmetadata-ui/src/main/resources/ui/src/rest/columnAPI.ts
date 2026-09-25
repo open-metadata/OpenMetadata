@@ -16,7 +16,7 @@ import { BulkColumnUpdateRequest } from '../generated/api/data/bulkColumnUpdateR
 import { ColumnGridResponse } from '../generated/api/data/columnGridResponse';
 import { GroupedColumnsResponse } from '../generated/api/data/groupedColumnsResponse';
 import { CSVImportResult } from '../generated/type/csvImportResult';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const TEXT_PLAIN_CONTENT_TYPE = 'text/plain';
 

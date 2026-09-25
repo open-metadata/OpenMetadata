@@ -137,6 +137,11 @@ class DbtServiceTopology(ServiceTopology):
                 processor="process_dbt_domain",
                 nullable=True,
             ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_data_products",
+                nullable=True,
+            ),
         ],
     )
     process_dbt_tests: Annotated[TopologyNode, Field(description="Process dbt tests")] = TopologyNode(
@@ -398,6 +403,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_domain(self, data_model_link: DataModelLink):
         """
         Method to process DBT domain using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Method to attach the table to its dbt-declared Data Products
         """
 
     @abstractmethod

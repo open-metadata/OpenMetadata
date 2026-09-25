@@ -14,7 +14,7 @@ import { ReactComponent as SkippedIcon } from '../assets/svg/ic-aborted.svg';
 import { ReactComponent as FailedIcon } from '../assets/svg/ic-fail.svg';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-successful.svg';
 import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
-import { DataQualityDimensions } from '../generated/tests/testDefinition';
+import { DataQualityDimensions } from '../enums/DataQuality.enum';
 
 export const TEST_CASE_STATUS_ICON = {
   Aborted: SkippedIcon,
@@ -83,6 +83,12 @@ export const DATA_QUALITY_DASHBOARD_HEADER = {
     subHeader: 'message.incident-metrics-sub-header',
   },
 };
+
+export const DQ_FILTER_TYPES = {
+  OWNER: 'owner',
+  SEARCH: 'search',
+  GLOSSARY_TERM: 'glossaryTerm',
+} as const;
 
 export const DQ_FILTER_KEYS = {
   OWNER: 'owner',

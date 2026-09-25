@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -392,6 +393,62 @@ class ChildFieldResolverTest {
       assertThrows(
           IllegalArgumentException.class,
           () -> ChildFieldResolver.parentFqnOf("svc.root.sub.col", Entity.CONTAINER));
+    }
+  }
+
+  @Test
+  void containerFields_asksForTheContainerPropertyOnly() {
+    // The read paths request this instead of requiredFields so they do not pay for a tag lookup
+    // they will not read. A nested path resolves to the property that holds it.
+    assertEquals("columns", ChildFieldResolver.containerFields(Entity.TABLE));
+    assertEquals("messageSchema", ChildFieldResolver.containerFields(Entity.TOPIC));
+    assertEquals("dataModel", ChildFieldResolver.containerFields(Entity.CONTAINER));
+    assertEquals("mlFeatures", ChildFieldResolver.containerFields(Entity.MLMODEL));
+    assertEquals("tasks", ChildFieldResolver.containerFields(Entity.PIPELINE));
+    assertEquals("fields", ChildFieldResolver.containerFields(Entity.SEARCH_INDEX));
+  }
+
+  @Test
+  void containerFields_apiEndpointCoversBothSchemas() {
+    // The one type with two containers: dropping either half would silently hide its fields.
+    assertEquals(
+        "requestSchema,responseSchema", ChildFieldResolver.containerFields(Entity.API_ENDPOINT));
+  }
+
+  /**
+   * The parent class per registry type. Spelled out rather than read from
+   * Entity.getEntityClassFromType, whose map is populated by repository registration at server
+   * bootstrap and is therefore empty in a unit test.
+   */
+  static final Map<String, Class<?>> PARENT_CLASS_BY_TYPE =
+      Map.of(
+          Entity.TABLE, Table.class,
+          Entity.DASHBOARD_DATA_MODEL, DashboardDataModel.class,
+          Entity.TOPIC, Topic.class,
+          Entity.CONTAINER, Container.class,
+          Entity.MLMODEL, MlModel.class,
+          Entity.PIPELINE, Pipeline.class,
+          Entity.SEARCH_INDEX, SearchIndex.class,
+          Entity.API_ENDPOINT, APIEndpoint.class,
+          Entity.WORKSHEET, Worksheet.class);
+
+  @Test
+  void containerFields_areRealEntityPropertiesSoTheLoadDoesNotThrow() {
+    // getFields validates a requested field against the entity class's JSON properties and throws
+    // on anything else, so a container path whose first segment is not a real property would fail
+    // every read for that type. This catches it here rather than at runtime.
+    assertEquals(
+        ChildFieldResolver.supportedEntityTypes(),
+        PARENT_CLASS_BY_TYPE.keySet(),
+        "a new registry type needs its parent class here");
+    for (String entityType : ChildFieldResolver.supportedEntityTypes()) {
+      Set<String> properties = Entity.getEntityFields(PARENT_CLASS_BY_TYPE.get(entityType));
+      for (String field : ChildFieldResolver.containerFields(entityType).split(",")) {
+        assertTrue(
+            properties.contains(field),
+            "%s is not a property of %s, so requesting it would throw"
+                .formatted(field, entityType));
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/datacontract/odcs/odcsDataContract.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ODCSDataContract",
   "description": "Open Data Contract Standard (ODCS) v3.1.0 data contract representation for import/export.",
   "type": "object",

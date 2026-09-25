@@ -25,6 +25,20 @@
   white-space: nowrap;
   border: 1px solid;
 
+  // Dark: the white pill rings (var(--om-color-white) borders below) become the
+  // doc's subtle border (white @ 8%) so pills don't get a hard bright outline.
+  // Light keeps the white ring (frozen).
+  .dark-mode & {
+    &.success,
+    &.stopped,
+    &.failure,
+    &.failed,
+    &.aborted,
+    &.no-data {
+      border-color: var(--om-color-border-secondary);
+    }
+  }
+
   &.success {
     color: @green-10;
     background-color: @green-9;
@@ -130,6 +144,91 @@
   &.success {
     .anticon {
       color: transparent;
+    }
+  }
+}
+
+// Dark mode: repaint every status to the design-system utility scale
+// (500 @ 16% bg, 500 @ 35% border, 400 text) — the same tokens the core Badge
+// resolves in dark, so legacy StatusBadge matches the Dark Mode Home spec
+// without a structural rewrite. --color-utility-* inherits and flips under
+// .dark-mode; the light values above stay frozen (this block never applies in light).
+.dark-mode {
+  .status-badge {
+    border-color: var(--color-utility-gray-200);
+
+    &.success {
+      color: var(--color-utility-success-700);
+      background: var(--color-utility-success-50);
+      border-color: var(--color-utility-success-200);
+    }
+
+    &.failure,
+    &.failed,
+    &.stopped,
+    &.activeError {
+      color: var(--color-utility-error-700);
+      background: var(--color-utility-error-50);
+      border-color: var(--color-utility-error-200);
+    }
+
+    &.warning,
+    &.pending,
+    &.aborted {
+      color: var(--color-utility-warning-700);
+      background: var(--color-utility-warning-50);
+      border-color: var(--color-utility-warning-200);
+    }
+
+    &.acknowledged,
+    &.running,
+    &.started,
+    &.inReview {
+      color: var(--color-utility-brand-700);
+      background: var(--color-utility-brand-50);
+      border-color: var(--color-utility-brand-200);
+    }
+
+    &.no-data,
+    &.deprecated,
+    &.archived,
+    &.version {
+      color: var(--color-utility-gray-700);
+      background: var(--color-utility-gray-50);
+      border-color: var(--color-utility-gray-200);
+    }
+  }
+
+  .status-badge-label {
+    &.success {
+      color: var(--color-utility-success-700);
+    }
+
+    &.failure,
+    &.failed,
+    &.stopped,
+    &.activeError {
+      color: var(--color-utility-error-700);
+    }
+
+    &.warning,
+    &.pending,
+    &.aborted {
+      color: var(--color-utility-warning-700);
+    }
+
+    &.acknowledged,
+    &.running,
+    &.started,
+    &.inReview {
+      color: var(--color-utility-brand-700);
+    }
+
+    &.no-data,
+    &.deprecated,
+    &.archived,
+    &.version {
+      color: var(--color-utility-gray-700);
     }
   }
 }

@@ -70,11 +70,9 @@ jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
-jest.mock('../../Entity/EntityHeader/EntityHeader.component', () => ({
-  EntityHeader: jest
-    .fn()
-    .mockReturnValue(<div data-testid="entity-header">EntityHeader</div>),
-}));
+jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="entity-header">EntityHeader</div>)
+);
 
 jest.mock(
   '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component',
@@ -185,6 +183,31 @@ describe('GlossaryHeader component', () => {
     );
 
     expect(screen.getByText('EntityHeader')).toBeInTheDocument();
+  });
+
+  it('should render the core breadcrumb ending with the current entity', () => {
+    const originalData = mockContext.data;
+    mockContext.data = {
+      ...originalData,
+      name: 'glossaryTest',
+      fullyQualifiedName: 'glossaryTest',
+    };
+
+    render(
+      <GlossaryHeader
+        updateVote={mockOnUpdateVote}
+        onAddGlossaryTerm={mockOnDelete}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const breadcrumb = screen.getByTestId('breadcrumb');
+
+    expect(breadcrumb).toHaveTextContent('label.glossary-plural');
+    expect(breadcrumb).toHaveTextContent('glossaryTest');
+    expect(screen.getByTestId('glossary-header')).toContainElement(breadcrumb);
+
+    mockContext.data = originalData;
   });
 
   it('should render import and export dropdown menu items only for glossary', async () => {

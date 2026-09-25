@@ -204,6 +204,115 @@ class PermissionDebugServiceTest {
   }
 
   @Test
+  void debugShowsWildcardAllowDoesNotGrantSparql() {
+    UserRepository userRepository = mock(UserRepository.class);
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    RoleRepository roleRepository = mock(RoleRepository.class);
+    PolicyRepository policyRepository = mock(PolicyRepository.class);
+    EntityRepository<EntityInterface> rdfRepository = mock(EntityRepository.class);
+
+    stubFields(userRepository, teamRepository, roleRepository, policyRepository);
+    User user = new User().withId(UUID.randomUUID()).withName("alice");
+    when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+        .thenReturn(user);
+
+    SubjectContext.PolicyContext wildcardContext =
+        new SubjectContext.PolicyContext(
+            Entity.USER,
+            "alice",
+            "analyst",
+            "wildcard-policy",
+            List.of(
+                compiledRule(
+                    "allow-all",
+                    Rule.Effect.ALLOW,
+                    List.of(MetadataOperation.ALL),
+                    List.of("All"),
+                    null)));
+    SubjectContext.PolicyContext grantContext =
+        new SubjectContext.PolicyContext(
+            Entity.USER,
+            "alice",
+            "analyst",
+            "grant-policy",
+            List.of(
+                compiledRule(
+                    "allow-sparql",
+                    Rule.Effect.ALLOW,
+                    List.of(MetadataOperation.EXECUTE_SPARQL_QUERY),
+                    List.of("rdf"),
+                    null)));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      stubRepositories(
+          entityMock, userRepository, teamRepository, roleRepository, policyRepository);
+      entityMock.when(() -> Entity.getEntityRepository("rdf")).thenReturn(rdfRepository);
+      subjectCacheMock
+          .when(() -> SubjectCache.getPolicies("alice"))
+          .thenReturn(List.of(wildcardContext, grantContext));
+
+      PermissionEvaluationDebugInfo debugInfo =
+          new PermissionDebugService()
+              .debugPermissionEvaluation(
+                  "alice", "rdf", null, MetadataOperation.EXECUTE_SPARQL_QUERY);
+
+      assertTrue(debugInfo.isAllowed());
+      assertEquals("ALLOWED", debugInfo.getFinalDecision());
+      assertEquals(2, debugInfo.getEvaluationSteps().size());
+      PolicyEvaluationStep wildcardStep = debugInfo.getEvaluationSteps().get(0);
+      PolicyEvaluationStep grantStep = debugInfo.getEvaluationSteps().get(1);
+      assertFalse(wildcardStep.isMatched(), "All/All allow must not match the sparql operation");
+      assertTrue(grantStep.isMatched());
+    }
+  }
+
+  @Test
+  void debugShowsWildcardDenyDoesNotApplyToImpersonate() {
+    UserRepository userRepository = mock(UserRepository.class);
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    RoleRepository roleRepository = mock(RoleRepository.class);
+    PolicyRepository policyRepository = mock(PolicyRepository.class);
+
+    stubFields(userRepository, teamRepository, roleRepository, policyRepository);
+    User user = new User().withId(UUID.randomUUID()).withName("alice");
+    when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+        .thenReturn(user);
+
+    SubjectContext.PolicyContext denyContext =
+        new SubjectContext.PolicyContext(
+            Entity.USER,
+            "alice",
+            "analyst",
+            "deny-policy",
+            List.of(
+                compiledRule(
+                    "deny-all",
+                    Rule.Effect.DENY,
+                    List.of(MetadataOperation.ALL),
+                    List.of("All"),
+                    null)));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      stubRepositories(
+          entityMock, userRepository, teamRepository, roleRepository, policyRepository);
+      subjectCacheMock
+          .when(() -> SubjectCache.getPolicies("alice"))
+          .thenReturn(List.of(denyContext));
+
+      PermissionEvaluationDebugInfo debugInfo =
+          new PermissionDebugService()
+              .debugPermissionEvaluation("alice", Entity.USER, null, MetadataOperation.IMPERSONATE);
+
+      assertEquals(1, debugInfo.getEvaluationSteps().size());
+      assertFalse(
+          debugInfo.getEvaluationSteps().getFirst().isMatched(),
+          "Wildcard denies keep not applying to Impersonate");
+    }
+  }
+
+  @Test
   void debugPermissionEvaluationPrefersDenyRulesOverAllows() {
     UserRepository userRepository = mock(UserRepository.class);
     TeamRepository teamRepository = mock(TeamRepository.class);

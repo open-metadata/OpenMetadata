@@ -43,16 +43,28 @@ interface UseTreeSelectDataReturn<T> {
 const insertChildrenIntoTree = <T>(
   nodes: TreeSelectNode<T>[],
   parentId: string,
-  children: TreeSelectNode<T>[]
+  children: TreeSelectNode<T>[],
+  hasMore?: boolean
 ): TreeSelectNode<T>[] =>
   nodes.map((node) => {
     if (node.id === parentId) {
-      return { ...node, children, isLeaf: children.length === 0 };
+      // An empty result must not make it a leaf, or it loses its chevron.
+      return {
+        ...node,
+        children,
+        hasMoreChildren: hasMore === true,
+        isLeaf: children.length > 0 ? false : node.isLeaf,
+      };
     }
     if (node.children) {
       return {
         ...node,
-        children: insertChildrenIntoTree(node.children, parentId, children),
+        children: insertChildrenIntoTree(
+          node.children,
+          parentId,
+          children,
+          hasMore
+        ),
       };
     }
 
@@ -124,7 +136,8 @@ export const useTreeSelectData = <T = unknown>({
             nextData = insertChildrenIntoTree(
               prev.data,
               params.parentId,
-              response.nodes
+              response.nodes,
+              response.hasMore
             );
             nextLoadingNodes.delete(params.parentId);
           } else {

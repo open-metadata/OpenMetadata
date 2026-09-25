@@ -87,8 +87,9 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(null),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 jest.mock('../../../../utils/HistoryUtils', () => ({
   ...jest.requireActual('../../../../utils/HistoryUtils'),

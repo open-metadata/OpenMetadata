@@ -19,7 +19,7 @@ pass fails and the offending facet is named in the assertion message.
 ## Adding a new entity
 
 ```ts
-import { test } from '@playwright/test';
+import { test } from '../../../support/fixtures/base';
 import { MyEntityClass } from '../../../support/entity/MyEntityClass';
 import { registerFilterSeparationSuite } from './searchSeparationSuite';
 

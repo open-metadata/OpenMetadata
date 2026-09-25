@@ -1,12 +1,16 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
 import { X as CloseX } from '@untitledui/icons';
 import type {
   CSSProperties,
+  HTMLAttributes,
   KeyboardEventHandler,
   MouseEventHandler,
   ReactNode,
 } from 'react';
+import type { Placement } from 'react-aria';
+import { Link as AriaLink } from 'react-aria-components';
 import type {
   BadgeColors,
   BadgeTypeToColorMap,
@@ -124,8 +128,8 @@ const withPillTypes = {
       'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:shadow-xs',
     styles: {
       gray: {
-        root: 'tw:bg-primary tw:text-secondary tw:outline-primary',
-        addon: 'tw:text-gray-500',
+        root: 'tw:bg-surface tw:text-secondary tw:outline-subtle',
+        addon: 'tw:text-utility-gray-500',
         addonButton:
           'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
       },
@@ -146,7 +150,7 @@ const withBadgeTypes = {
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-primary tw:text-secondary tw:outline-primary tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-surface tw:text-secondary tw:outline-subtle tw:shadow-xs',
     styles: addonOnlyColors,
   },
 };
@@ -155,7 +159,8 @@ export type BadgeColor<T extends BadgeTypes> = BadgeTypeToColorMap<
   typeof withPillTypes
 >[T];
 
-interface BadgeProps<T extends BadgeTypes> {
+interface BadgeProps<T extends BadgeTypes>
+  extends Omit<HTMLAttributes<HTMLSpanElement>, 'color' | 'style'> {
   type?: T;
   size?: Sizes;
   color?: BadgeColor<T>;
@@ -164,6 +169,16 @@ interface BadgeProps<T extends BadgeTypes> {
   bordered?: boolean;
   style?: CSSProperties;
   'data-testid'?: string;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the badge */
+  tooltipPlacement?: Placement;
+  /**
+   * When provided, the badge renders as a link to this URL instead of a
+   * `<span>` — the entire visible badge (including padding) becomes the
+   * clickable/focusable target, not just its children.
+   */
+  href?: string;
 }
 
 export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
@@ -173,8 +188,16 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     color = 'gray',
     bordered = true,
     children,
+    tooltip,
+    tooltipPlacement = 'top',
+    className,
+    style,
+    href,
+    'data-testid': dataTestId,
+    ...rest
   } = props;
   const colors = withPillTypes[type];
+  const Component = href ? AriaLink : 'span';
 
   const pillSizes = {
     xs: 'tw:py-0.5 tw:px-1.5 tw:text-[10px] tw:leading-4',
@@ -195,20 +218,39 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     [badgeTypes.badgeModern]: badgeSizes,
   };
 
-  return (
-    <span
+  const badge = (
+    <Component
+      {...(rest as object)}
+      // `href` only exists on `AriaLink`'s props — `Component` is `'span' |
+      // typeof AriaLink`, so TS can't narrow which one applies here; safe
+      // since `href` is only ever set when `Component` is `AriaLink`.
       className={cx(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
-        props.className
+        // A linked badge must look identical to a non-linked one — no
+        // browser default underline/link color, and it must inherit the
+        // badge's own text color rather than react-aria-components' link styles.
+        href && 'tw:text-inherit tw:no-underline',
+        className
       )}
-      data-testid={props['data-testid']}
-      style={props.style}>
+      data-testid={dataTestId}
+      href={href as never}
+      style={style}>
       {children}
-    </span>
+    </Component>
   );
+
+  if (tooltip) {
+    return (
+      <Tooltip placement={tooltipPlacement} title={tooltip}>
+        {badge}
+      </Tooltip>
+    );
+  }
+
+  return badge;
 };
 
 interface BadgeWithDotProps<T extends BadgeTypes> {
@@ -497,7 +539,8 @@ export const BadgeWithImage = <T extends BadgeTypes>(
   );
 };
 
-interface BadgeWithButtonProps<T extends BadgeTypes> {
+interface BadgeWithButtonProps<T extends BadgeTypes>
+  extends Omit<HTMLAttributes<HTMLSpanElement>, 'color' | 'style' | 'onClick'> {
   type?: T;
   size?: Sizes;
   icon?: IconComponentType;
@@ -527,6 +570,10 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
    * The data-testid for the button.
    */
   buttonTestId?: string;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the badge */
+  tooltipPlacement?: Placement;
 }
 
 export const BadgeWithButton = <T extends BadgeTypes>(
@@ -543,6 +590,12 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     children,
     isDisabled,
     onButtonKeyDown,
+    tooltip,
+    tooltipPlacement = 'top',
+    className,
+    style,
+    'data-testid': dataTestId,
+    ...rest
   } = props;
 
   const colors = withPillTypes[type];
@@ -566,18 +619,30 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     [badgeTypes.badgeModern]: badgeSizes,
   };
 
+  // The tooltip wraps only `children` (label/icon content), never the whole span —
+  // the span also contains the delete <button>, and Tooltip must not wrap a
+  // container whose children include an interactive element (see tooltip.tsx).
+  const content = tooltip ? (
+    <Tooltip placement={tooltipPlacement} title={tooltip}>
+      <span className="tw:contents">{children}</span>
+    </Tooltip>
+  ) : (
+    children
+  );
+
   return (
     <span
+      {...rest}
       className={cx(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
-        props.className
+        className
       )}
-      data-testid={props['data-testid']}
-      style={props.style}>
-      {children}
+      data-testid={dataTestId}
+      style={style}>
+      {content}
       <button
         aria-label={buttonLabel}
         className={cx(

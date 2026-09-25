@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
@@ -42,26 +43,17 @@ const TestCaseStatusPieChartWidget = ({
   const routerNavigate = useNavigate();
   const navigate = navigateProp ?? routerNavigate;
 
-  const [testCaseSummary, setTestCaseSummary] = useState(INITIAL_TEST_SUMMARY);
-  const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
-    useState(true);
-
-  const fetchTestSummary = async () => {
-    setIsTestCaseSummaryLoading(true);
-    try {
+  const {
+    data: testCaseSummary = INITIAL_TEST_SUMMARY,
+    isLoading: isTestCaseSummaryLoading,
+  } = useQuery({
+    queryKey: ['dq-dashboard', 'test-case-summary', chartFilter],
+    queryFn: async () => {
       const { data } = await fetchTestCaseSummary(chartFilter);
-      const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary(updatedData);
-    } catch {
-      setTestCaseSummary(INITIAL_TEST_SUMMARY);
-    } finally {
-      setIsTestCaseSummaryLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchTestSummary();
-  }, [chartFilter]);
+      return transformToTestCaseStatusObject(data);
+    },
+  });
 
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {

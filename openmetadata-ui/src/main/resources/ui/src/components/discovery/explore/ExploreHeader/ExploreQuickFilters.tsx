@@ -20,10 +20,11 @@ import type { QuickFilter } from './ExploreQuickFilters.interface';
 const QUICK_FILTER_BUTTON_CLASS = classNames(
   'tw:flex tw:h-[30px] tw:shrink-0 tw:cursor-pointer tw:items-center',
   'tw:gap-1.5 tw:whitespace-nowrap tw:rounded-full tw:border',
-  'tw:border-brand-100 tw:bg-white/60 tw:px-3',
-  'tw:text-[12.5px] tw:font-medium tw:text-brand-700',
+  'tw:border-utility-brand-100 tw:bg-white/60 tw:px-3 tw:dark:bg-utility-brand-50',
+  'tw:text-[12.5px] tw:font-medium tw:text-utility-brand-700',
   'tw:transition-all tw:duration-150',
-  'tw:hover:border-brand-200 tw:hover:bg-white tw:hover:text-brand-800'
+  'tw:hover:border-utility-brand-200 tw:hover:bg-white tw:hover:text-utility-brand-800',
+  'tw:dark:hover:bg-utility-brand-100'
 );
 
 export interface ExploreQuickFiltersProps {

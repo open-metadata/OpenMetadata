@@ -72,7 +72,7 @@ import { RelationshipType } from '../generated/entity/data/relationshipType';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const RELATIONSHIP_TYPES_PATH = '/relationshipTypes';
 const ONTOLOGY_AXIOMS_PATH = '/ontologyAxioms';

@@ -171,6 +171,22 @@ public final class ChildFieldResolver {
     return REGISTRY.keySet();
   }
 
+  /**
+   * The entity fields a caller must request to get the child containers populated, and nothing
+   * else. Each container path's first segment is the entity property that holds it, so
+   * "messageSchema.schemaFields" is reached by asking for "messageSchema".
+   *
+   * <p>Distinct from {@link ChildContainerSpec#requiredFields()}, which also carries the tags and
+   * constraints a write path needs. A caller that only reads child names should ask for this
+   * instead, so it does not pay for tag lookups it will not use.
+   */
+  public static String containerFields(String entityType) {
+    return specFor(entityType).containerPaths().stream()
+        .map(path -> path.split("\\.")[0])
+        .distinct()
+        .collect(Collectors.joining(","));
+  }
+
   public static ChildContainerSpec specFor(String entityType) {
     ChildContainerSpec spec = entityType == null ? null : REGISTRY.get(entityType);
     if (spec == null) {

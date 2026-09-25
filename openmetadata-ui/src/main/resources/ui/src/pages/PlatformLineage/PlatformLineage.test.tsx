@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -52,11 +58,35 @@ const mockShowErrorToast = jest.fn();
 const mockShowModal = jest.fn();
 const mockGetOperationPermissions = jest.fn();
 const mockDebouncedSearchCallback = jest.fn();
+const mockSetLineageConfig = jest.fn();
+
+// Captures the last props LineageConfigModal was rendered with so tests can
+// exercise its onSave/onCancel callbacks — enough to prove the modal is wired
+// to the store setter (the fix) without depending on antd's real modal DOM.
+let lastLineageConfigModalProps:
+  | {
+      config: unknown;
+      visible: boolean;
+      onSave: (config: unknown) => void;
+      onCancel: () => void;
+    }
+  | undefined;
 
 let mockFqn = 'test.fqn';
 let mockEntityType = EntityType.TABLE;
 let mockLocationSearch = '';
 let mockAppPreferences = MOCK_APP_PREFERENCES;
+let mockStoreLineageConfig: {
+  upstreamDepth: number;
+  downstreamDepth: number;
+  nodesPerLayer: number;
+  pipelineViewMode: PipelineViewMode;
+} = {
+  upstreamDepth: 3,
+  downstreamDepth: 3,
+  nodesPerLayer: 50,
+  pipelineViewMode: PipelineViewMode.Node,
+};
 
 jest.mock('@openmetadata/ui-core-components', () => {
   type GridProps = { children?: React.ReactNode };
@@ -120,6 +150,16 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     appPreferences: mockAppPreferences,
   })),
+}));
+
+jest.mock('../../hooks/useLineageStore', () => ({
+  // Zustand selector-hook shape: called with `(state) => state.field`.
+  useLineageStore: jest.fn((selector: (state: unknown) => unknown) =>
+    selector({
+      lineageConfig: mockStoreLineageConfig,
+      setLineageConfig: mockSetLineageConfig,
+    })
+  ),
 }));
 
 jest.mock('../../utils/Assets/AssetsUtils', () => ({
@@ -223,12 +263,18 @@ const mockLineageProvider =
   require('../../context/LineageProvider/LineageProvider').default as jest.Mock;
 const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
   .default as jest.Mock;
+const mockEntitySuggestionOption =
+  require('../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component')
+    .default as jest.Mock;
+const mockSelect = require('antd').Select as jest.Mock;
 
 jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
   __esModule: true,
-  default: jest.fn(() => (
-    <div data-testid="lineage-config-modal">Config Modal</div>
-  )),
+  default: jest.fn((props: typeof lastLineageConfigModalProps) => {
+    lastLineageConfigModalProps = props;
+
+    return <div data-testid="lineage-config-modal">Config Modal</div>;
+  }),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -292,6 +338,13 @@ describe('PlatformLineage Component Logic', () => {
     mockEntityType = EntityType.TABLE;
     mockLocationSearch = '';
     mockAppPreferences = MOCK_APP_PREFERENCES;
+    mockStoreLineageConfig = {
+      upstreamDepth: 3,
+      downstreamDepth: 3,
+      nodesPerLayer: 50,
+      pipelineViewMode: PipelineViewMode.Node,
+    };
+    lastLineageConfigModalProps = undefined;
     mockGetEntityAPIfromSource.mockResolvedValue(MOCK_TABLE_ENTITY);
     mockGetEntityPermissionByFqn.mockResolvedValue({
       permissions: ['ViewAll', 'EditLineage'],
@@ -301,6 +354,12 @@ describe('PlatformLineage Component Logic', () => {
     mockEscapeESReservedCharacters.mockImplementation(
       (val) => `escaped_${val}`
     );
+    // `jest.clearAllMocks` above clears calls but keeps implementations, so
+    // these have to be restored per test or one test's override leaks on.
+    mockSelect.mockImplementation(() => <div>Select</div>);
+    mockEntitySuggestionOption.mockImplementation(() => (
+      <div>EntitySuggestionOption</div>
+    ));
     mockLineage.mockImplementation(() => <div>Lineage</div>);
     mockLineageProvider.mockImplementation(
       ({ children }: { children: React.ReactNode }) => <div>{children}</div>
@@ -531,6 +590,90 @@ describe('PlatformLineage Component Logic', () => {
         },
         { timeout: 1000 }
       );
+    });
+
+    it('should keep the newest results when an older search answers late', async () => {
+      // `onFocus` starts a search for '' and typing starts another; both are in
+      // flight, and the empty one is the slower of the pair. Resolve them out
+      // of order and the list must still belong to the query the box holds.
+      // `onFocus` only searches when the box has no preset value, which is the
+      // state the platform lineage root page starts in.
+      mockFqn = '';
+      const resolvers: Array<(value: unknown) => void> = [];
+      mockSearchQuery.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(resolve);
+          })
+      );
+      mockEntitySuggestionOption.mockImplementation(
+        ({ entity }: { entity: { fullyQualifiedName?: string } }) => (
+          <div>{entity.fullyQualifiedName}</div>
+        )
+      );
+      mockLineage.mockImplementation(
+        ({ platformHeader }: { platformHeader: React.ReactNode }) => (
+          <div>{platformHeader}</div>
+        )
+      );
+      // The shared stub throws every prop away, so the component's own search
+      // wiring is unreachable from a test. Stand in for just the parts this
+      // one drives: focus, typing, and the option list it is handed.
+      mockSelect.mockImplementation(
+        ({
+          options,
+          onFocus,
+          onSearch,
+        }: {
+          options?: { value: string; label: React.ReactNode }[];
+          onFocus?: () => void;
+          onSearch?: (value: string) => void;
+        }) => (
+          <div>
+            <input
+              aria-label="Search entity"
+              data-testid="entity-search-input"
+              onChange={(event) => onSearch?.(event.target.value)}
+              onFocus={() => onFocus?.()}
+            />
+            {options?.map((option) => (
+              <div key={option.value}>{option.label}</div>
+            ))}
+          </div>
+        )
+      );
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenCalled();
+      });
+
+      const combobox = screen.getByTestId('entity-search-input');
+      fireEvent.focus(combobox);
+
+      await waitFor(() => expect(resolvers).toHaveLength(1), {
+        timeout: 3000,
+      });
+
+      fireEvent.change(combobox, { target: { value: 'dim_customer' } });
+
+      await waitFor(() => expect(resolvers).toHaveLength(2), {
+        timeout: 3000,
+      });
+
+      await act(async () => {
+        resolvers[1](MOCK_SEARCH_RESULTS);
+      });
+      await act(async () => {
+        resolvers[0](MOCK_EMPTY_SEARCH_RESULTS);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(MOCK_TABLE_ENTITY.fullyQualifiedName ?? '')
+        ).toBeInTheDocument();
+      });
     });
 
     it('should include lineage entity exclusion filter', async () => {
@@ -862,6 +1005,66 @@ describe('PlatformLineage Component Logic', () => {
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
       });
+    });
+  });
+
+  // Regression: on /lineage the settings modal used to write into local
+  // page state instead of the shared Zustand store the LineageProvider fetch
+  // effect listens to, so upstream/downstream depth changes silently produced
+  // no network call. These tests pin PlatformLineage to the store's
+  // lineageConfig / setLineageConfig so the wiring can't drift back.
+  describe('Lineage Store Integration', () => {
+    it('should pass the store lineageConfig to LineageConfigModal', async () => {
+      mockStoreLineageConfig = {
+        upstreamDepth: 5,
+        downstreamDepth: 7,
+        nodesPerLayer: 42,
+        pipelineViewMode: PipelineViewMode.Node,
+      };
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      expect(lastLineageConfigModalProps?.config).toEqual({
+        upstreamDepth: 5,
+        downstreamDepth: 7,
+        nodesPerLayer: 42,
+        pipelineViewMode: PipelineViewMode.Node,
+      });
+    });
+
+    it('should call store setLineageConfig when modal onSave is invoked', async () => {
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      const newConfig = {
+        upstreamDepth: 4,
+        downstreamDepth: 4,
+        nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
+      };
+      lastLineageConfigModalProps?.onSave(newConfig);
+
+      expect(mockSetLineageConfig).toHaveBeenCalledTimes(1);
+      expect(mockSetLineageConfig).toHaveBeenCalledWith(newConfig);
+    });
+
+    it('should not call store setLineageConfig when modal is cancelled', async () => {
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      lastLineageConfigModalProps?.onCancel();
+
+      expect(mockSetLineageConfig).not.toHaveBeenCalled();
     });
   });
 });

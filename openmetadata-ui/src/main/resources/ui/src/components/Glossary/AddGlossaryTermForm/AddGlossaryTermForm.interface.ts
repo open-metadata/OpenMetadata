@@ -25,6 +25,7 @@ import {
 } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { EntityReference } from '../../../generated/type/entityLineage';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import { GlossaryTermIntakeFieldsHandle } from './GlossaryTermIntakeFields.component';
 
 export interface AddGlossaryTermFormProps {
@@ -32,7 +33,7 @@ export interface AddGlossaryTermFormProps {
   onSave: (value: GlossaryTermForm) => void | Promise<void>;
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;
-  formRef: FormInstance<CreateGlossaryTerm>;
+  formRef: FormInstance<GlossaryTermFormState>;
 }
 
 export interface OwnersBadgeProps {
@@ -47,6 +48,11 @@ export interface IntakeFieldsSectionProps {
   customProperties: CustomProperty[];
   intakeFieldsRef: RefObject<GlossaryTermIntakeFieldsHandle>;
 }
+
+// Live form values; related terms become ids (edit) or FQNs (create) on submit.
+export type GlossaryTermFormState = Omit<CreateGlossaryTerm, 'relatedTerms'> & {
+  relatedTerms?: GlossaryPickerValue[];
+};
 
 export interface GlossaryTermForm {
   name: string;

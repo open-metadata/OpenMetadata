@@ -13,10 +13,10 @@ import { Label } from '@/components/base/input/label';
 import { cx } from '@/utils/cx';
 import { fontSizeClass } from '@/utils';
 
-// Creates a data URL for an SVG resize handle with a given color.
-const getResizeHandleBg = (color: string) => {
+// Masking keeps the resize glyph's shape fixed while its semantic color follows the active theme.
+const getResizeHandleMask = () => {
   return `url(data:image/svg+xml;base64,${btoa(
-    `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2L2 10" stroke="${color}" stroke-linecap="round"/><path d="M11 7L7 11" stroke="${color}" stroke-linecap="round"/></svg>`
+    '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2L2 10" stroke="currentColor" stroke-linecap="round"/><path d="M11 7L7 11" stroke="currentColor" stroke-linecap="round"/></svg>'
   )})`;
 };
 
@@ -40,8 +40,7 @@ export const TextAreaBase = ({
           // gone — the outline IS the focus indicator here, as in input.tsx.
           'tw:w-full tw:scroll-py-3 tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-3 tw:text-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
 
-          // Resize handle
-          'tw:[&::-webkit-resizer]:bg-(image:--resize-handle-bg) tw:[&::-webkit-resizer]:bg-contain tw:dark:[&::-webkit-resizer]:bg-(image:--resize-handle-bg-dark)',
+          'tw:[&::-webkit-resizer]:bg-border-primary tw:[&::-webkit-resizer]:mask-(image:--resize-handle-mask) tw:[&::-webkit-resizer]:mask-contain tw:[&::-webkit-resizer]:mask-no-repeat',
 
           state.isFocused &&
             !state.isDisabled &&
@@ -60,8 +59,7 @@ export const TextAreaBase = ({
       }
       style={
         {
-          '--resize-handle-bg': getResizeHandleBg('#D5D7DA'),
-          '--resize-handle-bg-dark': getResizeHandleBg('#373A41'),
+          '--resize-handle-mask': getResizeHandleMask(),
         } as React.CSSProperties
       }
     />

@@ -182,6 +182,9 @@ describe('UserProfileCard', () => {
     );
 
     expect(container.firstChild).toHaveClass('ask-user-card');
+    // Semantic surface role so the card stays distinct from the page in dark mode
+    // (bg-primary would collapse onto the page background).
+    expect(container.firstChild).toHaveClass('tw:bg-surface');
     expect(screen.getByTestId('ask-ai-user-menu-trigger')).toBeInTheDocument();
     expect(screen.getAllByText('Olivia Rhye').length).toBeGreaterThan(0);
   });

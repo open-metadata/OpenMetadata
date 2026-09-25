@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import TestDefinitionFilterBar from './TestDefinitionFilterBar';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 jest.mock('@untitledui/icons', () => ({
+  SearchLg: () => <span data-testid="icon-search" />,
   XCircle: () => <span data-testid="icon-x-circle" />,
 }));
 
@@ -35,6 +36,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <button data-testid="clear-all" onClick={onPress}>
       {children}
     </button>
+  ),
+  CloseButton: ({ onPress }: { onPress?: () => void }) => (
+    <button aria-label="clear" data-testid="clear-search" onClick={onPress} />
+  ),
+  Input: ({ value, onChange, inputDataTestId, trailingSlot }: any) => (
+    <>
+      <input
+        aria-label="search"
+        data-testid={inputDataTestId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {trailingSlot}
+    </>
   ),
   Select: ({ items, label, value, onChange }: any) => (
     <div data-testid={`select-${label}`}>
@@ -67,23 +82,31 @@ jest.mock('constants/TestDefinition.constants', () => ({
 const renderBar = (props: Partial<Record<string, any>> = {}) => {
   const onFilterChange = jest.fn();
   const onClearAll = jest.fn();
+  const onSearchChange = jest.fn();
 
   render(
     <TestDefinitionFilterBar
       filterValues={{}}
       hasActiveFilters={false}
+      searchQuery=""
       onClearAll={onClearAll}
       onFilterChange={onFilterChange}
+      onSearchChange={onSearchChange}
       {...(props as any)}
     />
   );
 
-  return { onFilterChange, onClearAll };
+  return { onFilterChange, onClearAll, onSearchChange };
 };
 
 describe('TestDefinitionFilterBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('should offer the concrete options alongside an All entry', () => {
@@ -126,5 +149,29 @@ describe('TestDefinitionFilterBar', () => {
     fireEvent.click(screen.getByTestId('entityType-option-COLUMN'));
 
     expect(onFilterChange).toHaveBeenCalledWith('entityType', 'COLUMN');
+  });
+
+  it('should push the typed search term once the debounce elapses', () => {
+    const { onSearchChange } = renderBar();
+
+    fireEvent.change(screen.getByTestId('test-definition-search'), {
+      target: { value: 'column values' },
+    });
+
+    expect(onSearchChange).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(onSearchChange).toHaveBeenCalledWith('column values');
+  });
+
+  it('should clear the search term immediately', () => {
+    const { onSearchChange } = renderBar({ searchQuery: 'column' });
+
+    fireEvent.click(screen.getByTestId('clear-search'));
+
+    expect(onSearchChange).toHaveBeenCalledWith('');
   });
 });

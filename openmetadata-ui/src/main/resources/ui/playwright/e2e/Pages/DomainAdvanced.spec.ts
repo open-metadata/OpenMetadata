@@ -981,8 +981,13 @@ test.describe('Domain Search and Filter', () => {
 
 test.describe('Domain asset dryRun — remove confirmation', () => {
   const navigateToDomainAssets = async (page: Page, domain: Domain) => {
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await selectDomain(page, domain.data);
+    // Navigate to domain directly by URL. Going through the sidebar +
+    // search-backed listing is flaky: the just-created domain can be missing
+    // from the eventually-consistent search index when the row is clicked.
+    const domainFqn =
+      domain.responseData.fullyQualifiedName ?? domain.responseData.name;
+    await page.goto(`/domain/${encodeURIComponent(domainFqn)}`);
+    await waitForAllLoadersToDisappear(page);
     await page.getByTestId('assets').click();
     await waitForAllLoadersToDisappear(page);
   };

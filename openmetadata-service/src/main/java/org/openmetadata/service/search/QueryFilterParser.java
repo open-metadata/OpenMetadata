@@ -392,7 +392,7 @@ public class QueryFilterParser {
         .forEachRemaining(
             entry -> {
               String fieldName = normalizeFieldName(entry.getKey());
-              String value = entry.getValue().asText();
+              String value = extractQueryValue(entry.getValue(), "value");
               fieldValues.computeIfAbsent(fieldName, k -> new ArrayList<>()).add(value);
             });
   }
@@ -406,7 +406,7 @@ public class QueryFilterParser {
                 addFieldValue(
                     fieldValues,
                     normalizeFieldName(entry.getKey()),
-                    entry.getValue().asText(),
+                    extractQueryValue(entry.getValue(), "value"),
                     MatchType.EXACT));
   }
 
@@ -455,7 +455,7 @@ public class QueryFilterParser {
         .forEachRemaining(
             entry -> {
               String fieldName = normalizeFieldName(entry.getKey());
-              String value = entry.getValue().asText();
+              String value = extractQueryValue(entry.getValue(), "query");
               fieldValues.computeIfAbsent(fieldName, k -> new ArrayList<>()).add(value);
             });
   }
@@ -469,8 +469,12 @@ public class QueryFilterParser {
                 addFieldValue(
                     fieldValues,
                     normalizeFieldName(entry.getKey()),
-                    entry.getValue().asText(),
+                    extractQueryValue(entry.getValue(), "query"),
                     MatchType.PARTIAL));
+  }
+
+  private static String extractQueryValue(JsonNode valueNode, String valueField) {
+    return valueNode.isObject() ? valueNode.path(valueField).asText() : valueNode.asText();
   }
 
   /**

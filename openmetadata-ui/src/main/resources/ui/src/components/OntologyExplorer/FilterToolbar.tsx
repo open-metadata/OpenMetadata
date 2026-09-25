@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SearchDropdown from '../SearchDropdown/SearchDropdown';
+import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   FilterToolbarProps,
@@ -297,13 +297,12 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       <div
         className={loadingSectionClassName}
         data-testid="glossary-filter-section">
-        <SearchDropdown
+        <FilterSelectDropdown
           hideCounts
           label={glossaryFilterLabel}
           options={glossaryOptions}
           searchKey="glossaryIds"
           selectedKeys={selectedGlossaryKeys}
-          triggerButtonSize="middle"
           onChange={handleGlossaryChange}
           onGetInitialOptions={handleGlossaryInitialOptions}
           onSearch={handleGlossarySearch}
@@ -313,13 +312,12 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
       <div
         className={loadingSectionClassName}
         data-testid="relation-type-filter-section">
-        <SearchDropdown
+        <FilterSelectDropdown
           hideCounts
           label={t('label.relationship-type')}
           options={relationTypeOptions}
           searchKey="relationTypes"
           selectedKeys={selectedRelationTypeKeys}
-          triggerButtonSize="middle"
           onChange={handleRelationTypeChange}
           onGetInitialOptions={handleRelationTypeInitialOptions}
           onSearch={handleRelationTypeSearch}

@@ -34,6 +34,7 @@ import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.
 import { TeamType } from '../../../generated/entity/teams/team';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
 import {
@@ -58,6 +59,9 @@ const GlobalSettingCategoryPage = () => {
   }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
+  const authProvider = useApplicationStore(
+    (state) => state.authConfig?.provider
+  );
 
   const { pathname } = useLocation();
   const isEmbedded = pathname.startsWith('/askCollate');
@@ -96,7 +100,11 @@ const GlobalSettingCategoryPage = () => {
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
     let categoryItem = globalSettingsClassBase
-      .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+      .getGlobalSettingsMenuWithPermission(
+        permissions,
+        isAdminUser,
+        authProvider
+      )
       .find((item) => item.key === settingCategory);
 
     if (categoryItem) {
@@ -107,7 +115,7 @@ const GlobalSettingCategoryPage = () => {
     }
 
     return categoryItem;
-  }, [settingCategory, permissions, isAdminUser]);
+  }, [settingCategory, permissions, isAdminUser, authProvider]);
 
   // Being able to create any one category is enough for this page's button — checking a single
   // hardcoded category would hide it from a user who can only create, say, API services.

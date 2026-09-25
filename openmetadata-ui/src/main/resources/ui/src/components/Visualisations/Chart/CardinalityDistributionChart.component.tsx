@@ -273,7 +273,7 @@ const CardinalityDistributionChart = ({
                           <XAxis
                             axisLine={false}
                             padding={{ left: 16, right: 16 }}
-                            tick={{ fontSize: 12 }}
+                            tick={{ fill: axis, fontSize: 12 }}
                             tickFormatter={(props) =>
                               axisTickFormatter(props, '%')
                             }

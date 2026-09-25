@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ExclamationCircleOutlined,
-  InfoCircleOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
 import { toast } from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  InfoCircle,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';
-import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
-import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
+import type { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
@@ -29,35 +29,35 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
   switch (type) {
     case 'info':
       return {
-        icon: InfoCircleOutlined,
+        icon: InfoCircle,
         className: 'info',
         type: 'info',
       };
 
     case 'grey-info':
       return {
-        icon: InfoCircleOutlined,
+        icon: InfoCircle,
         className: 'grey-info',
         type: 'info',
       };
 
     case 'success':
       return {
-        icon: SuccessIcon,
+        icon: CheckCircle,
         className: 'success',
         type: 'success',
       };
 
     case 'warning':
       return {
-        icon: WarningOutlined,
+        icon: AlertTriangle,
         className: 'warning',
         type: 'warning',
       };
 
     case 'error':
       return {
-        icon: ExclamationCircleOutlined,
+        icon: AlertCircle,
         className: 'error',
         type: 'error',
       };

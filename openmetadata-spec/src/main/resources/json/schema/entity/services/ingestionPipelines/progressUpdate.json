@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/progressUpdate.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ProgressUpdate",
   "description": "Real-time progress update for SSE streaming during ingestion pipeline execution",
   "type": "object",

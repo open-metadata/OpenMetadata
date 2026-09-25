@@ -22,8 +22,9 @@
  *   node scripts/tw-audit.js <files...> # audit specific files (changed set)
  *
  * Errors (exit 1): arbitrary Tailwind color / spacing / radius values that map
- * to a design-system utility. Warnings (exit 0): raw hex, inline styles,
- * unresolved arbitraries. Info: Antd imports (deprecated) + .less files.
+ * to a design-system utility. Warnings (exit 0): raw hex, explicit dark-theme
+ * overrides, unsupported AI theme tokens, inline styles, and unresolved
+ * arbitraries. Info: Antd imports (deprecated) + .less files.
  */
 const fs = require('fs');
 const path = require('path');

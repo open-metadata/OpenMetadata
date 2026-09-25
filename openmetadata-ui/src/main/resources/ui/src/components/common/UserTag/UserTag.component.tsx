@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
@@ -64,14 +62,17 @@ export const UserTag = ({
         name={id}
         width={toString(width[size])}
       />
-      <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
+      <span className={fontSizes[size]}>{name}</span>
       {closable && (
-        <Icon
-          component={CloseOutlined}
+        <button
+          aria-label="Remove"
+          className="tw:flex tw:items-center tw:justify-center tw:bg-transparent tw:border-0 tw:p-0 tw:cursor-pointer tw:text-tertiary hover:tw:text-primary"
           data-testid="close-icon"
-          size={width[size]}
-          onClick={onRemove}
-        />
+          style={{ fontSize: width[size] }}
+          type="button"
+          onClick={onRemove}>
+          <CloseOutlined aria-hidden className="tw:size-3" />
+        </button>
       )}
     </div>
   );

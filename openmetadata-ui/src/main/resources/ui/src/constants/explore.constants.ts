@@ -16,7 +16,7 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 
-const DISPLAY_NAME_KEYWORD_FIELD = 'displayName.keyword';
+export const DISPLAY_NAME_KEYWORD_FIELD = 'displayName.keyword';
 
 export const INITIAL_SORT_FIELD = 'totalVotes';
 export const TAGS_INITIAL_SORT_FIELD = DISPLAY_NAME_KEYWORD_FIELD;

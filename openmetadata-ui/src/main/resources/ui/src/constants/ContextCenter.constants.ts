@@ -12,12 +12,65 @@
  */
 // ─── File type badge ──────────────────────────────────────────────────────────
 
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
+import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Quick-filter fields shown above the Context Center Articles list. Options are
+// fetched from the `page` search-index aggregations by ExploreQuickFilters.
+export const ARTICLE_QUICK_FILTER_FIELDS: ExploreQuickFilterField[] = [
+  { label: 'label.domain-plural', key: EntityFields.DOMAINS },
+  { label: 'label.owner-plural', key: EntityFields.OWNERS },
+  { label: 'label.tag', key: EntityFields.TAG },
+  { label: 'label.tier', key: EntityFields.TIER },
+];
+
+export interface ArticleSortOption {
+  id: string;
+  label: string;
+  // ES search index field (search path). The REST list endpoint only allows
+  // sortBy in {name, createdAt, updatedAt}; options without a `restSortBy` are
+  // sortable only via ES, so they force the search path even when unfiltered.
+  esSortField: string;
+  restSortBy?: string;
+  sortOrder: 'asc' | 'desc';
+}
+
+export const ARTICLE_SORT_OPTIONS: ArticleSortOption[] = [
+  {
+    id: 'updatedAt',
+    label: 'label.recently-updated',
+    esSortField: 'updatedAt',
+    restSortBy: 'updatedAt',
+    sortOrder: 'desc',
+  },
+  {
+    id: 'name',
+    label: 'label.alphabetical',
+    esSortField: 'displayName.keyword',
+    restSortBy: 'displayName',
+    sortOrder: 'asc',
+  },
+  {
+    id: 'publicationDate',
+    label: 'label.publication-date',
+    esSortField: 'page.publicationDate',
+    sortOrder: 'desc',
+  },
+  {
+    id: 'popularity',
+    label: 'label.popularity',
+    esSortField: 'totalVotes',
+    sortOrder: 'desc',
+  },
+];
+
+export const DEFAULT_ARTICLE_SORT_OPTION = ARTICLE_SORT_OPTIONS[0];
 
 export const ARCHIVE_PAGE_SIZE = 15;
 export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;

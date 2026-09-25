@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/lineage/addLineage.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AddLineageRequest",
   "description": "Add lineage details between two entities",
   "type": "object",

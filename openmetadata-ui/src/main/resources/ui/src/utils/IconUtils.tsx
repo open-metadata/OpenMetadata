@@ -67,22 +67,6 @@ export const isImageUrl = (str: string): boolean => {
   return IMAGE_URL_PATTERN.test(str);
 };
 
-/**
- * Get the proper image source URL for tag/classification icons
- * Handles absolute URLs, data URIs, and relative paths
- */
-export const getTagImageSrc = (iconURL: string): string => {
-  if (!iconURL) {
-    return '';
-  }
-
-  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
-    return iconURL;
-  }
-
-  return `${window.location.origin}/${iconURL.replace(/^\/+/, '')}`;
-};
-
 // Map of icon names to their components
 export const ICON_MAP: Record<
   string,

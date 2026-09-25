@@ -362,8 +362,8 @@ describe('Test User Component', () => {
     });
 
     expect(
-      (await screen.findByTestId('access-token'))?.closest('.ant-tabs-tab')
-    ).toHaveClass('ant-tabs-tab-disabled');
+      await screen.findByRole('tab', { name: /label.access-token/ })
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('MyData tab should make query call only once on initial load', async () => {

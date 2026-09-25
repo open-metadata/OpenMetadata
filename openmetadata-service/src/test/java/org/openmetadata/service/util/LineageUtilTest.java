@@ -331,6 +331,51 @@ class LineageUtilTest {
     LineageUtil.addDomainLineage(UUID.randomUUID(), Entity.TABLE, null);
   }
 
+  @Test
+  void removeDomainLineageDeletesDomainEdgeThatCarriesNoAssetEdgesCount() {
+    UUID entityId = UUID.randomUUID();
+    EntityReference updatedDomain = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.updated");
+    EntityReference downstreamDomain =
+        entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.downstream");
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.findDownstreamDomains(entityId, Entity.TABLE))
+        .thenReturn(List.of(relationshipObject(downstreamDomain)));
+    when(relationshipDAO.getRecord(
+            updatedDomain.getId(), downstreamDomain.getId(), Relationship.UPSTREAM.ordinal()))
+        .thenReturn(
+            CollectionDAO.EntityRelationshipObject.builder()
+                .json(JsonUtils.pojoToJson(new LineageDetails()))
+                .build());
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceById(
+                      Entity.DOMAIN, downstreamDomain.getId(), Include.ALL))
+          .thenReturn(downstreamDomain);
+
+      LineageUtil.removeDomainLineage(entityId, Entity.TABLE, updatedDomain);
+
+      verify(relationshipDAO)
+          .delete(
+              updatedDomain.getId(),
+              Entity.DOMAIN,
+              downstreamDomain.getId(),
+              Entity.DOMAIN,
+              Relationship.UPSTREAM.ordinal());
+    }
+  }
+
   private static EntityReference entityRef(String type, UUID id, String fqn) {
     return new EntityReference()
         .withType(type)

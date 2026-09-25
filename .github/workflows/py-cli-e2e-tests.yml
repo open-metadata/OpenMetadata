@@ -346,7 +346,7 @@ jobs:
         payload: |
           {
             "channel": "C03EYBDDX17",
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            "text": "<!subteam^S0AH093PEQL> 🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
 
   py-cli-e2e-tests-status:

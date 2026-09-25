@@ -27,6 +27,7 @@ import {
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { InboxDateRange } from '../../../../interface/inbox.interface';
 import {
   addActivityReaction,
   removeActivityReaction,
@@ -134,18 +135,7 @@ export type InboxScope = 'all' | 'me';
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).
-export interface InboxDateRange {
-  startTs?: number;
-  endTs?: number;
-  // Preset key of the selected range (e.g. 'last30days', 'customRange'). Kept so
-  // the persisted range can be compared to the default by key rather than by
-  // timestamps, which drift between mounts (now-based vs day-aligned millis).
-  key?: string;
-  // Label the picker shows for this range (e.g. "Custom Range"). Persisted so the
-  // dropdown button re-seeds to the selected range after a tab-switch remount
-  // instead of falling back to the default preset title.
-  title?: string;
-}
+export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // Default Inbox window: the last 30 days (start-of-day to now), used by the page
 // on first render and by the sidebar inbox-icon count.

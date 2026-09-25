@@ -12,6 +12,7 @@
  */
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
+import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 import { RefreshCw01 } from '@untitledui/icons';
 import { Tree } from '../tree/tree';
@@ -20,21 +21,44 @@ import type { TreeSelectNode } from './tree-select.types';
 export interface TreeSelectTreeItemContentProps<T> {
   node: TreeSelectNode<T>;
   isSelected: boolean;
+  isIndeterminate: boolean;
   isLoading: boolean;
   showCheckbox: boolean;
   showIcon: boolean;
+  showExpandIcon?: boolean;
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
   onNodeClick: () => void;
 }
 
+export const TreeSelectEmptyItemContent = ({
+  message,
+  parentId,
+}: {
+  message: string;
+  parentId: string;
+}) => (
+  <Tree.ItemContent indentPerLevel={28} maxIndentLevel={2}>
+    {() => (
+      <div
+        className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:py-0.5 tw:text-xs tw:text-tertiary"
+        data-testid={`tree-node-empty-${parentId}`}
+        role="presentation">
+        {message}
+      </div>
+    )}
+  </Tree.ItemContent>
+);
+
 export const TreeSelectTreeItemContent = <T,>({
   node,
   isSelected,
+  isIndeterminate,
   isLoading,
   showCheckbox,
   showIcon,
+  showExpandIcon,
   multiple,
   disabled,
   hasChildItems,
@@ -44,11 +68,16 @@ export const TreeSelectTreeItemContent = <T,>({
   const isRowDisabled = disabled || node.disabled || !isSelectable;
 
   return (
-    <Tree.ItemContent hasChildItems={hasChildItems}>
+    <Tree.ItemContent
+      className="tw:text-sm tw:font-normal tw:text-primary"
+      hasChildItems={hasChildItems}
+      indentPerLevel={28}
+      maxIndentLevel={2}
+      showExpandIcon={showExpandIcon}>
       {() => (
         <div
           className={cx(
-            'tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
+            'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
             isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
           )}
           data-testid={`tree-node-${node.id}`}
@@ -73,26 +102,43 @@ export const TreeSelectTreeItemContent = <T,>({
               ) : (
                 <CheckboxBase
                   isDisabled={isRowDisabled}
+                  isIndeterminate={isIndeterminate}
                   isSelected={isSelected}
+                  size="xs"
                 />
               )}
             </span>
           )}
 
           {showIcon && node.icon && (
-            <span className="tw:flex tw:shrink-0 tw:items-center">
+            <span
+              aria-hidden="true"
+              className={cx('tw:flex tw:shrink-0', node.iconClassName)}>
               {node.icon}
             </span>
           )}
 
-          <span
+          <Typography
             className={cx(
-              'tw:min-w-0 tw:truncate tw:text-sm tw:text-secondary',
-              isSelected && 'tw:font-medium tw:text-primary',
+              'not-prose tw:grow tw:truncate',
               node.disabled && 'tw:text-disabled'
-            )}>
+            )}
+            title={node.label}>
             {node.label}
-          </span>
+          </Typography>
+
+          {node.count !== undefined && node.count > 0 && (
+            <Typography
+              className={cx(
+                'not-prose tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:tabular-nums',
+                isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
+              )}
+              data-testid="filter-count"
+              size="text-xs"
+              weight="regular">
+              {node.count.toLocaleString()}
+            </Typography>
+          )}
 
           {isLoading && (
             <RefreshCw01

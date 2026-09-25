@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { DataQualityDimensions } from '../../../enums/DataQuality.enum';
 import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
-  DataQualityDimensions,
   DataType,
   EntityType,
   TestPlatform,

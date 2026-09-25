@@ -378,6 +378,7 @@ jest.mock('../../../utils/EntityColumnUtils', () => ({
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchArrayElement: jest.fn(),
   highlightSearchText: jest.fn().mockImplementation((value) => value),
+  renderHighlightedText: jest.fn().mockImplementation((value) => value ?? ''),
 }));
 
 jest.mock('../../../constants/Table.constants', () => ({

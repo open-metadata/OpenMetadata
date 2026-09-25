@@ -600,6 +600,37 @@ describe('shouldIncludeInExport (DOM filter)', () => {
     ).toBe(false);
   });
 
+  it('skips React Flow infrastructure elements that add no data content', () => {
+    // The background grid, controls, attribution, and minimap contribute zero
+    // pixels of actual lineage data — pruning their subtrees cuts DOM clone
+    // time on large exports.
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__background"></div>'))
+    ).toBe(false);
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__controls"></div>'))
+    ).toBe(false);
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__attribution"></div>'))
+    ).toBe(false);
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__minimap"></div>'))
+    ).toBe(false);
+  });
+
+  it('keeps React Flow elements that are NOT in the infrastructure exclusion list', () => {
+    // Nodes, edges, and pane ARE data content and must not be filtered out.
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__node"></div>'))
+    ).toBe(true);
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__edges"></div>'))
+    ).toBe(true);
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__pane"></div>'))
+    ).toBe(true);
+  });
+
   it('passes through non-HTMLElement nodes without inspecting them', () => {
     // SVGElements are Elements but not HTMLElements — filter must return true
     // so SVG lineage icons keep rendering. Guards against a `.classList` /

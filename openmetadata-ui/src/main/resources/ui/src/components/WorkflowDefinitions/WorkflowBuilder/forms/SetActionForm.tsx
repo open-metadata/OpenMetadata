@@ -17,6 +17,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import {
+  CERTIFICATION_CATEGORY,
+  TIER_CATEGORY,
+} from '../../../../constants/constants';
+import {
   FieldOptions,
   FIELD_OPTIONS_DROPDOWN,
 } from '../../../../constants/WorkflowBuilder.constants';
@@ -36,8 +40,10 @@ import {
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface SetActionFormProps {
   node: Node;
@@ -134,7 +140,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       setIsLoadingOptions(true);
       const response = await getTags({
         limit: 1000,
-        parent: 'Certification',
+        parent: CERTIFICATION_CATEGORY,
       });
       const options = (response.data
         ?.map((tag) => tag.fullyQualifiedName)
@@ -152,7 +158,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       setIsLoadingOptions(true);
       const response = await getTags({
         limit: 1000,
-        parent: 'Tier',
+        parent: TIER_CATEGORY,
         disabled: false,
       });
       const options = (response.data
@@ -209,10 +215,9 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   const renderFieldValue = () => {
     if (formData.fieldName === 'tags') {
       return (
-        <TagSuggestion
+        <TagSelector
           key="tags"
           label={t('label.field-value')}
-          tagType={TagSource.Classification}
           value={parseFieldValueToTags(formData.fieldValue)}
           onChange={handleTagsChange}
         />

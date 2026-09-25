@@ -5,9 +5,9 @@ In your newly created file, you'll need to import at minimum 1 package
 ```python
 from locust import task, TaskSet
 ```
-`task` will be used as a decorator to define our task that will run as part of our load test. `TaskSet` wil be inherited by our task set class.
+`task` will be used as a decorator to define our task that will run as part of our load test. `TaskSet` will be inherited by our task set class.
 
-Here is an example of a locust task definition. The integer argument in `@task` will give a specific weigth to the task (i.e. increasing its probability to be ran)
+Here is an example of a locust task definition. The integer argument in `@task` will give a specific weight to the task (i.e. increasing its probability to be ran)
 ```
 class TestCaseResultTasks(TaskSet):
     """Test case result resource load test"""
@@ -59,7 +59,7 @@ class TestCaseResultTasks(TaskSet):
 ```
 
 **IMPORTANT**
-You MUST define a `def stop(self)` methodd in your `TaskSet` class as shown below so that control is given back to the parent user class.
+You MUST define a `def stop(self)` method in your `TaskSet` class as shown below so that control is given back to the parent user class.
 
 ```python
 class TestCaseResultTasks(TaskSet):

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Input } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,7 @@ import {
   SelectMode,
   useQuickFiltersWithComponent,
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -36,6 +38,7 @@ const TestDefinitionList = () => {
   const {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -46,7 +49,11 @@ const TestDefinitionList = () => {
     showPagination,
     urlFilters,
     parsedFilters,
+    searchQuery,
+    sortDescriptor,
+    handleSortChange,
     handleFilterChange,
+    handleSearchChange,
     isFormVisible,
     selectedDefinition,
     isDeleteModalVisible,
@@ -76,10 +83,19 @@ const TestDefinitionList = () => {
     mode: SelectMode.SINGLE,
   });
 
+  const { searchInputProps } = useListSearchInput({
+    searchQuery,
+    onSearchChange: handleSearchChange,
+  });
+
+  const searchLabel = t('label.search-entity', {
+    entity: t('label.test-definition-plural'),
+  });
+
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: {
       filters: urlFilters,
-      searchQuery: '',
+      searchQuery,
       currentPage,
       pageSize,
     },
@@ -135,6 +151,14 @@ const TestDefinitionList = () => {
             }}>
             <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
               <div className="tw:flex tw:gap-2 tw:items-center">
+                <Input
+                  {...searchInputProps}
+                  aria-label={searchLabel}
+                  className="tw:w-72"
+                  inputDataTestId="test-definition-search"
+                  placeholder={searchLabel}
+                  size="sm"
+                />
                 {quickFilters}
               </div>
               {!isEmpty(urlFilters) && <div>{filterSelectionDisplay}</div>}
@@ -142,16 +166,19 @@ const TestDefinitionList = () => {
 
             <TestDefinitionTable
               hasActiveFilters={hasActiveFilters}
+              isInitialLoading={isInitialLoading}
               isLoading={isLoading}
               pagingData={pagingData}
               permissionLoading={permissionLoading}
               showPagination={showPagination}
+              sortDescriptor={sortDescriptor}
               testDefinitionPermissions={testDefinitionPermissions}
               testDefinitions={testDefinitions}
               onClearFilters={clearAllFilters}
               onDelete={handleDeleteClick}
               onEdit={handleEdit}
               onEnableToggle={handleEnableToggle}
+              onSortChange={handleSortChange}
             />
           </Card>
         </Col>

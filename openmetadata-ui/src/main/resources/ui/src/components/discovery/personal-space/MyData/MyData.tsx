@@ -340,10 +340,10 @@ const MyDataPage: React.FC = () => {
       data-testid="my-data-page"
       direction="col">
       <Box
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:px-1"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
         direction="col"
         gap={4}>
-        <Box className="tw:grid tw:shrink-0 tw:grid-cols-4 tw:gap-5">
+        <Box className="tw:grid tw:shrink-0 tw:grid-cols-4 tw:gap-4">
           <StatCard
             breakdown={[
               { label: t('label.table-plural'), value: assetStats.tables },

@@ -12,11 +12,14 @@
  */
 import {
   Button,
+  ClassificationTag,
+  Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Activity,
   Copy01,
   File02,
   RefreshCcw01,
@@ -36,8 +39,8 @@ import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
@@ -94,7 +97,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -106,8 +108,7 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
-import IconColorModal from '../../Modals/IconColorModal';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import './data-asset-header.less';
@@ -166,7 +167,6 @@ export const DataAssetsHeader = ({
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
   extraDropdownContent,
-  onMetricUpdate,
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
@@ -824,7 +824,14 @@ export const DataAssetsHeader = ({
   };
 
   const renderServiceLogo = () => {
-    if (!serviceLogoUrl) {
+    // Metrics have no owning service, so fall back to the metric entity icon so
+    // the header still shows a leading glyph next to the title.
+    const entityIcon =
+      !serviceLogoUrl && entityType === EntityType.METRIC ? (
+        <Activity aria-hidden="true" className="tw:size-5" />
+      ) : null;
+
+    if (!serviceLogoUrl && !entityIcon) {
       return null;
     }
 
@@ -836,11 +843,17 @@ export const DataAssetsHeader = ({
             'tw:justify-center tw:overflow-hidden tw:rounded-full',
             'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
           )}>
-          <img
-            alt={get(dataAsset, 'service.displayName', '')}
-            className="tw:size-5 tw:object-contain"
-            src={serviceLogoUrl}
-          />
+          {serviceLogoUrl ? (
+            <img
+              alt={get(dataAsset, 'service.displayName', '')}
+              className="tw:size-5 tw:object-contain"
+              src={serviceLogoUrl}
+            />
+          ) : (
+            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-blue-700">
+              {entityIcon}
+            </span>
+          )}
         </div>
         {editStylePermission && (
           <EditIconButton
@@ -977,19 +990,26 @@ export const DataAssetsHeader = ({
 
       {showDomain && <HeaderDotSeparator />}
 
-      <OwnerLabel
+      <Owner
         showDashPlaceholder
         avatarSize={24}
         className="header-owner-heading"
         hasPermission={editOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
-        multiple={{
-          user: entityRules.canAddMultipleUserOwners,
-          team: entityRules.canAddMultipleTeamOwner,
-        }}
         owners={dataAsset?.owners}
-        onUpdate={onOwnerUpdate}
+        placeHolder={t('label.owners')}
+        selectorContent={
+          <UserTeamSelectableList
+            hasPermission={Boolean(editOwnerPermission)}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owner={dataAsset?.owners}
+            onUpdate={onOwnerUpdate}
+          />
+        }
       />
 
       <HeaderDotSeparator />
@@ -1151,14 +1171,6 @@ export const DataAssetsHeader = ({
           />
         </>
       )}
-
-      {entityType === EntityType.METRIC && onMetricUpdate && (
-        <MetricHeaderInfo
-          metricDetails={dataAsset}
-          metricPermissions={permissions}
-          onUpdateMetricDetails={onMetricUpdate}
-        />
-      )}
     </>
   );
 
@@ -1199,7 +1211,7 @@ export const DataAssetsHeader = ({
     <>
       <div
         className={classNames(
-          'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5',
+          'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface tw:p-5',
           'data-assets-header-container',
           { 'has-editable-metadata': hasEditableMetadata }
         )}

@@ -27,7 +27,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.function.Supplier;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import lombok.Getter;
@@ -67,8 +66,19 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   protected static final String CONTENT_HEADER = "Content-Type";
   protected static final String CONTENT_TYPE = "application/json";
   private static final Integer MAX_ATTEMPTS = 3;
-  private static final Integer BACKOFF_TIME_SECONDS = 5;
+  // getServiceStatus() runs on the request thread of GET /services/ingestionPipelines/status, which
+  // the UI calls on every load, so the retry budget has to stay small. It exists to absorb a single
+  // blip, not to wait out a restart — the next poll covers that.
+  private static final long DEFAULT_BACKOFF_MILLIS = 1_000L;
   private static final String DISABLED_STATUS = "disabled";
+
+  /** Reported for a standing misconfiguration that no amount of retrying can clear. */
+  protected static final int CONFIGURATION_ERROR = 422;
+
+  /** Reported when the caller's thread was interrupted, so the check never reached the runner. */
+  protected static final int REQUEST_CANCELLED = 499;
+
+  private volatile Retry serviceStatusRetry;
 
   protected static final String SERVER_VERSION;
 
@@ -167,10 +177,18 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
         .withPlatform(this.getPlatform());
   }
 
-  /** To build the response of getServiceStatus */
+  /**
+   * To build the response of getServiceStatus. 500 marks the failure as transient: {@link
+   * #getServiceStatus()} retries it. Use {@link #buildStatus} for a standing condition.
+   */
   protected PipelineServiceClientResponse buildUnhealthyStatus(String reason) {
+    return buildStatus(500, reason);
+  }
+
+  /** To build the response of getServiceStatus with an explicit, possibly non-retryable, code. */
+  protected PipelineServiceClientResponse buildStatus(int code, String reason) {
     return new PipelineServiceClientResponse()
-        .withCode(500)
+        .withCode(code)
         .withReason(reason)
         .withPlatform(this.getPlatform());
   }
@@ -202,38 +220,66 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
 
   /**
    * Check the pipeline service status with an exception backoff to make sure we don't raise any
-   * false positives.
+   * false positives. Delegates to {@link #getServiceStatus()}, which already retries transient
+   * failures.
    */
   public String getServiceStatusBackoff() {
-    RetryConfig retryConfig =
-        RetryConfig.<String>custom()
-            .maxAttempts(MAX_ATTEMPTS)
-            .waitDuration(Duration.ofMillis(BACKOFF_TIME_SECONDS * 1_000L))
-            .retryOnResult(response -> !HEALTHY_STATUS.equals(response))
-            .failAfterMaxAttempts(false)
-            .build();
-
-    Retry retry = Retry.of("getServiceStatus", retryConfig);
-
-    Supplier<String> responseSupplier =
-        () -> {
-          try {
-            PipelineServiceClientResponse status = getServiceStatus();
-            return status.getCode() != 200 ? UNHEALTHY_STATUS : HEALTHY_STATUS;
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        };
-
-    return retry.executeSupplier(responseSupplier);
+    PipelineServiceClientResponse status = getServiceStatus();
+    return status.getCode() != 200 ? UNHEALTHY_STATUS : HEALTHY_STATUS;
   }
 
-  /* Check the status of pipeline service to ensure it is healthy */
+  /**
+   * Check the status of pipeline service to ensure it is healthy. Retries up to {@link
+   * #MAX_ATTEMPTS} times with backoff so that a single transient failure (e.g. Airflow restart,
+   * network blip) does not permanently mark the agent as unavailable. Responses with status codes
+   * &ge; 500 are retried; known non-transient 4xx responses (401, 403, 404, version mismatch) are
+   * returned immediately. Any other unexpected HTTP status code is passed through as-is and will
+   * not trigger retries.
+   */
   public PipelineServiceClientResponse getServiceStatus() {
-    if (pipelineServiceClientEnabled) {
-      return getServiceStatusInternal();
+    if (!pipelineServiceClientEnabled) {
+      return buildHealthyStatus(DISABLED_STATUS).withPlatform(DISABLED_STATUS);
     }
-    return buildHealthyStatus(DISABLED_STATUS).withPlatform(DISABLED_STATUS);
+    PipelineServiceClientResponse response =
+        retryForServiceStatus().executeSupplier(this::getServiceStatusInternal);
+    return response != null
+        ? response
+        : buildUnhealthyStatus("Pipeline service returned no response");
+  }
+
+  /** Returns the wait duration between retry attempts in milliseconds. */
+  protected long getRetryBackoffMillis() {
+    return DEFAULT_BACKOFF_MILLIS;
+  }
+
+  /**
+   * Only a 5xx is worth another attempt: a null means the implementation does not report status
+   * (NoopClient) and a 4xx is a standing condition, neither of which a retry changes.
+   *
+   * <p>An interrupted thread is never retried either. The backoff sleeps on the calling thread, so
+   * with the interrupt flag set it fails instantly — and Resilience4j rethrows its (unset)
+   * {@code lastRuntimeException}, surfacing a NullPointerException instead of the status.
+   */
+  private boolean isRetryableStatus(PipelineServiceClientResponse response) {
+    return response != null && response.getCode() >= 500 && !Thread.currentThread().isInterrupted();
+  }
+
+  private Retry retryForServiceStatus() {
+    if (serviceStatusRetry == null) {
+      synchronized (this) {
+        if (serviceStatusRetry == null) {
+          var retryConfig =
+              RetryConfig.<PipelineServiceClientResponse>custom()
+                  .maxAttempts(MAX_ATTEMPTS)
+                  .waitDuration(Duration.ofMillis(getRetryBackoffMillis()))
+                  .retryOnResult(this::isRetryableStatus)
+                  .failAfterMaxAttempts(false)
+                  .build();
+          serviceStatusRetry = Retry.of("getServiceStatus", retryConfig);
+        }
+      }
+    }
+    return serviceStatusRetry;
   }
 
   public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {

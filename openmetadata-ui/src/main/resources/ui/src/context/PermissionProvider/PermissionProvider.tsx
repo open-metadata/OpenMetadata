@@ -77,15 +77,16 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     {} as UIPermission
   );
   const { currentUser } = useApplicationStore();
-  const cookieStorage = new CookieStorage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   const redirectToStoredPath = useCallback(() => {
-    const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
+    const urlPathname = new CookieStorage().getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
       setUrlPathnameExpiryAfterRoute(urlPathname);
-      navigate(urlPathname);
+      if (urlPathname !== window.location.pathname) {
+        navigate(urlPathname);
+      }
     }
     // `navigate` is the actual dependency this callback reads (the router's
     // navigate function) — `history` was never declared in this file and

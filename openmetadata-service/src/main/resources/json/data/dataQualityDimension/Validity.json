@@ -1,0 +1,8 @@
+{
+  "name": "Validity",
+  "fullyQualifiedName": "Validity",
+  "displayName": "Validity",
+  "description": "Values conform to the expected type, format or allowed set.",
+  "style": { "color": "#B54708" },
+  "provider": "system"
+}

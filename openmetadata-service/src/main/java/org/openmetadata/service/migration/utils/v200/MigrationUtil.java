@@ -318,7 +318,10 @@ public class MigrationUtil {
   public static void addCreateTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      // Read past the L1 name cache: a sibling helper in this same migrate JVM (e.g.
+      // addTaskRuleToDataConsumerPolicy below) persists via the raw policyDAO().update(...) which
+      // never invalidates CACHE_WITH_NAME, so a cached read could hand back a stale snapshot.
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED, false);
       if (policy.getRules() == null) {
         policy.setRules(new ArrayList<>());
       }
@@ -340,9 +343,7 @@ public class MigrationUtil {
                 .withOperations(List.of(MetadataOperation.CREATE))
                 .withEffect(Rule.Effect.ALLOW);
         policy.getRules().add(createTaskRule);
-        collectionDAO
-            .policyDAO()
-            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        persistPolicyAndInvalidateCache(collectionDAO, policy);
         LOG.info("Added {} rule to {}", CREATE_TASK_RULE_NAME, DATA_CONSUMER_POLICY);
       }
     } catch (EntityNotFoundException ex) {
@@ -369,7 +370,10 @@ public class MigrationUtil {
   public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      // Bypass the L1 name cache — see addCreateTaskRuleToDataConsumerPolicy: the preceding helper
+      // raw-writes DataConsumerPolicy without invalidating CACHE_WITH_NAME, so a cached read here
+      // would silently drop the CreateTask-Rule it just added.
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED, false);
       if (policy.getRules() == null) {
         policy.setRules(new ArrayList<>());
       }
@@ -393,9 +397,7 @@ public class MigrationUtil {
                 .withOperations(List.of(MetadataOperation.CREATE_TASK, MetadataOperation.EDIT_TASK))
                 .withEffect(Rule.Effect.ALLOW);
         policy.getRules().add(taskRule);
-        collectionDAO
-            .policyDAO()
-            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        persistPolicyAndInvalidateCache(collectionDAO, policy);
         LOG.info("Added {} rule to {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY);
       }
     } catch (EntityNotFoundException ex) {
@@ -404,6 +406,21 @@ public class MigrationUtil {
       LOG.error(
           "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
     }
+  }
+
+  /**
+   * Persist a policy edited during migration via the raw DAO and then evict it from the repository
+   * caches. The raw {@code policyDAO().update(...)} writes the DB row but skips the invalidation
+   * that {@link EntityRepository} performs on its own write path, so a later read of the same policy
+   * in this migrate JVM would otherwise be served a stale L1 snapshot. Invalidating after the write
+   * keeps the L2/Redis layer coherent too when migrations run in-process with a live server.
+   */
+  private static void persistPolicyAndInvalidateCache(CollectionDAO collectionDAO, Policy policy) {
+    collectionDAO
+        .policyDAO()
+        .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+    EntityRepository.invalidateCacheForEntity(
+        Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
   }
 
   /**

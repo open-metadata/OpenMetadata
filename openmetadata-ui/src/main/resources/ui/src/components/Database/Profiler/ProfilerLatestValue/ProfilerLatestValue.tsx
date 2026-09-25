@@ -36,7 +36,7 @@ const ProfilerLatestValue = ({
 
   return (
     <div
-      className="tw:flex tw:items-center tw:rounded-[10px] tw:bg-gray-50 tw:px-7.5 tw:py-4"
+      className="tw:flex tw:items-center tw:rounded-[10px] tw:bg-secondary tw:px-7.5 tw:py-4"
       data-testid="data-summary-container">
       <div className="tw:flex tw:grow tw:gap-20">
         {information.map((info) => (

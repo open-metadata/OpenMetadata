@@ -34,12 +34,9 @@ import org.openmetadata.it.util.TestNamespaceExtension;
  * against the RDF store. The resource is a raw string-body endpoint, so tests drive it via {@link
  * HttpClient} rather than the fluent SDK.
  *
- * <p>Security note: {@link org.openmetadata.service.resources.rdf.RdfSqlResource} injects an {@code
- * Authorizer} but never calls {@code authorize(...)} on either method, so any authenticated
- * principal can run arbitrary whole-graph SQL. {@link #testNonAdminIsDeniedSqlQuery} and {@link
- * #testNonAdminIsDeniedSqlTranslate} encode the DESIRED behavior (non-privileged users are denied);
- * they will fail until an {@code authorizeAdmin(...)} / {@code authorize(...)} call is added to the
- * resource, at which point the security hole is closed.
+ * <p>Both endpoints read the whole graph with no per-entity filtering, so, like the SPARQL
+ * endpoints, they are admin-only. {@link #testNonAdminIsDeniedSqlQuery} and {@link
+ * #testNonAdminIsDeniedSqlTranslate} pin that a non-privileged user is denied.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)

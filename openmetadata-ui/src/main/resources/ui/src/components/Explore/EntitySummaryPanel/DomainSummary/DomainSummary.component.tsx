@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Owner } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row, Typography } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
@@ -58,7 +58,11 @@ const DomainSummary = ({
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <OwnerLabel owners={entityDetails.owners ?? []} />
+            <Owner
+              isCompactView={false}
+              owners={entityDetails.owners ?? []}
+              showLabel={false}
+            />
           </Col>
         </Row>
 
@@ -74,9 +78,7 @@ const DomainSummary = ({
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Space wrap size={[8, 8]}>
-                <OwnerLabel owners={experts} />
-              </Space>
+              <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
               <Typography.Text
                 className="text-grey-body"

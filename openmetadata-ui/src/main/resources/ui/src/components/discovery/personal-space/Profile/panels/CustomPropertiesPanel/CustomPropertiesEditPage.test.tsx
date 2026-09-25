@@ -62,12 +62,18 @@ const mockTypeDetail = {
   ],
 };
 
-const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockTypeDetail);
-const mockUpdateType = jest.fn().mockResolvedValue(mockTypeDetail);
+const mockUpdateCustomPropertyByName = jest
+  .fn()
+  .mockResolvedValue(mockTypeDetail);
+
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
-  updateType: (id: string, patches: unknown) => mockUpdateType(id, patches),
+  updateCustomPropertyByName: (fqn: string, name: string, changes: unknown) =>
+    mockUpdateCustomPropertyByName(fqn, name, changes),
 }));
 
 jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
@@ -203,8 +209,7 @@ describe('CustomPropertiesEditPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetTypeByFQN.mockResolvedValue(mockTypeDetail);
-    mockUpdateType.mockResolvedValue(mockTypeDetail);
+    mockUpdateCustomPropertyByName.mockResolvedValue(mockTypeDetail);
   });
 
   it('renders the edit page container', () => {
@@ -363,7 +368,7 @@ describe('CustomPropertiesEditPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('calls getTypeByFQN on mount', async () => {
+  const renderAndSubmit = () => {
     render(
       <CustomPropertiesEditPage
         entityType={mockEntityType as unknown as Type}
@@ -372,30 +377,49 @@ describe('CustomPropertiesEditPage', () => {
         onSuccess={mockOnSuccess}
       />
     );
+    fireEvent.submit(screen.getByTestId('edit-custom-property-form'));
+  };
+
+  it('updates only the edited fields of the property, addressed by name', async () => {
+    renderAndSubmit();
 
     await waitFor(() => {
-      expect(mockGetTypeByFQN).toHaveBeenCalledWith(
-        mockEntityType.fullyQualifiedName
+      expect(mockUpdateCustomPropertyByName).toHaveBeenCalledWith(
+        mockEntityType.fullyQualifiedName,
+        mockStringProperty.name,
+        {
+          displayName: mockStringProperty.displayName,
+          description: mockStringProperty.description,
+          customPropertyConfig: undefined,
+        }
       );
     });
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
   });
 
-  it('shows error toast when getTypeByFQN fails', async () => {
-    const mockError = new Error('API Error');
-    mockGetTypeByFQN.mockRejectedValueOnce(mockError);
+  it('shows an error and stays open when the property no longer exists', async () => {
+    mockUpdateCustomPropertyByName.mockResolvedValueOnce(undefined);
 
-    render(
-      <CustomPropertiesEditPage
-        entityType={mockEntityType as unknown as Type}
-        property={mockStringProperty as unknown as CustomProperty}
-        onCancel={mockOnCancel}
-        onSuccess={mockOnSuccess}
-      />
-    );
+    renderAndSubmit();
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith('server.update-entity-error');
+    });
+
+    expect(mockOnSuccess).not.toHaveBeenCalled();
+  });
+
+  it('shows error toast when the update fails', async () => {
+    const mockError = new Error('API Error');
+    mockUpdateCustomPropertyByName.mockRejectedValueOnce(mockError);
+
+    renderAndSubmit();
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
+
+    expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 
   it('does not call onCancel when save button is clicked without submit', () => {

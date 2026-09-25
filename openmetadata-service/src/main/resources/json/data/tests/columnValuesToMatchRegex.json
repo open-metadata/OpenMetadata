@@ -13,6 +13,29 @@
       "description": "The regular expression the column entries should match. For database without regex support (i.e. MSSQL, AzureSQL) this test will use `LIKE`.",
       "dataType": "STRING",
       "required": true
+    },
+    {
+      "name": "threshold",
+      "displayName": "Failure Threshold",
+      "description": "Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).",
+      "dataType": "NUMBER",
+      "required": false
+    },
+    {
+      "name": "thresholdUnit",
+      "displayName": "Threshold Unit",
+      "description": "How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).",
+      "dataType": "STRING",
+      "required": false,
+      "optionValues": ["ABSOLUTE", "PERCENTAGE"]
+    },
+    {
+      "name": "dimensionFailurePolicy",
+      "displayName": "Dimension Failure Policy",
+      "description": "How dimensional results roll up into the overall test status: `OVERALL_ONLY` only looks at the overall result, `ANY_DIMENSION` fails the test as soon as one dimension fails (defaults to OVERALL_ONLY).",
+      "dataType": "STRING",
+      "required": false,
+      "optionValues": ["OVERALL_ONLY", "ANY_DIMENSION"]
     }
   ],
   "supportsRowLevelPassedFailed": true,

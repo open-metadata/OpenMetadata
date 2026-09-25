@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tabs, Tag } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Tag } from 'antd';
 import { ArrayChange, diffArrays } from 'diff';
 import { uniqueId } from 'lodash';
 import { useState } from 'react';
@@ -44,25 +45,34 @@ export const TagsTabs = ({
   };
 
   return (
-    <Tabs activeKey={activeTab} size="small" type="card" onChange={onTabChange}>
-      <Tabs.TabPane
-        data-testid="current-tab"
-        key={TaskTabs.CURRENT}
-        tab="Current">
+    <Tabs
+      className="tw:gap-3"
+      selectedKey={activeTab}
+      onSelectionChange={(key) => onTabChange(String(key))}>
+      <Tabs.List className="tw:self-start" size="sm" type="button-border">
+        <Tabs.Item
+          data-testid="current-tab"
+          id={TaskTabs.CURRENT}
+          label="Current"
+        />
+        <Tabs.Item data-testid="diff-tab" id={TaskTabs.DIFF} label="Diff" />
+        <Tabs.Item data-testid="new-tab" id={TaskTabs.NEW} label="New" />
+      </Tabs.List>
+      <Tabs.Panel id={TaskTabs.CURRENT}>
         <div className="d-flex flex-wrap m-y-xs" data-testid="tags">
           {tags.map((tag) => (
             <Tag key={uniqueId()}>{tag.tagFQN}</Tag>
           ))}
         </div>
-      </Tabs.TabPane>
-      <Tabs.TabPane data-testid="diff-tab" key={TaskTabs.DIFF} tab="Diff">
+      </Tabs.Panel>
+      <Tabs.Panel id={TaskTabs.DIFF}>
         <TagsDiffView diffArr={diffs} />
-      </Tabs.TabPane>
-      <Tabs.TabPane data-testid="new-tab" key={TaskTabs.NEW} tab="New">
+      </Tabs.Panel>
+      <Tabs.Panel id={TaskTabs.NEW}>
         <div className="m-t-xs">
           <TagSuggestion value={suggestedTags} onChange={onChange} />
         </div>
-      </Tabs.TabPane>
+      </Tabs.Panel>
     </Tabs>
   );
 };

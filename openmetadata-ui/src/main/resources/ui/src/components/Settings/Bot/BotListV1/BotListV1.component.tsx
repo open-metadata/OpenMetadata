@@ -38,13 +38,13 @@ import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  stringToHTML,
-} from '../../../../utils/StringUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -286,7 +286,7 @@ const BotListV1 = ({
               <Typography.Text
                 className="text-ellipsis bot-link"
                 ellipsis={{ tooltip: true }}>
-                {stringToHTML(highlightSearchText(name, searchTerm))}
+                {renderHighlightedText(highlightSearchText(name, searchTerm))}
               </Typography.Text>
             </Link>
           );

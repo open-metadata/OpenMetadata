@@ -38,7 +38,11 @@ const PARTITION_TEST_DEFINITION_NAME = 'tableRowInsertedCountToBeBetween';
  * `ParameterFields.tsx` or edit-mode prefill silently breaks.
  *
  * Mirrors, in order:
- * 1. `getFieldProp`: `data.optionValues?.length` — enum select.
+ * 1. `getFieldProp`: `data.optionValues?.length` — enum select. This covers
+ *    every enum param the backend declares, including the threshold family
+ *    (`thresholdUnit`, `dimensionFailurePolicy`) and tableCustomSQLQuery's
+ *    `operator`/`strategy`: the option labels are translated sentences but the
+ *    stored id is still the raw enum, so nothing here has to know about them.
  * 2. `getStringFieldProp`: `data.name === 'column'` — generic column select.
  * 3. `getStringFieldProp`: `definition.name === 'tableRowInsertedCountToBeBetween'
  *    && data.name === 'columnName'` — partition column select.

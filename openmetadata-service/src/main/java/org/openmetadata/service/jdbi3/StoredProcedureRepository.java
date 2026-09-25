@@ -202,6 +202,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     }
     inheritOwners(entity, fields, schema);
     inheritDomains(entity, fields, schema);
+    inheritTags(entity, fields, schema);
   }
 
   private void setDefaultFields(StoredProcedure storedProcedure) {

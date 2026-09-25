@@ -332,7 +332,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       <Badge
         className={
           status === id
-            ? 'tw:border tw:border-blue-200 tw:bg-white tw:text-blue-700'
+            ? 'tw:border tw:border-blue-200 tw:bg-white tw:text-blue-700 tw:dark:bg-brand-950 tw:dark:border-brand-800'
             : ''
         }
         color="gray"

@@ -42,8 +42,16 @@ export const useIncidentManagerListPage = ({
     return isUndefined(searchData) ? {} : searchData;
   }, [location.search]);
 
+  // The grouped view shares this query string, so key the filters on a string
+  // without its `groupBy`: switching the dimension must not refetch this table,
+  // and `groupBy` must never reach the incident listing endpoint. `allParams`
+  // itself keeps the param so `updateFilters` writes the dimension back.
+  const filterSearch = QueryString.stringify(
+    omit(allParams, ['key', 'title', 'groupBy'])
+  );
+
   const filters = useMemo(() => {
-    const urlParams = omit(allParams, ['key', 'title']);
+    const urlParams = QueryString.parse(filterSearch);
 
     const params: TestCaseIncidentStatusParams = {
       ...urlParams,
@@ -60,7 +68,7 @@ export const useIncidentManagerListPage = ({
     }
 
     return params;
-  }, [allParams]);
+  }, [filterSearch]);
 
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { testCase: commonTestCasePermission } = permissions;

@@ -79,10 +79,10 @@ import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
@@ -725,7 +725,7 @@ const SchemaTable = () => {
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
                 )}
                 data-testid="column-name">
-                {stringToHTML(highlightSearchText(name, searchText))}
+                {renderHighlightedText(highlightSearchText(name, searchText))}
               </Typography.Text>
             </div>
             <div className="d-flex items-center">
@@ -762,7 +762,7 @@ const SchemaTable = () => {
             <Typography.Text
               className="m-b-0 d-block break-word"
               data-testid="column-display-name">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </Typography.Text>

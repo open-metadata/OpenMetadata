@@ -12,7 +12,10 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Domain } from '../../../generated/entity/domains/domain';
 import TierCard from '../TierCard/TierCard';
+import TierWidget from './TierWidget';
 
 const mockTierData = [
   {
@@ -185,5 +188,64 @@ describe('TierCard stale selectedTier', () => {
     expect(mockUpdateTier).not.toHaveBeenCalledWith(
       expect.objectContaining({ fullyQualifiedName: 'Tier.Tier1' })
     );
+  });
+});
+
+const mockUseGenericContextResult = {
+  data: { name: 'domain', tags: [] } as unknown as Domain,
+  permissions: {} as OperationPermission,
+  onUpdate: jest.fn(),
+  isVersionView: false,
+};
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  useGenericContext: jest.fn(() => mockUseGenericContextResult),
+}));
+
+describe('TierWidget permissions', () => {
+  beforeEach(() => {
+    mockUseGenericContextResult.isVersionView = false;
+  });
+
+  it('should render the add control when EditTier is granted', () => {
+    mockUseGenericContextResult.permissions = {
+      EditTier: true,
+    } as unknown as OperationPermission;
+
+    render(<TierWidget />);
+
+    expect(screen.getByTestId('add-tier')).toBeInTheDocument();
+  });
+
+  it('should render the add control when only EditAll is granted', () => {
+    mockUseGenericContextResult.permissions = {
+      EditAll: true,
+    } as unknown as OperationPermission;
+
+    render(<TierWidget />);
+
+    expect(screen.getByTestId('add-tier')).toBeInTheDocument();
+  });
+
+  it('should not render the add control when EditTier is denied despite EditAll', () => {
+    mockUseGenericContextResult.permissions = {
+      EditAll: true,
+      EditTier: false,
+    } as unknown as OperationPermission;
+
+    render(<TierWidget />);
+
+    expect(screen.queryByTestId('add-tier')).not.toBeInTheDocument();
+  });
+
+  it('should not render the add control on a version view', () => {
+    mockUseGenericContextResult.permissions = {
+      EditTier: true,
+    } as unknown as OperationPermission;
+    mockUseGenericContextResult.isVersionView = true;
+
+    render(<TierWidget />);
+
+    expect(screen.queryByTestId('add-tier')).not.toBeInTheDocument();
   });
 });

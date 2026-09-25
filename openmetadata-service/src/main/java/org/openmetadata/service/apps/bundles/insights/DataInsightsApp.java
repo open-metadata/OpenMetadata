@@ -161,6 +161,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
               language,
               dataAssetsConfig.getRetention());
         } else {
+          // updateDataAssetsDataStream applies the current template to the write index and, on a
+          // 400 (a field type can't change in place, e.g. owners/extension on pre-1.13 streams),
+          // rolls the stream over so a fresh write index picks it up. Any other failure falls
+          // through to the outer catch and is retried on the next run — no data is deleted.
           searchInterface.updateDataAssetsDataStream(
               dataStreamName, dataAssetType, dataAssetIndex, language);
         }

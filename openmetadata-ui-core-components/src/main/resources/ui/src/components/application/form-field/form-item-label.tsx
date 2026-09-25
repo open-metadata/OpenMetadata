@@ -26,7 +26,7 @@ export const FormItemLabel = ({
   tooltip,
   required = false,
 }: FormItemLabelProps) => (
-  <span className="tw:inline-flex tw:items-center tw:gap-1">
+  <span className="tw:inline-flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium tw:text-secondary">
     <span data-testid="form-item-label">{label}</span>
     {required && <span className="tw:text-error-primary">*</span>}
     {tooltip && (

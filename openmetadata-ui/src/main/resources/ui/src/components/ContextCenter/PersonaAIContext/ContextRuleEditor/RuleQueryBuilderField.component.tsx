@@ -10,17 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
 import {
-  Actions,
   Config,
   FieldOrGroup,
   JsonTree,
-} from '@react-awesome-query-builder/antd';
-import { Plus } from '@untitledui/icons';
+} from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { getAllCustomProperties } from '../../../../rest/metadataTypeAPI';
 import {
@@ -30,7 +26,8 @@ import {
 import { getRuleFilterTree } from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
-import QueryBuilderWidgetV1 from '../../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
+import QueryBuilder from '../../../common/QueryBuilder/QueryBuilder';
+import { PERSONA_BUTTON_PRESET } from '../../../common/QueryBuilder/QueryBuilderCanvas/QueryBuilderCanvas.constants';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 interface RuleQueryBuilderFieldProps {
@@ -50,15 +47,11 @@ export const RuleQueryBuilderField = ({
   onChange,
   onValidityChange,
 }: RuleQueryBuilderFieldProps) => {
-  const { t } = useTranslation();
-  const [queryActions, setQueryActions] = useState<Actions>();
   const [enrichedFields, setEnrichedFields] = useState<
     Config['fields'] | undefined
   >();
-  // getAllCustomProperties returns data for ALL entity types regardless of
-  // which entityType is currently selected — fetch once on mount and cache it
-  // in state. The second effect rebuilds enriched fields whenever entityType
-  // changes without issuing a redundant network request.
+  // getAllCustomProperties returns data for ALL entity types regardless of which entityType is currently selected —
+  // fetch once on mount and cache it in state.
   const [customProps, setCustomProps] = useState<Awaited<
     ReturnType<typeof getAllCustomProperties>
   > | null>(null);
@@ -70,8 +63,8 @@ export const RuleQueryBuilderField = ({
   }, []);
 
   useEffect(() => {
-    // Skip until the custom-property fetch resolves; the effect re-runs
-    // automatically once customProps transitions from null to the map.
+    // Skip until the custom-property fetch resolves; the effect re-runs automatically once customProps transitions from
+    // null to the map.
     if (customProps === null) {
       return;
     }
@@ -116,11 +109,12 @@ export const RuleQueryBuilderField = ({
 
   return (
     <DrawerPopupContainerProvider>
-      <div className="persona-context-rule-builder">
-        <QueryBuilderWidgetV1
+      <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
+        <QueryBuilder
+          buttonPreset={PERSONA_BUTTON_PRESET}
           entityType={entityType as EntityType}
           fields={enrichedFields}
-          getQueryActions={setQueryActions}
+          groupMode="flat"
           outputType={SearchOutputType.ElasticSearch}
           readonly={readonly}
           showCountPreview={false}
@@ -130,18 +124,6 @@ export const RuleQueryBuilderField = ({
           onValidityChange={onValidityChange}
         />
       </div>
-      {!readonly && (
-        <Button
-          className="m-t-sm tw:self-start"
-          color="link-color"
-          data-testid="add-context-condition"
-          iconLeading={Plus}
-          isDisabled={!queryActions?.addRule}
-          size="sm"
-          onClick={() => queryActions?.addRule([])}>
-          {t('label.add-condition-button')}
-        </Button>
-      )}
     </DrawerPopupContainerProvider>
   );
 };

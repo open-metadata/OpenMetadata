@@ -127,6 +127,27 @@ describe('useIncidentFilters', () => {
     expect(firstCallArg.search).not.toContain('existing=y');
   });
 
+  it('should keep groupBy when date-range params are supplied', () => {
+    const { result } = renderFiltersHook({
+      allParams: { existing: 'y', groupBy: 'owner' },
+    });
+
+    act(() => {
+      result.current.handleDateRangeChange({
+        startTs: 5,
+        endTs: 6,
+        key: 'k',
+        title: 't',
+      });
+    });
+
+    const [firstCallArg] = mockNavigate.mock.calls[0];
+
+    expect(firstCallArg.search).toContain('groupBy=owner');
+    expect(firstCallArg.search).toContain('startTs=5');
+    expect(firstCallArg.search).not.toContain('existing=y');
+  });
+
   it('should navigate on a changed date range via handleDateRangeChange', () => {
     const { result } = renderFiltersHook();
 

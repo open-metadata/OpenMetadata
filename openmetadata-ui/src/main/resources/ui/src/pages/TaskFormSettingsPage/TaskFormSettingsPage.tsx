@@ -25,6 +25,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Tabs } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -34,7 +35,6 @@ import {
   Select,
   Space,
   Spin,
-  Tabs,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -472,6 +472,7 @@ const TaskFormSettingsPage = () => {
   >([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [designerTab, setDesignerTab] = useState('create-form');
   const watchedName = Form.useWatch('name', form);
   const watchedDisplayName = Form.useWatch('displayName', form);
   const watchedDescription = Form.useWatch('description', form);
@@ -746,6 +747,228 @@ const TaskFormSettingsPage = () => {
     .filter(Boolean)
     .join(' / ');
 
+  const designerTabs = [
+    {
+      key: 'create-form',
+      label: 'Create Form',
+      children: (
+        <TaskFormBuilderSection
+          baseFormSchema={parseJsonObject(createFormSchemaValue)}
+          baseUiSchema={parseJsonObject(createUiSchemaValue)}
+          description="Fields shown when a task is created."
+          fields={createFields}
+          testIdPrefix="task-form-create-builder"
+          title="Create Form Fields"
+          onChange={(fields) => syncCreateDesigner(fields)}
+        />
+      ),
+    },
+    {
+      key: 'resolve-form',
+      label: 'Resolve Form',
+      children: (
+        <TaskFormBuilderSection
+          baseFormSchema={parseJsonObject(formSchemaValue)}
+          baseUiSchema={parseJsonObject(uiSchemaValue)}
+          description="Fields shown when the task is reviewed or resolved."
+          fields={resolveFields}
+          testIdPrefix="task-form-resolve-builder"
+          title="Resolve Form Fields"
+          onChange={(fields) => syncResolveDesigner(fields)}
+        />
+      ),
+    },
+    {
+      key: 'transitions',
+      label: 'Transition Forms',
+      children: (
+        <TransitionFormsPane
+          syncTransitionDesigner={syncTransitionDesigner}
+          t={t}
+          transitionBuilders={transitionBuilders}
+        />
+      ),
+    },
+    {
+      key: 'workflow',
+      label: 'Workflow Stages',
+      children: (
+        <WorkflowStagesPane
+          stageMappings={stageMappings}
+          syncStageMappings={syncStageMappings}
+          t={t}
+        />
+      ),
+    },
+  ];
+
+  const primaryTabs = [
+    {
+      key: 'designer',
+      label: 'Designer',
+      children: (
+        <div className="task-form-settings-designer-pane">
+          <Alert
+            showIcon
+            className="task-form-settings-designer-pane__alert"
+            description="Use the builder for create forms, resolve forms, transition forms, and stage mappings. The raw JSON editors are still available under Advanced."
+            message="Design task forms visually"
+            type="info"
+          />
+          <Tabs
+            className="tw:gap-6"
+            selectedKey={designerTab}
+            onSelectionChange={(key) => setDesignerTab(String(key))}>
+            <Tabs.List type="underline">
+              {designerTabs.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {designerTabs.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </div>
+      ),
+    },
+    {
+      key: 'advanced',
+      label: 'Advanced JSON',
+      children: (
+        <div className="task-form-settings-json-pane">
+          <Typography.Title className="m-b-sm" level={5}>
+            {t('label.resolve-form-schema')}
+          </Typography.Title>
+          <CodeEditor
+            editorClass="task-form-schema-editor"
+            value={formSchemaValue}
+            onChange={(value) => {
+              setFormSchemaValue(value);
+              const nextFormSchema = parseJsonObject(value);
+              const nextUiSchema = parseJsonObject(uiSchemaValue);
+
+              if (nextFormSchema) {
+                setResolveFields(
+                  parseSchemaToDesignerFields(nextFormSchema, nextUiSchema)
+                );
+              }
+            }}
+          />
+
+          <Typography.Title className="m-b-sm" level={5}>
+            {t('label.resolve-ui-schema')}
+          </Typography.Title>
+          <CodeEditor
+            editorClass="task-form-ui-schema-editor"
+            value={uiSchemaValue}
+            onChange={(value) => {
+              setUiSchemaValue(value);
+              const nextFormSchema = parseJsonObject(formSchemaValue);
+              const nextUiSchema = parseJsonObject(value);
+
+              if (nextFormSchema) {
+                setResolveFields(
+                  parseSchemaToDesignerFields(nextFormSchema, nextUiSchema)
+                );
+              }
+            }}
+          />
+
+          <Typography.Title className="m-b-sm" level={5}>
+            {t('label.create-form-schema')}
+          </Typography.Title>
+          <CodeEditor
+            editorClass="task-form-create-schema-editor"
+            value={createFormSchemaValue}
+            onChange={(value) => {
+              setCreateFormSchemaValue(value);
+              const nextFormSchema = parseJsonObject(value);
+              const nextUiSchema = parseJsonObject(createUiSchemaValue);
+
+              if (nextFormSchema) {
+                setCreateFields(
+                  parseSchemaToDesignerFields(nextFormSchema, nextUiSchema)
+                );
+              }
+            }}
+          />
+
+          <Typography.Title className="m-b-sm" level={5}>
+            {t('label.create-ui-schema')}
+          </Typography.Title>
+          <CodeEditor
+            editorClass="task-form-create-ui-schema-editor"
+            value={createUiSchemaValue}
+            onChange={(value) => {
+              setCreateUiSchemaValue(value);
+              const nextFormSchema = parseJsonObject(createFormSchemaValue);
+              const nextUiSchema = parseJsonObject(value);
+
+              if (nextFormSchema) {
+                setCreateFields(
+                  parseSchemaToDesignerFields(nextFormSchema, nextUiSchema)
+                );
+              }
+            }}
+          />
+
+          <Typography.Title className="m-b-sm" level={5}>
+            {t('label.transition-form-plural')}
+          </Typography.Title>
+          <CodeEditor
+            editorClass="task-form-transition-forms-editor"
+            value={transitionFormsValue}
+            onChange={(value) => {
+              setTransitionFormsValue(value);
+              const nextTransitionForms = parseJsonObject(value);
+
+              if (nextTransitionForms) {
+                setTransitionBuilders(
+                  parseTransitionForms(
+                    nextTransitionForms as TaskFormSchema['transitionForms']
+                  )
+                );
+              }
+            }}
+          />
+
+          <Typography.Title className="m-b-sm" level={5}>
+            {t('label.default-stage-mappings')}
+          </Typography.Title>
+          <CodeEditor
+            editorClass="task-form-stage-mappings-editor"
+            value={defaultStageMappingsValue}
+            onChange={(value) => {
+              setDefaultStageMappingsValue(value);
+              const nextStageMappings = parseJsonObject(value);
+
+              if (nextStageMappings) {
+                setStageMappings(
+                  parseStageMappings(
+                    nextStageMappings as TaskFormSchema['defaultStageMappings']
+                  )
+                );
+              }
+            }}
+          />
+
+          <Typography.Title className="m-b-sm" level={5}>
+            {t('label.workflow-definition-json')}
+          </Typography.Title>
+          <CodeEditor
+            editorClass="task-form-workflow-definition-editor"
+            value={workflowDefinitionValue}
+            onChange={(value) => setWorkflowDefinitionValue(value)}
+          />
+        </div>
+      ),
+    },
+  ];
+
   return (
     <PageLayoutV1 pageTitle={t('label.task-form-plural')}>
       <div
@@ -880,249 +1103,20 @@ const TaskFormSettingsPage = () => {
               </div>
 
               <Card className="task-form-settings-card task-form-settings-workspace">
-                <Tabs
-                  className="task-form-settings-primary-tabs"
-                  items={[
-                    {
-                      key: 'designer',
-                      label: 'Designer',
-                      children: (
-                        <div className="task-form-settings-designer-pane">
-                          <Alert
-                            showIcon
-                            className="task-form-settings-designer-pane__alert"
-                            description="Use the builder for create forms, resolve forms, transition forms, and stage mappings. The raw JSON editors are still available under Advanced."
-                            message="Design task forms visually"
-                            type="info"
-                          />
-                          <Tabs
-                            className="task-form-settings-secondary-tabs"
-                            items={[
-                              {
-                                key: 'create-form',
-                                label: 'Create Form',
-                                children: (
-                                  <TaskFormBuilderSection
-                                    baseFormSchema={parseJsonObject(
-                                      createFormSchemaValue
-                                    )}
-                                    baseUiSchema={parseJsonObject(
-                                      createUiSchemaValue
-                                    )}
-                                    description="Fields shown when a task is created."
-                                    fields={createFields}
-                                    testIdPrefix="task-form-create-builder"
-                                    title="Create Form Fields"
-                                    onChange={(fields) =>
-                                      syncCreateDesigner(fields)
-                                    }
-                                  />
-                                ),
-                              },
-                              {
-                                key: 'resolve-form',
-                                label: 'Resolve Form',
-                                children: (
-                                  <TaskFormBuilderSection
-                                    baseFormSchema={parseJsonObject(
-                                      formSchemaValue
-                                    )}
-                                    baseUiSchema={parseJsonObject(
-                                      uiSchemaValue
-                                    )}
-                                    description="Fields shown when the task is reviewed or resolved."
-                                    fields={resolveFields}
-                                    testIdPrefix="task-form-resolve-builder"
-                                    title="Resolve Form Fields"
-                                    onChange={(fields) =>
-                                      syncResolveDesigner(fields)
-                                    }
-                                  />
-                                ),
-                              },
-                              {
-                                key: 'transitions',
-                                label: 'Transition Forms',
-                                children: (
-                                  <TransitionFormsPane
-                                    syncTransitionDesigner={
-                                      syncTransitionDesigner
-                                    }
-                                    t={t}
-                                    transitionBuilders={transitionBuilders}
-                                  />
-                                ),
-                              },
-                              {
-                                key: 'workflow',
-                                label: 'Workflow Stages',
-                                children: (
-                                  <WorkflowStagesPane
-                                    stageMappings={stageMappings}
-                                    syncStageMappings={syncStageMappings}
-                                    t={t}
-                                  />
-                                ),
-                              },
-                            ]}
-                          />
-                        </div>
-                      ),
-                    },
-                    {
-                      key: 'advanced',
-                      label: 'Advanced JSON',
-                      children: (
-                        <div className="task-form-settings-json-pane">
-                          <Typography.Title className="m-b-sm" level={5}>
-                            {t('label.resolve-form-schema')}
-                          </Typography.Title>
-                          <CodeEditor
-                            editorClass="task-form-schema-editor"
-                            value={formSchemaValue}
-                            onChange={(value) => {
-                              setFormSchemaValue(value);
-                              const nextFormSchema = parseJsonObject(value);
-                              const nextUiSchema =
-                                parseJsonObject(uiSchemaValue);
-
-                              if (nextFormSchema) {
-                                setResolveFields(
-                                  parseSchemaToDesignerFields(
-                                    nextFormSchema,
-                                    nextUiSchema
-                                  )
-                                );
-                              }
-                            }}
-                          />
-
-                          <Typography.Title className="m-b-sm" level={5}>
-                            {t('label.resolve-ui-schema')}
-                          </Typography.Title>
-                          <CodeEditor
-                            editorClass="task-form-ui-schema-editor"
-                            value={uiSchemaValue}
-                            onChange={(value) => {
-                              setUiSchemaValue(value);
-                              const nextFormSchema =
-                                parseJsonObject(formSchemaValue);
-                              const nextUiSchema = parseJsonObject(value);
-
-                              if (nextFormSchema) {
-                                setResolveFields(
-                                  parseSchemaToDesignerFields(
-                                    nextFormSchema,
-                                    nextUiSchema
-                                  )
-                                );
-                              }
-                            }}
-                          />
-
-                          <Typography.Title className="m-b-sm" level={5}>
-                            {t('label.create-form-schema')}
-                          </Typography.Title>
-                          <CodeEditor
-                            editorClass="task-form-create-schema-editor"
-                            value={createFormSchemaValue}
-                            onChange={(value) => {
-                              setCreateFormSchemaValue(value);
-                              const nextFormSchema = parseJsonObject(value);
-                              const nextUiSchema =
-                                parseJsonObject(createUiSchemaValue);
-
-                              if (nextFormSchema) {
-                                setCreateFields(
-                                  parseSchemaToDesignerFields(
-                                    nextFormSchema,
-                                    nextUiSchema
-                                  )
-                                );
-                              }
-                            }}
-                          />
-
-                          <Typography.Title className="m-b-sm" level={5}>
-                            {t('label.create-ui-schema')}
-                          </Typography.Title>
-                          <CodeEditor
-                            editorClass="task-form-create-ui-schema-editor"
-                            value={createUiSchemaValue}
-                            onChange={(value) => {
-                              setCreateUiSchemaValue(value);
-                              const nextFormSchema = parseJsonObject(
-                                createFormSchemaValue
-                              );
-                              const nextUiSchema = parseJsonObject(value);
-
-                              if (nextFormSchema) {
-                                setCreateFields(
-                                  parseSchemaToDesignerFields(
-                                    nextFormSchema,
-                                    nextUiSchema
-                                  )
-                                );
-                              }
-                            }}
-                          />
-
-                          <Typography.Title className="m-b-sm" level={5}>
-                            {t('label.transition-form-plural')}
-                          </Typography.Title>
-                          <CodeEditor
-                            editorClass="task-form-transition-forms-editor"
-                            value={transitionFormsValue}
-                            onChange={(value) => {
-                              setTransitionFormsValue(value);
-                              const nextTransitionForms =
-                                parseJsonObject(value);
-
-                              if (nextTransitionForms) {
-                                setTransitionBuilders(
-                                  parseTransitionForms(
-                                    nextTransitionForms as TaskFormSchema['transitionForms']
-                                  )
-                                );
-                              }
-                            }}
-                          />
-
-                          <Typography.Title className="m-b-sm" level={5}>
-                            {t('label.default-stage-mappings')}
-                          </Typography.Title>
-                          <CodeEditor
-                            editorClass="task-form-stage-mappings-editor"
-                            value={defaultStageMappingsValue}
-                            onChange={(value) => {
-                              setDefaultStageMappingsValue(value);
-                              const nextStageMappings = parseJsonObject(value);
-
-                              if (nextStageMappings) {
-                                setStageMappings(
-                                  parseStageMappings(
-                                    nextStageMappings as TaskFormSchema['defaultStageMappings']
-                                  )
-                                );
-                              }
-                            }}
-                          />
-
-                          <Typography.Title className="m-b-sm" level={5}>
-                            {t('label.workflow-definition-json')}
-                          </Typography.Title>
-                          <CodeEditor
-                            editorClass="task-form-workflow-definition-editor"
-                            value={workflowDefinitionValue}
-                            onChange={(value) =>
-                              setWorkflowDefinitionValue(value)
-                            }
-                          />
-                        </div>
-                      ),
-                    },
-                  ]}
-                />
+                <Tabs className="tw:gap-6" defaultSelectedKey="designer">
+                  <Tabs.List type="underline">
+                    {primaryTabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {primaryTabs.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
               </Card>
             </section>
           </div>

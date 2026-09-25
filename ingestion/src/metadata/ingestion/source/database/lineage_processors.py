@@ -58,11 +58,16 @@ class QueryByProcedure(BaseModel):
     Query(ies) executed by each stored procedure
     """
 
-    procedure_name: str = Field(None, alias="PROCEDURE_NAME")
+    # The name and the body are each optional because either one alone identifies the
+    # procedure: history that reports no name is resolved by parsing the body, and an
+    # engine that cannot return a body still reports the name. SQL Server returns a NULL
+    # body for encrypted and CLR modules, and the body feeds nothing but that name
+    # fallback, so requiring it would discard otherwise complete query history.
+    procedure_name: str | None = Field(None, alias="PROCEDURE_NAME")
     query_type: str = Field(..., alias="QUERY_TYPE")
     query_database_name: str | None = Field(None, alias="QUERY_DATABASE_NAME")
     query_schema_name: str | None = Field(None, alias="QUERY_SCHEMA_NAME")
-    procedure_text: str = Field(..., alias="PROCEDURE_TEXT")
+    procedure_text: str | None = Field(None, alias="PROCEDURE_TEXT")
     procedure_start_time: datetime = Field(..., alias="PROCEDURE_START_TIME")
     procedure_end_time: datetime = Field(..., alias="PROCEDURE_END_TIME")
     query_start_time: datetime | None = Field(None, alias="QUERY_START_TIME")

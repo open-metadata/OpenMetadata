@@ -75,7 +75,10 @@ export class TeamClass {
     }
 
     const fetchOrganizationResponse = page.waitForResponse(
-      `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2CdefaultPersona%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+      (response) =>
+        response.url().includes('/api/v1/teams/name/Organization') &&
+        response.url().includes('include=all') &&
+        response.url().includes('defaultPersona')
     );
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TEAMS);

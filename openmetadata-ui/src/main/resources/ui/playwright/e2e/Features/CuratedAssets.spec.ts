@@ -136,25 +136,31 @@ test.describe('Curated Assets Widget', () => {
       await selectAssetTypes(page, [entityType.name]);
 
       // Apply Display Name filter with the actual entity's display name
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         'Contains'
       );
 
       const entityDisplayName =
         getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
-      await ruleLocator.locator('.rule--value input').clear();
-      await ruleLocator.locator('.rule--value input').fill(entityDisplayName);
+      await ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .clear();
+      await ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .fill(entityDisplayName);
 
       // Wait for save button to be enabled
       await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -252,18 +258,23 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, 'all');
 
     // Add a simple filter condition
-    const ruleLocator = page.locator('.rule').nth(0);
+    const ruleLocator = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator.locator('.rule--field'),
+      ruleLocator.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
 
-    await selectOption(page, ruleLocator.locator('.rule--operator'), 'Is');
+    await selectOption(
+      page,
+      ruleLocator.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
 
     await ruleLocator
-      .locator('.rule--value .rule--widget--BOOLEAN label')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -324,33 +335,42 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, ['Chart', 'Dashboard']);
 
     // Add OR conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field'),
+      ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
-    await selectOption(page, ruleLocator1.locator('.rule--operator'), 'Is Set');
+    await selectOption(
+      page,
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
+      'Is Set'
+    );
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch to OR condition (AND is selected by default, click OR button)
     await page
-      .locator('.group--conjunctions')
-      .getByRole('radio', { name: 'Or' })
+      .getByTestId('advanced-search-conjunction')
+      .getByTestId('advanced-search-conjunction-or')
       .click();
 
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    const ruleLocator2 = page.getByTestId('query-builder-rule-1');
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field'),
+      ruleLocator2.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
-    await selectOption(page, ruleLocator2.locator('.rule--operator'), 'Is');
+    await selectOption(
+      page,
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
     await ruleLocator2
-      .locator('.rule--value .rule--widget--BOOLEAN label')
+      .getByTestId('advanced-search-value')
+      .locator('label')
       .click();
 
     const queryResponse = page.waitForResponse(
@@ -421,40 +441,51 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, ['Pipeline', 'Topic', 'ML Model']);
 
     // Configure conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field'),
+      ruleLocator1.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
-    await selectOption(page, ruleLocator1.locator('.rule--operator'), 'Is');
-    await ruleLocator1
-      .locator('.rule--value .rule--widget--BOOLEAN label')
-      .click();
-
-    await page.getByRole('button', { name: 'Add Condition' }).click();
-    await page
-      .locator('.group--conjunctions')
-      .getByRole('radio', { name: 'And' })
-      .click();
-
-    const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field'),
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
+    await ruleLocator1
+      .getByTestId('advanced-search-value')
+      .locator('label')
+      .click();
+
+    await page.getByRole('button', { name: 'Add New Field' }).click();
+    await page
+      .getByTestId('advanced-search-conjunction')
+      .getByTestId('advanced-search-conjunction-and')
+      .click();
+
+    const ruleLocator2 = page.getByTestId('query-builder-rule-1');
+    await selectOption(
+      page,
+      ruleLocator2.getByTestId('advanced-search-field-select'),
       'Display Name',
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator'),
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Contains'
     );
 
     // Use a common prefix that should match test entities
-    await ruleLocator2.locator('.rule--value input').clear();
-    await ruleLocator2.locator('.rule--value input').fill('pw');
+    await ruleLocator2
+      .getByTestId('advanced-search-value')
+      .locator('input')
+      .clear();
+    await ruleLocator2
+      .getByTestId('advanced-search-value')
+      .locator('input')
+      .fill('pw');
 
     const queryResponse = page.waitForResponse(
       (response) =>
@@ -535,57 +566,69 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, 'all');
 
     // Create first group with OR conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.getByTestId('query-builder-rule-0');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field'),
+      ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
-    await selectOption(page, ruleLocator1.locator('.rule--operator'), 'Any in');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--value'),
+      ruleLocator1.getByTestId('advanced-search-operator-select'),
+      'Any in'
+    );
+    await selectOption(
+      page,
+      ruleLocator1.getByTestId('advanced-search-value'),
       'admin',
       true
     );
 
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch first group to OR condition (AND is default)
     await page
-      .locator('.group--conjunctions')
-      .getByRole('radio', { name: 'Or' })
+      .getByTestId('advanced-search-conjunction')
+      .getByTestId('advanced-search-conjunction-or')
       .click();
 
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    const ruleLocator2 = page.getByTestId('query-builder-rule-1');
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field'),
+      ruleLocator2.getByTestId('advanced-search-field-select'),
       'Description Status',
       true
     );
-    await selectOption(page, ruleLocator2.locator('.rule--operator'), 'Is');
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--value'),
+      ruleLocator2.getByTestId('advanced-search-operator-select'),
+      'Is'
+    );
+    await selectOption(
+      page,
+      ruleLocator2.getByTestId('advanced-search-value'),
       'Incomplete'
     );
 
     // Add another condition
-    await page.getByRole('button', { name: 'Add Condition' }).click();
+    await page.getByRole('button', { name: 'Add New Field' }).click();
 
-    const ruleLocator3 = page.locator('.rule').nth(2);
+    const ruleLocator3 = page.getByTestId('query-builder-rule-2');
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--field'),
+      ruleLocator3.getByTestId('advanced-search-field-select'),
       'Tier',
       true
     );
-    await selectOption(page, ruleLocator3.locator('.rule--operator'), 'Is Not');
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--value'),
+      ruleLocator3.getByTestId('advanced-search-operator-select'),
+      'Is Not'
+    );
+    await selectOption(
+      page,
+      ruleLocator3.getByTestId('advanced-search-value'),
       'Tier.Tier5',
       true
     );

@@ -25,15 +25,15 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   renderModal,
 }) => {
   const navigate = useNavigate();
-  const [isBlocking, setIsBlocking] = useState(enabled);
+  // Derived rather than mirrored from `enabled` via an effect: mirroring cost a
+  // commit, so a consumer that disabled the blocker and navigated in the same
+  // commit still met the history patches below and got prompted.
+  const [hasConfirmedLeave, setHasConfirmedLeave] = useState(false);
+  const isBlocking = enabled && !hasConfirmedLeave;
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const pendingNavigationRef = useRef<string | null>(null);
   const isNavigatingRef = useRef(false);
-
-  useEffect(() => {
-    setIsBlocking(enabled);
-  }, [enabled]);
 
   useEffect(() => {
     if (!isBlocking || isNavigatingRef.current) {
@@ -212,7 +212,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   const handleLeave = useCallback(async () => {
     setIsModalVisible(false);
     isNavigatingRef.current = true;
-    setIsBlocking(false);
+    setHasConfirmedLeave(true);
 
     const pendingUrl = pendingNavigationRef.current;
     pendingNavigationRef.current = null;
@@ -227,7 +227,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
 
       setIsModalVisible(false);
       isNavigatingRef.current = true;
-      setIsBlocking(false);
+      setHasConfirmedLeave(true);
 
       const pendingUrl = pendingNavigationRef.current;
       pendingNavigationRef.current = null;

@@ -92,6 +92,14 @@ Common test types include:
 $$
 
 $$section
+### Data Quality Dimension $(id="dataQualityDimension")
+
+The data quality dimension this test case is categorized under. Test cases are grouped and reported by dimension in the data quality dashboard.
+
+It defaults to the dimension of the selected test type, and you can pick another one from the list. Dimensions are managed in **Settings > Preferences > Data Quality**, where you can add custom ones — for example `Timeliness`, `Traceability` or `Availability` — on top of the ones shipped with OpenMetadata.
+$$
+
+$$section
 ### Name $(id="name")
 
 Provide a unique name for your test case. The name should be descriptive and follow these guidelines:
@@ -217,6 +225,8 @@ Tests are categorized into seven data quality dimensions:
 - **Uniqueness**: Tests for duplicate detection and uniqueness constraints
 - **Integrity**: Tests for referential integrity and structural consistency
 - **SQL**: Custom SQL-based validation tests
+
+Dimensions are entities in their own right. Each test case inherits the dimension of its test definition and can point at any other dimension instead, including the custom ones created in **Settings > Preferences > Data Quality**.
 
 ## Test Platforms
 
@@ -374,7 +384,10 @@ $$section
 
 **Description**: Tests that values in a column are not null. Empty strings don't count as null - values must be explicitly null.
 
-**Parameters**: None
+**Parameters**:
+- **Failure Threshold** (NUMBER, Optional) - How many failures to tolerate before the test is marked as failed (default is 0)
+- **Threshold Unit** (STRING, Optional) - How to read the threshold: `ABSOLUTE` (a raw count of failures) or `PERCENTAGE` (a share of the evaluated rows)
+- **Dimension Failure Policy** (STRING, Optional) - How dimensional results roll up: `OVERALL_ONLY` (only the overall result counts) or `ANY_DIMENSION` (one failing dimension fails the test)
 
 **Supported Data Types**: All data types supported
 
@@ -394,7 +407,10 @@ $$section
 
 **Description**: Tests that all values in a column are unique (no duplicates).
 
-**Parameters**: None
+**Parameters**:
+- **Failure Threshold** (NUMBER, Optional) - How many failures to tolerate before the test is marked as failed (default is 0)
+- **Threshold Unit** (STRING, Optional) - How to read the threshold: `ABSOLUTE` (a raw count of failures) or `PERCENTAGE` (a share of the evaluated rows)
+- **Dimension Failure Policy** (STRING, Optional) - How dimensional results roll up: `OVERALL_ONLY` (only the overall result counts) or `ANY_DIMENSION` (one failing dimension fails the test)
 
 **Supported Data Types**: All data types supported
 

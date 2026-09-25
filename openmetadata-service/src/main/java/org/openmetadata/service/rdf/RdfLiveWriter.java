@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 
 /** One bounded drain task per server; the database fence permits one cluster-wide writer. */
 @Slf4j
@@ -93,12 +94,16 @@ public final class RdfLiveWriter implements AutoCloseable {
   }
 
   private void apply(final String payload) {
+    // Each queued write is its own unit of work: a read cached by an earlier write in this drain
+    // would project a stale entity, so start and leave every write with a clean request context.
+    PerRequestContextCleaner.clear();
     final Timer.Sample sample = RequestLatencyContext.startRdfOperation();
     try {
       RdfProjectionHealth.withDurableRecovery(
           () -> write.accept(JsonUtils.readValue(payload, RdfLiveWrite.class)));
     } finally {
       RequestLatencyContext.endRdfOperation(sample);
+      PerRequestContextCleaner.clear();
     }
   }
 

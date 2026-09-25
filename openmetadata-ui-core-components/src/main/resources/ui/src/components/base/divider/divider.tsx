@@ -20,12 +20,34 @@ export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
   orientation?: DividerOrientation;
   label?: ReactNode;
   labelAlign?: DividerLabelAlignment;
+  /**
+   * Draw the rule with a dashed stroke instead of a solid fill. A solid rule
+   * is a 1px filled box; a dashed one has to be a border, since a background
+   * cannot be dashed.
+   */
+  dashed?: boolean;
 }
+
+// Solid rules are a filled 1px box. Dashed ones must use a border instead, so
+// the box collapses to zero in the relevant axis and the border supplies the
+// visible line.
+const ruleClasses = (dashed: boolean, axis: 'x' | 'y') => {
+  if (!dashed) {
+    return axis === 'y'
+      ? 'tw:w-px tw:bg-border-secondary'
+      : 'tw:h-px tw:bg-border-secondary';
+  }
+
+  return axis === 'y'
+    ? 'tw:w-0 tw:border-l tw:border-dashed tw:border-secondary'
+    : 'tw:h-0 tw:border-t tw:border-dashed tw:border-secondary';
+};
 
 export const Divider = ({
   orientation = 'horizontal',
   label,
   labelAlign = 'center',
+  dashed = false,
   className,
   ...props
 }: DividerProps) => {
@@ -35,7 +57,12 @@ export const Divider = ({
         {...props}
         aria-orientation="vertical"
         className={cx(
-          'tw:self-stretch tw:w-px tw:shrink-0 tw:bg-border-secondary',
+          // `self-stretch` only produces a height inside a flex or grid
+          // parent, and a consumer aligning the divider itself (say
+          // `self-center`) overrides it. `min-h-[1em]` keeps the rule visible
+          // in both cases without capping it when stretching does apply.
+          'tw:self-stretch tw:min-h-[1em] tw:shrink-0',
+          ruleClasses(dashed, 'y'),
           className
         )}
         role="separator"
@@ -49,7 +76,8 @@ export const Divider = ({
         {...props}
         aria-orientation="horizontal"
         className={cx(
-          'tw:w-full tw:h-px tw:shrink-0 tw:bg-border-secondary',
+          'tw:w-full tw:shrink-0',
+          ruleClasses(dashed, 'x'),
           className
         )}
         role="separator"
@@ -64,13 +92,13 @@ export const Divider = ({
       aria-orientation="horizontal"
       className={cx('tw:flex tw:items-center tw:w-full tw:gap-2', className)}>
       {labelAlign !== 'start' && (
-        <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
+        <div className={cx('tw:flex-1', ruleClasses(dashed, 'x'))} />
       )}
       <span className="tw:shrink-0 tw:text-xs tw:font-medium tw:text-tertiary">
         {label}
       </span>
       {labelAlign !== 'end' && (
-        <div className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
+        <div className={cx('tw:flex-1', ruleClasses(dashed, 'x'))} />
       )}
     </div>
   );

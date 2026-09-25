@@ -15,12 +15,19 @@
 .entity-popover-card {
   max-width: 500px;
   min-width: 300px;
-  background-color: @white !important;
+  background-color: var(--om-color-bg-surface) !important;
   border: none;
+  // Embedded preview, not a list card: no border, lift or hover elevation.
   .explore-search-card {
     padding: 0;
     border-radius: 0;
     border: none;
+    box-shadow: none;
+
+    &:hover {
+      box-shadow: none;
+      transform: none;
+    }
   }
 
   .explore-card-actions {

@@ -14,6 +14,7 @@ import {
   Box,
   EmptyPlaceholder,
   EmptyPlaceholderAction,
+  Owner,
   Skeleton,
   Table,
 } from '@openmetadata/ui-core-components';
@@ -36,7 +37,6 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 
@@ -158,7 +158,7 @@ export const TestSuitesTable = ({
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>
-        <OwnerLabel
+        <Owner
           isCompactView={false}
           maxVisibleOwners={4}
           owners={record.owners}

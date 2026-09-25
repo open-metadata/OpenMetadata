@@ -13,16 +13,19 @@
 Check that we are properly running nodes and stages
 """
 
+from threading import Barrier
 from typing import Annotated
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import pytest
 from pydantic import BaseModel, Field
 
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
+    Queue,
     ServiceTopology,
     TopologyContextManager,
     TopologyNode,
@@ -315,3 +318,56 @@ class TopologyRunnerTest(TestCase):
             yielded,
             [MockSchema(name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb")],
         )
+
+
+class IsolatedSource(MockSource):
+    def __init__(self, threads=0):
+        self.topology = MockTopology()
+        self.queue = Queue()
+        self.context = TopologyContextManager(self.topology)
+        self.context.set_threads(threads)
+        self.child_schemas = []
+
+    def yield_tables(self, name):
+        self.child_schemas.append(self.context.get().schemas)
+        yield from super().yield_tables(name)
+
+
+@pytest.mark.parametrize("threads", [0, 2])
+def test_child_stages_keep_parent_context(threads):
+    source = IsolatedSource(threads)
+    records = list(source._iter())
+    assert len(records) == 7
+    assert source.child_schemas == ["schema1", "schema1", "schema2", "schema2"]
+    assert len(source.context.contexts) == 1
+
+
+def test_parallel_schemas_keep_independent_parent_context():
+    class ConcurrentSource(IsolatedSource):
+        def __init__(self):
+            super().__init__(threads=2)
+            self.topology.root.threads = True
+            self.topology.tables.threads = False
+            self.schemas_ready = Barrier(2)
+
+        def yield_schemas(self, name):
+            yield from super().yield_schemas(name)
+            self.schemas_ready.wait(timeout=10)
+
+    source = ConcurrentSource()
+    assert len(list(source._iter())) == 7
+    assert sorted(source.child_schemas) == ["schema1", "schema1", "schema2", "schema2"]
+    assert len(source.context.contexts) == 1
+
+
+@pytest.mark.parametrize("threads", [0, 2])
+def test_failed_item_releases_worker_context(threads):
+    class FailingSource(IsolatedSource):
+        def sink_request(self, stage, entity_request):
+            raise RuntimeError("sink failed")
+
+    source = FailingSource(threads)
+    source.topology.root.threads = True
+    with pytest.raises(RuntimeError, match="sink failed"):
+        list(source._iter())
+    assert len(source.context.contexts) == 1

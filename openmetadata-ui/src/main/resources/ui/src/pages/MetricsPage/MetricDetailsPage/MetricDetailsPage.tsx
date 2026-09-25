@@ -186,32 +186,39 @@ const MetricDetailsPage = () => {
     try {
       const res = await saveUpdatedMetricData(updatedData);
 
-      if (key === 'unitOfMeasurement') {
-        setMetricDetails((previous) => {
-          if (!previous) {
-            return previous;
-          }
+      setMetricDetails((previous) => {
+        if (!previous) {
+          return previous;
+        }
 
+        if (key) {
           return {
             ...previous,
             version: res.version,
-            unitOfMeasurement: res.unitOfMeasurement,
-            customUnitOfMeasurement: res.customUnitOfMeasurement,
+            [key]: res[key],
+            ...(key === 'unitOfMeasurement'
+              ? { customUnitOfMeasurement: res.customUnitOfMeasurement }
+              : {}),
           };
-        });
-      } else {
-        setMetricDetails((previous) => {
-          if (!previous) {
-            return previous;
-          }
+        }
 
-          return {
-            ...previous,
-            version: res.version,
-            ...(key ? { [key]: res[key] } : res),
-          };
-        });
-      }
+        // The definition scalars are restated even though `...res` already
+        // spread them: clearing one drops the key from the response entirely,
+        // and a missing key cannot overwrite the stale value carried in
+        // `previous`. Naming them forces the response's `undefined` through.
+        // Relationship fields (owners, tags, domains) stay on plain merge —
+        // they are absent because `patchMetric` never requests them, not
+        // because they were cleared.
+        return {
+          ...previous,
+          ...res,
+          metricType: res.metricType,
+          granularity: res.granularity,
+          unitOfMeasurement: res.unitOfMeasurement,
+          customUnitOfMeasurement: res.customUnitOfMeasurement,
+          version: res.version,
+        };
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

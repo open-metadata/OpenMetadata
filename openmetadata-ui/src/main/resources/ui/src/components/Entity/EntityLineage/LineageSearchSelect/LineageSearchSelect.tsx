@@ -76,6 +76,14 @@ const LineageSearchSelect = () => {
       const { children: childrenFlatten } = getEntityChildrenAndLabel(node);
 
       childrenFlatten.forEach((column: Column) => {
+        // A metric is its own column-lineage endpoint, so its only child is the
+        // node itself. Both options key on FQN, so without this the child would
+        // overwrite the node option added above and render the node with the
+        // column-style label.
+        if (column.fullyQualifiedName === node.fullyQualifiedName) {
+          return;
+        }
+
         const columnOption = {
           label: (
             <div

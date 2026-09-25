@@ -96,7 +96,7 @@ export class EntityClass {
     return {};
   }
 
-  public set(_data: any) {
+  public set(_data: unknown) {
     // handle in parent component
   }
 

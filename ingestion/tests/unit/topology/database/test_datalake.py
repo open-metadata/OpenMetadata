@@ -35,6 +35,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.readers.file.base import ReadException
 from metadata.utils.datalake.datalake_utils import (
     GenericDataFrameColumnParser,
     JsonDataFrameColumnParser,
@@ -741,7 +742,7 @@ class DatalakeYieldTableNameTest(TestCase):
                 return_value="local_datalake.default.my_bucket",
             ),
         ):
-            results = list(self.source.yield_table((table_name, TableType.Regular, None, None)))
+            results = list(self.source.yield_table((table_name, TableType.Regular, None, None, None)))
 
         rights = [r.right for r in results if r.right is not None]
         return rights[0] if rights else None
@@ -770,3 +771,81 @@ class DatalakeYieldTableNameTest(TestCase):
         self.assertEqual(request.name.root, expected_hash)
         self.assertEqual(len(request.name.root), 32)
         self.assertEqual(request.displayName, table_name)
+
+
+@pytest.fixture
+def datalake_manifest_source():
+    with patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
+        source = DatalakeSource.create(
+            mock_datalake_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+
+    source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+    source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    source.context.get().__dict__["database_schema"] = "my_bucket"
+    source.client = MagicMock()
+    source.client.get_table_names.return_value = [("semicolon.csv", 32)]
+    source.reader = MagicMock()
+    return source
+
+
+def discover_table_and_schema_wrapper(source):
+    discovered_table = next(source.get_tables_name_and_type())
+
+    with patch(
+        "metadata.ingestion.source.database.datalake.metadata.fetch_dataframe_first_chunk",
+        return_value=(None, None),
+    ) as fetch_dataframe:
+        assert list(source.yield_table(discovered_table)) == []
+
+    return discovered_table, fetch_dataframe.call_args.kwargs["file_fqn"]
+
+
+def test_manifest_separator_reaches_schema_inference(datalake_manifest_source):
+    datalake_manifest_source.reader.read.return_value = """
+    {
+      "entries": [
+        {
+          "dataPath": "semicolon.csv",
+          "structureFormat": "csv",
+          "separator": ";"
+        }
+      ]
+    }
+    """
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] == ";"
+    assert schema_wrapper.separator == ";"
+
+
+@pytest.mark.parametrize(
+    "manifest_response",
+    [
+        """
+        {
+          "entries": [
+            {
+              "dataPath": "another.csv",
+              "structureFormat": "csv",
+              "separator": ";"
+            }
+          ]
+        }
+        """,
+        ReadException("openmetadata.json not found"),
+    ],
+)
+def test_missing_manifest_separator_uses_default(datalake_manifest_source, manifest_response):
+    if isinstance(manifest_response, ReadException):
+        datalake_manifest_source.reader.read.side_effect = manifest_response
+    else:
+        datalake_manifest_source.reader.read.return_value = manifest_response
+
+    discovered_table, schema_wrapper = discover_table_and_schema_wrapper(datalake_manifest_source)
+
+    assert discovered_table[-1] is None
+    assert schema_wrapper.separator is None

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/checkChangeDescriptionTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CheckChangeDescriptionTaskDefinition",
   "description": "Validates if entity's change description matches specified field patterns.",
   "javaInterfaces": [
@@ -63,7 +63,6 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["relatedEntity"],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -82,7 +81,6 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["true", "false"],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

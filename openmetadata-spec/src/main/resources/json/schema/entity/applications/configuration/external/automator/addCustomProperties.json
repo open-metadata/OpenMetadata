@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addCustomPropertiesAction.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AddCustomPropertiesAction",
   "description": "Add a Custom Property to the selected assets.",
   "type": "object",

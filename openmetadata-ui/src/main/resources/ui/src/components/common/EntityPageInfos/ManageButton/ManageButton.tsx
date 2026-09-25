@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Tooltip } from '@openmetadata/ui-core-components';
+import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +22,6 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { DISPLAY_NAME_FIELD_RULES } from '../../../../constants/Form.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { useAsyncDeleteProvider } from '../../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -43,6 +41,7 @@ import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
+import { ManageMenu, ManageMenuItem, toManageMenuItems } from './ManageMenu';
 
 const ManageButton: FC<ManageButtonProps> = ({
   allowSoftDelete,
@@ -71,13 +70,11 @@ const ManageButton: FC<ManageButtonProps> = ({
   deleteButtonDescription,
   deleteOptions,
   onProfilerSettingUpdate,
-  trigger,
 }) => {
   const { t } = useTranslation();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isEntityRestoring, setIsEntityRestoring] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
@@ -169,41 +166,40 @@ const ManageButton: FC<ManageButtonProps> = ({
     [editDisplayNamePermission, onEditDisplayName, deleted]
   );
 
-  const renderDropdownContainer = useCallback((menus: React.ReactNode) => {
-    return <div data-testid="manage-dropdown-list-container">{menus}</div>;
-  }, []);
-
-  const items: ItemType[] = useMemo(
+  const items: ManageMenuItem[] = useMemo(
     () => [
       ...(deleted
-        ? ([
+        ? [
             {
               label: (
-                <Tooltip title={canRestore ? '' : t(NO_PERMISSION_FOR_ACTION)}>
-                  <ManageButtonItemLabel
-                    description={t('message.restore-action-description', {
-                      entityType,
-                    })}
-                    icon={IconRestore}
-                    id="restore-button"
-                    name={t('label.restore')}
-                  />
+                <Tooltip
+                  excludeTriggerFromTabOrder
+                  isDisabled={canRestore}
+                  title={t(NO_PERMISSION_FOR_ACTION)}>
+                  <div>
+                    <ManageButtonItemLabel
+                      description={t('message.restore-action-description', {
+                        entityType,
+                      })}
+                      icon={IconRestore}
+                      id="restore-button"
+                      name={t('label.restore')}
+                    />
+                  </div>
                 </Tooltip>
               ),
-              onClick: (e) => {
+              onClick: () => {
                 if (canRestore) {
-                  e.domEvent.stopPropagation();
-                  setIsDropdownOpen(false);
                   setShowReactiveModal(true);
                 }
               },
               key: 'restore-button',
             },
-          ] as ItemType[])
+          ]
         : []),
 
       ...(showAnnouncementOption
-        ? ([
+        ? [
             {
               label: (
                 <ManageButtonItemLabel
@@ -213,18 +209,16 @@ const ManageButton: FC<ManageButtonProps> = ({
                   name={t('label.announcement-plural')}
                 />
               ),
-              onClick: (e) => {
-                e.domEvent.stopPropagation();
-                setIsDropdownOpen(false);
+              onClick: () => {
                 !isUndefined(onAnnouncementClick) && onAnnouncementClick();
               },
               key: 'announcement-button',
             },
-          ] as ItemType[])
+          ]
         : []),
 
       ...(showRenameOption
-        ? ([
+        ? [
             {
               label: (
                 <ManageButtonItemLabel
@@ -236,18 +230,16 @@ const ManageButton: FC<ManageButtonProps> = ({
                   name={t('label.rename')}
                 />
               ),
-              onClick: (e) => {
-                e.domEvent.stopPropagation();
-                setIsDropdownOpen(false);
+              onClick: () => {
                 setIsDisplayNameEditing(true);
               },
               key: 'rename-button',
             },
-          ] as ItemType[])
+          ]
         : []),
-      ...(extraDropdownContent ?? []),
+      ...toManageMenuItems(extraDropdownContent),
       ...(isProfilerSupported
-        ? ([
+        ? [
             {
               label: (
                 <ManageButtonItemLabel
@@ -260,17 +252,15 @@ const ManageButton: FC<ManageButtonProps> = ({
                   name={t('label.profiler-setting-plural')}
                 />
               ),
-              onClick: (e) => {
-                e.domEvent.stopPropagation();
-                setIsDropdownOpen(false);
+              onClick: () => {
                 onProfilerSettingUpdate?.();
               },
               key: 'profiler-setting-button',
             },
-          ] as ItemType[])
+          ]
         : []),
       ...(canDelete
-        ? ([
+        ? [
             {
               label: (
                 <ManageButtonItemLabel
@@ -285,16 +275,14 @@ const ManageButton: FC<ManageButtonProps> = ({
                   name={t('label.delete')}
                 />
               ),
-              onClick: (e) => {
+              onClick: () => {
                 if (canDelete) {
-                  e.domEvent.stopPropagation();
-                  setIsDropdownOpen(false);
                   setIsDelete(true);
                 }
               },
               key: 'delete-button',
             },
-          ] as ItemType[])
+          ]
         : []),
     ],
     [
@@ -318,58 +306,6 @@ const ManageButton: FC<ManageButtonProps> = ({
     () => entityUtilClassBase.getFormattedEntityType(entityType),
     [entityType]
   );
-
-  const renderDropdownTrigger = () => {
-    if (trigger) {
-      return (
-        <>
-          {trigger(() => setIsDropdownOpen((prev) => !prev))}
-          <Dropdown
-            align={{ targetOffset: [0, -16] }}
-            dropdownRender={renderDropdownContainer}
-            menu={{ items }}
-            open={isDropdownOpen}
-            overlayClassName="manage-dropdown-list-container"
-            overlayStyle={{ width: '350px' }}
-            placement="bottomRight"
-            trigger={['click']}
-            onOpenChange={setIsDropdownOpen}>
-            <span />
-          </Dropdown>
-        </>
-      );
-    }
-
-    // Used Button to stop click propagation event in the
-    // TeamDetailsV1 and User.component collapsible panel.
-    return (
-      <Button
-        className="remove-button-default-styling p-0"
-        onClick={(e) => e.stopPropagation()}>
-        <Dropdown
-          align={{ targetOffset: [-12, 0] }}
-          dropdownRender={renderDropdownContainer}
-          menu={{ items }}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Tooltip
-            placement="topRight"
-            title={t('label.manage-entity', {
-              entity: formattedEntityType,
-            })}>
-            <Button
-              className={classNames('flex-center px-1.5', buttonClassName)}
-              data-testid="manage-button"
-              type="default">
-              <IconDropdown className="anticon self-center manage-dropdown-icon" />
-            </Button>
-          </Tooltip>
-        </Dropdown>
-      </Button>
-    );
-  };
 
   const deleteModal = useMemo(() => {
     if (!isDelete) {
@@ -432,7 +368,13 @@ const ManageButton: FC<ManageButtonProps> = ({
 
   return (
     <>
-      {items.length ? renderDropdownTrigger() : null}
+      {items.length ? (
+        <ManageMenu
+          items={items}
+          label={t('label.manage-entity', { entity: formattedEntityType })}
+          triggerClassName={buttonClassName}
+        />
+      ) : null}
       {deleteModal}
       {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal

@@ -230,10 +230,12 @@ POSTGRES_GET_STORED_PROCEDURES = """
         proargtypes AS argument_types,
         prorettype::regtype AS return_type,
         prosrc AS definition,
+        pg_language.lanname AS language,
         'StoredProcedure' as procedure_type,
         obj_description(pg_proc.oid, 'pg_proc') AS description
     FROM pg_proc
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
+    JOIN pg_language ON pg_proc.prolang = pg_language.oid
     WHERE prokind = 'p'
     and pg_namespace.nspname = '{schema_name}';
 """
@@ -245,11 +247,13 @@ SELECT
     proargtypes AS argument_types,
     prorettype :: regtype AS return_type,
     prosrc AS definition,
+    pg_language.lanname AS language,
     'Function' as procedure_type,
     obj_description(pg_proc.oid, 'pg_proc') AS description
 FROM
     pg_proc
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
+    JOIN pg_language ON pg_proc.prolang = pg_language.oid
 WHERE
     prokind = 'f'
     and pg_namespace.nspname = '{schema_name}';

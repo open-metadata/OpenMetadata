@@ -67,19 +67,67 @@ function resolve(name, defs, seen = new Set()) {
 }
 
 const GROUPS = [
-  { key: /^--om-space-/, title: 'Spacing', note: 'padding / margin / gap. See foundations/spacing.md.' },
-  { key: /^--om-page-/, title: 'Layout', note: 'Shared viewport and shell-derived dimensions.' },
-  { key: /^--om-radius-/, title: 'Radius', note: 'border-radius. See foundations/radius.md.' },
-  { key: /^--om-font-size-/, title: 'Font size', note: 'font-size. See foundations/typography.md.' },
+  {
+    key: /^--om-space-/,
+    title: 'Spacing',
+    note: 'padding / margin / gap. See foundations/spacing.md.',
+  },
+  {
+    key: /^--om-page-/,
+    title: 'Layout',
+    note: 'Shared viewport and shell-derived dimensions.',
+  },
+  {
+    key: /^--om-radius-/,
+    title: 'Radius',
+    note: 'border-radius. See foundations/radius.md.',
+  },
+  {
+    key: /^--om-font-size-/,
+    title: 'Font size',
+    note: 'font-size. See foundations/typography.md.',
+  },
   { key: /^--om-font-weight-/, title: 'Font weight', note: 'font-weight.' },
-  { key: /^--om-font-|^--om-line-height-/, title: 'Font family & line height', note: '' },
-  { key: /^--om-shadow-/, title: 'Elevation', note: 'box-shadow. See foundations/elevation.md.' },
-  { key: /^--om-z-/, title: 'z-index', note: 'stacking. Prefer the semantic ladder for new work.' },
-  { key: /^--om-duration-|^--om-ease-/, title: 'Motion', note: 'transition / animation. See foundations/motion.md.' },
-  { key: /^--om-color-(text|bg|border|fg|link|interactive|focus)/, title: 'Semantic colors', note: 'Prefer these — they adapt to dark mode.' },
-  { key: /^--om-color-(white|black|transparent)/, title: 'Absolute colors', note: '' },
-  { key: /^--om-color-/, title: 'Palette colors', note: 'Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.' },
-  { key: /^--om-legacy-color-/, title: 'Legacy colors', note: 'Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.' },
+  {
+    key: /^--om-font-|^--om-line-height-|^--om-letter-spacing-/,
+    title: 'Font family, line height & letter spacing',
+    note: '',
+  },
+  {
+    key: /^--om-shadow-/,
+    title: 'Elevation',
+    note: 'box-shadow. See foundations/elevation.md.',
+  },
+  {
+    key: /^--om-z-/,
+    title: 'z-index',
+    note: 'stacking. Prefer the semantic ladder for new work.',
+  },
+  {
+    key: /^--om-duration-|^--om-ease-/,
+    title: 'Motion',
+    note: 'transition / animation. See foundations/motion.md.',
+  },
+  {
+    key: /^--om-color-(text|bg|border|fg|link|interactive|focus|utility)/,
+    title: 'Semantic colors',
+    note: 'Prefer these — they adapt to dark mode.',
+  },
+  {
+    key: /^--om-color-(white|black|transparent)/,
+    title: 'Absolute colors',
+    note: '',
+  },
+  {
+    key: /^--om-color-/,
+    title: 'Palette colors',
+    note: 'Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.',
+  },
+  {
+    key: /^--om-legacy-color-/,
+    title: 'Legacy colors',
+    note: 'Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.',
+  },
 ];
 
 function classify(name) {

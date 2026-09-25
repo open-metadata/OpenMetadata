@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ClassificationTag } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import {
   getTagName,
@@ -27,7 +27,6 @@ import {
 } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import TierCard from '../TierCard/TierCard';
 import {
   WidgetEditButton,
@@ -67,9 +66,7 @@ const TierWidget = () => {
   };
 
   const canEdit = useMemo(
-    () =>
-      getPrioritizedEditPermission(permissions, Operation.EditTier) &&
-      !isVersionView,
+    () => getDerivedPermissionFlags(permissions).canEditTier && !isVersionView,
     [permissions, isVersionView]
   );
 

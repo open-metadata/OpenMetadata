@@ -169,11 +169,12 @@ export interface RenderedEdge {
 
 export async function readGraphEdges(
   page: Page,
-  minCount = 1
+  minCount = 1,
+  containerSelector = '.ontology-g6-container'
 ): Promise<RenderedEdge[]> {
   await page.waitForFunction(
-    (min) => {
-      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+    ({ min, selector }) => {
+      const el = document.querySelector<HTMLElement>(selector);
       const raw = el?.dataset.edges;
       if (typeof raw !== 'string') {
         return false;
@@ -186,12 +187,12 @@ export async function readGraphEdges(
         return false;
       }
     },
-    minCount,
+    { min: minCount, selector: containerSelector },
     { timeout: 20000 }
   );
 
   return page
-    .locator('.ontology-g6-container')
+    .locator(containerSelector)
     .evaluate(
       (el: HTMLElement) =>
         JSON.parse(el.dataset.edges ?? '[]') as RenderedEdge[]

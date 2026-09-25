@@ -96,6 +96,18 @@ export const shouldIncludeInExport = (node: Element): boolean => {
   if (node.dataset?.exportHide === 'true') {
     return false;
   }
+  // React Flow infrastructure: background grid, zoom controls, attribution
+  // watermark, and minimap. None of these render data content — pruning their
+  // subtrees before html-to-image clones them cuts DOM clone time significantly
+  // on large lineage graphs where the clone step dominates toCanvas cost.
+  if (
+    classList?.contains('react-flow__background') ||
+    classList?.contains('react-flow__controls') ||
+    classList?.contains('react-flow__attribution') ||
+    classList?.contains('react-flow__minimap')
+  ) {
+    return false;
+  }
 
   return true;
 };

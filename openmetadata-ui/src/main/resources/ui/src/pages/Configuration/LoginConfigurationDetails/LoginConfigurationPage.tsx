@@ -30,25 +30,15 @@ import {
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
-import { AuthProvider } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
-  const { authConfig } = useApplicationStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
   const [loginConfig, setLoginConfig] = useState<LoginConfiguration>();
-
-  const isBasicAuth = useMemo(() => {
-    return (
-      authConfig?.provider === AuthProvider.Basic ||
-      authConfig?.provider === AuthProvider.LDAP
-    );
-  }, [authConfig]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -77,11 +67,11 @@ const LoginConfigurationPage = () => {
     navigate(ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG);
   };
 
+  // SettingsRouter only mounts this page under a provider whose login OpenMetadata owns, so the
+  // config is always meaningful here — no provider check of its own.
   useEffect(() => {
-    if (isBasicAuth) {
-      fetchLoginConfig();
-    }
-  }, [isBasicAuth]);
+    fetchLoginConfig();
+  }, []);
 
   if (loading) {
     return <Loader />;

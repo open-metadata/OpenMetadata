@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/ontologyProfileViolation.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyProfileViolation",
   "description": "A typed OWL 2 DL profile guardrail finding.",
   "type": "object",

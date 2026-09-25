@@ -96,20 +96,24 @@ class StoredProcedureLineageMixin(ABC):
                 results = conn.execute(text(query)).all()
 
             for row in results:
+                # Bound outside the try so the handler can still name the procedure, and
+                # assigned inside it so an unreadable row cannot escape and silently drop
+                # every row after it.
+                row_data = {}
                 try:
-                    query_by_procedure = QueryByProcedure.model_validate(row._asdict())
-                    # procedure_name is typed str but the model accepts None and the parser may
-                    # return None. Assigning str | None is tolerated at runtime by pydantic.
-                    query_by_procedure.procedure_name = (  # pyright: ignore[reportAttributeAccessIssue]
-                        query_by_procedure.procedure_name
-                        or get_procedure_name_from_call(query_text=query_by_procedure.procedure_text)
-                    )
+                    row_data = row._asdict()
+                    query_by_procedure = QueryByProcedure.model_validate(row_data)
+                    if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
+                        query_by_procedure.procedure_name = get_procedure_name_from_call(
+                            query_text=query_by_procedure.procedure_text
+                        )
                     yield query_by_procedure
                 except Exception as exc:
                     self.status.failed(
                         StackTraceError(
                             name="Stored Procedure",
-                            error=f"Error trying to get procedure name due to [{exc}]",
+                            error=f"Error trying to get procedure name for "
+                            f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
                             stackTrace=traceback.format_exc(),
                         )
                     )

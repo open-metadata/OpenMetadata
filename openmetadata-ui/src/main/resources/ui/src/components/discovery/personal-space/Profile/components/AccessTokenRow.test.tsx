@@ -29,7 +29,7 @@ jest.mock('rest/userAPI', () => ({
   updateUserAccessToken: (...a: unknown[]) => mockUpdateUserAccessToken(...a),
 }));
 
-jest.mock('rest/index', () => ({
+jest.mock('rest/axiosClient', () => ({
   __esModule: true,
   default: { put: (...a: unknown[]) => mockPut(...a) },
 }));

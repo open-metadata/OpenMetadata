@@ -472,56 +472,56 @@ class OpenSearchIndexManagerTest {
 
   @Test
   void testGetIndicesByAlias_SuccessfulRetrieval() throws IOException {
-    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
-        .thenReturn(booleanResponse);
-    when(booleanResponse.value()).thenReturn(true);
+    // GET /{name}/_alias resolves the name as index-or-alias, so a hit that does not actually
+    // carry the alias must be filtered back out.
+    IndexAliases carriesAlias = aliasesOf(TEST_ALIAS);
+    IndexAliases doesNot = aliasesOf("some_other_alias");
     when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
     when(getAliasResponse.result())
-        .thenReturn(Map.of("table_search_index_v1", mock(IndexAliases.class)));
+        .thenReturn(
+            Map.of("table_search_index_v1", carriesAlias, "table_search_index_v0", doesNot));
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
 
-    verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
     assertEquals(Set.of("table_search_index_v1"), result);
   }
 
   @Test
+  void testGetIndicesByAlias_NamesTheIndexInThePathNotTheAlias() throws IOException {
+    // The alias-scoped form (GET /_alias/{name}) names no index, so the cluster resolves it
+    // against _all — a 403 on any deployment whose search role is confined to its own
+    // <clusterAlias>* prefix. The index-scoped form is authorized by that same role.
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+    when(getAliasResponse.result()).thenReturn(Map.of());
+
+    indexManager.getIndicesByAlias(TEST_ALIAS);
+
+    var captor = forClass(GetAliasRequest.class);
+    verify(indicesClient).getAlias(captor.capture());
+    assertEquals(List.of(TEST_ALIAS), captor.getValue().index());
+    assertTrue(captor.getValue().name().isEmpty());
+    verify(indicesClient, never()).existsAlias(any(java.util.function.Function.class));
+  }
+
+  @Test
   void testGetIndicesByAlias_HandlesException() throws IOException {
-    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
-        .thenReturn(booleanResponse);
-    when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class)))
         .thenThrow(new IOException("Get indices by alias failed"));
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
 
     assertTrue(result.isEmpty());
-    verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
   }
 
   @Test
-  void testGetIndicesByAlias_ReturnsEmptyWhenAliasDoesNotExist() throws IOException {
-    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
-        .thenReturn(booleanResponse);
-    when(booleanResponse.value()).thenReturn(false);
-
-    Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
-
-    assertTrue(result.isEmpty());
-    verify(indicesClient).existsAlias(any(java.util.function.Function.class));
-    verify(indicesClient, never()).getAlias(any(GetAliasRequest.class));
-  }
-
-  @Test
   void testGetIndicesByAlias_ReturnsEmptyOnNotFoundException() throws IOException {
+    // 404 is how "no such alias" now arrives: the separate existence probe it replaced was the
+    // cluster-wide call that 403'd.
     os.org.opensearch.client.opensearch._types.OpenSearchException aliasMissingException =
         new os.org.opensearch.client.opensearch._types.OpenSearchException(
             buildErrorResponse(404, "alias_missing_exception"));
-    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
-        .thenReturn(booleanResponse);
-    when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class))).thenThrow(aliasMissingException);
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
@@ -535,15 +535,22 @@ class OpenSearchIndexManagerTest {
     os.org.opensearch.client.opensearch._types.OpenSearchException unexpectedException =
         new os.org.opensearch.client.opensearch._types.OpenSearchException(
             buildErrorResponse(500, "internal_server_error"));
-    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
-        .thenReturn(booleanResponse);
-    when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class))).thenThrow(unexpectedException);
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
 
     assertTrue(result.isEmpty());
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
+  }
+
+  private static IndexAliases aliasesOf(String... aliases) {
+    IndexAliases indexAliases = mock(IndexAliases.class);
+    when(indexAliases.aliases())
+        .thenReturn(
+            Arrays.stream(aliases)
+                .collect(
+                    java.util.stream.Collectors.toMap(a -> a, a -> mock(AliasDefinition.class))));
+    return indexAliases;
   }
 
   @Test

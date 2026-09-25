@@ -224,6 +224,28 @@ describe('TestSuiteListPanel', () => {
     jest.useRealTimers();
   });
 
+  it('should drop a pending search when the panel unmounts', () => {
+    // Opening a suite from the list unmounts the panel. A search still pending
+    // then would call onSearch, whose navigate({ search }) resolves against the
+    // list route and pulls the user back off the suite they just opened.
+    jest.useFakeTimers();
+    const onSearch = jest.fn();
+    const { unmount } = renderPanel({ onSearch });
+
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'sales' },
+    });
+    unmount();
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(onSearch).not.toHaveBeenCalled();
+
+    jest.useRealTimers();
+  });
+
   it('should build the search placeholder from the active sub-tab', () => {
     const { rerender, props } = renderPanel({
       subTab: DataQualitySubTabs.TABLE_SUITES,

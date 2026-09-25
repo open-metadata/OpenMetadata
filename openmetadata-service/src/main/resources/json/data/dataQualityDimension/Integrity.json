@@ -1,0 +1,8 @@
+{
+  "name": "Integrity",
+  "fullyQualifiedName": "Integrity",
+  "displayName": "Integrity",
+  "description": "Relationships between tables and keys hold as declared.",
+  "style": { "color": "#C11574" },
+  "provider": "system"
+}

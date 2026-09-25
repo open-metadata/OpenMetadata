@@ -1,2 +1,14 @@
 OpenMetadata
 Copyright 2021
+
+------------------------------------------------------------------------------
+This distribution bundles the following third-party work, used only by the
+integration-test suite and not shipped in any runtime artifact:
+
+  openmetadata-integration-tests/src/test/resources/opensearch-plugins/
+    opensearch-analysis-ik-3.4.0.zip
+
+  IK Analysis plugin for OpenSearch
+  Copyright the analysis-ik contributors
+  https://github.com/infinilabs/analysis-ik
+  Licensed under the Apache License, Version 2.0

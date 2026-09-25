@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import axiosClient from '.';
 import { ChangeSource } from '../generated/type/changeSummaryMap';
+import axiosClient from './axiosClient';
 import { getChangeSummary, getChangeSummaryByFqn } from './changeSummaryAPI';
 
-jest.mock('.');
+jest.mock('./axiosClient');
 
 const mockedGet = axiosClient.get as jest.MockedFunction<
   typeof axiosClient.get

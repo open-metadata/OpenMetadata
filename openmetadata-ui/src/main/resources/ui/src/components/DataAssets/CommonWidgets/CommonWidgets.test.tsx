@@ -24,7 +24,20 @@ import { CommonWidgets } from './CommonWidgets';
 jest.mock('../../Customization/GenericProvider/GenericContext');
 jest.mock('../../common/EntityDescription/Description', () => ({
   __esModule: true,
-  default: () => <div data-testid="description-widget">Description Widget</div>,
+  default: ({
+    removeBlur,
+    isDescriptionExpanded,
+  }: {
+    removeBlur?: boolean;
+    isDescriptionExpanded?: boolean;
+  }) => (
+    <div
+      data-expanded={String(Boolean(isDescriptionExpanded))}
+      data-remove-blur={String(Boolean(removeBlur))}
+      data-testid="description-widget">
+      Description Widget
+    </div>
+  ),
 }));
 jest.mock(
   '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
@@ -56,10 +69,45 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     <div data-testid="custom-properties-widget">Custom Properties Widget</div>
   ),
 }));
-jest.mock('../OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: () => (
-    <div data-testid="owner-label-widget">Owner Label Widget</div>
-  ),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Owner: () => <div data-testid="owner-label-widget">Owner Label Widget</div>,
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+  }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+  }),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+      })
+    ),
 }));
 jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
   ReviewerLabelV2: () => (
@@ -72,9 +120,39 @@ jest.mock('../../Domain/DomainExpertsWidget/DomainExpertWidget', () => ({
   ),
 }));
 
+jest.mock('../../common/TierWidget/TierWidget', () => ({
+  __esModule: true,
+  default: () => <div data-testid="tier-widget" />,
+}));
+jest.mock('../../common/CertificationWidget/CertificationWidget', () => ({
+  __esModule: true,
+  default: () => <div data-testid="certification-widget" />,
+}));
+jest.mock('../DomainLabelV2/DomainLabelV2', () => ({
+  DomainLabelV2: ({ multiple }: { multiple?: boolean }) => (
+    <div
+      data-multiple={String(Boolean(multiple))}
+      data-testid="domain-widget"
+    />
+  ),
+}));
+
 jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
   getCommonWidgetsFromConfig: jest.fn(),
 }));
+
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
+);
 
 const mockGenericContext = {
   data: {
@@ -120,6 +198,70 @@ describe('CommonWidgets', () => {
     );
 
     expect(await screen.findByTestId('description-widget')).toBeInTheDocument();
+  });
+
+  it('renders the full description for a large description widget', async () => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.CONTAINER}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 3,
+          h: 1,
+          config: { size: 'large' },
+        }}
+      />
+    );
+
+    expect(await screen.findByTestId('description-widget')).toHaveAttribute(
+      'data-remove-blur',
+      'true'
+    );
+  });
+
+  it('clamps the description behind read more for a small description widget', async () => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.CONTAINER}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          config: { size: 'small' },
+        }}
+      />
+    );
+
+    expect(await screen.findByTestId('description-widget')).toHaveAttribute(
+      'data-remove-blur',
+      'false'
+    );
+  });
+
+  it('keeps the read-more toggle when a small widget opens expanded by default', async () => {
+    // A dashboard without charts auto-expands its description.
+    render(
+      <CommonWidgets
+        entityType={EntityType.DASHBOARD}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          config: { size: 'small' },
+        }}
+      />
+    );
+
+    const description = await screen.findByTestId('description-widget');
+
+    expect(description).toHaveAttribute('data-expanded', 'true');
+    expect(description).toHaveAttribute('data-remove-blur', 'false');
   });
 
   it('should render data products widget', async () => {
@@ -324,6 +466,36 @@ describe('CommonWidgets', () => {
     );
 
     expect(await screen.findByTestId('domain-expert-name')).toBeInTheDocument();
+  });
+
+  it.each([
+    [DetailPageWidgetKeys.TIER, 'tier-widget'],
+    [DetailPageWidgetKeys.CERTIFICATION, 'certification-widget'],
+    [DetailPageWidgetKeys.DOMAIN, 'domain-widget'],
+  ])('renders the %s widget', async (key, testId) => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={{ i: key, x: 0, y: 0, w: 1, h: 1 }}
+      />
+    );
+
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
+  });
+
+  it('renders a widget contributed through the extension registry', () => {
+    (
+      commonWidgetClassBase.getCommonWidgetsFromConfig as jest.Mock
+    ).mockReturnValueOnce(() => <div data-testid="extension-widget" />);
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={{ i: 'KnowledgePanel.Custom', x: 0, y: 0, w: 1, h: 1 }}
+      />
+    );
+
+    expect(screen.getByTestId('extension-widget')).toBeInTheDocument();
   });
 
   it('should call commonWidgetClassBase.getCommonWidgetsFromConfig for unknown widget type', () => {

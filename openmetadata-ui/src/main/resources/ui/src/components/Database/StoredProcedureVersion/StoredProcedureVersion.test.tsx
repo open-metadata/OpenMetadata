@@ -13,7 +13,10 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { storedProcedureVersionMockProps } from '../../../mocks/StoredProcedureVersion.mock';
+import {
+  mockStoredProcedureCode,
+  storedProcedureVersionMockProps,
+} from '../../../mocks/StoredProcedureVersion.mock';
 import StoredProcedureVersion from './StoredProcedureVersion.component';
 
 const mockNavigate = jest.fn();
@@ -39,6 +42,14 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>Description</div>)
+);
+
+jest.mock('../SchemaEditor/SchemaEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(({ value }: { value: string }) => (
+      <div data-testid="schema-editor">{value}</div>
+    ))
 );
 
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
@@ -89,6 +100,16 @@ describe('StoredProcedureVersion tests', () => {
     expect(entityVersionTimeLine).toBeInTheDocument();
   });
 
+  it('Should display the stored procedure code for the historical version', async () => {
+    await act(async () => {
+      render(<StoredProcedureVersion {...storedProcedureVersionMockProps} />);
+    });
+
+    expect(await screen.findByTestId('schema-editor')).toHaveTextContent(
+      mockStoredProcedureCode
+    );
+  });
+
   it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
       render(
@@ -136,6 +157,49 @@ describe('StoredProcedureVersion tests', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/storedProcedure/sample_data.ecommerce_db.shopify.update_dim_address_table/versions/0.3/custom_properties'
+    );
+  });
+});
+
+describe('StoredProcedureVersion ViewCustomFields permission', () => {
+  const mockCustomPropertyTable = jest.requireMock(
+    '../../common/CustomPropertyTable/CustomPropertyTable'
+  ).CustomPropertyTable;
+
+  const renderWithViewCustomFields = (viewCustomFields: boolean) => {
+    render(
+      <StoredProcedureVersion
+        {...storedProcedureVersionMockProps}
+        entityPermissions={{
+          ...storedProcedureVersionMockProps.entityPermissions,
+          ViewCustomFields: viewCustomFields,
+        }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(screen.getByText('label.custom-property-plural'));
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is granted', () => {
+    renderWithViewCustomFields(true);
+
+    expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+      expect.objectContaining({ hasPermission: true }),
+      expect.any(Object)
+    );
+  });
+
+  it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is denied', () => {
+    renderWithViewCustomFields(false);
+
+    expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+      expect.objectContaining({ hasPermission: false }),
+      expect.any(Object)
     );
   });
 });

@@ -1,0 +1,8 @@
+{
+  "name": "Consistency",
+  "fullyQualifiedName": "Consistency",
+  "displayName": "Consistency",
+  "description": "The same fact agrees across tables, systems and time.",
+  "style": { "color": "#6938EF" },
+  "provider": "system"
+}

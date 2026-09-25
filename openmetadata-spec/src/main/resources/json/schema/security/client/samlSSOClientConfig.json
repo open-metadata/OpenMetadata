@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/security/client/samlSSOClientConfig.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SamlSSOClientConfig",
   "description": "SAML SSO client security configs.",
   "type": "object",
@@ -85,9 +85,10 @@
           "default": false
         },
         "tokenValidity": {
-          "description": "Validity for the JWT Token created from SAML Response",
+          "description": "Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.",
           "type": "integer",
-          "default": "3600"
+          "default": 3600,
+          "minimum": 1
         },
         "sendEncryptedNameId": {
           "description": "Encrypt Name Id while sending requests from SP.",

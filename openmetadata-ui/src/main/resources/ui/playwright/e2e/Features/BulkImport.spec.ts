@@ -547,31 +547,15 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page
       );
 
-      const importApiCall = page.waitForResponse(
-        (resp) =>
-          resp.url().includes('/importAsync?dryRun=true') &&
-          resp.request().method() === 'PUT'
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
-      await importApiCall;
-
-      // Wait directly for final state (results grid)
-      await page.getByTestId('passed-row').waitFor({
-        state: 'visible',
-      });
-      // Verify no loading state remains
-      await expect(page.getByText('Import is in progress.')).not.toBeVisible();
-
-      await page.locator('text=Import is in progress.').waitFor({
-        state: 'detached',
-      });
+      await loader.waitFor({ state: 'hidden' });
 
       await validateSuccessfulImportStatus(page);
-
-      await page.locator('.rdg-header-row').waitFor({
-        state: 'visible',
-      });
 
       const rowStatus = [
         'Entity updated',
@@ -643,7 +627,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     await test.step('should import and edit with two additional table', async () => {
       await dbSchemaEntity.visitEntityPage(page);
 
-      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')
@@ -781,7 +765,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
     await test.step('should import and edit with two additional columns', async () => {
       await tableEntity.visitEntityPage(page);
-      await page.click('[data-testid="manage-button"]');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')
@@ -861,7 +845,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     await test.step('should import and perform edit operation on entity', async () => {
       await dbEntity.visitEntityPage(page);
 
-      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')
@@ -936,7 +920,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     });
 
     await test.step('Perform Column Select and Delete Operation', async () => {
-      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')

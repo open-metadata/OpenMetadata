@@ -274,7 +274,7 @@ There are 2 types of auth configs:
 - IAM based Auth.
 - Azure Based Auth.
 
-User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Based Authentication` to connect to Azure related services.
 $$
 
 ## Basic Auth
@@ -491,12 +491,12 @@ $$
 
 $$section
 ### Auth Config $(id="authType")
-There are 2 types of auth configs:
+There are 3 types of auth configs:
 - Basic Auth.
 - IAM based Auth.
 - Azure Based Auth.
 
-User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Based Authentication` to connect to Azure related services.
 $$
 
 

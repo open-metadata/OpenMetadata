@@ -12,7 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { getJWTTokenExpiryOptions } from './BotsUtils';
+import { getJWTTokenExpiryOptions, getTokenIssuedAtMs } from './BotsUtils';
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
@@ -102,5 +102,39 @@ describe('getJWTTokenExpiryOptions', () => {
       'label.number-day-plural',
       'label.unlimited',
     ]);
+  });
+});
+
+describe('getTokenIssuedAtMs', () => {
+  const buildJwtWithIat = (iat: number | null): string => {
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString(
+      'base64url'
+    );
+    const payload = Buffer.from(
+      JSON.stringify(iat === null ? {} : { iat })
+    ).toString('base64url');
+
+    return `${header}.${payload}.signature`;
+  };
+
+  it('returns null when the token is undefined or empty', () => {
+    expect(getTokenIssuedAtMs(undefined)).toBeNull();
+    expect(getTokenIssuedAtMs('')).toBeNull();
+  });
+
+  it('returns null when the token is opaque / undecodable', () => {
+    expect(getTokenIssuedAtMs('not-a-jwt')).toBeNull();
+  });
+
+  it('returns null when the JWT has no iat claim', () => {
+    expect(getTokenIssuedAtMs(buildJwtWithIat(null))).toBeNull();
+  });
+
+  it('returns iat converted from seconds to milliseconds', () => {
+    const iatSeconds = 1_700_000_000;
+
+    expect(getTokenIssuedAtMs(buildJwtWithIat(iatSeconds))).toBe(
+      iatSeconds * 1000
+    );
   });
 });

@@ -3,6 +3,7 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.RECONCILE_COLUMN_LINEAGE_SCRIPT;
@@ -24,6 +25,7 @@ import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.Result;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
+import es.co.elastic.clients.elasticsearch._types.SlicesCalculation;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -34,6 +36,7 @@ import es.co.elastic.clients.elasticsearch.core.GetResponse;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
+import es.co.elastic.clients.elasticsearch.core.UpdateRequest;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
@@ -73,6 +76,8 @@ import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchPropagationLimits;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -417,24 +422,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params = convertToJsonDataMap(doc);
-
-      SearchRetryUtil.executeWithRetry(
-          () ->
-              client.update(
-                  u ->
-                      u.index(indexName)
-                          .id(docId)
-                          .refresh(Refresh.True)
-                          .retryOnConflict(3)
-                          .scriptedUpsert(true)
-                          .upsert(params)
-                          .script(
-                              s ->
-                                  s.source(ss -> ss.scriptString(scriptTxt))
-                                      .lang(ScriptLanguage.Painless)
-                                      .params(params)),
-                  Map.class));
+      UpdateRequest<Map, Map> request = buildUpdateEntityRequest(indexName, docId, doc, scriptTxt);
+      SearchRetryUtil.executeWithRetry(() -> client.update(request, Map.class));
 
       LOG.info(
           "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
@@ -461,6 +450,24 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error(
           "Failed to update entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
     }
+  }
+
+  UpdateRequest<Map, Map> buildUpdateEntityRequest(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    Map<String, JsonData> params = convertToJsonDataMap(doc);
+    return UpdateRequest.of(
+        u ->
+            u.index(indexName)
+                .id(docId)
+                .refresh(Refresh.True)
+                .retryOnConflict(3)
+                .scriptedUpsert(true)
+                .upsert(SearchIndexUtils.toUpsertDocument(doc))
+                .script(
+                    s ->
+                        s.source(ss -> ss.scriptString(scriptTxt))
+                            .lang(ScriptLanguage.Painless)
+                            .params(params)));
   }
 
   @Override
@@ -515,6 +522,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
    * and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException}; submitting
    * it as a background task returns immediately and lets the cluster finish the propagation and the
    * post-task {@code refresh} on its own.
+   *
+   * <p>Sliced and throttled because the widest parent here is a service, whose children are every
+   * asset it ever ingested. Unsliced, that is a single-threaded scroll over millions of documents;
+   * unthrottled, it runs as fast as the cluster allows and starves concurrent ingestion and search
+   * for the duration. {@code slices=auto} gives one slice per shard and
+   * {@link SearchPropagationLimits#REQUESTS_PER_SECOND} caps the sustained write rate.
    */
   UpdateByQueryRequest buildUpdateChildrenRequest(
       List<String> indexNames,
@@ -528,6 +541,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                 .query(exactFieldQuery(fieldAndValue))
                 .conflicts(Conflicts.Proceed)
                 .waitForCompletion(false)
+                .slices(s -> s.computed(SlicesCalculation.Auto))
+                .requestsPerSecond(SearchPropagationLimits.REQUESTS_PER_SECOND)
                 .script(
                     s ->
                         s.source(ss -> ss.scriptString(updates.getKey()))
@@ -1590,7 +1605,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
 
     if (!fieldsToRemove.isEmpty()) {
-      result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
+      result.put(FIELDS_TO_REMOVE, JsonData.of(fieldsToRemove));
     }
 
     return result;

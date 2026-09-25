@@ -19,11 +19,12 @@ import {
   Input,
   Modal,
   ModalOverlay,
+  Owner,
+  Tabs,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
-import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
@@ -37,8 +38,9 @@ import ManageButton from '../../components/common/EntityPageInfos/ManageButton/M
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -51,6 +53,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import { useClipboard } from '../../hooks/useClipBoard';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
@@ -285,7 +288,7 @@ const TestSuiteDetailsPage = () => {
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
 
-  const tabItems: TabsProps['items'] = useMemo(() => {
+  const tabItems: TabProps[] = useMemo(() => {
     const renderDescription = () => (
       <div className="tw:w-full">
         <Description
@@ -498,31 +501,50 @@ const TestSuiteDetailsPage = () => {
               onUpdate={handleDomainUpdate}
             />
             <HeaderDotSeparator />
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               avatarSize={24}
               className="header-owner-heading"
               hasPermission={Boolean(permissions.hasEditOwnerPermission)}
               isCompactView={false}
               maxVisibleOwners={3}
-              multiple={{
-                user: canAddMultipleUserOwners,
-                team: canAddMultipleTeamOwner,
-              }}
               owners={testOwners}
-              onUpdate={onUpdateOwner}
+              selectorContent={
+                <UserTeamSelectableList
+                  hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                  multiple={{
+                    user: canAddMultipleUserOwners,
+                    team: canAddMultipleTeamOwner,
+                  }}
+                  owner={testOwners}
+                  onUpdate={onUpdateOwner}
+                />
+              }
             />
           </div>
         </Box>
         <div className="test-suite-details-tabs" data-testid="tabs-root">
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
+            className="tw:gap-3"
             data-testid="tabs"
-            items={tabItems}
-            onChange={(key) => setActiveTab(key)}
-          />
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            onSelectionChange={(key) => setActiveTab(String(key))}>
+            <Tabs.List size="sm" type="underline" variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel
+                className="tw:rounded-lg tw:bg-primary"
+                id={key}
+                key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </div>
       </Box>
     </PageLayoutV1>
