@@ -157,7 +157,9 @@ const EntityHeaderTitle = ({
         <Tooltip
           placement="bottom"
           title={renderHighlightedText(displayName ?? name)}
-          triggerClassName="tw:block tw:min-w-0">
+          triggerClassName="tw:block tw:min-w-0"
+          // Let presses reach the enclosing header Link (client-side navigation).
+          onTriggerPress={(e) => e.continuePropagation()}>
           <Typography
             ellipsis
             className={classNames(
@@ -228,7 +230,9 @@ const EntityHeaderTitle = ({
           <Tooltip
             placement="bottom"
             title={entityName}
-            triggerClassName="tw:block tw:min-w-0">
+            triggerClassName="tw:block tw:min-w-0"
+            // Let presses reach the enclosing header Link (client-side navigation).
+            onTriggerPress={(e) => e.continuePropagation()}>
             <Typography
               ellipsis
               className={classNames(displayNameClassName, 'm-b-0 tw:min-w-0', {
