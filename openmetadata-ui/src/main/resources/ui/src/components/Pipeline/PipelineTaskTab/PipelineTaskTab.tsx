@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Segmented, Typography } from 'antd';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Card,
+} from '@openmetadata/ui-core-components';
+import { Typography } from 'antd';
+import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import {
@@ -30,6 +36,10 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_PIPELINE_VISIBLE_COLUMNS,
@@ -192,7 +202,18 @@ export const PipelineTaskTab = () => {
   const tasksDAGView = useMemo(
     () =>
       !isEmpty(pipelineDetails.tasks) && !isUndefined(pipelineDetails.tasks) ? (
-        <Card className="task-dag-view-card" title={t('label.dag-view')}>
+        // Light values reproduce the antd Card this replaced.
+        <Card className="tw:overflow-visible tw:border-utility-gray-blue-100 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle">
+          <div
+            className={classNames(
+              'tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:rounded-t-xl',
+              'tw:border-b tw:border-black/6 tw:bg-[var(--om-legacy-color-f8f8f8)]',
+              'tw:px-6 tw:py-4 tw:text-base tw:leading-[1.5715] tw:font-medium',
+              'tw:text-black/85 tw:dark:border-secondary tw:dark:bg-secondary',
+              'tw:dark:text-primary'
+            )}>
+            {t('label.dag-view')}
+          </div>
           <div className="h-100">
             <Suspense fallback={null}>
               <TasksDAGView
@@ -203,7 +224,9 @@ export const PipelineTaskTab = () => {
           </div>
         </Card>
       ) : (
-        <Card className="text-center" data-testid="no-tasks-data">
+        <Card
+          className="text-center tw:overflow-visible tw:border-utility-gray-blue-100 tw:p-5 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle"
+          data-testid="no-tasks-data">
           <span>{t('server.no-task-available')}</span>
         </Card>
       ),
@@ -402,13 +425,27 @@ export const PipelineTaskTab = () => {
 
   return (
     <div>
-      <Segmented
-        className="segment-toggle m-b-md"
+      <ButtonGroup
+        disallowEmptySelection
+        className={`${SEGMENT_TOGGLE_GROUP_CLASS} m-b-md`}
         data-testid="pipeline-task-switch"
-        options={Object.values(PIPELINE_TASK_TABS)}
-        value={activeTab}
-        onChange={(value) => setActiveTab(value as PIPELINE_TASK_TABS)}
-      />
+        selectedKeys={[activeTab]}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const selected = [...keys][0];
+          if (selected) {
+            setActiveTab(selected as PIPELINE_TASK_TABS);
+          }
+        }}>
+        {Object.values(PIPELINE_TASK_TABS).map((tab) => (
+          <ButtonGroupItem
+            className={SEGMENT_TOGGLE_ITEM_CLASS}
+            id={tab}
+            key={tab}>
+            {tab}
+          </ButtonGroupItem>
+        ))}
+      </ButtonGroup>
 
       {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
         <Table

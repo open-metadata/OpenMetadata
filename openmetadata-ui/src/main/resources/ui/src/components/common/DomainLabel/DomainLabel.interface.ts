@@ -27,6 +27,8 @@ export type DomainLabelProps = {
   entityFqn: string;
   entityId: string;
   textClassName?: string;
+  /** Class for the "Domains" heading rendered in `headerLayout`. */
+  labelClassName?: string;
   showDomainHeading?: boolean;
   multiple?: boolean;
   onUpdate?: (domain: EntityReference | EntityReference[]) => Promise<void>;

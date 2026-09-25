@@ -20,7 +20,6 @@ import '@fontsource/source-code-pro'; // Font 400
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';
-import './components/badge.less';
 import './components/code-mirror.less';
 import './components/drawer.less';
 import './components/entity-version-time-line.less';

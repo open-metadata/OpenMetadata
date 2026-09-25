@@ -138,7 +138,7 @@ const TierSection: React.FC<TierSectionProps> = ({
       <TierCard
         currentTier={displayTier?.tagFQN}
         footerActionButtonsClassName="tier-card-footer-action-buttons"
-        popoverProps={{ open: popoverOpen }}
+        open={popoverOpen}
         tierCardClassName="tier-card-popover"
         updateTier={handleTierSelection}
         onClose={() => {
@@ -214,6 +214,8 @@ const TierSection: React.FC<TierSectionProps> = ({
         {canShowEditButton && (
           <EditIconButton
             newLook
+            aria-expanded={popoverOpen}
+            aria-haspopup="dialog"
             data-testid="edit-icon-tier"
             disabled={false}
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}

@@ -1109,14 +1109,16 @@
     --color-utility-success-600: theme(--color-success-400);
     --color-utility-success-700: theme(--color-success-400);
 
-    --color-utility-orange-50: theme(--color-orange-950);
-    --color-utility-orange-100: theme(--color-orange-900);
-    --color-utility-orange-200: theme(--color-orange-800);
+    /* Same status-chip recipe as success/warning/error: the solid 950/800 steps
+       read as a heavy filled block on dark surfaces. */
+    --color-utility-orange-50: --alpha(theme(--color-orange-500) / 16%);
+    --color-utility-orange-100: --alpha(theme(--color-orange-500) / 16%);
+    --color-utility-orange-200: --alpha(theme(--color-orange-500) / 35%);
     --color-utility-orange-300: theme(--color-orange-700);
     --color-utility-orange-400: theme(--color-orange-600);
-    --color-utility-orange-500: theme(--color-orange-500);
+    --color-utility-orange-500: theme(--color-orange-400);
     --color-utility-orange-600: theme(--color-orange-400);
-    --color-utility-orange-700: theme(--color-orange-300);
+    --color-utility-orange-700: theme(--color-orange-400);
 
     --color-utility-blue-dark-50: theme(--color-blue-dark-950);
     --color-utility-blue-dark-100: theme(--color-blue-dark-900);
@@ -1843,6 +1845,13 @@ label/icon elements so it wins regardless of the .prose/Tailwind cascade
 order. */
 .tag-color-text {
   color: var(--tag-color) !important;
+}
+
+/* Dark: a user-picked tag colour is often a dark hue that is unreadable as
+text on the dark surface. Lift the label/icon toward white while keeping the
+hue; the accent border keeps the exact colour. */
+.dark-mode .tag-color-text {
+  color: color-mix(in srgb, var(--tag-color) 55%, white) !important;
 }
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */

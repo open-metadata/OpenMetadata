@@ -10,15 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Divider,
-  Dropdown,
-  Menu,
-  Segmented,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Divider, Dropdown, Segmented, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -190,65 +182,81 @@ const ActivityFeedTabLeftPanel = ({
     return null;
   }
 
-  return (
-    <Menu
-      className="custom-menu p-t-sm"
-      data-testid="global-setting-left-panel"
-      items={[
-        {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                <AllActivityIcon
-                  style={COMMON_ICON_STYLES}
-                  {...ICON_DIMENSION}
-                />
-                <span>{t('label.all')}</span>
-              </Space>
+  const items = [
+    {
+      key: ActivityFeedTabs.ALL,
+      icon: AllActivityIcon,
+      label: t('label.all'),
+      countTestId: 'left-panel-all-count',
+      count: isUserEntity
+        ? null
+        : getCountBadge(
+            (countData?.conversationCount ?? 0) +
+              (countData?.activityCount ?? 0),
+            '',
+            activeTab === ActivityFeedTabs.ALL,
+            true
+          ),
+    },
+    {
+      key: ActivityFeedTabs.TASKS,
+      icon: TaskListIcon,
+      label: t('label.task-plural'),
+      countTestId: 'left-panel-task-count',
+      count: getCountBadge(
+        taskFilter === TaskStatusGroup.Open
+          ? countData?.openTaskCount
+          : countData?.closedTaskCount,
+        '',
+        isTaskActiveTab,
+        true
+      ),
+    },
+  ];
+  const selectedKey =
+    activeTab === ActivityFeedTabs.ALL
+      ? ActivityFeedTabs.ALL
+      : ActivityFeedTabs.TASKS;
 
-              <span data-testid="left-panel-all-count">
-                {!isUserEntity &&
-                  getCountBadge(
-                    (countData?.conversationCount ?? 0) +
-                      (countData?.activityCount ?? 0),
-                    '',
-                    activeTab === ActivityFeedTabs.ALL
-                  )}
-              </span>
-            </div>
-          ),
-          key: ActivityFeedTabs.ALL,
-        },
-        {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                <TaskListIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
-                <span>{t('label.task-plural')}</span>
-              </Space>
-              <span data-testid="left-panel-task-count">
-                {getCountBadge(
-                  taskFilter === TaskStatusGroup.Open
-                    ? countData?.openTaskCount
-                    : countData?.closedTaskCount,
-                  '',
-                  isTaskActiveTab
+  return (
+    <nav
+      aria-label={t('label.activity-feed-plural')}
+      className="left-container tw:bg-surface"
+      data-testid="global-setting-left-panel">
+      <ul className="tw:m-0 tw:list-none tw:p-0 tw:pt-2">
+        {items.map(({ key, icon: Icon, label, countTestId, count }) => {
+          const isSelected = key === selectedKey;
+
+          return (
+            <li className="tw:mt-0.5" key={key}>
+              <button
+                aria-current={isSelected ? 'page' : undefined}
+                className={classNames(
+                  'tw:relative tw:flex tw:h-10 tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:overflow-hidden',
+                  'tw:border-0 tw:px-4 tw:text-left tw:text-sm tw:transition-colors tw:hover:text-fg-brand-primary',
+                  'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+                  isSelected
+                    ? [
+                        // antd inline Menu's selected look: brand tint + 3px left bar.
+                        'tw:bg-utility-brand-100 tw:font-semibold tw:text-fg-brand-primary tw:dark:bg-brand-primary',
+                        'tw:after:absolute tw:after:inset-y-0 tw:after:left-0 tw:after:w-0.75 tw:after:bg-fg-brand-primary',
+                      ]
+                    : 'tw:bg-transparent tw:text-primary'
                 )}
-              </span>
-            </div>
-          ),
-          key: ActivityFeedTabs.TASKS,
-        },
-      ]}
-      mode="inline"
-      rootClassName="left-container"
-      selectedKeys={[
-        activeTab === ActivityFeedTabs.ALL
-          ? ActivityFeedTabs.ALL
-          : ActivityFeedTabs.TASKS,
-      ]}
-      onClick={(info) => onTabChange(info.key)}
-    />
+                data-testid={`activity-feed-left-panel-${key}`}
+                type="button"
+                onClick={() => onTabChange(key)}>
+                <span className="tw:flex tw:items-center tw:gap-2">
+                  <Icon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
+                  <span>{label}</span>
+                </span>
+                <span data-testid={countTestId}>{count}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 };
 

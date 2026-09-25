@@ -14,6 +14,7 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import '../../../Entity/EntityLineage/custom-node.less';
+import { LINEAGE_NODE_DARK_CLASS } from '../../../Entity/EntityLineage/CustomNode.utils';
 import LineageNodeLabelV1 from '../../../Entity/EntityLineage/LineageNodeLabelV1';
 import { PortNodeProps } from './PortsLineageView.types';
 
@@ -23,7 +24,7 @@ const PortNode = memo(({ data }: PortNodeProps) => {
 
   return (
     <div
-      className="lineage-node"
+      className={`lineage-node ${LINEAGE_NODE_DARK_CLASS}`}
       data-testid={`port-node-${port.fullyQualifiedName}`}>
       {isInputPort && (
         <Handle

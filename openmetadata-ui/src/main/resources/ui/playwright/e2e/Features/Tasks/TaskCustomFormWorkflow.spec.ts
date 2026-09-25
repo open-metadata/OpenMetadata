@@ -433,7 +433,10 @@ test.describe.serial(
         await table.visitEntityPage(page);
         await page.getByTestId('activity_feed').click();
         await waitForAllLoadersToDisappear(page);
-        await page.getByRole('menuitem', { name: /tasks/i }).click();
+        await page
+          .getByTestId('global-setting-left-panel')
+          .getByRole('button', { name: /tasks/i })
+          .click();
         await waitForAllLoadersToDisappear(page);
         await expect(
           page.locator('[data-testid="task-feed-card"]').first()

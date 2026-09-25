@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Button } from '@openmetadata/ui-core-components';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import TierCard from './TierCard';
 
 const mockTierData = [
@@ -39,6 +46,7 @@ const mockProps = {
   currentTier: 'currentTier',
   updateTier: mockOnUpdate,
   children: <div>Child</div>,
+  open: true,
 };
 
 jest.mock('../../../rest/tagAPI', () => ({
@@ -52,24 +60,6 @@ jest.mock('../Loader/Loader', () => {
 jest.mock('../../../utils/ToastUtils', () => {
   return jest.fn().mockImplementation(() => mockShowErrorToast());
 });
-
-// Mock Antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-
-  Popover: jest
-    .fn()
-    .mockImplementation(({ content, onOpenChange, children }) => {
-      onOpenChange(true);
-
-      return (
-        <>
-          {content}
-          {children}
-        </>
-      );
-    }),
-}));
 
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
@@ -99,6 +89,8 @@ describe('Test TierCard Component', () => {
       fireEvent.click(radioButton);
     });
 
+    expect(screen.getByRole('radio', { name: /Tier1/ })).toBeChecked();
+
     const updateTierCard = await screen.findByTestId('update-tier-card');
 
     expect(updateTierCard).toBeInTheDocument();
@@ -107,7 +99,7 @@ describe('Test TierCard Component', () => {
       fireEvent.click(updateTierCard);
     });
 
-    expect(mockOnUpdate).toHaveBeenCalled();
+    expect(mockOnUpdate).toHaveBeenCalledWith(mockTierData[0]);
   });
 
   it('should call the mockOnUpdate when click on Clear button', async () => {
@@ -123,15 +115,63 @@ describe('Test TierCard Component', () => {
       fireEvent.click(clearTier);
     });
 
-    expect(mockOnUpdate).toHaveBeenCalled();
+    expect(mockOnUpdate).toHaveBeenCalledWith(undefined);
   });
 
-  it('should call getTags for popoverProps.open = true', async () => {
+  it('should open from a pressable trigger and close on Escape', async () => {
+    render(
+      <TierCard currentTier="currentTier" updateTier={mockOnUpdate}>
+        <Button data-testid="edit-tier">Edit</Button>
+      </TierCard>
+    );
+
+    const trigger = screen.getByTestId('edit-tier');
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('cards')).not.toBeInTheDocument();
+
     await act(async () => {
-      render(<TierCard {...mockProps} popoverProps={{ open: true }} />);
+      fireEvent.click(trigger);
     });
 
-    expect(mockGetTags).toHaveBeenCalled();
+    expect(await screen.findByTestId('cards')).toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
+    );
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('should leave controlled open state to the caller', async () => {
+    const onOpenChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <TierCard {...mockProps} onOpenChange={onOpenChange}>
+          <div data-testid="anchor">Anchor</div>
+        </TierCard>
+      );
+    });
+
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByTestId('anchor'));
+      fireEvent.pointerUp(screen.getByTestId('anchor'));
+    });
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.getByTestId('cards')).toBeInTheDocument();
   });
 
   it('should request only enabled tiers by passing disabled false', async () => {

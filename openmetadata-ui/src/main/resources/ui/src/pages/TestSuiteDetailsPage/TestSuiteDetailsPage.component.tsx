@@ -450,7 +450,7 @@ const TestSuiteDetailsPage = () => {
                 className={classNames(
                   'tw:relative tw:size-9 tw:shrink-0',
                   'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                 )}
                 justify="center">
                 <TestSuiteIcon className="tw:size-5" />
@@ -496,15 +496,15 @@ const TestSuiteDetailsPage = () => {
               entityId={testSuite?.id ?? ''}
               entityType={EntityType.TEST_SUITE}
               hasPermission={flags.canEditAll}
+              labelClassName="tw:text-secondary!"
               multiple={canAddMultipleDomains}
-              textClassName="render-domain-lebel-style"
+              textClassName="render-domain-lebel-style tw:text-secondary!"
               onUpdate={handleDomainUpdate}
             />
             <HeaderDotSeparator />
             <Owner
               showDashPlaceholder
               avatarSize={24}
-              className="header-owner-heading"
               hasPermission={Boolean(permissions.hasEditOwnerPermission)}
               isCompactView={false}
               maxVisibleOwners={3}

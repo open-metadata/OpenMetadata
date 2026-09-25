@@ -24,19 +24,19 @@
 }
 
 .contract-semantic-form-container {
-  .ant-card.expanded {
-    .ant-card-head {
+  .expandable-card.expanded {
+    .expandable-card-header {
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
     }
   }
 
-  .ant-card.new-header-border-card.expandable-card {
+  .expandable-card {
     margin-top: var(--om-space-16);
     border: 1px solid @border-color-7;
     box-shadow: 0 1px 2px 0 @grey-27;
 
-    .ant-card-head {
+    .expandable-card-header {
       background: var(--tw-color-bg-primary);
       border-bottom: 1px solid @grey-200;
 
@@ -120,7 +120,7 @@
         }
       }
 
-      .ant-card-extra {
+      .expandable-card-extra {
         .ant-btn.expand-collapse-icon {
           width: 30px;
           height: 30px;
@@ -137,11 +137,11 @@
   }
 
   .expanded-active-card {
-    .ant-card-head {
+    .expandable-card-header {
       display: none;
     }
 
-    .ant-card-body {
+    .expandable-card-body {
       padding: 0;
 
       .semantic-form-item-content {

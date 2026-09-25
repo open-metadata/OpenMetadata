@@ -31,6 +31,16 @@ describe('Alert', () => {
     expect(screen.getByTestId('alert-children')).toHaveTextContent('Body only');
   });
 
+  it('omits the icon when showIcon is false', () => {
+    render(
+      <Alert showIcon={false} variant="brand">
+        Body only
+      </Alert>
+    );
+
+    expect(screen.queryByTestId('alert-icon')).not.toBeInTheDocument();
+  });
+
   it('treats an empty-string title as absent', () => {
     render(
       <Alert title="" variant="brand">
