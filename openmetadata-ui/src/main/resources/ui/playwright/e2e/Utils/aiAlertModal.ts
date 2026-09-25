@@ -21,14 +21,47 @@ const readOptions = async (listbox: Locator) => {
 };
 
 /**
+ * React Aria closes a popover when an ancestor of its trigger scrolls. click() scrolls a
+ * trigger below the fold into view, and that scroll event can land a frame after the popover
+ * opened, closing it again. Scrolling first leaves nothing to scroll during the click.
+ */
+const scrollTriggerIntoView = (trigger: Locator) =>
+  trigger.scrollIntoViewIfNeeded();
+
+/** A focused combobox does not always reopen on click; ArrowDown opens it. */
+const openCombobox = async (combobox: Locator) => {
+  await combobox.click();
+  await combobox.press('ArrowDown');
+};
+
+/**
+ * Opens a core Select or ComboBox and clicks one of its options. The short option timeout
+ * turns a popover that still closed late into a retry that reopens it, instead of waiting
+ * forever on a detached option.
+ */
+const pickOption = async (
+  trigger: Locator,
+  option: Locator,
+  open: () => Promise<void> = () => trigger.click()
+) => {
+  await scrollTriggerIntoView(trigger);
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await open();
+    }
+    await option.click({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
+};
+
+/**
  * Opens a combobox and reads only the listbox it controls, ignoring any other open popover.
  * A focused combobox does not always reopen on click, so retry the open until it is expanded.
  */
 const openComboboxOptions = async (page: Page, combobox: Locator) => {
+  await scrollTriggerIntoView(combobox);
   await expect(async () => {
     if ((await combobox.getAttribute('aria-expanded')) !== 'true') {
-      await combobox.click();
-      await combobox.press('ArrowDown');
+      await openCombobox(combobox);
     }
     await expect(combobox).toHaveAttribute('aria-expanded', 'true', {
       timeout: 2_000,
@@ -42,6 +75,7 @@ const openComboboxOptions = async (page: Page, combobox: Locator) => {
 /** Opens a core Select; like the combobox, a first click can land before the trigger is ready. */
 const openSelect = async (select: Locator) => {
   const trigger = select.getByRole('button');
+  await scrollTriggerIntoView(trigger);
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
       await trigger.click();
@@ -75,8 +109,10 @@ export const fillAlertName = async (dialog: Locator, name: string) => {
 };
 
 export const selectAlertSource = async (page: Page, source: string) => {
-  await openSelect(page.getByTestId('source-select'));
-  await page.getByRole('option', { name: source, exact: true }).click();
+  await pickOption(
+    page.getByTestId('source-select').getByRole('button'),
+    page.getByRole('option', { name: source, exact: true })
+  );
 };
 
 export const getDestinationCategoryOptions = async (
@@ -99,14 +135,17 @@ export const selectDestinationCategory = async (
   category: string,
   index = 0
 ) => {
-  await dialog
+  const combobox = dialog
     .getByTestId(`destination-category-select-${index}`)
-    .getByRole('combobox')
-    .click();
-  await page
-    .getByRole('listbox', { name: /Destination/ })
-    .getByRole('option', { name: category, exact: true })
-    .click();
+    .getByRole('combobox');
+
+  await pickOption(
+    combobox,
+    page
+      .getByRole('listbox', { name: /Destination/ })
+      .getByRole('option', { name: category, exact: true }),
+    () => openCombobox(combobox)
+  );
 };
 
 export const addFilter = async (
@@ -116,8 +155,10 @@ export const addFilter = async (
   index = 0
 ) => {
   await dialog.getByTestId('add-filters').click();
-  await openSelect(dialog.getByTestId(`filters-select-${index}`));
-  await page.getByRole('option', { name: filter, exact: true }).click();
+  await pickOption(
+    dialog.getByTestId(`filters-select-${index}`).getByRole('button'),
+    page.getByRole('option', { name: filter, exact: true })
+  );
 };
 
 export const getFilterSelectOptions = async (
@@ -176,11 +217,12 @@ export const selectInternalDestinationType = async (
   type: string,
   index: number
 ) => {
-  await openSelect(dialog.getByTestId(`destination-type-select-${index}`));
-  await page
-    .getByRole('listbox', { name: 'Type' })
-    .getByRole('option', { name: type, exact: true })
-    .click();
+  await pickOption(
+    dialog.getByTestId(`destination-type-select-${index}`).getByRole('button'),
+    page
+      .getByRole('listbox', { name: 'Type' })
+      .getByRole('option', { name: type, exact: true })
+  );
 };
 
 /** Picks a team or user receiver by search text; the option test id carries its FQN. */
@@ -232,8 +274,10 @@ export const selectWebhookAuthType = async (
     .getByTestId(`destination-${index}`)
     .getByText('Advanced Configuration')
     .click();
-  await dialog.getByTestId(`auth-type-select-${index}`).click();
-  await page.getByRole('option', { name: label, exact: true }).click();
+  await pickOption(
+    dialog.getByTestId(`auth-type-select-${index}`).getByRole('button'),
+    page.getByRole('option', { name: label, exact: true })
+  );
 };
 
 export const fillDestinationInput = async (
