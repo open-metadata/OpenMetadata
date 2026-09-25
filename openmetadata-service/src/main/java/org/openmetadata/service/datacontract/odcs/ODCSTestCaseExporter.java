@@ -196,7 +196,8 @@ public final class ODCSTestCaseExporter {
 
   /**
    * Only the COUNT strategy compares a value the query returns, which is what an ODCS SQL rule
-   * does; ROWS counts returned rows and so stays an OpenMetadata rule.
+   * does; ROWS counts returned rows and so stays an OpenMetadata rule. So does any test the SQL
+   * rule would not import back as: a grouped query, or a comparison with a fraction.
    */
   private static Optional<ODCSQualityRule> sqlRule(
       ODCSQualityRule base, Map<String, String> parameters) {
@@ -204,13 +205,21 @@ public final class ODCSTestCaseExporter {
         COMPARISON_SETTERS.get(parameters.getOrDefault(OPERATOR, LESS_OR_EQUAL));
     double threshold = number(parameters.get(THRESHOLD)).orElse(0.0);
     return Optional.ofNullable(parameters.get(SQL_EXPRESSION))
-        .filter(query -> COUNT_STRATEGY.equals(parameters.get(STRATEGY)) && comparison != null)
+        .filter(
+            query ->
+                comparison != null
+                    && ODCSRuleOperators.isWhole(threshold)
+                    && comparesTheReturnedValue(query, parameters))
         .map(
             query -> {
               ODCSQualityRule rule = base.withType(ODCSQualityRule.Type.SQL).withQuery(query);
               comparison.accept(rule, threshold);
               return rule;
             });
+  }
+
+  private static boolean comparesTheReturnedValue(String query, Map<String, String> parameters) {
+    return COUNT_STRATEGY.equals(parameters.get(STRATEGY)) && !ODCSSqlRuleBuilder.groupsRows(query);
   }
 
   private static ODCSQualityRule openMetadataRule(ODCSQualityRule base, TestCase testCase) {

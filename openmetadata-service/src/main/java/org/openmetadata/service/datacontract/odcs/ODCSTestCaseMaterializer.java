@@ -13,12 +13,17 @@
 
 package org.openmetadata.service.datacontract.odcs;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.TestCaseOutcome;
@@ -31,9 +36,9 @@ import org.openmetadata.service.resources.dqtests.TestCaseMapper;
 /**
  * Creates, or updates, the test cases {@link ODCSQualityRuleMapper} described. A test case with the
  * same name may already exist on the table. When the contract already owns it, or an earlier ODCS
- * import created it, it is updated in place. When it belongs to someone else it is never
- * overwritten: it is linked as it is if it runs the same test definition, and the rule is skipped
- * otherwise.
+ * import created it, it is updated in place. When it belongs to someone else it is not written: it
+ * is linked if it already runs the same test with the same parameters, and the rule is skipped
+ * otherwise. Once linked it is the contract's own, so later imports keep it in step with the rule.
  */
 @Slf4j
 public final class ODCSTestCaseMaterializer {
@@ -103,16 +108,24 @@ public final class ODCSTestCaseMaterializer {
     repository.setFullyQualifiedName(testCase);
     TestCase existing = findExisting(testCase.getFullyQualifiedName());
     return isOwnedBySomeoneElse(existing, request)
-        ? linkIfSameDefinition(existing, testCase)
+        ? linkIfSameTest(existing, testCase)
             .<Step>map(Linked::new)
             .orElseGet(() -> new Skip(nameTakenOutcome(outcome)))
-        : new Write(outcome, testCase, existing != null);
+        : write(outcome, testCase, existing);
+  }
+
+  /** Re-importing a rule rewrites its test, not the review status the test case has reached. */
+  private static Write write(TestCaseOutcome outcome, TestCase testCase, TestCase existing) {
+    if (existing != null) {
+      testCase.setEntityStatus(existing.getEntityStatus());
+    }
+    return new Write(outcome, testCase, existing != null);
   }
 
   private Step persist(Write write, String user) {
     Step settled;
     try {
-      repository.prepare(write.testCase(), false);
+      repository.prepareInternal(write.testCase(), write.overwritesExisting());
       settled =
           new Linked(
               repository
@@ -143,20 +156,31 @@ public final class ODCSTestCaseMaterializer {
         && !existing.getName().startsWith(ODCSTestCaseNames.GENERATED_PREFIX);
   }
 
-  private static Optional<EntityReference> linkIfSameDefinition(
-      TestCase existing, TestCase wanted) {
+  private static Optional<EntityReference> linkIfSameTest(TestCase existing, TestCase wanted) {
     String existingDefinition = existing.getTestDefinition().getFullyQualifiedName();
     String wantedDefinition = wanted.getTestDefinition().getFullyQualifiedName();
-    return existingDefinition.equalsIgnoreCase(wantedDefinition)
-        ? Optional.of(existing.getEntityReference())
-        : Optional.empty();
+    boolean sameTest =
+        existingDefinition.equalsIgnoreCase(wantedDefinition)
+            && parameters(existing).equals(parameters(wanted));
+    return sameTest ? Optional.of(existing.getEntityReference()) : Optional.empty();
+  }
+
+  private static Map<String, String> parameters(TestCase testCase) {
+    return listOrEmpty(testCase.getParameterValues()).stream()
+        .filter(parameter -> parameter.getName() != null && parameter.getValue() != null)
+        .collect(
+            Collectors.toMap(
+                TestCaseParameterValue::getName,
+                TestCaseParameterValue::getValue,
+                (first, second) -> second));
   }
 
   private static UnsupportedOutcome nameTakenOutcome(TestCaseOutcome outcome) {
     return new UnsupportedOutcome(
         outcome.rule(),
         String.format(
-            "A different test case named '%s' already exists there and was left unchanged.",
+            "A test case named '%s' with a different test or parameters already exists there"
+                + " and was left unchanged.",
             outcome.testCase().getName()));
   }
 

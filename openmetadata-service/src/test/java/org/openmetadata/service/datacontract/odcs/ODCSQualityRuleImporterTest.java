@@ -44,9 +44,11 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.SlaOutcome;
 import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.TestCaseOutcome;
@@ -180,8 +182,25 @@ class ODCSQualityRuleImporterTest {
 
     List<ODCSRuleOutcome> outcomes = importer.apply(request(contract, Set.of()));
 
-    assertInstanceOf(UnsupportedOutcome.class, outcomes.getFirst());
+    UnsupportedOutcome conflict = assertInstanceOf(UnsupportedOutcome.class, outcomes.getFirst());
+    assertTrue(conflict.reason().contains("1 day(s)"), conflict.reason());
+    assertTrue(conflict.reason().contains("6 hour(s)"), conflict.reason());
     assertEquals(1, contract.getSla().getRefreshFrequency().getInterval());
+  }
+
+  /** An exported contract states its refresh frequency both as an SLA property and as the rule. */
+  @Test
+  void freshnessRuleThatAgreesWithTheSlaCountsAsApplied() {
+    DataContract contract = contract(freshness("updated_at", 6.0));
+    contract.setSla(
+        new ContractSLA()
+            .withRefreshFrequency(
+                new RefreshFrequency().withInterval(6).withUnit(RefreshFrequency.Unit.HOUR)));
+
+    List<ODCSRuleOutcome> outcomes = importer.apply(request(contract, Set.of()));
+
+    assertInstanceOf(SlaOutcome.class, outcomes.getFirst());
+    assertEquals(TABLE_FQN + ".updated_at", contract.getSla().getColumnName());
   }
 
   @Test
@@ -214,6 +233,28 @@ class ODCSQualityRuleImporterTest {
   }
 
   @Test
+  void aTestCaseRunningTheSameTestWithOtherParametersIsLeftAloneAndTheRuleSkipped() {
+    TestCase someoneElses =
+        existingTest("status_check", "status", "columnValuesToBeNotNull")
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("threshold").withValue("5")));
+    DataContract contract = contract(nullValues("Status check", "status").withId("status_check"));
+
+    List<ODCSRuleOutcome> outcomes = importer.apply(request(contract, Set.of()));
+
+    assertInstanceOf(UnsupportedOutcome.class, outcomes.getFirst());
+    assertTrue(contract.getQualityExpectations().isEmpty());
+    assertTrue(guardedOverwrites.isEmpty());
+    assertEquals(
+        "5",
+        stored
+            .get(someoneElses.getFullyQualifiedName())
+            .getParameterValues()
+            .getFirst()
+            .getValue());
+  }
+
+  @Test
   void aTestCaseTheContractAlreadyLinksIsUpdatedInPlace() {
     TestCase owned = existingTest("status_check", "status", "columnValuesToBeUnique");
     DataContract contract = contract(nullValues("Status check", "status").withId("status_check"));
@@ -227,11 +268,24 @@ class ODCSQualityRuleImporterTest {
   }
 
   @Test
+  void reimportingARuleKeepsTheReviewStatusItsTestCaseReached() {
+    TestCase owned =
+        existingTest("status_check", "status", "columnValuesToBeNotNull")
+            .withEntityStatus(EntityStatus.APPROVED);
+    DataContract contract = contract(nullValues("Status check", "status").withId("status_check"));
+
+    importer.apply(request(contract, Set.of(owned.getId())));
+
+    assertEquals(
+        EntityStatus.APPROVED, stored.get(owned.getFullyQualifiedName()).getEntityStatus());
+  }
+
+  @Test
   void aTestCaseOpenMetadataRejectsIsReportedAndTheOthersAreStillCreated() {
     doThrow(BadRequestException.of("Parameter threshold is invalid"))
         .doNothing()
         .when(repository)
-        .prepare(any(TestCase.class), eq(false));
+        .prepareInternal(any(TestCase.class), eq(false));
     DataContract contract =
         contract(nullValues("Status is set", "status"), nullValues("Id is set", "id"));
 
