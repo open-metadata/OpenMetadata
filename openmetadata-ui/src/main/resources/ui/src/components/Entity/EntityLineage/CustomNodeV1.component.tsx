@@ -183,7 +183,8 @@ const SceneDrillButton = ({
     <Tooltip title={drillLabel}>
       <Button
         aria-label={drillLabel}
-        className="lineage-scene-drill-button nodrag nopan"
+        // Less paints the static light brand tint (@primary-1) in every state.
+        className="lineage-scene-drill-button nodrag nopan tw:dark:bg-brand-primary!"
         color="tertiary"
         iconLeading={ZoomInIcon}
         size="sm"
@@ -295,7 +296,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     }),
     {
       'lineage-scene-node': Boolean(sceneNode),
-      'lineage-scene-layer-node':
+      'lineage-scene-layer-node tw:bg-surface':
         Boolean(sceneNode) && sceneBand === LineageBand.Layer,
     }
   );
@@ -448,7 +449,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       data-testid={`lineage-node-${fullyQualifiedName}`}
       style={{ width: nodeWidth }}>
       {isRootNode && (
-        <div className="lineage-node-badge-container">
+        <div className="lineage-node-badge-container tw:bg-surface">
           <div className="lineage-node-badge" />
         </div>
       )}

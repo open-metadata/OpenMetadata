@@ -446,6 +446,14 @@ const TableRow = <T extends object>({
           TABLE_SIZES[size].rowHeight,
           highlightSelectedRow && 'tw:selected:bg-secondary',
 
+          // Clamped markdown fades into this colour; in dark it has to follow the
+          // row to bg-secondary or it paints a surface-coloured band. Light keeps
+          // the tbody default. Real :hover — rows without an action never get
+          // react-aria's data-hovered.
+          'tw:dark:[&:hover]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]',
+          highlightSelectedRow &&
+            'tw:dark:selected:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]',
+
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           'tw:[&>td]:after:pointer-events-none tw:[&>td]:after:absolute tw:[&>td]:after:inset-x-0 tw:[&>td]:after:bottom-0 tw:[&>td]:after:h-px tw:[&>td]:after:w-full tw:[&>td]:after:bg-border-secondary tw:last:[&>td]:after:hidden tw:[&>td]:focus-visible:after:opacity-0 tw:focus-visible:[&>td]:after:opacity-0',
 

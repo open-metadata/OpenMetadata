@@ -284,6 +284,7 @@ const ColumnContentInner = ({
     <div
       className={classNames(`custom-node-column-container ${className}`, {
         'custom-node-header-column-tracing': isColumnTraced,
+        'tw:dark:text-primary': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
       role="presentation"
@@ -362,6 +363,14 @@ export function shouldShowNodeRemoveButton({
   return isRemovableSelection && !isRootNode && isNodeRemovable;
 }
 
+/**
+ * Dark swaps the static grey node/badge/handle borders (custom-node.less
+ * `@lineage-border`) for border-primary. A variable rather than a border class so
+ * the less hover/highlight/tracing states keep winning over it.
+ */
+export const LINEAGE_NODE_DARK_CLASS =
+  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
+
 export function getNodeClassNames({
   isSelected,
   showDqTracing,
@@ -377,6 +386,7 @@ export function getNodeClassNames({
 }) {
   return classNames(
     'lineage-node p-0',
+    LINEAGE_NODE_DARK_CLASS,
     isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
     {
       'data-quality-failed-custom-node-header': showDqTracing,

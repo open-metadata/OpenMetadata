@@ -12,15 +12,18 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-@lineage-border: var(--om-legacy-color-b1b1b7);
+// Node, badge and handle borders read --lineage-node-border so dark can swap
+// it for border-primary via LINEAGE_NODE_DARK_CLASS on the node element; light
+// keeps these static greys.
+@lineage-border: var(--lineage-node-border, var(--om-legacy-color-b1b1b7));
 @lineage-collapse-header: var(--om-color-gray-50);
 
 .ant-btn.ant-btn-background-ghost.expand-btn {
-  background-color: white;
+  background-color: var(--om-color-bg-surface);
   box-shadow: none;
 
   &:hover {
-    background-color: white;
+    background-color: var(--om-color-bg-surface);
   }
 }
 
@@ -56,9 +59,8 @@
 
   &.lineage-scene-layer-node {
     min-height: 66px;
-    border-color: @grey-200;
+    border-color: var(--lineage-node-border, @grey-200);
     border-radius: var(--om-radius-xl);
-    background: @white;
     box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
 
     &.lineage-path-highlight,
@@ -625,12 +627,10 @@
     width: 68px;
     height: 15px;
 
-    border: 1px solid var(--om-legacy-color-b1b1b7);
+    border: 1px solid @lineage-border;
     border-bottom: 0px;
     border-top-left-radius: var(--om-radius-10);
     border-top-right-radius: var(--om-radius-10);
-
-    background: var(--om-color-white);
 
     .lineage-node-badge {
       position: absolute;
@@ -682,7 +682,7 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: @white !important;
+  background-color: var(--om-color-bg-surface) !important;
 }
 
 .react-flow__node-load-more {
@@ -784,7 +784,7 @@
     height: 20px !important;
     border-radius: var(--om-radius-sm) !important;
     border-color: @lineage-border !important;
-    background: @white !important;
+    background: var(--om-color-bg-surface) !important;
     top: min(58px, 50%) !important;
 
     gap: var(--om-space-1);
@@ -842,7 +842,7 @@
   height: 20px !important;
   border-radius: 20% !important;
   border-color: @lineage-border !important;
-  background: @white !important;
+  background: var(--om-color-bg-surface) !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 
@@ -903,55 +903,4 @@
 
 .react-flow__edge :hover {
   stroke: @primary-color;
-}
-
-// Dark: the lineage canvas hardcodes white surfaces (node shell, handles,
-// badge tab, expand/drill buttons) and a static grey border. Map them to the
-// theme tokens; light keeps the rules above unchanged.
-.dark-mode {
-  .ant-btn.ant-btn-background-ghost.expand-btn,
-  .ant-btn.ant-btn-background-ghost.expand-btn:hover {
-    background-color: var(--om-color-bg-surface);
-  }
-
-  .react-flow__node-default,
-  .react-flow__node-group,
-  .react-flow__node-input,
-  .react-flow__node-output {
-    background-color: var(--om-color-bg-surface) !important;
-  }
-
-  .lineage-node {
-    border-color: var(--om-color-border-primary);
-
-    &.lineage-scene-layer-node {
-      background: var(--om-color-bg-surface);
-    }
-
-    // Drill/zoom button: @primary-1 is the static light brand tint.
-    .lineage-node-content .lineage-scene-drill-button {
-      &,
-      &:hover,
-      &:focus-visible {
-        background: var(--tw-background-color-brand-primary);
-      }
-    }
-  }
-
-  .lineage-base-node .lineage-node-badge-container {
-    border-color: var(--om-color-border-primary);
-    background: var(--om-color-bg-surface);
-  }
-
-  .lineage-node
-    .custom-node-column-container.custom-node-header-column-tracing {
-    background-color: var(--om-color-bg-surface);
-    color: var(--om-color-text-primary);
-  }
-
-  .react-flow .lineage-node-handle,
-  .react-flow .lineage-node-handle-expand-all {
-    border-color: var(--om-color-border-primary) !important;
-    background: var(--om-color-bg-surface) !important;
-  }
 }

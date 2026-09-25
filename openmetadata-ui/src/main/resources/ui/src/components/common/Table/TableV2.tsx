@@ -111,6 +111,7 @@ import {
   getColumnStickyStyle,
   getSelectedKeysSet,
   getSortDescriptorProp,
+  getStickyBodyCellClass,
   getTableContainerStyle,
   getTableLayoutClasses,
   getTableWidthStyle,
@@ -2173,6 +2174,7 @@ const TableV2 = <T extends object>(
                                   'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
+                              getStickyBodyCellClass(colType.fixed),
                               pingShadowClass(
                                 colType.fixed,
                                 colIdx,
