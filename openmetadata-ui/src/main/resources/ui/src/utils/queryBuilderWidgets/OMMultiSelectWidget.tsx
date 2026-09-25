@@ -17,6 +17,7 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
+import { QUERY_BUILDER_VALUE_POPOVER_CLASS } from '../queryBuilder/types';
 
 const toSelectItems = (
   listValues: MultiSelectWidgetProps['listValues']
@@ -145,6 +146,7 @@ const OMMultiSelectWidget = ({
         isDisabled={readonly}
         items={allItems}
         placeholder={placeholder ?? 'Select'}
+        popoverClassName={QUERY_BUILDER_VALUE_POPOVER_CLASS}
         selectedItems={selectedItems}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}

@@ -17,6 +17,7 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { QUERY_BUILDER_VALUE_POPOVER_CLASS } from '../queryBuilder/types';
 
 const toSelectItems = (
   listValues: SelectWidgetProps['listValues']
@@ -114,6 +115,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           isDisabled={readonly}
           items={items}
           placeholder={placeholder}
+          popoverClassName={QUERY_BUILDER_VALUE_POPOVER_CLASS}
           selectedKey={
             value !== null && value !== undefined ? String(value) : undefined
           }
@@ -154,6 +156,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
         isDisabled={readonly}
         items={items}
         placeholder={placeholder}
+        popoverClassName={QUERY_BUILDER_VALUE_POPOVER_CLASS}
         selectedKey={
           value !== null && value !== undefined ? String(value) : null
         }
