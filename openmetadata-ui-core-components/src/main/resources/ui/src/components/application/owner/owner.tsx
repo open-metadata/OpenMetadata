@@ -210,7 +210,7 @@ export const Owner = ({
         {overflowOwners.length > 0 && (
           <PopoverTrigger>
             <button
-              className="tw:text-xs tw:font-medium tw:text-secondary hover:tw:text-primary tw:tabular-nums"
+              className="tw:text-xs tw:font-medium tw:text-secondary tw:hover:text-primary tw:tabular-nums"
               type="button">
               +{overflowOwners.length}
             </button>
