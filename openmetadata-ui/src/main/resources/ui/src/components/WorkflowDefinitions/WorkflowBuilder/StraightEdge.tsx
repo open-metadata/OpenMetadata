@@ -197,7 +197,7 @@ export const StraightEdge = (props: EdgeProps) => {
     labelStyle
   );
   const labelClassName = classNames(
-    'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-sm',
+    'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-surface tw:px-2 tw:py-1 tw:shadow-sm',
     { 'tw:cursor-pointer': hasStyleOverrides }
   );
 
@@ -243,7 +243,7 @@ export const StraightEdge = (props: EdgeProps) => {
               ),
             }}>
             <Button
-              className="tw:rounded-full tw:bg-primary tw:shadow-sm"
+              className="tw:rounded-full tw:bg-surface tw:shadow-sm"
               color="tertiary-destructive"
               iconLeading={XClose}
               size="sm"

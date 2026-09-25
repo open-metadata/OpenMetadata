@@ -251,7 +251,7 @@ const TableRoot = ({
         <AriaTable
           className={(state) =>
             cx(
-              'tw:w-full tw:overflow-x-hidden',
+              'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
               typeof className === 'function' ? className(state) : className
             )
           }

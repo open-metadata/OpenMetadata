@@ -1,6 +1,22 @@
--- Support UsageDAO.computePercentile filters by entity type and usage date.
-ALTER TABLE entity_usage ADD INDEX idx_entity_usage_entitytype_usagedate (entityType, usageDate);
-
+-- Perf: UsageDAO.computePercentile runs four correlated COUNT(*) subqueries that each
+-- filter entity_usage on (entityType, usageDate). The only existing index is
+-- UNIQUE (id, usageDate), which is unusable for that predicate, so every run full-scans
+-- the table once per subquery. A composite (entityType, usageDate) index turns the
+-- percentile subqueries into range scans.
+SET @entity_usage_percentile_index_ddl = (
+  SELECT IF(
+    COUNT(*) = 0,
+    'CREATE INDEX idx_entity_usage_entitytype_usagedate ON entity_usage (entityType, usageDate)',
+    'SELECT 1'
+  )
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE()
+    AND table_name = 'entity_usage'
+    AND index_name = 'idx_entity_usage_entitytype_usagedate'
+);
+PREPARE entity_usage_percentile_index_stmt FROM @entity_usage_percentile_index_ddl;
+EXECUTE entity_usage_percentile_index_stmt;
+DEALLOCATE PREPARE entity_usage_percentile_index_stmt;
 -- Incident Manager grouped incidents - OpenMetadata 2.1.0
 
 -- Index the stateId partition used by the incident grouping endpoint (/testCaseIncidentStatus/incidentGroups)
@@ -19,13 +35,6 @@ ALTER TABLE test_case ADD INDEX idx_test_case_id (id);
 -- The incident list's assignee filter compares the generated assignee column, which had no
 -- index and full-scanned the timeline at scale.
 ALTER TABLE test_case_resolution_status_time_series ADD INDEX idx_test_case_resolution_status_assignee (assignee, timestamp);
-
--- Column extension keys hash every FQN segment separately and join the hashes with dots.
--- A fourth-level nested table column has eight segments and needs 263 characters.
--- VARCHAR(512) supports eleven column levels after the four-part table FQN while keeping
--- extension usable in the composite primary key; MySQL cannot fully index a TEXT value.
-ALTER TABLE entity_extension
-  MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
 
 -- Incident summary table: one row per incident (stateId chain), maintained at write time so
 -- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
@@ -46,6 +55,26 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
     INDEX idx_tci_updated (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Metric hierarchy is stored as CONTAINS rows in entity_relationship. Metric Group
+-- membership is stored as HAS relationships so deleting a group leaves metrics intact.
+CREATE TABLE IF NOT EXISTS metric_group_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.id'))) STORED NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedBy'))) VIRTUAL NOT NULL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(`json`, '$.deleted')) VIRTUAL,
+    fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.name'))) VIRTUAL NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY metric_group_entity_fqn_hash (fqnHash),
+    KEY metric_group_entity_name_index (name),
+    KEY idx_metric_group_entity_deleted_name_id (deleted, name, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- A Metric can belong to only one Metric Group. The generated key is NULL for every other
+-- relationship shape, so the unique index constrains only metricGroup --HAS--> metric rows.
+-- Guard both operations because MySQL 8.0 versions do not consistently support IF NOT EXISTS
+-- for ADD COLUMN and ADD INDEX.
 -- Ontology Studio: governed relationship types, OWL annex, drafts, and edit locks.
 CREATE TABLE IF NOT EXISTS relationship_type_entity (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
@@ -244,6 +273,43 @@ PREPARE drop_conversation_activity_timestamp_stmt
   FROM @drop_conversation_activity_timestamp_ddl;
 EXECUTE drop_conversation_activity_timestamp_stmt;
 DEALLOCATE PREPARE drop_conversation_activity_timestamp_stmt;
+
+-- Only active Metric Group HAS edges participate in the single-membership constraint so a
+-- soft-deleted membership does not block reassignment.
+SET @metric_group_membership_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'entity_relationship'
+        AND column_name = 'metricGroupMetricId'
+    ),
+    'SELECT 1',
+    'ALTER TABLE entity_relationship ADD COLUMN metricGroupMetricId VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN fromEntity = ''metricGroup'' AND toEntity = ''metric'' AND relation = 10 AND deleted = FALSE THEN toId ELSE NULL END) STORED'
+  )
+);
+PREPARE metric_group_membership_column_stmt FROM @metric_group_membership_column_ddl;
+EXECUTE metric_group_membership_column_stmt;
+DEALLOCATE PREPARE metric_group_membership_column_stmt;
+
+SET @metric_group_membership_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'entity_relationship'
+        AND index_name = 'uq_metric_group_single_membership'
+    ),
+    'SELECT 1',
+    'ALTER TABLE entity_relationship ADD UNIQUE INDEX uq_metric_group_single_membership (metricGroupMetricId)'
+  )
+);
+PREPARE metric_group_membership_index_stmt FROM @metric_group_membership_index_ddl;
+EXECUTE metric_group_membership_index_stmt;
+DEALLOCATE PREPARE metric_group_membership_index_stmt;
+
 -- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
 -- Pairing it with relation serves every pipeline lineage path without widening the generic table schema.
 CREATE INDEX idx_entity_relationship_pipeline_relation
@@ -364,6 +430,31 @@ SET @ddl = (
     ),
     'SELECT 1',
     'CREATE INDEX idx_automations_workflow_updated_at ON automations_workflow (updatedAt)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- audit_log_event.entity_fqn stores the raw FQN. For lineage events that FQN is two
+-- entity FQNs joined by the relationship marker, so ordinary deeply-nested entities
+-- push it past 768 characters; the insert then fails and AuditLogRepository drops the
+-- row with only a WARN, losing audit history silently. Nothing indexes entity_fqn --
+-- lookups go through entity_fqn_hash (idx_audit_log_event_entity_hash_ts), an
+-- MD5-per-segment digest that stays far inside its own bound -- so the column has no
+-- reason to be length-capped.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND column_name = 'entity_fqn'
+        AND data_type = 'text'
+    ),
+    'SELECT 1',
+    'ALTER TABLE audit_log_event MODIFY COLUMN entity_fqn TEXT NULL'
   )
 );
 PREPARE stmt FROM @ddl;

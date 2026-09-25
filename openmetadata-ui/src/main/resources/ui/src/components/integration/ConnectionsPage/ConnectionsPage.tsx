@@ -209,7 +209,7 @@ const ConnectionsPage: React.FC = () => {
             )}
           </div>
         }
-        className="tw:mb-0! tw:px-8! tw:py-[18px]!"
+        className="tw:mb-0!"
         density="comfortable"
         icon={<ConnectorsIcon className="tw:size-12" />}
         subtitle={t('message.connections-subtitle')}
@@ -217,7 +217,7 @@ const ConnectionsPage: React.FC = () => {
         variant="gradient"
       />
 
-      <PageLayout.Content className="tw:relative tw:flex tw:flex-col tw:overflow-hidden! tw:p-0!">
+      <PageLayout.Content className="tw:relative tw:flex tw:flex-col tw:overflow-hidden! tw:px-2! tw:pt-4! tw:pb-0!">
         {/* The browse view owns its own scrolling so the secondary nav, page header and filter row
             stay put; scrolling here would carry all three away with the list. */}
         <div className="tw:relative tw:flex-1 tw:overflow-hidden">

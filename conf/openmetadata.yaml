@@ -607,6 +607,7 @@ elasticsearch:
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-10}  # Increased from 5s for Docker networks
   connectionRequestTimeoutSecs: ${ELASTICSEARCH_CONNECTION_REQUEST_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-120}  # Increased from 60s for slow queries
+  requestCompressionEnabled: ${ELASTICSEARCH_REQUEST_COMPRESSION_ENABLED:-true}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   # Connection pool settings for better load balancing and performance
   maxConnTotal: ${ELASTICSEARCH_MAX_CONN_TOTAL:-100}  # Total connections across all hosts

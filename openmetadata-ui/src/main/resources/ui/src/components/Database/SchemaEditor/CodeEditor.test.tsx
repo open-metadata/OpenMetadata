@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 
+import { language } from '@codemirror/language';
+import { EditorState, Extension } from '@codemirror/state';
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import CodeEditor from './CodeEditor';
 
 const mockOnChange = jest.fn();
 const mockOnFocus = jest.fn();
 const mockOnCopyToClipBoard = jest.fn();
-const mockRefresh = jest.fn();
-
-jest.mock('../../../constants/constants', () => ({
-  JSON_TAB_SIZE: 2,
-}));
-
-jest.mock('../../../utils/SchemaEditor.utils', () => ({
-  getSchemaEditorValue: jest.fn().mockImplementation((value) => value || ''),
-}));
 
 jest.mock('../../../hooks/useClipBoard', () => ({
   useClipboard: jest.fn().mockImplementation(() => ({
@@ -36,55 +28,53 @@ jest.mock('../../../hooks/useClipBoard', () => ({
   })),
 }));
 
-jest.mock('react-codemirror2', () => ({
-  Controlled: jest
-    .fn()
-    .mockImplementation(
-      ({
-        value,
-        onBeforeChange,
-        onChange,
-        onFocus,
-        editorDidMount,
-        options,
-        className,
-      }) => {
-        React.useEffect(() => {
-          if (editorDidMount) {
-            const mockEditor = {
-              refresh: mockRefresh,
-              getWrapperElement: () => ({
-                remove: jest.fn(),
-              }),
-            };
-            editorDidMount(mockEditor);
-          }
-        }, [editorDidMount]);
+// The real editor needs layout APIs JSDOM does not implement. The stub keeps the
+// contract CodeEditor relies on and records the extensions it was configured
+// with, so the tests can assert on the resulting editor state.
+let lastExtensions: Extension[] = [];
+
+jest.mock('@uiw/react-codemirror', () => {
+  const { forwardRef, useImperativeHandle } = jest.requireActual('react');
+
+  return {
+    __esModule: true,
+    default: forwardRef(
+      (
+        {
+          value,
+          className,
+          extensions,
+          onChange,
+          onFocus,
+        }: {
+          value: string;
+          className?: string;
+          extensions: Extension[];
+          onChange?: (value: string) => void;
+          onFocus?: () => void;
+        },
+        ref: unknown
+      ) => {
+        lastExtensions = extensions;
+        useImperativeHandle(ref, () => ({ view: { hasFocus: false } }));
 
         return (
           <div className={className} data-testid="code-mirror-editor">
             <span data-testid="editor-value">{value}</span>
-            {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
             <input
+              aria-label="code editor"
               data-testid="code-mirror-input"
               type="text"
               value={value}
-              onChange={(e) => {
-                if (onBeforeChange) {
-                  onBeforeChange(null, null, e.target.value);
-                }
-                if (onChange) {
-                  onChange(null, null, e.target.value);
-                }
-              }}
+              onChange={(event) => onChange?.(event.target.value)}
               onFocus={onFocus}
             />
-            <span data-testid="editor-options">{JSON.stringify(options)}</span>
           </div>
         );
       }
     ),
-}));
+  };
+});
 
 const defaultProps = {
   value: 'test code',
@@ -92,9 +82,12 @@ const defaultProps = {
   onFocus: mockOnFocus,
 };
 
+const createState = () => EditorState.create({ extensions: lastExtensions });
+
 describe('CodeEditor Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    lastExtensions = [];
   });
 
   it('should render component with default props', () => {
@@ -145,20 +138,20 @@ describe('CodeEditor Component', () => {
     expect(screen.queryByTestId('query-copy-button')).not.toBeInTheDocument();
   });
 
-  it('should call onCopyToClipBoard when copy button is clicked', () => {
+  it('should copy the current buffer when the copy button is clicked', () => {
     render(<CodeEditor {...defaultProps} />);
 
-    const copyButton = screen.getByTestId('query-copy-button');
-    fireEvent.click(copyButton);
+    fireEvent.click(screen.getByTestId('query-copy-button'));
 
-    expect(mockOnCopyToClipBoard).toHaveBeenCalledTimes(1);
+    expect(mockOnCopyToClipBoard).toHaveBeenCalledWith('test code');
   });
 
   it('should call onChange when editor value changes', () => {
     render(<CodeEditor {...defaultProps} />);
 
-    const input = screen.getByTestId('code-mirror-input');
-    fireEvent.change(input, { target: { value: 'new code' } });
+    fireEvent.change(screen.getByTestId('code-mirror-input'), {
+      target: { value: 'new code' },
+    });
 
     expect(mockOnChange).toHaveBeenCalledWith('new code');
   });
@@ -166,76 +159,22 @@ describe('CodeEditor Component', () => {
   it('should call onFocus when editor is focused', () => {
     render(<CodeEditor {...defaultProps} />);
 
-    const input = screen.getByTestId('code-mirror-input');
-    fireEvent.focus(input);
+    fireEvent.focus(screen.getByTestId('code-mirror-input'));
 
     expect(mockOnFocus).toHaveBeenCalledTimes(1);
   });
 
-  it('should not call onChange when onChange prop is not provided', () => {
+  it('should not throw when onChange prop is not provided', () => {
     render(<CodeEditor value="test" />);
 
-    const input = screen.getByTestId('code-mirror-input');
-    fireEvent.change(input, { target: { value: 'new code' } });
+    fireEvent.change(screen.getByTestId('code-mirror-input'), {
+      target: { value: 'new code' },
+    });
 
     expect(mockOnChange).not.toHaveBeenCalled();
   });
 
-  it('should render with custom mode', () => {
-    const customMode = { name: CSMode.SQL, json: false };
-    render(<CodeEditor mode={customMode} />);
-
-    const optionsElement = screen.getByTestId('editor-options');
-    const options = JSON.parse(optionsElement.textContent || '{}');
-
-    expect(options.mode).toEqual(customMode);
-  });
-
-  it('should merge custom options with default options', () => {
-    const customOptions = {
-      lineNumbers: true,
-      readOnly: true,
-      customOption: 'test',
-    };
-    render(<CodeEditor options={customOptions} />);
-
-    const optionsElement = screen.getByTestId('editor-options');
-    const options = JSON.parse(optionsElement.textContent || '{}');
-
-    expect(options.lineNumbers).toBe(true);
-    expect(options.readOnly).toBe(true);
-    expect(options.customOption).toBe('test');
-    expect(options.tabSize).toBe(2);
-    expect(options.indentUnit).toBe(2);
-  });
-
-  it('should refresh editor when refreshEditor prop changes to true', () => {
-    jest.useFakeTimers();
-
-    const { rerender } = render(<CodeEditor refreshEditor={false} />);
-
-    rerender(<CodeEditor refreshEditor />);
-
-    jest.advanceTimersByTime(50);
-
-    expect(mockRefresh).toHaveBeenCalledTimes(1);
-
-    jest.useRealTimers();
-  });
-
-  it('should not refresh editor when refreshEditor prop is false', () => {
-    jest.useFakeTimers();
-
-    render(<CodeEditor refreshEditor={false} />);
-
-    jest.advanceTimersByTime(50);
-
-    expect(mockRefresh).not.toHaveBeenCalled();
-
-    jest.useRealTimers();
-  });
-
-  it('should update internal value when value prop changes', () => {
+  it('should update the buffer when the value prop changes', () => {
     const { rerender } = render(<CodeEditor value="initial value" />);
 
     expect(screen.getByTestId('editor-value')).toHaveTextContent(
@@ -249,35 +188,44 @@ describe('CodeEditor Component', () => {
     );
   });
 
-  it('should display copy button correctly', () => {
-    render(<CodeEditor />);
-
-    const copyButton = screen.getByTestId('query-copy-button');
-
-    expect(copyButton).toBeInTheDocument();
-  });
-
-  it('should handle component lifecycle properly', () => {
+  it('should unmount without throwing', () => {
     const { unmount } = render(<CodeEditor />);
 
     expect(() => unmount()).not.toThrow();
   });
 
-  it('should handle default JavaScript mode', () => {
-    render(<CodeEditor />);
+  describe('editor configuration', () => {
+    it('should default to the json language', () => {
+      render(<CodeEditor />);
 
-    const optionsElement = screen.getByTestId('editor-options');
-    const options = JSON.parse(optionsElement.textContent || '{}');
-
-    expect(options.mode).toEqual({
-      name: CSMode.JAVASCRIPT,
-      json: true,
+      expect(createState().facet(language)?.name).toBe('json');
     });
-  });
 
-  it('should render without onFocus when not provided', () => {
-    render(<CodeEditor value="test" onChange={mockOnChange} />);
+    it('should use the language of the requested mode', () => {
+      render(<CodeEditor mode={{ name: CSMode.SQL, json: false }} />);
 
-    expect(screen.getByTestId('code-mirror-editor')).toBeInTheDocument();
+      expect(createState().facet(language)?.name).toBe('sql');
+    });
+
+    it('should keep the default tab size', () => {
+      render(<CodeEditor />);
+
+      expect(createState().tabSize).toBe(2);
+    });
+
+    it('should be editable by default', () => {
+      render(<CodeEditor />);
+
+      expect(createState().readOnly).toBe(false);
+    });
+
+    it.each([
+      ['the readOnly prop', { readOnly: true }],
+      ['a readOnly option', { options: { readOnly: true } }],
+    ])('should be read only with %s', (_, props) => {
+      render(<CodeEditor {...props} />);
+
+      expect(createState().readOnly).toBe(true);
+    });
   });
 });

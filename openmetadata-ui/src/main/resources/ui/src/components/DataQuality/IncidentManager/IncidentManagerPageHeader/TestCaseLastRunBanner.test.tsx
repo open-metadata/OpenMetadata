@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useNavigate } from 'react-router-dom';
 import {
   TestCaseStatus,
@@ -41,6 +41,7 @@ const LAST_RUN_SUMMARY_TEST_ID = 'test-case-last-run-summary';
 const NEXT_RUN_TEST_ID = 'test-case-next-run';
 const INCIDENT_ID_TEST_ID = 'test-case-incident-id';
 const INCIDENT_STATUS_TEST_ID = 'test-case-incident-status';
+const ACKNOWLEDGE_BUTTON_TEST_ID = 'acknowledge-incident-button';
 const TEST_CASE_RESULT_TIMESTAMP = 1_786_001_601_000;
 const TOP_ALIGNED_CLASS = 'tw:self-start';
 const TEXT_XS_CLASS = 'tw:text-xs';
@@ -109,18 +110,20 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
         'tw:text-primary',
-        'tw:text-sm'
+        'tw:text-base'
       );
       expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-        'tw:size-8',
+        'tw:size-10',
         'tw:rounded-lg',
         TOP_ALIGNED_CLASS
       );
       expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
-        'tw:py-3.5',
+        'tw:py-3.5'
+      );
+      expect(screen.getByTestId(bannerTestId)).toHaveClass(
         {
-          [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-          [TestCaseStatus.Failed]: 'tw:bg-error-50',
+          [TestCaseStatus.Aborted]: 'tw:bg-warning-primary',
+          [TestCaseStatus.Failed]: 'tw:bg-error-primary',
           [TestCaseStatus.Queued]: 'tw:bg-brand-primary',
           [TestCaseStatus.Success]: 'tw:bg-success-primary',
         }[testCaseStatus]
@@ -165,20 +168,16 @@ describe('TestCaseLastRunBanner', () => {
           LAST_RUN_INCIDENT_TEST_ID
         );
 
-        expect(incidentRow).toHaveClass(
-          {
-            [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-            [TestCaseStatus.Failed]: 'tw:bg-error-50',
-          }[testCaseStatus]
-        );
-        expect(incidentRow).toHaveTextContent('INC–9');
+        expect(incidentRow).toHaveClass('tw:bg-primary/55');
+        expect(incidentRow).toHaveTextContent('INC-9');
         expect(incidentRow).toHaveTextContent(
           'message.request-test-case-failure-resolution-message getNameFromFQN (testCase)'
         );
         expect(incidentRow).toHaveTextContent('label.acknowledged');
-        expect(screen.getByTestId('test-case-incident-icon')).toHaveClass(
+        expect(screen.getByTestId('test-case-incident-icon')).not.toHaveClass(
           TOP_ALIGNED_CLASS
         );
+        expect(incidentRow).toHaveClass('tw:lg:items-center');
         expect(
           screen.getByTestId('test-case-incident-text').nextElementSibling
         ).toBe(screen.getByTestId(INCIDENT_STATUS_TEST_ID));
@@ -193,29 +192,26 @@ describe('TestCaseLastRunBanner', () => {
           'tw:font-semibold'
         );
         expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveTextContent(
-          /INC.*9,/
+          'INC-9'
+        );
+        expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveClass(
+          'tw:font-mono'
         );
         expect(
           screen.getByTestId('test-case-incident-description')
         ).toHaveClass(TEXT_XS_CLASS);
         expect(
           screen.getByTestId('test-case-incident-description')
-        ).toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
-        expect(screen.getByTestId(INCIDENT_STATUS_TEST_ID)).toHaveClass(
-          TOP_ALIGNED_CLASS
-        );
+        ).not.toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
         expect(
           screen.getByTestId(INCIDENT_STATUS_TEST_ID).firstElementChild
-        ).toHaveClass('tw:bg-white');
+        ).toHaveClass('tw:bg-primary');
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
         expect(viewIncidentButton).toHaveTextContent('label.view-entity');
-        expect(viewIncidentButton).toHaveClass(
-          TEXT_XS_CLASS,
-          'tw:ml-auto',
-          'tw:shrink-0'
-        );
+        expect(incidentActions).toHaveClass('tw:justify-end');
+        expect(viewIncidentButton).toHaveClass(TEXT_XS_CLASS, 'tw:shrink-0');
         expect(viewIncidentButton).not.toHaveAttribute('href');
 
         fireEvent.click(viewIncidentButton);
@@ -341,10 +337,10 @@ describe('TestCaseLastRunBanner', () => {
       screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
-      'tw:text-sm'
+      'tw:text-base'
     );
     expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-      'tw:size-8',
+      'tw:size-10',
       'tw:rounded-lg',
       TOP_ALIGNED_CLASS
     );
@@ -374,5 +370,68 @@ describe('TestCaseLastRunBanner', () => {
     expect(nextRun).not.toHaveTextContent('label.in-lowercase');
 
     dateNowSpy.mockRestore();
+  });
+
+  describe('acknowledge action', () => {
+    const failedRun: TestCaseResult = {
+      result: 'Query execution failed',
+      testCaseStatus: TestCaseStatus.Failed,
+      timestamp: TEST_CASE_RESULT_TIMESTAMP,
+    };
+    const newIncidentProps: Partial<TestCaseLastRunBannerProps> = {
+      testCaseResult: failedRun,
+      testCaseStatus: TestCaseStatus.Failed,
+      testCaseStatusData:
+        MOCK_TEST_CASE_RESOLUTION_STATUS[0] as TestCaseResolutionStatus,
+    };
+
+    it('acknowledges a new incident', async () => {
+      const onAcknowledge = jest.fn().mockResolvedValue(undefined);
+
+      renderBanner({
+        ...newIncidentProps,
+        hasEditStatusPermission: true,
+        onAcknowledge,
+      });
+
+      const acknowledgeButton = await screen.findByTestId(
+        ACKNOWLEDGE_BUTTON_TEST_ID
+      );
+
+      expect(acknowledgeButton).toHaveTextContent('label.acknowledge');
+
+      await act(async () => {
+        fireEvent.click(acknowledgeButton);
+      });
+
+      expect(onAcknowledge).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides acknowledge without the edit status permission', async () => {
+      renderBanner({ ...newIncidentProps, hasEditStatusPermission: false });
+
+      expect(
+        await screen.findByTestId(LAST_RUN_INCIDENT_TEST_ID)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(ACKNOWLEDGE_BUTTON_TEST_ID)
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides acknowledge once the incident is no longer new', async () => {
+      renderBanner({
+        ...newIncidentProps,
+        hasEditStatusPermission: true,
+        testCaseStatusData:
+          MOCK_TEST_CASE_RESOLUTION_STATUS[1] as TestCaseResolutionStatus,
+      });
+
+      expect(
+        await screen.findByTestId(LAST_RUN_INCIDENT_TEST_ID)
+      ).toHaveTextContent('label.acknowledged');
+      expect(
+        screen.queryByTestId(ACKNOWLEDGE_BUTTON_TEST_ID)
+      ).not.toBeInTheDocument();
+    });
   });
 });

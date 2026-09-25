@@ -46,13 +46,13 @@ export const ExtraDatabaseDropdownOptions = (
                   icon={ImportIcon}
                   id="import-button"
                   name={t('label.import')}
-                  onClick={() =>
-                    navigate(getEntityImportPath(EntityType.DATABASE, fqn))
-                  }
                 />
               </LimitWrapper>
             ),
             key: 'import-button',
+            limitResource: 'database',
+            onClick: () =>
+              navigate(getEntityImportPath(EntityType.DATABASE, fqn)),
           },
         ]
       : []),
@@ -67,16 +67,15 @@ export const ExtraDatabaseDropdownOptions = (
                 icon={ExportIcon}
                 id="export-button"
                 name={t('label.export')}
-                onClick={() =>
-                  showModal({
-                    name: fqn,
-                    onExport: exportDatabaseDetailsInCSV,
-                    exportTypes: [ExportTypes.CSV],
-                  })
-                }
               />
             ),
             key: 'export-button',
+            onClick: () =>
+              showModal({
+                name: fqn,
+                onExport: exportDatabaseDetailsInCSV,
+                exportTypes: [ExportTypes.CSV],
+              }),
           },
         ]
       : []),

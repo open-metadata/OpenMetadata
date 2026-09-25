@@ -66,6 +66,7 @@ import {
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
+import { CODE_EDITOR_SCROLLER, typeInCodeEditor } from '../../utils/codeEditor';
 import {
   clickOutside,
   createNewPage,
@@ -565,10 +566,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(editButton).toBeEnabled();
           await editButton.click();
 
-          await page.locator("pre[role='presentation']").last().click();
           const value =
             "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
-          await page.keyboard.type(value + '\n' + value);
+          await typeInCodeEditor(page, container, value + '\n' + value);
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
@@ -578,11 +578,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify .CodeMirror-scroll is height-constrained and scrollable', async () => {
+        await test.step('Verify the editor viewport is height-constrained and scrollable', async () => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const codeMirrorScroll = container.locator('.CodeMirror-scroll');
+          const codeMirrorScroll = container.locator(CODE_EDITOR_SCROLLER);
           await expect(codeMirrorScroll).toBeVisible();
           const isScrollable = await codeMirrorScroll.evaluate(
             (el) => el.scrollHeight > el.clientHeight
@@ -3355,9 +3355,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await page.getByTestId('custom_properties').click();
           await customPropertyResponse;
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,
@@ -3368,6 +3370,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await page.reload();
+          await waitForAllLoadersToDisappear(page);
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();
@@ -3399,6 +3402,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3411,7 +3415,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 20);
+          await setSliderValue(
+            page,
+            'field-weight-slider',
+            20,
+            0,
+            100,
+            'field-weight-value'
+          );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
@@ -3445,6 +3456,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await searchInput.fill(dashboardPropertyValue);
           await searchInput.press('Enter');
 
+          await page
+            .getByTestId('dashboards-tab')
+            .waitFor({ state: 'visible' });
           await page.getByTestId('dashboards-tab').click();
 
           await waitForAllLoadersToDisappear(page);
@@ -3501,9 +3515,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await page.getByTestId('custom_properties').click();
           await customPropertyResponse;
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,
@@ -3535,6 +3551,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`
@@ -3547,7 +3564,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 12);
+          await setSliderValue(
+            page,
+            'field-weight-slider',
+            12,
+            0,
+            100,
+            'field-weight-value'
+          );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
