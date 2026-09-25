@@ -27,28 +27,56 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** The table an ODCS contract is imported into, as far as quality rules need to know it. */
-public record ODCSTableTarget(String fullyQualifiedName, List<String> columnNames) {
+public record ODCSTableTarget(
+    String fullyQualifiedName, List<String> columnNames, ODCSSqlQuote sqlQuote) {
+  /** What connectors for databases without a database level, such as MySQL, record instead. */
+  private static final String PLACEHOLDER_DATABASE = "default";
+
+  private static final int SERVICE_DATABASE_SCHEMA_TABLE = 4;
 
   public ODCSTableTarget {
     columnNames = List.copyOf(columnNames);
   }
 
+  public ODCSTableTarget(String fullyQualifiedName, List<String> columnNames) {
+    this(fullyQualifiedName, columnNames, ODCSSqlQuote.DOUBLE_QUOTE);
+  }
+
   public static ODCSTableTarget of(Table table) {
+    String serviceType = table.getServiceType() == null ? null : table.getServiceType().value();
     return new ODCSTableTarget(
         table.getFullyQualifiedName(),
-        listOrEmpty(table.getColumns()).stream().map(Column::getName).toList());
+        listOrEmpty(table.getColumns()).stream().map(Column::getName).toList(),
+        ODCSSqlQuote.forService(serviceType));
   }
 
   /**
    * How a query running on the table's own service refers to it: the FQN without the service
-   * segment, e.g. {@code SALES.PUBLIC.orders} for {@code snowflake.SALES.PUBLIC.orders}.
+   * segment, e.g. {@code SALES.PUBLIC.orders} for {@code snowflake.SALES.PUBLIC.orders}, and
+   * without a placeholder database, e.g. {@code shop.orders} for {@code mysql.default.shop.orders}.
    */
   public String sqlName() {
-    String[] parts = FullyQualifiedName.split(fullyQualifiedName);
-    int firstPart = parts.length > 1 ? 1 : 0;
-    return Arrays.stream(parts, firstPart, parts.length)
-        .map(FullyQualifiedName::unquoteName)
+    List<String> parts =
+        Arrays.stream(FullyQualifiedName.split(fullyQualifiedName))
+            .map(FullyQualifiedName::unquoteName)
+            .toList();
+    return parts.subList(firstSqlPart(parts), parts.size()).stream()
+        .map(sqlQuote::quoteIfNeeded)
         .collect(Collectors.joining("."));
+  }
+
+  /** How a query refers to one of the table's columns. */
+  public String sqlColumnName(String column) {
+    return sqlQuote.quoteIfNeeded(column);
+  }
+
+  private static int firstSqlPart(List<String> parts) {
+    int first = parts.size() > 1 ? 1 : 0;
+    if (parts.size() == SERVICE_DATABASE_SCHEMA_TABLE
+        && PLACEHOLDER_DATABASE.equals(parts.get(1))) {
+      first = 2;
+    }
+    return first;
   }
 
   /** The table's own spelling of a column, matched case-insensitively. */
