@@ -160,7 +160,8 @@ class ODPSConverterTest {
 
     DataProduct dp = ODPSConverter.fromODPS(odps);
 
-    assertEquals("sales-analytics", dp.getName());
+    assertEquals("marketing.sales-analytics", dp.getName());
+    assertEquals("sales-analytics", dp.getDisplayName());
     assertEquals("Description here", dp.getDescription());
     assertEquals(CreateDataProduct.DataProductType.DATASET, dp.getDataProductType());
     assertEquals(CreateDataProduct.Visibility.ORGANISATION, dp.getVisibility());
@@ -190,7 +191,8 @@ class ODPSConverterTest {
 
     DataProduct dp = ODPSConverter.fromODPS(odps, "fr");
 
-    assertEquals("ventes-analytiques", dp.getName());
+    assertEquals("sales-analytics", dp.getName());
+    assertEquals("ventes-analytiques", dp.getDisplayName());
   }
 
   @Test
@@ -199,7 +201,7 @@ class ODPSConverterTest {
 
     DataProduct dp = ODPSConverter.fromODPS(odps, "de");
 
-    assertEquals("sales-analytics", dp.getName());
+    assertEquals("marketing.sales-analytics", dp.getName());
   }
 
   // ---------------------------------------------------------------------------
@@ -413,7 +415,11 @@ class ODPSConverterTest {
   @Test
   void fromODPS_leavesAlreadyValidNameUnchanged() {
     ODPSDataProduct odps = basicODPS();
-    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("sales-analytics");
+    odps.getProduct()
+        .getDetails()
+        .getAdditionalProperties()
+        .get("en")
+        .setProductID("sales-analytics");
 
     DataProduct dp = ODPSConverter.fromODPS(odps);
 
@@ -424,7 +430,7 @@ class ODPSConverterTest {
   @Test
   void fromODPS_rejectsNameThatSanitizesToEmptyFromPunctuationOnly() {
     ODPSDataProduct odps = basicODPS();
-    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("///");
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setProductID("///");
 
     IllegalArgumentException ex =
         assertThrows(IllegalArgumentException.class, () -> ODPSConverter.fromODPS(odps));
@@ -451,7 +457,7 @@ class ODPSConverterTest {
   void fromODPS_rejectsNameThatSanitizesToEmptyFromNonAsciiOnly() {
     ODPSDataProduct odps = basicODPS();
     // CJK-only name has no chars in the [a-zA-Z0-9_\-.] allow-list.
-    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("数据产品");
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setProductID("数据产品");
 
     IllegalArgumentException ex =
         assertThrows(IllegalArgumentException.class, () -> ODPSConverter.fromODPS(odps));
