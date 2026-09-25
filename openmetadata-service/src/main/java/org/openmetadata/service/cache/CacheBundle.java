@@ -98,6 +98,11 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       registerInvalidatable(org.openmetadata.service.aicontext.PersonaContextCache.invalidator());
       registerInvalidatable(
           org.openmetadata.service.security.policyevaluator.SubjectCache.invalidator());
+      // Resolves service tags/names/types/environments into the ids that the search-side service
+      // policy conditions compile into their query. A peer tagging a service has to drop this here
+      // too, or a Deny keyed on that tag keeps letting the service's assets through on this pod.
+      registerInvalidatable(
+          org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver.invalidator());
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {

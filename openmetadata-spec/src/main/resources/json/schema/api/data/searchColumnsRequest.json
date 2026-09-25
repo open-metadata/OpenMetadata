@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/searchColumnsRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SearchColumnsRequest",
   "description": "Request to search and group columns by name across different entity types.",
   "type": "object",

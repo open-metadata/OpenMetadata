@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AlertProps } from 'antd';
+import type { AlertProps } from 'antd';
 
 export interface AlertBarProps {
   type: AlertProps['type'] | 'grey-info';

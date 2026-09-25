@@ -109,7 +109,9 @@ public class EntityFieldUtils {
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
       if (!originalJson.equals(updatedJson)) {
         EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-        entityRepository.patch(null, entity.getId(), user, patch, null, impersonatedBy);
+        // The wildcard accepts any current ETag while selecting the version-guarded storage path.
+        // This prevents an asynchronously loaded entity from overwriting a concurrent user patch.
+        entityRepository.patch(null, entity.getId(), user, patch, null, "*", impersonatedBy);
         ChangeEvent changeEvent =
             new ChangeEvent()
                 .withId(UUID.randomUUID())

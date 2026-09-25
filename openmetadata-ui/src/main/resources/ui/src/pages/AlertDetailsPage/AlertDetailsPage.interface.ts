@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import type { TabsProps } from 'antd';
 import type { ReactNode } from 'react';
 import { AlertDetailTabs } from '../../enums/Alerts.enum';
 import {
   EntityReference,
   EventSubscription,
 } from '../../generated/events/eventSubscription';
+import type { DetailsTabItem } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 
 export interface AlertDetailsPageProps {
   afterDeleteAction?: () => Promise<void> | void;
@@ -58,7 +58,7 @@ export interface UseAlertDetailsPageReturn extends AlertDetailsPermissions {
   setShowDeleteModal: (show: boolean) => void;
   showDeleteModal: boolean;
   tab: AlertDetailTabs;
-  tabItems: TabsProps['items'];
+  tabItems: DetailsTabItem[];
 }
 
 export type AlertDetailsContentProps = UseAlertDetailsPageReturn;

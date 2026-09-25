@@ -418,13 +418,12 @@ public class JwtFilter implements ContainerRequestFilter {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
-    // OM-issued tokens (PATs, session tokens, user tokens) set preferred_username to the bare
-    // username without an @domain suffix, which causes getFirstMatchJwtClaim-based domain
-    // extraction to return an empty domain and fail enforcement. Since OM owns the user identity
-    // these tokens are trusted and domain enforcement is skipped — consistent with how bot tokens
-    // are already handled (validateDomainEnforcement returns early for isBot=true tokens).
-    // The isInternallyIssuedToken check is guarded by enforcePrincipalDomain to avoid the
-    // singleton lookup on deployments where enforcement is disabled.
+    // OM-issued tokens minted before JWTTokenGenerator mirrored the provider's claim shape carry a
+    // bare preferred_username, which getFirstMatchJwtClaim-based domain extraction turns into an
+    // empty domain. Unlimited-expiry bot tokens from that era are still in use, so OM-issued tokens
+    // stay exempt - consistent with how bot tokens are already handled (validateDomainEnforcement
+    // returns early for isBot=true tokens). The isInternallyIssuedToken check is guarded by
+    // enforcePrincipalDomain to avoid the singleton lookup where enforcement is disabled.
     if (usedEmailFirstFlow) {
       // OM-issued tokens (sessions, PATs) carry emails that predate any allowedEmailDomains
       // config; enforcing the domain list on them would lock out the seeded admin and

@@ -46,6 +46,11 @@ import {
   getCurrentMillis,
 } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  glossaryFieldTrigger,
+  pickGlossaryTermInField,
+  removeGlossaryTermChip,
+} from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
@@ -214,37 +219,40 @@ test.describe(
           .fill(NEW_TABLE_TEST_CASE.description);
 
         // Add tags to test case
-        await page.click('[data-testid="tags-selector"] input');
+        await expect
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 10_000 }
+          )
+          .toBe(true);
         const tagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag1.data.name
-        );
+        await page.getByTestId('search-input').fill(testTag1.data.name);
         await tagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag1.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);
         // Add glossary terms to test case
-        await page.click('[data-testid="glossary-terms-selector"] input');
-        const glossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossaryTerm*`
+        await pickGlossaryTermInField(
+          page,
+          glossaryFieldTrigger(
+            page.getByTestId('glossary-terms-selector'),
+            'tag-suggestion'
+          ),
+          {
+            name: testGlossaryTerm1.data.name,
+            displayName: testGlossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              testGlossaryTerm1.responseData.fullyQualifiedName ?? '',
+          }
         );
-        await page.fill(
-          '[data-testid="glossary-terms-selector"] input',
-          testGlossaryTerm1.data.name
-        );
-        await glossarySearchResponse;
-        await page
-          .getByTestId(
-            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
-          )
-          .click();
-
-        await dismissTagSuggestions(page);
         await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
@@ -269,50 +277,47 @@ test.describe(
 
         // Remove existing tag and add new one
         await page
-          .locator(
-            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
+          .locator('[data-testid="tags-selector"] [data-testid="filter-chip"]')
+          .getByRole('button')
           .click();
 
-        await page.click('[data-testid="tags-selector"] input');
+        await expect
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 10_000 }
+          )
+          .toBe(true);
         const newTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag2.data.name
-        );
+        await page.getByTestId('search-input').fill(testTag2.data.name);
         await newTagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag2.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one
-        await page
-          .locator(
-            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
-          .click();
-        await page.click('[data-testid="glossary-terms-selector"] input');
-        const newGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossaryTerm*`
+        const glossaryField = glossaryFieldTrigger(
+          page.getByTestId('glossary-terms-selector'),
+          'tag-suggestion'
         );
-        await page.fill(
-          '[data-testid="glossary-terms-selector"] input',
-          testGlossaryTerm2.data.name
+        await removeGlossaryTermChip(
+          glossaryField,
+          testGlossaryTerm1.responseData.displayName ??
+            testGlossaryTerm1.data.name
         );
-        await newGlossarySearchResponse;
-        await page
-          .getByTestId(
-            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
-          )
-          .click();
-
-        await dismissTagSuggestions(page);
+        await pickGlossaryTermInField(page, glossaryField, {
+          name: testGlossaryTerm2.data.name,
+          displayName: testGlossaryTerm2.responseData.displayName,
+          fullyQualifiedName:
+            testGlossaryTerm2.responseData.fullyQualifiedName ?? '',
+        });
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
@@ -426,38 +431,41 @@ test.describe(
           .fill(NEW_COLUMN_TEST_CASE.description);
 
         // Add tags to column test case
-        await page.click('[data-testid="tags-selector"] input');
+        await expect
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 5_000 }
+          )
+          .toBe(true);
         const columnTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag1.data.name
-        );
+        await page.getByTestId('search-input').fill(testTag1.data.name);
         await columnTagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag1.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);
 
         // Add glossary terms to column test case
-        await page.click('[data-testid="glossary-terms-selector"] input');
-        const columnGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossaryTerm*`
+        await pickGlossaryTermInField(
+          page,
+          glossaryFieldTrigger(
+            page.getByTestId('glossary-terms-selector'),
+            'tag-suggestion'
+          ),
+          {
+            name: testGlossaryTerm1.data.name,
+            displayName: testGlossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              testGlossaryTerm1.responseData.fullyQualifiedName ?? '',
+          }
         );
-        await page.fill(
-          '[data-testid="glossary-terms-selector"] input',
-          testGlossaryTerm1.data.name
-        );
-        await columnGlossarySearchResponse;
-        await page
-          .getByTestId(
-            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
-          )
-          .click();
-
-        await dismissTagSuggestions(page);
 
         await submitTestCaseForm(page);
 
@@ -475,49 +483,47 @@ test.describe(
 
         // Remove existing tag and add new one for column test case
         await page
-          .locator(
-            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
+          .locator('[data-testid="tags-selector"] [data-testid="filter-chip"]')
+          .getByRole('button')
           .click();
-        await page.click('[data-testid="tags-selector"] input');
+
+        await expect
+          .poll(
+            async () => {
+              await page.getByTestId('tags-input').click();
+
+              return page.getByTestId('search-input').isVisible();
+            },
+            { timeout: 5_000 }
+          )
+          .toBe(true);
         const columnNewTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
         );
-        await page.fill(
-          '[data-testid="tags-selector"] input',
-          testTag2.data.name
-        );
+        await page.getByTestId('search-input').fill(testTag2.data.name);
         await columnNewTagsSearchResponse;
         await page
-          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(testTag2.responseData.fullyQualifiedName)
           .click();
 
         await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one for column test case
-        await page
-          .locator(
-            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
-          .click();
-        await page.click('[data-testid="glossary-terms-selector"] input');
-        const columnNewGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossaryTerm*`
+        const columnGlossaryField = glossaryFieldTrigger(
+          page.getByTestId('glossary-terms-selector'),
+          'tag-suggestion'
         );
-        await page.fill(
-          '[data-testid="glossary-terms-selector"] input',
-          testGlossaryTerm2.data.name
+        await removeGlossaryTermChip(
+          columnGlossaryField,
+          testGlossaryTerm1.responseData.displayName ??
+            testGlossaryTerm1.data.name
         );
-        await columnNewGlossarySearchResponse;
-        await page
-          .getByTestId(
-            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
-          )
-          .click();
-
-        await dismissTagSuggestions(page);
+        await pickGlossaryTermInField(page, columnGlossaryField, {
+          name: testGlossaryTerm2.data.name,
+          displayName: testGlossaryTerm2.responseData.displayName,
+          fullyQualifiedName:
+            testGlossaryTerm2.responseData.fullyQualifiedName ?? '',
+        });
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
@@ -938,8 +944,9 @@ test.describe(
         const incident = banner.getByTestId('test-case-last-run-incident');
 
         await expect(incident).toBeVisible();
+        // The id is its own element now, so it carries no trailing separator.
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
-          /INC.*\d,/
+          /^INC-\d+$/
         );
         await expect(
           incident.getByTestId('test-case-incident-description')

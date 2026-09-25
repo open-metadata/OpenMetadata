@@ -71,6 +71,13 @@
         color: @green-17;
         background: @green-9;
       }
+
+      // Dark: light tints frozen above; swap fills to the utility scale.
+      .dark-mode & .status-badge-v2.success {
+        border-color: var(--color-utility-success-200);
+        color: var(--color-utility-success-700);
+        background: var(--color-utility-success-50);
+      }
     }
   }
 

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.schema.type.Relationship.OWNS;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
@@ -21,9 +22,11 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
@@ -50,6 +53,7 @@ import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -136,6 +140,189 @@ public interface TimeSeriesDAOs {
    * issue #27718.
    */
   interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
+    /**
+     * Listing order for test definitions: the display name, falling back to the name when a
+     * definition has none. The Test Library lists rules by the label it renders, so paging has to
+     * walk that order instead of the internal {@code columnValuesToBeBetween}-style name (issue
+     * #27257). {@link TestDefinitionRepository#getCursorValue} builds the page cursors from the
+     * same key, so the keyset comparisons below stay aligned with it.
+     *
+     * <p>Both halves are read out of {@code json} rather than falling back to the {@code name}
+     * column: on MySQL a {@code COALESCE} across the JSON string and the column raises "Illegal
+     * mix of collations". {@code LOWER} makes the order case-insensitive on both engines and is
+     * mirrored by the Java-side cursor. The expression is not indexable, so this costs a sort —
+     * acceptable because the test definition catalog is a bounded list of rules, not a catalog
+     * table.
+     */
+    String MYSQL_LIST_SORT_KEY =
+        "LOWER(COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), ''), "
+            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name'))))";
+
+    String POSTGRES_LIST_SORT_KEY =
+        "LOWER(COALESCE(NULLIF(json->>'displayName', ''), json->>'name'))";
+
+    String MYSQL_ENTITY_TYPE_SORT_KEY = "LOWER(entityType)";
+
+    String POSTGRES_ENTITY_TYPE_SORT_KEY = "LOWER(entityType)";
+
+    /**
+     * A definition can declare several platforms, so the order follows the first one it lists —
+     * the same value the Test Library renders first in the column. Ordering on the serialized
+     * array instead would sort on its leading {@code ["} and read as arbitrary. Missing and empty
+     * arrays collapse to the empty string so they group together at the ascending end rather than
+     * scattering on NULL ordering, which MySQL and Postgres disagree about.
+     */
+    String MYSQL_TEST_PLATFORM_SORT_KEY =
+        "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.testPlatforms[0]')), ''))";
+
+    String POSTGRES_TEST_PLATFORM_SORT_KEY = "LOWER(COALESCE(json->'testPlatforms'->>0, ''))";
+
+    /**
+     * The columns the Test Library lets a reviewer sort by, each paired with the SQL that orders
+     * it. Closed on purpose: the chosen expression is interpolated into the query template by
+     * {@code @Define}, which is raw substitution and not a bind, so only values that originate
+     * here may ever reach it. {@link #fromParam} is the single door in, and it rejects anything
+     * unrecognised rather than falling back to a default — a typo'd {@code sortField} that
+     * silently returned display-name order would read as the sort being broken.
+     */
+    enum SortField {
+      DISPLAY_NAME("displayName", MYSQL_LIST_SORT_KEY, POSTGRES_LIST_SORT_KEY),
+      ENTITY_TYPE("entityType", MYSQL_ENTITY_TYPE_SORT_KEY, POSTGRES_ENTITY_TYPE_SORT_KEY),
+      TEST_PLATFORMS(
+          "testPlatforms", MYSQL_TEST_PLATFORM_SORT_KEY, POSTGRES_TEST_PLATFORM_SORT_KEY);
+
+      private final String param;
+      private final String mysqlKey;
+      private final String postgresKey;
+
+      SortField(String param, String mysqlKey, String postgresKey) {
+        this.param = param;
+        this.mysqlKey = mysqlKey;
+        this.postgresKey = postgresKey;
+      }
+
+      public String param() {
+        return param;
+      }
+
+      public String mysqlKey() {
+        return mysqlKey;
+      }
+
+      public String postgresKey() {
+        return postgresKey;
+      }
+
+      public static SortField fromParam(String value) {
+        if (nullOrEmpty(value)) {
+          return DISPLAY_NAME;
+        }
+        for (SortField field : values()) {
+          if (field.param.equalsIgnoreCase(value)) {
+            return field;
+          }
+        }
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidTestDefinitionSortField(value, sortFieldParams()));
+      }
+
+      public static List<String> sortFieldParams() {
+        return Arrays.stream(values()).map(SortField::param).toList();
+      }
+    }
+
+    /**
+     * Sort direction. Ascending is the default so an unset {@code sortOrder} keeps the listing in
+     * the display-name order issue #27257 asked for.
+     */
+    enum SortOrder {
+      ASC("asc"),
+      DESC("desc");
+
+      private final String param;
+
+      SortOrder(String param) {
+        this.param = param;
+      }
+
+      public String param() {
+        return param;
+      }
+
+      public static SortOrder fromParam(String value) {
+        if (nullOrEmpty(value)) {
+          return ASC;
+        }
+        for (SortOrder order : values()) {
+          if (order.param.equalsIgnoreCase(value)) {
+            return order;
+          }
+        }
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidTestDefinitionSortOrder(value, sortOrderParams()));
+      }
+
+      public static List<String> sortOrderParams() {
+        return Arrays.stream(values()).map(SortOrder::param).toList();
+      }
+    }
+
+    /**
+     * The SQL fragments one (field, order) choice expands to. The id tiebreaker always runs
+     * ascending, in both directions and at both ends: it exists only to make the key total, and
+     * flipping it with the sort key would make a descending page disagree with the cursor that
+     * {@link TestDefinitionRepository} built from the previous one.
+     *
+     * @param sortKey the ordering expression for the active dialect
+     * @param afterCmp comparison that walks forward past an after-cursor
+     * @param beforeCmp comparison that walks backward past a before-cursor
+     * @param pageOrder direction the page is returned in
+     * @param scanOrder direction {@code listBefore} scans in before re-reversing
+     */
+    record SortSql(
+        String sortKey, String afterCmp, String beforeCmp, String pageOrder, String scanOrder) {}
+
+    default SortSql resolveSortSql(ListFilter filter) {
+      SortField field = SortField.fromParam(filter.getSortField());
+      SortOrder order = SortOrder.fromParam(filter.getSortOrder());
+      String sortKey =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? field.mysqlKey()
+              : field.postgresKey();
+
+      return order == SortOrder.ASC
+          ? new SortSql(sortKey, ">", "<", "ASC", "DESC")
+          : new SortSql(sortKey, "<", ">", "DESC", "ASC");
+    }
+
+    /**
+     * Free-text search over everything the Test Library puts on screen: the name and display name
+     * it labels a rule with, the description column, the entity type and the test platforms. A
+     * reviewer searching "column" or "dbt" is naming what they see in the table, so restricting the
+     * match to the name would make the search box read as broken for those terms.
+     *
+     * <p>Every branch is lower-cased against a pre-lowered bind value rather than wrapped in
+     * {@code LOWER(:param)}: the parameter is a plain string, so lowering it in Java keeps the
+     * comparison off the driver. {@code testPlatforms} is matched against the raw JSON array text
+     * (e.g. {@code ["OpenMetadata"]}), which is how the platform filter above already matches it.
+     */
+    String MYSQL_SEARCH_CONDITION =
+        "AND (LOWER(name) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) "
+            + "LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')), '')) "
+            + "LIKE :testDefinitionSearchLike "
+            + "OR LOWER(entityType) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(CAST(JSON_EXTRACT(json, '$.testPlatforms') AS CHAR)) "
+            + "LIKE :testDefinitionSearchLike) ";
+
+    String POSTGRES_SEARCH_CONDITION =
+        "AND (LOWER(name) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'description', '')) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(entityType) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'testPlatforms', '')) LIKE :testDefinitionSearchLike) ";
+
     @Override
     default String getTableName() {
       return "test_definition";
@@ -195,97 +382,22 @@ public interface TimeSeriesDAOs {
       return TestDefinition.class;
     }
 
-    @Override
-    default List<String> listBefore(
-        ListFilter filter, int limit, String beforeName, String beforeId) {
+    /**
+     * The listing filters and the free-text search, as a MySQL/Postgres condition pair. Built in one
+     * place because {@link #listBefore}, {@link #listAfter} and {@link #listCount} have to agree
+     * exactly: a page whose rows are selected by one set of predicates and counted by another
+     * reports a total the pager cannot walk to.
+     */
+    record ListConditions(String mysql, String psql) {}
+
+    default ListConditions buildListConditions(ListFilter filter) {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
       String enabled = filter.getQueryParam("enabled");
+      String searchQuery = filter.getQueryParam("testDefinitionSearch");
       String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
-      }
-
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
-
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
-
-      if (entityType != null) {
-        mysqlCondition.append("AND entityType=:entityType ");
-        psqlCondition.append("AND entityType=:entityType ");
-      }
-
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeExact", supportedDataType);
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
-                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
-                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
-        psqlCondition.append(
-            "AND (json->>'supportedDataTypes' IS NULL "
-                + "OR json->>'supportedDataTypes' = '[]' "
-                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
-      }
-
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
-
-      if (enabled != null) {
-        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-      }
-
-      return listBefore(
-          getTableName(),
-          filter.getQueryParams(),
-          mysqlCondition.toString(),
-          psqlCondition.toString(),
-          limit,
-          beforeName,
-          beforeId);
-    }
-
-    @Override
-    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String entityType = filter.getQueryParam("entityType");
-      String testPlatform = filter.getQueryParam("testPlatform");
-      String supportedDataType = filter.getQueryParam("supportedDataType");
-      String supportedService = filter.getQueryParam("supportedService");
-      String enabled = filter.getQueryParam("enabled");
-      String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
-      }
 
       StringBuilder mysqlCondition = new StringBuilder();
       StringBuilder psqlCondition = new StringBuilder();
@@ -334,11 +446,108 @@ public interface TimeSeriesDAOs {
         psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
       }
 
+      if (!nullOrEmpty(searchQuery)) {
+        // The term travels as a bind value, so only the LIKE metacharacters need escaping — not the
+        // apostrophes that ListFilter.escape also doubles for literal interpolation, which would
+        // make a search for "it's" match nothing. Lower-cased here to pair with the LOWER(...)
+        // columns in the condition instead of asking the engine to lower the pattern per row.
+        String pattern =
+            searchQuery
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        filter.queryParams.put("testDefinitionSearchLike", String.format("%%%s%%", pattern));
+        mysqlCondition.append(MYSQL_SEARCH_CONDITION);
+        psqlCondition.append(POSTGRES_SEARCH_CONDITION);
+      }
+
+      return new ListConditions(mysqlCondition.toString(), psqlCondition.toString());
+    }
+
+    /**
+     * The keyset predicate that walks past a cursor, or nothing at all when there is no cursor to
+     * walk past.
+     *
+     * <p>An unanchored page cannot express itself as a comparison. {@code EntityRepository} seeds
+     * the first page with an empty cursor name, which only behaves as "before everything" while
+     * the order is ascending: {@code key > ''} admits every row, but the descending mirror
+     * {@code key < ''} admits none, so every descending listing came back empty. It also silently
+     * dropped ascending rows whose sort key really is the empty string — a definition declaring no
+     * test platforms — because those are not {@code > ''} either.
+     *
+     * <p>Built here rather than as a template hole because {@code @Define} substitution is not
+     * recursive: a fragment containing {@code <table>} would reach the database unexpanded.
+     *
+     * @param cursor the cursor's bind-parameter names, its id value and the id comparison that
+     *     breaks a sort-key tie in this direction
+     */
+    private String keysetCondition(String sortKey, String comparison, Cursor cursor) {
+      if (nullOrEmpty(cursor.id())) {
+        return "";
+      }
+
+      return String.format(
+          "AND (%s %s :%s OR (%s = :%s AND %s.id %s :%s)) ",
+          sortKey,
+          comparison,
+          cursor.nameParam(),
+          sortKey,
+          cursor.nameParam(),
+          getTableName(),
+          cursor.idComparison(),
+          cursor.idParam());
+    }
+
+    /**
+     * One end of the keyset walk. The id comparison is fixed per end rather than per sort
+     * direction: {@code listAfter} always takes the rows after the boundary id and
+     * {@code listBefore} the ones before it, whichever way the sort key runs.
+     */
+    record Cursor(String nameParam, String idParam, String id, String idComparison) {
+      static Cursor after(String id) {
+        return new Cursor("afterName", "afterId", id, ">");
+      }
+
+      static Cursor before(String id) {
+        return new Cursor("beforeName", "beforeId", id, "<");
+      }
+    }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      ListConditions conditions = buildListConditions(filter);
+      SortSql sort = resolveSortSql(filter);
+
+      return listBefore(
+          getTableName(),
+          filter.getQueryParams(),
+          conditions.mysql(),
+          conditions.psql(),
+          sort.sortKey(),
+          keysetCondition(sort.sortKey(), sort.beforeCmp(), Cursor.before(beforeId)),
+          sort.pageOrder(),
+          sort.scanOrder(),
+          limit,
+          beforeName,
+          beforeId);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      ListConditions conditions = buildListConditions(filter);
+      SortSql sort = resolveSortSql(filter);
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          mysqlCondition.toString(),
-          psqlCondition.toString(),
+          conditions.mysql(),
+          conditions.psql(),
+          sort.sortKey(),
+          keysetCondition(sort.sortKey(), sort.afterCmp(), Cursor.after(afterId)),
+          sort.pageOrder(),
           limit,
           afterName,
           afterId);
@@ -346,119 +555,113 @@ public interface TimeSeriesDAOs {
 
     @Override
     default int listCount(ListFilter filter) {
-      String entityType = filter.getQueryParam("entityType");
-      String testPlatform = filter.getQueryParam("testPlatform");
-      String supportedDataType = filter.getQueryParam("supportedDataType");
-      String supportedService = filter.getQueryParam("supportedService");
-      String enabled = filter.getQueryParam("enabled");
-      String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listCount(filter);
-      }
-
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
-
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
-
-      if (entityType != null) {
-        mysqlCondition.append("AND entityType=:entityType ");
-        psqlCondition.append("AND entityType=:entityType ");
-      }
-
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeExact", supportedDataType);
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
-                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
-                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
-        psqlCondition.append(
-            "AND (json->>'supportedDataTypes' IS NULL "
-                + "OR json->>'supportedDataTypes' = '[]' "
-                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
-      }
-
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
-
-      if (enabled != null) {
-        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-      }
+      ListConditions conditions = buildListConditions(filter);
 
       return listCount(
           getTableName(),
           filter.getQueryParams(),
           getNameHashColumn(),
-          mysqlCondition.toString(),
-          psqlCondition.toString());
+          conditions.mysql(),
+          conditions.psql());
     }
 
+    /**
+     * Reverse keyset scan: take the {@code limit} rows nearest the before-cursor by scanning away
+     * from it, then re-reverse the subquery into page order. The id tiebreaker is {@code DESC}
+     * inside — that is what "nearest" means when several rows share a sort key — and ascending
+     * outside, matching {@link #listAfter} and the cursor {@link TestDefinitionRepository} builds.
+     */
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name, id, json FROM <table> <mysqlCond> AND "
-                + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC  "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <mysqlCond> "
+                + "<keysetCond> "
+                + "ORDER BY sort_key <scanOrder>,id DESC  "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id",
+                + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name, id, json FROM <table> <psqlCond> AND "
-                + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <psqlCond> "
+                + "<keysetCond> "
+                + "ORDER BY sort_key <scanOrder>,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id",
+                + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
+        @Define("sortKey") String sortKey,
+        @Define("keysetCond") String keysetCond,
+        @Define("pageOrder") String pageOrder,
+        @Define("scanOrder") String scanOrder,
         @Bind("limit") int limit,
         @Bind("beforeName") String beforeName,
         @Bind("beforeId") String beforeId);
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <mysqlCond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId))  ORDER BY name,id LIMIT :limit",
+            "SELECT json FROM <table> <mysqlCond> <keysetCond> "
+                + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <psqlCond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId))  ORDER BY name,id LIMIT :limit",
+            "SELECT json FROM <table> <psqlCond> <keysetCond> "
+                + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
+        @Define("sortKey") String sortKey,
+        @Define("keysetCond") String keysetCond,
+        @Define("pageOrder") String pageOrder,
         @Bind("limit") int limit,
         @Bind("afterName") String afterName,
         @Bind("afterId") String afterId);
+
+    /**
+     * Keyset partitioning (the distributed indexers) seeds itself with the cursor at an absolute
+     * offset and then pages forward through {@link #listAfter}. The inherited lookup walks {@code
+     * ORDER BY name, id}, so it has to be re-pointed at whichever sort key is active — otherwise
+     * the seed cursor names a row from a different position in the sequence and the partition
+     * silently skips or repeats definitions.
+     */
+    @Override
+    default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
+      SortSql sort = resolveSortSql(filter);
+
+      return getCursorAtOffsetBySortKey(
+          getTableName(),
+          filter.getQueryParams(),
+          filter.getCondition(),
+          sort.sortKey(),
+          sort.pageOrder(),
+          offset);
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT <sortKey> AS name, id FROM <table> <cond> "
+                + "ORDER BY 1 <pageOrder>,2 LIMIT 1 OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT <sortKey> AS name, id FROM <table> <cond> "
+                + "ORDER BY 1 <pageOrder>,2 LIMIT 1 OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityDAO.CursorRowMapper.class)
+    CursorRow getCursorAtOffsetBySortKey(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("sortKey") String sortKey,
+        @Define("pageOrder") String pageOrder,
+        @Bind("offset") int offset);
 
     @ConnectionAwareSqlQuery(
         value = "SELECT count(<nameHashColumn>) FROM <table> <mysqlCond>",

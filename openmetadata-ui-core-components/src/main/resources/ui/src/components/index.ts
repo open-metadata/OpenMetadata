@@ -116,6 +116,7 @@ export * from './application/tag/glossary-tag';
 export * from './application/tag/domain-tag';
 export * from './application/tag/data-product-tag';
 export * from './application/tag/auto-classification-tag';
+export * from './application/tag/metric-tag';
 export * from './application/tag/tag.types';
 export * from './application/tree/tree';
 export * from './application/tree-select/tree-select.types';

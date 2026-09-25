@@ -17,9 +17,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import {
   getTagName,
@@ -67,9 +66,7 @@ const TierWidget = () => {
   };
 
   const canEdit = useMemo(
-    () =>
-      getPrioritizedEditPermission(permissions, Operation.EditTier) &&
-      !isVersionView,
+    () => getDerivedPermissionFlags(permissions).canEditTier && !isVersionView,
     [permissions, isVersionView]
   );
 

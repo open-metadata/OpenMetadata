@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AlationSinkConnection",
   "description": "Alation Sink Connection Config",
   "type": "object",
@@ -44,7 +43,6 @@
       "description": "Types of methods used to authenticate to the alation instance",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "BasicAuth",
           "description": "Basic Auth Credentials",
           "type": "object",
@@ -69,7 +67,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "ApiAccessTokenAuth",
           "description": "API Access Token Auth Credentials",
           "type": "object",
@@ -128,7 +125,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

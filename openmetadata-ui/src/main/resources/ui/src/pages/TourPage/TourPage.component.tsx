@@ -29,6 +29,7 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { SearchResponse } from '../../interface/search.interface';
+import { preloadTourTableTabs } from '../../utils/TableTabsUtils';
 import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
@@ -140,15 +141,25 @@ const TourPage = () => {
   }, [updateTourPage, updateActiveTab]);
 
   useEffect(() => {
+    let isCancelled = false;
     let tourMountFrameId = 0;
-    const cancelFeedWidgetWait = waitForTourFeedWidget(() => {
+    let cancelFeedWidgetWait: () => void = () => undefined;
+
+    const openTour = () => {
       updateIsTourOpen(true);
       tourMountFrameId = window.requestAnimationFrame(() => {
         setIsTourReady(true);
       });
+    };
+
+    preloadTourTableTabs().then(() => {
+      if (!isCancelled) {
+        cancelFeedWidgetWait = waitForTourFeedWidget(openTour);
+      }
     });
 
     return () => {
+      isCancelled = true;
       cancelFeedWidgetWait();
       window.cancelAnimationFrame(tourMountFrameId);
     };

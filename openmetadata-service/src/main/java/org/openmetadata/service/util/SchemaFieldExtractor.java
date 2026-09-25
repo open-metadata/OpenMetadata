@@ -200,6 +200,23 @@ public class SchemaFieldExtractor {
     return ENTITY_TYPE_ANNOTATION.equals(jsonSchema.optString("$comment"));
   }
 
+  /**
+   * everit-json-schema only knows meta-schemas up to draft-07, so letting it sniff `$schema` off
+   * OpenMetadata's 2020-12 schemas fails the load with "could not determine version". Pinning the
+   * draft keeps it working: this class walks a schema to list its field names and types and never
+   * validates data, and OpenMetadata's schemas use no keyword whose meaning differs between the two
+   * drafts. `resolutionScope` stays the base URI for resolving `$ref`.
+   */
+  private static SchemaLoader newSchemaLoader(
+      InputStream schemaInputStream, String schemaUri, SchemaClient schemaClient) {
+    return SchemaLoader.builder()
+        .draftV7Support()
+        .schemaJson(new JSONObject(new JSONTokener(schemaInputStream)))
+        .resolutionScope(schemaUri)
+        .schemaClient(schemaClient)
+        .build();
+  }
+
   private static Schema loadMainSchema(
       String schemaPath, String entityType, String schemaUri, SchemaClient schemaClient)
       throws SchemaProcessingException {
@@ -212,13 +229,7 @@ public class SchemaFieldExtractor {
           SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
     }
 
-    JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
-    SchemaLoader schemaLoader =
-        SchemaLoader.builder()
-            .schemaJson(rawSchema)
-            .resolutionScope(schemaUri)
-            .schemaClient(schemaClient)
-            .build();
+    SchemaLoader schemaLoader = newSchemaLoader(schemaInputStream, schemaUri, schemaClient);
 
     try {
       Schema schema = schemaLoader.load().build();
@@ -445,13 +456,7 @@ public class SchemaFieldExtractor {
           SchemaProcessingException.ErrorType.RESOURCE_NOT_FOUND);
     }
 
-    JSONObject rawSchema = new JSONObject(new JSONTokener(schemaInputStream));
-    SchemaLoader schemaLoader =
-        SchemaLoader.builder()
-            .schemaJson(rawSchema)
-            .resolutionScope(schemaUri) // Base URI for resolving $ref
-            .schemaClient(schemaClient)
-            .build();
+    SchemaLoader schemaLoader = newSchemaLoader(schemaInputStream, schemaUri, schemaClient);
 
     try {
       Schema schema = schemaLoader.load().build();

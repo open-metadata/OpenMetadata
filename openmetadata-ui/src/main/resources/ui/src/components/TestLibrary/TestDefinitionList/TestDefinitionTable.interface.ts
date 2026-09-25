@@ -11,17 +11,23 @@
  *  limitations under the License.
  */
 
+import { SortDescriptor } from 'react-aria-components';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 
 export interface TestDefinitionTableProps {
   testDefinitions: TestDefinition[];
+  /** Any fetch in flight. Dims the table; does not replace its rows. */
   isLoading: boolean;
+  /** The very first fetch, when there is nothing to keep on screen. */
+  isInitialLoading: boolean;
   pagingData: NextPreviousProps;
   showPagination: boolean;
   testDefinitionPermissions: Record<string, OperationPermission>;
   permissionLoading: boolean;
+  sortDescriptor: SortDescriptor;
+  onSortChange: (column: string, direction: 'asc' | 'desc') => void;
   onEnableToggle: (record: TestDefinition, checked: boolean) => void;
   onEdit: (record: TestDefinition) => void;
   onDelete: (record: TestDefinition) => void;

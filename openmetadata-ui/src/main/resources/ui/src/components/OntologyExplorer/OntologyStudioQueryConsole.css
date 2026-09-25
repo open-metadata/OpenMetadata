@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-.ontology-studio-query-editor .CodeMirror {
+.ontology-studio-query-editor .cm-editor {
   height: auto;
   min-height: 138px;
   background: var(--color-bg-primary);
@@ -22,24 +22,23 @@
   line-height: 1.6;
 }
 
-.ontology-studio-query-editor .CodeMirror-scroll {
+.ontology-studio-query-editor .cm-scroller {
   min-height: 138px;
   max-height: 240px;
 }
 
-.ontology-studio-query-editor .CodeMirror-gutters {
+.ontology-studio-query-editor .cm-gutters {
   display: none;
 }
 
-.ontology-studio-query-editor .CodeMirror-lines {
+.ontology-studio-query-editor .cm-content {
   padding: var(--om-space-12) var(--om-space-16);
 }
 
-.ontology-studio-query-editor pre.CodeMirror-line,
-.ontology-studio-query-editor pre.CodeMirror-line-like {
+.ontology-studio-query-editor .cm-line {
   padding: 0;
 }
 
-.ontology-studio-query-editor .CodeMirror-code > div:nth-child(-n + 2) span {
+.ontology-studio-query-editor .cm-content > .cm-line:nth-child(-n + 2) span {
   color: var(--color-utility-purple-600);
 }

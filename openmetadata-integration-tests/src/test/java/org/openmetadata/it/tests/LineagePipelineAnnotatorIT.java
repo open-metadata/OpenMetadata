@@ -166,6 +166,38 @@ public class LineagePipelineAnnotatorIT {
         "PipelineService should appear as upstream of messaging service");
   }
 
+  /**
+   * The pipeline-annotated edge must be projected as dbService → pipelineService → messagingService
+   * only. A direct dbService → messagingService edge alongside it would draw two parallel paths for
+   * one flow of data, which is what customers see as duplicated lines in the service view.
+   */
+  @Test
+  void serviceLineage_NoDirectEdgeBypassingPipelineService() throws Exception {
+    JsonNode oneHop =
+        searchLineageNodes(dbService.getFullyQualifiedName(), "databaseService", 0, 1);
+
+    assertNotNull(oneHop);
+    assertTrue(
+        oneHop.has(pipelineService.getFullyQualifiedName()),
+        "PipelineService should be the only downstream of the database service");
+    assertFalse(
+        oneHop.has(messagingService.getFullyQualifiedName()),
+        "MessagingService must not be directly downstream of the database service - "
+            + "the edge is annotated with a pipeline, so it routes through the pipeline service");
+  }
+
+  /** Routing through the pipeline must not lose reachability: the target is still two hops away. */
+  @Test
+  void serviceLineage_TargetServiceStillReachableThroughPipeline() throws Exception {
+    JsonNode twoHops =
+        searchLineageNodes(dbService.getFullyQualifiedName(), "databaseService", 0, 2);
+
+    assertNotNull(twoHops);
+    assertTrue(
+        twoHops.has(messagingService.getFullyQualifiedName()),
+        "MessagingService should still be reachable downstream via the pipeline service");
+  }
+
   // --- Helpers ---
 
   private JsonNode searchLineageNodes(String fqn, String type, int upDepth, int downDepth)

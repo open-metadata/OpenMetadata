@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/tests/dataQualityDimension.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DataQualityDimension",
   "description": "A Data Quality Dimension classifies what a test is checking, such as Completeness or Accuracy. Test definitions and test cases reference a dimension by relationship, so renaming or recolouring one updates it everywhere. OpenMetadata ships a set of system dimensions that cannot be edited or deleted; users with the right permission can create their own on top of them.",
   "type": "object",

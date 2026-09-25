@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,14 +26,14 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityDiffPureUtils';
-import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../../common/IconButtons/EditIconButton';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
+import { ReferenceBadge } from '../../GlossaryTermBadges/GlossaryTermBadges';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 const GlossaryTermReferences = () => {
@@ -56,10 +55,7 @@ const GlossaryTermReferences = () => {
     [permissions]
   );
 
-  const handleReferencesSave = async (
-    newReferences: TermReference[],
-    updateState?: boolean
-  ) => {
+  const handleReferencesSave = async (newReferences: TermReference[]) => {
     try {
       const updatedRef = newReferences.filter(
         (ref) => ref.endpoint && ref.name
@@ -72,9 +68,6 @@ const GlossaryTermReferences = () => {
         };
 
         await onGlossaryTermUpdate(updatedGlossaryTerm);
-        if (updateState) {
-          setReferences(updatedRef);
-        }
       }
       setIsViewMode(true);
     } catch (error) {
@@ -120,69 +113,82 @@ const GlossaryTermReferences = () => {
     }
 
     return (
-      <div className="d-flex flex-wrap">
-        {unchangedReferences.map((reference) =>
-          renderReferenceElement(reference)
-        )}
-        {addedReferences.map((reference) =>
-          renderReferenceElement(reference, { added: true })
-        )}
-        {deletedReferences.map((reference) =>
-          renderReferenceElement(reference, { removed: true })
-        )}
+      <div className="tw:flex tw:flex-wrap tw:gap-1">
+        {unchangedReferences.map((reference) => (
+          <ReferenceBadge key={reference.name} reference={reference} />
+        ))}
+        {addedReferences.map((reference) => (
+          <ReferenceBadge
+            key={reference.name}
+            reference={reference}
+            versionStatus={{ added: true }}
+          />
+        ))}
+        {deletedReferences.map((reference) => (
+          <ReferenceBadge
+            key={reference.name}
+            reference={reference}
+            versionStatus={{ removed: true }}
+          />
+        ))}
       </div>
     );
   }, [glossaryTerm]);
 
-  const header = (
-    <Space
-      className="w-full"
-      data-testid={`section-${t('label.reference-plural')}`}>
-      <Typography.Text className="text-sm font-medium">
-        {t('label.reference-plural')}
-      </Typography.Text>
-      {canEditAll &&
-        (isEmpty(references) ? (
-          <PlusIconButton
-            data-testid="term-references-add-button"
-            size="small"
-            title={t('label.add-entity', {
-              entity: t('label.reference-plural'),
-            })}
-            onClick={() => {
-              setIsViewMode(false);
-            }}
-          />
-        ) : (
-          <EditIconButton
-            newLook
-            data-testid="edit-button"
-            disabled={!canEditAll}
-            size="small"
-            onClick={() => setIsViewMode(false)}
-          />
+  const renderHeaderExtra = () => {
+    if (!canEditAll) {
+      return null;
+    }
+
+    return isEmpty(references) ? (
+      <WidgetPlusButton
+        data-testid="term-references-add-button"
+        title={t('label.add-entity', {
+          entity: t('label.reference-plural'),
+        })}
+        onClick={() => setIsViewMode(false)}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-button"
+        title={t('label.edit-entity', {
+          entity: t('label.reference-plural'),
+        })}
+        onClick={() => setIsViewMode(false)}
+      />
+    );
+  };
+
+  const renderReferences = () => {
+    if (isVersionView) {
+      return getVersionReferenceElements();
+    }
+    if (isEmpty(references)) {
+      return canEditAll ? null : <div>{NO_DATA_PLACEHOLDER}</div>;
+    }
+
+    return (
+      <div className="tw:flex tw:flex-wrap tw:gap-1">
+        {references.map((ref) => (
+          <ReferenceBadge key={ref.name} reference={ref} />
         ))}
-    </Space>
-  );
+      </div>
+    );
+  };
+
+  // WidgetCard hides the body of a disabled card, so only disable it when
+  // there is nothing to show; read-only users still see the placeholder.
+  const referencesBody = renderReferences();
 
   return (
     <>
-      <ExpandableCard
-        cardProps={{
-          title: header,
-        }}
+      <WidgetCard
         dataTestId="references-container"
-        isExpandDisabled={isEmpty(references)}>
-        {isVersionView && getVersionReferenceElements()}
-        {!isVersionView && (!canEditAll || !isEmpty(references)) && (
-          <div className="d-flex flex-wrap">
-            {references.map((ref) => renderReferenceElement(ref))}
-            {!canEditAll && references.length === 0 && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
-            )}
-          </div>
-        )}
-      </ExpandableCard>
+        headerExtra={renderHeaderExtra()}
+        isExpandDisabled={!referencesBody}
+        title={t('label.reference-plural')}>
+        {referencesBody}
+      </WidgetCard>
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}

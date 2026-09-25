@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
@@ -1651,6 +1652,40 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     validateSourceConfigHasType(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, RunOptions.NONE);
+  }
+
+  /**
+   * For callers running the pipeline against its own service. The explicit-service overload stays
+   * for the callers that run a pipeline against something else - a data contract's test suite, or
+   * an app whose ingestion runner was set on the service first.
+   */
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, RunOptions options) {
+    ServiceEntityInterface service =
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, options);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo,
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      RunOptions options) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.runPipelineWithOptions(ingestionPipeline, service, options);
+    recordQueuedPipelineStatus(
+        uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+    return response;
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.

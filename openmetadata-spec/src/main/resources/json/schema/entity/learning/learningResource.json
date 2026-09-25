@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/learning/learningResource.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LearningResource",
   "description": "A learning resource such as an in-product tutorial, Storylane walkthrough, or expert video contextualized for product surfaces.",
   "$comment": "@om-entity-type",

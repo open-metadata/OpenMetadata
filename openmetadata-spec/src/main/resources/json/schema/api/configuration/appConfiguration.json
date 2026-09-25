@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-metadata.org/schema/api/configuration/appConfiguration.json",
   "title": "AppConfiguration",
   "description": "App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).",

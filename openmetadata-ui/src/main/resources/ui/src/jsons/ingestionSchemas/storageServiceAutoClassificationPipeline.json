@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StorageServiceAutoClassificationPipeline",
   "description": "StorageService AutoClassification Pipeline Configuration.",
   "type": "object",
@@ -89,7 +88,6 @@
       "description": "Language to use for auto classification recognizers. Use 'any' to run all recognizers regardless of their configured language. For specific languages, only recognizers that support that language will be used.",
       "default": "en",
       "title": "Classification Language",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "string",
       "javaType": "org.openmetadata.schema.type.ClassificationLanguage",
       "enum": [

@@ -59,7 +59,10 @@ export interface FeaturesEmptyPlaceholderProps
   features?: EmptyPlaceholderFeature[];
 }
 
-const FEATURES_BACKGROUND = 'var(--tw-gradient-empty-placeholder-features)';
+// Read the source gradient token (inherits) rather than the `--tw-*` mirror
+// (which is `@property { inherits: false }` and can't be re-pointed by a
+// `.dark-mode` ancestor), so the gradient flips with the theme.
+const FEATURES_BACKGROUND = 'var(--gradient-empty-placeholder-features)';
 
 export const FeaturesEmptyPlaceholder = ({
   title,

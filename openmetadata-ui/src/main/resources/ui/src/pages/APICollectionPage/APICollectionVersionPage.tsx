@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -56,6 +57,7 @@ import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
@@ -282,22 +284,21 @@ const APICollectionVersionPage = () => {
         ),
         key: EntityTabs.API_ENDPOINT,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg">
               <Description
                 description={description}
                 entityType={EntityType.API_COLLECTION}
                 isDescriptionExpanded={isEmpty(apiEndpoints)}
                 showActions={false}
               />
-            </Col>
-            <Col className="p-t-sm m-x-lg" flex="auto">
+            </div>
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
               <APIEndpointsTab isVersionView />
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -318,8 +319,8 @@ const APICollectionVersionPage = () => {
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
 
@@ -378,8 +379,8 @@ const APICollectionVersionPage = () => {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
@@ -393,7 +394,7 @@ const APICollectionVersionPage = () => {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -401,17 +402,28 @@ const APICollectionVersionPage = () => {
                 permissions={collectionPermissions}
                 type={EntityType.API_COLLECTION}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
-                    className="tabs-new"
+                    className="tw:gap-3"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
-                </Col>
+                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Tabs.List size="sm" type="underline" variant="card">
+                      {tabs.map(({ key, label }) => (
+                        <Tabs.Item id={key} key={key}>
+                          {label}
+                        </Tabs.Item>
+                      ))}
+                    </Tabs.List>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 

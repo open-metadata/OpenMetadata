@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FivetranConnection",
   "description": "Fivetran Metadata Database Connection Config",
   "type": "object",
@@ -27,7 +26,8 @@
     "apiKey": {
       "title": "Fivetran API Key",
       "description": "Fivetran API Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "expose": true,
@@ -91,7 +91,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

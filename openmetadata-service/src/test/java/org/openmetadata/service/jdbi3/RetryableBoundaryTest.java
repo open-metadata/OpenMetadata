@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -120,7 +121,9 @@ class RetryableBoundaryTest {
     when(dataSource.getConnection()).thenReturn(connection);
 
     previousJdbi = Entity.getJdbi();
-    Entity.setJdbi(Jdbi.create(dataSource));
+    // SqlObjectPlugin mirrors the production Jdbi built in JdbiUtils: the boundary attaches
+    // CollectionDAO to the transaction's handle, and attach() needs the SQL-object extension.
+    Entity.setJdbi(Jdbi.create(dataSource).installPlugin(new SqlObjectPlugin()));
     repo = new BoundaryRepo(mock(CollectionDAO.PipelineDAO.class));
   }
 

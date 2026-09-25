@@ -26,8 +26,10 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -38,13 +40,19 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
+@Slf4j
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
@@ -83,6 +91,15 @@ public abstract class ServiceEntityRepository<
       descriptors.add(
           new PropagationDescriptor(
               FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    }
+    // Keeps the search index in step with the read-time tag inheritance in EntityRepository. This
+    // cascade carries the service's OWN tags into child documents and inheritance re-derives the
+    // same labels on read, so both halves have to move together or Explore and
+    // GET /{entity}/{id} disagree about an asset's tags.
+    if (supportsTags) {
+      descriptors.add(
+          new PropagationDescriptor(
+              Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
     }
     return descriptors;
   }
@@ -218,6 +235,17 @@ public abstract class ServiceEntityRepository<
   @Override
   protected void postDelete(T service, boolean hardDelete) {
     super.postDelete(service, hardDelete);
+    invalidateServiceAttributes(service);
+    // A matchAnyServiceName condition left pointing at a deleted service silently stops matching,
+    // so a Deny rule meant to hide that service's assets would quietly grant access instead.
+    // Only on hard delete: a soft-deleted service still resolves (the snapshot reads Include.ALL)
+    // and so still hides its assets, and rewriting the condition would not survive a restore.
+    if (hardDelete && !anotherServiceGoesByName(service.getName(), service.getId())) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeFromCondition(
+                  condition, service.getName(), PolicyConditionUpdater.SERVICE_FUNCTIONS));
+    }
     // Only delete secrets on hard delete to allow soft delete to be reversible
     if (hardDelete && service.getConnection() != null) {
       SecretsManagerFactory.getSecretsManager()
@@ -227,6 +255,100 @@ public abstract class ServiceEntityRepository<
               service.getName(),
               serviceType);
     }
+  }
+
+  /*
+   * The tag and name reverse index behind the matchAnyService* policy conditions is rebuilt after
+   * any service write rather than only when tags or the name actually change. Services are written
+   * rarely and a rebuild is one pass over them, so paying for it on every write is cheaper than the
+   * class of bug where a change slips past a narrower trigger and a Deny rule quietly stops
+   * matching until the snapshot TTL expires.
+   */
+
+  /**
+   * Drops the service-attribute snapshot on this pod and tells the others to do the same.
+   *
+   * <p>{@code ServiceAttributeResolver.invalidate()} only reaches this JVM. Without the broadcast,
+   * a peer keeps resolving {@code matchAnyServiceTag} and friends from the snapshot it already
+   * holds -- and keeps returning the same {@code generation()}, so the caches keyed on it do not
+   * turn over -- so a service tagged to hide its assets stays visible there for up to the
+   * resolver's refresh interval. {@code postUpdate} and {@code postDelete} do not go through the
+   * {@code invalidateCacheForEntity} fan-out, which is why the publish is explicit here; the
+   * subscriber on each pod runs the registered invalidator. No-op when caching is not configured,
+   * leaving the refresh interval as the bound, exactly as before.
+   */
+  private void invalidateServiceAttributes(T service) {
+    ServiceAttributeResolver.invalidate();
+    CacheInvalidationPubSub pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(
+          entityType, service.getId(), service.getFullyQualifiedName(), "serviceAttributes");
+    }
+  }
+
+  @Override
+  protected void postCreate(T service) {
+    super.postCreate(service);
+    invalidateServiceAttributes(service);
+  }
+
+  @Override
+  protected void postUpdate(T original, T updated) {
+    super.postUpdate(original, updated);
+    invalidateServiceAttributes(updated);
+    if (!original.getName().equals(updated.getName())
+        && !anotherServiceGoesByName(original.getName(), updated.getId())) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renameInCondition(
+                  condition,
+                  original.getName(),
+                  updated.getName(),
+                  PolicyConditionUpdater.SERVICE_FUNCTIONS));
+    }
+  }
+
+  /**
+   * True when some other service — of any type — still answers to {@code name}.
+   *
+   * <p>A {@code matchAnyServiceName} argument is a bare name, and names are unique only within a
+   * service type: a databaseService and a dashboardService can both be called {@code prod}, and a
+   * rule naming {@code prod} covers both. Rewriting that argument on behalf of one of them would
+   * retarget the rule away from the other, and removing it on hard delete would drop the other from
+   * the rule entirely — either way a Deny silently stops hiding assets it was written to hide. So
+   * the condition is only maintained once no other service can still be meant by the name.
+   */
+  private boolean anotherServiceGoesByName(String name, UUID excludedServiceId) {
+    for (String serviceEntityType : Entity.getServiceEntityTypes()) {
+      if (!Entity.hasEntityRepository(serviceEntityType)) {
+        continue;
+      }
+      if (serviceWithNameExists(serviceEntityType, name, excludedServiceId)) {
+        LOG.info(
+            "Leaving matchAnyServiceName('{}') conditions alone: a {} still goes by that name",
+            name,
+            serviceEntityType);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean serviceWithNameExists(
+      String serviceEntityType, String name, UUID excludedServiceId) {
+    try {
+      EntityInterface other =
+          Entity.getEntityByName(serviceEntityType, name, "", Include.NON_DELETED);
+      return !other.getId().equals(excludedServiceId);
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  @Override
+  protected void postUpdate(T updated) {
+    super.postUpdate(updated);
+    invalidateServiceAttributes(updated);
   }
 
   @Override
@@ -246,6 +368,16 @@ public abstract class ServiceEntityRepository<
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("connection", this::updateConnection);
       compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
+      compareAndUpdate("serviceAttributes", this::updateServiceAttributes);
+    }
+
+    /**
+     * {@code serviceAttributes} is a plain inline object, so recording the change is all that is
+     * needed for it to persist and appear in the change description.
+     */
+    private void updateServiceAttributes() {
+      recordChange(
+          "serviceAttributes", original.getServiceAttributes(), updated.getServiceAttributes());
     }
 
     private void updateConnection() {

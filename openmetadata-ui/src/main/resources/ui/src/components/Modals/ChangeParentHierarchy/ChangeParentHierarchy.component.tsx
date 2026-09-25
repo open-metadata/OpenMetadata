@@ -11,17 +11,22 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Form, Modal } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -32,7 +37,8 @@ import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Banner from '../../common/Banner/Banner';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import {
   ChangeParentHierarchyProps,
@@ -41,20 +47,35 @@ import {
 
 const MAX_BUFFERED_EVENTS = 100;
 
+const MoveJobStatus = ({
+  moveJob,
+}: {
+  moveJob?: MoveGlossaryTermWebsocketResponse;
+}) => {
+  if (!moveJob?.jobId) {
+    return null;
+  }
+
+  return (
+    <Alert variant={moveJob.error ? 'error' : 'success'}>
+      {moveJob.error ?? moveJob.message}
+    </Alert>
+  );
+};
+
 const ChangeParentHierarchy = ({
   selectedData,
   onCancel,
 }: ChangeParentHierarchyProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [form] = Form.useForm();
   const { socket } = useWebSocketConnector();
   const [loadingState, setLoadingState] = useState({
     isSaving: false,
   });
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [selectedParent, setSelectedParent] =
-    useState<DefaultOptionType | null>(null);
+    useState<GlossaryPickerValue | null>(null);
   const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
   const submittedJobId = useRef<string>();
   const awaitingResponse = useRef(false);
@@ -66,26 +87,8 @@ const ChangeParentHierarchy = ({
     selectedData.reviewers && selectedData.reviewers.length > 0
   );
 
-  const handleTagSelection = (
-    option: DefaultOptionType | DefaultOptionType[]
-  ) => {
-    // Handle both single option and array of options
-    const tags = Array.isArray(option) ? option : [option];
-
-    if (tags.length > 0) {
-      const selectedOption = tags[0];
-      setSelectedParent(selectedOption);
-      form.setFieldsValue({ parent: selectedOption.value as string });
-    } else {
-      setSelectedParent(null);
-      form.setFieldsValue({ parent: undefined });
-    }
-  };
-
-  const handleTreeAsyncSelectCancel = () => {
-    // Reset the selected parent when user cancels the tree selection
-    setSelectedParent(null);
-    form.setFieldsValue({ parent: undefined });
+  const handleParentSelection = (options: GlossaryPickerValue[]) => {
+    setSelectedParent(options[0] ?? null);
   };
 
   const handleMoveSuccess = useCallback(
@@ -119,14 +122,14 @@ const ChangeParentHierarchy = ({
   );
 
   const handleSubmit = async () => {
-    if (!selectedParent?.data) {
+    if (!selectedParent?.entity) {
       return;
     }
 
     try {
       setLoadingState((prev) => ({ ...prev, isSaving: true }));
       awaitingResponse.current = true;
-      const parent = selectedParent.data as Glossary | GlossaryTerm;
+      const parent = selectedParent.entity;
       const response = await moveGlossaryTerm(selectedData.id, {
         id: parent.id,
         type: (parent as GlossaryTerm).glossary
@@ -187,94 +190,93 @@ const ChangeParentHierarchy = ({
     };
   }, [socket, handleMoveJobUpdate]);
 
-  return (
-    <Modal
-      open
-      cancelText={t('label.cancel')}
-      closable={false}
-      data-testid="change-parent-hierarchy-modal"
-      maskClosable={false}
-      okButtonProps={{
-        form: 'change-parent-hierarchy-modal',
-        htmlType: 'submit',
-        loading: loadingState.isSaving,
-        disabled: hasReviewers && !confirmCheckboxChecked,
-      }}
-      okText={t('label.save')}
-      title={t('label.change-entity', { entity: t('label.parent') })}
-      onCancel={onCancel}>
-      <Form
-        form={form}
-        id="change-parent-hierarchy-modal"
-        layout="vertical"
-        onFinish={handleSubmit}>
-        {moveJob?.jobId && (
-          <div className="m-b-md">
-            <Banner
-              className="border-radius"
-              isLoading={loadingState.isSaving}
-              message={moveJob.error ?? moveJob.message ?? ''}
-              type={moveJob.error ? 'error' : 'success'}
-            />
-          </div>
-        )}
-        <Form.Item
-          label={t('label.select-field', {
-            field: t('label.parent'),
-          })}
-          name="parent"
-          rules={[
-            {
-              required: true,
-              message: t('label.field-required', {
-                field: t('label.parent'),
-              }),
-            },
-          ]}>
-          <TreeAsyncSelectList
-            hasNoActionButtons
-            isParentSelectable
-            data-testid="change-parent-select"
-            filterOptions={[selectedData.fullyQualifiedName ?? '']}
-            isMultiSelect={false}
-            open={false}
-            placeholder={t('label.select-field', {
-              field: t('label.parent'),
-            })}
-            onCancel={handleTreeAsyncSelectCancel}
-            onChange={handleTagSelection}
-          />
-        </Form.Item>
+  // Save stays disabled until a parent is picked, standing in for the old
+  // required-field rule.
+  const isSaveDisabled =
+    !selectedParent || (hasReviewers && !confirmCheckboxChecked);
 
-        {hasReviewers && (
-          <div className="m-t-md">
-            <Checkbox
-              checked={confirmCheckboxChecked}
-              className="text-grey-700"
-              data-testid="confirm-status-checkbox"
-              onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}>
-              <span>
-                <Transi18next
-                  i18nKey="message.entity-transfer-confirmation-message"
-                  renderElement={<strong />}
-                  values={{
-                    from: getEntityName(selectedData),
-                  }}
-                />
-                <span className="d-inline-block m-l-xss">
-                  <StatusBadge
-                    className="p-x-xs p-y-xss"
-                    dataTestId=""
-                    label={EntityStatus.InReview}
-                    status={EntityStatusClass[EntityStatus.InReview]}
-                  />
-                </span>
-              </span>
-            </Checkbox>
-          </div>
-        )}
-      </Form>
-    </Modal>
+  return (
+    <ModalOverlay
+      isOpen
+      isDismissable={false}
+      // The library overlay is `tw:z-50`, which loses to antd overlays
+      // (z-index 1000) still present on the glossary page.
+      style={{ zIndex: 'var(--om-z-modal)' }}>
+      <Modal>
+        <Dialog
+          aria-label={t('label.change-entity', { entity: t('label.parent') })}
+          data-testid="change-parent-hierarchy-modal"
+          width={520}>
+          <Dialog.Header>
+            <Typography
+              as="h3"
+              className="tw:text-primary"
+              size="text-md"
+              weight="semibold">
+              {t('label.change-entity', { entity: t('label.parent') })}
+            </Typography>
+          </Dialog.Header>
+          <Dialog.Content>
+            <MoveJobStatus moveJob={moveJob} />
+            <GlossaryTermPicker
+              required
+              selectGlossaries
+              data-testid="change-parent-select"
+              // A term cannot be moved under itself.
+              excludeFqns={[selectedData.fullyQualifiedName ?? '']}
+              label={t('label.select-field', { field: t('label.parent') })}
+              multiple={false}
+              placeholder={t('label.select-field', {
+                field: t('label.parent'),
+              })}
+              value={selectedParent ? [selectedParent] : []}
+              onChange={(_terms, nodes) => handleParentSelection(nodes)}
+            />
+
+            {hasReviewers && (
+              <Checkbox
+                data-testid="confirm-status-checkbox"
+                isSelected={confirmCheckboxChecked}
+                label={
+                  <span>
+                    <Transi18next
+                      i18nKey="message.entity-transfer-confirmation-message"
+                      renderElement={<strong />}
+                      values={{
+                        from: getEntityName(selectedData),
+                      }}
+                    />
+                    <span className="tw:ml-1 tw:inline-block">
+                      <StatusBadge
+                        className="p-x-xs p-y-xss"
+                        dataTestId=""
+                        label={EntityStatus.InReview}
+                        status={EntityStatusClass[EntityStatus.InReview]}
+                      />
+                    </span>
+                  </span>
+                }
+                onChange={setConfirmCheckboxChecked}
+              />
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" size="md" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save-button"
+              isDisabled={isSaveDisabled}
+              isLoading={loadingState.isSaving}
+              size="md"
+              onClick={handleSubmit}>
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

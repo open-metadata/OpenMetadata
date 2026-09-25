@@ -1785,13 +1785,23 @@ jobs:
       # a third-party retry action — actions/upload-artifact is already
       # trusted throughout this file, and `overwrite: true` makes a second
       # attempt safe to re-run against the same artifact name.
+      # Artifact name embeds `-a${{ github.run_attempt }}` so a workflow
+      # re-run gets its own namespace. On a re-run, prior-attempt artifacts
+      # remain visible to `actions/download-artifact` in the summary job;
+      # without the suffix, a stale attempt-1 artifact carrying a
+      # `downloadDistribution: failure` status can outrank a green
+      # attempt-2 upload and permanently red the required check for the
+      # remainder of the run (see run 35650435023, 4×2 = 8 CI/reporting
+      # failures on an otherwise-green run). The summary job's download
+      # pattern is scoped to the same `-a<attempt>` suffix so it only
+      # sees the current attempt's uploads.
       - name: Upload results JSON for summary
         id: upload-results-json
         uses: actions/upload-artifact@v6
         if: always()
         continue-on-error: true
         with:
-          name: playwright-results-json-${{ matrix.shardId }}
+          name: playwright-results-json-${{ matrix.shardId }}-a${{ github.run_attempt }}
           overwrite: true
           path: |
             openmetadata-ui/src/main/resources/ui/playwright/output/results.json
@@ -1808,14 +1818,14 @@ jobs:
       # chromium-09 upload + retry both 403/409 on the same name, results
       # never landed). `overwrite: true` doesn't help against the ghost.
       # A unique retry name sidesteps the collision; render_playwright_summary
-      # collapses `<shardId>-retry` back to `<shardId>` and prefers the retry
-      # when both are present.
+      # collapses `<shardId>-a<attempt>-retry` back to `<shardId>` and prefers
+      # the retry when both are present within the same attempt.
       - name: Retry upload results JSON for summary
         if: always() && steps.upload-results-json.outcome == 'failure'
         uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
-          name: playwright-results-json-${{ matrix.shardId }}-retry
+          name: playwright-results-json-${{ matrix.shardId }}-a${{ github.run_attempt }}-retry
           overwrite: true
           path: |
             openmetadata-ui/src/main/resources/ui/playwright/output/results.json

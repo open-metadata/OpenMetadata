@@ -368,6 +368,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
   }
 
   @Override

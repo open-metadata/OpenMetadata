@@ -133,6 +133,17 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid field name %s", field);
   }
 
+  public static String invalidTestDefinitionSortField(String field, List<String> allowed) {
+    return String.format(
+        "Invalid sortField %s for test definitions. Allowed values are %s",
+        field, String.join(", ", allowed));
+  }
+
+  public static String invalidTestDefinitionSortOrder(String order, List<String> allowed) {
+    return String.format(
+        "Invalid sortOrder %s. Allowed values are %s", order, String.join(", ", allowed));
+  }
+
   public static String entityTypeNotFound(String entityType) {
     return String.format("Entity type %s not found", entityType);
   }

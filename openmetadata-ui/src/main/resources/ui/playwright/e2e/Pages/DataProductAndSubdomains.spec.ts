@@ -29,6 +29,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   checkAssetsCount,
@@ -36,7 +37,9 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import {
+  escapeESReservedCharacters,
   fillDeleteConfirmationIfPresent,
+  openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
@@ -314,27 +317,30 @@ test.describe('Data Product Comprehensive Tests', () => {
       await selectDataProduct(page, dataProduct.data);
 
       // Click add tag button in tags container
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
-
-      // Wait for tag selector
-      await page.getByTestId('tag-selector').waitFor({
-        state: 'visible',
-      });
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       // Search for a tag
-      await page.getByTestId('tag-selector').click();
-      const tagSearchResponse = page.waitForResponse('/api/v1/search/query*');
-      await page.keyboard.type('Personal');
-
-      // Wait for search results
+      const tagSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters('Personal')
+        )}*`
+      );
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Personal');
       await tagSearchResponse;
 
-      // Select the tag (use first() to handle duplicates)
-      await page.getByTestId('tag-PersonalData.Personal').first().click();
+      // Select the tag
+      await page.getByTestId('tree-node-PersonalData.Personal').click();
 
       // Save
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
       const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await patchRes;
 
       // Verify tag is displayed
@@ -792,7 +798,15 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Delete the subdomain (recursive delete)
       await page.getByTestId('manage-button').click();
-      await page.getByTestId('delete-button').click();
+      // The manage menu is an Ant dropdown, and pressing an item while it is
+      // still scaling puts mousedown and mouseup in different places, so no
+      // click is synthesised -- the item just takes focus. The snapshot for
+      // this failure is exactly that: the menu still open with "Delete"
+      // [active] and no dialog behind it.
+      const deleteMenuItem = page.getByTestId('delete-button');
+      await expect(deleteMenuItem).toBeVisible();
+      await waitForAntdPopupToSettle(page);
+      await deleteMenuItem.click();
 
       await expect(page.getByRole('dialog')).toBeVisible();
 

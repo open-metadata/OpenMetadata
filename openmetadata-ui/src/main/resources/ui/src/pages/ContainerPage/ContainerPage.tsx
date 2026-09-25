@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
@@ -71,6 +72,7 @@ import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
@@ -847,8 +849,8 @@ const ContainerPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(containerData)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -867,7 +869,7 @@ const ContainerPage = () => {
             onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Container>
           columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
@@ -877,23 +879,37 @@ const ContainerPage = () => {
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
           <ContainerChildrenCountContext.Provider value={setChildrenCount}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
-                activeKey={tab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={renderTabBarExtraContent()}
-                onChange={handleTabChange}
-              />
-            </Col>
+                selectedKey={getRenderedActiveTab(tabs, tab)}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List
+                  actions={renderTabBarExtraContent()}
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
           </ContainerChildrenCountContext.Provider>
         </GenericProvider>
 
         <LimitWrapper resource="container">
           <></>
         </LimitWrapper>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };

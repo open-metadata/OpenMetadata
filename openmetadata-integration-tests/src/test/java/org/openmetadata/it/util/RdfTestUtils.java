@@ -28,9 +28,11 @@ import java.time.Duration;
 import java.util.List;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +56,36 @@ public final class RdfTestUtils {
 
   public static boolean isRdfEnabled() {
     return "true".equals(System.getProperty("enableRdf"));
+  }
+
+  /**
+   * Turns the server's RDF updater on for a class that needs it, unless the run already has it
+   * on, and reports whether this call turned it on. Pass the result to {@link
+   * #disableServerRdf(boolean)}: the updater is shared by every class on the server, so only the
+   * class that turned it on may turn it off.
+   */
+  public static boolean enableServerRdf(RdfConfiguration config) {
+    if (RdfUpdater.isEnabled()) {
+      return false;
+    }
+    RdfUpdater.initialize(config);
+    return true;
+  }
+
+  public static void disableServerRdf(boolean enabledByCaller) {
+    if (enabledByCaller) {
+      RdfUpdater.disable();
+    }
+  }
+
+  /** Puts the server's RDF updater back to the configuration the test suite started it with. */
+  public static void restoreSuiteRdf() {
+    RdfConfiguration suiteConfig = TestSuiteBootstrap.getRdfConfiguration();
+    if (suiteConfig != null && Boolean.TRUE.equals(suiteConfig.getEnabled())) {
+      RdfUpdater.initialize(suiteConfig);
+    } else {
+      RdfUpdater.disable();
+    }
   }
 
   /**
