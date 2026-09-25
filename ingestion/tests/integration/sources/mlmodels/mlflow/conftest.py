@@ -36,10 +36,10 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 
 from ....containers import (
-    MinioContainerConfigs,
+    S3ContainerConfigs,
     MySqlContainerConfigs,
     get_docker_network,
-    get_minio_container,
+    get_s3_container,
     get_mysql_container,
 )
 
@@ -66,7 +66,7 @@ class MlflowTestConfiguration:
             password="password",
             dbname="experiments",
         )
-        self.minio_configs = MinioContainerConfigs()
+        self.minio_configs = S3ContainerConfigs()
         self.mlflow_configs = MlflowContainerConfigs()
 
 
@@ -87,7 +87,7 @@ def mlflow_environment():
 
     docker_network = get_docker_network(name=f"docker_mlflow_test_nw_{unique_id}")
 
-    minio_container = get_minio_container(config.minio_configs)
+    minio_container = get_s3_container(config.minio_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
     # mlflow 3.8.1+ creates a trigger at backend init; with binlog on (mysql:8
     # default) this needs SUPER unless log_bin_trust_function_creators=1.
@@ -144,7 +144,7 @@ def mlflow_environment():
 
 def build_and_get_mlflow_container(
     mlflow_config: MlflowContainerConfigs,
-    minio_config: MinioContainerConfigs,
+    minio_config: S3ContainerConfigs,
     unique_id: str,
 ):
     docker_client = DockerClient()
