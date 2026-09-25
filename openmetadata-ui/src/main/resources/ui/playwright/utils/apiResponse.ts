@@ -56,9 +56,18 @@ export const deleteFixtureEntity = async (
   options?: Parameters<APIRequestContext['delete']>[1]
 ): Promise<APIResponse> => {
   const response = await apiContext.delete(url, options);
-  if (!response.ok() && !CLEANUP_TOLERATED_STATUSES.has(response.status())) {
+  const status = response.status();
+  if (!response.ok() && !CLEANUP_TOLERATED_STATUSES.has(status)) {
     throw new Error(
-      `Fixture DELETE ${url}: HTTP ${response.status()}: ${await response.text()}`
+      `Fixture DELETE ${url}: HTTP ${status}: ${await response.text()}`
+    );
+  }
+  // 401 is tolerated so a JWT expiry doesn't fail the test, but it leaks
+  // the fixture — surface it so cleanup regressions don't hide in green runs.
+  if (status === 401) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `Fixture DELETE ${url}: HTTP 401 during cleanup; fixture may leak`
     );
   }
   return response;
