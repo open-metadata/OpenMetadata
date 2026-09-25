@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Col,
-  Row,
-  Segmented,
-  Table,
-  Typography as AntTypography,
-} from 'antd';
+  ButtonGroup,
+  ButtonGroupItem,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Table, Typography as AntTypography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,6 +27,10 @@ import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../constants/SegmentToggle.constants';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -1093,14 +1094,26 @@ const APIEndpointSchemaV1: React.FC<{
     <div className="schema-field-cards-container">
       {/* Schema Type Toggle */}
       <div className="mb-md p-x-md d-flex p-y-md justify-between items-center">
-        <Segmented
-          className="segment-toggle"
-          options={viewTypeOptions}
-          value={viewType}
-          onChange={(value) =>
-            setViewType(value as 'request-schema' | 'response-schema')
-          }
-        />
+        <ButtonGroup
+          disallowEmptySelection
+          className={SEGMENT_TOGGLE_GROUP_CLASS}
+          selectedKeys={[viewType]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const selected = [...keys][0];
+            if (selected) {
+              setViewType(selected as 'request-schema' | 'response-schema');
+            }
+          }}>
+          {viewTypeOptions.map(({ label, value }) => (
+            <ButtonGroupItem
+              className={SEGMENT_TOGGLE_ITEM_CLASS}
+              id={value}
+              key={value}>
+              {label}
+            </ButtonGroupItem>
+          ))}
+        </ButtonGroup>
         <Button size="small" type="link" onClick={handleToggleExpandAll}>
           {expandedRowKeys.length < allRowKeys.length
             ? t('label.expand-all')

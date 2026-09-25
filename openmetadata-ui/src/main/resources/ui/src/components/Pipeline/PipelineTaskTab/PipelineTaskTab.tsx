@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Segmented, Typography } from 'antd';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import { Card, Typography } from 'antd';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import {
@@ -30,6 +31,10 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_PIPELINE_VISIBLE_COLUMNS,
@@ -402,13 +407,27 @@ export const PipelineTaskTab = () => {
 
   return (
     <div>
-      <Segmented
-        className="segment-toggle m-b-md"
+      <ButtonGroup
+        disallowEmptySelection
+        className={`${SEGMENT_TOGGLE_GROUP_CLASS} m-b-md`}
         data-testid="pipeline-task-switch"
-        options={Object.values(PIPELINE_TASK_TABS)}
-        value={activeTab}
-        onChange={(value) => setActiveTab(value as PIPELINE_TASK_TABS)}
-      />
+        selectedKeys={[activeTab]}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const selected = [...keys][0];
+          if (selected) {
+            setActiveTab(selected as PIPELINE_TASK_TABS);
+          }
+        }}>
+        {Object.values(PIPELINE_TASK_TABS).map((tab) => (
+          <ButtonGroupItem
+            className={SEGMENT_TOGGLE_ITEM_CLASS}
+            id={tab}
+            key={tab}>
+            {tab}
+          </ButtonGroupItem>
+        ))}
+      </ButtonGroup>
 
       {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
         <Table
