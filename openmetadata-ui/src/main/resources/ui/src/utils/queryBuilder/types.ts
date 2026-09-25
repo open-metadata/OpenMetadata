@@ -37,11 +37,11 @@ export const QUERY_BUILDER_SURFACE_CLASS: Record<
   { card: string; header: string }
 > = {
   [QUERY_BUILDER_SURFACE.PLAIN]: {
-    card: 'tw:bg-primary tw:border tw:border-primary',
+    card: 'tw:bg-surface tw:border tw:border-primary',
     header: 'tw:bg-utility-gray-blue-50 tw:border-b tw:border-primary',
   },
   [QUERY_BUILDER_SURFACE.SUBTLE]: {
-    card: 'tw:bg-utility-gray-blue-50',
+    card: 'tw:bg-secondary',
     header: 'tw:border-b tw:border-secondary',
   },
 };
