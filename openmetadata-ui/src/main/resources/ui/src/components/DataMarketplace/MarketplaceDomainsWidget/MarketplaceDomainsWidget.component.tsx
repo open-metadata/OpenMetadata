@@ -188,7 +188,7 @@ const MarketplaceDomainsWidget = ({
   if (loading) {
     return (
       <div
-        className="marketplace-widget-section"
+        className="marketplace-widget-section tw:bg-surface"
         data-testid="marketplace-domains-widget">
         <Loader size="small" />
       </div>
@@ -197,7 +197,7 @@ const MarketplaceDomainsWidget = ({
 
   return (
     <div
-      className="marketplace-widget-section"
+      className="marketplace-widget-section tw:bg-surface"
       data-testid="marketplace-domains-widget">
       <div className="marketplace-widget-header">
         <div>
