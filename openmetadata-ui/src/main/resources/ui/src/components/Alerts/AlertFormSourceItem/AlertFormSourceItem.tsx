@@ -11,33 +11,32 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  MenuItemProps,
-  MenuProps,
-  Select,
-  Typography,
-} from 'antd';
+import { Button, Card, Dropdown, Form, MenuItemProps, MenuProps } from 'antd';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import { useFqn } from '../../../hooks/useFqn';
+import {
+  getSourceKindLabel,
+  getSourceOptions,
+  groupSourcesByKind,
+} from '../../../utils/Alerts/AlertSelectionUtil';
 import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
+import AlertSourcePicker from '../AlertSourcePicker/AlertSourcePicker';
 import './alert-form-source-item.less';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
 function AlertFormSourceItem({
   filterResources,
+  isViewMode = false,
 }: Readonly<AlertFormSourceItemProps>) {
   const { t } = useTranslation();
+  const { capabilities } = useAlertSelectionContext();
   const newRef = useRef(null);
   const form = Form.useFormInstance();
   const { fqn } = useFqn();
-  const [selectedResource, setSelectedResource] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
 
   const resourcesOptions = useMemo(
@@ -51,13 +50,22 @@ function AlertFormSourceItem({
     [filterResources]
   );
 
-  const handleSourceChange = (value: string) => {
-    // Reset the filters, triggers and destination on change of source,
-    // since the options for above are source specific.
+  const sourceNames = useMemo(
+    () => (filterResources ?? []).map((resource) => resource.name ?? ''),
+    [filterResources]
+  );
+
+  // Filters and triggers depend on the sources, so they start again. A destination is offered
+  // when any source allows it, so adding a source keeps the destinations, and taking one away
+  // starts them again, as changing the source always has.
+  const handleSourcesChange = (values: string[], previous: string[]) => {
+    const sourceTakenAway = previous.some((source) => !values.includes(source));
+
     form.setFieldValue('input', {});
-    form.setFieldValue('destinations', []);
-    setSelectedResource([value]);
-    form.setFieldValue('resources', [value]);
+    if (sourceTakenAway) {
+      form.setFieldValue('destinations', []);
+    }
+    form.setFieldValue('resources', values);
   };
 
   const dropdownCardComponent = useCallback((menuNode: ReactNode) => {
@@ -66,22 +74,37 @@ function AlertFormSourceItem({
         bodyStyle={{ padding: 0 }}
         className="source-dropdown-card"
         data-testid="drop-down-menu">
-        <Typography.Text className="p-l-md text-grey-muted">
-          {t('label.data-asset-plural')}
-        </Typography.Text>
         <div className="p-t-xss">{menuNode}</div>
       </Card>
     );
   }, []);
 
-  const dropdownMenuItems: MenuProps['items'] = useMemo(
-    () =>
-      resourcesOptions.map((option) => ({
-        label: option.label,
-        key: option.value,
-      })),
-    [resourcesOptions]
-  );
+  // Grouped by kind, as the picker groups them, once the server has said each source's kind.
+  const dropdownMenuItems: MenuProps['items'] = useMemo(() => {
+    const labelOf = new Map(
+      resourcesOptions.map((option) => [option.value, option.label])
+    );
+
+    return groupSourcesByKind(
+      getSourceOptions(sourceNames, [], capabilities.selection)
+    ).flatMap(({ kind, sources }): NonNullable<MenuProps['items']> => {
+      const items = sources.map((source) => ({
+        key: source.name,
+        label: labelOf.get(source.name),
+      }));
+
+      return kind
+        ? [
+            {
+              type: 'group' as const,
+              key: kind,
+              label: getSourceKindLabel(kind),
+              children: items,
+            },
+          ]
+        : items;
+    });
+  }, [resourcesOptions, sourceNames, capabilities.selection]);
 
   const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
     (info: MenuInfo) => {
@@ -89,6 +112,15 @@ function AlertFormSourceItem({
       setIsEditMode(true);
     },
     []
+  );
+
+  const sourceControl = (
+    <AlertSourcePicker
+      isDisabled={isViewMode}
+      selection={capabilities.selection}
+      sources={sourceNames}
+      onChange={handleSourcesChange}
+    />
   );
 
   return (
@@ -116,16 +148,7 @@ function AlertFormSourceItem({
             },
           ]}>
           {isEditMode || fqn ? (
-            <Select
-              className="w-full"
-              data-testid="source-select"
-              options={resourcesOptions}
-              placeholder={t('label.select-field', {
-                field: t('label.data-asset-plural'),
-              })}
-              value={selectedResource[0]}
-              onChange={handleSourceChange}
-            />
+            sourceControl
           ) : (
             <Dropdown
               destroyPopupOnHide

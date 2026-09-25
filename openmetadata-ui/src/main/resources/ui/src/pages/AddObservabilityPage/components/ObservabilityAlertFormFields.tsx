@@ -32,20 +32,16 @@ import {
 
 function ObservabilityAlertFormFields({
   alert,
-  containerEntities,
   extraFormWidgets,
   filterResources,
   form,
   isLoading,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  supportedFilters,
-  supportedTriggers,
   templateResourcePermission,
   templates,
 }: Readonly<ObservabilityAlertFormFieldsProps>) {
   const { t } = useTranslation();
-  const resources = Form.useWatch('resources', form);
   const destinations = Form.useWatch('destinations', form);
   const timeout = Form.useWatch('timeout', form);
   const readTimeout = Form.useWatch('readTimeout', form);
@@ -84,10 +80,7 @@ function ObservabilityAlertFormFields({
                 <Divider dashed type="vertical" />
               </Col>
               <Col span={24}>
-                <ObservabilityFormFiltersItem
-                  containerEntities={containerEntities}
-                  supportedFilters={supportedFilters}
-                />
+                <ObservabilityFormFiltersItem />
               </Col>
             </>
           )}
@@ -97,9 +90,7 @@ function ObservabilityAlertFormFields({
                 <Divider dashed type="vertical" />
               </Col>
               <Col span={24}>
-                <ObservabilityFormTriggerItem
-                  supportedTriggers={supportedTriggers}
-                />
+                <ObservabilityFormTriggerItem />
               </Col>
             </>
           )}
@@ -116,7 +107,7 @@ function ObservabilityAlertFormFields({
                   <DestinationFormFieldRegistrar />
                 </Form.Item>
               )}
-              values={{ destinations, readTimeout, resources, timeout }}
+              values={{ destinations, readTimeout, timeout }}
               onChange={(values) => {
                 // Each shared field must be replaced at its root. Ant's bulk
                 // setter deep-merges destination array entries and would restore

@@ -22,7 +22,7 @@ import { DestinationFormItemProps } from './DestinationFormItem.interface';
 
 export type DestinationFormFields = Pick<
   ModifiedCreateEventSubscription,
-  'destinations' | 'readTimeout' | 'resources' | 'timeout'
+  'destinations' | 'readTimeout' | 'timeout'
 >;
 
 export type DestinationFormValidator = () => Promise<void>;
@@ -37,7 +37,6 @@ function getDestinationFormFields(
   values: Partial<DestinationFormFields>
 ): Partial<DestinationFormFields> {
   return {
-    resources: values.resources,
     destinations: values.destinations,
     timeout: values.timeout,
     readTimeout: values.readTimeout,
@@ -65,16 +64,15 @@ function DestinationFormItemFormBridge({
     mode: 'onBlur',
   });
   const { getValues, reset, setError, trigger, watch } = methods;
-  const { destinations, readTimeout, resources, timeout } = values;
+  const { destinations, readTimeout, timeout } = values;
   const normalizedValues = useMemo(
     () =>
       getDestinationFormFields({
         destinations,
         readTimeout,
-        resources,
         timeout,
       }),
-    [destinations, readTimeout, resources, timeout]
+    [destinations, readTimeout, timeout]
   );
   // RHF mutates nested field-array objects, so synchronization snapshots must
   // not retain references to its live form state.

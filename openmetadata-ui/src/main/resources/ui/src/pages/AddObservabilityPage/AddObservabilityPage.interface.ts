@@ -28,6 +28,7 @@ import {
   SubscriptionType,
   Webhook,
 } from '../../generated/events/eventSubscription';
+import type { AlertSelection } from '../../hooks/useAlertSelection';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
 
@@ -46,13 +47,11 @@ export interface UseObservabilityAlertFormOptions {
 }
 
 export interface UseObservabilityAlertResourcesReturn {
-  containerEntities?: string[];
   filterResources: ObservabilityFilterResourceDescriptor[];
   loading: boolean;
+  selection: AlertSelection;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
 }
 
 export interface UseObservabilityAlertTemplatesReturn {
@@ -103,7 +102,6 @@ export interface UseObservabilityAlertFormReturn {
     name: string;
     url: string;
   }[];
-  containerEntities?: string[];
   extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   filterResources: ObservabilityFilterResourceDescriptor[];
@@ -115,10 +113,9 @@ export interface UseObservabilityAlertFormReturn {
   isLoading: boolean;
   loadingState: AddAlertPageLoadingState;
   saving: boolean;
+  selection: AlertSelection;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
   templateResourcePermission: OperationPermission;
   templates: NotificationTemplate[];
 }
@@ -128,15 +125,12 @@ export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
 export type ObservabilityAlertFormFieldsProps = Pick<
   ObservabilityAlertFormProps,
   | 'alert'
-  | 'containerEntities'
   | 'extraFormWidgets'
   | 'filterResources'
   | 'form'
   | 'isLoading'
   | 'shouldShowActionsSection'
   | 'shouldShowFiltersSection'
-  | 'supportedFilters'
-  | 'supportedTriggers'
   | 'templateResourcePermission'
   | 'templates'
 >;
