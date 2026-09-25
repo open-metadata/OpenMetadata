@@ -14,6 +14,9 @@ import org.openmetadata.schema.services.connections.database.CassandraConnection
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
+import org.openmetadata.schema.services.connections.drive.SftpConnection;
+import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
+import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.mcp.McpConnection;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.service.exception.EntityMaskException;
@@ -22,6 +25,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   private static final String TOKEN = "openmetadata-token";
   private static final String ALPHA_KEY = "alpha-api-key";
   private static final String BETA_KEY = "beta-api-key";
+  private static final String SFTP_PASSWORD = "openmetadata-sftp-secret";
 
   public PasswordEntityMaskerTest() {
     CONFIG.setMaskPasswordsAPI(true);
@@ -177,6 +181,54 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
     assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
     assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  @Test
+  void testSftpPasswordIsMaskedAndRestored() {
+    SftpConnection original =
+        new SftpConnection()
+            .withHost("sftp.example.com")
+            .withAuthType(
+                new SftpBasicAuth().withUsername("sftp-user").withPassword(SFTP_PASSWORD));
+
+    SftpConnection masked =
+        (SftpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(original, "Sftp", ServiceType.DRIVE);
+    assertEquals(getMaskedPassword(), sftpPassword(masked));
+    assertEquals("sftp-user", sftpAuth(masked).getUsername());
+
+    SftpConnection restored =
+        (SftpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(masked, original, "Sftp", ServiceType.DRIVE);
+    assertEquals(SFTP_PASSWORD, sftpPassword(restored));
+  }
+
+  /** The config arrives from the database as a map, which is what used to defeat the masker. */
+  @Test
+  void testSftpPrivateKeyFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "host",
+            "sftp.example.com",
+            "authType",
+            Map.of("username", "sftp-user", "privateKey", SFTP_PASSWORD));
+
+    SftpConnection masked =
+        (SftpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(serialized, "Sftp", ServiceType.DRIVE);
+
+    assertEquals(getMaskedPassword(), ((SftpKeyAuth) masked.getAuthType()).getPrivateKey());
+  }
+
+  private SftpBasicAuth sftpAuth(SftpConnection connection) {
+    return (SftpBasicAuth) connection.getAuthType();
+  }
+
+  private String sftpPassword(SftpConnection connection) {
+    return sftpAuth(connection).getPassword();
   }
 
   @Test

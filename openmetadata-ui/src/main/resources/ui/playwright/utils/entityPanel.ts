@@ -472,9 +472,7 @@ export const navigateToIncidentsTab = async (page: Page) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
   const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
-  const incidentsTabButton = tabContent
-    .locator('.ant-tabs-tab')
-    .filter({ hasText: /incident/i });
+  const incidentsTabButton = tabContent.getByRole('tab', { name: /incident/i });
 
   if (await incidentsTabButton.isVisible()) {
     await incidentsTabButton.click();

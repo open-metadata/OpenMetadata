@@ -182,7 +182,7 @@ class ServiceBaseClass {
   }
 
   async addIngestionPipeline(page: Page) {
-    await page.click('[role="tab"] [data-testid="agents"]');
+    await page.getByRole('tab', { name: /^Agents/ }).click();
 
     const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
     if (await metadataTab.isVisible()) {

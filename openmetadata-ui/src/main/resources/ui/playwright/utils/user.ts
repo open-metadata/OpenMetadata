@@ -578,6 +578,12 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   ).not.toBeVisible();
   await expect(page.locator('[data-testid="delete-button"]')).not.toBeVisible();
 
+  // The core manage menu is modal; close it so the tab click is not swallowed.
+  await clickOutside(page);
+  await expect(
+    page.getByTestId('manage-dropdown-list-container')
+  ).not.toBeVisible();
+
   await page.click('[data-testid="lineage"]');
 
   await waitForAllLoadersToDisappear(page);

@@ -17,6 +17,15 @@
   --tw-prose-td-borders: theme(--color-border-secondary);
 }
 
+/* Typography inherits its colour, except inside a link: a card-wide <a> would
+ * otherwise paint every title and value link blue. Layered so a `color` prop or
+ * `tw:text-*` class still wins. */
+@layer base {
+  :where(a) .prose {
+    color: theme(--color-text-primary);
+  }
+}
+
 .prose :not(:where([class~='not-prose'], [class~='not-prose'] *)) {
   /* Text */
   &:where(p) {
