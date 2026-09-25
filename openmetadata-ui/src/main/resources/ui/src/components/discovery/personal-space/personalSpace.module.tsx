@@ -36,8 +36,8 @@ const gatedInbox = (
 );
 
 // My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
-// route keeps the surface reachable until it becomes the standalone modal the
-// design calls for.
+// route stays because `/` redirects here in AI mode, making it the landing
+// page; the user menu also opens it in the personal-space modal.
 const gatedMyData = (
   <PersonalSpaceGate>
     <MyData />

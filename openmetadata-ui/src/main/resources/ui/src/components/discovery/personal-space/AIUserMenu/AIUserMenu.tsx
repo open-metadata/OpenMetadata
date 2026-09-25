@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
   Check,
   ChevronRight,
+  Database01,
   File06,
   HelpCircle,
   Settings01,
@@ -323,6 +324,14 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
 
   const menuItems: MenuItemConfig[] = useMemo(
     () => [
+      {
+        type: 'item',
+        id: 'my-data',
+        dataTestId: 'ai-user-menu-my-data',
+        icon: Database01,
+        label: t('label.my-data'),
+        onAction: () => openPanel('my-data'),
+      },
       {
         type: 'item',
         id: 'persona',
