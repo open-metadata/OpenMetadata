@@ -13,7 +13,7 @@
 
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { useQueries } from '@tanstack/react-query';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNumber, isUndefined } from 'lodash';
 import {
   KeyboardEvent,
   ReactElement,
@@ -43,8 +43,10 @@ import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { CartesianViewBox, Coordinate } from 'recharts/types/util/types';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import {
+  COLOR_GREY_400,
+  GRAY_700,
   GREEN_3,
-  GREEN_3_OPACITY,
+  RED_3,
 } from '../../../../constants/Color.constants';
 import {
   DEFAULT_CHART_OPACITY,
@@ -54,14 +56,18 @@ import {
   TABLE_DATA_TO_BE_FRESH,
   TABLE_FRESHNESS_KEY,
 } from '../../../../constants/TestSuite.constant';
+import type { TestCaseResult } from '../../../../generated/tests/testCase';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { useChartColors } from '../../../../hooks/useChartColors';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
+  applyStatusPlacements,
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  getThresholdReference,
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
   prepareChartData,
@@ -74,13 +80,22 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import {
+  BOUND_AREA_OPACITY,
+  DOT_OUTLINE,
+  EXPECTATION_LABEL_HALO,
+  PLOT_BACKGROUND,
+  PLOT_BACKGROUND_OPACITY,
+  SELECTED_DOT_EDGE_PADDING,
+  SELECTED_DOT_HALO,
   STATUS_DOT_RADIUS,
+  STATUS_DOT_RING_WIDTH,
   STATUS_DOT_SIZE,
   TEST_SUMMARY_CHART_MARGIN,
   TOOLTIP_CLOSE_DELAY,
   TOOLTIP_GAP,
 } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
+import TestSummaryStatusKey from './TestSummaryStatusKey';
 
 interface ActiveTooltip {
   anchor: Coordinate;
@@ -171,7 +186,11 @@ function TestSummaryGraph({
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
   const { axis, grid } = useChartColors();
-  const { setShowAILearningBanner } = useTestCaseStore();
+  const {
+    setShowAILearningBanner,
+    selectedRunTimestamp,
+    setSelectedRunTimestamp,
+  } = useTestCaseStore();
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -230,14 +249,20 @@ function TestSummaryGraph({
     }, TOOLTIP_CLOSE_DELAY);
   }, [cancelTooltipClose]);
 
-  const handleTooltipKeyDown = useCallback(
-    (event: KeyboardEvent<SVGElement>) => {
+  const handlePointKeyDown = useCallback(
+    (event: KeyboardEvent<SVGElement>, timestamp: number) => {
       if (event.key === 'Escape') {
         cancelTooltipClose();
         setActiveTooltip(undefined);
       }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        // Space would otherwise scroll the page.
+        event.preventDefault();
+        setSelectedRunTimestamp(timestamp);
+      }
     },
-    [cancelTooltipClose]
+    [cancelTooltipClose, setSelectedRunTimestamp]
   );
 
   useEffect(() => cancelTooltipClose, [cancelTooltipClose]);
@@ -286,17 +311,25 @@ function TestSummaryGraph({
     setShowAILearningBanner(chartData.showAILearningBanner);
   }, [chartData.showAILearningBanner, setShowAILearningBanner]);
 
+  // One series reads as data, not as a category, so it takes the neutral the
+  // mock draws it in. Several need the palette to be told apart.
+  const isSingleSeries = chartData.information.length === 1;
+  const getSeriesColor = useCallback(
+    (color: string) => (isSingleSeries ? COLOR_GREY_400 : color),
+    [isSingleSeries]
+  );
+
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
       value: info.label,
       dataKey: info.label,
       type: 'line',
-      color: info.color,
+      color: getSeriesColor(info.color),
       inactive: !(activeKeys.length === 0 || activeKeys.includes(info.label)),
     }));
 
     return legendPayload;
-  }, [chartData?.information, activeKeys]);
+  }, [chartData?.information, activeKeys, getSeriesColor]);
 
   const handleLegendClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
@@ -318,12 +351,81 @@ function TestSummaryGraph({
     [useFreshnessFormat]
   );
 
+  // A ReferenceLine with no `y` draws nothing, so the expectation line was
+  // absent for every test: the parameter name was passed as its label and the
+  // value it should sit at was never supplied.
+  const thresholdReference = useMemo(
+    () =>
+      getThresholdReference(
+        testCaseParameterValue ?? [],
+        // Dimension results carry no learned bound, so the fallback simply
+        // finds nothing for them.
+        testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
+      ),
+    [testCaseParameterValue, testCaseResults]
+  );
+
+  const plottedStatuses = useMemo(
+    () =>
+      chartData.data
+        .map((point) => point.status)
+        .filter((status): status is TestCaseStatus => Boolean(status)),
+    [chartData.data]
+  );
+
+  const plottedData = useMemo(
+    () =>
+      applyStatusPlacements(
+        chartData.data,
+        chartData.information.map((info) => info.label),
+        thresholdReference?.y
+      ),
+    [chartData, thresholdReference]
+  );
+
+  // Until the user picks a run, the card beside the chart opens on the newest
+  // one. The store outlives a date-range or dimension change, so a selection
+  // the refetched data no longer holds falls back to the newest run as well.
+  // A point's `name` is typed as the union of every field the tooltip reads,
+  // so it is narrowed back to its timestamp.
+  const activeRunTimestamp = useMemo(() => {
+    if (
+      !isUndefined(selectedRunTimestamp) &&
+      plottedData.some((point) => point.name === selectedRunTimestamp)
+    ) {
+      return selectedRunTimestamp;
+    }
+
+    const latestPointName = plottedData[plottedData.length - 1]?.name;
+
+    return isNumber(latestPointName) ? latestPointName : undefined;
+  }, [plottedData, selectedRunTimestamp]);
+
+  const handleRunSelect = useCallback(
+    (timestamp: number) => setSelectedRunTimestamp(timestamp),
+    [setSelectedRunTimestamp]
+  );
+
   const renderStatusDot: LineProps['dot'] = (
     props
   ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, dataKey, payload } = props;
+    const pointValue = payload[String(dataKey)];
+
+    // Recharts calls the dot renderer for every row of the chart, including
+    // the ones this series holds no value for - a run that produced nothing on
+    // the value line, and every ordinary run on the two placement series.
+    if (isUndefined(pointValue)) {
+      return <g />;
+    }
+
     const fill = getStatusDotColor(payload.status);
     const pointKey = String(dataKey);
+    // Aborted is drawn as a ring, matching the status key: a run that produced
+    // no value and one that has not run yet must differ by shape, not only by
+    // colour. The stroke sits inside the radius so the dot keeps its size.
+    const isHollow = payload.status === TestCaseStatus.Aborted;
+    const isSelected = payload.name === activeRunTimestamp;
 
     return (
       // The focus ring extends outside the dot's SVG bounds, so overflow must
@@ -336,6 +438,20 @@ function TestSummaryGraph({
         x={cx - STATUS_DOT_RADIUS}
         xmlns="http://www.w3.org/2000/svg"
         y={cy - STATUS_DOT_RADIUS}>
+        {isSelected && (
+          // Marks the run the details card is showing, so the selection reads
+          // from the point itself rather than only from the guide line.
+          <circle
+            aria-hidden="true"
+            cx={STATUS_DOT_RADIUS}
+            cy={STATUS_DOT_RADIUS}
+            data-testid="selected-point-halo"
+            fill={fill}
+            fillOpacity={SELECTED_DOT_HALO.opacity}
+            pointerEvents="none"
+            r={STATUS_DOT_RADIUS + SELECTED_DOT_HALO.spread}
+          />
+        )}
         <circle
           aria-label={`${formatDateTimeLong(
             payload.name,
@@ -344,14 +460,27 @@ function TestSummaryGraph({
           className="test-summary-point"
           cx={STATUS_DOT_RADIUS}
           cy={STATUS_DOT_RADIUS}
+          data-status={payload.status}
           data-testid={`test-summary-point-${pointKey}`}
-          fill={fill}
-          r={STATUS_DOT_RADIUS}
+          fill={isHollow ? 'none' : fill}
+          // A hollow circle only hit-tests its stroke; keep the whole disc
+          // clickable so the ring is as easy to select as a filled dot.
+          pointerEvents="all"
+          r={
+            isHollow
+              ? STATUS_DOT_RADIUS - STATUS_DOT_RING_WIDTH / 2
+              : STATUS_DOT_RADIUS
+          }
           role="img"
+          // Filled dots take an outline in the surface colour, which lifts them
+          // off the line they sit on; the ring's own stroke is its colour.
+          stroke={isHollow ? fill : DOT_OUTLINE}
+          strokeWidth={isHollow ? STATUS_DOT_RING_WIDTH : 1}
           tabIndex={0}
           onBlur={handleTooltipClose}
+          onClick={() => handleRunSelect(payload.name)}
           onFocus={() => handleTooltipOpen(cx, cy, payload)}
-          onKeyDown={handleTooltipKeyDown}
+          onKeyDown={(event) => handlePointKeyDown(event, payload.name)}
           onMouseEnter={() => handleTooltipOpen(cx, cy, payload)}
           onMouseLeave={handleTooltipClose}
         />
@@ -360,20 +489,49 @@ function TestSummaryGraph({
   };
 
   const referenceArea = useMemo(() => {
-    const params = testCaseParameterValue ?? [];
-
-    if (params.length === 1) {
-      return (
-        <ReferenceLine
-          label={params[0].name}
-          stroke={GREEN_3}
-          strokeDasharray="4"
-        />
-      );
+    if (!thresholdReference) {
+      return null;
     }
 
-    return <></>;
-  }, [testCaseParameterValue]);
+    return (
+      <ReferenceLine
+        stroke={GRAY_700}
+        strokeDasharray="4"
+        y={thresholdReference.y}
+      />
+    );
+  }, [thresholdReference]);
+
+  // The label is a second, strokeless line drawn after the series. Recharts
+  // paints in child order, so a label attached to the line underneath would
+  // have every run near the expected value drawn straight through it. The
+  // surface-coloured halo then clears the dots and path behind the text.
+  const expectationLabel = useMemo(() => {
+    if (!thresholdReference) {
+      return null;
+    }
+
+    return (
+      <ReferenceLine
+        data-testid="expectation-label"
+        label={{
+          fill: GRAY_700,
+          fontSize: 12,
+          fontWeight: 600,
+          paintOrder: 'stroke',
+          position: 'insideBottomRight',
+          stroke: DOT_OUTLINE,
+          strokeLinejoin: 'round',
+          strokeWidth: EXPECTATION_LABEL_HALO,
+          value: t(thresholdReference.labelKey, {
+            value: thresholdReference.labelValue,
+          }),
+        }}
+        stroke="none"
+        y={thresholdReference.y}
+      />
+    );
+  }, [thresholdReference, t]);
 
   if (isEmpty(testCaseResults)) {
     return (
@@ -391,100 +549,146 @@ function TestSummaryGraph({
   }
 
   return (
-    <ResponsiveContainer
-      className="tw:bg-primary custom-test-summary-graph"
-      id={`${testCaseName}_graph`}
-      minHeight={minHeight ?? 400}>
-      <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
-        <CartesianGrid stroke={grid} />
-        <XAxis
-          angle={-45}
-          dataKey="name"
-          domain={['auto', 'auto']}
-          padding={{ left: 8, right: 8 }}
-          scale="time"
-          textAnchor="end"
-          tick={{ fill: axis, fontSize: 12 }}
-          tickFormatter={(date) =>
-            formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
-          }
-          type="number"
-        />
-        <YAxis
-          allowDataOverflow
-          domain={['min', 'max']}
-          padding={{ top: 8, bottom: 8 }}
-          tick={{ fill: axis, fontSize: 12 }}
-          tickFormatter={formatYAxis}
-          width={80}
-        />
-        <Tooltip
-          active={Boolean(activeTooltip)}
-          content={
-            <TestSummaryTooltipContent
-              activeTooltip={activeTooltip}
-              onMeasure={handleTooltipMeasure}
-              onMouseEnter={cancelTooltipClose}
-              onMouseLeave={handleTooltipClose}
-            />
-          }
-          cursor={false}
-          isAnimationActive={false}
-          // Recharts otherwise flips the tooltip after measuring its content,
-          // moving the incident link away from a pointer already over it.
-          // ComposedChart replaces Tooltip.coordinate with the live pointer;
-          // position keeps interactive content anchored to its triggering dot.
-          position={activeTooltip?.position}
-          wrapperStyle={{
-            pointerEvents: 'auto',
-            visibility: activeTooltip ? 'visible' : 'hidden',
-            // Recharts exposes the active wrapper before measuring its content.
-            // Seed its transform so the first frame does not render at the origin.
-            transform: activeTooltip
-              ? `translate(${activeTooltip.position.x}px, ${activeTooltip.position.y}px)`
-              : undefined,
-          }}
-        />
-        {referenceArea}
-        <Legend
-          payload={customLegendPayLoad}
-          wrapperStyle={{ bottom: 2 }}
-          onClick={handleLegendClick}
-          onMouseEnter={handleLegendMouseEnter}
-          onMouseLeave={handleLegendMouseLeave}
-        />
-        <Area
-          connectNulls
-          activeDot={false}
-          dataKey="boundArea"
-          dot={false}
-          fill={GREEN_3_OPACITY}
-          stroke={GREEN_3}
-          strokeDasharray="4"
-          type="monotone"
-        />
-        {chartData?.information?.map((info) => (
-          <Line
-            activeDot={false}
-            dataKey={info.label}
-            dot={renderStatusDot}
-            hide={
-              activeKeys.length && info.label !== activeMouseHoverKey
-                ? !activeKeys.includes(info.label)
-                : false
+    <Box className="tw:bg-primary" direction="col">
+      <ResponsiveContainer
+        className="custom-test-summary-graph"
+        id={`${testCaseName}_graph`}
+        minHeight={minHeight ?? 400}>
+        <ComposedChart data={plottedData} margin={TEST_SUMMARY_CHART_MARGIN}>
+          <CartesianGrid stroke={grid} vertical={false} />
+          <XAxis
+            angle={-45}
+            dataKey="name"
+            domain={['auto', 'auto']}
+            // The newest run is selected by default and sits at the right edge;
+            // its halo needs room there or the plot clips it.
+            padding={{
+              left: SELECTED_DOT_EDGE_PADDING,
+              right: SELECTED_DOT_EDGE_PADDING,
+            }}
+            scale="time"
+            textAnchor="end"
+            tick={{ fill: axis, fontSize: 12 }}
+            tickFormatter={(date) =>
+              formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
             }
-            key={info.label}
-            stroke={info.color}
-            strokeOpacity={
-              isEmpty(activeMouseHoverKey) || info.label === activeMouseHoverKey
-                ? DEFAULT_CHART_OPACITY
-                : HOVER_CHART_OPACITY
-            }
-            type="monotone"
+            type="number"
           />
-        ))}
-      </ComposedChart>
-    </ResponsiveContainer>
+          <YAxis
+            allowDataOverflow
+            axisLine={false}
+            domain={['min', 'max']}
+            padding={{ top: 8, bottom: 8 }}
+            tick={{ fill: axis, fontSize: 12 }}
+            tickFormatter={formatYAxis}
+            width={80}
+          />
+          <Tooltip
+            active={Boolean(activeTooltip)}
+            content={
+              <TestSummaryTooltipContent
+                activeTooltip={activeTooltip}
+                onMeasure={handleTooltipMeasure}
+                onMouseEnter={cancelTooltipClose}
+                onMouseLeave={handleTooltipClose}
+              />
+            }
+            cursor={false}
+            isAnimationActive={false}
+            // Recharts otherwise flips the tooltip after measuring its content,
+            // moving the incident link away from a pointer already over it.
+            // ComposedChart replaces Tooltip.coordinate with the live pointer;
+            // position keeps interactive content anchored to its triggering dot.
+            position={activeTooltip?.position}
+            wrapperStyle={{
+              pointerEvents: 'auto',
+              visibility: activeTooltip ? 'visible' : 'hidden',
+              // Recharts exposes the active wrapper before measuring its content.
+              // Seed its transform so the first frame does not render at the origin.
+              transform: activeTooltip
+                ? `translate(${activeTooltip.position.x}px, ${activeTooltip.position.y}px)`
+                : undefined,
+            }}
+          />
+          {referenceArea}
+          {!isUndefined(activeRunTimestamp) && (
+            <ReferenceLine
+              data-testid="run-selection-guide"
+              stroke={RED_3}
+              x={activeRunTimestamp}
+            />
+          )}
+          <Legend
+            payload={customLegendPayLoad}
+            wrapperStyle={{ bottom: 2 }}
+            onClick={handleLegendClick}
+            onMouseEnter={handleLegendMouseEnter}
+            onMouseLeave={handleLegendMouseLeave}
+          />
+          {isSingleSeries &&
+            chartData.information.map((info) => (
+              // The mock shades the area under the line, not a fixed band:
+              // the wash follows each run down and leaves the plot above the
+              // line clear. Only a single series gets it; under several they
+              // would overlap and the shading would stop meaning anything.
+              <Area
+                activeDot={false}
+                data-testid="series-area"
+                dataKey={info.label}
+                dot={false}
+                fill={PLOT_BACKGROUND}
+                // Translucent, as in the mock, so the grid reads through it.
+                fillOpacity={PLOT_BACKGROUND_OPACITY}
+                isAnimationActive={false}
+                key={`${info.label}-area`}
+                legendType="none"
+                stroke="none"
+                type="linear"
+              />
+            ))}
+          {/* The allowed range, drawn as the mock does: a faint wash with no
+              edges. It paints over the area under the series, or the area
+              would hide it wherever a run sits inside the range and leave
+              only a sliver between the line and the bound. */}
+          <Area
+            connectNulls
+            activeDot={false}
+            dataKey="boundArea"
+            dot={false}
+            fill={GREEN_3}
+            fillOpacity={BOUND_AREA_OPACITY}
+            isAnimationActive={false}
+            stroke="none"
+            type="linear"
+          />
+          {chartData?.information?.map((info) => (
+            <Line
+              activeDot={false}
+              dataKey={info.label}
+              dot={renderStatusDot}
+              hide={
+                activeKeys.length && info.label !== activeMouseHoverKey
+                  ? !activeKeys.includes(info.label)
+                  : false
+              }
+              key={info.label}
+              stroke={getSeriesColor(info.color)}
+              strokeOpacity={
+                isEmpty(activeMouseHoverKey) ||
+                info.label === activeMouseHoverKey
+                  ? DEFAULT_CHART_OPACITY
+                  : HOVER_CHART_OPACITY
+              }
+              type="linear"
+            />
+          ))}
+          {expectationLabel}
+        </ComposedChart>
+      </ResponsiveContainer>
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:px-4 tw:pb-2">
+        <TestSummaryStatusKey statuses={plottedStatuses} />
+      </div>
+    </Box>
   );
 }
 

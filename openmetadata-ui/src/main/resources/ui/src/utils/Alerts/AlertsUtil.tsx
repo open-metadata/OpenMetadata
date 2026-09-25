@@ -187,7 +187,7 @@ const getTableSuggestions = async (searchText: string) => {
   });
 };
 
-const getDataContractSuggestions = async (searchText = '') => {
+export const getDataContractSuggestions = async (searchText = '') => {
   try {
     const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
 

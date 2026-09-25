@@ -897,6 +897,32 @@ describe('AuthCoordinator', () => {
       expect(refreshed).toEqual([leaderPayload]);
     });
 
+    // gitar-bot r4083324168: when the leader's publish threw,
+    // CrossTabLock now broadcasts `done` with the payload rather than
+    // `failed`. Followers must persist it themselves so the axios
+    // request interceptor's `getOidcToken()` returns the fresh token
+    // — otherwise storage stays on the leader's OLD value and every
+    // request 401s with the stale bearer.
+    it('follower with a valid done payload persists it before applying', async () => {
+      coordinator.registerRenewer(jest.fn());
+      const leaderPayload = {
+        idToken: 'leader-fresh',
+        expiresAt: Date.now() + 300_000,
+      };
+      mockRunExclusive.mockResolvedValueOnce({
+        role: 'follower',
+        message: { type: 'done', payload: leaderPayload },
+      });
+      const { setOidcTokenStrict } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      ) as { setOidcTokenStrict: jest.Mock };
+      setOidcTokenStrict.mockClear();
+
+      await coordinator.ensureFreshToken();
+
+      expect(setOidcTokenStrict).toHaveBeenCalledWith('leader-fresh');
+    });
+
     it('follower on leader `failed` falls back to a local renewer call', async () => {
       const renewer = jest.fn(async () => ({
         expiresAt: Date.now() + 300_000,
@@ -1131,6 +1157,33 @@ describe('AuthCoordinator', () => {
 
       expect(token).toBe('bot-token-no-exp');
       expect(renewer).not.toHaveBeenCalled();
+    });
+
+    // Fast-path JWT sanity: extractDetailsFromToken's decode-throw
+    // branch returns `{ exp: 0, isExpired: true }`. Previously the
+    // fast-path handed the corrupt/torn stored token back as a bearer
+    // (opaque bot tokens have the same `exp <= 0` shape). Now the
+    // isExpired signal distinguishes them: opaque → return, corrupt
+    // → refresh.
+    it('does NOT hand back a corrupt / undecodable stored token — falls through to a refresh', async () => {
+      const renewer = jest.fn(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'renewer-fresh',
+      }));
+      coordinator.registerRenewer(renewer);
+      mockedGetOidcToken.mockResolvedValueOnce('torn-jwt');
+      // Exact shape extractDetailsFromToken returns on jwt-decode
+      // throw (see AuthProvider.util:495-499).
+      mockedExtractDetailsFromToken.mockReturnValueOnce({
+        exp: 0,
+        isExpired: true,
+        timeoutExpiry: 0,
+      });
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('renewer-fresh');
+      expect(renewer).toHaveBeenCalledTimes(1);
     });
 
     it('falls through to the full refresh when the storage read itself throws', async () => {

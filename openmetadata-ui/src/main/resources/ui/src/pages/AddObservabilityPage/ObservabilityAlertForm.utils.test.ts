@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../../styles/variables.less';
 
-.workflow-edge-label {
-  background: @text-color;
-  color: var(--tw-color-text-white);
-  border-radius: var(--om-radius-sm);
-  padding: 0 var(--om-space-8);
-  font-size: var(--om-font-size-10);
-  font-weight: var(--om-font-weight-medium);
-  text-transform: capitalize;
-}
+import { EventType } from '../../generated/type/changeEvent';
+import { toObservabilityFilterResourceDescriptor } from './ObservabilityAlertForm.utils';
+
+describe('toObservabilityFilterResourceDescriptor', () => {
+  it('keeps the event types a notification source supports', () => {
+    const descriptor = toObservabilityFilterResourceDescriptor({
+      name: 'table',
+      supportedEventTypes: [EventType.EntityCreated, EventType.EntityUpdated],
+    });
+
+    expect(descriptor.supportedEventTypes).toEqual([
+      EventType.EntityCreated,
+      EventType.EntityUpdated,
+    ]);
+  });
+});
