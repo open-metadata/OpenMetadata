@@ -13,27 +13,18 @@
 
 package org.openmetadata.service.datacontract.odcs;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.RefreshFrequency;
-import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 
 /**
  * Freshness rules, which OpenMetadata runs as the contract SLA's refresh frequency instead of as a
- * test case. An ODCS document can also state that frequency as an SLA property, so the two have to
- * agree.
+ * test case. The SLA's own freshness property states the same frequency, and is what exports keep:
+ * other ODCS tools read it, and imports that create no test cases leave freshness rules unapplied.
  */
 final class ODCSFreshness {
-  private static final String SLA_PROPERTY = "freshness";
   private static final Set<String> REFRESH_FREQUENCY_UNITS =
       Set.of("hour", "day", "week", "month", "year");
 
@@ -65,40 +56,5 @@ final class ODCSFreshness {
 
   static String describe(RefreshFrequency frequency) {
     return String.format("%d %s(s)", frequency.getInterval(), frequency.getUnit().value());
-  }
-
-  /**
-   * Leaves the SLA freshness property out of an export when one of the contract's freshness rules
-   * already states it. Importing that rule sets the same frequency and column, and a document that
-   * says it twice would let an edit to one be overridden by the other.
-   */
-  static void omitSlaPropertyStatedByRule(ODCSDataContract odcs, DataContract contract) {
-    ContractSLA sla = contract.getSla();
-    boolean statedByRule =
-        sla != null
-            && sla.getRefreshFrequency() != null
-            && listOrEmpty(contract.getOdcsQualityRules()).stream()
-                .anyMatch(rule -> statesTheSla(rule, sla));
-    if (statedByRule && odcs.getSlaProperties() != null) {
-      List<ODCSSlaProperty> others =
-          odcs.getSlaProperties().stream()
-              .filter(property -> !SLA_PROPERTY.equalsIgnoreCase(property.getProperty()))
-              .toList();
-      odcs.setSlaProperties(others.isEmpty() ? null : others);
-    }
-  }
-
-  private static boolean statesTheSla(ODCSQualityRule rule, ContractSLA sla) {
-    return ODCSRuleKind.of(rule) == ODCSRuleKind.FRESHNESS
-        && refreshFrequency(rule)
-            .filter(frequency -> isSameFrequency(frequency, sla.getRefreshFrequency()))
-            .isPresent()
-        && setsTheSlaColumn(rule, sla.getColumnName());
-  }
-
-  /** An SLA without a column loses nothing when its property is left out. */
-  private static boolean setsTheSlaColumn(ODCSQualityRule rule, String slaColumn) {
-    return nullOrEmpty(slaColumn)
-        || ODCSSlaColumn.toElement(slaColumn).equalsIgnoreCase(rule.getColumn());
   }
 }

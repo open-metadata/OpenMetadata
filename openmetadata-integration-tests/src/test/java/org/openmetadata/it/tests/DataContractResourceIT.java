@@ -7938,43 +7938,28 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testODCSExportStatesTheFreshnessRuleOnceSoEditingItTakesEffect(TestNamespace ns) {
+  void testODCSExportKeepsTheSlaFreshnessForAnImportWithoutTestCases(TestNamespace ns) {
     Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
     DataContract contract =
         SdkClients.adminClient()
             .dataContracts()
             .createOrUpdateFromODCSYaml(
-                odcsWithQualityRules(ns.prefix("odcs_fresh_edit"), table.getName()),
+                odcsWithQualityRules(ns.prefix("odcs_fresh_export"), table.getName()),
                 table.getId(),
                 "table");
-    ODCSDataContract exported =
-        SdkClients.adminClient().dataContracts().exportToODCS(contract.getId());
+    String exported = SdkClients.adminClient().dataContracts().exportToODCSYaml(contract.getId());
 
-    assertTrue(
-        nullOrEmpty(exported.getSlaProperties())
-            || exported.getSlaProperties().stream()
-                .noneMatch(property -> "freshness".equals(property.getProperty())),
-        "The SLA must not restate the freshness rule");
-    freshnessRuleOf(exported).setMustBeLessOrEqualTo(12.0);
-    DataContract reimported =
+    DataContract replaced =
         SdkClients.adminClient()
             .dataContracts()
-            .createOrUpdateFromODCS(exported, table.getId(), "table", "merge");
+            .createOrUpdateFromODCSYaml(exported, table.getId(), "table", "replace", false);
 
-    assertEquals(12, reimported.getSla().getRefreshFrequency().getInterval());
+    assertNotNull(replaced.getSla(), "The export must carry the SLA the freshness rule set");
+    assertEquals(24, replaced.getSla().getRefreshFrequency().getInterval());
+    assertEquals("hour", replaced.getSla().getRefreshFrequency().getUnit().value());
     assertEquals(
         FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"),
-        reimported.getSla().getColumnName());
-  }
-
-  private static ODCSQualityRule freshnessRuleOf(ODCSDataContract odcs) {
-    return odcs.getSchema().stream()
-        .flatMap(object -> object.getProperties().stream())
-        .filter(property -> !nullOrEmpty(property.getQuality()))
-        .flatMap(property -> property.getQuality().stream())
-        .filter(rule -> rule.getMetric() == ODCSQualityRule.OdcsQualityMetric.FRESHNESS)
-        .findFirst()
-        .orElseThrow(() -> new AssertionError("The export has no freshness rule"));
+        replaced.getSla().getColumnName());
   }
 
   private static void assertNoOdcsTestCasesOn(Table table) {
