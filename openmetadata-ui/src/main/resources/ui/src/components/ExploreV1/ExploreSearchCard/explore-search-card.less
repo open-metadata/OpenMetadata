@@ -15,15 +15,18 @@
 .explore-search-card {
   padding: var(--om-space-12) var(--om-space-16);
   position: relative;
-  border-radius: var(--om-radius-10);
+  // Border, elevation and hover match the AI Automations template card.
+  border-radius: var(--om-radius-2xl);
   background-color: var(--tw-background-color-surface);
-  border: 1px solid @border-color;
+  border: 1px solid var(--om-color-border-secondary);
+  box-shadow: var(--om-shadow-xs);
   margin: 0 0 var(--om-space-10);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color var(--om-duration-200) ease,
-    box-shadow var(--om-duration-200) ease,
-    background-color var(--om-duration-200) ease;
+  transition: border-color var(--om-duration-160) cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow var(--om-duration-160) cubic-bezier(0.4, 0, 0.2, 1),
+    transform var(--om-duration-160) cubic-bezier(0.4, 0, 0.2, 1),
+    background-color var(--om-duration-160) ease;
   .no-owner-text {
     font-size: @size-sm;
     font-weight: @font-regular;
@@ -79,15 +82,16 @@
   }
 
   &:hover {
-    border-color: @primary-1;
-    box-shadow: 0 1px 3px var(--om-legacy-color-10-13-18-0-1);
+    border-color: var(--om-color-brand-300);
+    box-shadow: var(--om-shadow-lg);
+    transform: translateY(-2px);
   }
 
-  // Selection highlights the box only — clean blue border on a white card,
+  // Selection highlights the box only — the same brand-300 border as hover,
   // no left accent bar and no tinted fill (matches the redesign). The widths
   // are explicit so no legacy left-accent rule can thicken one edge.
   &.highlight-card {
-    border: 1px solid @primary-color;
+    border: 1px solid var(--om-color-brand-300);
     background-color: var(--tw-background-color-surface);
   }
 

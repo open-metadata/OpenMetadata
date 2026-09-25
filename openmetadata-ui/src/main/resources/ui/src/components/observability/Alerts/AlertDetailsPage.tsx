@@ -18,9 +18,10 @@ import {
   PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
+import { useQueryClient } from '@tanstack/react-query';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -32,7 +33,10 @@ import Loader from '../../../components/common/Loader/Loader';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { ProviderType } from '../../../generated/events/eventSubscription';
+import {
+  AlertType,
+  ProviderType,
+} from '../../../generated/events/eventSubscription';
 import { useFqn } from '../../../hooks/useFqn';
 import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
 import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage';
@@ -40,29 +44,41 @@ import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
-import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
+import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import AlertAiForm from './AlertAiForm.component';
 import { getAlertAiResources } from './AlertAiFormFieldsPureUtils';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 import AlertEditModal from './AlertEditModal.component';
-import { getAlertsObservabilityDetailsPath } from './alertUtils';
+import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
+import { invalidateQueriesWithoutInitialRace } from './queryCacheUtils';
 
 const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';
 const ACTION_ICON_CLASS_NAME = 'tw:h-4 tw:w-4 tw:text-fg-quaternary';
 
-const AlertDetailsPage = () => {
+interface AlertDetailsPageProps {
+  /** Which alerts this page serves; Settings → Notifications passes its kind. */
+  kind?: AlertKind;
+}
+
+const AlertDetailsPage = ({
+  kind = OBSERVABILITY_ALERT_KIND,
+}: AlertDetailsPageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { fqn } = useFqn();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const alertListPath = OBSERVABILITY_ROUTES.OBSERVABILITY_ALERTS;
+  const alertListPath = kind.listPath;
+  const isNotificationAlert = kind.alertType === AlertType.Notification;
 
-  const handleAfterDelete = useCallback(() => {
+  const handleAfterDelete = useCallback(async () => {
+    await invalidateQueriesWithoutInitialRace(queryClient, {
+      queryKey: OBSERVABILITY_ALERT_COUNT_QUERY_KEY,
+    });
     navigate(alertListPath);
-  }, [alertListPath, navigate]);
+  }, [alertListPath, navigate, queryClient]);
 
   const handleEditAlert = useCallback(() => {
     setIsEditModalOpen(true);
@@ -70,22 +86,25 @@ const AlertDetailsPage = () => {
 
   const handleTabChange = useCallback(
     (tab: Key) => {
-      navigate(getAlertsObservabilityDetailsPath(fqn, String(tab)), {
+      navigate(kind.getDetailsPath(fqn, String(tab)), {
         replace: true,
       });
     },
-    [fqn, navigate]
+    [fqn, kind, navigate]
   );
 
   const detailsState = useAlertDetailsPage({
     afterDeleteAction: handleAfterDelete,
-    isNotificationAlert: false,
+    isNotificationAlert,
     onEditAlert: handleEditAlert,
     onTabChange: (tab) => handleTabChange(tab),
   }) as ReturnType<typeof useAlertDetailsPage> & {
     fetchAlertDetails?: () => Promise<void>;
   };
-  const alertFormState = useObservabilityAlertForm({ fqn });
+  const alertFormState = useObservabilityAlertForm({
+    alertType: kind.alertType,
+    fqn,
+  });
 
   const {
     alertDetails,
@@ -165,11 +184,12 @@ const AlertDetailsPage = () => {
     if (tab === AlertDetailTabs.CONFIGURATION && alertConfigValue) {
       return (
         <AlertAiForm
-          shouldShowActionsSection
           shouldShowFiltersSection
           alert={alertConfigValue}
           filterResources={alertFormState.filterResources}
           mode="view"
+          shouldShowActionsSection={kind.hasTriggers}
+          shouldShowTemplateSection={!isEmpty(alertFormState.extraFormWidgets)}
           supportedFilters={selectedAlertResource?.supportedFilters}
           supportedTriggers={selectedAlertResource?.supportedActions}
           templates={alertFormState.templates}
@@ -181,8 +201,10 @@ const AlertDetailsPage = () => {
     return tabItems?.find((item) => item.key === tab)?.children;
   }, [
     alertConfigValue,
+    alertFormState.extraFormWidgets,
     alertFormState.filterResources,
     alertFormState.templates,
+    kind.hasTriggers,
     selectedAlertResource?.supportedActions,
     selectedAlertResource?.supportedFilters,
     tab,
@@ -232,6 +254,7 @@ const AlertDetailsPage = () => {
             selectorContent={
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnersPermission)}
+                multiple={{ user: true, team: false }}
                 owner={alertDetails?.owners}
                 onUpdate={onOwnerUpdate}
               />
@@ -252,7 +275,7 @@ const AlertDetailsPage = () => {
 
   const breadcrumbItems = useMemo(
     () => [
-      getObservabilityRootBreadcrumb(t),
+      ...kind.getRootBreadcrumbs(t),
       {
         label: t('label.alert-plural'),
         ariaLabel: t('label.alert-plural'),
@@ -263,7 +286,7 @@ const AlertDetailsPage = () => {
         ariaLabel: alertName,
       },
     ],
-    [alertListPath, alertName, t]
+    [alertListPath, alertName, kind, t]
   );
 
   const headerActions = useMemo(
@@ -398,6 +421,7 @@ const AlertDetailsPage = () => {
         <AlertEditModal
           fqn={fqn}
           isOpen={isEditModalOpen}
+          kind={kind}
           onClose={() => setIsEditModalOpen(false)}
           onSaved={handleEditModalSaved}
         />

@@ -134,12 +134,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('entity-name-modal')).toBeVisible();
 
     await adminPage
       .getByPlaceholder('Enter display name')
@@ -149,7 +149,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('save-button').click();
     await updateName;
 
-    await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('entity-header-display-name')
+    ).toHaveText('TestDisplayName');
   });
 
   test('Restyle Tag', async ({ adminPage }) => {
@@ -159,12 +161,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Style' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('icon-color-modal')).toBeVisible();
 
     await adminPage.getByTestId('icon-picker-btn').click();
     await adminPage
@@ -191,12 +193,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('delete-modal')).toBeVisible();
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();
@@ -382,9 +384,11 @@ test.describe('Tag Page with Admin Roles', () => {
         .first();
       await expect(classificationEntry).toBeVisible({ timeout: 30000 });
       await classificationEntry.click();
-      await expect(adminPage.locator('.activeCategory')).toContainText(
-        classification1.responseData.displayName
-      );
+      await expect(
+        adminPage.locator(
+          '[data-testid="tags-left-panel"] [aria-current="page"]'
+        )
+      ).toContainText(classification1.responseData.displayName);
     };
 
     await openClassification();
