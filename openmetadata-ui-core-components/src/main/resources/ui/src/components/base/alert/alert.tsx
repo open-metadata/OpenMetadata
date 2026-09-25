@@ -77,6 +77,8 @@ export interface AlertProps
   children?: ReactNode;
   /** Override the default variant icon */
   icon?: FC<{ className?: string }>;
+  /** Set false to drop the leading icon, like antd's Alert without `showIcon`. */
+  showIcon?: boolean;
   /** Size forwarded to FeaturedIcon — defaults to 'md' */
   iconSize?: 'sm' | 'md' | 'lg' | 'xl';
   /** 'square' renders the icon in a rounded-rect container instead of a circle */
@@ -100,6 +102,7 @@ export const Alert = ({
   title,
   children,
   icon,
+  showIcon = true,
   iconSize = 'md',
   iconShape,
   iconRadius,
@@ -129,17 +132,19 @@ export const Alert = ({
         className
       )}
       role="alert">
-      <FeaturedIcon
-        bgColor={iconBgColor}
-        className={cx('tw:shrink-0', isStacked && 'tw:self-start')}
-        color={styles.iconColor}
-        data-testid="alert-icon"
-        icon={Icon}
-        outlined={iconOutlined}
-        radius={iconRadius}
-        shape={iconShape}
-        size={iconSize}
-      />
+      {showIcon && (
+        <FeaturedIcon
+          bgColor={iconBgColor}
+          className={cx('tw:shrink-0', isStacked && 'tw:self-start')}
+          color={styles.iconColor}
+          data-testid="alert-icon"
+          icon={Icon}
+          outlined={iconOutlined}
+          radius={iconRadius}
+          shape={iconShape}
+          size={iconSize}
+        />
+      )}
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:text-sm">
         {hasTitle && (
