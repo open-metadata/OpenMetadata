@@ -4426,7 +4426,7 @@
     "no-owned-data": "소유한 데이터가 없습니다. 더 많은 데이터 자산을 탐색하여 시작하세요.",
     "no-permission-for-action": "이 작업을 수행할 수 있는 필요한 권한이 없습니다.",
     "no-permission-for-create-test-case-on-table": "이 테이블에서 테스트 케이스를 생성하는 데 필요한 권한이 없습니다.",
-    "no-permission-to-create-test-cases": "이 테이블에 테스트 케이스를 생성할 권한이 없으므로 품질 규칙은 실행되지 않고 가져옵니다.",
+    "no-permission-to-create-test-cases": "이 테이블에 테스트 케이스를 생성할 권한이 없습니다. 품질 규칙을 실행하지 않고 가져오려면 이 옵션을 해제하세요.",
     "no-permission-to-view": "이 데이터를 볼 수 있는 필요한 권한이 없습니다.",
     "no-persona-ai-context-description": "페르소나를 생성하여 해당 구성원이 공유하는 AI 컨텍스트 규칙을 정의하세요.",
     "no-persona-assigned": "할당된 페르소나 없음",

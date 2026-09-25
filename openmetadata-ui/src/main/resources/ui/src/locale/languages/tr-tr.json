@@ -4426,7 +4426,7 @@
     "no-owned-data": "Henüz veriye sahip değilsiniz — başlamak için daha fazla veri varlığı keşfedin.",
     "no-permission-for-action": "Bu eylemi gerçekleştirmek için gerekli izinlere sahip değilsiniz.",
     "no-permission-for-create-test-case-on-table": "Bu tabloda test durumu oluşturmak için gerekli izinlere sahip değilsiniz.",
-    "no-permission-to-create-test-cases": "Bu tabloda test senaryosu oluşturma izniniz yok, bu nedenle kalite kuralları çalıştırılmadan içe aktarılır.",
+    "no-permission-to-create-test-cases": "Bu tabloda test senaryosu oluşturma izniniz yok. Kalite kurallarını çalıştırmadan içe aktarmak için bu seçeneğin işaretini kaldırın.",
     "no-permission-to-view": "Bu veriyi görüntülemek için gerekli izinlere sahip değilsiniz.",
     "no-persona-ai-context-description": "Üyelerinin paylaştığı yapay zekâ bağlam kurallarını tanımlamak için bir persona oluşturun.",
     "no-persona-assigned": "Persona atanmadı",

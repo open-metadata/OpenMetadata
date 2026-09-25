@@ -4426,7 +4426,7 @@
     "no-owned-data": "No posees datos aún; explora más activos de datos para comenzar.",
     "no-permission-for-action": "No tienes permisos para realizar esta acción.",
     "no-permission-for-create-test-case-on-table": "No tienes los permisos necesarios para crear un caso de prueba en esta tabla.",
-    "no-permission-to-create-test-cases": "No tiene permiso para crear casos de prueba en esta tabla, por lo que las reglas de calidad se importan sin ejecutarse.",
+    "no-permission-to-create-test-cases": "No tiene permiso para crear casos de prueba en esta tabla. Desmarque esta opción para importar las reglas de calidad sin ejecutarlas.",
     "no-permission-to-view": "No tienes permisos para ver estos datos.",
     "no-persona-ai-context-description": "Crea una persona para definir las reglas de contexto de IA que comparten sus miembros.",
     "no-persona-assigned": "Ninguna persona asignada",

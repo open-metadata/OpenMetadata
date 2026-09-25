@@ -294,8 +294,6 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   const odcsReport = isODCSFormat
     ? serverValidation?.odcsImportReport
     : undefined;
-  const willCreateTestCases =
-    createTestCases && odcsReport?.canCreateTestCases !== false;
 
   const hasValidationErrors = useMemo(() => {
     if (serverValidationError) {
@@ -489,7 +487,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         entityType,
         importMode,
         selectedObjectName || undefined,
-        willCreateTestCases
+        createTestCases
       );
     }
 
@@ -498,7 +496,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       entityId,
       entityType,
       selectedObjectName || undefined,
-      willCreateTestCases
+      createTestCases
     );
   }, [
     yamlContent,
@@ -507,7 +505,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     entityId,
     entityType,
     selectedObjectName,
-    willCreateTestCases,
+    createTestCases,
   ]);
 
   const handleOpenMetadataImport =
@@ -1238,7 +1236,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       return null;
     }
 
-    const cannotCreateTestCases = odcsReport.canCreateTestCases === false;
+    // The server reports canCreateTestCases=false both for a caller without permission and when
+    // createTestCases was off, so it only means "no permission" while the box is ticked. The box
+    // stays enabled so the user can clear it, as the blocking issue asks.
+    const lacksTestCasePermission =
+      createTestCases && odcsReport.canCreateTestCases === false;
 
     return (
       <div className="tw:mt-4" data-testid="odcs-import-report-section">
@@ -1246,12 +1248,12 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           <Checkbox
             data-testid="create-test-cases-checkbox"
             hint={
-              cannotCreateTestCases
+              lacksTestCasePermission
                 ? t('message.no-permission-to-create-test-cases')
                 : t('message.create-test-cases-from-quality-rules-hint')
             }
-            isDisabled={cannotCreateTestCases || isValidating}
-            isSelected={willCreateTestCases}
+            isDisabled={isValidating}
+            isSelected={createTestCases}
             label={t('label.create-test-cases-from-quality-rules')}
             onChange={setCreateTestCases}
           />
@@ -1259,7 +1261,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <ODCSImportReport report={odcsReport} />
       </div>
     );
-  }, [odcsReport, willCreateTestCases, isValidating, t]);
+  }, [odcsReport, createTestCases, isValidating, t]);
 
   const renderObjectSelector = useCallback(() => {
     if (!isODCSFormat || schemaObjects.length <= 1) {
