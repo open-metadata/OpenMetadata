@@ -193,3 +193,6 @@ export const useIsLimitReached = () => {
     [config?.enable, resourceLimit]
   );
 };
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { ResourceLimit } from '../../interface/platform/limits.interface';
