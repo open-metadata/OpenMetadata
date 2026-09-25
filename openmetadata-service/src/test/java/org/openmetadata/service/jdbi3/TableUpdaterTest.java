@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.TablePartition;
 
@@ -27,7 +28,8 @@ class TableUpdaterTest {
     assertTablePartitionChange(tablePartition("daily"), tablePartition("monthly"));
   }
 
-  private void assertTablePartitionChange(TablePartition originalPartition, TablePartition updatedPartition) {
+  private void assertTablePartitionChange(
+      TablePartition originalPartition, TablePartition updatedPartition) {
     Table original = table(originalPartition);
     Table updated = table(updatedPartition);
     TableRepository.TableUpdater updater =
@@ -58,7 +60,7 @@ class TableUpdaterTest {
     return new TablePartition()
         .withColumns(
             List.of(
-                new org.openmetadata.schema.type.PartitionColumnDetails()
+                new PartitionColumnDetails()
                     .withColumnName("order_date")
                     .withIntervalType(PartitionIntervalTypes.TIME_UNIT)
                     .withInterval(interval)));
