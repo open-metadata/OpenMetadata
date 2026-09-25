@@ -21,7 +21,7 @@ from _openmetadata_testutils.ometa import OM_JWT, int_admin_ometa
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..containers import MinioContainerConfigs, get_minio_container
+from ..containers import S3ContainerConfigs, get_s3_container
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
 
@@ -60,8 +60,8 @@ def upload_directory_to_minio(client: Minio, local_directory: Path, bucket_name:
 
 @pytest.fixture(scope="package")
 def minio(bucket_name):
-    config = MinioContainerConfigs(container_name=str(uuid.uuid4()))
-    minio_container = get_minio_container(config)
+    config = S3ContainerConfigs(container_name=str(uuid.uuid4()))
+    minio_container = get_s3_container(config)
     minio_container.with_exposed_ports(9000, 9001)
 
     with minio_container:

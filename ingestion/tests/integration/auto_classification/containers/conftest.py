@@ -48,7 +48,7 @@ from metadata.ingestion.source.storage.storage_service import (
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ...containers import MinioContainerConfigs, get_minio_container
+from ...containers import S3ContainerConfigs, get_s3_container
 
 
 @pytest.fixture(scope="module")
@@ -89,8 +89,8 @@ def mock_cloudwatch():
 
 @pytest.fixture(scope="module")
 def minio(bucket_name):
-    config = MinioContainerConfigs(container_name=f"minio_{uuid.uuid4().hex[:8]}")
-    minio_container = get_minio_container(config)
+    config = S3ContainerConfigs(container_name=f"minio_{uuid.uuid4().hex[:8]}")
+    minio_container = get_s3_container(config)
     minio_container.with_exposed_ports(9000, 9001)
 
     with minio_container:
