@@ -33,15 +33,33 @@ const openComboboxOptions = async (page: Page, combobox: Locator) => {
     await expect(combobox).toHaveAttribute('aria-expanded', 'true', {
       timeout: 2_000,
     });
-  }).toPass();
+  }).toPass({ timeout: 10_000 });
   const listboxId = await combobox.getAttribute('aria-controls');
 
   return readOptions(page.locator(`[id="${listboxId}"]`));
 };
 
-/** Closes an open popover without Escape, which would also close the modal. */
+/** Opens a core Select; like the combobox, a first click can land before the trigger is ready. */
+const openSelect = async (select: Locator) => {
+  const trigger = select.getByRole('button');
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 10_000 });
+};
+
+/**
+ * Closes an open popover without Escape, which would also close the modal, by clicking
+ * the modal subtitle: static header text, identical in add and edit mode.
+ */
 export const dismissPopover = async (dialog: Locator) => {
-  await dialog.click({ position: { x: 8, y: 8 } });
+  await dialog
+    .getByText('Stay current with timely alerts using webhooks.')
+    .click();
 };
 
 export const openAddAlertModal = async (page: Page) => {
@@ -57,7 +75,7 @@ export const fillAlertName = async (dialog: Locator, name: string) => {
 };
 
 export const selectAlertSource = async (page: Page, source: string) => {
-  await page.getByTestId('source-select').click();
+  await openSelect(page.getByTestId('source-select'));
   await page.getByRole('option', { name: source, exact: true }).click();
 };
 
@@ -98,7 +116,7 @@ export const addFilter = async (
   index = 0
 ) => {
   await dialog.getByTestId('add-filters').click();
-  await dialog.getByTestId(`filters-select-${index}`).click();
+  await openSelect(dialog.getByTestId(`filters-select-${index}`));
   await page.getByRole('option', { name: filter, exact: true }).click();
 };
 
@@ -107,7 +125,7 @@ export const getFilterSelectOptions = async (
   dialog: Locator,
   index = 0
 ) => {
-  await dialog.getByTestId(`filters-select-${index}`).click();
+  await openSelect(dialog.getByTestId(`filters-select-${index}`));
   const options = await readOptions(
     page.getByRole('listbox', { name: 'Filter' })
   );
@@ -158,7 +176,7 @@ export const selectInternalDestinationType = async (
   type: string,
   index: number
 ) => {
-  await dialog.getByTestId(`destination-type-select-${index}`).click();
+  await openSelect(dialog.getByTestId(`destination-type-select-${index}`));
   await page
     .getByRole('listbox', { name: 'Type' })
     .getByRole('option', { name: type, exact: true })

@@ -422,24 +422,5 @@ describe('AlertEditModal', () => {
         'false'
       );
     });
-
-    it('is shown when a template widget is registered (Collate)', () => {
-      mockUseObservabilityAlertForm.mockReturnValue(
-        getHookState({ extraFormWidgets: { NotificationTemplate: () => null } })
-      );
-
-      render(
-        <AlertEditModal
-          isOpen
-          mode="add"
-          onClose={jest.fn()}
-          onSaved={jest.fn()}
-        />
-      );
-
-      expect(screen.getByTestId('form-shows-templates')).toHaveTextContent(
-        'true'
-      );
-    });
   });
 });

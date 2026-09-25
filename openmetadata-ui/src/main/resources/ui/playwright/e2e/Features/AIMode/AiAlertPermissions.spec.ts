@@ -131,7 +131,11 @@ test.describe('AI mode — alert permissions match the classic alert pages', () 
       await test.step('details hide edit, delete, owner, and description edits', async () => {
         await gotoAndSettle(page, kind.detailsPath(alert.fullyQualifiedName));
 
+        // The page body replaces its loader only once permissions resolve
+        // (permission loading counts toward loadingCount), so the negative
+        // checks below cannot pass before the permissions arrive.
         await expect(page.getByTestId('alert-details-ai-page')).toBeVisible();
+        await expect(page.getByTestId('alert-description')).toBeVisible();
         await expect(page.getByTestId('edit-button')).not.toBeAttached();
         await expect(page.getByTestId('delete-button')).not.toBeAttached();
         await expect(page.getByTestId('edit-owner')).not.toBeAttached();
@@ -143,7 +147,7 @@ test.describe('AI mode — alert permissions match the classic alert pages', () 
       await page.close();
     });
 
-    test(`${kind.alertType}: a user with alert permissions can create, edit, and delete`, async ({
+    test(`${kind.alertType}: a user with alert permissions sees create, edit and delete controls`, async ({
       browser,
     }) => {
       const alert = alerts[kind.alertType].responseData;

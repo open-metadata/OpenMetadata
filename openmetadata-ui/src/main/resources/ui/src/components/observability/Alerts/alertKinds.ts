@@ -16,10 +16,8 @@ import { TFunction } from 'i18next';
 import { ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { AlertType } from '../../../generated/events/eventSubscription';
-import {
-  getNotificationAlertDetailsPath,
-  getSettingPath,
-} from '../../../utils/RouterUtils';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import { getNotificationAlertDetailsPath } from '../../../utils/RouterUtils';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import { getAlertsObservabilityDetailsPath } from './alertUtils';
@@ -59,18 +57,14 @@ export const NOTIFICATION_ALERT_KIND: AlertKind = {
   hasTriggers: false,
   listPath: ROUTES.NOTIFICATION_ALERT_LIST,
   getDetailsPath: getNotificationAlertDetailsPath,
-  getRootBreadcrumbs: (t) => {
-    const settings = String(t('label.setting-plural'));
-    const notifications = String(t('label.notification-plural'));
-
-    return [
-      { label: settings, ariaLabel: settings, href: ROUTES.SETTINGS },
-      {
-        label: notifications,
-        ariaLabel: notifications,
-        href: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
-      },
-    ];
-  },
+  // Passing an entity name makes the Notifications crumb a link; the trailing
+  // entity crumb (no url) is dropped because each page appends its own.
+  getRootBreadcrumbs: (t) =>
+    getSettingPageEntityBreadCrumb(
+      GlobalSettingsMenuCategory.NOTIFICATIONS,
+      String(t('label.alert-plural'))
+    )
+      .filter(({ url }) => Boolean(url))
+      .map(({ name, url }) => ({ label: name, ariaLabel: name, href: url })),
   titleKey: 'label.notification-plural',
 };

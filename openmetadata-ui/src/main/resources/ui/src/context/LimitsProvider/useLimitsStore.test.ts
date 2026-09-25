@@ -110,8 +110,8 @@ describe('useLimitStore', () => {
   });
 
   it('treats an empty limits response as disabled when the config was never loaded', async () => {
-    // AI mode does not load the limits config, and OSS answers the per-feature
-    // call with an empty body; callers must not crash on it.
+    // config stays null when AppContainer's getLimitConfig call fails, and OSS
+    // answers the per-feature call with an empty body; callers must not crash.
     useLimitStore.setState({ config: null });
     mockGetLimitByResource.mockResolvedValue(
       '' as unknown as Awaited<ReturnType<typeof getLimitByResource>>

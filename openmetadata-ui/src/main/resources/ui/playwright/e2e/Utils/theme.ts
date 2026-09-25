@@ -70,31 +70,37 @@ export const expectSurfaceTheme = async (
   locator: Locator,
   theme: UiTheme
 ): Promise<void> => {
-  const luminance = await locator.evaluate((element) => {
-    // A 1x1 canvas normalises any CSS colour (oklch, color-mix, …) to sRGB.
-    const context = document.createElement('canvas').getContext('2d', {
-      willReadFrequently: true,
-    });
-    let node: Element | null = element;
-    while (node && context) {
-      context.clearRect(0, 0, 1, 1);
-      context.fillStyle = getComputedStyle(node).backgroundColor;
-      context.fillRect(0, 0, 1, 1);
-      const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
-      // Skip translucent layers (e.g. a modal backdrop): only an opaque
-      // background is the surface the content is actually painted on.
-      if (a === 255) {
-        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  // null means no opaque background was found, which fails either assertion.
+  const readLuminance = () =>
+    locator.evaluate((element): number | null => {
+      // A 1x1 canvas normalises any CSS colour (oklch, color-mix, …) to sRGB.
+      const context = document.createElement('canvas').getContext('2d', {
+        willReadFrequently: true,
+      });
+      let node: Element | null = element;
+      while (node && context) {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = getComputedStyle(node).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
+        // Skip translucent layers (e.g. a modal backdrop): only an opaque
+        // background is the surface the content is actually painted on.
+        if (a === 255) {
+          return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        }
+        node = node.parentElement;
       }
-      node = node.parentElement;
-    }
 
-    return 1;
-  });
+      return null;
+    });
+  // Polled so a colour transition right after the theme applies cannot flake the read.
+  const pollOptions = {
+    message: `luminance of the first opaque background (${theme} theme)`,
+  };
 
   if (theme === 'dark') {
-    expect(luminance).toBeLessThan(0.3);
+    await expect.poll(readLuminance, pollOptions).toBeLessThan(0.3);
   } else {
-    expect(luminance).toBeGreaterThan(0.7);
+    await expect.poll(readLuminance, pollOptions).toBeGreaterThan(0.7);
   }
 };

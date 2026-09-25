@@ -44,8 +44,10 @@ import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import { OBSERVABILITY_ALERT_FORM } from './alertFormDocs.constants';
 
-/** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
-/** Shown unless the caller says templates are unsupported (OSS). */
+/**
+ * Shown unless the caller says templates are unsupported (OSS). Kept as its own component
+ * so the condition does not push AlertAiFormFields over the cyclomatic-complexity limit.
+ */
 const AlertAiTemplateField = ({
   docProps,
   show,
@@ -60,6 +62,7 @@ const AlertAiTemplateField = ({
     </div>
   );
 
+/** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
   alert,
   containerEntities,

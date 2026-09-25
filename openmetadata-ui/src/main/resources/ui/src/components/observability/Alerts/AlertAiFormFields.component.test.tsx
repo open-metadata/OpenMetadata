@@ -804,8 +804,6 @@ describe('AlertAi form field components', () => {
     );
 
     expect(screen.queryByText('Domain 1')).not.toBeInTheDocument();
-
-    jest.useRealTimers();
   });
 
   it('keeps a typed search when the initial options load during the debounce', async () => {
@@ -861,8 +859,6 @@ describe('AlertAi form field components', () => {
     expect(searchQuery).toHaveBeenCalledWith(
       expect.objectContaining({ query: 'dom' })
     );
-
-    jest.useRealTimers();
   });
 
   it('renders fixed runtime options with the fqn autocomplete contract', () => {
@@ -1762,6 +1758,21 @@ describe('AlertAi form field components', () => {
     );
 
     expect(screen.queryByTestId('template-select')).not.toBeInTheDocument();
+  });
+
+  it('shows the notification template section when templates are supported', () => {
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        shouldShowTemplateSection
+        filterResources={[{ name: 'table' }]}
+        value={{} as ModifiedCreateEventSubscription}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('template-select')).toBeInTheDocument();
   });
 
   it('registers a form hint doc for each main alert field', async () => {

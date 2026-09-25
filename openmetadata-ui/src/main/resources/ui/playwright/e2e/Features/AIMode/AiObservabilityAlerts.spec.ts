@@ -87,11 +87,13 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
     await dialog
       .getByTestId('endpoint-input-0')
       .getByRole('textbox')
-      .fill('https://hooks.slack.com/services/pw');
+      .fill('http://localhost:1/slack');
 
     const created =
       await test.step('create sends an observability POST', async () => {
         const { request, response } = await saveAlertModal(page, dialog);
+        const body = await response?.json();
+        createdAlertIds.push(body.id);
 
         expect(request.method()).toBe('POST');
         expect(response?.status()).toBe(201);
@@ -104,14 +106,11 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
               category: 'External',
               type: 'Slack',
               config: expect.objectContaining({
-                endpoint: 'https://hooks.slack.com/services/pw',
+                endpoint: 'http://localhost:1/slack',
               }),
             }),
           ],
         });
-
-        const body = await response?.json();
-        createdAlertIds.push(body.id);
 
         return body;
       });
@@ -149,13 +148,10 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
       );
     });
 
-    await test.step('delete from the list removes the row', async () => {
-      await page.goto(OBSERVABILITY_ALERTS_PATH, {
-        waitUntil: 'domcontentloaded',
-      });
-      await waitForAllLoadersToDisappear(page);
-
-      await page.getByTestId(`alert-delete-${created.name}`).click();
+    // Deleted from the details page: the modal-created alert gets a generated
+    // name, so it is not guaranteed to be on page 1 of the name-sorted list.
+    await test.step('delete from the details page returns to the list', async () => {
+      await page.getByTestId('delete-button').click();
 
       const deleteResponse = page.waitForResponse(
         (response) =>
@@ -170,9 +166,7 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
         .click();
 
       expect((await deleteResponse).status()).toBe(200);
-      await expect(
-        page.getByTestId(`alert-delete-${created.name}`)
-      ).toHaveCount(0);
+      await expect(page).toHaveURL(new RegExp(`${OBSERVABILITY_ALERTS_PATH}$`));
     });
   });
 });
@@ -276,7 +270,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
       .click();
 
     await addDestination(page, dialog, 'Slack', 0);
-    await fillEndpoint(dialog, 0, 'https://slack.com');
+    await fillEndpoint(dialog, 0, 'http://localhost:1/slack');
 
     const { request, response } = await saveAlertModal(page, dialog);
     const created = await response?.json();
@@ -363,12 +357,12 @@ test.describe('AI mode — observability alert form keeps every classic option',
 
     await test.step('webhook with bearer and Slack with OAuth2', async () => {
       await addDestination(page, dialog, 'Webhook', 4);
-      await fillEndpoint(dialog, 4, 'https://example.com/hook');
+      await fillEndpoint(dialog, 4, 'http://localhost:1/hook');
       await selectWebhookAuthType(page, dialog, 4, 'Bearer (HMAC Signature)');
       await fillDestinationInput(dialog, 'secret-key-input-4', 'pw-secret');
 
       await addDestination(page, dialog, 'Slack', 5);
-      await fillEndpoint(dialog, 5, 'https://slack.com');
+      await fillEndpoint(dialog, 5, 'http://localhost:1/slack');
       await selectWebhookAuthType(page, dialog, 5, 'OAuth2 Client Credentials');
       await fillDestinationInput(
         dialog,
@@ -415,7 +409,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
         category: 'External',
         type: 'Webhook',
         config: expect.objectContaining({
-          endpoint: 'https://example.com/hook',
+          endpoint: 'http://localhost:1/hook',
           authType: { type: 'bearer', secretKey: 'pw-secret' },
         }),
       }),
@@ -423,7 +417,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
         category: 'External',
         type: 'Slack',
         config: expect.objectContaining({
-          endpoint: 'https://slack.com',
+          endpoint: 'http://localhost:1/slack',
           authType: {
             type: 'oauth2',
             tokenUrl: 'https://auth.example.com/token',
@@ -447,9 +441,9 @@ test.describe('AI mode — observability alert form keeps every classic option',
     await expect(testButton).toBeDisabled();
 
     await selectDestinationCategory(page, dialog, 'G Chat', 0);
-    await fillEndpoint(dialog, 0, 'https://google.com');
+    await fillEndpoint(dialog, 0, 'http://localhost:1/gchat');
     await addDestination(page, dialog, 'Slack', 1);
-    await fillEndpoint(dialog, 1, 'https://slack.com');
+    await fillEndpoint(dialog, 1, 'http://localhost:1/slack');
     // An unconfigured destination must not be sent to the test API.
     await dialog.getByTestId('add-destination-button').click();
 

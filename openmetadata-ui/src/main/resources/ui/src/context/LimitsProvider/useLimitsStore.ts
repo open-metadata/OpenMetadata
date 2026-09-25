@@ -189,9 +189,9 @@ export const useLimitStore = create<{
       const limit = await getLimitByResource(resource);
       const status = limit?.featureLimitStatuses?.[0];
 
-      // No status means limits are off (OSS returns an empty body). The config
-      // that would say so is only loaded by the classic AppContainer, so AI mode
-      // reaches here with `config === null`.
+      // No status means limits are off: OSS answers the per-feature call with an
+      // empty body. `config` can still be null here when AppContainer's
+      // getLimitConfig call failed (fetchAppConfigurations swallows the error).
       if (isNil(status)) {
         return buildDisabledResourceLimit(resource);
       }

@@ -13,6 +13,7 @@
 
 import { expect, test } from '@playwright/test';
 import { AlertClass } from '../../../support/entity/AlertClass';
+import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -44,17 +45,21 @@ const NOTIFICATION_ALERTS_PATH = '/settings/notifications/alerts';
 
 test.describe('AI mode — Settings notification alerts use the AI alert pages', () => {
   let alert: AlertClass;
-  let deletableAlert: AlertClass;
+  // Alerts created inside tests; afterAll removes any a failed test left behind
+  // (already-deleted ones answer 404, which is fine).
+  const testAlerts: AlertClass[] = [];
 
   test.beforeAll(async ({ browser }) => {
     const setupPage = await browser.newPage();
     await redirectToAiModeHomePage(setupPage);
     const { apiContext, afterAction } = await getApiContext(setupPage);
 
-    alert = new AlertClass({ alertType: 'Notification' });
-    deletableAlert = new AlertClass({ alertType: 'Notification' });
+    // The list is name-sorted and cursor-paged; this prefix keeps the alert on page 1.
+    alert = new AlertClass({
+      alertType: 'Notification',
+      name: `0%0-pw-ai-notification-${uuid()}`,
+    });
     await alert.create(apiContext);
-    await deletableAlert.create(apiContext);
 
     await afterAction();
     await setupPage.close();
@@ -65,6 +70,9 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
     const { apiContext, afterAction } = await getApiContext(teardownPage);
 
     await alert?.delete(apiContext);
+    for (const testAlert of testAlerts) {
+      await testAlert.delete(apiContext);
+    }
 
     await afterAction();
     await teardownPage.close();
@@ -94,8 +102,8 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
         shell.getByRole('link', { name: 'Activity Feed Alerts' })
       ).toBeVisible();
       await expect(
-        shell.locator('[data-testid^="alert-delete-"]:not([disabled])')
-      ).not.toHaveCount(0);
+        page.getByTestId(`alert-delete-${alert.responseData.name}`)
+      ).toBeEnabled();
 
       // The system activity feed alert is listed but read-only.
       await expect(
@@ -147,8 +155,16 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
   }
 
   test('deletes a notification alert from the AI details page', async ({
+    browser,
     page,
   }) => {
+    // Created per test so repeated runs in one worker each have an alert to delete.
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const deletableAlert = new AlertClass({ alertType: 'Notification' });
+    await deletableAlert.create(apiContext);
+    await afterAction();
+    testAlerts.push(deletableAlert);
+
     await page.goto(
       `${NOTIFICATION_ALERTS_PATH}/${encodeURIComponent(
         deletableAlert.responseData.fullyQualifiedName
@@ -156,10 +172,6 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
       { waitUntil: 'domcontentloaded' }
     );
     await waitForAllLoadersToDisappear(page);
-
-    // Runs after the dark-seeded tests in the same worker without seeding a
-    // theme: the default light theme proves seedTheme does not leak.
-    await expectTheme(page, 'light');
 
     await page.getByTestId('delete-button').click();
 

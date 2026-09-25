@@ -176,8 +176,8 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
         header={
           <PageLayout.PageHeader
             actions={
-              // Same rule as the classic alert pages: Create or All, behind
-              // the event-subscription limit.
+              // Mirrors the classic alert pages (Create or All, behind the limit);
+              // getDerivedPermissionFlags' canCreate ignores All, so it is not used here.
               alertResourcePermission?.Create ||
               alertResourcePermission?.All ? (
                 <LimitWrapper resource="eventsubscription">
