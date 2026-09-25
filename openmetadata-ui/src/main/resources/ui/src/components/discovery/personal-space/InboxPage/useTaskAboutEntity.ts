@@ -12,10 +12,10 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { last, sortBy } from 'lodash';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { last, sortBy } from 'lodash';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { getLineageByEntityCount } from '../../../../rest/lineageAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';

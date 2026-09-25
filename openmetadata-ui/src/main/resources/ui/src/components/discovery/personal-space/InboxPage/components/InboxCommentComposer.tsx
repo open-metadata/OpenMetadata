@@ -17,8 +17,8 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { EditorContentRef } from '../../../../../components/common/RichTextEditor/RichTextEditor.interface';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getBackendFormat } from '../../../../../utils/FeedUtilsPure';
 import './inbox-comment-composer.less';
 

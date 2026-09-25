@@ -13,12 +13,12 @@
 
 import { TFunction } from 'i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   Task,
   TaskCategory,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
-import { EntityType } from '../../../../enums/entity.enum';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
 import { resolveIncidentTestCaseFqn } from './taskDetail.utils';

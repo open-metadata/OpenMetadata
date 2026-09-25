@@ -25,12 +25,12 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
 import InboxFilterBar from './components/InboxFilterBar';
-import InboxPage from './InboxPage';
 import {
   getDefaultInboxDateRange,
   InboxDateRange,
   InboxScope,
 } from './inbox.utils';
+import InboxPage from './InboxPage';
 import ActivityTab from './tabs/ActivityTab';
 import TasksTab from './tabs/TasksTab';
 import { useInboxCounts } from './useInboxCounts';

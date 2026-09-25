@@ -59,11 +59,11 @@ import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUt
 import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
 } from '../taskDetail.utils';
-import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
   getTaskStatusBadge,
   getTaskStatusLabel,

@@ -92,8 +92,7 @@ export function useInboxInfiniteList<T>(
     placeholderData: keepPreviousData,
     staleTime: LIST_STALE_TIME,
   });
-  const { data, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    query;
+  const { data, error, hasNextPage, isFetchingNextPage, fetchNextPage } = query;
 
   useEffect(() => {
     if (error) {
