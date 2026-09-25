@@ -18,7 +18,7 @@ import {
 } from '../generated/entity/data/mlmodel';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
-import { extractMlModelFeatures } from './MlModelDetailsUtils';
+import { extractMlModelFeatures } from './TablePureUtils';
 
 type MlModelTestData = Partial<Mlmodel> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;

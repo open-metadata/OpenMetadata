@@ -16,6 +16,7 @@ import { escapeRegExp } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   openTestCaseDetailsPage,
@@ -230,7 +231,7 @@ test.describe(
       await expect(maxRow).toContainText('34');
     });
 
-    test('aligns the page header card with the tab body content', async ({
+    test('insets the page header card 8px less than the tab body content', async ({
       page,
     }) => {
       await openDetailsPage(page);
@@ -251,12 +252,18 @@ test.describe(
 
       expect(headerCard).not.toBeNull();
       expect(grid).not.toBeNull();
+
+      // AI padding standard: the header band sits 8px inside the shell and
+      // page content 16px, so the header card extends 8px past the tab body
+      // on each side.
+      const headerOutset = 8;
+
       expect(Math.round(Number(headerCard?.x))).toBe(
-        Math.round(Number(grid?.x))
+        Math.round(Number(grid?.x)) - headerOutset
       );
       expect(
         Math.round(Number(headerCard?.x) + Number(headerCard?.width))
-      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)));
+      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)) + headerOutset);
     });
 
     test('aligns the last run banner with the tab body grid', async ({
@@ -332,6 +339,112 @@ test.describe(
           /\/observability\/test-case\/[^/]+\/test-case-results/
         );
         await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Incident strip',
+  { tag: ['@Observability'] },
+  () => {
+    let failedTable: TableClass;
+    let failedTestCase: { name: string; fullyQualifiedName: string };
+
+    test.beforeAll(
+      'Create a test case whose failed run opens an incident',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        failedTable = new TableClass();
+        await failedTable.create(apiContext);
+        const testCase = await failedTable.createTestCase(apiContext);
+        failedTestCase = {
+          name: testCase.name as string,
+          fullyQualifiedName: testCase.fullyQualifiedName as string,
+        };
+
+        const failedTimestamp = getCurrentMillis();
+        await failedTable.addTestCaseResult(
+          apiContext,
+          failedTestCase.fullyQualifiedName,
+          {
+            result: 'Found rowCount=2 vs. the expected range 12 to 34',
+            testCaseStatus: 'Failed',
+            timestamp: failedTimestamp,
+          }
+        );
+
+        // The incident is opened asynchronously by the server once the failed
+        // result lands, so the strip has nothing to render until it exists.
+        await expect
+          .poll(
+            async () => {
+              // Filtered by FQN server-side: an unfiltered window holds every
+              // incident other workers opened at the same time, and the
+              // endpoint's default page of 10 can drop this one.
+              const response = await apiContext.get(
+                `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&testCaseFQN=${encodeURIComponent(
+                  failedTestCase.fullyQualifiedName
+                )}&startTs=${failedTimestamp - 60_000}&endTs=${
+                  failedTimestamp + 60_000
+                }`
+              );
+              const { data } = await response.json();
+
+              return Boolean(data?.length);
+            },
+            { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+          )
+          .toBe(true);
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await failedTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('acknowledges the incident from the failed run banner', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, failedTestCase.fullyQualifiedName);
+
+      const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+      const strip = page.getByTestId('test-case-last-run-incident');
+      const acknowledge = strip.getByTestId('acknowledge-incident-button');
+      const headerStatus = page.getByTestId(`${failedTestCase.name}-status`);
+
+      await test.step('The strip carries the reason and a new incident', async () => {
+        await expect(banner).toContainText(
+          'Found rowCount=2 vs. the expected range 12 to 34'
+        );
+        await expect(strip).toBeVisible();
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'New'
+        );
+        await expect(acknowledge).toBeVisible();
+      });
+
+      await test.step('Acknowledge updates the strip and the header chip', async () => {
+        const transition = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tasks/') &&
+            response.url().endsWith('/resolve') &&
+            response.request().method() === 'POST'
+        );
+        await acknowledge.click();
+        await transition;
+
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'Acknowledged'
+        );
+        await expect(acknowledge).toBeHidden();
+        await expect(headerStatus).toContainText('Ack');
       });
     });
   }

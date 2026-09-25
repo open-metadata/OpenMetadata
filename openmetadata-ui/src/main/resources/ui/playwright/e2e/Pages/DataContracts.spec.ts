@@ -144,12 +144,8 @@ test.describe('Data Contracts', () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
-    // Quarantined: for the Table variant the contract's quality/test-suite run
-    // can finish without producing a result, so `qualityValidation` never
-    // populates and `contractExecutionStatus` hangs on `Running` — the poll
-    // then times out. See playwright/QUARANTINE.md.
     const testDetails = entitySupportsQuality(entityType)
-      ? { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] }
+      ? { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag] }
       : {};
     const testTitle = `Create Data Contract and validate for ${entityType}`;
 
@@ -436,15 +432,20 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.value
           );
 
-          await page.click('[data-testid="tags-selector"] input');
-          await page.fill(
-            '[data-testid="tags-selector"] input',
-            testTag.data.name
-          );
-          await page
-            .getByTestId(
-              `tag-option-${testTag.responseData.fullyQualifiedName}`
+          await expect
+            .poll(
+              async () => {
+                await page.getByTestId('tags-input').click();
+
+                return page.getByTestId('search-input').isVisible();
+              },
+              { timeout: 10_000 }
             )
+            .toBe(true);
+          await page.getByTestId('search-input').fill(testTag.data.name);
+          await page
+            .getByTestId('drop-down-menu')
+            .getByTestId(testTag.responseData.fullyQualifiedName ?? '')
             .click();
 
           await page.keyboard.press('Escape');

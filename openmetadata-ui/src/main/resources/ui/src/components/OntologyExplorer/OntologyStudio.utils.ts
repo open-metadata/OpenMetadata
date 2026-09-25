@@ -247,9 +247,23 @@ function scopedTerms(
 }
 
 function termRelations(graphData: OntologyGraphData, termIds: Set<string>) {
-  return graphData.edges.filter(
-    (edge) => termIds.has(edge.from) && termIds.has(edge.to)
-  );
+  // Both directions of one stored relation (partOf / hasPart) arrive as edges
+  // sharing the relation id; it is still one relation.
+  const relationIds = new Set<string>();
+
+  return graphData.edges.filter((edge) => {
+    if (!termIds.has(edge.from) || !termIds.has(edge.to)) {
+      return false;
+    }
+    if (edge.id) {
+      if (relationIds.has(edge.id)) {
+        return false;
+      }
+      relationIds.add(edge.id);
+    }
+
+    return true;
+  });
 }
 
 export function getOntologyHealthSummary(
@@ -288,6 +302,17 @@ export function getOntologyHealthSummary(
   };
 }
 
+// Hierarchical relation names (normalized) by edge direction. The inverse of a
+// child-to-parent relation points from the parent, so it must not make the
+// parent a child.
+const PARENT_TO_CHILD_RELATIONS = new Set([
+  'parentof',
+  'narrower',
+  'haspart',
+  'superclassof',
+]);
+const CHILD_TO_PARENT_RELATIONS = new Set(['broader', 'isa', 'subclassof']);
+
 function buildParentMap(
   graphData: OntologyGraphData,
   termIds: Set<string>,
@@ -310,12 +335,10 @@ function buildParentMap(
       return;
     }
     const relationType = normalizeRelationType(edge.relationType);
-    if (relationType === 'parentof' || relationType === 'narrower') {
+    if (PARENT_TO_CHILD_RELATIONS.has(relationType)) {
       addParent(edge.to, edge.from);
     } else if (
-      relationType === 'broader' ||
-      relationType === 'isa' ||
-      relationType === 'subclassof' ||
+      CHILD_TO_PARENT_RELATIONS.has(relationType) ||
       hierarchicalTypes.has(relationType)
     ) {
       addParent(edge.from, edge.to);
@@ -325,38 +348,74 @@ function buildParentMap(
   return parentMap;
 }
 
-function buildDepthResolver(
+function resolvePrimaryParent(
+  nodeId: string,
   parentMap: Map<string, Set<string>>,
   nodeById: Map<string, OntologyNode>
-) {
-  const depthCache = new Map<string, number>();
+): string | undefined {
+  return [...(parentMap.get(nodeId) ?? [])]
+    .filter((parentId) => nodeById.has(parentId))
+    .sort((left, right) => {
+      const leftLabel = nodeById.get(left)?.label ?? left;
+      const rightLabel = nodeById.get(right)?.label ?? right;
 
-  const resolveDepth = (nodeId: string, path = new Set<string>()): number => {
-    const cached = depthCache.get(nodeId);
-    if (cached !== undefined) {
-      return cached;
+      return leftLabel.localeCompare(rightLabel);
+    })[0];
+}
+
+// The tree never indents past this, however deep the hierarchy.
+const MAX_TREE_DEPTH = 16;
+
+type UnplacedTreeRow = Omit<OntologyTreeRow, 'depth'>;
+
+const compareByLabel = (left: UnplacedTreeRow, right: UnplacedTreeRow) =>
+  left.node.label.localeCompare(right.node.label);
+
+// Depth-first, so each row is followed by its own subtree. Depth counts
+// ancestors inside the glossary, so a row whose primary parent is in another
+// glossary starts a subtree of its own at the root.
+function orderAsTree(
+  rows: UnplacedTreeRow[],
+  primaryParentOf: (nodeId: string) => string | undefined
+): OntologyTreeRow[] {
+  const rowIds = new Set(rows.map((row) => row.node.id));
+  const childrenOf = new Map<string, UnplacedTreeRow[]>();
+  const roots: UnplacedTreeRow[] = [];
+  rows.forEach((row) => {
+    const parentId = primaryParentOf(row.node.id);
+    if (!parentId || !rowIds.has(parentId)) {
+      roots.push(row);
+
+      return;
     }
-    if (path.has(nodeId) || path.size >= 16) {
-      return 0;
+    const siblings = childrenOf.get(parentId);
+    if (siblings) {
+      siblings.push(row);
+    } else {
+      childrenOf.set(parentId, [row]);
     }
-    const nextPath = new Set(path).add(nodeId);
-    const primaryParent = [...(parentMap.get(nodeId) ?? [])]
-      .filter((parentId) => nodeById.has(parentId))
-      .sort((left, right) => {
-        const leftLabel = nodeById.get(left)?.label ?? left;
-        const rightLabel = nodeById.get(right)?.label ?? right;
-
-        return leftLabel.localeCompare(rightLabel);
-      })[0];
-    const depth = primaryParent
-      ? Math.min(16, resolveDepth(primaryParent, nextPath) + 1)
-      : 0;
-    depthCache.set(nodeId, depth);
-
-    return depth;
+  });
+  const ordered: OntologyTreeRow[] = [];
+  const visited = new Set<string>();
+  const visit = (row: UnplacedTreeRow, depth: number) => {
+    if (visited.has(row.node.id)) {
+      return;
+    }
+    visited.add(row.node.id);
+    ordered.push({ ...row, depth: Math.min(MAX_TREE_DEPTH, depth) });
+    childrenOf
+      .get(row.node.id)
+      ?.sort(compareByLabel)
+      .forEach((child) => visit(child, depth + 1));
   };
+  roots.sort(compareByLabel).forEach((root) => visit(root, 0));
+  // Rows on a parent cycle never hang from a root; keep them visible.
+  rows
+    .filter((row) => !visited.has(row.node.id))
+    .sort(compareByLabel)
+    .forEach((row) => visit(row, 0));
 
-  return resolveDepth;
+  return ordered;
 }
 
 export function buildOntologyTreeGroups(
@@ -381,21 +440,19 @@ export function buildOntologyTreeGroups(
     }
   });
   const parentMap = buildParentMap(graphData, termIds, relationTypes);
-  const resolveDepth = buildDepthResolver(parentMap, nodeById);
   const glossaryNameById = new Map(
     glossaries.map((glossary) => [
       glossary.id,
       glossary.displayName || glossary.name,
     ])
   );
-  const groups = new Map<string, OntologyTreeRow[]>();
+  const groups = new Map<string, UnplacedTreeRow[]>();
 
   terms.forEach((term) => {
     const glossaryId = term.glossaryId ?? term.group ?? '';
     const rows = groups.get(glossaryId) ?? [];
     const relationCount = relationCounts.get(term.id) ?? 0;
     rows.push({
-      depth: resolveDepth(term.id),
       isIsolated: relationCount === 0,
       node: term,
       parentCount: parentMap.get(term.id)?.size ?? 0,
@@ -409,10 +466,8 @@ export function buildOntologyTreeGroups(
       glossaryId,
       glossaryName:
         glossaryNameById.get(glossaryId) ?? rows[0]?.node.group ?? glossaryId,
-      rows: rows.sort(
-        (left, right) =>
-          left.depth - right.depth ||
-          left.node.label.localeCompare(right.node.label)
+      rows: orderAsTree(rows, (nodeId) =>
+        resolvePrimaryParent(nodeId, parentMap, nodeById)
       ),
     }))
     .sort((left, right) => left.glossaryName.localeCompare(right.glossaryName));

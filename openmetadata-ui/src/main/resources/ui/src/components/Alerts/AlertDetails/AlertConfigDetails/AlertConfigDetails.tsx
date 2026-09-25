@@ -26,7 +26,6 @@ import {
   NotificationTemplate,
   ProviderType,
 } from '../../../../generated/entity/events/notificationTemplate';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
@@ -34,10 +33,8 @@ import { getAllNotificationTemplates } from '../../../../rest/notificationtempla
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
 import Fqn from '../../../../utils/Fqn';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
@@ -125,7 +122,7 @@ function AlertConfigDetails({
 
       setTemplateResourcePermission(permission);
 
-      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+      if (getDerivedPermissionFlags(permission).canViewAll) {
         const { data } = await getAllNotificationTemplates({
           limit: PAGE_SIZE_LARGE,
           provider: ProviderType.User,

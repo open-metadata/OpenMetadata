@@ -1254,10 +1254,10 @@ describe('ServiceDetailsPage', () => {
       });
     };
 
-    const switchToAgentsTab = async (view: RenderResult) => {
+    const switchToTab = async (view: RenderResult, tab: string) => {
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
-        tab: EntityTabs.AGENTS,
+        tab,
       });
 
       await act(async () => {
@@ -1267,6 +1267,13 @@ describe('ServiceDetailsPage', () => {
           </MemoryRouter>
         );
       });
+    };
+
+    // Only the selected tab panel is mounted, so come back to the entity tab
+    // to observe the loading state it was left with.
+    const moveOffAndBackToEntityTab = async (view: RenderResult) => {
+      await switchToTab(view, EntityTabs.AGENTS);
+      await switchToTab(view, 'databases');
     };
 
     it('should clear the loading state after moving off the entity tab', async () => {
@@ -1283,7 +1290,7 @@ describe('ServiceDetailsPage', () => {
 
       await expectEntityTabNotLoading();
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });
@@ -1302,7 +1309,7 @@ describe('ServiceDetailsPage', () => {
         );
       });
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });

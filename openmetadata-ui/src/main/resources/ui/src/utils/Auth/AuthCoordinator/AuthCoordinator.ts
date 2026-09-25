@@ -46,9 +46,31 @@ const RENEWER_WAIT_TIMEOUT_MS = 5_000;
 // can force the sign-out path instead of spinning against a broken IdP.
 const MAX_RECOVERY_ATTEMPTS = 1;
 
+const MAX_PER_REQUEST_RETRIES = 2;
+const MAX_REFRESH_CYCLES_PER_WINDOW = 3;
+const REFRESH_WINDOW_MS = 30_000;
+const REFRESH_FAILED_EVENT: AuthCoordinatorEvent = 'refresh-failed';
+
 export class AuthCoordinator {
   private renewer: Renewer | null = null;
   private inflight: Promise<string> | null = null;
+  private refreshCycleTimestamps: number[] = [];
+  // The most recently minted access token — updated on every
+  // successful refresh HERE (via applyRefreshed) AND from sibling
+  // tabs (via CrossTabLock's channel — see the onDoneBroadcast
+  // subscription in install). Used synchronously by the interceptor
+  // to distinguish a "current token is being rejected" real refresh
+  // loop from an in-flight straggler carrying a pre-refresh token.
+  private lastMintedToken: string | null = null;
+  // Monotonic counter bumped once per successful refresh (local OR
+  // sibling-tab). The fast-path snapshots it before its async
+  // storage read and discards the read if the value changed during
+  // the await — a refresh that STARTED AND COMPLETED inside that
+  // window would leave `inflight` back to null and the naive
+  // re-check would accept the just-known-stale snapshot
+  // (Greptile P1 r4073450836).
+  private refreshGeneration = 0;
+  private disposeCrossTabDone: (() => void) | null = null;
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
   private readonly timer = new ProactiveTimer();
@@ -96,15 +118,38 @@ export class AuthCoordinator {
         if (status !== 401 || !isRefreshable(status, url, body)) {
           throw error;
         }
-        // Fire once per active refresh cycle — `inflight` is set
-        // synchronously by `ensureFreshToken()` below, so only the 401 that
-        // starts a new cycle (not the concurrent ones queued behind it)
-        // triggers this callback.
-        if (!this.inflight && onRefreshStart) {
-          onRefreshStart();
+
+        const cfg = error.config as { __omAuthRetries?: number } | undefined;
+        const retries = (cfg?.__omAuthRetries ?? 0) + 1;
+        if (cfg) {
+          cfg.__omAuthRetries = retries;
         }
+        if (retries > MAX_PER_REQUEST_RETRIES) {
+          // A single endpoint that keeps 401'ing after refreshes should
+          // fail its own request, not sign the whole app out — the rest
+          // of the session may be perfectly healthy. Global recovery
+          // still runs via the sliding-window cycle circuit-breaker.
+          throw error;
+        }
+
+        const countCycle = this.shouldCountNewCycle(error.config);
+        if (countCycle) {
+          if (this.recordCycleAndCheckBreaker()) {
+            throw error;
+          }
+          if (onRefreshStart) {
+            onRefreshStart();
+          }
+        }
+
         const pending = this.queue.enqueue(error.config);
-        this.pumpQueue(axios).catch(() => undefined);
+        // Force refresh only for cycles we counted (the failing token
+        // IS the current stored one, so the fast-path would just hand
+        // it back). Stragglers carrying a pre-refresh token retry
+        // through the fast-path, which returns the already-minted
+        // fresh token without hitting the IdP — one refresh per burst
+        // instead of one per straggler (Greptile P1 r4072893165).
+        this.pumpQueue(axios, { force: countCycle }).catch(() => undefined);
 
         return pending;
       }
@@ -116,60 +161,48 @@ export class AuthCoordinator {
       () => this.timer.cancel()
     );
 
+    // Keep `lastMintedToken` in sync with sibling tabs so the cycle
+    // circuit-breaker recognises a cross-tab-minted token as
+    // "current" and can still trip on a persistent 401 storm even
+    // when this tab wasn't the one that refreshed.
+    this.disposeCrossTabDone?.();
+    this.disposeCrossTabDone = this.lock.onDoneBroadcast((payload) => {
+      const token = this.extractIdToken(payload);
+      if (token) {
+        this.lastMintedToken = token;
+        this.refreshGeneration += 1;
+      }
+    });
+
     return () => {
       axios.interceptors.response.eject(id);
       this.visibility.stop();
+      this.disposeCrossTabDone?.();
+      this.disposeCrossTabDone = null;
     };
   }
 
-  async ensureFreshToken(): Promise<string> {
+  async ensureFreshToken(options: { force?: boolean } = {}): Promise<string> {
+    const force = options.force ?? false;
+
+    if (!force && !this.inflight) {
+      const fastPath = await this.tryFastPath();
+      if (fastPath !== null) {
+        return fastPath;
+      }
+    }
+
+    // De-dupe concurrent refresh callers so rotating-refresh-token IdPs
+    // don't see two racing /auth/refresh calls.
     if (this.inflight) {
       return this.inflight;
     }
-    // Assign `this.inflight` synchronously (no await between the read
-    // above and this write) so concurrent callers in the same tick share
-    // a single in-flight promise — the storage read + full refresh both
-    // live inside `runEnsureFreshToken`.
-    this.inflight = this.runEnsureFreshToken();
+    this.inflight = this.doRefresh();
     try {
       return await this.inflight;
     } finally {
       this.inflight = null;
     }
-  }
-
-  private async runEnsureFreshToken(): Promise<string> {
-    // Fast-path: another tab may have already refreshed and written the
-    // new token to shared storage between our stale-header 401 and this
-    // call — in that case the CrossTabLock would still funnel us through
-    // a redundant renewer() cycle (the lock guarantees exactly-one
-    // refresh across tabs, not exactly-one refresh across time), so we'd
-    // hit the IdP again for a token we already have. Read storage first
-    // and short-circuit when it already carries a token whose remaining
-    // lifetime is safely past the pre-expiry buffer. Opaque / non-JWT /
-    // Unlimited-bot tokens (exp missing or non-positive) are treated as
-    // usable — matches the guard in `onTabVisible` and
-    // `initializeAuthState`. Any storage read error falls through to the
-    // full refresh path.
-    try {
-      const stored = await getOidcToken();
-      if (stored) {
-        const { exp } = extractDetailsFromToken(stored);
-        if (typeof exp !== 'number' || exp <= 0) {
-          return stored;
-        }
-        const msRemaining = exp * 1000 - Date.now();
-        if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
-          return stored;
-        }
-      }
-    } catch {
-      // Fall through to doRefresh() — storage might be transiently
-      // unavailable (SW not ready yet), and the full refresh path has
-      // its own retry semantics.
-    }
-
-    return this.doRefresh();
   }
 
   pause(): void {
@@ -322,6 +355,25 @@ export class AuthCoordinator {
     if (outcome.role === 'follower') {
       const message = outcome.message;
       if (message.type === 'done' && this.isRenewResult(message.payload)) {
+        // Persist the payload BEFORE applying it in memory. Storage
+        // is the source of truth for the axios request interceptor's
+        // Bearer (via `getOidcToken()`); if the leader's own persist
+        // threw (publish-failure path — abbd913 broadcasts `done`
+        // rather than `failed` so rotating-refresh IdPs don't get
+        // duplicate renewer() calls), storage still holds the OLD
+        // token and requests would 401 with it (gitar-bot
+        // r4083324168). Followers persisting is idempotent with the
+        // leader's own write in the healthy case and is the recovery
+        // path when the leader's write failed.
+        try {
+          await setOidcTokenStrict(message.payload.idToken);
+        } catch {
+          // If our persist ALSO throws (private-mode IndexedDB /
+          // SW crash), keep the token in memory anyway — the tab
+          // stays authenticated for this session even if storage
+          // is unrecoverable. Better than signing out.
+        }
+
         return this.applyRefreshed(message.payload);
       }
 
@@ -337,7 +389,7 @@ export class AuthCoordinator {
         message.type === 'failed'
           ? message.reason ?? 'leader failed after retries'
           : 'leader broadcast unusable payload after retries';
-      this.bus.emit('refresh-failed', { reason });
+      this.bus.emit(REFRESH_FAILED_EVENT, { reason });
 
       throw new Error(reason);
     }
@@ -380,12 +432,61 @@ export class AuthCoordinator {
     // bounded-retry give-up path: emit `refresh-failed` so downstream
     // consumers (interceptors, the queue drain) see the same signal.
     const reason = err instanceof Error ? err.message : String(err);
-    this.bus.emit('refresh-failed', { reason });
+    this.bus.emit(REFRESH_FAILED_EVENT, { reason });
 
     throw err;
   }
 
+  // Fast-path: reuse a still-time-fresh stored token (another tab may
+  // have already refreshed it) instead of hitting the IdP. Returns
+  // `null` when the caller should fall through to a real refresh:
+  //   - a refresh completed during our async storage read
+  //     (`refreshGeneration` delta — Greptile P1 r4073450836);
+  //   - a concurrent forced refresh set `this.inflight` during the
+  //     await (code-review finding on cda0d24);
+  //   - storage is empty, the token failed to decode, or its exp is
+  //     inside the pre-expiry buffer.
+  private async tryFastPath(): Promise<string | null> {
+    const genBefore = this.refreshGeneration;
+    try {
+      const stored = await getOidcToken();
+      if (this.refreshGeneration !== genBefore && this.lastMintedToken) {
+        return this.lastMintedToken;
+      }
+      if (this.inflight || !stored) {
+        return null;
+      }
+      const details = extractDetailsFromToken(stored);
+      // Opaque bot token: no `exp` claim, extractDetailsFromToken
+      // returns `{ exp: undefined, isExpired: false }`. The fast-path
+      // honours it — this is intentional, opaque tokens have no
+      // expiry to check against and are the calling contract for
+      // service-account style credentials. Anything ELSE with an
+      // absent/non-positive exp comes from
+      // extractDetailsFromToken's catch branch (jwt-decode threw),
+      // which sets `isExpired: true` on `{ exp: 0 }` — a corrupt or
+      // torn JWT that must NOT be handed back as a bearer.
+      if (details.exp === undefined && !details.isExpired) {
+        return stored;
+      }
+      if (typeof details.exp !== 'number' || details.exp <= 0) {
+        return null;
+      }
+      const msRemaining = details.exp * 1000 - Date.now();
+      if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
+        return stored;
+      }
+
+      return null;
+    } catch {
+      // Storage flaky (SW not ready). Fall through to doRefresh().
+      return null;
+    }
+  }
+
   private applyRefreshed(result: RenewResult): string {
+    this.lastMintedToken = result.idToken;
+    this.refreshGeneration += 1;
     this.bus.emit('refreshed', {
       expiresAt: result.expiresAt,
       idToken: result.idToken,
@@ -395,6 +496,64 @@ export class AuthCoordinator {
     });
 
     return result.idToken;
+  }
+
+  // Only count a cycle when the failing request carried the
+  // most-recently minted token — a genuine "the refresh didn't help"
+  // signal. A 401 with an older token is an in-flight straggler that
+  // predates a refresh (this tab's OR a sibling tab's — the
+  // cross-tab BroadcastChannel keeps `lastMintedToken` in sync so a
+  // sibling-minted token still counts here). Also skip on concurrent
+  // 401s during one in-flight refresh so they share the entry.
+  private shouldCountNewCycle(config: unknown): boolean {
+    if (this.inflight) {
+      return false;
+    }
+    if (this.lastMintedToken === null) {
+      return true;
+    }
+
+    return this.extractBearer(config) === this.lastMintedToken;
+  }
+
+  // Returns true if the breaker just tripped (caller should throw).
+  private recordCycleAndCheckBreaker(): boolean {
+    const now = Date.now();
+    this.refreshCycleTimestamps = this.refreshCycleTimestamps.filter(
+      (t) => now - t < REFRESH_WINDOW_MS
+    );
+    this.refreshCycleTimestamps.push(now);
+    if (this.refreshCycleTimestamps.length > MAX_REFRESH_CYCLES_PER_WINDOW) {
+      this.bus.emit(REFRESH_FAILED_EVENT, {
+        reason: `Auth refresh loop circuit-breaker tripped: > ${MAX_REFRESH_CYCLES_PER_WINDOW} cycles in ${REFRESH_WINDOW_MS}ms`,
+      });
+
+      return true;
+    }
+
+    return false;
+  }
+
+  private extractIdToken(payload: unknown): string | null {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    const token = (payload as { idToken?: unknown }).idToken;
+
+    return typeof token === 'string' && token.length > 0 ? token : null;
+  }
+
+  private extractBearer(config: unknown): string | null {
+    const headers = (
+      config as { headers?: Record<string, unknown> } | undefined
+    )?.headers;
+    const raw = headers?.Authorization ?? headers?.authorization;
+    if (typeof raw !== 'string') {
+      return null;
+    }
+    const match = /^Bearer\s+(.+)$/i.exec(raw);
+
+    return match ? match[1] : null;
   }
 
   private isRenewResult(value: unknown): value is RenewResult {
@@ -411,9 +570,12 @@ export class AuthCoordinator {
     );
   }
 
-  private async pumpQueue(axios: AxiosInstance): Promise<void> {
+  private async pumpQueue(
+    axios: AxiosInstance,
+    options: { force?: boolean } = {}
+  ): Promise<void> {
     try {
-      const token = await this.ensureFreshToken();
+      const token = await this.ensureFreshToken(options);
       await this.queue.drain(token, axios);
     } catch {
       await this.queue.drain(null, axios);

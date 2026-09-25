@@ -45,6 +45,7 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addAssetsToDataProduct,
@@ -81,8 +82,10 @@ import {
   createAnnouncement,
   deleteAnnouncement,
   editAnnouncement,
+  escapeESReservedCharacters,
   followEntity,
   getEncodedFqn,
+  openClassificationTagPicker,
   unFollowEntity,
   validateFollowedEntityToWidget,
   waitForAllLoadersToDisappear,
@@ -448,6 +451,18 @@ test.describe('Domains', () => {
   });
 
   test('Rename domain', async ({ page }) => {
+    // Ran 66.7s wall against the 60s default, 17.9s of it in Before Hooks. Its
+    // 30.3s baseline leaves under 2x headroom, and shards run ~1.7x baseline, so
+    // this sits on the edge rather than having regressed -- eight tests in this
+    // file are already slow() for the same reason.
+    //
+    // The trace looks alarming and is not: a 57s "Wait for selector
+    // input[name=\"email\"]" spans most of it. That is the losing branch of the
+    // Promise.any in authenticateAdminPage, left running once the sidebar won,
+    // and it costs nothing. The helper's own comment warns about reading it as a
+    // login stall.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
@@ -462,8 +477,14 @@ test.describe('Domains', () => {
     await expect(manageButton).toBeVisible();
     await manageButton.click();
 
+    // The manage menu is an Ant dropdown, and pressing an item while it is
+    // still scaling puts mousedown and mouseup in different places, so no
+    // click is synthesised -- the item just takes focus and the dialog that
+    // was supposed to follow never opens. Same failure signature as the
+    // subdomain delete race fixed in DataProductAndSubdomains.spec.ts.
     const renameButton = page.getByTestId('rename-button-title');
     await expect(renameButton).toBeVisible();
+    await waitForAntdPopupToSettle(page);
     await renameButton.click();
 
     const displayNameInput = page.locator('#displayName');
@@ -550,13 +571,6 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       await selectDomain(page, domain.data);
-
-      // const selectSubDomainRes = page.waitForResponse(
-      //   '/api/v1/search/query?q=&index=domain*'
-      // );
-      // await page.getByTestId('subdomains').getByText('Sub Domains').click();
-      // await selectSubDomainRes;
-      // await verifyDomain(page, subDomain.data, domain.data, false);
 
       const subDomainApiRes1 = page.waitForResponse(
         '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
@@ -1235,7 +1249,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -1290,7 +1304,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -3275,7 +3289,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3319,24 +3333,43 @@ test.describe('Domain Tree View Functionality', () => {
         state: 'visible',
       });
 
-      await page
-        .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
-        .click();
-      const input = page.locator(
-        '[data-testid="tags-container"] #tagsForm_tags'
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
       );
-      await input.click();
-      await input.fill(testTag.responseData.fullyQualifiedName);
+
+      const searchTagResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response
+            .url()
+            .includes(
+              encodeURIComponent(
+                escapeESReservedCharacters(
+                  testTag.responseData.fullyQualifiedName
+                )
+              )
+            ) &&
+          response.request().method() === 'GET'
+      );
       await page
-        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+        .getByTestId('classification-tag-picker-search')
+        .fill(testTag.responseData.fullyQualifiedName);
+      await searchTagResponse;
+
+      await page
+        .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
         .click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
       const updateResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/domains/') &&
           response.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await updateResponse;
 
       await testTag.visitPage(page);
@@ -3357,7 +3390,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
