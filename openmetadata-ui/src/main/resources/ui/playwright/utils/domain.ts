@@ -46,7 +46,12 @@ import {
   selectOptionWithRetry,
   uuid,
 } from './common';
-import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  addOwner,
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
@@ -264,10 +269,13 @@ export const assignDomainWidget = async (
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
   await searchDomain;
 
-  const domainTag = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
+  const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
   await domainTag.waitFor({ state: 'visible' });
 
   if (multiSelect) {
@@ -275,7 +283,7 @@ export const assignDomainWidget = async (
     const patchReq = page.waitForResponse(
       (req) => req.request().method() === 'PATCH'
     );
-    await page.getByTestId('update-btn').click();
+    await page.getByTestId('saveAssociatedTag').click();
     await patchReq;
   } else {
     const patchReq = page.waitForResponse(
@@ -288,7 +296,7 @@ export const assignDomainWidget = async (
   await waitForAllLoadersToDisappear(page);
 
   await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
+    page.getByTestId('domain-link').filter({ hasText: domain.displayName })
   ).toBeVisible();
 };
 
@@ -300,26 +308,30 @@ export const removeDomainWidget = async (
   await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
   await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('domain-selectable-tree-search').clear();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
 
   const searchDomain = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(encodeURIComponent(domain.name))
   );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
   await searchDomain;
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await patchReq;
   await waitForAllLoadersToDisappear(page);
 
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).not.toBeVisible();
+  await expect(page.getByTestId('domain-link')).not.toBeVisible();
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -1274,15 +1286,28 @@ export const addTagsAndGlossaryToDomain = async (
       .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
     response.request().method() === 'PATCH';
 
-  // Add classification tag (still uses the old tag-select form)
+  // Add classification tag via ClassificationTagPicker
   const tagsContainer = '[data-testid="tags-container"]';
-  await page.locator(`${tagsContainer} [data-testid="add-tag"]`).click();
-  const tagInput = page.locator(`${tagsContainer} #tagsForm_tags`);
-  await tagInput.click();
-  await tagInput.fill(tagFqn);
-  await page.getByTestId(`tag-${tagFqn}`).click();
+  const trigger = page.locator(`${tagsContainer} [data-testid="add-tag"]`);
+
+  await openClassificationTagPicker(page, trigger);
+
+  const searchTagResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(tagFqn))) &&
+      response.request().method() === 'GET'
+  );
+  await page.getByTestId('classification-tag-picker-search').fill(tagFqn);
+  await searchTagResponse;
+  await page.getByTestId(`tree-node-${tagFqn}`).click();
+
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
   const tagPatchResponse = page.waitForResponse(patchUrl);
-  await page.getByTestId('saveAssociatedTag').click();
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
   await tagPatchResponse;
 
   // Add glossary term (uses the new GlossaryTermPicker)
@@ -2083,17 +2108,21 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   const domainDropdown = page.getByTestId('domain-dropdown');
-  const domainSearch = page.getByTestId('domain-dropdown-search');
+  const domainTree = page.getByTestId('domain-selectable-tree');
   const searchTerm = domain.displayName ?? domain.name;
 
   await domainDropdown.click();
-  await domainSearch.waitFor({ state: 'visible' });
+  await page
+    .getByTestId('domain-selectable-tree')
+    .waitFor({ state: 'visible' });
 
-  await domainSearch.click();
+  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
+
+  await domainTree.getByTestId('searchbar').click();
   await page.keyboard.press('Control+a');
-  await domainSearch.pressSequentially(searchTerm);
+  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
 
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
 };
 

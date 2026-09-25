@@ -17,6 +17,7 @@ import {
   Card,
   Dropdown,
   EmptyPlaceholder,
+  PageLayout,
 } from '@openmetadata/ui-core-components';
 import {
   ArrowCircleBrokenUp,
@@ -39,6 +40,7 @@ import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetail
 import ArticlesListToolbar from '../../../components/ContextCenter/ArticlesListToolbar/ArticlesListToolbar';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import ExploreQuickFilters from '../../../components/Explore/ExploreQuickFilters';
 import '../../../components/KnowledgeCenter/KnowledgeCenterLayout/knowledge-center-layout.less';
 import KnowledgePageDetailComponent from '../../../components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
@@ -64,6 +66,7 @@ import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
@@ -108,6 +111,8 @@ function getIsArticleListingUnfiltered(
 
 const ContextCenterArticlesPage = () => {
   const { t, i18n } = useTranslation();
+  const pageLayoutClassNames = useContextCenterPageLayout();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { version } = useRequiredParams<{ version?: string }>();
@@ -577,9 +582,11 @@ const ContextCenterArticlesPage = () => {
 
   const renderReflexLayout = () => (
     <ReflexContainer
-      className={classNames('knowledge-center-layout tw:h-full', {
-        'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
-      })}
+      className={classNames(
+        'knowledge-center-layout',
+        isAiMode ? 'tw:h-[calc(100vh-226px)]' : 'tw:h-full',
+        { 'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState }
+      )}
       orientation="vertical"
       style={showArticlesEmptyState ? { display: 'none' } : undefined}>
       {/* left */}
@@ -636,19 +643,24 @@ const ContextCenterArticlesPage = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-articles-page">
-      <div className="context-center-header-section tw:px-5">
-        {renderHeader()}
-      </div>
-
-      <Box
-        className="context-center-content-section tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl tw:px-5 tw:pb-5"
-        dir={i18n.dir()}
-        direction="col"
-        id="knowledge-center-layout-container">
-        <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
-        {showArticlesEmptyState && renderArticlesEmptyState()}
-        {renderReflexLayout()}
-      </Box>
+      <PageLayout
+        className={pageLayoutClassNames.root}
+        data-testid="context-center-page-layout">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
+          {renderHeader()}
+        </PageLayout.Header>
+        <PageLayout.Content
+          className={classNames(
+            'tw:relative tw:flex tw:flex-col tw:min-h-0 tw:overflow-hidden tw:rounded-xl',
+            pageLayoutClassNames.content
+          )}
+          dir={i18n.dir()}
+          id="knowledge-center-layout-container">
+          <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
+          {showArticlesEmptyState && renderArticlesEmptyState()}
+          {renderReflexLayout()}
+        </PageLayout.Content>
+      </PageLayout>
 
       <QuickLinkFormModal
         isOpen={showAddLinkModal}

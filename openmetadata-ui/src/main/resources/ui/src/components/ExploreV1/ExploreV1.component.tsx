@@ -500,7 +500,9 @@ const ExploreResultsPanel = ({
   selectedQuickFilters,
 }: ExploreResultsPanelProps) => {
   return (
-    <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+    <Box
+      className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
+      colGap={3}>
       <ExploreResultsListPanel
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
