@@ -12,8 +12,6 @@
  */
 @import (reference) '../../styles/variables.less';
 
-// Color overrides copied from data-asset-header.less, which only loads
-// with DataAssetsHeader and therefore can't be relied on here.
 .test-suite-details-header {
   display: flex;
   align-items: flex-start;
@@ -30,19 +28,12 @@
     max-width: 148px;
 
     .domain-link-text.render-domain-lebel-style {
-      color: var(--tw-color-gray-700);
       display: inline-block;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       max-width: 148px;
     }
-  }
-
-  .domain-link.ant-typography,
-  span.header-owner-heading,
-  .ant-typography.no-owner-heading {
-    color: var(--tw-color-gray-700);
   }
 }
 

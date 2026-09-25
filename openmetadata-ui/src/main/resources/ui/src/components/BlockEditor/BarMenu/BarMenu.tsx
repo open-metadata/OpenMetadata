@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Divider } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import { FC, Fragment } from 'react';
+import { FC, Fragment, MouseEvent } from 'react';
 import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
 import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
 import UnorderedListIcon from '../../../assets/svg/ic-format-bullet-list.svg';
@@ -26,7 +26,6 @@ import LinkIcon from '../../../assets/svg/ic-format-link.svg';
 import OrderedListIcon from '../../../assets/svg/ic-format-numbered-list.svg';
 import StrikeIcon from '../../../assets/svg/ic-format-strike.svg';
 import { BarMenuProps, FileType } from '../BlockEditor.interface';
-import './bar-menu.less';
 
 const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
   const formats = [
@@ -142,40 +141,56 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     ],
   ];
 
+  // Light keeps the legacy toolbar greys (no matching token); dark flips to
+  // semantic surfaces. `!` beats ButtonUtility's own padding/hover utilities.
   return (
-    <div className="bar-menu-wrapper">
+    <div
+      className={classNames(
+        'bar-menu-wrapper tw:flex tw:flex-row tw:flex-wrap tw:gap-4 tw:rounded-t-sm tw:p-2',
+        'tw:border-b tw:border-(--om-color-gray-neutral-200) tw:bg-(--om-legacy-color-f7f9fc)',
+        'tw:dark:border-secondary tw:dark:bg-secondary'
+      )}>
       {formats.map((format, index) => {
         return (
           <Fragment key={`format-group-${uniqueId()}`}>
-            <div className="bar-menu-wrapper--format-group">
+            <div className="tw:flex tw:flex-row tw:gap-2">
               {format.map((item) => {
+                const isActive = item.isActive();
+
                 return (
-                  <Tooltip key={item.name} title={item.name}>
-                    <button
-                      className={classNames(
-                        'bar-menu-wrapper--format-group--button',
-                        { active: item.isActive() }
-                      )}
-                      type="button"
-                      onMouseDown={(e) => {
-                        // To prevent losing focus from editor
-                        // The mouseDown event fires before the click event and before focus changes,
-                        // so we can intercept it and prevent the default focus behavior.
-                        e.preventDefault();
-                        item.command();
-                      }}>
+                  <ButtonUtility
+                    className={classNames(
+                      'tw:p-0!',
+                      isActive
+                        ? 'tw:bg-(--om-legacy-color-e8e8e9) tw:hover:bg-(--om-legacy-color-e8e8e9)! tw:dark:bg-tertiary tw:dark:hover:bg-tertiary!'
+                        : 'tw:hover:bg-(--om-legacy-color-ecedee)! tw:dark:hover:bg-secondary_hover!'
+                    )}
+                    color="tertiary"
+                    icon={
                       <img
                         alt={item.name}
-                        className="bar-menu-wrapper--format--button--icon"
+                        className="bar-menu-wrapper--format--button--icon tw:size-7"
                         src={item.icon}
                       />
-                    </button>
-                  </Tooltip>
+                    }
+                    key={item.name}
+                    tooltip={item.name}
+                    onMouseDown={(e: MouseEvent) => {
+                      // To prevent losing focus from editor
+                      // The mouseDown event fires before the click event and before focus changes,
+                      // so we can intercept it and prevent the default focus behavior.
+                      e.preventDefault();
+                      item.command();
+                    }}
+                  />
                 );
               })}
             </div>
             {index !== formats.length - 1 && (
-              <div className="bar-menu-wrapper--format-group--separator" />
+              <Divider
+                className="tw:bg-(--om-color-gray-neutral-200)! tw:dark:bg-border-secondary!"
+                orientation="vertical"
+              />
             )}
           </Fragment>
         );

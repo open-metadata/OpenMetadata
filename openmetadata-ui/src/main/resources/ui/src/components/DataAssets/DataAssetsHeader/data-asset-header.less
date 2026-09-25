@@ -28,7 +28,6 @@
     max-width: 148px;
 
     .domain-link-text.render-domain-lebel-style {
-      color: var(--om-color-text-secondary);
       display: inline-block;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -37,37 +36,15 @@
     }
   }
 
-  .domain-link.ant-typography,
-  span.header-owner-heading,
-  .ant-typography.no-owner-heading,
-  .extra-info-label-heading {
-    color: var(--om-color-text-secondary);
-  }
+  // Failed/running tints live on the element (DataAssetsHeader); @orange-* has
+  // no matching token, so aborted keeps its light hexes here.
+  .data-contract-latest-result-button.aborted {
+    color: @orange-7;
+    background-color: @orange-50;
 
-  .data-contract-latest-result-button {
-    &.failed {
-      color: var(--tw-color-utility-error-600);
-      border-color: var(--tw-color-utility-error-200);
-      background-color: var(--tw-color-utility-error-50);
-    }
-
-    &.aborted {
-      color: @orange-7;
-      border-color: @orange-200;
-      background-color: @orange-50;
-
-      // @orange-* are static hexes; the utility scale flips in dark.
-      .dark-mode & {
-        color: var(--tw-color-utility-orange-700);
-        border-color: var(--tw-color-utility-orange-200);
-        background-color: var(--tw-color-utility-orange-50);
-      }
-    }
-
-    &.running {
-      color: var(--tw-color-utility-brand-700);
-      border-color: var(--tw-color-utility-brand-200);
-      background-color: var(--tw-color-utility-brand-50);
+    .dark-mode & {
+      color: var(--tw-color-utility-orange-700);
+      background-color: var(--tw-color-utility-orange-50);
     }
   }
 

@@ -108,7 +108,7 @@ const RetentionPeriod = ({
         <div className="d-flex ">
           <Typography.Text className="text-sm d-flex flex-col gap-2">
             <div className="d-flex items-center gap-1">
-              <span className="extra-info-label-heading">
+              <span className="extra-info-label-heading tw:text-secondary">
                 {t('label.retention-period')}
               </span>
               {hasPermission && (

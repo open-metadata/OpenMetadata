@@ -121,6 +121,18 @@ import {
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';
 
+// `!` beats the secondary Button's own bg/text/hover utilities, as the old
+// header-scoped less rule did. Aborted stays in data-asset-header.less: its
+// light hexes (@orange-*) have no matching token.
+const CONTRACT_RESULT_BUTTON_CLASS: Partial<
+  Record<ContractExecutionStatus, string>
+> = {
+  [ContractExecutionStatus.Failed]:
+    'tw:text-utility-error-600! tw:bg-utility-error-50!',
+  [ContractExecutionStatus.Running]:
+    'tw:text-utility-brand-700! tw:bg-utility-brand-50!',
+};
+
 // Extracted so the boolean short-circuits live in their own complexity scope
 // instead of DataAssetsHeader's render body.
 const computeHasEditableMetadata = (
@@ -615,7 +627,8 @@ export const DataAssetsHeader = ({
         <Button
           className={classNames(
             'data-contract-latest-result-button',
-            toLower(dataContract?.latestResult?.status)
+            toLower(dataContract?.latestResult?.status),
+            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status]
           )}
           color="secondary"
           data-testid="data-contract-latest-result-btn"
@@ -983,8 +996,9 @@ export const DataAssetsHeader = ({
           entityId={dataAsset.id ?? ''}
           entityType={entityType}
           hasPermission={editDomainPermission}
+          labelClassName="tw:text-secondary!"
           multiple={entityRules.canAddMultipleDomains}
-          textClassName="render-domain-lebel-style"
+          textClassName="render-domain-lebel-style tw:text-secondary!"
         />
       )}
 
@@ -993,7 +1007,6 @@ export const DataAssetsHeader = ({
       <Owner
         showDashPlaceholder
         avatarSize={24}
-        className="header-owner-heading"
         hasPermission={editOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
