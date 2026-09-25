@@ -43,7 +43,10 @@ test.use({
 
 test.describe(
   'Login flow should work properly',
-  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  // `@sso` alongside `@basic` — this spec now runs under the
+  // `sso-auth` project (see playwright.config.ts testMatch) and the
+  // SSO nightly's Basic leg picks it up via `--grep @basic`.
+  { tag: [PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag, '@sso'] },
   () => {
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);

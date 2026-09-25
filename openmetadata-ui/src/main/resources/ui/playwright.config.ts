@@ -295,12 +295,16 @@ export default defineConfig({
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
-        // Every SSO spec lives under Auth/ and mutates the backend's
-        // authenticationConfiguration via applyProviderConfig — the main
-        // project must never pick them up, or entity/domain/search tests
-        // would race a mid-run auth swap. The `sso-auth` project owns
-        // these specs exclusively (fullyParallel:false, workers:1).
+        // Every SSO/login/auth-config spec runs under the `sso-auth`
+        // project (fullyParallel:false, workers:1) so their backend
+        // `authenticationConfiguration` mutations via
+        // applyProviderConfig can't race feature specs in this
+        // project. Every entry below must have a matching row on
+        // `sso-auth.testMatch`.
         '**/Auth/**',
+        '**/Features/SSOTestLogin.spec.ts',
+        '**/Pages/Login.spec.ts',
+        '**/Pages/LoginConfiguration.spec.ts',
         '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
@@ -347,11 +351,18 @@ export default defineConfig({
       // specs listed here plus the new parametrized SsoScenarios file
       // that runs 9 flows against every SsoProviderFixture in the matrix.
       name: 'sso-auth',
+      // Every auth/login-related spec runs here, not on main lane.
+      // The `chromium` and `Basic` projects testIgnore these paths so
+      // the mid-run backend `authenticationConfiguration` mutations
+      // this suite performs can't race feature specs.
       testMatch: [
         '**/SsoScenarios.spec.ts',
         '**/OktaSelfSignupClaims.spec.ts',
         '**/SSOSelfSignup.spec.ts',
         '**/SSOSessionLimit.spec.ts',
+        '**/Features/SSOTestLogin.spec.ts',
+        '**/Pages/Login.spec.ts',
+        '**/Pages/LoginConfiguration.spec.ts',
       ],
       use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
@@ -445,7 +456,16 @@ export default defineConfig({
       // (fullyParallel:false, workers:1) own auth-config mutations
       // exclusively, mirroring the same guard the primary `chromium`
       // project already has on its testIgnore.
-      testIgnore: [...dedicatedStateTestIgnore, '**/Auth/**'],
+      testIgnore: [
+        ...dedicatedStateTestIgnore,
+        '**/Auth/**',
+        // Same rationale as chromium.testIgnore: SSO/login/auth-config
+        // specs own backend authenticationConfiguration mutations and
+        // must run only under the `sso-auth` project.
+        '**/Features/SSOTestLogin.spec.ts',
+        '**/Pages/Login.spec.ts',
+        '**/Pages/LoginConfiguration.spec.ts',
+      ],
       use: { ...devices['Desktop Chrome'] },
       dependencies: entityDependencies,
       fullyParallel: true,
