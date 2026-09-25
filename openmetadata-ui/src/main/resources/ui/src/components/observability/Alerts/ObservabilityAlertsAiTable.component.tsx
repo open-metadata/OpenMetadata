@@ -146,6 +146,8 @@ function AlertsErrorState({
 }
 
 interface ObservabilityAlertsAiTableProps {
+  /** Accessible table name; defaults to the Observability alerts label. */
+  ariaLabel?: string;
   alertPermissions?: AlertPermission[];
   alertResourcePermission?: OperationPermission;
   hasResourcePermissionError?: boolean;
@@ -168,6 +170,7 @@ interface ObservabilityAlertsAiTableProps {
 }
 
 function ObservabilityAlertsAiTable({
+  ariaLabel,
   alertPermissions,
   alertResourcePermission,
   hasResourcePermissionError,
@@ -328,7 +331,7 @@ function ObservabilityAlertsAiTable({
         <>
           <div className="tw:border-b tw:border-secondary">
             <Table
-              aria-label={t('label.observability-alert')}
+              aria-label={ariaLabel ?? t('label.observability-alert')}
               data-testid="alert-table">
               <Table.Header columns={columnList}>
                 {(col) => (
@@ -341,6 +344,7 @@ function ObservabilityAlertsAiTable({
                         ALERT_NAME_COLUMN_LAYOUT_CLASS
                     )}
                     id={col.id}
+                    isRowHeader={col.id === ALERT_TABLE_COLUMN_IDS.NAME}
                     key={col.id}
                     label={col.name}
                   />

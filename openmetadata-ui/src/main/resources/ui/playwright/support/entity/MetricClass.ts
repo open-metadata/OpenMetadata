@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -137,7 +138,6 @@ export class MetricClass extends EntityClass {
         }
       )
     );
-
     this.entityResponseData = await okJson(response, 'MetricClass.patch');
 
     return {
@@ -156,7 +156,8 @@ export class MetricClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const entityResponse = await apiContext.delete(
+    const entityResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/metrics/${this.entityResponseData?.['id']}?recursive=true&hardDelete=true`
     );
 
