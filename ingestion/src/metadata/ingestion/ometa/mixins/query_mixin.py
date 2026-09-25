@@ -68,7 +68,7 @@ class OMetaQueryMixin:
             cache = SkipNoneLRUCache(QUERY_CACHE_SIZE)
             self._query_cache_instance = cache
         return cache
-        
+
     def _get_or_create_query(self, query: CreateQueryRequest) -> Query | None:
         if query.query.root is None:
             return None
