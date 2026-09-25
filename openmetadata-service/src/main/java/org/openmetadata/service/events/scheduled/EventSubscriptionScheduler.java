@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -43,9 +44,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
@@ -74,8 +77,9 @@ public class EventSubscriptionScheduler {
   private final AlertReconciler reconciler;
   public static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
-  // Quartz cannot acquire a trigger that is later than this.
-  static final long MISFIRE_THRESHOLD_MS = 60_000L;
+  // Quartz cannot acquire a trigger that is later than this, and a tick may hold a thread for a
+  // time budget plus one slow event. Ticks are polls, so misfire handling protects nothing here.
+  static final long MISFIRE_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(10);
 
   // Derived from the scheduler's instance name, which Quartz already requires to be unique per
   // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
@@ -108,6 +112,8 @@ public class EventSubscriptionScheduler {
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
 
+    AlertingSettings.use(AlertingSettings.from(config.getAlertingConfiguration()));
+    ServerStopping.registerShutdownHook();
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(quartzProperties(config.getDataSourceFactory()));
     // Must precede getScheduler(): that is where the job store resolves its datasource name.
