@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

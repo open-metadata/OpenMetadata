@@ -27,10 +27,7 @@ import { getDiagnosticInfo } from '../../../../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 
-function formatValue(
-  value: unknown,
-  t: (key: string) => string
-): string {
+function formatValue(value: unknown, t: (key: string) => string): string {
   if (typeof value === 'boolean') {
     return value ? t('label.yes') : t('label.no');
   }
