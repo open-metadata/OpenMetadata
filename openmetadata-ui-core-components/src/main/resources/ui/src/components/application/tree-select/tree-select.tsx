@@ -12,7 +12,9 @@
  */
 import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
 import {
-  SearchInputIcon,
+  DropdownSearchField,
+  DropdownStagedFooter,
+  DropdownStatusFooter,
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
@@ -30,13 +32,15 @@ import { Button } from '@/components/base/buttons/button';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
-import { Input } from '@/components/base/input/input';
 import { Label } from '@/components/base/input/label';
 import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Tree } from '../tree/tree';
-import { TreeSelectTreeItemContent } from './tree-select-node';
+import {
+  TreeSelectEmptyItemContent,
+  TreeSelectTreeItemContent,
+} from './tree-select-node';
 import type { TreeSelectNode, TreeSelectProps } from './tree-select.types';
 import { useTreeSelectData } from './use-tree-select-data';
 import {
@@ -44,6 +48,7 @@ import {
   useTreeSelectSearch,
 } from './use-tree-select-search';
 import {
+  getNodeSelectionState,
   hasExclusiveChildren,
   useTreeSelectSelection,
 } from './use-tree-select-selection';
@@ -56,12 +61,14 @@ const VIEWPORT_PADDING = 12;
 type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
+// Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
 const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
-): DropdownPlacement => {
+): { placement: DropdownPlacement; triggerWidth?: number } => {
   const [placement, setPlacement] = useState<DropdownPlacement>('bottom left');
+  const [triggerWidth, setTriggerWidth] = useState<number>();
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,6 +80,7 @@ const useDropdownPlacement = (
       if (!rect) {
         return;
       }
+      setTriggerWidth(rect.width);
       const needed = (width ?? rect.width) + VIEWPORT_PADDING;
       const fitsRight = window.innerWidth - rect.left >= needed;
       const fitsLeft = rect.right >= needed;
@@ -82,10 +90,20 @@ const useDropdownPlacement = (
     measure();
     window.addEventListener('resize', measure);
 
-    return () => window.removeEventListener('resize', measure);
+    // The trigger can reflow while open, e.g. a grid cell editor mounting its
+    // buttons beside it, and a width measured once would then be stale.
+    const observer = new ResizeObserver(measure);
+    if (triggerRef.current) {
+      observer.observe(triggerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer.disconnect();
+    };
   }, [isOpen, width, triggerRef]);
 
-  return placement;
+  return { placement, triggerWidth };
 };
 
 const shouldLazyLoad = <T,>(
@@ -200,11 +218,13 @@ export const TreeSelect = <T = unknown,>({
   searchable = false,
   lazyLoad = false,
   showCheckbox = true,
+  showExpandIcon = true,
   showIcon = true,
   cascadeSelection = false,
   debounceMs = 300,
   pageSize = 50,
   noDataMessage,
+  emptyBranchMessage,
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
@@ -242,7 +262,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const placement = useDropdownPlacement(
+  const { placement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -275,13 +295,18 @@ export const TreeSelect = <T = unknown,>({
   // Staged mode reports once on Apply, not per toggle.
   const commit = isStaged ? undefined : onChange;
 
-  const { selectedData, isNodeSelected, toggleNodeSelection, setSelection } =
-    useTreeSelectSelection<T>({
-      multiple,
-      cascadeSelection,
-      treeData,
-      onChange: commit,
-    });
+  const {
+    selectedData,
+    isNodeSelected,
+    getDescendantSelection,
+    toggleNodeSelection,
+    setSelection,
+  } = useTreeSelectSelection<T>({
+    multiple,
+    cascadeSelection,
+    treeData,
+    onChange: commit,
+  });
 
   useEffect(() => {
     if (value !== prevValueRef.current) {
@@ -455,6 +480,9 @@ export const TreeSelect = <T = unknown,>({
     ]
   );
 
+  const resolvedEmptyBranchMessage =
+    emptyBranchMessage ?? noDataMessage ?? t('label.no-data-found');
+
   const renderNodes = useCallback(
     (
       nodes: TreeSelectNode<T>[],
@@ -464,6 +492,10 @@ export const TreeSelect = <T = unknown,>({
 
       return visibleNodes.map((node) => {
         const isExclusiveGroup = hasExclusiveChildren(node);
+        const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
+          getDescendantSelection(node),
+          isNodeSelected(node.id)
+        );
 
         return (
           <Tree.Item id={node.id} key={node.id} textValue={node.label}>
@@ -472,11 +504,13 @@ export const TreeSelect = <T = unknown,>({
               hasChildItems={
                 Boolean(node.children?.length) || node.isLeaf === false
               }
+              isIndeterminate={isPartiallySelected}
               isLoading={loadingNodes.has(node.id)}
-              isSelected={isNodeSelected(node.id)}
+              isSelected={isFullySelected}
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
+              showExpandIcon={showExpandIcon}
               showIcon={showIcon}
               onNodeClick={() => {
                 if (!isExclusiveGroup) {
@@ -484,18 +518,35 @@ export const TreeSelect = <T = unknown,>({
                 }
               }}
             />
-            {node.children && renderNodes(node.children, node)}
+            {node.children?.length
+              ? renderNodes(node.children, node)
+              : node.children &&
+                node.isLeaf === false &&
+                !loadingNodes.has(node.id) && (
+                  <Tree.Item
+                    id={`${node.id}__empty`}
+                    key={`${node.id}__empty`}
+                    textValue={resolvedEmptyBranchMessage}>
+                    <TreeSelectEmptyItemContent
+                      message={resolvedEmptyBranchMessage}
+                      parentId={node.id}
+                    />
+                  </Tree.Item>
+                )}
           </Tree.Item>
         );
       });
     },
     [
+      resolvedEmptyBranchMessage,
       isNodeVisible,
       isNodeSelected,
+      getDescendantSelection,
       loadingNodes,
       disabled,
       multiple,
       showCheckbox,
+      showExpandIcon,
       showIcon,
       handleNodeAction,
     ]
@@ -523,14 +574,30 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
+  // Dismissing hands focus back to the trigger, whose onFocus would reopen it.
+  // The restore arrives a frame or more later, so the flag has to stay armed
+  // until a focus event consumes it — a timed reset loses the race and reopens.
+  const skipNextFocusOpen = useRef(false);
+
+  const openOnFocus = () => {
+    if (skipNextFocusOpen.current) {
+      skipNextFocusOpen.current = false;
+
+      return;
+    }
+    openTrigger();
+  };
+
   // Every close but Apply drops the draft, else the trigger shows stale state.
   const dismiss = useCallback(() => {
+    skipNextFocusOpen.current = true;
     if (isStaged) {
       setSelection(toArray(value));
     }
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [isStaged, setSelection, value, setOpen]);
+  }, [isStaged, setSelection, value, clearSearch, setOpen]);
 
   // Closing through the trigger is a non-Apply close, so it discards the draft.
   const toggleOpen = useCallback(() => {
@@ -564,12 +631,13 @@ export const TreeSelect = <T = unknown,>({
         dismiss();
       }
     };
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
+    // Capture: an overlay stopping propagation would otherwise hide the click.
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleEscape, true);
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleEscape, true);
     };
   }, [isOpen, dismiss]);
 
@@ -656,9 +724,10 @@ export const TreeSelect = <T = unknown,>({
 
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [onChange, multiple, selectedData, setOpen]);
+  }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
   const treeDropdownContent = (
     <div
@@ -666,16 +735,12 @@ export const TreeSelect = <T = unknown,>({
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
       ref={popoverRef}>
       {usesDropdownChrome && searchable && (
-        <div className="tw:p-2">
-          <Input
-            icon={SearchInputIcon}
-            inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
-            placeholder={searchPlaceholder ?? t('label.search')}
-            size="sm"
-            value={inputValue}
-            onChange={(val) => searchable && setInputValue(val)}
-          />
-        </div>
+        <DropdownSearchField
+          inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
+          placeholder={searchPlaceholder ?? t('label.search')}
+          value={inputValue}
+          onChange={(val) => searchable && setInputValue(val)}
+        />
       )}
       {showSelectAllRow && (
         <div
@@ -725,57 +790,24 @@ export const TreeSelect = <T = unknown,>({
         )}
       </div>
       {showFooter && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
-          <Button
-            color="tertiary"
-            data-testid="clear-filter-btn"
-            isDisabled={selectedData.length === 0}
-            size="sm"
-            onPress={handleClearAll}>
-            {t('label.clear-all')}
-          </Button>
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Button
-              color="secondary"
-              data-testid="close-btn"
-              size="sm"
-              onPress={dismiss}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="update-btn"
-              size="sm"
-              onPress={handleApply}>
-              {selectedData.length > 0
-                ? t('label.apply-count', { count: selectedData.length })
-                : t('label.apply')}
-            </Button>
-          </div>
-        </div>
+        <DropdownStagedFooter
+          count={displayedSelectedCount}
+          isClearDisabled={selectedData.length === 0}
+          onApply={handleApply}
+          onCancel={dismiss}
+          onClear={handleClearAll}
+        />
       )}
 
       {showStatusFooter && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
-          <span
-            className="tw:text-xs tw:font-normal tw:text-tertiary"
-            data-testid="selected-count">
-            {displayedSelectedCount === 0
-              ? t('label.none-selected')
-              : t('label.count-selected', { count: displayedSelectedCount })}
-          </span>
-          <Button
-            color="tertiary"
-            data-testid="clear-filter-btn"
-            isDisabled={selectedData.length === 0}
-            size="sm"
-            onPress={() => {
-              handleClearAll();
-              setShowSelectedOnly(false);
-            }}>
-            {t('label.clear-all')}
-          </Button>
-        </div>
+        <DropdownStatusFooter
+          count={displayedSelectedCount}
+          isClearDisabled={selectedData.length === 0}
+          onClear={() => {
+            handleClearAll();
+            setShowSelectedOnly(false);
+          }}
+        />
       )}
     </div>
   );
@@ -786,7 +818,7 @@ export const TreeSelect = <T = unknown,>({
       isNonModal
       className={cx(
         // `w-full` would size against the portal root.
-        usesDropdownChrome ? 'tw:w-80' : 'tw:w-(--trigger-width)',
+        usesDropdownChrome && 'tw:w-80',
         popoverClassName
       )}
       // Stops a dismissable ancestor reading clicks here as outside ones.
@@ -795,6 +827,12 @@ export const TreeSelect = <T = unknown,>({
       placement={placement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
+      // The input variant matches its trigger; measured, not `--trigger-width`.
+      style={
+        usesDropdownChrome || triggerWidth === undefined
+          ? undefined
+          : { width: triggerWidth }
+      }
       triggerRef={triggerRef}
       onOpenChange={setOpen}>
       {treeDropdownContent}
@@ -810,7 +848,7 @@ export const TreeSelect = <T = unknown,>({
             toggle: toggleOpen,
             open: openTrigger,
             close: dismiss,
-            selectedCount: selectedData.length,
+            selectedCount: displayedSelectedCount,
           })}
         </div>
         {isOpen && treeDropdown}
@@ -917,7 +955,7 @@ export const TreeSelect = <T = unknown,>({
               onChange={(event) =>
                 searchable && setInputValue(event.target.value)
               }
-              onFocus={openTrigger}
+              onFocus={openOnFocus}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
                   dismiss();

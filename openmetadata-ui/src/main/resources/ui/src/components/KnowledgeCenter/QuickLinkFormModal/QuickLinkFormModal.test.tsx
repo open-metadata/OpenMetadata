@@ -167,6 +167,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Modal: ({ children }: { children: ReactNode }) => (
       <div data-testid="modal">{children}</div>
     ),
+    FilterSelect: ({
+      'data-testid': testId,
+    }: {
+      'data-testid'?: string;
+      [key: string]: unknown;
+    }) => <div data-testid={testId} />,
     ModalOverlay: ({
       children,
       isOpen,
@@ -176,6 +182,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
   };
 });
+
+jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () => ({
+  __esModule: true,
+  default: ({ 'data-testid': testId, disabled }: Record<string, unknown>) => (
+    <div data-disabled={disabled} data-testid={testId as string} />
+  ),
+}));
 
 jest.mock('utils/SSOUtils', () => ({
   isValidUrl: jest.fn().mockReturnValue(true),

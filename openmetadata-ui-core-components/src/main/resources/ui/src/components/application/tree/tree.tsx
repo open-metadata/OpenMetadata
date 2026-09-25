@@ -184,6 +184,7 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
           className
         )
       }
+      data-testid="tree-expand-btn"
       slot="chevron">
       <ChevronRight
         aria-hidden="true"

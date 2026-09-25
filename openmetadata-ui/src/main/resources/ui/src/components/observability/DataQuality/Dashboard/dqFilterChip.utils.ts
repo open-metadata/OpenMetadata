@@ -10,28 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { borderAfter } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 /**
  * The owner filter needs antd's Popover, which clones its child and attaches
  * `onClick` — a prop react-aria's `Button` filters out — so that trigger has to
  * stay a plain element and cannot be a `FilterSelect`. These classes reproduce
- * what `FilterSelect` renders for `triggerVariant="button"` without `bordered`
- * (core `Button`, `tertiary`, size `sm`, with the quick-filter padding), so the
- * owner chip sits flush beside the FilterSelect chips instead of carrying the
- * heavier bordered treatment.
+ * what `FilterSelect` renders for a `bordered` `triggerVariant="button"` (core
+ * `Button`, `secondary`, size `md`), so the owner chip carries the same pill
+ * treatment as the FilterSelect chips beside it.
  */
 export const chipTriggerClassName = classNames(
-  'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center',
-  'tw:justify-center tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:p-1',
-  'tw:text-sm tw:font-medium tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
-  'tw:text-tertiary tw:hover:bg-primary_hover tw:hover:text-tertiary_hover',
-  'tw:*:data-icon:size-3.5 tw:*:data-icon:text-fg-quaternary'
+  'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center',
+  'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5',
+  'tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic',
+  'tw:relative tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
+  borderAfter,
+  'tw:after:outline-primary',
+  'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover'
 );
 
 /** Brand treatment the FilterSelect trigger takes on once a value is picked. */
-export const chipTriggerSelectedClassName =
-  'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary';
+export const chipTriggerSelectedClassName = classNames(
+  'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
+  'tw:after:outline-brand'
+);
+
+/**
+ * Chevron colour for a trigger built by hand: `FilterSelect` brands its trigger
+ * icon on selection, and these two utilities are the same Tailwind group, so the
+ * state has to pick one rather than stack both.
+ */
+export const chipChevronClassName = (hasSelection: boolean) =>
+  classNames(
+    'tw:size-5 tw:shrink-0',
+    hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+  );
 
 /** Matches the count badge `FilterSelect` renders on its own trigger. */
 export const chipCountBadgeClassName = classNames(

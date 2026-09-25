@@ -6,7 +6,7 @@ In this section, we provide guides and references to use the MySQL connector.
 To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default, a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
--- Create user. If <hostName> is ommited, defaults to '%'
+-- Create user. If <hostName> is omitted, defaults to '%'
 -- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
 CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
 
@@ -60,7 +60,7 @@ There are 2 types of auth configs:
 - IAM based Auth.
 - Azure Based Auth.
 
-User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Based Authentication` to connect to Azure related services.
 $$
 
 

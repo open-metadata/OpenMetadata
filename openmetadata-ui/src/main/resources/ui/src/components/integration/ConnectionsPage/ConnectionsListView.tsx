@@ -547,7 +547,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
     ) : (
       <div
         aria-busy={isRefreshing}
-        className={`tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs tw:transition-opacity ${
+        className={`tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-xs tw:transition-opacity ${
           isRefreshing ? 'tw:opacity-60' : ''
         }`}
         data-testid="connections-results">
@@ -688,7 +688,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         />
       )}
 
-      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
+      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:pl-4">
         {!isOnboardingActive && (
           <>
             <div className="tw:mb-[18px]">
