@@ -224,6 +224,17 @@ public interface CoreRelationshipDAOs {
     List<ExtensionRecord> getExtensionsByJsonSchema(
         @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
 
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension "
+            + "WHERE id = :id AND extension IN (<extensions>) ORDER BY extension")
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsByKeysInternal(
+        @BindUUID("id") UUID id, @BindList("extensions") List<String> extensions);
+
+    default List<ExtensionRecord> getExtensionsByKeys(UUID id, List<String> extensions) {
+      return EntityDAO.queryInChunks(extensions, chunk -> getExtensionsByKeysInternal(id, chunk));
+    }
+
     // The keyset condition and the LIMIT are applied inside each UNION branch so that neither
     // side materialises more than one page: the global top-:limit under this ORDER BY is always a
     // subset of the union of each branch's own top-:limit. UNION ALL is safe because
