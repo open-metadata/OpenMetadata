@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Request, Route } from '@playwright/test';
+import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 
 /**
  * Reduces the server load a Playwright shard generates.
@@ -384,6 +385,10 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
   }
 
   installed.add(context);
+
+  // Every context entry point already funnels through here, so this is the one
+  // place the lost-storageState-token guard reaches all of them.
+  guardStorageStateBoot(context);
 
   // Guarded like the two below: analytics beacons are fired on navigation and
   // unload, so a `fulfill` here is more likely than either of them to land on a
