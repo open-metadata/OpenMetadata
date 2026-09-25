@@ -187,9 +187,17 @@ export const useLimitStore = create<{
     let rLimit = resourceLimit[resource];
     if (isNil(rLimit) || force) {
       const limit = await getLimitByResource(resource);
+      const status = limit?.featureLimitStatuses?.[0];
 
-      setResourceLimit(resource, limit.featureLimitStatuses[0]);
-      rLimit = limit.featureLimitStatuses[0];
+      // No status means limits are off: OSS answers the per-feature call with an
+      // empty body. `config` can still be null here when AppContainer's
+      // getLimitConfig call failed (fetchAppConfigurations swallows the error).
+      if (isNil(status)) {
+        return buildDisabledResourceLimit(resource);
+      }
+
+      setResourceLimit(resource, status);
+      rLimit = status;
     }
 
     if (rLimit) {

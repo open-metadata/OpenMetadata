@@ -12,9 +12,15 @@
  */
 
 import { TFunction } from 'i18next';
-import { Type } from '../../../generated/events/eventSubscription';
+import {
+  SubscriptionCategory,
+  Type,
+} from '../../../generated/events/eventSubscription';
+import { EventType } from '../../../generated/type/changeEvent';
 import {
   getAuthTypeItems,
+  getDestinationCategoryItems,
+  getSelectArgumentConfig,
   getTemplateItems,
 } from './AlertAiFormFieldsSelectUtils';
 import {
@@ -65,5 +71,56 @@ describe('AlertAiFormFieldsSelectUtils', () => {
         label: 'label.create-entity:label.custom-template',
       },
     ]);
+  });
+
+  it('limits event types to the ones the selected source supports', () => {
+    const config = getSelectArgumentConfig('eventTypeList', t, [
+      EventType.EntityCreated,
+      EventType.EntityDeleted,
+    ]);
+
+    expect(config?.items.map((item) => item.id)).toEqual([
+      EventType.EntityCreated,
+      EventType.EntityDeleted,
+    ]);
+  });
+
+  it('offers every event type when the source declares none', () => {
+    const config = getSelectArgumentConfig('eventTypeList', t, []);
+
+    expect(config?.items).toHaveLength(Object.values(EventType).length);
+  });
+
+  describe('destination categories follow the selected source (classic parity)', () => {
+    const categoryIds = (source?: string) =>
+      getDestinationCategoryItems(t, source).map((item) => item.id);
+
+    it('hides assignees and mentions for regular entity sources', () => {
+      const ids = categoryIds('table');
+
+      expect(ids).not.toContain(SubscriptionCategory.Assignees);
+      expect(ids).not.toContain(SubscriptionCategory.Mentions);
+      expect(ids).toContain(SubscriptionCategory.Owners);
+      // External destinations are never narrowed by source.
+      expect(ids).toContain('header-external');
+    });
+
+    it('hides followers, admins, users and teams for task sources', () => {
+      const ids = categoryIds('task');
+
+      expect(ids).toEqual(
+        expect.arrayContaining([
+          SubscriptionCategory.Assignees,
+          SubscriptionCategory.Mentions,
+        ])
+      );
+
+      [
+        SubscriptionCategory.Followers,
+        SubscriptionCategory.Admins,
+        SubscriptionCategory.Users,
+        SubscriptionCategory.Teams,
+      ].forEach((category) => expect(ids).not.toContain(category));
+    });
   });
 });
