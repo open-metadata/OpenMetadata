@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory.EXTERNAL;
@@ -22,24 +23,33 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.events.AlertHealth;
+import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertRows;
+import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
@@ -78,6 +88,70 @@ class AlertStateIT {
 
     rest.delete(created.getId().toString(), Map.of("hardDelete", "true"));
     awaitJobAndRowsGone(created);
+  }
+
+  @Test
+  void repositoryWritePathsKeepTheJobInStep(TestNamespace ns) throws Exception {
+    EventSubscription created = create(ns, "in_step_repository", true);
+
+    EventSubscription disabled =
+        repository().createOrUpdate(null, created.withEnabled(false), "admin").getEntity();
+    assertFalse(jobExists(disabled), "an update that disables removes the job");
+
+    repository().createOrUpdate(null, disabled.withEnabled(true), "admin");
+    assertTrue(jobExists(created), "and enabling schedules it again");
+
+    repository().deleteInternal("admin", created.getId(), true, true);
+    awaitJobAndRowsGone(created);
+  }
+
+  @Test
+  void bulkCreateSchedulesEveryAlert(TestNamespace ns) throws Exception {
+    EventSubscriptionMapper mapper = new EventSubscriptionMapper();
+    List<EventSubscription> alerts =
+        List.of(
+            mapper.createToEntity(request(ns, "bulk_one", true), "admin"),
+            mapper.createToEntity(request(ns, "bulk_two", true), "admin"));
+
+    repository().createMany(null, alerts);
+
+    for (EventSubscription alert : alerts) {
+      assertTrue(jobExists(alert), "every alert of a bulk create is scheduled");
+      assertNotNull(position(alert));
+    }
+  }
+
+  // The alert's row is read when a tick opens, and what runs leave behind lives in rows.
+  @Test
+  void everyJobUsesAlertPublisherAndCarriesNoData(TestNamespace ns) throws Exception {
+    EventSubscription plain = create(ns, "no_job_data", true);
+    EventSubscription withItsOwnConsumer =
+        AlertFixtures.tableAlert(
+            ns,
+            "own_consumer_job",
+            LatchedConsumer.class.getName(),
+            List.of(AlertFixtures.external(WEBHOOK, "http://localhost:9/unused")));
+
+    for (EventSubscription alert : List.of(plain, withItsOwnConsumer)) {
+      JobDetail job = scheduler().getJobDetail(jobKey(alert));
+      assertEquals(AlertPublisher.class, job.getJobClass());
+      assertTrue(job.getJobDataMap().isEmpty());
+    }
+  }
+
+  // An alert switched off behind the server sends nothing, and its own tick removes its job.
+  @Test
+  void disabledAlertTickWritesNothingAndRemovesItsJob(TestNamespace ns) throws Exception {
+    EventSubscription alert = create(ns, "disabled_tick", true);
+    QuietAlert.settle(alert);
+    String positionBefore = position(alert);
+    JobDetail job = scheduler().getJobDetail(jobKey(alert));
+    dao().update(alert.withEnabled(false));
+
+    DirectTick.run(alert, job);
+
+    assertEquals(positionBefore, position(alert));
+    assertFalse(jobExists(alert));
   }
 
   @Test
@@ -137,12 +211,97 @@ class AlertStateIT {
             JsonUtils.pojoToJson(failing));
 
     repository().createOrUpdate(null, alert.withDescription("edited"), "admin");
-    EventSubscriptionScheduler.getInstance().updateEventSubscription(alert);
+    AlertJobs.converge(alert.getId());
 
     SubscriptionStatus afterwards =
         EventSubscriptionScheduler.getInstance()
             .getStatusForEventSubscription(alert.getId(), UUID.fromString(destinationId));
     assertEquals(SubscriptionStatus.Status.FAILED, afterwards.getStatus());
+  }
+
+  // Scheduling follows the commit: nothing while the unit of work is open, nothing if it rolls
+  // back.
+  @Test
+  void saveInsideAnOuterTransactionSchedulesOnlyAfterCommit(TestNamespace ns) throws Exception {
+    EventSubscription alert =
+        new EventSubscriptionMapper().createToEntity(request(ns, "outer_commit", true), "admin");
+
+    boolean scheduledBeforeCommit =
+        repository()
+            .executeInTransaction(
+                () -> {
+                  repository().create(null, alert);
+                  return uncheckedJobExists(alert);
+                });
+
+    assertFalse(scheduledBeforeCommit);
+    assertTrue(jobExists(alert));
+  }
+
+  @Test
+  void saveThatRollsBackSchedulesNothing(TestNamespace ns) throws Exception {
+    EventSubscription alert =
+        new EventSubscriptionMapper().createToEntity(request(ns, "outer_rollback", true), "admin");
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository()
+                .executeInTransaction(
+                    () -> {
+                      repository().create(null, alert);
+                      throw new IllegalStateException("the outer work failed");
+                    }));
+
+    assertFalse(jobExists(alert));
+    assertNull(AlertRows.readOrNull(alert.getId()));
+  }
+
+  @Test
+  void deleteThatRollsBackKeepsTheJobAndRows(TestNamespace ns) throws Exception {
+    EventSubscription alert = create(ns, "delete_rollback", true);
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository()
+                .executeInTransaction(
+                    () -> {
+                      repository().delete("admin", alert.getId(), false, true);
+                      throw new IllegalStateException("the outer work failed");
+                    }));
+
+    assertNotNull(AlertRows.readOrNull(alert.getId()));
+    assertTrue(jobExists(alert));
+    assertNotNull(position(alert));
+  }
+
+  // An alert another entity contains is deleted with it, through the cascade.
+  @Test
+  void cascadeDeleteRemovesTheJobAndRows(TestNamespace ns) throws Exception {
+    for (boolean hardDelete : List.of(true, false)) {
+      EventSubscription alert = create(ns, "cascade_" + hardDelete, true);
+      Glossary parent =
+          SdkClients.adminClient()
+              .glossaries()
+              .create(
+                  new CreateGlossary()
+                      .withName(ns.shortPrefix("owner_" + hardDelete))
+                      .withDescription("contains an alert"));
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              parent.getId(),
+              alert.getId(),
+              Entity.GLOSSARY,
+              Entity.EVENT_SUBSCRIPTION,
+              Relationship.CONTAINS.ordinal());
+
+      Entity.getEntityRepository(Entity.GLOSSARY).delete("admin", parent.getId(), true, hardDelete);
+
+      assertNull(AlertRows.readOrNull(alert.getId()));
+      awaitJobAndRowsGone(alert);
+    }
   }
 
   @Test
@@ -156,6 +315,80 @@ class AlertStateIT {
 
     assertEquals(reported.getStartingOffset(), reported.getCurrentOffset());
     assertNull(position(neverScheduled), "a read must not decide where an alert starts");
+  }
+
+  @Test
+  void reconcilerRepairsAMissingJobAndSparesYoungLeftovers(TestNamespace ns) throws Exception {
+    EventSubscription alert = create(ns, "reconciled", true);
+    scheduler().deleteJob(jobKey(alert));
+    EventSubscription leftover = new EventSubscription().withId(UUID.randomUUID());
+    AlertRecord.start(leftover.withDestinations(List.of()));
+
+    EventSubscriptionScheduler.getInstance().reconcileNow();
+
+    assertTrue(jobExists(alert), "a missing job is scheduled again");
+    assertNotNull(position(leftover), "rows younger than five minutes may be a create in flight");
+  }
+
+  @Test
+  void aNotFoundMarkerCannotCostALiveAlertItsJobOrItsRows(TestNamespace ns) throws Exception {
+    assumeTrue(TestSuiteBootstrap.isRedisEnabled(), "the not-found cache needs Redis");
+    EventSubscription alert = create(ns, "marked_gone_settled", true);
+    scheduler().deleteJob(jobKey(alert));
+    backdatePosition(alert);
+    markNotFound(alert);
+    try {
+      AlertJobs.converge(alert.getId());
+      assertTrue(jobExists(alert), "the job follows the stored alert, not the marker");
+
+      scheduler().deleteJob(jobKey(alert));
+      EventSubscriptionScheduler.getInstance().reconcileNow();
+
+      assertTrue(jobExists(alert), "a live alert's missing job is scheduled again");
+      assertNotNull(position(alert), "and its rows are kept, however old they are");
+    } finally {
+      unmarkNotFound(alert);
+    }
+  }
+
+  @Test
+  void firstReconcileRemovesRowsOfAlertsDeletedBeforeTheUpgrade() throws Exception {
+    String gone = UUID.randomUUID().toString();
+    EventSubscriptionOffset longAgo =
+        new EventSubscriptionOffset()
+            .withCurrentOffset(1L)
+            .withStartingOffset(1L)
+            .withTimestamp(System.currentTimeMillis() - 3_600_000L);
+    dao()
+        .upsertSubscriberExtension(
+            gone, LedgerKeys.POSITION, "eventSubscriptionOffset", JsonUtils.pojoToJson(longAgo));
+    AlertMetrics counted =
+        new AlertMetrics()
+            .withTotalEvents(1)
+            .withSuccessEvents(1)
+            .withFailedEvents(0)
+            .withTimestamp(longAgo.getTimestamp());
+    dao()
+        .upsertSubscriberExtension(
+            gone, LedgerKeys.COUNTERS, "alertMetrics", JsonUtils.pojoToJson(counted));
+    dao()
+        .batchUpsertSuccessfulChangeEvents(
+            List.of(UUID.randomUUID().toString()),
+            List.of(gone),
+            List.of(WITH_TIMESTAMP),
+            List.of(1L));
+    dao()
+        .upsertFailedEvent(
+            gone,
+            AbstractEventConsumer.FAILED_EVENT_EXTENSION + "-" + UUID.randomUUID(),
+            WITH_TIMESTAMP,
+            "test");
+
+    EventSubscriptionScheduler.getInstance().reconcileNow();
+
+    assertTrue(dao().listSubscriberExtensions(gone).isEmpty(), "position and counters");
+    assertEquals(0, dao().getSuccessfulRecordCount(gone), "delivered rows");
+    assertEquals(0, dao().countFailedEventsById(gone), "failure rows");
   }
 
   private static EventSubscription create(TestNamespace ns, String name, boolean enabled) {
@@ -191,12 +424,33 @@ class AlertStateIT {
     return scheduler().checkExists(jobKey(alert));
   }
 
+  private static boolean uncheckedJobExists(EventSubscription alert) {
+    try {
+      return jobExists(alert);
+    } catch (SchedulerException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
   private static JobKey jobKey(EventSubscription alert) {
-    return new JobKey(alert.getId().toString(), EventSubscriptionScheduler.ALERT_JOB_GROUP);
+    return new JobKey(alert.getId().toString(), AlertJobs.JOB_GROUP);
   }
 
   private static String position(EventSubscription alert) {
     return dao().getSubscriberExtension(alert.getId().toString(), LedgerKeys.POSITION);
+  }
+
+  // Past the reconciler's minimum age, so rows it thought orphaned would be removed.
+  private static void backdatePosition(EventSubscription alert) {
+    EventSubscriptionOffset backdated =
+        JsonUtils.readValue(position(alert), EventSubscriptionOffset.class)
+            .withTimestamp(System.currentTimeMillis() - 3_600_000L);
+    dao()
+        .upsertSubscriberExtension(
+            alert.getId().toString(),
+            LedgerKeys.POSITION,
+            "eventSubscriptionOffset",
+            JsonUtils.pojoToJson(backdated));
   }
 
   private static void markNotFound(EventSubscription alert) {

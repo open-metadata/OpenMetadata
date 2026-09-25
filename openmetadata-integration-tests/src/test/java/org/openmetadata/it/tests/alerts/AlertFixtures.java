@@ -14,6 +14,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
@@ -24,6 +25,7 @@ import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.TriggerKey;
+import org.quartz.impl.SchedulerRepository;
 
 /** Alerts for tests that drive ticks themselves: polled once a day, so Quartz stays out of it. */
 final class AlertFixtures {
@@ -76,11 +78,11 @@ final class AlertFixtures {
   }
 
   static JobKey jobKey(UUID alertId) {
-    return new JobKey(alertId.toString(), EventSubscriptionScheduler.ALERT_JOB_GROUP);
+    return new JobKey(alertId.toString(), AlertJobs.JOB_GROUP);
   }
 
   static TriggerKey triggerKey(UUID alertId) {
-    return new TriggerKey(alertId.toString(), EventSubscriptionScheduler.ALERT_TRIGGER_GROUP);
+    return new TriggerKey(alertId.toString(), AlertJobs.TRIGGER_GROUP);
   }
 
   static String position(UUID alertId) {
@@ -91,8 +93,27 @@ final class AlertFixtures {
     return JsonUtils.readValue(position(alertId), EventSubscriptionOffset.class).getCurrentOffset();
   }
 
+  // Straight into the job store, for states no API call produces.
+  static void updateTrigger(String assignment, UUID alertId) {
+    Entity.getJdbi()
+        .useHandle(
+            handle ->
+                handle.execute(
+                    "UPDATE QRTZ_TRIGGERS SET " + assignment + " WHERE TRIGGER_NAME = ?",
+                    alertId.toString()));
+  }
+
+  static void updateJob(String assignment, UUID alertId) {
+    Entity.getJdbi()
+        .useHandle(
+            handle ->
+                handle.execute(
+                    "UPDATE QRTZ_JOB_DETAILS SET " + assignment + " WHERE JOB_NAME = ?",
+                    alertId.toString()));
+  }
+
   static Scheduler scheduler() {
-    return EventSubscriptionScheduler.getInstance().getAlertsScheduler();
+    return SchedulerRepository.getInstance().lookup(EventSubscriptionScheduler.SCHEDULER_NAME);
   }
 
   static EventSubscriptionDAO dao() {

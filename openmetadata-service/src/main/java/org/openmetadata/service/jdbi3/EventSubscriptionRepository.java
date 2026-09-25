@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -44,6 +45,8 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
@@ -90,6 +93,50 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   public void clearFields(EventSubscription entity, Fields fields) {}
 
+  // Every save path converges through these hooks, after its commit, so a saved alert and its
+  // job cannot drift apart, whoever saved it.
+  @Override
+  protected void postCreate(EventSubscription entity) {
+    super.postCreate(entity);
+    AlertJobs.convergeAfterCommit(entity.getId());
+  }
+
+  @Override
+  protected void postCreate(List<EventSubscription> entities) {
+    super.postCreate(entities);
+    entities.forEach(entity -> AlertJobs.convergeAfterCommit(entity.getId()));
+  }
+
+  @Override
+  protected void postUpdate(EventSubscription original, EventSubscription updated) {
+    super.postUpdate(original, updated);
+    AlertJobs.convergeAfterCommit(updated.getId());
+  }
+
+  // Every hard delete reaches this, inside the delete's own transaction, including deleteInternal,
+  // which skips postDelete. The job goes once the row is gone.
+  @Override
+  protected void entitySpecificCleanup(EventSubscription entity) {
+    retire(entity.getId());
+  }
+
+  // A cascade from a parent calls this outside any transaction and before the rows are deleted,
+  // and postDelete once they are gone, so the alert is retired there.
+  @Override
+  protected void bulkEntitySpecificCleanup(List<EventSubscription> entities, String deletedBy) {}
+
+  // An alert cannot be soft deleted, so every delete that reaches here removed the row.
+  @Override
+  protected void postDelete(EventSubscription entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    retire(entity.getId());
+  }
+
+  private static void retire(UUID alertId) {
+    AlertRecord.forget(alertId);
+    AlertJobs.convergeAfterCommit(alertId);
+  }
+
   @Override
   public void setInheritedFields(EventSubscription entity, Fields fields) {
     entity.setNotificationTemplate(getTemplateReference(entity));
@@ -128,6 +175,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
+      requireLoadableConsumer(entity);
       AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
 
@@ -189,6 +237,17 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         : webhook.getEndpoint().toString();
   }
 
+  // A save naming a consumer this server cannot load fails here, not at every tick.
+  private static void requireLoadableConsumer(EventSubscription alert) {
+    if (alert.getClassName() != null) {
+      try {
+        Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class);
+      } catch (ClassNotFoundException | ClassCastException e) {
+        throw new BadRequestException("Consumer class cannot be loaded: " + alert.getClassName());
+      }
+    }
+  }
+
   private void ensureDestinationIds(EventSubscription entity) {
     // Ensure all destinations have unique IDs assigned before storage
     Optional.ofNullable(entity.getDestinations()).orElse(Collections.emptyList()).stream()
@@ -196,6 +255,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         .forEach(destination -> destination.withId(UUID.randomUUID()));
   }
 
+  /**
+   * Skips the backlog: the position and the watermark move to now. A tick that is running at this
+   * moment loses its compare-and-set on the position and keeps the skip.
+   */
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
     EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
     return AlertRecord.skipBacklog(eventSubscription.getId());
