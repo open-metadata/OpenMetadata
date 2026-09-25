@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import isEmpty from 'lodash/isEmpty';
+import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
 import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
@@ -162,6 +163,11 @@ export interface ThresholdReference {
 }
 
 const toFiniteNumber = (value?: string) => {
+  // Number('') is 0, so a cleared parameter would otherwise draw a line at 0.
+  if (isEmpty(value?.trim())) {
+    return undefined;
+  }
+
   const parsed = Number(value);
 
   return Number.isFinite(parsed) ? parsed : undefined;
@@ -177,10 +183,15 @@ export const getThresholdReference = (
   latestResult?: Pick<TestCaseResult, 'maxBound'>
 ): ThresholdReference | undefined => {
   const valuesOf = (matches: (name: string) => boolean) =>
-    testCaseParameterValue
-      .filter((parameter) => matches(parameter.name ?? ''))
-      .map((parameter) => toFiniteNumber(parameter.value))
-      .filter((value): value is number => !isUndefined(value));
+    testCaseParameterValue.reduce<number[]>((values, parameter) => {
+      const value = toFiniteNumber(parameter.value);
+
+      if (matches(parameter.name ?? '') && !isUndefined(value)) {
+        values.push(value);
+      }
+
+      return values;
+    }, []);
 
   const [expected] = valuesOf((name) => EXPECTED_VALUE_PARAMETERS.has(name));
 
@@ -245,9 +256,7 @@ export const applyStatusPlacements = (
   thresholdY?: number
 ): TestCaseChartDataType['data'] => {
   const plotted = data.flatMap((point) =>
-    seriesLabels
-      .map((label) => point[label])
-      .filter((value): value is number => typeof value === 'number')
+    seriesLabels.map((label) => point[label]).filter(isNumber)
   );
 
   if (isEmpty(plotted) && isUndefined(thresholdY)) {
@@ -266,9 +275,7 @@ export const applyStatusPlacements = (
     const placement = placementByStatus[point.status as TestCaseStatus];
 
     // A run that did record a value keeps it, whatever its status.
-    const missing = seriesLabels.filter(
-      (label) => typeof point[label] !== 'number'
-    );
+    const missing = seriesLabels.filter((label) => !isNumber(point[label]));
 
     if (isUndefined(placement) || isEmpty(missing)) {
       return point;

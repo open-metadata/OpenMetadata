@@ -685,6 +685,15 @@ describe('getThresholdReference', () => {
     ).toEqual({ y: 500, labelKey: 'label.allowed-max' });
   });
 
+  it('should ignore a parameter saved with an empty value', () => {
+    expect(
+      getThresholdReference(params({ minValue: '', maxValue: ' ' }))
+    ).toBeUndefined();
+    expect(
+      getThresholdReference(params({ minValue: '', maxValue: '750' }))
+    ).toEqual({ y: 750, labelKey: 'label.allowed-max' });
+  });
+
   it('should fall back to the learned bound when no parameter is numeric', () => {
     expect(getThresholdReference([], { maxBound: 10500 })).toEqual({
       y: 10500,

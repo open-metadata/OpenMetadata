@@ -13,7 +13,7 @@
 
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { useQueries } from '@tanstack/react-query';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isNumber, isUndefined } from 'lodash';
 import {
   KeyboardEvent,
   ReactElement,
@@ -398,7 +398,7 @@ function TestSummaryGraph({
 
     const latestPointName = plottedData[plottedData.length - 1]?.name;
 
-    return typeof latestPointName === 'number' ? latestPointName : undefined;
+    return isNumber(latestPointName) ? latestPointName : undefined;
   }, [plottedData, selectedRunTimestamp]);
 
   const handleRunSelect = useCallback(
