@@ -291,9 +291,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _run(self) -> TestCaseResult:
         column_diff: ColumnDiffResult = self.get_column_diff()
-        threshold = self.get_test_case_param_value(
-            self.test_case.parameterValues, "threshold", int, default=0
-        )
+        threshold = self.get_test_case_param_value(self.test_case.parameterValues, "threshold", int, default=0)
         # get_test_case_param_value is typed on the caster it is handed, so its return widens to type[int] | None
         threshold = cast("int", threshold or 0)
         if column_diff:
@@ -340,12 +338,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 count = self._compute_row_count(self.runner, None)  # type: ignore
                 test_case_result.passedRows = stats["unchanged"]
                 if count:
-                    test_case_result.passedRowsPercentage = (
-                        (test_case_result.passedRows or 0) / count * 100
-                    )
-                    test_case_result.failedRowsPercentage = (
-                        (test_case_result.failedRows or 0) / count * 100
-                    )
+                    test_case_result.passedRowsPercentage = (test_case_result.passedRows or 0) / count * 100
+                    test_case_result.failedRowsPercentage = (test_case_result.failedRows or 0) / count * 100
                 return test_case_result
             # The raw iterator: iterating the wrapper would keep every row in its result_list
             diff = table_diff_iter.diff
@@ -712,11 +706,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _diff_key_columns(self) -> List[str]:  # noqa: UP006
         """The key columns the diff runs on. Both sides diff on the same key."""
-        return list(
-            self.runtime_params.table1.key_columns
-            or self.runtime_params.table2.key_columns
-            or []
-        )
+        return list(self.runtime_params.table1.key_columns or self.runtime_params.table2.key_columns or [])
 
     def get_column_diff(self) -> Optional[ColumnDiffResult]:  # noqa: UP045
         """Get the column diff between the two tables. If there are no differences, return None."""
