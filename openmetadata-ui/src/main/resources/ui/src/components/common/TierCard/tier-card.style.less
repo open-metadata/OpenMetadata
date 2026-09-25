@@ -84,3 +84,25 @@
   outline: 2px solid @focus-outline-color;
   outline-offset: 2px;
 }
+
+// Dark: the tier list is an antd Collapse with `bg-white` (the page colour in
+// dark) and antd's light item borders; let it sit on the popover surface with
+// theme-aware dividers. Light keeps the rules above.
+.dark-mode .tier-card-popover {
+  .tier-card-content.ant-collapse {
+    background-color: transparent;
+
+    > .ant-collapse-item {
+      border-color: var(--om-color-border-secondary);
+    }
+
+    .ant-collapse-content {
+      background-color: transparent;
+      border-color: var(--om-color-border-secondary);
+    }
+  }
+
+  .radio-input .ant-radio:hover .ant-radio-inner {
+    background-color: var(--tw-background-color-brand-primary);
+  }
+}

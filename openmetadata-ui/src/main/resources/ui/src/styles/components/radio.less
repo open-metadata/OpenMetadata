@@ -84,6 +84,24 @@
   border-radius: @size-sm;
 }
 
+// Dark: @blue-23 / @grey-20 are static light hexes (selected pill and border).
+.dark-mode .segment-toggle {
+  border-color: var(--om-color-border-secondary);
+
+  .ant-segmented-item-selected {
+    background: var(--tw-background-color-brand-primary);
+
+    &,
+    .ant-segmented-item-label {
+      color: var(--tw-color-text-brand-secondary);
+    }
+
+    svg path {
+      fill: var(--tw-color-text-brand-secondary);
+    }
+  }
+}
+
 // New Radio Group Styling
 .new-radio-group {
   border-radius: @size-xs;

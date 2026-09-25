@@ -841,7 +841,7 @@ export const DataAssetsHeader = ({
           className={classNames(
             'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
             'tw:justify-center tw:overflow-hidden tw:rounded-full',
-            'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+            'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
           )}>
           {serviceLogoUrl ? (
             <img
@@ -850,7 +850,7 @@ export const DataAssetsHeader = ({
               src={serviceLogoUrl}
             />
           ) : (
-            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-blue-700">
+            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-utility-blue-700">
               {entityIcon}
             </span>
           )}

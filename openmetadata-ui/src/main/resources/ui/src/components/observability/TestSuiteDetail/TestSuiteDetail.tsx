@@ -367,7 +367,7 @@ const TestSuiteDetail = () => {
                   className={classNames(
                     'tw:relative tw:size-9 tw:shrink-0',
                     'tw:overflow-hidden tw:rounded-full',
-                    'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                    'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                   )}
                   justify="center">
                   <TestSuiteIcon className="tw:size-5" />
