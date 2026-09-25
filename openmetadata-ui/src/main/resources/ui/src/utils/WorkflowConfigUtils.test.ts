@@ -11,7 +11,20 @@
  *  limitations under the License.
  */
 
-import { buildFieldOptions } from './WorkflowConfigUtils';
+import { buildFieldOptions, getFieldDisplayLabel } from './WorkflowConfigUtils';
+
+describe('WorkflowConfigUtils.getFieldDisplayLabel', () => {
+  it('shows a standard field by its bare name', () => {
+    expect(getFieldDisplayLabel('description')).toBe('description');
+  });
+
+  it('marks a custom property distinctly from a same-named standard field', () => {
+    const custom = getFieldDisplayLabel('extension.HyperLinkTest');
+
+    expect(custom).toContain('HyperLinkTest');
+    expect(custom).not.toBe('HyperLinkTest');
+  });
+});
 
 describe('WorkflowConfigUtils.buildFieldOptions', () => {
   it('prefixes custom-property names with extension. so workflow nodes can resolve them', () => {

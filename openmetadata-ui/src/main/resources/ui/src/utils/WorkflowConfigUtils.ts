@@ -14,6 +14,7 @@
 import { EntityType } from '../enums/entity.enum';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
+import { t } from './i18next/LocalUtil';
 
 const getEntityTypesFromDataAssets = (
   config: NodeConfig
@@ -178,6 +179,13 @@ export const getFieldLabel = (value: string): string =>
   value.startsWith(EXTENSION_FIELD_PREFIX)
     ? value.slice(EXTENSION_FIELD_PREFIX.length)
     : value;
+
+// Display label for a workflow field option: the bare name, with custom properties
+// marked so a custom property and a same-named standard field stay distinguishable.
+export const getFieldDisplayLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? `${getFieldLabel(value)} (${t('label.custom-property')})`
+    : getFieldLabel(value);
 
 /**
  * Builds the de-duplicated field-option list for a workflow field picker.
