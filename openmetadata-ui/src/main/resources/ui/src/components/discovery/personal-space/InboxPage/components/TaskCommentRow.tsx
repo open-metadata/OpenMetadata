@@ -142,7 +142,7 @@ const TaskCommentBody = ({
 
   return (
     <RichTextEditorPreviewerV1
-      className="inbox-feed-message tw:text-sm"
+      className="inbox-feed-message tw:text-sm tw:leading-6 tw:text-primary"
       markdown={getFrontEndFormat(comment.message)}
     />
   );
@@ -208,7 +208,7 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
 
   return (
     <Box
-      className="tw:group tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-4 tw:py-3"
+      className="tw:group tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:px-4 tw:py-3.5 tw:shadow-xs"
       data-testid="task-comment-card"
       direction="col"
       gap={2}>

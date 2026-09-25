@@ -245,7 +245,7 @@ describe('inbox.utils', () => {
   });
 
   describe('formatInboxDateTime', () => {
-    it('formats a timestamp as "dd LLL, yyyy hh:mm a"', () => {
+    it('formats a timestamp month first, as the design reads', () => {
       const ts = DateTime.fromObject({
         year: 2026,
         month: 5,
@@ -254,9 +254,7 @@ describe('inbox.utils', () => {
         minute: 45,
       }).toMillis();
 
-      expect(formatInboxDateTime(ts)).toBe(
-        DateTime.fromMillis(ts).toFormat('dd LLL, yyyy hh:mm a')
-      );
+      expect(formatInboxDateTime(ts)).toBe('May 13, 2026, 08:45 PM');
     });
 
     it('returns an empty string for undefined', () => {

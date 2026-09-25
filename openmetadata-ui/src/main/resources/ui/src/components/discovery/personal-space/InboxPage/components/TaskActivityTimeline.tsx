@@ -56,10 +56,14 @@ const TONE_TEXT_CLASS: Record<TaskTimelineTone, string> = {
   success: 'tw:text-tertiary',
 };
 
+// Each event sits in a ringed circle; an alert's circle is tinted so it reads
+// at a glance.
 const TONE_ICON_CLASS: Record<TaskTimelineTone, string> = {
-  default: 'tw:text-fg-quaternary',
-  error: 'tw:text-error-primary',
-  success: 'tw:text-utility-success-600',
+  default: 'tw:border-secondary tw:bg-primary tw:text-fg-quaternary',
+  error:
+    'tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-600',
+  success:
+    'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-600',
 };
 
 /** One system event: icon, sentence and the moment it happened. */
@@ -71,16 +75,16 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
 
   return (
     <Box align="start" className="tw:justify-between tw:gap-4">
-      <Box align="start" className="tw:min-w-0" gap={2}>
+      <Box align="start" className="tw:min-w-0" gap={3}>
         <span
           className={classNames(
-            'tw:mt-0.5 tw:flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center',
+            'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border',
             TONE_ICON_CLASS[event.tone]
           )}>
           <Icon height={14} width={14} />
         </span>
         <Typography
-          className={TONE_TEXT_CLASS[event.tone]}
+          className={classNames('tw:pt-0.5', TONE_TEXT_CLASS[event.tone])}
           data-testid="task-timeline-event"
           size="text-xs">
           {t(event.textKey, {
@@ -89,7 +93,9 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
         </Typography>
       </Box>
       {event.timestamp && (
-        <Typography className="tw:shrink-0 tw:text-tertiary" size="text-xs">
+        <Typography
+          className="tw:shrink-0 tw:pt-0.5 tw:text-tertiary"
+          size="text-xs">
           {formatInboxDateTime(event.timestamp)}
         </Typography>
       )}
@@ -116,7 +122,7 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
     }
 
     return (
-      <Box align="start" className="tw:min-w-0" gap={2}>
+      <Box align="start" className="tw:min-w-0" gap={3}>
         <ProfilePicture
           displayName={getEntityName(entry.comment.author)}
           name={entry.comment.author?.name ?? ''}
@@ -145,7 +151,10 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
           </Badge>
         </Box>
         <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
-        <Typography className="tw:shrink-0 tw:text-tertiary" size="text-xs">
+        <Typography
+          className="tw:shrink-0 tw:text-tertiary"
+          size="text-xs"
+          weight="medium">
           {t('label.comments-and-events')}
         </Typography>
       </Box>

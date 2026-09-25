@@ -198,16 +198,16 @@ export const isWithinInboxRange = (
   return afterStart && beforeEnd;
 };
 
-const INBOX_DATE_TIME_FORMAT = 'dd LLL, yyyy hh:mm a';
-const INBOX_DATE_FORMAT = 'dd LLL, yyyy';
+const INBOX_DATE_TIME_FORMAT = 'LLL dd, yyyy, hh:mm a';
+const INBOX_DATE_FORMAT = 'LLL dd, yyyy';
 
-// Task-card timestamp in the figma format, e.g. "13 May, 2026 08:45 PM".
+// Task timeline timestamp in the design format, e.g. "May 13, 2026, 08:45 PM".
 export const formatInboxDateTime = (timestamp?: number): string =>
   timestamp
     ? DateTime.fromMillis(timestamp).toFormat(INBOX_DATE_TIME_FORMAT)
     : '';
 
-// Date-only variant, e.g. "13 May, 2026".
+// Date-only variant, e.g. "May 13, 2026".
 export const formatInboxDate = (timestamp?: number): string =>
   timestamp ? DateTime.fromMillis(timestamp).toFormat(INBOX_DATE_FORMAT) : '';
 
