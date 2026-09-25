@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Predicate;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -19,6 +20,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -57,6 +59,7 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 public class LineagePipelineAnnotatorIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final int RESHAPE_ATTEMPTS = 5;
   private OpenMetadataClient client;
   private TestNamespace namespace;
 
@@ -92,6 +95,7 @@ public class LineagePipelineAnnotatorIT {
     safeDeletePipeline(pipeline);
     safeDeleteTopic(topic);
     safeDeleteTable(table);
+    NamespaceCleanup.deleteRoots(namespace.drainTrackedRoots());
   }
 
   @Test
@@ -240,7 +244,10 @@ public class LineagePipelineAnnotatorIT {
         new LineageDetails()
             .withSource(LineageDetails.Source.PIPELINE_LINEAGE)
             .withPipeline(pipe.getEntityReference());
+    addLineage(from, to, details);
+  }
 
+  private void addLineage(Table from, Topic to, LineageDetails details) {
     AddLineage addLineage =
         new AddLineage()
             .withEdge(
@@ -348,5 +355,70 @@ public class LineagePipelineAnnotatorIT {
         // Ignore cleanup failures
       }
     }
+  }
+
+  /**
+   * #21460: attaching a pipeline to an existing edge moves it off the direct service edge and onto
+   * the pipeline hops. Both updates land on the target service's search doc, and search removals
+   * are asynchronous, so a hop written after the release can lose a version conflict and never
+   * reach the service view. The outcome is timing-dependent, so the reshape is repeated on fresh
+   * services to give a lost hop room to surface.
+   */
+  @Test
+  void serviceLineage_ReshapedEdgeShowsPipelineHopInSearch() {
+    for (int attempt = 1; attempt <= RESHAPE_ATTEMPTS; attempt++) {
+      assertReshapeReachesSearch(attempt);
+    }
+  }
+
+  private void assertReshapeReachesSearch(int attempt) {
+    DatabaseService reshapeDbService = DatabaseServiceTestFactory.createPostgres(namespace);
+    MessagingService reshapeMessagingService = MessagingServiceTestFactory.createKafka(namespace);
+    PipelineService reshapePipelineService = PipelineServiceTestFactory.createAirflow(namespace);
+    DatabaseSchema reshapeSchema =
+        DatabaseSchemaTestFactory.createSimple(namespace, reshapeDbService);
+    Table source = createTable(reshapeSchema.getFullyQualifiedName());
+    Topic target = createTopic(reshapeMessagingService.getFullyQualifiedName());
+    Pipeline reshapePipeline = createPipeline(reshapePipelineService.getFullyQualifiedName());
+    String dbServiceFqn = reshapeDbService.getFullyQualifiedName();
+    String pipelineServiceFqn = reshapePipelineService.getFullyQualifiedName();
+
+    addLineage(source, target, new LineageDetails());
+    awaitServiceView(
+        reshapeMessagingService,
+        nodes -> nodes.has(dbServiceFqn),
+        "direct service edge before the reshape, attempt " + attempt);
+
+    addLineageWithPipelineAnnotator(source, target, reshapePipeline);
+    awaitServiceView(
+        reshapeMessagingService,
+        nodes -> nodes.has(pipelineServiceFqn),
+        "pipeline hop written by the reshape, attempt " + attempt);
+    awaitServiceView(
+        reshapeMessagingService,
+        nodes -> !nodes.has(dbServiceFqn),
+        "direct service edge released by the reshape, attempt " + attempt);
+  }
+
+  private void awaitServiceView(
+      MessagingService targetService, Predicate<JsonNode> expectedNodes, String expectation) {
+    Awaitility.await(expectation)
+        .atMost(Duration.ofSeconds(20))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () ->
+                expectedNodes.test(
+                    MAPPER
+                        .readTree(
+                            client
+                                .lineage()
+                                .searchLineage(
+                                    targetService.getFullyQualifiedName(),
+                                    "messagingService",
+                                    1,
+                                    0,
+                                    false))
+                        .path("nodes")));
   }
 }
