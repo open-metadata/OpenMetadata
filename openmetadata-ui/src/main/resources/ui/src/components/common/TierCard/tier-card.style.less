@@ -18,27 +18,6 @@
     box-shadow: none;
     .ant-popover-inner-content {
       padding: 0;
-      .tier-card {
-        width: 655px;
-        .ant-card-body {
-          .ant-collapse-item {
-            .ant-collapse-header {
-              .ant-collapse-arrow {
-                position: absolute;
-                top: 20px;
-              }
-            }
-            .ant-collapse-content {
-              &.ant-collapse-content-active {
-                border: none;
-              }
-              .ant-collapse-content-box {
-                padding: 0 var(--om-space-12);
-              }
-            }
-          }
-        }
-      }
     }
 
     .tier-card-description {
@@ -53,56 +32,11 @@
         }
       }
     }
-
-    .radio-input .ant-radio {
-      .ant-radio-inner {
-        width: 14px;
-        height: 14px;
-        border: 1.5px solid @primary-color;
-        box-shadow: none !important;
-      }
-
-      &:hover .ant-radio-inner {
-        background-color: @primary-1;
-      }
-
-      &.ant-radio-checked .ant-radio-inner::after {
-        box-shadow: none !important;
-        transform: scale(0.35);
-      }
-    }
   }
-}
-
-.tier-card-content {
-  max-height: 460px;
-  overflow-y: auto;
 }
 
 /* Outline on focus */
 .ant-radio-wrapper:focus-within .ant-radio-inner {
   outline: 2px solid @focus-outline-color;
   outline-offset: 2px;
-}
-
-// Dark: the tier list is an antd Collapse with `bg-white` (the page colour in
-// dark) and antd's light item borders; let it sit on the popover surface with
-// theme-aware dividers. Light keeps the rules above.
-.dark-mode .tier-card-popover {
-  .tier-card-content.ant-collapse {
-    background-color: transparent;
-
-    > .ant-collapse-item {
-      border-color: var(--om-color-border-secondary);
-    }
-
-    .ant-collapse-content {
-      background-color: transparent;
-      border-color: var(--om-color-border-secondary);
-    }
-  }
-
-  .radio-input .ant-radio:hover .ant-radio-inner {
-    background-color: var(--tw-background-color-brand-primary);
-  }
 }

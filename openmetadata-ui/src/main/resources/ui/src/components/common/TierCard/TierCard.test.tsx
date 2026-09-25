@@ -99,6 +99,8 @@ describe('Test TierCard Component', () => {
       fireEvent.click(radioButton);
     });
 
+    expect(screen.getByRole('radio', { name: /Tier1/ })).toBeChecked();
+
     const updateTierCard = await screen.findByTestId('update-tier-card');
 
     expect(updateTierCard).toBeInTheDocument();
@@ -107,7 +109,7 @@ describe('Test TierCard Component', () => {
       fireEvent.click(updateTierCard);
     });
 
-    expect(mockOnUpdate).toHaveBeenCalled();
+    expect(mockOnUpdate).toHaveBeenCalledWith(mockTierData[0]);
   });
 
   it('should call the mockOnUpdate when click on Clear button', async () => {
@@ -123,7 +125,7 @@ describe('Test TierCard Component', () => {
       fireEvent.click(clearTier);
     });
 
-    expect(mockOnUpdate).toHaveBeenCalled();
+    expect(mockOnUpdate).toHaveBeenCalledWith(undefined);
   });
 
   it('should call getTags for popoverProps.open = true', async () => {
