@@ -340,7 +340,7 @@ export const tableConstraintRendererBasedOnType = (
 
   return (
     <div
-      className="d-flex constraint-columns"
+      className="d-flex constraint-columns tw:bg-(--om-legacy-color-f8f8f8) tw:dark:bg-transparent"
       data-testid={`${constraintType}-container`}
       key={constraintType}>
       <Space

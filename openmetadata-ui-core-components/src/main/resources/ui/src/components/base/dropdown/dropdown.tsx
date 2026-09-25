@@ -47,7 +47,11 @@ const DropdownItem = ({
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
-    return <AriaMenuItem id={label} textValue={label} {...props} />;
+    return (
+      <AriaMenuItem id={label} textValue={label} {...props}>
+        {children}
+      </AriaMenuItem>
+    );
   }
 
   return (

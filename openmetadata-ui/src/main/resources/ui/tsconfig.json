@@ -56,7 +56,16 @@
     "skipLibCheck": true,
     "noImplicitAny": true,
     "paths": {
-      "react-hook-form": ["./node_modules/react-hook-form"]
+      "react-hook-form": ["./node_modules/react-hook-form"],
+      "@openmetadata/ui-core-components": [
+        "../../../../../openmetadata-ui-core-components/src/main/resources/ui/dist/types/src/index.d.ts"
+      ],
+      "@openmetadata/ui-core-components/icons": [
+        "../../../../../openmetadata-ui-core-components/src/main/resources/ui/dist/types/src/icons/index.d.ts"
+      ],
+      "@openmetadata/ui-core-components/icon": [
+        "../../../../../openmetadata-ui-core-components/src/main/resources/ui/dist/types/src/icon/index.d.ts"
+      ]
     }
   },
   "include": ["src"]
