@@ -10,22 +10,21 @@
 #  limitations under the License.
 
 """
-GraphQL queries used to extract Tableau Prep flow lineage
-via the Tableau Metadata API.
+GraphQL queries used against the Tableau Metadata API for the lineage of Prep
+flows and extract refreshes.
 ref: https://help.tableau.com/current/api/metadata_api/en-us/reference/flow.doc.html
 """
 
 # nextDownstreamFlows rather than downstreamFlows: the latter is transitive and
-# would add an A -> C edge next to A -> B -> C.
+# would add an A -> C edge next to A -> B -> C. Custom SQL is fetched separately
+# (TABLEAU_TABLE_QUERIES_QUERY) and only for unnamed tables: referencedByQueries
+# lists every query on the site that reads a table, which on a popular table
+# would spend most of the query's node budget.
 TABLEAU_FLOW_LINEAGE_QUERY = """
 {{
   flows(filter: {{luid: "{flow_luid}"}}) {{
-    id
-    luid
-    name
     upstreamTables {{
       id
-      luid
       name
       fullName
       schema
@@ -33,15 +32,9 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
         name
         connectionType
       }}
-      referencedByQueries {{
-        id
-        name
-        query
-      }}
     }}
     upstreamDatasources {{
       id
-      luid
       name
       projectName
     }}
@@ -51,7 +44,6 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
     }}
     downstreamTables {{
       id
-      luid
       name
       fullName
       schema
@@ -62,14 +54,23 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
     }}
     downstreamDatasources {{
       id
-      luid
       name
       projectName
     }}
     nextDownstreamFlows {{
-      id
       luid
       name
+    }}
+  }}
+}}
+"""
+
+TABLEAU_TABLE_QUERIES_QUERY = """
+{{
+  databaseTables(filter: {{idWithin: [{table_ids}]}}) {{
+    id
+    referencedByQueries {{
+      query
     }}
   }}
 }}

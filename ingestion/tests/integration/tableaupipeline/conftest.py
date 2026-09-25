@@ -8,104 +8,305 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Tableau Pipeline integration test fixtures.
+Fixtures for the Tableau Pipeline integration test.
 
-Builds a full TableaupipelineSource backed by an in-memory fake TableauPipelineClient.
-The fake client returns the same shapes that the real TSC-backed client produces
-— TableauFlowItem / TableauRunItem / TableauFlowLineage — so the source
-sees production-accurate data without any Tableau Server, HTTP mock, or TSC import.
-
-Test data lives in `_fixtures.py` (a regular module) so test files can import
-it directly. pytest does not put `conftest.py` on the import path, so test files
-cannot import constants from conftest in CI even though it works locally.
+Tableau has no container image, so the Tableau site is faked at the HTTP
+transport: requests to TABLEAU_HOST are answered from the documented REST and
+Metadata API shapes, and everything else — the OpenMetadata server — goes over
+the network as usual. tableauserverclient, the connector and the workflow all
+run unmodified against a live OpenMetadata server.
 """
 
-from collections.abc import Iterable
-from unittest.mock import MagicMock, patch
+import json
+import re
+from collections.abc import Iterator
+from urllib.parse import parse_qs, urlparse
 
 import pytest
+import requests
+from requests.adapters import HTTPAdapter
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
+from _openmetadata_testutils.ometa import OM_JWT
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
 )
-from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
-    TableaupipelineSource,
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
 )
-from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-    TableauFlowLineage,
-    TableauPipelineDetails,
-    TableauRunItem,
+from metadata.generated.schema.entity.classification.classification import Classification
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
 )
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.workflow.metadata import MetadataWorkflow
 
-from ._fixtures import (  # noqa: TID252
-    EXTRACT_DATASOURCE_IDS,
-    EXTRACT_EXEC_WORKBOOK,
-    EXTRACT_RUNS_BY_TARGET,
-    EXTRACT_SALES,
-    FLOW_MARKETING,
-    FLOW_RUNS_BY_FLOW,
-    FLOW_SALES,
-    LINEAGE_BY_FLOW,
-    USER_EMAIL_BY_ID,
-    WORKFLOW_CONFIG,
-)
+TABLEAU_HOST = "tableau-it.example.com"
+PIPELINE_SERVICE = "tableau_pipeline_it"
+DB_SERVICE = "tableau_pipeline_it_warehouse"
+NS = 'xmlns="http://tableau.com/api"'
 
 
-class FakeTableauPipelineClient:
-    """Fake client exposing the exact surface TableaupipelineSource calls."""
+def _flow(flow_id: str, name: str, tags: str = "") -> str:
+    return (
+        f'<flow id="{flow_id}" name="{name}" description="{name} flow" '
+        f'webpageUrl="https://{TABLEAU_HOST}/#/site/it/flows/{flow_id}">'
+        f'<project id="p1" name="Finance"/><owner id="owner-1"/><tags>{tags}</tags></flow>'
+    )
+
+
+def _flow_run(run_id: str, flow_id: str, status: str, started: str, completed: str) -> str:
+    return (
+        f'<flowRuns id="{run_id}" flowId="{flow_id}" status="{status}" startedAt="{started}" '
+        f'completedAt="{completed}" progress="100" backgroundJobId="bg-{run_id}"/>'
+    )
+
+
+def _background_job(job_id: str, status: str, started: str, ended: str) -> str:
+    return (
+        f'<backgroundJob id="{job_id}" status="{status}" createdAt="{started}" startedAt="{started}" '
+        f'endedAt="{ended}" priority="50" jobType="refresh_extracts"/>'
+    )
+
+
+def _job(job_id: str, notes: str, target: str = "") -> str:
+    return (
+        f'<tsResponse {NS}><job id="{job_id}" mode="Asynchronous" type="RefreshExtract" finishCode="0">'
+        f"<extractRefreshJob><notes>{notes}</notes>{target}</extractRefreshJob></job></tsResponse>"
+    )
+
+
+def _table(table_id: str, name: str) -> dict:
+    return {
+        "id": table_id,
+        "name": name,
+        "fullName": f"[public].[{name}]",
+        "schema": "public",
+        "database": {"name": "warehouse", "connectionType": "mysql"},
+    }
+
+
+# A Prep flow `Sales` reads warehouse.public.orders and writes
+# warehouse.public.sales_clean, which the flow `Ops` reads next. `Sales` is
+# listed first, so its edge to `Ops` can only be drawn after `Ops` is ingested.
+FLOW_LINEAGE = {
+    "flow-sales": {
+        "upstreamTables": [_table("t-orders", "orders")],
+        "upstreamDatasources": [],
+        "outputSteps": [{"id": "out-clean", "name": "Clean sales"}],
+        "downstreamTables": [_table("t-sales-clean", "sales_clean")],
+        "downstreamDatasources": [],
+        "nextDownstreamFlows": [{"luid": "flow-ops", "name": "Ops"}],
+    },
+    "flow-ops": {
+        "upstreamTables": [_table("t-sales-clean", "sales_clean")],
+        "upstreamDatasources": [],
+        "outputSteps": [],
+        "downstreamTables": [],
+        "downstreamDatasources": [],
+        "nextDownstreamFlows": [],
+    },
+}
+
+
+class FakeTableauSite:
+    """A Tableau site answering the REST and Metadata API calls the connector makes."""
 
     def __init__(self):
-        self.sign_out_called = False
-        self.cleanup_called = False
-        self.lineage_requests: list[str] = []
+        self.flows = [_flow("flow-sales", "Sales", tags='<tag label="finance"/>'), _flow("flow-ops", "Ops")]
+        self.flow_runs = {
+            "flow-sales": [
+                _flow_run("run-2", "flow-sales", "Failed", "2026-09-02T06:00:00Z", "2026-09-02T06:01:30Z"),
+                _flow_run("run-1", "flow-sales", "Success", "2026-09-01T06:00:00Z", "2026-09-01T06:04:10Z"),
+            ],
+            "flow-ops": [],
+        }
+        self.jobs = [
+            _background_job("job-2", "Failed", "2026-09-02T07:00:00Z", "2026-09-02T07:00:40Z"),
+            _background_job("job-1", "Success", "2026-09-01T07:00:00Z", "2026-09-01T07:03:00Z"),
+        ]
+        target = '<datasource id="ds-sales" name="Sales Extract"/>'
+        self.job_details = {
+            "job-2": _job("job-2", "Unable to connect to the server warehouse.example.com", target),
+            "job-1": _job("job-1", "", target),
+            "bg-run-2": _job("bg-run-2", "Output step Clean sales failed: table is locked"),
+        }
 
-    def get_pipelines(self) -> Iterable[TableauPipelineDetails]:
-        yield FLOW_SALES
-        yield FLOW_MARKETING
-        yield EXTRACT_SALES
-        yield EXTRACT_EXEC_WORKBOOK
+    def answer(self, request: requests.PreparedRequest) -> requests.Response:
+        path = urlparse(request.url).path
+        query = parse_qs(urlparse(request.url).query)
+        status, body, content_type = 200, "", "text/xml"
+        if path.endswith("/serverInfo"):
+            body = (
+                f'<tsResponse {NS}><serverInfo><productVersion build="1">2024.2.0</productVersion>'
+                "<restApiVersion>3.23</restApiVersion></serverInfo></tsResponse>"
+            )
+        elif path.endswith("/auth/signin"):
+            body = (
+                f'<tsResponse {NS}><credentials token="t"><site id="site-it" contentUrl="it"/>'
+                '<user id="api-user"/></credentials></tsResponse>'
+            )
+        elif path.endswith("/auth/signout"):
+            status = 204
+        elif path.endswith("/flows/runs"):
+            flow_id = query["filter"][0].split(":")[-1]
+            body = self._page("flowRuns", self.flow_runs.get(flow_id, []))
+        elif path.endswith("/flows"):
+            body = self._page("flows", self.flows)
+        elif path.endswith("/users/owner-1"):
+            body = f'<tsResponse {NS}><user id="owner-1" name="admin" email="admin@open-metadata.org"/></tsResponse>'
+        elif path.endswith("/tasks/extractRefreshes"):
+            body = self._page(
+                "tasks",
+                [
+                    '<task><extractRefresh id="task-1" priority="50" consecutiveFailedCount="1" '
+                    'type="RefreshExtractTask"><schedule frequency="Daily" nextRunAt="2026-09-03T07:00:00Z">'
+                    '<frequencyDetails start="07:00:00"/></schedule><datasource id="ds-sales"/>'
+                    "</extractRefresh></task>"
+                ],
+            )
+        elif path.endswith("/datasources/ds-sales"):
+            body = (
+                f'<tsResponse {NS}><datasource id="ds-sales" name="Sales Extract" '
+                f'webpageUrl="https://{TABLEAU_HOST}/#/site/it/datasources/ds-sales">'
+                '<project id="p1" name="Finance"/><owner id="owner-1"/></datasource></tsResponse>'
+            )
+        elif path.endswith("/jobs"):
+            body = self._page("backgroundJobs", self.jobs)
+        elif "/jobs/" in path:
+            body = self.job_details[path.rsplit("/", 1)[-1]]
+        elif path.endswith("/api/metadata/graphql"):
+            body, content_type = json.dumps(self._graphql(json.loads(request.body)["query"])), "application/json"
+        else:
+            raise AssertionError(f"Unexpected Tableau call {request.method} {request.url}")
 
-    def get_extract_refresh_runs(self, target_id: str) -> list[TableauRunItem]:
-        return EXTRACT_RUNS_BY_TARGET.get(target_id, [])
+        response = requests.Response()
+        response.status_code = status
+        response._content = body.encode()
+        response.headers["Content-Type"] = content_type
+        response.url = request.url
+        response.request = request
+        return response
 
-    def get_extract_datasource_ids(self, target_type: str, target_luid: str) -> list[str]:
-        return EXTRACT_DATASOURCE_IDS.get(target_luid, [])
-
-    def get_flow_runs(self, flow_id: str) -> list[TableauRunItem]:
-        return FLOW_RUNS_BY_FLOW.get(flow_id, [])
-
-    def get_flow_lineage(self, flow_id: str) -> TableauFlowLineage | None:
-        self.lineage_requests.append(flow_id)
-        return LINEAGE_BY_FLOW.get(flow_id)
-
-    def get_user_email(self, user_id: str) -> str | None:
-        return USER_EMAIL_BY_ID.get(user_id)
-
-    def sign_out(self) -> None:
-        self.sign_out_called = True
-        self.cleanup_called = True
-
-
-@pytest.fixture
-def tableau_source():
-    fake_client = FakeTableauPipelineClient()
-    with (
-        patch(
-            "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection",
-            return_value=False,
-        ),
-        patch(
-            "metadata.ingestion.source.pipeline.tableaupipeline.connection.get_connection",
-            return_value=fake_client,
-        ),
-    ):
-        workflow_cfg = OpenMetadataWorkflowConfig.model_validate(WORKFLOW_CONFIG)
-        source = TableaupipelineSource.create(
-            WORKFLOW_CONFIG["source"],
-            workflow_cfg.workflowConfig.openMetadataServerConfig,
+    @staticmethod
+    def _page(element: str, items: list[str]) -> str:
+        return (
+            f'<tsResponse {NS}><pagination pageNumber="1" pageSize="100" totalAvailable="{len(items)}"/>'
+            f"<{element}>{''.join(items)}</{element}></tsResponse>"
         )
-        source.context.get().__dict__["pipeline_service"] = "tableau_prep_integration"
-        source.metadata = MagicMock()
-        yield source, fake_client
+
+    @staticmethod
+    def _graphql(query: str) -> dict:
+        luid = re.search(r'luid: "([^"]+)"', query)
+        if "flowsConnection" in query:
+            return {"data": {"flowsConnection": {"nodes": [{"id": "gql-flow-sales"}]}}}
+        if "publishedDatasources" in query:
+            return {"data": {"publishedDatasources": [{"id": "gql-ds-sales"}]}}
+        if "flows(filter" in query and luid:
+            lineage = FLOW_LINEAGE.get(luid.group(1))
+            return {"data": {"flows": [lineage] if lineage else []}}
+        return {"data": {}}
+
+
+@pytest.fixture(scope="module")
+def tableau_site() -> Iterator[FakeTableauSite]:
+    site = FakeTableauSite()
+    original_send = HTTPAdapter.send
+
+    def send(adapter: HTTPAdapter, request: requests.PreparedRequest, **kwargs) -> requests.Response:
+        if urlparse(request.url).hostname == TABLEAU_HOST:
+            return site.answer(request)
+        return original_send(adapter, request, **kwargs)
+
+    with pytest.MonkeyPatch.context() as patcher:
+        patcher.setattr(HTTPAdapter, "send", send)
+        yield site
+
+
+@pytest.fixture(scope="module")
+def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
+    service = metadata.create_or_update(
+        CreateDatabaseServiceRequest(
+            name=DB_SERVICE,
+            serviceType=DatabaseServiceType.Mysql,
+            connection=DatabaseConnection(
+                config=MysqlConnection(username="u", authType=BasicAuth(password="p"), hostPort="localhost:3306")
+            ),
+        )
+    )
+    database = metadata.create_or_update(CreateDatabaseRequest(name="warehouse", service=service.fullyQualifiedName))
+    schema = metadata.create_or_update(CreateDatabaseSchemaRequest(name="public", database=database.fullyQualifiedName))
+    tables = {
+        name: metadata.create_or_update(
+            CreateTableRequest(
+                name=name,
+                databaseSchema=schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.INT)],
+            )
+        )
+        for name in ("orders", "sales_clean")
+    }
+    yield tables
+    metadata.delete(entity=DatabaseService, entity_id=service.id, recursive=True, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def workflow_config() -> dict:
+    return {
+        "source": {
+            "type": "tableaupipeline",
+            "serviceName": PIPELINE_SERVICE,
+            "serviceConnection": {
+                "config": {
+                    "type": "TableauPipeline",
+                    "hostPort": f"https://{TABLEAU_HOST}",
+                    "siteName": "it",
+                    "authType": {"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+                }
+            },
+            "sourceConfig": {
+                "config": {
+                    "type": "PipelineMetadata",
+                    "lineageInformation": {"dbServiceNames": [DB_SERVICE]},
+                }
+            },
+        },
+        "sink": {"type": "metadata-rest", "config": {}},
+        "workflowConfig": {
+            "openMetadataServerConfig": {
+                "hostPort": "http://localhost:8585/api",
+                "authProvider": "openmetadata",
+                "securityConfig": {"jwtToken": OM_JWT},
+            }
+        },
+    }
+
+
+def _delete_ingested(metadata) -> None:
+    service = metadata.get_by_name(entity=PipelineService, fqn=PIPELINE_SERVICE)
+    if service:
+        metadata.delete(entity=PipelineService, entity_id=service.id, recursive=True, hard_delete=True)
+    classification = metadata.get_by_name(entity=Classification, fqn="TableauTags")
+    if classification:
+        metadata.delete(entity=Classification, entity_id=classification.id, recursive=True, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def ingested(metadata, run_workflow, tableau_site, warehouse_tables, workflow_config) -> Iterator[None]:
+    _delete_ingested(metadata)
+    try:
+        run_workflow(MetadataWorkflow, workflow_config)
+        yield
+    finally:
+        _delete_ingested(metadata)

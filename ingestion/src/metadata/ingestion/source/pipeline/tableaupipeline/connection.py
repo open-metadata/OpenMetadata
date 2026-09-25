@@ -18,7 +18,13 @@ from __future__ import annotations
 import traceback
 from typing import TYPE_CHECKING
 
-from tableauserverclient.server.endpoint.exceptions import GraphQLError
+from tableauserverclient.server.endpoint.exceptions import (
+    FailedSignInError,
+    GraphQLError,
+    InternalServerError,
+    NonXMLResponseError,
+)
+from tableauserverclient.server.exceptions import EndpointUnavailableError
 
 from metadata.core.connections.test_connection import (
     Diagnosis,
@@ -58,6 +64,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 PREP_CONDUCTOR_DOC = "https://help.tableau.com/current/prep/en-us/prep_conductor_overview.htm"
+API_VERSIONS_DOC = "https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm"
 JOBS_DOC = "https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_ref_jobs_tasks_and_schedules.htm"
 
 NO_FLOWS_CAVEAT = Diagnosis(
@@ -73,9 +80,32 @@ NO_RUNS_CAVEAT = Diagnosis(
     doc_url=PREP_CONDUCTOR_DOC,
 )
 
-# Shared Tableau rules cover auth, SSL, site and network failures; the pipeline
-# connector only adds the Metadata API failure its lineage step can hit.
+# The shared Tableau rules cover HTTP statuses, SSL, site and network failures.
+# These come first: TSC raises its own types for a failed sign-in, a 5xx, an
+# endpoint the API version lacks and a non-XML answer, and none of them carries
+# the status the shared rules read.
 TABLEAU_PIPELINE_ERRORS = ErrorPack(
+    when(Matchers.exception(FailedSignInError)).diagnose(
+        "Authentication failed",
+        fix="Tableau rejected the sign-in. Check the Personal Access Token name and secret (or the username "
+        "and password), that the token has not expired, and that the Site Name matches the site they belong to.",
+    ),
+    when(Matchers.exception(EndpointUnavailableError)).diagnose(
+        "REST API version too old",
+        fix="The REST API version in use does not offer flows (REST API 3.3+) or flow runs (3.10+). If API "
+        "Version is set, raise it; if not, the server version could not be read, so set it explicitly.",
+        doc=API_VERSIONS_DOC,
+    ),
+    when(Matchers.exception(InternalServerError)).diagnose(
+        "Tableau server error",
+        fix="Tableau answered with a server error (5xx). Retry later, and check the Tableau Server logs if it "
+        "persists.",
+    ),
+    when(Matchers.exception(NonXMLResponseError)).diagnose(
+        "Host is not the Tableau REST API",
+        fix="The host answered with something that is not a Tableau REST API response. Check Host and Port "
+        "points at the Tableau server or Tableau Cloud pod and that no proxy rewrites the response.",
+    ),
     when(Matchers.exception(TableauSiteAdminRequiredError)).diagnose(
         "Extract refresh history needs a site administrator",
         fix="Tableau only lists background jobs to server and site administrators, so extract refresh "
@@ -84,9 +114,10 @@ TABLEAU_PIPELINE_ERRORS = ErrorPack(
         doc=JOBS_DOC,
     ),
     when(Matchers.exception(GraphQLError)).diagnose(
-        "Metadata API query failed",
-        fix="The Tableau Metadata API rejected the flow query, so flows and runs will be ingested without "
-        "lineage. Enable the Metadata API on Tableau Server; it is always on for Tableau Cloud.",
+        "Metadata API rejected the query",
+        fix="The Tableau Metadata API answered but rejected the flow query, so pipelines and runs will be "
+        "ingested without lineage. Check the Metadata API is enabled on Tableau Server (it is always on for "
+        "Tableau Cloud) and that the user can see flows through it.",
         doc=METADATA_API_DOC,
     ),
 ).including(TABLEAU_ERRORS)
@@ -94,7 +125,7 @@ TABLEAU_PIPELINE_ERRORS = ErrorPack(
 
 def get_connection(connection: TableauPipelineConnectionConfig) -> TableauPipelineClient:
     """
-    Create connection to Tableau for pipeline extraction.
+    Create connection to Tableau for Prep flow and extract refresh extraction.
     """
     tableau_server_auth = build_server_config(connection)
     verify_ssl, ssl_manager = set_verify_ssl(connection)
@@ -107,13 +138,16 @@ def get_connection(connection: TableauPipelineConnectionConfig) -> TableauPipeli
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
+        # No client owns the certificate temp files yet, so nothing else removes them.
+        if ssl_manager:
+            ssl_manager.cleanup_temp_files()
         raise SourceConnectionException(
             f"Unknown error connecting to Tableau at {connection.hostPort}: {exc}."
         ) from exc
 
 
 class TableauPipelineChecks:
-    """Test-connection checks for Tableau Prep flows.
+    """Test-connection checks for Tableau Prep flows and extract refreshes.
 
     ``GetPipelines`` is the gate: borrowing the client signs in, so bad
     credentials or an unreachable server fail there and the rest are skipped.

@@ -66594,6 +66594,14 @@
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
+                    "startColumn": 44,
+                    "endColumn": 60,
+                    "lineCount": 1
+                }
+            },
+            {
+                "code": "reportAttributeAccessIssue",
+                "range": {
                     "startColumn": 68,
                     "endColumn": 84,
                     "lineCount": 1
@@ -66612,7 +66620,15 @@
                 "range": {
                     "startColumn": 18,
                     "endColumn": 13,
-                    "lineCount": 9
+                    "lineCount": 7
+                }
+            },
+            {
+                "code": "reportIncompatibleMethodOverride",
+                "range": {
+                    "startColumn": 8,
+                    "endColumn": 43,
+                    "lineCount": 1
                 }
             },
             {
@@ -66640,42 +66656,10 @@
                 }
             },
             {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 44,
-                    "endColumn": 60,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 45,
-                    "endColumn": 53,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportGeneralTypeIssues",
                 "range": {
                     "startColumn": 22,
                     "endColumn": 48,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 48,
-                    "endColumn": 64,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 49,
-                    "endColumn": 57,
                     "lineCount": 1
                 }
             },
@@ -66685,14 +66669,6 @@
                     "startColumn": 22,
                     "endColumn": 17,
                     "lineCount": 6
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 37,
-                    "endColumn": 49,
-                    "lineCount": 1
                 }
             },
             {

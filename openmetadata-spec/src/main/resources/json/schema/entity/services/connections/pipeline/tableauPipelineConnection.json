@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/tableauPipelineConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TableauPipelineConnection",
   "description": "Tableau Pipeline Connection Config",
   "type": "object",
@@ -68,7 +68,9 @@
       "title": "Number of Status",
       "description": "Number of recent runs to fetch per flow or extract refresh.",
       "type": "integer",
-      "default": 10
+      "default": 10,
+      "minimum": 1,
+      "maximum": 100
     },
     "includeExtractRefreshes": {
       "title": "Include Extract Refreshes",
@@ -79,9 +81,6 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
-    "supportsLineageExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     }
   },
   "additionalProperties": false,

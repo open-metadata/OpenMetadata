@@ -15,10 +15,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from tableauserverclient.server.endpoint.exceptions import (
+    FailedSignInError,
     GraphQLError,
+    InternalServerError,
+    NonXMLResponseError,
     ServerResponseError,
 )
+from tableauserverclient.server.exceptions import EndpointUnavailableError
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
@@ -29,6 +34,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.dashboard.tableau.connection import set_verify_ssl
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauSiteAdminRequiredError,
 )
@@ -166,13 +172,51 @@ def test_get_lineage_reports_what_it_ran_when_it_fails(checks, client):
     assert failure.value.evidence.command == "query flows through the Tableau Metadata API"
 
 
-def test_metadata_api_errors_are_diagnosed():
-    diagnosis = TABLEAU_PIPELINE_ERRORS.classify(GraphQLError([{"message": "disabled"}]))
+def _server_response(status: int) -> requests.Response:
+    response = requests.Response()
+    response.status_code = status
+    response._content = b"<html>Service Unavailable</html>"
+    return response
 
-    assert diagnosis.title == "Metadata API query failed"
+
+@pytest.mark.parametrize(
+    ("error", "title"),
+    [
+        # What TSC raises for a rejected sign-in: not a ServerResponseError, so
+        # the shared status rules never see it.
+        (FailedSignInError("401001", "Signin Error", "Error signing in to Tableau Server"), "Authentication failed"),
+        (EndpointUnavailableError("Flows is not available in API version 2.4"), "REST API version too old"),
+        (InternalServerError(_server_response(503)), "Tableau server error"),
+        (NonXMLResponseError(b"<html>login page</html>"), "Host is not the Tableau REST API"),
+        (GraphQLError([{"message": "Validation error"}]), "Metadata API rejected the query"),
+        (ServerResponseError("403004", "Forbidden", "not allowed"), "Insufficient permissions"),
+    ],
+)
+def test_tableau_errors_are_diagnosed(error, title):
+    assert TABLEAU_PIPELINE_ERRORS.classify(error).title == title
 
 
-def test_shared_tableau_auth_diagnosis_still_applies():
-    diagnosis = TABLEAU_PIPELINE_ERRORS.classify(ServerResponseError("401002", "Unauthorized", "bad token"))
+def test_certificate_temp_files_are_removed_when_sign_in_fails():
+    """No client owns the SSL temp files yet, so nothing else would remove the
+    written private key."""
+    config = _config(
+        verifySSL="validate",
+        sslConfig={"caCertificate": "ca", "sslCertificate": "cert", "sslKey": "key"},
+    )
+    managers = []
 
-    assert diagnosis.title == "Authentication failed"
+    def keep_manager(connection):
+        verify, manager = set_verify_ssl(connection)
+        managers.append(manager)
+        return verify, manager
+
+    with (
+        patch(f"{CONNECTION_MODULE}.set_verify_ssl", side_effect=keep_manager),
+        patch(f"{CONNECTION_MODULE}.TableauPipelineClient", side_effect=RuntimeError("sign-in failed")),
+        pytest.raises(SourceConnectionException),
+    ):
+        get_connection(config)
+
+    written = [managers[0].ca_file_path, managers[0].cert_file_path, managers[0].key_file_path]
+    assert all(written)
+    assert not any(Path(path).exists() for path in written)

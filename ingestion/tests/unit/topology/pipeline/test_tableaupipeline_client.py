@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 import requests
+from pydantic import SecretStr
 from requests.adapters import HTTPAdapter
 from tableauserverclient import PersonalAccessTokenAuth
 from tableauserverclient.server.endpoint.exceptions import (
@@ -34,9 +35,11 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 )
 from metadata.ingestion.source.pipeline.tableaupipeline import client as client_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauMetadataApiError,
     TableauPipelineClient,
     TableauSiteAdminRequiredError,
 )
+from metadata.utils.ssl_manager import SSLManager
 
 HOST = "https://tableau.example.com"
 SITE_ID = "site-luid"
@@ -125,12 +128,15 @@ class FakeTableau:
 
     def __init__(self):
         self.requests: list[requests.PreparedRequest] = []
+        self.transport_kwargs: list[dict] = []
+        self.server_info_status = 200
         self.flow_pages = [
             _flows_page(1, 2, [_flow_xml("flow-1", "Sales")]),
             _flows_page(2, 2, [_flow_xml("flow-2", "Ops")]),
         ]
         self.runs_response: tuple[int, str] = (200, _runs())
-        self.unsorted_runs_response: tuple[int, str] | None = None
+        # Runs a server that rejects the sort answers with, paged by pageSize.
+        self.unsorted_runs: list[str] | None = None
         self.users: dict[str, str] = {}
         self.graphql_response: dict = {"data": {"flows": []}}
         self.tasks: list[str] | None = []
@@ -139,51 +145,19 @@ class FakeTableau:
         self.jobs_status = 200
         self.jobs_reject_sort = False
         self.job_details: dict[str, str] = {}
+        self.job_detail_status = 200
         self.graphql_status = 200
+        self.table_queries_response: dict = {"data": {"databaseTables": []}}
 
-    def send(self, request: requests.PreparedRequest, **_kwargs) -> requests.Response:
+    def send(self, request: requests.PreparedRequest, **kwargs) -> requests.Response:
         self.requests.append(request)
+        self.transport_kwargs.append(kwargs)
         path = urlparse(request.url).path
         query = parse_qs(urlparse(request.url).query)
-        status, body, content_type = 200, "", "text/xml"
-        if path.endswith("/serverInfo"):
-            body = SERVER_INFO
-        elif path.endswith("/auth/signin"):
-            body = SIGN_IN
-        elif path.endswith("/auth/signout"):
-            status = 204
-        elif path.endswith("/flows/runs"):
-            status, body = (
-                self.unsorted_runs_response
-                if "sort" not in query and self.unsorted_runs_response
-                else self.runs_response
-            )
-        elif path.endswith("/flows"):
-            body = self.flow_pages[int(query.get("pageNumber", ["1"])[0]) - 1]
-        elif "/users/" in path:
-            user_id = path.rsplit("/", 1)[-1]
-            status, body = (200, self.users[user_id]) if user_id in self.users else (404, _error("404002"))
-        elif path.endswith("/tasks/extractRefreshes") and self.tasks is None:
-            status, body = 500, _error("500000")
-        elif path.endswith("/tasks/extractRefreshes"):
-            body = (
-                f'<tsResponse {NS}><pagination pageNumber="1" pageSize="100" totalAvailable="{len(self.tasks)}"/>'
-                f"<tasks>{''.join(self.tasks)}</tasks></tsResponse>"
-            )
-        elif "/datasources/" in path or "/workbooks/" in path:
-            content_id = path.rsplit("/", 1)[-1]
-            status, body = (200, self.content[content_id]) if content_id in self.content else (404, _error("404004"))
-        elif path.endswith("/jobs") and self.jobs_reject_sort and "sort" in query:
-            status, body = 400, _error("400006")
-        elif path.endswith("/jobs"):
-            status, body = self.jobs_status, self._jobs_page(query)
-        elif "/jobs/" in path:
-            job_id = path.rsplit("/", 1)[-1]
-            status, body = (200, self.job_details[job_id]) if job_id in self.job_details else (404, _error("404003"))
-        elif path.endswith("/api/metadata/graphql"):
-            status, body, content_type = self.graphql_status, json.dumps(self.graphql_response), "application/json"
-        else:
+        answer = self._rest_answer(path, query) or self._jobs_or_metadata_answer(path, query, request)
+        if answer is None:
             raise AssertionError(f"Unexpected Tableau call {request.method} {request.url}")
+        status, body, content_type = answer
 
         response = requests.Response()
         response.status_code = status
@@ -193,14 +167,63 @@ class FakeTableau:
         response.request = request
         return response
 
+    def _rest_answer(self, path: str, query: dict) -> tuple[int, str, str] | None:
+        if path.endswith("/serverInfo"):
+            return (200, SERVER_INFO, "text/xml") if self.server_info_status == 200 else (500, "", "text/xml")
+        if path.endswith("/auth/signin"):
+            return 200, SIGN_IN, "text/xml"
+        if path.endswith("/auth/signout"):
+            return 204, "", "text/xml"
+        if path.endswith("/flows/runs") and "sort" not in query and self.unsorted_runs is not None:
+            return 200, self._page(query, self.unsorted_runs, "flowRuns"), "text/xml"
+        if path.endswith("/flows/runs"):
+            return *self.runs_response, "text/xml"
+        if path.endswith("/flows"):
+            return 200, self.flow_pages[int(query.get("pageNumber", ["1"])[0]) - 1], "text/xml"
+        if "/users/" in path:
+            return self._lookup(self.users, path, "404002")
+        if path.endswith("/tasks/extractRefreshes"):
+            if self.tasks is None:
+                return 500, _error("500000"), "text/xml"
+            return 200, self._page({"pageSize": ["100"]}, self.tasks, "tasks"), "text/xml"
+        if "/datasources/" in path or "/workbooks/" in path:
+            return self._lookup(self.content, path, "404004")
+        return None
+
+    def _jobs_or_metadata_answer(
+        self, path: str, query: dict, request: requests.PreparedRequest
+    ) -> tuple[int, str, str] | None:
+        if path.endswith("/jobs") and self.jobs_reject_sort and "sort" in query:
+            return 400, _error("400006"), "text/xml"
+        if path.endswith("/jobs"):
+            return self.jobs_status, self._jobs_page(query), "text/xml"
+        if "/jobs/" in path and self.job_detail_status != 200:
+            return self.job_detail_status, _error(f"{self.job_detail_status}004"), "text/xml"
+        if "/jobs/" in path:
+            return self._lookup(self.job_details, path, "404003")
+        if path.endswith("/api/metadata/graphql"):
+            answer = self.table_queries_response if "databaseTables" in str(request.body) else self.graphql_response
+            return self.graphql_status, json.dumps(answer), "application/json"
+        return None
+
+    @staticmethod
+    def _lookup(items: dict[str, str], path: str, not_found_code: str) -> tuple[int, str, str]:
+        item_id = path.rsplit("/", 1)[-1]
+        return (200, items[item_id], "text/xml") if item_id in items else (404, _error(not_found_code), "text/xml")
+
     def _jobs_page(self, query: dict) -> str:
         if self.jobs_status != 200:
             return _error(f"{self.jobs_status}004")
+        return self._page(query, self.jobs, "backgroundJobs")
+
+    @staticmethod
+    def _page(query: dict, items: list[str], element: str) -> str:
+        """One page of items. Like Tableau's documented Query Jobs response, the
+        pagination element carries no totalAvailable."""
         page, size = int(query.get("pageNumber", ["1"])[0]), int(query["pageSize"][0])
-        jobs = self.jobs[(page - 1) * size : page * size]
         return (
-            f'<tsResponse {NS}><pagination pageNumber="{page}" pageSize="{size}" totalAvailable="{len(self.jobs)}"/>'
-            f"<backgroundJobs>{''.join(jobs)}</backgroundJobs></tsResponse>"
+            f'<tsResponse {NS}><pagination pageNumber="{page}" pageSize="{size}"/>'
+            f"<{element}>{''.join(items[(page - 1) * size : page * size])}</{element}></tsResponse>"
         )
 
     def calls_to(self, suffix: str) -> list[requests.PreparedRequest]:
@@ -215,7 +238,11 @@ def tableau(monkeypatch):
 
 
 def _client(
-    number_of_status: int = 2, include_extract_refreshes: bool = True, api_version: str | None = None
+    number_of_status: int = 2,
+    include_extract_refreshes: bool = True,
+    api_version: str | None = None,
+    verify_ssl: bool | str | None = True,
+    ssl_manager: SSLManager | None = None,
 ) -> TableauPipelineClient:
     config = TableauPipelineConnection(
         hostPort=HOST,
@@ -228,27 +255,62 @@ def _client(
     return TableauPipelineClient(
         tableau_server_auth=PersonalAccessTokenAuth("pat", "secret", site_id="MarketingTeam"),
         config=config,
-        verify_ssl=True,
+        verify_ssl=verify_ssl,
+        ssl_manager=ssl_manager,
     )
 
 
 class TestFlows:
     def test_pages_through_every_flow(self, tableau):
-        flows = list(_client().get_flows())
+        flows = list(_client(include_extract_refreshes=False).get_pipelines())
 
         assert [flow.id for flow in flows] == ["flow-1", "flow-2"]
         assert len(tableau.calls_to("/flows")) == 2
         sales = flows[0]
-        assert sales.name == "Sales"
+        assert (sales.name, sales.display_name, sales.kind.value) == ("flow-1", "Sales", "flow")
         assert sales.project_name == "Finance"
         assert sales.owner_id == "owner-1"
         assert sales.tags == ["finance", "pii"]
         assert sales.webpage_url == f"{HOST}/#/site/MarketingTeam/flows/flow-1"
 
-    def test_configured_api_version_overrides_the_server_one(self, tableau):
-        _client(api_version="3.19").get_flows().__next__()
+    def test_configured_api_version_skips_the_version_lookup(self, tableau):
+        next(iter(_client(api_version="3.19").get_pipelines()))
 
         assert "/api/3.19/sites/" in tableau.calls_to("/flows")[0].url
+        assert tableau.calls_to("/serverInfo") == []
+
+    def test_the_version_lookup_uses_the_ssl_settings(self, tableau):
+        """TSC reads the server version while it is constructed; without the SSL
+        options there, a self-signed server falls back to REST API 2.4."""
+        _client(verify_ssl=False)
+
+        server_info = tableau.requests.index(tableau.calls_to("/serverInfo")[0])
+        assert tableau.transport_kwargs[server_info]["verify"] is False
+
+    def test_client_certificates_are_sent(self, tableau):
+        ssl_manager = SSLManager(cert=SecretStr("client-cert"), key=SecretStr("client-key"))
+        try:
+            _client(verify_ssl=True, ssl_manager=ssl_manager)
+
+            assert tableau.transport_kwargs[0]["cert"] == (ssl_manager.cert_file_path, ssl_manager.key_file_path)
+        finally:
+            ssl_manager.cleanup_temp_files()
+
+    def test_an_unreadable_server_version_is_reported(self, tableau, caplog):
+        tableau.server_info_status = 500
+
+        with caplog.at_level(logging.WARNING):
+            client = _client()
+
+        assert client.tableau_server.version == "2.4"
+        assert "Set API Version in the connection" in caplog.text
+
+    def test_throttling_and_restarts_are_retried(self, tableau):
+        retry = _client().tableau_server.session.get_adapter(HOST).max_retries
+
+        assert retry.total == 3
+        assert set(retry.status_forcelist) == {429, 502, 503, 504}
+        assert retry.allowed_methods is None
 
     def test_connection_probe_reads_one_flow(self, tableau):
         flows = _client().test_get_flows()
@@ -295,19 +357,25 @@ class TestFlowRuns:
 
         assert [run.id for run in runs] == ["run-3", "run-2"]
 
-    def test_retries_unsorted_when_the_server_rejects_the_sort(self, tableau):
+    def test_unsorted_retry_reads_every_page_and_keeps_the_newest(self, tableau, monkeypatch):
+        """Without the sort the newest runs can be on any page, so every page is
+        read and only the newest numberOfStatus are kept."""
+        monkeypatch.setattr(client_module, "PAGE_SIZE", 2)
         tableau.runs_response = (400, _error("400006"))
-        tableau.unsorted_runs_response = (
-            200,
-            _runs(_run_xml("run-1", "2025-03-01T10:00:00Z"), _run_xml("run-2", "2025-03-02T10:00:00Z")),
-        )
+        tableau.unsorted_runs = [
+            _run_xml("run-1", "2025-03-01T10:00:00Z"),
+            _run_xml("run-4", "2025-03-04T10:00:00Z"),
+            _run_xml("run-2", "2025-03-02T10:00:00Z"),
+            _run_xml("run-3", "2025-03-03T10:00:00Z"),
+            _run_xml("run-0", "2025-02-28T10:00:00Z"),
+        ]
 
-        runs = _client(number_of_status=5).get_flow_runs("flow-1")
+        runs = _client(number_of_status=2).get_flow_runs("flow-1")
 
-        retry = parse_qs(urlparse(tableau.calls_to("/flows/runs")[1].url).query)
-        assert retry["filter"] == ["flowId:eq:flow-1"]
-        assert "sort" not in retry
-        assert [run.id for run in runs] == ["run-2", "run-1"]
+        retries = [parse_qs(urlparse(r.url).query) for r in tableau.calls_to("/flows/runs")[1:]]
+        assert [(q["pageNumber"][0], "sort" in q) for q in retries] == [("1", False), ("2", False), ("3", False)]
+        assert retries[0]["filter"] == ["flowId:eq:flow-1"]
+        assert [run.id for run in runs] == ["run-4", "run-3"]
 
     def test_a_failed_run_carries_the_notes_of_its_job(self, tableau):
         tableau.runs_response = (200, _runs(_run_xml("run-1", "2025-03-01T10:00:00Z", status="Failed")))
@@ -430,12 +498,45 @@ class TestFlowLineage:
             assert _client().get_flow_lineage("flow-1") is None
         assert "FieldUndefined" in caplog.text
 
-    def test_an_unreachable_metadata_api_yields_no_lineage(self, tableau, caplog):
+    def test_an_unreachable_metadata_api_is_an_error_not_an_empty_answer(self, tableau):
+        """The source keeps a flow's existing tasks on this error, but not when
+        the flow simply has no lineage records."""
         tableau.graphql_status = 404
 
-        with caplog.at_level(logging.WARNING):
-            assert _client().get_flow_lineage("flow-1") is None
-        assert "Lineage requires the Metadata API" in caplog.text
+        with pytest.raises(TableauMetadataApiError, match="flow flow-1"):
+            _client().get_flow_lineage("flow-1")
+
+    def test_custom_sql_is_fetched_only_for_unnamed_tables(self, tableau):
+        tableau.graphql_response = {
+            "data": {
+                "flows": [
+                    {
+                        "upstreamTables": [
+                            {"id": "gql-named", "name": "orders"},
+                            {"id": "gql-hidden", "name": None},
+                        ]
+                    }
+                ]
+            }
+        }
+        tableau.table_queries_response = {
+            "data": {"databaseTables": [{"id": "gql-hidden", "referencedByQueries": [{"query": "SELECT 1 FROM t"}]}]}
+        }
+
+        lineage = _client().get_flow_lineage("flow-1")
+
+        follow_up = json.loads(tableau.calls_to("/api/metadata/graphql")[1].body)["query"]
+        assert 'idWithin: ["gql-hidden"]' in follow_up
+        named, hidden = lineage.upstream_tables
+        assert named.referenced_by_queries == []
+        assert [q.query for q in hidden.referenced_by_queries] == ["SELECT 1 FROM t"]
+
+    def test_named_tables_need_no_custom_sql_query(self, tableau):
+        tableau.graphql_response = {"data": {"flows": [{"upstreamTables": [{"id": "gql-named", "name": "orders"}]}]}}
+
+        _client().get_flow_lineage("flow-1")
+
+        assert len(tableau.calls_to("/api/metadata/graphql")) == 1
 
     def test_unknown_flow_yields_no_lineage(self, tableau):
         tableau.graphql_response = {"data": {"flows": []}}
@@ -481,7 +582,7 @@ class TestExtractRefreshes:
 
         pipelines = list(_client().get_pipelines())
 
-        extracts = [p for p in pipelines if p.pipeline_type.value == "extractRefresh"]
+        extracts = [p for p in pipelines if p.kind.value == "extractRefresh"]
         assert [(p.name, p.target_type, p.display_name) for p in extracts] == [
             ("ds-1", "datasource", "Sales extract refresh"),
             ("wb-1", "workbook", "Exec extract refresh"),
@@ -601,7 +702,7 @@ class TestExtractRefreshes:
         assert 'workbooks(filter: {luid: "wb-1"})' in sent
 
     def test_pages_through_jobs_and_retries_unsorted_when_the_sort_is_rejected(self, tableau, monkeypatch):
-        monkeypatch.setattr(client_module, "JOBS_PAGE_SIZE", 2)
+        monkeypatch.setattr(client_module, "PAGE_SIZE", 2)
         self._two_targets(tableau)
         tableau.jobs_reject_sort = True
         tableau.jobs = [_background_job_xml(f"j{i}", f"2025-03-0{i}T06:00:00Z") for i in (1, 2, 3)]
@@ -660,3 +761,97 @@ class TestExtractRefreshes:
 
         assert [p.name for p in pipelines] == ["flow-1", "flow-2"]
         assert "Unable to list Tableau extract refresh tasks" in caplog.text
+
+    def test_unsorted_jobs_keep_the_newest_runs_of_each_target(self, tableau):
+        """A server that rejects the sort may list jobs oldest first; the scan
+        must not stop at the first numberOfStatus jobs it sees."""
+        self._two_targets(tableau)
+        tableau.jobs_reject_sort = True
+        tableau.jobs = [_background_job_xml(f"j{i}", f"2025-03-0{i}T06:00:00Z") for i in (1, 2, 3)]
+        tableau.job_details = {f"j{i}": _job_detail_xml(f"j{i}", "datasource", "ds-1") for i in (1, 2, 3)}
+        client = _client(number_of_status=1)
+        list(client.get_pipelines())
+
+        assert [run.id for run in client.get_extract_refresh_runs("ds-1")] == ["j3"]
+
+    def test_filtered_out_targets_are_not_scanned_for(self, tableau):
+        self._two_targets(tableau)
+        tableau.jobs = [
+            _background_job_xml("j3", "2025-03-03T06:00:00Z"),
+            _background_job_xml("j2", "2025-03-02T06:00:00Z"),
+            _background_job_xml("j1", "2025-03-01T06:00:00Z"),
+        ]
+        tableau.job_details = {
+            "j3": _job_detail_xml("j3", "datasource", "ds-1"),
+            "j2": _job_detail_xml("j2", "workbook", "wb-1"),
+            "j1": _job_detail_xml("j1", "workbook", "wb-1"),
+        }
+        client = _client(number_of_status=1)
+        list(client.get_pipelines(keep=lambda details: details.target_type == "datasource"))
+
+        assert [run.id for run in client.get_extract_refresh_runs("ds-1")] == ["j3"]
+        assert client.get_extract_refresh_runs("wb-1") == []
+        assert [r for r in tableau.requests if "/jobs/j" in r.url and not r.url.endswith("/jobs/j3")] == []
+
+    def test_jobs_that_do_not_name_their_target_are_reported(self, tableau, caplog):
+        self._two_targets(tableau)
+        tableau.jobs = [_background_job_xml("j1", "2025-03-01T06:00:00Z")]
+        tableau.job_details = {
+            "j1": (
+                f'<tsResponse {NS}><job id="j1" type="RefreshExtract" finishCode="0">'
+                "<extractRefreshJob><notes>refreshed</notes></extractRefreshJob></job></tsResponse>"
+            )
+        }
+        client = _client()
+        list(client.get_pipelines())
+
+        with caplog.at_level(logging.WARNING):
+            assert client.get_extract_refresh_runs("ds-1") == []
+        assert "did not say which data source or workbook" in caplog.text
+
+    def test_a_forbidden_job_lookup_ends_the_scan(self, tableau, caplog):
+        self._two_targets(tableau)
+        tableau.jobs = [_background_job_xml(f"j{i}", f"2025-03-0{i}T06:00:00Z") for i in (1, 2)]
+        tableau.job_detail_status = 403
+        client = _client()
+        list(client.get_pipelines())
+
+        with caplog.at_level(logging.WARNING):
+            assert client.get_extract_refresh_runs("ds-1") == []
+        assert "needs a site administrator" in caplog.text
+        assert len([r for r in tableau.requests if "/jobs/" in r.url]) == 1
+
+
+class TestExtractRefreshListing:
+    def test_a_deleted_target_keeps_the_listing_complete(self, tableau):
+        tableau.tasks = [_task_xml("t1", "datasource", "ds-gone")]
+        client = _client()
+
+        assert list(client.get_extract_refresh_pipelines()) == []
+        assert client.extract_refresh_listing_complete is True
+
+    def test_an_unreadable_target_marks_the_listing_partial(self, tableau, monkeypatch):
+        tableau.tasks = [_task_xml("t1", "datasource", "ds-1")]
+        client = _client()
+        monkeypatch.setattr(
+            client.tableau_server.datasources, "get_by_id", lambda _id: (_ for _ in ()).throw(RuntimeError("timeout"))
+        )
+
+        assert list(client.get_extract_refresh_pipelines()) == []
+        assert client.extract_refresh_listing_complete is False
+
+    def test_a_failed_task_listing_marks_the_listing_partial(self, tableau):
+        tableau.tasks = None
+        client = _client()
+
+        list(client.get_extract_refresh_pipelines())
+
+        assert client.extract_refresh_listing_complete is False
+
+    def test_probe_reads_tasks_and_the_filtered_jobs_listing(self, tableau):
+        _client().test_get_extract_refresh_jobs()
+
+        assert len(tableau.calls_to("/tasks/extractRefreshes")) == 1
+        query = parse_qs(urlparse(tableau.calls_to("/jobs")[0].url).query)
+        assert query["filter"] == ["jobType:in:[refresh_extracts,increment_extracts]"]
+        assert query["pageSize"] == ["1"]

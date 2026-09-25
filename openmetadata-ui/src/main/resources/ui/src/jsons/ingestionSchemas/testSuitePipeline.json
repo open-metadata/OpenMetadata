@@ -14400,7 +14400,9 @@
                           "title": "Number of Status",
                           "description": "Number of recent runs to fetch per flow or extract refresh.",
                           "type": "integer",
-                          "default": 10
+                          "default": 10,
+                          "minimum": 1,
+                          "maximum": 100
                         },
                         "includeExtractRefreshes": {
                           "title": "Include Extract Refreshes",
@@ -14411,9 +14413,6 @@
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
-                        },
-                        "supportsLineageExtraction": {
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
                         }
                       },
                       "additionalProperties": false,

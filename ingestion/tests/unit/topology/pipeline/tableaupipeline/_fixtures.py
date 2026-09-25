@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Shared test data for Tableau Pipeline integration tests.
+"""Shared test data for the Tableau Pipeline source tests.
 
 Lives in a regular module (not conftest.py) so it can be imported with a
 relative import from sibling test files. pytest does not put conftest.py
@@ -25,10 +25,10 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauLineageTable,
     TableauLinkedFlow,
     TableauPipelineDetails,
+    TableauPipelineKind,
     TableauPublishedDatasource,
     TableauReferencedQuery,
     TableauRunItem,
-    TableauTaskType,
 )
 
 WORKFLOW_CONFIG = {
@@ -47,6 +47,7 @@ WORKFLOW_CONFIG = {
         },
         "sourceConfig": {
             "config": {
+                "type": "PipelineMetadata",
                 "pipelineFilterPattern": {},
                 "includeTags": True,
                 "lineageInformation": {
@@ -77,7 +78,7 @@ FLOW_SALES = TableauPipelineDetails(
     name="flow-sales",
     display_name="Sales Prep Flow",
     description="Cleans raw sales into the sales mart",
-    pipeline_type=TableauTaskType.FLOW_RUN,
+    kind=TableauPipelineKind.FLOW,
     project_name="Sales",
     webpage_url="https://tableau.example.com/#/flows/flow-sales",
     owner_id="user-alice",
@@ -89,7 +90,7 @@ FLOW_MARKETING = TableauPipelineDetails(
     name="flow-marketing",
     display_name="Marketing Prep Flow",
     description=None,
-    pipeline_type=TableauTaskType.FLOW_RUN,
+    kind=TableauPipelineKind.FLOW,
     project_name="Marketing",
     webpage_url=None,
     owner_id=None,
@@ -97,13 +98,9 @@ FLOW_MARKETING = TableauPipelineDetails(
 )
 
 SALES_LINEAGE = TableauFlowLineage(
-    id="gql-flow-sales",
-    luid="flow-sales",
-    name="Sales Prep Flow",
     upstream_tables=[
         TableauLineageTable(
             id="Table-orders",
-            luid="orders",
             name="orders",
             full_name="[public].[orders]",
             schema_="public",
@@ -112,12 +109,11 @@ SALES_LINEAGE = TableauFlowLineage(
             # ones in unrelated workbooks. A named table must not be expanded
             # through them.
             referenced_by_queries=[
-                TableauReferencedQuery(id="q-other", query="SELECT * FROM warehouse.public.payroll JOIN orders ON 1=1")
+                TableauReferencedQuery(query="SELECT * FROM warehouse.public.payroll JOIN orders ON 1=1")
             ],
         ),
         TableauLineageTable(
             id="Table-customers",
-            luid="customers",
             name="customers",
             full_name="[public].[customers]",
             schema_="public",
@@ -125,7 +121,7 @@ SALES_LINEAGE = TableauFlowLineage(
         ),
     ],
     upstream_datasources=[
-        TableauPublishedDatasource(id="gql-ds-targets", luid="ds-targets", name="Sales Targets", project_name="Sales"),
+        TableauPublishedDatasource(id="gql-ds-targets", name="Sales Targets", project_name="Sales"),
     ],
     output_steps=[
         TableauFlowOutputStep(id="Output-clean-sales", name="Clean Sales"),
@@ -133,7 +129,6 @@ SALES_LINEAGE = TableauFlowLineage(
     downstream_tables=[
         TableauLineageTable(
             id="Table-sales-clean",
-            luid="sales-clean",
             name="sales_clean",
             full_name="[mart].[sales_clean]",
             schema_="mart",
@@ -141,26 +136,20 @@ SALES_LINEAGE = TableauFlowLineage(
         ),
     ],
     downstream_datasources=[
-        TableauPublishedDatasource(
-            id="gql-ds-sales-published", luid="ds-sales-published", name="Published Sales Datasource"
-        ),
+        TableauPublishedDatasource(id="gql-ds-sales-published", name="Published Sales Datasource"),
     ],
     next_downstream_flows=[
-        TableauLinkedFlow(id="gql-flow-marketing", luid="flow-marketing", name="Marketing Prep Flow"),
+        TableauLinkedFlow(luid="flow-marketing", name="Marketing Prep Flow"),
     ],
 )
 
 MARKETING_LINEAGE = TableauFlowLineage(
-    id="flow-marketing",
-    luid="flow-marketing",
-    name="Marketing Prep Flow",
     upstream_tables=[
         TableauLineageTable(
             id="Table-sales-custom-sql",
             name="",
             referenced_by_queries=[
                 TableauReferencedQuery(
-                    id="q-1",
                     query=("SELECT id, revenue FROM warehouse.public.orders WHERE status = 'paid'"),
                 )
             ],
@@ -173,7 +162,7 @@ EXTRACT_SALES = TableauPipelineDetails(
     name="ds-sales-published",
     display_name="Published Sales Datasource extract refresh",
     description="Refreshes the extract of the published data source **Published Sales Datasource**.",
-    pipeline_type=TableauTaskType.EXTRACT_REFRESH,
+    kind=TableauPipelineKind.EXTRACT_REFRESH,
     project_name="Sales",
     webpage_url="https://tableau.example.com/#/datasources/ds-sales-published",
     owner_id="user-alice",
@@ -185,7 +174,7 @@ EXTRACT_EXEC_WORKBOOK = TableauPipelineDetails(
     name="wb-exec",
     display_name="Exec Dashboard extract refresh",
     description="Refreshes the extract of the workbook **Exec Dashboard**.",
-    pipeline_type=TableauTaskType.EXTRACT_REFRESH,
+    kind=TableauPipelineKind.EXTRACT_REFRESH,
     project_name="Exec",
     webpage_url="https://tableau.example.com/#/workbooks/wb-exec",
     target_type="workbook",

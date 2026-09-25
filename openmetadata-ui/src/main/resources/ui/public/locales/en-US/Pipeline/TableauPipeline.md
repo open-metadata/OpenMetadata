@@ -111,13 +111,13 @@ $$
 $$section
 ### Pipeline Filter Pattern $(id="pipelineFilterPattern")
 
-Regex to only include or exclude Prep flows and extract refreshes whose name matches the pattern.
+Regex to only include or exclude pipelines by name: a Prep flow by its name, an extract refresh as `<data source or workbook name> extract refresh`.
 $$
 
 $$section
 ### Number of Status $(id="numberOfStatus")
 
-Number of past runs to ingest per flow or extract refresh. By default, we will pick up the last 10 runs.
+Number of past runs to ingest per flow or extract refresh, between 1 and 100. By default, we will pick up the last 10 runs.
 $$
 
 $$section

@@ -11,11 +11,13 @@
 """
 Pytest-style tests for the Tableau pipeline connector.
 
-Lineage edges are exercised end to end in tests/integration/tableaupipeline.
+Lineage edges are exercised against an in-memory catalog in
+tests/unit/topology/pipeline/tableaupipeline.
 """
 
+import logging
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -34,6 +36,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.tableaupipeline import metadata as metadata_module
+from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauMetadataApiError,
+)
 from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
     TableaupipelineSource,
 )
@@ -43,9 +50,9 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauLineageDatabase,
     TableauLineageTable,
     TableauPipelineDetails,
+    TableauPipelineKind,
     TableauPublishedDatasource,
     TableauRunItem,
-    TableauTaskType,
 )
 
 MOCK_CONFIG = {
@@ -62,7 +69,7 @@ MOCK_CONFIG = {
                 },
             }
         },
-        "sourceConfig": {"config": {"pipelineFilterPattern": {}}},
+        "sourceConfig": {"config": {"type": "PipelineMetadata", "pipelineFilterPattern": {}}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -129,7 +136,7 @@ PIPELINE_DETAILS = TableauPipelineDetails(
     name="flow-abc-123",
     display_name="Sales Data Prep Flow",
     description="Prepares sales data for analysis",
-    pipeline_type=TableauTaskType.FLOW_RUN,
+    kind=TableauPipelineKind.FLOW,
     project_name="Sales Project",
     webpage_url="https://tableau.example.com/#/flows/flow-abc-123",
     owner_id="owner-1",
@@ -141,7 +148,7 @@ PIPELINE_DETAILS_MIN = TableauPipelineDetails(
     name="flow-def-456",
     display_name="Inventory Flow",
     description=None,
-    pipeline_type=TableauTaskType.FLOW_RUN,
+    kind=TableauPipelineKind.FLOW,
     project_name="Inventory Project",
     webpage_url=None,
 )
@@ -210,7 +217,7 @@ class TestPipelineName:
             id="flow-xyz",
             name="flow-xyz",
             display_name=None,
-            pipeline_type=TableauTaskType.FLOW_RUN,
+            kind=TableauPipelineKind.FLOW,
         )
         assert source.get_pipeline_name(details) == "flow-xyz"
 
@@ -235,7 +242,7 @@ class TestYieldPipeline:
             id="flow-bad",
             name="flow-bad",
             display_name=None,
-            pipeline_type=TableauTaskType.FLOW_RUN,
+            kind=TableauPipelineKind.FLOW,
         )
         source.get_source_url = MagicMock(side_effect=RuntimeError("boom"))
         results = list(source.yield_pipeline(bad_details))
@@ -379,7 +386,7 @@ class TestLineage:
             id="flow-abc-123",
             upstream_tables=[TableauLineageTable(id="Tabl-2", name="foo")],
         )
-        source.metadata = MagicMock()
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         source.metadata.get_by_name.return_value = None
         assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
 
@@ -393,7 +400,7 @@ class TestLineage:
         pipeline_entity.id = Uuid(root=uuid4())
         datamodel = MagicMock()
         datamodel.id = Uuid(root=uuid4())
-        source.metadata = MagicMock()
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         source.metadata.get_by_name.return_value = pipeline_entity
         source.metadata.search_in_any_service.side_effect = RuntimeError("search down")
         source.metadata.es_search_from_fqn.side_effect = lambda entity_type, **_: (
@@ -409,12 +416,12 @@ class TestLineage:
 class TestOwners:
     def test_resolves_owner_email_to_reference(self, source, mock_conn):
         mock_conn.get_user_email.return_value = "alice@example.com"
-        source.metadata = MagicMock()
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         owners_ref = MagicMock()
         source.metadata.get_reference_by_email.return_value = owners_ref
         result = source.get_owners(PIPELINE_DETAILS)
         assert result is owners_ref
-        source.metadata.get_reference_by_email.assert_called_once_with(email="alice@example.com", is_owner=True)
+        source.metadata.get_reference_by_email.assert_called_once_with(email="alice@example.com")
 
     def test_include_owners_off_skips_the_lookup(self, source, mock_conn):
         source.source_config.includeOwners = False
@@ -458,19 +465,12 @@ class TestPipelineList:
                     id="flow-mock",
                     name="flow-mock",
                     display_name="Mock Flow",
-                    pipeline_type=TableauTaskType.FLOW_RUN,
+                    kind=TableauPipelineKind.FLOW,
                 )
             ]
         )
         pipelines = list(source.get_pipelines_list())
         assert [p.id for p in pipelines] == ["flow-mock"]
-
-
-def test_source_accepts_access_token_auth():
-    source, _ = _build_source(MOCK_TOKEN_CONFIG)
-    assert source is not None
-    results = list(source.yield_pipeline(PIPELINE_DETAILS))
-    assert results[0].right is not None
 
 
 class TestFlowEviction:
@@ -479,8 +479,8 @@ class TestFlowEviction:
         lineage_b = TableauFlowLineage(id="flow-b", upstream_tables=[])
         mock_conn.get_flow_lineage.side_effect = [lineage_a, lineage_b]
 
-        flow_a = TableauPipelineDetails(id="flow-a", name="flow-a", pipeline_type=TableauTaskType.FLOW_RUN)
-        flow_b = TableauPipelineDetails(id="flow-b", name="flow-b", pipeline_type=TableauTaskType.FLOW_RUN)
+        flow_a = TableauPipelineDetails(id="flow-a", name="flow-a", kind=TableauPipelineKind.FLOW)
+        flow_b = TableauPipelineDetails(id="flow-b", name="flow-b", kind=TableauPipelineKind.FLOW)
 
         first = source._get_flow_lineage(flow_a.id)
         second = source._get_flow_lineage(flow_b.id)
@@ -498,16 +498,25 @@ class TestFlowEviction:
         assert second is lineage
         mock_conn.get_flow_lineage.assert_called_once_with("flow-a")
 
-    def test_lineage_fetch_exception_returns_none(self, source, mock_conn):
-        mock_conn.get_flow_lineage.side_effect = RuntimeError("API down")
-        assert source._get_flow_lineage("flow-x") is None
+    def test_an_unreachable_metadata_api_means_no_lineage_and_a_single_warning(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.side_effect = TableauMetadataApiError("Tableau Metadata API query failed: 503")
+
+        with caplog.at_level(logging.WARNING):
+            assert source._get_flow_lineage("flow-x") is None
+            assert source._get_flow_lineage("flow-y") is None
+
+        assert caplog.text.count("Metadata API query failed") == 1
 
 
 class TestTaskHelpers:
-    def test_unique_name_appends_suffix_on_collision(self):
+    def test_task_name_appends_a_suffix_on_collision(self):
         used = {"input_foo", "input_foo_2"}
-        assert TableaupipelineSource._unique_name("input_foo", used) == "input_foo_3"
-        assert TableaupipelineSource._unique_name("input_bar", set()) == "input_bar"
+        assert TableaupipelineSource._task_name("input_", "foo", used) == "input_foo_3"
+        assert "input_foo_3" in used
+        assert TableaupipelineSource._task_name("input_", "bar", set()) == "input_bar"
+
+    def test_task_name_needs_a_base(self):
+        assert TableaupipelineSource._task_name("output_", None, set()) is None
 
     def test_input_task_description_includes_source_and_connection(self):
 
@@ -525,14 +534,6 @@ class TestTaskHelpers:
         upstream = TableauLineageTable()
         assert TableaupipelineSource._input_task_description(upstream) is None
 
-    def test_timestamp_rejects_invalid_datetime(self, caplog):
-        class Exploding:
-            def timestamp(self):
-                raise OverflowError("out of range")
-
-        result = TableaupipelineSource._to_timestamp(Exploding())
-        assert result is None
-
     def test_get_status_with_missing_status(self):
         from metadata.generated.schema.entity.data.pipeline import StatusType
 
@@ -547,47 +548,69 @@ class TestTaskHelpers:
 
 
 class TestLineageEdgeCases:
-    def test_lookup_datamodel_no_matches(self, source):
-        source.metadata = MagicMock()
+    def test_lookup_datamodels_no_matches(self, source):
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         source.metadata.es_search_from_fqn.return_value = []
-        assert source._lookup_datamodel("missing", None) is None
+        assert source._lookup_datamodels("missing", None) == []
 
-    def test_lookup_datamodel_on_exception(self, source):
-        source.metadata = MagicMock()
+    def test_lookup_datamodels_on_exception(self, source):
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         source.metadata.es_search_from_fqn.side_effect = RuntimeError("ES down")
-        assert source._lookup_datamodel("anything", "Sales") is None
+        assert source._lookup_datamodels("anything", "Sales") == []
 
-    def test_lookup_datamodel_without_id(self, source):
-        source.metadata = MagicMock()
-        assert source._lookup_datamodel(None, "Sales") is None
+    def test_lookup_datamodels_without_id(self, source):
+        source.metadata = create_autospec(OpenMetadata, instance=True)
+        assert source._lookup_datamodels(None, "Sales") == []
         source.metadata.es_search_from_fqn.assert_not_called()
 
-    def test_resolve_upstream_with_db_service_names(self, source, mock_conn):
-        """Exercises the db_service_names loop in _resolve_table_entity."""
+    ORDERS = TableauLineageTable(
+        id="Tabl-1",
+        name="orders",
+        schema_="public",
+        database=TableauLineageDatabase(name="sales"),
+    )
 
+    def _with_tables(self, source, db_service_names, tables):
         source.source_config = MagicMock()
-        source.source_config.lineageInformation = MagicMock()
-        source.source_config.lineageInformation.dbServiceNames = ["warehouse"]
-        source.metadata = MagicMock()
+        source.source_config.lineageInformation.dbServiceNames = db_service_names
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         source.metadata.es_search_from_fqn.return_value = []
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: tables.get(fqn)
+
+    def test_configured_db_services_resolve_the_exact_fqn(self, source):
         table = MagicMock()
-        table.id = Uuid(root=uuid4())
-        source.metadata.get_by_name.return_value = table
+        self._with_tables(source, ["warehouse"], {"warehouse.sales.public.orders": table})
 
-        resolved = source._resolve_table_entity(
-            TableauLineageTable(
-                id="Tabl-1",
-                name="orders",
-                schema_="public",
-                database=TableauLineageDatabase(name="warehouse"),
-            )
-        )
-        assert resolved is table
+        assert source._resolve_table_entity(self.ORDERS) is table
 
-    def test_resolve_tables_from_sql_unparseable(self, source):
-        # Return value from the parser — unparseable should yield empty list
-        result = source._resolve_tables_from_sql("not valid sql at all ;")
-        assert isinstance(result, list)
+    def test_configured_db_services_are_not_widened_to_a_global_search(self, source):
+        """A same-named table in an unconfigured service must not get the edge."""
+        self._with_tables(source, ["warehouse"], {})
+
+        assert source._resolve_table_entity(self.ORDERS) is None
+        source.metadata.search_in_any_service.assert_not_called()
+
+    def test_without_db_services_a_unique_match_is_accepted(self, source):
+        table = MagicMock()
+        self._with_tables(source, [], {})
+        source.metadata.search_in_any_service.return_value = [table]
+
+        assert source._resolve_table_entity(self.ORDERS) is table
+        assert source.metadata.search_in_any_service.call_args.kwargs["fetch_multiple_entities"] is True
+
+    def test_without_db_services_an_ambiguous_match_is_skipped(self, source):
+        self._with_tables(source, [], {})
+        source.metadata.search_in_any_service.return_value = [MagicMock(), MagicMock()]
+
+        assert source._resolve_table_entity(self.ORDERS) is None
+
+    def test_resolve_tables_from_sql_unparseable(self, source, monkeypatch):
+        def unparseable(*_args, **_kwargs):
+            raise ValueError("cannot parse")
+
+        monkeypatch.setattr(metadata_module, "LineageParser", unparseable)
+
+        assert source._resolve_tables_from_sql("not valid sql at all ;") == []
 
     def test_resolve_tables_from_sql_preserves_database_in_candidate(self, source):
         """When the parser returns a three-part name like `db.schema.table`,
@@ -610,23 +633,11 @@ class TestLineageEdgeCases:
         assert candidate.database is not None
         assert candidate.database.name == "sales_db"
 
-    def test_get_source_url_exception_returns_none(self, source):
-        # Force service_connection.hostPort to raise via str()
-        bad = MagicMock()
-        bad.hostPort = MagicMock()
-
-        class Bad:
-            def __str__(self):
-                raise RuntimeError("nope")
-
-        pd = TableauPipelineDetails(
-            id="x",
-            name="x",
-            pipeline_type=TableauTaskType.FLOW_RUN,
+    def test_source_url_falls_back_to_the_content_list_of_its_kind(self, source):
+        extract = TableauPipelineDetails(
+            id="wb-1", name="wb-1", kind=TableauPipelineKind.EXTRACT_REFRESH, target_type="workbook"
         )
-        source.service_connection = MagicMock()
-        source.service_connection.hostPort = Bad()
-        assert source.get_source_url(pd) is None
+        assert source.get_source_url(extract).root == "https://tableau.example.com/#/workbooks"
 
 
 class TestInvalidSourceException:
@@ -659,13 +670,9 @@ class TestExceptionPaths:
         source.source_config.includeTags = False
         assert source._tag_labels_for_pipeline(PIPELINE_DETAILS) == []
 
-    def test_get_owners_user_email_lookup_exception(self, source, mock_conn):
-        mock_conn.get_user_email.side_effect = RuntimeError("boom")
-        assert source.get_owners(PIPELINE_DETAILS) is None
-
     def test_get_owners_reference_lookup_exception(self, source, mock_conn):
         mock_conn.get_user_email.return_value = "alice@example.com"
-        source.metadata = MagicMock()
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         source.metadata.get_reference_by_email.side_effect = RuntimeError("ES down")
         assert source.get_owners(PIPELINE_DETAILS) is None
 
@@ -684,38 +691,25 @@ class TestExceptionPaths:
         # All runs skipped — no statuses, but no errors either
         assert results == []
 
-    def test_input_task_name_no_id(self):
-        task_name = TableaupipelineSource._input_task_name(None, set())
-        assert task_name is None
-
-    def test_output_task_name_no_id(self):
-        from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-            TableauFlowOutputStep,
-        )
-
-        task_name = TableaupipelineSource._output_task_name(
-            TableauFlowOutputStep(),  # empty
-            set(),
-        )
-        assert task_name is None
-
 
 class TestCloseLifecycle:
     def test_close_clears_caches_and_signs_out(self, source, mock_conn):
-        source.metadata = MagicMock()
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         source._current_flow_id = "flow-a"
         source._current_flow_lineage = MagicMock()
         source._current_flow_tasks = [MagicMock()]
 
         source.close()
 
-        assert source._current_flow_id is None
-        assert source._current_flow_lineage is None
         assert source._current_flow_tasks is None
+        assert source._current_flow_lineage is metadata_module._NOT_FETCHED
         mock_conn.sign_out.assert_called_once()
+        source.metadata.compute_percentile.assert_called_once()
 
-    def test_close_swallows_signout_errors(self, source, mock_conn):
-        source.metadata = MagicMock()
+    def test_close_survives_a_failed_sign_out(self, source, mock_conn):
+        source.metadata = create_autospec(OpenMetadata, instance=True)
         mock_conn.sign_out.side_effect = RuntimeError("offline")
 
         source.close()
+
+        source.metadata.compute_percentile.assert_called_once()

@@ -45,7 +45,6 @@ export interface TableauPipelineConnection {
      */
     siteName?:                   string;
     sslConfig?:                  Config;
-    supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type

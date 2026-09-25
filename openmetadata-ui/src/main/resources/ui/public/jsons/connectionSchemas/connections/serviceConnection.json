@@ -39090,7 +39090,9 @@
                       "title": "Number of Status",
                       "description": "Number of recent runs to fetch per flow or extract refresh.",
                       "type": "integer",
-                      "default": 10
+                      "default": 10,
+                      "minimum": 1,
+                      "maximum": 100
                     },
                     "includeExtractRefreshes": {
                       "title": "Include Extract Refreshes",
@@ -39103,11 +39105,6 @@
                       "type": "boolean",
                       "default": true,
                       "title": "Supports Metadata Extraction"
-                    },
-                    "supportsLineageExtraction": {
-                      "description": "Supports Lineage Extraction.",
-                      "type": "boolean",
-                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -81833,7 +81830,9 @@
                       "title": "Number of Status",
                       "description": "Number of recent runs to fetch per flow or extract refresh.",
                       "type": "integer",
-                      "default": 10
+                      "default": 10,
+                      "minimum": 1,
+                      "maximum": 100
                     },
                     "includeExtractRefreshes": {
                       "title": "Include Extract Refreshes",
@@ -81846,11 +81845,6 @@
                       "type": "boolean",
                       "default": true,
                       "title": "Supports Metadata Extraction"
-                    },
-                    "supportsLineageExtraction": {
-                      "description": "Supports Lineage Extraction.",
-                      "type": "boolean",
-                      "default": true
                     }
                   },
                   "additionalProperties": false,

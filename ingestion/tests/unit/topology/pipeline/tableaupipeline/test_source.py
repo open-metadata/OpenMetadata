@@ -10,12 +10,10 @@
 #  limitations under the License.
 
 """
-End-to-end integration tests for the Tableau Pipeline connector.
-
-These exercise the full source surface the topology runner invokes:
-- get_pipelines_list → yield_pipeline → yield_tag → yield_pipeline_status
-  → yield_pipeline_lineage_details
-Using a fake TSC-backed client with realistic data shapes.
+Source-level tests for the Tableau Pipeline connector: the stages the topology
+runner invokes (get_pipelines_list → yield_pipeline → yield_tag →
+yield_pipeline_status → yield_pipeline_lineage_details → post-process), run
+against a fake client and an in-memory OpenMetadata catalog.
 """
 
 from datetime import datetime, timezone
@@ -23,11 +21,15 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauMetadataApiError,
+)
 
 from ._fixtures import (  # noqa: TID252
     EXTRACT_EXEC_WORKBOOK,
@@ -50,7 +52,7 @@ class Catalog:
 
     def __init__(self):
         self.entities: dict[tuple[type, str], MagicMock] = {}
-        self.datamodels: dict[str, MagicMock] = {}
+        self.datamodels: list[tuple[str, MagicMock]] = []
 
     def add(self, entity_type: type, fqn: str) -> MagicMock:
         entity = _mock_entity()
@@ -59,7 +61,7 @@ class Catalog:
 
     def add_datamodel(self, name: str) -> MagicMock:
         entity = _mock_entity()
-        self.datamodels[name] = entity
+        self.datamodels.append((name, entity))
         return entity
 
     def get_by_name(self, entity, fqn, **_kwargs):
@@ -68,7 +70,7 @@ class Catalog:
     def es_search_from_fqn(self, entity_type, fqn_search_string, **_kwargs):
         if entity_type is not DashboardDataModel:
             return None
-        return [dm for name, dm in self.datamodels.items() if fqn_search_string == f"*.{name}"] or None
+        return [dm for name, dm in self.datamodels if fqn_search_string == f"*.{name}"] or None
 
     def wire(self, source):
         source.metadata.get_by_name.side_effect = self.get_by_name
@@ -76,10 +78,9 @@ class Catalog:
         source.metadata.search_in_any_service.return_value = None
 
 
-def _lineage(source, flow, catalog):
+def _lineage(source, pipeline, catalog):
     catalog.wire(source)
-    source.context.get().__dict__["pipeline"] = flow.name
-    return [r.right for r in source.yield_pipeline_lineage_details(flow) if r.right is not None]
+    return [r.right for r in source.yield_pipeline_lineage_details(pipeline) if r.right is not None]
 
 
 def _edge(request):
@@ -87,7 +88,7 @@ def _edge(request):
 
 
 class TestIngestionFlow:
-    def test_pipeline_list_includes_sales_and_marketing(self, tableau_source):
+    def test_pipeline_list_holds_flows_then_extract_refreshes(self, tableau_source):
         source, _ = tableau_source
         names = [p.name for p in source.get_pipelines_list()]
         assert names == ["flow-sales", "flow-marketing", "ds-sales-published", "wb-exec"]
@@ -111,7 +112,7 @@ class TestIngestionFlow:
         assert task_types.count("FlowProcessing") == 1
 
         assert request.owners is not None
-        source.metadata.get_reference_by_email.assert_called_once_with(email="alice@example.com", is_owner=True)
+        source.metadata.get_reference_by_email.assert_called_once_with(email="alice@example.com")
 
     def test_owners_are_skipped_when_include_owners_is_off(self, tableau_source):
         source, _ = tableau_source
@@ -124,23 +125,63 @@ class TestIngestionFlow:
 
     def test_yield_pipeline_marketing_without_owner_or_tags(self, tableau_source):
         source, _ = tableau_source
-        results = list(source.yield_pipeline(FLOW_MARKETING))
-        request = results[0].right
+        request = next(iter(source.yield_pipeline(FLOW_MARKETING))).right
         assert request.owners is None
         assert request.tags is None
 
     def test_yield_tag_emits_classification_only_when_tags_exist(self, tableau_source):
         source, _ = tableau_source
-        sales_tags = list(source.yield_tag(FLOW_SALES))
-        marketing_tags = list(source.yield_tag(FLOW_MARKETING))
-        assert len(sales_tags) > 0
-        assert marketing_tags == []
+        assert list(source.yield_tag(FLOW_SALES))
+        assert list(source.yield_tag(FLOW_MARKETING)) == []
+
+    def test_lineage_is_queried_once_per_flow_even_without_records(self, tableau_source):
+        source, client = tableau_source
+        catalog = Catalog()
+        catalog.wire(source)
+
+        list(source.yield_pipeline(FLOW_MARKETING))
+        list(source.yield_pipeline_lineage_details(FLOW_MARKETING))
+        list(source.yield_pipeline(EXTRACT_SALES))
+
+        assert client.lineage_requests == ["flow-marketing"]
+
+    def test_an_unreachable_metadata_api_keeps_the_existing_tasks(self, tableau_source, monkeypatch):
+        """A transient Metadata API failure must not collapse the flow's DAG to a
+        single task until the next run."""
+        source, client = tableau_source
+        catalog = Catalog()
+        existing = catalog.add(Pipeline, f"{SERVICE}.flow-sales")
+        existing.tasks = [Task(name="input_orders"), Task(name="flow-sales"), Task(name="output_clean")]
+        catalog.wire(source)
+
+        def unreachable(flow_id):
+            raise TableauMetadataApiError(f"Tableau Metadata API query failed for flow {flow_id}: 503")
+
+        monkeypatch.setattr(client, "get_flow_lineage", unreachable)
+
+        request = next(iter(source.yield_pipeline(FLOW_SALES))).right
+
+        assert [t.name for t in request.tasks] == ["input_orders", "flow-sales", "output_clean"]
+
+
+class TestDeletion:
+    def test_a_partial_extract_listing_deletes_nothing(self, tableau_source):
+        source, client = tableau_source
+        client.extract_refresh_listing_complete = False
+
+        assert list(source.mark_pipelines_as_deleted()) == []
+        source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_a_complete_listing_marks_missing_pipelines_deleted(self, tableau_source):
+        source, _ = tableau_source
+
+        assert list(source.mark_pipelines_as_deleted())
+        source.metadata.delete_stale_entities.assert_called_once()
 
 
 class TestPipelineStatus:
     def test_status_per_task_for_multi_node_flow(self, tableau_source):
         source, _ = tableau_source
-        source.context.get().__dict__["pipeline"] = FLOW_SALES.name
 
         results = list(source.yield_pipeline_status(FLOW_SALES))
         assert all(r.left is None for r in results)
@@ -154,11 +195,20 @@ class TestPipelineStatus:
         assert any(n.startswith("output_") for n in task_names)
         assert first.pipeline_status.executionStatus.value == "Successful"
 
+    def test_status_goes_to_this_pipeline_even_with_a_stale_context(self, tableau_source):
+        """When yield_pipeline fails for a flow, the topology context still names
+        the previous pipeline; the status must not be attached to it."""
+        source, _ = tableau_source
+        source.context.get().__dict__["pipeline"] = "flow-marketing"
+
+        statuses = [r.right for r in source.yield_pipeline_status(FLOW_SALES)]
+
+        assert {s.pipeline_fqn for s in statuses} == {f"{SERVICE}.flow-sales"}
+
     def test_a_run_is_keyed_on_its_start_so_it_is_stored_once(self, tableau_source):
         """An in-progress run and the same run once finished must land on the
         same status row, so the key cannot be completedAt."""
         source, _ = tableau_source
-        source.context.get().__dict__["pipeline"] = FLOW_SALES.name
 
         status = next(iter(source.yield_pipeline_status(FLOW_SALES))).right.pipeline_status
 
@@ -170,9 +220,7 @@ class TestPipelineStatus:
 
     def test_empty_runs_yields_nothing(self, tableau_source):
         source, _ = tableau_source
-        source.context.get().__dict__["pipeline"] = FLOW_MARKETING.name
-        results = list(source.yield_pipeline_status(FLOW_MARKETING))
-        assert results == []
+        assert list(source.yield_pipeline_status(FLOW_MARKETING)) == []
 
 
 class TestLineage:
@@ -199,6 +247,19 @@ class TestLineage:
             (flow_id, str(downstream_flow.id.root)),
         }
 
+    def test_edges_do_not_name_the_pipeline_they_end_at(self, tableau_source):
+        source, _ = tableau_source
+        catalog = Catalog()
+        catalog.add(Pipeline, f"{SERVICE}.flow-sales")
+        catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
+        catalog.add(Table, "warehouse.warehouse.public.orders")
+
+        requests = _lineage(source, FLOW_SALES, catalog)
+
+        assert requests
+        assert all(r.edge.lineageDetails.pipeline is None for r in requests)
+        assert {r.edge.lineageDetails.source for r in requests} == {LineageSource.PipelineLineage}
+
     def test_data_sources_resolve_by_metadata_api_id_not_luid(self, tableau_source):
         """The dashboard connector names data models after the Metadata API id;
         a lookup by the REST luid never finds them."""
@@ -211,22 +272,31 @@ class TestLineage:
 
         assert [r for r in requests if r.edge.toEntity.type == "dashboardDataModel"] == []
 
-    def test_edges_through_the_flow_carry_it_as_the_pipeline(self, tableau_source):
+    def test_every_dashboard_service_ingesting_the_site_gets_the_edge(self, tableau_source):
         source, _ = tableau_source
         catalog = Catalog()
         flow = catalog.add(Pipeline, f"{SERVICE}.flow-sales")
-        catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
-        catalog.add(Table, "warehouse.warehouse.public.orders")
+        prod = catalog.add_datamodel("gql-ds-sales-published")
+        staging = catalog.add_datamodel("gql-ds-sales-published")
 
         requests = _lineage(source, FLOW_SALES, catalog)
 
-        table_edge = next(r for r in requests if r.edge.fromEntity.type == "table")
-        assert table_edge.edge.lineageDetails.pipeline.id == flow.id
-        assert table_edge.edge.lineageDetails.columnsLineage is None
-        flow_edge = next(
-            r for r in requests if r.edge.toEntity.type == "pipeline" and r.edge.fromEntity.type == "pipeline"
-        )
-        assert flow_edge.edge.lineageDetails.pipeline is None
+        to_models = {_edge(r) for r in requests if r.edge.toEntity.type == "dashboardDataModel"}
+        assert to_models == {(str(flow.id.root), str(prod.id.root)), (str(flow.id.root), str(staging.id.root))}
+
+    def test_a_downstream_flow_ingested_later_is_linked_in_the_post_process(self, tableau_source):
+        source, _ = tableau_source
+        catalog = Catalog()
+        flow = catalog.add(Pipeline, f"{SERVICE}.flow-sales")
+
+        flow_edges = [r for r in _lineage(source, FLOW_SALES, catalog) if r.edge.toEntity.type == "pipeline"]
+        assert flow_edges == []
+
+        downstream = catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
+        deferred = [r.right for r in source.yield_pipeline_bulk_lineage_details()]
+
+        assert [_edge(r) for r in deferred] == [(str(flow.id.root), str(downstream.id.root))]
+        assert list(source.yield_pipeline_bulk_lineage_details()) == []
 
     def test_named_upstream_table_is_not_expanded_through_other_queries(self, tableau_source):
         source, _ = tableau_source
@@ -269,7 +339,6 @@ class TestExtractRefresh:
 
     def test_refresh_jobs_become_status_with_the_failure_reason(self, tableau_source):
         source, _ = tableau_source
-        source.context.get().__dict__["pipeline"] = EXTRACT_SALES.name
 
         statuses = [r.right.pipeline_status for r in source.yield_pipeline_status(EXTRACT_SALES)]
 
@@ -294,7 +363,6 @@ class TestExtractRefresh:
 
         refresh_id = str(refresh.id.root)
         assert {_edge(r) for r in requests} == {(refresh_id, str(orders.id.root)), (refresh_id, str(targets.id.root))}
-        assert all(r.edge.lineageDetails.pipeline.id == refresh.id for r in requests)
 
     def test_no_edge_until_the_dashboard_connector_has_the_data_model(self, tableau_source):
         source, _ = tableau_source
@@ -302,3 +370,13 @@ class TestExtractRefresh:
         catalog.add(Pipeline, f"{SERVICE}.ds-sales-published")
 
         assert _lineage(source, EXTRACT_SALES, catalog) == []
+
+    def test_an_unreachable_metadata_api_skips_only_the_lineage(self, tableau_source, monkeypatch):
+        source, client = tableau_source
+
+        def unreachable(target_type, luid):
+            raise TableauMetadataApiError(f"Tableau Metadata API query failed for {target_type} {luid}: 503")
+
+        monkeypatch.setattr(client, "get_extract_datasource_ids", unreachable)
+
+        assert list(source.yield_pipeline_lineage_details(EXTRACT_SALES)) == []

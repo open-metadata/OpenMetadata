@@ -19,22 +19,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+ExtractTargetType = Literal["datasource", "workbook"]
 
-class TableauFlowItem(BaseModel):
-    """Represents a Tableau Prep flow"""
 
-    model_config = ConfigDict(extra="allow")
-
-    id: str
-    name: str | None = None
-    description: str | None = None
-    project_id: str | None = None
-    project_name: str | None = None
-    owner_id: str | None = None
-    webpage_url: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    tags: list[str] = Field(default_factory=list)
+class TableauPipelineKind(str, Enum):
+    EXTRACT_REFRESH = "extractRefresh"
+    FLOW = "flow"
 
 
 class TableauRunItem(BaseModel):
@@ -43,8 +33,6 @@ class TableauRunItem(BaseModel):
     `status` uses Tableau's run vocabulary: Pending, InProgress, Success,
     Cancelled or Failed."""
 
-    model_config = ConfigDict(extra="allow")
-
     id: str
     status: str | None = None
     started_at: datetime | None = None
@@ -52,43 +40,33 @@ class TableauRunItem(BaseModel):
     error: str | None = None
 
 
-class TableauTaskType(str, Enum):
-    EXTRACT_REFRESH = "extractRefresh"
-    FLOW_RUN = "flowRun"
-
-
 class TableauPipelineDetails(BaseModel):
     """A Tableau Prep flow, or the extract refresh of a published data source
-    or workbook (`target_type` says which)."""
-
-    model_config = ConfigDict(extra="allow")
+    or workbook (`target_type` says which). `id` is the REST luid of the flow
+    or of the refreshed data source / workbook."""
 
     id: str
     name: str
     display_name: str | None = None
     description: str | None = None
-    pipeline_type: TableauTaskType
+    kind: TableauPipelineKind
     project_name: str | None = None
     webpage_url: str | None = None
     owner_id: str | None = None
     tags: list[str] = Field(default_factory=list)
-    target_type: Literal["datasource", "workbook"] | None = None
+    target_type: ExtractTargetType | None = None
 
 
 class TableauReferencedQuery(BaseModel):
     """Custom SQL query referenced by an upstream DatabaseTable."""
 
-    model_config = ConfigDict(extra="allow")
-
-    id: str | None = None
-    name: str | None = None
     query: str | None = None
 
 
 class TableauLineageDatabase(BaseModel):
     """Database reference in a Tableau Metadata API lineage response."""
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True)
 
     name: str | None = None
     connection_type: str | None = Field(default=None, alias="connectionType")
@@ -97,10 +75,9 @@ class TableauLineageDatabase(BaseModel):
 class TableauLineageTable(BaseModel):
     """DatabaseTable reference in a Tableau Metadata API lineage response."""
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str | None = None
-    luid: str | None = None
     name: str | None = None
     full_name: str | None = Field(default=None, alias="fullName")
     schema_: str | None = Field(default=None, alias="schema")
@@ -111,8 +88,6 @@ class TableauLineageTable(BaseModel):
 class TableauFlowOutputStep(BaseModel):
     """A single output step in a Tableau Prep flow."""
 
-    model_config = ConfigDict(extra="allow")
-
     id: str | None = None
     name: str | None = None
 
@@ -120,9 +95,6 @@ class TableauFlowOutputStep(BaseModel):
 class TableauLinkedFlow(BaseModel):
     """A flow that consumes this flow's output (cross-flow lineage)."""
 
-    model_config = ConfigDict(extra="allow")
-
-    id: str | None = None
     luid: str | None = None
     name: str | None = None
 
@@ -133,22 +105,18 @@ class TableauPublishedDatasource(BaseModel):
     The dashboard Tableau connector names its DashboardDataModel after the
     Metadata API ``id``, not the REST ``luid``, so ``id`` is the lookup key."""
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str | None = None
-    luid: str | None = None
     name: str | None = None
     project_name: str | None = Field(default=None, alias="projectName")
 
 
 class TableauFlowLineage(BaseModel):
-    """Lineage metadata for a single Tableau Prep flow."""
+    """Inputs and outputs of a single Tableau Prep flow."""
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True)
 
-    id: str | None = None
-    luid: str | None = None
-    name: str | None = None
     upstream_tables: list[TableauLineageTable] = Field(default_factory=list, alias="upstreamTables")
     upstream_datasources: list[TableauPublishedDatasource] = Field(default_factory=list, alias="upstreamDatasources")
     output_steps: list[TableauFlowOutputStep] = Field(default_factory=list, alias="outputSteps")
