@@ -438,7 +438,8 @@ public interface RdfInfraDAOs {
             resultSet.getBoolean("systemRule"),
             resultSet.getBoolean("dirty"),
             resultSet.getLong("updatedAt"),
-            (Long) resultSet.getObject("lastMaterializedAt"),
+            // BIGINT UNSIGNED on MySQL: a plain getObject returns BigInteger there.
+            resultSet.getObject("lastMaterializedAt", Long.class),
             resultSet.getLong("lastTripleCount"),
             resultSet.getString("lastError"));
       }

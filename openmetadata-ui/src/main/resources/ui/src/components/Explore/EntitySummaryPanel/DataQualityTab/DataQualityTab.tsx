@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Card, Col, Row, Tabs, Typography } from 'antd';
+import { Owner, Tabs } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -874,13 +874,31 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <div className="data-quality-tab-container">
       <Tabs
-        activeKey={activeTab}
-        className={classNames('data-quality-tabs', {
-          'column-detail-data-quality-tabs': isColumnDetailPanel,
-        })}
-        items={tabItems}
-        onChange={handleTabChange}
-      />
+        className="data-quality-tabs"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(String(key))}>
+        <Tabs.List
+          className={classNames(
+            'tw:sticky tw:z-3 tw:gap-8 tw:bg-primary tw:px-4 tw:pt-2.5',
+            // Sits below the sticky entity title, which the column panel and the side drawer do not render.
+            isColumnDetailPanel
+              ? 'tw:top-0'
+              : 'tw:top-[54px] tw:[.drawer-summary-panel-container_&]:top-0'
+          )}
+          size="sm"
+          type="underline">
+          {tabItems.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabItems.map(({ key, children }) => (
+          <Tabs.Panel id={key} key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     </div>
   );
 };
