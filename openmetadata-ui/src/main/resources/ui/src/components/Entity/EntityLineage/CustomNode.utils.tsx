@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { Dataflow01, Plus } from '@untitledui/icons';
-import { Button, Skeleton, Typography } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -23,6 +24,7 @@ import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import { EntityChildrenItem } from './NodeChildren/NodeChildren.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -148,23 +150,30 @@ export const getCollapseHandle = (
 ) => {
   return (
     <Button
+      aria-label={t('label.collapse')}
+      // custom-node.less `.react-flow .lineage-node-handle` owns size, radius,
+      // border colour and surface bg (!important); these only replace what the
+      // antd button supplied (1px border, no padding).
       className={classNames(
-        'absolute lineage-node-minus lineage-node-handle flex-center',
+        'absolute lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border tw:p-0!',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      color="tertiary"
       data-testid={
         direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      icon={
-        <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
+      iconLeading={
+        <MinusIcon
+          className="lineage-expand-icon tw:dark:[&_path]:fill-fg-quaternary"
+          data-testid="minus-icon"
+        />
       }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
+      size="sm"
+      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();
       }}
