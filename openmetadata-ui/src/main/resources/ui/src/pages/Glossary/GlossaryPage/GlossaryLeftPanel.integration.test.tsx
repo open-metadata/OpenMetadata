@@ -179,7 +179,9 @@ describe('GlossaryPage + real store + real GlossaryLeftPanel', () => {
   it('left panel menu and active-glossary header show the initial displayName on mount', async () => {
     renderWithQueryClient(<GlossaryPage pageTitle="Glossary" />);
 
-    const menu = await screen.findByRole('menu');
+    const menu = await screen.findByRole('navigation', {
+      name: 'label.glossary-plural',
+    });
 
     expect(within(menu).getByText('Alpha')).toBeInTheDocument();
 
@@ -193,7 +195,9 @@ describe('GlossaryPage + real store + real GlossaryLeftPanel', () => {
 
     // Wait for the glossary list to load and the real GlossaryLeftPanel/menu to
     // render with the initial displayName.
-    const menu = await screen.findByRole('menu');
+    const menu = await screen.findByRole('navigation', {
+      name: 'label.glossary-plural',
+    });
 
     expect(within(menu).getByText('Alpha')).toBeInTheDocument();
 

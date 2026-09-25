@@ -13,6 +13,7 @@
 
 import { TFunction } from 'i18next';
 import { isEmpty, isNil, isString } from 'lodash';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   SubscriptionCategory,
   SubscriptionType,
@@ -47,6 +48,30 @@ const isRequiredValueMissing = (value: unknown) => {
 
 const getRequiredFieldMessage = (fieldText: string, t: TFunction) =>
   t('message.field-text-is-required', { fieldText });
+
+const NAME_MAX_LENGTH = 128;
+
+// Mirrors the classic alert forms' NAME_FIELD_RULES (constants/Form.constants.ts)
+// so the AI form accepts and rejects exactly the same names.
+const setNameRuleError = (
+  errors: AlertAiFormValidationErrors,
+  name: string | undefined,
+  t: TFunction
+) => {
+  if (errors.displayName || isRequiredValueMissing(name)) {
+    return;
+  }
+
+  if ((name ?? '').length > NAME_MAX_LENGTH) {
+    errors.displayName = t('message.entity-size-in-between', {
+      entity: t('label.name'),
+      min: 1,
+      max: NAME_MAX_LENGTH,
+    });
+  } else if (!ENTITY_NAME_REGEX.test(name ?? '')) {
+    errors.displayName = t('message.entity-name-validation');
+  }
+};
 
 const setRequiredError = ({
   errors,
@@ -159,6 +184,20 @@ const validateAlertAiDestinationConfig = ({
     value: destination.config?.endpoint,
   });
 
+  (['headers', 'queryParams'] as const).forEach((type) =>
+    destination.config?.[type]?.forEach((entry, entryIndex) =>
+      (['key', 'value'] as const).forEach((field) =>
+        setRequiredError({
+          errors,
+          fieldText: t(`label.${field}`),
+          path: configPath(type, entryIndex, field),
+          t,
+          value: entry[field],
+        })
+      )
+    )
+  );
+
   const authType = destination.config?.authType?.type;
 
   if (authType === Type.Bearer) {
@@ -263,6 +302,7 @@ export const validateAlertAiForm = (
     t,
     value: value.displayName ?? value.name,
   });
+  setNameRuleError(errors, value.displayName ?? value.name, t);
 
   setRequiredError({
     errors,

@@ -44,7 +44,7 @@ export const InfoLabel: React.FC<InfoLabelProps> = ({
         </Typography>
         {showIcon && (
           <InfoCircle
-            className={`tw:w-4 tw:h-4 tw:text-brand-600 ${
+            className={`tw:w-4 tw:h-4 tw:text-fg-brand-primary ${
               onInfoClick ? 'tw:cursor-pointer' : ''
             }`}
             onClick={onInfoClick}

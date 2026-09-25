@@ -232,6 +232,13 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           </div>
           <div className="test-case-status-section">
             <StatusBadgeV2
+              className={classNames(
+                'tw:rounded-2xl tw:outline-utility-gray-blue-100',
+                // Aborted pills here use the warning (yellow) tint, not the
+                // default orange Aborted badge colour.
+                statusBadgeType === StatusType.Aborted &&
+                  'tw:bg-utility-warning-50 tw:text-utility-warning-700'
+              )}
               label={status || 'Unknown'}
               showIcon={false}
               status={statusBadgeType}

@@ -81,7 +81,7 @@ describe('useWorkflowEdgeManagement', () => {
       );
       expect(edge.markerEnd).toEqual(
         expect.objectContaining({
-          color: 'var(--om-color-border-primary)',
+          color: 'var(--om-color-border-hover)',
         })
       );
     }
