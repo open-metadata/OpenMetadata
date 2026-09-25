@@ -5,6 +5,7 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -97,12 +98,16 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
@@ -1175,6 +1180,110 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     updateLogicalTestSuite(testSuite.getId());
 
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private static final int BULK_MATCH_SEARCH_BATCH_SIZE = 1000;
+  // Cap each relationship write + post-update so a large filtered selection cannot exceed DB
+  // statement/bind limits or transaction memory (the unfiltered "all" path batches similarly).
+  private static final int BULK_MATCH_WRITE_BATCH_SIZE = 500;
+  private static final int LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE = 100;
+
+  /**
+   * Add every test case matching the given search/filter (as shown in the UI) to the bundle suite,
+   * minus excludeIds. Enumerates all matches via search_after so the count is not capped by the
+   * search engine's max_result_window, and writes them in bounded batches.
+   */
+  public RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuite(
+      TestSuite testSuite, String searchFilter, String query, List<UUID> excludeIds) {
+    List<UUID> matchingIds = resolveMatchingTestCaseIds(searchFilter, query, excludeIds);
+    if (matchingIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE);
+    }
+    return addMatchingTestCasesToLogicalTestSuiteTxn(testSuite, matchingIds);
+  }
+
+  @Transaction
+  RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuiteTxn(
+      TestSuite testSuite, List<UUID> matchingIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    for (List<UUID> batch : Lists.partition(matchingIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      bulkAddToRelationship(testSuite.getId(), batch, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> addedTestCases =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+
+    for (List<EntityReference> batch :
+        Lists.partition(addedTestCases, LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE)) {
+      postUpdateMany(getLogicalSuiteUpdatedTestCase(batch));
+    }
+    updateLogicalTestSuite(testSuite.getId());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private List<UUID> resolveMatchingTestCaseIds(
+      String searchFilter, String query, List<UUID> excludeIds) {
+    Set<String> excluded = excludeIds.stream().map(UUID::toString).collect(Collectors.toSet());
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    // Sort on the keyword subfield (fullyQualifiedName is analyzed text): a unique, stable key
+    // for search_after paging, matching how the search layer sorts FQN elsewhere.
+    SearchSortFilter sortFilter =
+        new SearchSortFilter("fullyQualifiedName.keyword", "asc", null, null);
+    List<UUID> matchingIds = new ArrayList<>();
+    Object[] searchAfter = null;
+    while (true) {
+      SearchResultListMapper page =
+          fetchTestCaseIdPage(searchRepository, query, searchFilter, sortFilter, searchAfter);
+      List<Map<String, Object>> hits = page.getResults();
+      if (nullOrEmpty(hits)) {
+        break;
+      }
+      collectTestCaseIds(hits, excluded, matchingIds);
+      searchAfter = page.getLastDocumentsInBatch();
+      if (hits.size() < BULK_MATCH_SEARCH_BATCH_SIZE
+          || searchAfter == null
+          || searchAfter.length == 0) {
+        break;
+      }
+    }
+    return matchingIds;
+  }
+
+  private SearchResultListMapper fetchTestCaseIdPage(
+      SearchRepository searchRepository,
+      String query,
+      String searchFilter,
+      SearchSortFilter sortFilter,
+      Object[] searchAfter) {
+    try {
+      return searchRepository.listWithDeepPagination(
+          TEST_CASE,
+          query,
+          searchFilter,
+          new String[] {"id"},
+          sortFilter,
+          BULK_MATCH_SEARCH_BATCH_SIZE,
+          searchAfter);
+    } catch (IOException e) {
+      throw new UnhandledServerException("Failed to resolve matching test cases for bulk add", e);
+    }
+  }
+
+  private void collectTestCaseIds(
+      List<Map<String, Object>> hits, Set<String> excluded, List<UUID> matchingIds) {
+    for (Map<String, Object> hit : hits) {
+      Object id = hit.get("id");
+      if (id != null && !excluded.contains(id.toString())) {
+        matchingIds.add(UUID.fromString(id.toString()));
+      }
+    }
   }
 
   @Transaction

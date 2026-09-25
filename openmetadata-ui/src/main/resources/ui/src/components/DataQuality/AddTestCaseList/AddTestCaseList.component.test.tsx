@@ -1540,6 +1540,96 @@ describe('AddTestCaseList', () => {
         includeIds: [],
         excludeIds: [],
         testCases: [],
+        filter: {},
+      });
+    });
+  });
+
+  it('carries the active filter in the selectAll payload so the backend adds only the filtered subset', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases.slice(0, 2),
+      paging: { total: 10 },
+    });
+
+    const onChange = jest.fn();
+
+    await act(async () => {
+      renderWithRouter({ ...mockProps, onChange });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-status-success'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-total-test-cases')).toBeVisible();
+    });
+
+    onChange.mockClear();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-all-total-test-cases'));
+    });
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: { testCaseStatus: 'Success' },
+      });
+    });
+  });
+
+  it('resets a global selectAll when the filter changes so selection stays consistent', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases.slice(0, 2),
+      paging: { total: 10 },
+    });
+
+    const onChange = jest.fn();
+
+    await act(async () => {
+      renderWithRouter({ ...mockProps, onChange });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+    });
+
+    // Enable the global "select all N" first.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-total-test-cases')).toBeVisible();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-all-total-test-cases'));
+    });
+
+    onChange.mockClear();
+
+    // Changing a filter must reset the global selection back to an empty local one.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-status-success'));
+    });
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith({
+        selectAll: false,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
       });
     });
   });
