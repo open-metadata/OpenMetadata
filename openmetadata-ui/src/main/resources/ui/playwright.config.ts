@@ -33,8 +33,8 @@ dotenv.config();
  */
 const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 const defaultBaseURL = isH2Mode
-  ? 'https://localhost:3000'
-  : 'http://localhost:3000';
+  ? 'https://localhost:8585'
+  : 'http://localhost:8585';
 
 const shardPlan = process.env.PW_SHARD_PLAN
   ? JSON.parse(readFileSync(process.env.PW_SHARD_PLAN, 'utf8'))
