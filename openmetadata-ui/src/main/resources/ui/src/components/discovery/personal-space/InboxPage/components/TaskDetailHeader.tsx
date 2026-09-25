@@ -167,7 +167,10 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
             {typeBadge.label}
           </Box>
         </Badge>
-        <Typography className="tw:font-mono tw:text-tertiary" size="text-xs">
+        <Typography
+          className="tw:font-mono tw:text-tertiary"
+          size="text-xs"
+          weight="medium">
           {task.taskId ?? ''}
         </Typography>
         {statusBadge && (
