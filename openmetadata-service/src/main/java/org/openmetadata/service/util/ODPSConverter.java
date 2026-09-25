@@ -154,11 +154,13 @@ public final class ODPSConverter {
     }
 
     DataProduct dp = new DataProduct();
-    // OpenMetadata entity names are URL/FQN-safe slugs: alphanumerics plus
-    // `_`, `-`, `.`, max 64 chars. ODPS product names are free-form and may
-    // contain spaces, punctuation, non-ASCII. Sanitize into a slug for the
-    // identifier, and keep the original as displayName so nothing is lost.
-    dp.setName(sanitizeEntityName(details.getName()));
+    // ODPS productID is the stable identifier; ODPS name is the human-readable
+    // label. Map them onto OpenMetadata's identity/display split: the entity
+    // name (which forms the FQN and is the key an update matches on) comes from
+    // productID sanitized into an FQN-safe slug, and the original ODPS name is
+    // kept as displayName. This keeps import symmetric with export, where toODPS
+    // writes productID from the entity identifier and name from displayName.
+    dp.setName(sanitizeEntityName(details.getProductID()));
     dp.setDisplayName(details.getName());
     dp.setDescription(buildDescription(details));
     dp.setDataProductType(fromODPSType(details.getType()));

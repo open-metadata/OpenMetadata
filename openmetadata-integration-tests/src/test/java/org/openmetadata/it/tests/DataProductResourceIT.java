@@ -43,6 +43,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.domains.odps.Details;
+import org.openmetadata.schema.entity.domains.odps.ODPSDataProduct;
+import org.openmetadata.schema.entity.domains.odps.ODPSProduct;
+import org.openmetadata.schema.entity.domains.odps.ODPSProductDetails;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -3953,5 +3957,57 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
                       + "' on table search doc but found "
                       + dpFqns);
             });
+  }
+
+  @Test
+  void importFromODPS_matchesExistingProductByProductId(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
+    String domainFqn = domain.getFullyQualifiedName();
+    String productId = "odpspid" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+
+    DataProduct first = putOdps(domainFqn, buildOdpsDoc(productId, "[DEV] " + productId));
+    assertEquals(productId, first.getName(), "entity name should come from productID");
+    assertEquals(
+        "[DEV] " + productId, first.getDisplayName(), "displayName should come from ODPS name");
+
+    DataProduct second = putOdps(domainFqn, buildOdpsDoc(productId, "[PROD] " + productId));
+    assertEquals(
+        first.getId(),
+        second.getId(),
+        "re-import with the same productID must update the existing product, not create a duplicate");
+    assertEquals(productId, second.getName(), "entity name stays keyed to productID on re-import");
+    assertEquals(
+        "[PROD] " + productId,
+        second.getDisplayName(),
+        "displayName should be refreshed from the re-imported ODPS name");
+  }
+
+  private DataProduct putOdps(String domainFqn, ODPSDataProduct odps) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataProducts/odps?domain=" + domainFqn,
+            JsonUtils.pojoToJson(odps),
+            DataProduct.class,
+            RequestOptions.builder().header("Content-Type", "application/json").build());
+  }
+
+  private ODPSDataProduct buildOdpsDoc(String productId, String name) {
+    ODPSProductDetails details = new ODPSProductDetails();
+    details.setName(name);
+    details.setProductID(productId);
+    details.setDescription("Imported from ODPS");
+
+    Details detailsByLang = new Details();
+    detailsByLang.setAdditionalProperty("en", details);
+
+    ODPSProduct product = new ODPSProduct();
+    product.setDetails(detailsByLang);
+
+    ODPSDataProduct odps = new ODPSDataProduct();
+    odps.setVersion(ODPSDataProduct.OdpsApiVersion._4_1);
+    odps.setProduct(product);
+    return odps;
   }
 }
