@@ -4426,7 +4426,7 @@
     "no-owned-data": "所有しているデータはありません。データ資産を探索して始めましょう。",
     "no-permission-for-action": "このアクションを実行する権限がありません。",
     "no-permission-for-create-test-case-on-table": "このテーブルにテストケースを作成するための権限がありません。",
-    "no-permission-to-create-test-cases": "このテーブルでテストケースを作成する権限がないため、品質ルールは実行されずにインポートされます。",
+    "no-permission-to-create-test-cases": "このテーブルでテストケースを作成する権限がありません。品質ルールを実行せずにインポートするには、このオプションをオフにしてください。",
     "no-permission-to-view": "このデータを表示する権限がありません。",
     "no-persona-ai-context-description": "ペルソナを作成して、そのメンバーが共有する AI コンテキストルールを定義します。",
     "no-persona-assigned": "ペルソナが割り当てられていません",

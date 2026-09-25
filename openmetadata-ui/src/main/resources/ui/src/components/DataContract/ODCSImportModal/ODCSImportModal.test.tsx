@@ -2606,11 +2606,36 @@ version: 1.0`;
       });
     });
 
-    it('does not ask for test cases the user cannot create', async () => {
-      (validateODCSYaml as jest.Mock).mockResolvedValue({
-        valid: true,
-        odcsImportReport: { ...reportWithWarnings, canCreateTestCases: false },
-      });
+    it('lets a user without test case permission clear the option to unblock the import', async () => {
+      (validateODCSYaml as jest.Mock)
+        .mockResolvedValueOnce({
+          valid: false,
+          odcsImportReport: {
+            ...reportWithWarnings,
+            canImport: false,
+            canCreateTestCases: false,
+            issues: [
+              ...reportWithWarnings.issues,
+              {
+                severity: 'blocking',
+                category: 'quality',
+                field: 'quality',
+                message:
+                  'You may not create test cases on this table. Import with createTestCases=false to keep the rules without running them.',
+              },
+            ],
+          },
+        })
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: {
+            ...reportWithWarnings,
+            canCreateTestCases: false,
+            qualityRules: [
+              { ...reportWithWarnings.qualityRules[0], outcome: 'notExecuted' },
+            ],
+          },
+        });
       (importContractFromODCSYaml as jest.Mock).mockResolvedValue(
         mockImportedContract
       );
@@ -2620,13 +2645,41 @@ version: 1.0`;
 
       const checkbox = await screen.findByTestId('create-test-cases-checkbox');
 
-      expect(checkbox).toBeDisabled();
-      expect(checkbox).not.toBeChecked();
+      await waitFor(() => {
+        expect(screen.getByTestId('import-button')).toBeDisabled();
+      });
+
+      expect(checkbox).toBeEnabled();
+      expect(checkbox).toBeChecked();
+      expect(
+        screen.getByText('message.no-permission-to-create-test-cases')
+      ).toBeInTheDocument();
 
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Import with Warnings' })
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenLastCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
         );
+      });
+
+      const importButton = await screen.findByRole('button', {
+        name: 'Import with Warnings',
+      });
+
+      expect(importButton).toBeEnabled();
+      expect(
+        screen.queryByText('message.no-permission-to-create-test-cases')
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(importButton);
       });
 
       await waitFor(() => {
@@ -2638,6 +2691,59 @@ version: 1.0`;
           false
         );
       });
+    });
+
+    it('lets the user turn test case creation back on after clearing it', async () => {
+      (validateODCSYaml as jest.Mock)
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        })
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: {
+            ...reportWithWarnings,
+            canCreateTestCases: false,
+          },
+        })
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        });
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(checkbox).toBeEnabled();
+      });
+
+      expect(checkbox).not.toBeChecked();
+      expect(
+        screen.queryByText('message.no-permission-to-create-test-cases')
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenLastCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          true
+        );
+      });
+
+      expect(checkbox).toBeChecked();
     });
 
     it('keeps the test case checkbox disabled until re-validation answers', async () => {

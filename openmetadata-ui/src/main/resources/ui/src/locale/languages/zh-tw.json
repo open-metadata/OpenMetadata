@@ -4426,7 +4426,7 @@
     "no-owned-data": "您尚未擁有任何資料，探索更多資料資產以開始使用。",
     "no-permission-for-action": "您沒有執行此操作所需的權限。",
     "no-permission-for-create-test-case-on-table": "您沒有在此資料表上建立測試案例的必要權限。",
-    "no-permission-to-create-test-cases": "您沒有在此資料表上建立測試案例的權限，因此品質規則會匯入但不會執行。",
+    "no-permission-to-create-test-cases": "您沒有在此資料表上建立測試案例的權限。請取消勾選此選項，以匯入品質規則但不執行。",
     "no-permission-to-view": "您沒有檢視此資料所需的權限。",
     "no-persona-ai-context-description": "建立角色以定義其成員共用的 AI 情境規則。",
     "no-persona-assigned": "未指派角色",
