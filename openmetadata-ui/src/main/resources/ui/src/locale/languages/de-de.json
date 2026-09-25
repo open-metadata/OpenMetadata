@@ -4426,7 +4426,7 @@
     "no-owned-data": "Sie besitzen noch keine Daten – erkunden Sie weitere Daten‑Assets, um durchzustarten.",
     "no-permission-for-action": "Sie verfügen nicht über die erforderlichen Berechtigungen, um diese Aktion auszuführen.",
     "no-permission-for-create-test-case-on-table": "Sie verfügen nicht über die erforderlichen Berechtigungen, um einen Testfall für diese Tabelle zu erstellen.",
-    "no-permission-to-create-test-cases": "Sie haben keine Berechtigung, Testfälle für diese Tabelle zu erstellen. Die Qualitätsregeln werden daher importiert, aber nicht ausgeführt.",
+    "no-permission-to-create-test-cases": "Sie haben keine Berechtigung, Testfälle für diese Tabelle zu erstellen. Deaktivieren Sie diese Option, um die Qualitätsregeln zu importieren, ohne sie auszuführen.",
     "no-permission-to-view": "Sie verfügen nicht über die erforderlichen Berechtigungen, um diese Daten anzuzeigen.",
     "no-persona-ai-context-description": "Erstellen Sie eine Persona, um die KI-Kontextregeln zu definieren, die ihre Mitglieder gemeinsam nutzen.",
     "no-persona-assigned": "Keine persona zugewiesen",

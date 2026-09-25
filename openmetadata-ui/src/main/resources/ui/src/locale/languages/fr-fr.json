@@ -4426,7 +4426,7 @@
     "no-owned-data": "Vous ne possédez encore aucune donnée — explorez plus d'assets de données pour démarrer.",
     "no-permission-for-action": "Vous n'avez pas les autorisations nécessaires pour effectuer cette action.",
     "no-permission-for-create-test-case-on-table": "Vous n'avez pas les autorisations nécessaires pour créer un cas de test sur cette table.",
-    "no-permission-to-create-test-cases": "Vous n'avez pas l'autorisation de créer des cas de test sur cette table ; les règles de qualité sont donc importées sans être exécutées.",
+    "no-permission-to-create-test-cases": "Vous n'avez pas l'autorisation de créer des cas de test sur cette table. Décochez cette option pour importer les règles de qualité sans les exécuter.",
     "no-permission-to-view": "Vous n'avez pas les autorisations nécessaires pour afficher ces données.",
     "no-persona-ai-context-description": "Créez un persona pour définir les règles de contexte d'IA que ses membres partagent.",
     "no-persona-assigned": "Pas de persona assigné",

@@ -4426,7 +4426,7 @@
     "no-owned-data": "Je hebt nog geen gegevens — verken meer data‑assets om te beginnen.",
     "no-permission-for-action": "Je hebt niet de vereiste rechten om deze actie uit te voeren.",
     "no-permission-for-create-test-case-on-table": "Je hebt niet de vereiste rechten om een testcase op deze tabel aan te maken.",
-    "no-permission-to-create-test-cases": "U hebt geen toestemming om testcases op deze tabel te maken, dus de kwaliteitsregels worden geïmporteerd zonder te worden uitgevoerd.",
+    "no-permission-to-create-test-cases": "U hebt geen toestemming om testcases op deze tabel te maken. Schakel deze optie uit om de kwaliteitsregels te importeren zonder ze uit te voeren.",
     "no-permission-to-view": "Je hebt niet de vereiste rechten om deze data te bekijken.",
     "no-persona-ai-context-description": "Maak een persona om de AI-contextregels te definiëren die de leden ervan delen.",
     "no-persona-assigned": "Geen persona toegewezen",

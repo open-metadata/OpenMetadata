@@ -4426,7 +4426,7 @@
     "no-owned-data": "Du har inte ägt några data, utforska fler datatillgångar för att komma igång.",
     "no-permission-for-action": "Du har inte de behörigheter som krävs för att utföra denna åtgärd.",
     "no-permission-for-create-test-case-on-table": "Du har inte de nödvändiga behörigheterna för att skapa ett testfall för den här tabellen.",
-    "no-permission-to-create-test-cases": "Du har inte behörighet att skapa testfall på den här tabellen, så kvalitetsreglerna importeras utan att köras.",
+    "no-permission-to-create-test-cases": "Du har inte behörighet att skapa testfall på den här tabellen. Avmarkera det här alternativet för att importera kvalitetsreglerna utan att köra dem.",
     "no-permission-to-view": "Du har inte de nödvändiga behörigheterna för att visa dessa data.",
     "no-persona-ai-context-description": "Skapa en persona för att definiera de AI-kontextregler som dess medlemmar delar.",
     "no-persona-assigned": "Ingen persona tilldelad",

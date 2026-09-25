@@ -4426,7 +4426,7 @@
     "no-owned-data": "You haven't owned any data, explore more data assets to get in place.",
     "no-permission-for-action": "You do not have the necessary permissions to perform this action.",
     "no-permission-for-create-test-case-on-table": "You do not have the necessary permissions to create a test case on this table.",
-    "no-permission-to-create-test-cases": "You don't have permission to create test cases on this table, so the quality rules are imported without running.",
+    "no-permission-to-create-test-cases": "You don't have permission to create test cases on this table. Clear this option to import the quality rules without running them.",
     "no-permission-to-view": "You do not have the necessary permissions to view this data.",
     "no-persona-ai-context-description": "Create a persona to define the AI context rules its members share.",
     "no-persona-assigned": "No persona assigned",
