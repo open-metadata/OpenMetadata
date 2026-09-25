@@ -16,149 +16,26 @@ import {
   Box,
   SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
-import { isEmpty, uniqBy } from 'lodash';
+import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DATA_CONTRACT_STATUS_OPTIONS } from '../../../../../../constants/Alerts.constants';
-import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
-import { SearchIndex } from '../../../../../../enums/search.enum';
 import { StatusType } from '../../../../../../generated/entity/data/pipeline';
 import { PipelineState } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../../generated/tests/testCase';
 import { EventType } from '../../../../../../generated/type/changeEvent';
-import { searchContracts } from '../../../../../../rest/contractAPI';
-import { searchQuery } from '../../../../../../rest/searchAPI';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import {
+  getDataContractSuggestions,
+  getDomainOptions,
+  getFqnSearchIndexes,
+  getOwnerOptions,
+  getTableSuggestions,
+  getTestSuiteSuggestions,
+  getUserBotOptions,
+  getUserOptions,
+  searchEntity,
+} from '../../../../../../utils/Alerts/AlertsUtil';
 import { t } from '../../../../../../utils/i18next/LocalUtil';
-import searchClassBase from '../../../../../../utils/SearchClassBase';
-import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
-
-// ─── Search helpers (duplicated from AlertsUtil — those are module-private) ──
-
-const searchEntity = async ({
-  searchText,
-  searchIndex,
-  queryFilter,
-  showDisplayNameAsLabel = true,
-  wildcardEntityTypes,
-}: {
-  searchText: string;
-  searchIndex: SearchIndex | SearchIndex[];
-  queryFilter?: Record<string, unknown>;
-  showDisplayNameAsLabel?: boolean;
-  wildcardEntityTypes?: string[];
-}) => {
-  try {
-    const response = await searchQuery({
-      query: searchText,
-      pageNumber: 1,
-      pageSize: PAGE_SIZE_LARGE,
-      queryFilter,
-      searchIndex,
-    });
-
-    return uniqBy(
-      response.hits.hits.map((d) => {
-        const src = d._source as {
-          fullyQualifiedName?: string;
-          entityType?: string;
-          displayName?: string;
-          name?: string;
-        };
-        const displayName = showDisplayNameAsLabel
-          ? getEntityName(d._source)
-          : src.fullyQualifiedName ?? '';
-
-        const isContainerOption =
-          !!src.entityType &&
-          (wildcardEntityTypes ?? []).includes(src.entityType);
-        const label = isContainerOption ? `${displayName}.*` : displayName;
-
-        return {
-          label,
-          value: src.fullyQualifiedName ?? '',
-        };
-      }),
-      'label'
-    );
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      t('server.entity-fetch-error', { entity: t('label.search') })
-    );
-
-    return [];
-  }
-};
-
-const getFqnSearchIndexes = (
-  selectedTrigger: string,
-  containerEntities: string[] = []
-): SearchIndex[] => {
-  const mapping = searchClassBase.getEntityTypeSearchIndexMapping();
-  const sourceIndex = mapping[selectedTrigger];
-
-  if (sourceIndex === SearchIndex.ALL) {
-    return [sourceIndex];
-  }
-
-  return [selectedTrigger, ...containerEntities]
-    .map((type) => mapping[type])
-    .filter((index): index is SearchIndex => Boolean(index));
-};
-
-const getTableSuggestions = async (searchText: string) =>
-  searchEntity({
-    searchText,
-    searchIndex: SearchIndex.TABLE,
-    showDisplayNameAsLabel: false,
-  });
-
-const getDataContractSuggestions = async (searchText = '') => {
-  try {
-    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
-
-    return contracts
-      .map((contract) => contract.fullyQualifiedName ?? '')
-      .filter(Boolean)
-      .map((fullyQualifiedName) => ({
-        label: fullyQualifiedName,
-        value: fullyQualifiedName,
-      }));
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      t('server.entity-fetch-error', { entity: t('label.data-contract') })
-    );
-
-    return [];
-  }
-};
-
-const getTestSuiteSuggestions = async (searchText: string) =>
-  searchEntity({ searchText, searchIndex: SearchIndex.TEST_SUITE });
-
-const getDomainOptions = async (searchText: string) =>
-  searchEntity({ searchText, searchIndex: SearchIndex.DOMAIN });
-
-const getOwnerOptions = async (searchText: string) =>
-  searchEntity({
-    searchText,
-    searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
-    queryFilter: getTermQuery({ isBot: 'false' }),
-  });
-
-const getUserOptions = async (searchText: string) =>
-  searchEntity({
-    searchText,
-    searchIndex: SearchIndex.USER,
-    queryFilter: getTermQuery({ isBot: 'false' }),
-  });
-
-const getUserBotOptions = async (searchText: string) =>
-  searchEntity({ searchText, searchIndex: SearchIndex.USER });
 
 // ─── Core-UI autocomplete components ────────────────────────────────────────
 
@@ -480,6 +357,12 @@ export const getControlledArgumentFieldCoreUI = (
         getTestSuiteSuggestions,
         'test-suite-select',
         t('label.search-by-type', { type: t('label.test-suite') })
+      ),
+    entityIdList: () =>
+      asyncField(
+        getEntityByFQN,
+        'entity-id-select',
+        t('label.search-by-type', { type: t('label.entity') })
       ),
   };
 

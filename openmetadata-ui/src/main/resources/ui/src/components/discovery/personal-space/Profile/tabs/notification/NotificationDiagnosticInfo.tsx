@@ -21,14 +21,18 @@ import {
 import { InfoCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { getDiagnosticInfo } from '../../../../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 
-function formatValue(value: unknown): string {
+function formatValue(
+  value: unknown,
+  t: (key: string) => string
+): string {
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
+    return value ? t('label.yes') : t('label.no');
   }
 
   return String(value);
@@ -43,6 +47,7 @@ function NotificationDiagnosticInfo({
   diagnosticData: diagnosticDataProp,
   fqn,
 }: NotificationDiagnosticInfoProps) {
+  const { t } = useTranslation();
   const [fetchedData, setFetchedData] =
     useState<EventSubscriptionDiagnosticInfo>();
   const [diagnosticIsLoading, setDiagnosticIsLoading] = useState(
@@ -115,7 +120,7 @@ function NotificationDiagnosticInfo({
               />
             </Box>
             <Typography className="tw:font-medium" size="text-sm">
-              {formatValue(item.value)}
+              {formatValue(item.value, t)}
             </Typography>
           </Box>
         </Grid.Item>

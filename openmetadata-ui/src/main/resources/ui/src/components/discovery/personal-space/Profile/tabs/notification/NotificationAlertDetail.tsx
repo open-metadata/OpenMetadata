@@ -236,7 +236,7 @@ function buildHeaderActions({
         color="tertiary"
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
-        isDisabled={isSyncing}
+        isDisabled={isSyncing || !canEditAll}
         isLoading={isSyncing}
         size="xs"
         tooltip={String(
@@ -340,18 +340,22 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Permissions
-  const { hasViewAccess, canEditAll, canEditDescription, canDelete } =
-    useEntityPermissions(ResourceEntity.EVENT_SUBSCRIPTION, fqn, {
-      enabled: Boolean(fqn),
-    });
+  const {
+    hasViewAccess,
+    canEditAll,
+    canEditDescription,
+    canEditOwners,
+    canDelete,
+  } = useEntityPermissions(ResourceEntity.EVENT_SUBSCRIPTION, fqn, {
+    enabled: Boolean(fqn),
+  });
 
   const isSystemProvider = useMemo(
     () => alert?.provider === ProviderType.System,
     [alert]
   );
 
-  const editDescriptionPermission =
-    (canEditDescription || canEditAll) && !isSystemProvider;
+  const editDescriptionPermission = canEditDescription && !isSystemProvider;
 
   const fetchAlertDetails = useCallback(async () => {
     setIsLoading(true);
@@ -377,6 +381,8 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   useEffect(() => {
     if (hasViewAccess) {
       fetchAlertDetails();
+    } else {
+      setIsLoading(false);
     }
   }, [fetchAlertDetails, hasViewAccess]);
 
@@ -461,7 +467,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     [alert]
   );
 
-  const editOwnersPermission = canEditAll || canEditDescription;
+  const editOwnersPermission = canEditOwners;
 
   useEffect(() => {
     if (!alert) {
@@ -506,6 +512,16 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (!hasViewAccess) {
+    return (
+      <Box align="center" className="tw:p-8" justify="center">
+        <Typography className="tw:text-secondary" size="text-sm">
+          {t('message.no-permission-for-action')}
+        </Typography>
+      </Box>
+    );
   }
 
   return (

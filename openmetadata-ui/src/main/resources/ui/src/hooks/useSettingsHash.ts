@@ -21,16 +21,6 @@ import {
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
 import type { ProfileNavId } from '../components/discovery/personal-space/Profile/profileNavConfig';
 
-const VALID_SETTINGS_TABS = new Set<string>([
-  'profile',
-  'permissions',
-  'access-token',
-  'my-connections',
-  'access-control',
-  'custom-properties',
-  'notification',
-]);
-
 /**
  * Parsed hash state for the settings modal.
  *
@@ -63,10 +53,7 @@ function parseHash(hash: string): SettingsHashState {
 
   const [pathPart, queryPart] = raw.split('?', 2);
   const segments = pathPart.split('/');
-  const candidate = segments[0] || '';
-  const tab = VALID_SETTINGS_TABS.has(candidate)
-    ? (candidate as ProfileNavId)
-    : null;
+  const tab = (segments[0] || null) as ProfileNavId | null;
 
   if (!tab) {
     return EMPTY_STATE;

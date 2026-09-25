@@ -205,7 +205,11 @@ export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.notification',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
-    isVisible: (_permissions, isAdmin) => isAdmin,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.EVENT_SUBSCRIPTION,
+        permissions
+      ),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <NotificationPanel onHeaderChange={onHeaderChange} />

@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Select,
   SelectItemType,
@@ -239,13 +240,14 @@ function NotificationFiltersEditor({
                     )}
 
                     {!isViewMode && (
-                      <Button
+                      <ButtonUtility
                         color="tertiary"
                         data-testid={`remove-filter-${index}`}
-                        size="sm"
-                        onPress={() => handleControlledRemove(index)}>
-                        <XClose className="tw:size-4" />
-                      </Button>
+                        icon={XClose}
+                        size="xs"
+                        tooltip={t('label.remove')}
+                        onPress={() => handleControlledRemove(index)}
+                      />
                     )}
                   </Box>
 

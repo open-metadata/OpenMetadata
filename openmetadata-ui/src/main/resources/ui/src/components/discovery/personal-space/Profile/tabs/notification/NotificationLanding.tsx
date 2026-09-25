@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Card, Typography } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,34 +28,36 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
       data-testid="notification-landing">
-      <Card isClickable size="md" onClick={() => onNavigate({ type: 'list' })}>
+      <Card size="md">
         <Card.Content>
-          <Box
-            align="start"
+          <Button
+            className="tw:w-full tw:text-left tw:no-underline"
+            color="link-color"
             data-testid="notification-card-alerts"
-            direction="row"
-            gap={4}>
-            <Box
-              align="center"
-              className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
-              justify="center">
-              <Bell01 className="tw:size-6 tw:text-secondary" />
+            onPress={() => onNavigate({ type: 'list' })}>
+            <Box align="start" direction="row" gap={4}>
+              <Box
+                align="center"
+                className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                justify="center">
+                <Bell01 className="tw:size-6 tw:text-secondary" />
+              </Box>
+              <Box className="tw:min-w-0" direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {t('label.alert-plural')}
+                </Typography>
+                <Typography
+                  className="tw:text-tertiary tw:line-clamp-2"
+                  size="text-sm"
+                  weight="regular">
+                  {t('message.alerts-description')}
+                </Typography>
+              </Box>
             </Box>
-            <Box className="tw:min-w-0" direction="col" gap={1}>
-              <Typography
-                className="tw:text-primary"
-                size="text-sm"
-                weight="semibold">
-                {t('label.alert-plural')}
-              </Typography>
-              <Typography
-                className="tw:text-tertiary tw:line-clamp-2"
-                size="text-sm"
-                weight="regular">
-                {t('message.alerts-description')}
-              </Typography>
-            </Box>
-          </Box>
+          </Button>
         </Card.Content>
       </Card>
     </Box>

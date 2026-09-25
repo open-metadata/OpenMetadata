@@ -179,7 +179,7 @@ export const getFqnSearchIndexes = (
     .filter((index): index is SearchIndex => Boolean(index));
 };
 
-const getTableSuggestions = async (searchText: string) => {
+export const getTableSuggestions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.TABLE,
@@ -187,7 +187,7 @@ const getTableSuggestions = async (searchText: string) => {
   });
 };
 
-const getDataContractSuggestions = async (searchText = '') => {
+export const getDataContractSuggestions = async (searchText = '') => {
   try {
     const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
 
@@ -210,15 +210,15 @@ const getDataContractSuggestions = async (searchText = '') => {
   }
 };
 
-const getTestSuiteSuggestions = async (searchText: string) => {
+export const getTestSuiteSuggestions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEST_SUITE });
 };
 
-const getDomainOptions = async (searchText: string) => {
+export const getDomainOptions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.DOMAIN });
 };
 
-const getOwnerOptions = async (searchText: string) => {
+export const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
@@ -228,7 +228,7 @@ const getOwnerOptions = async (searchText: string) => {
   });
 };
 
-const getUserOptions = async (searchText: string) => {
+export const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
@@ -238,7 +238,7 @@ const getUserOptions = async (searchText: string) => {
   });
 };
 
-const getUserBotOptions = async (searchText: string) => {
+export const getUserBotOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
