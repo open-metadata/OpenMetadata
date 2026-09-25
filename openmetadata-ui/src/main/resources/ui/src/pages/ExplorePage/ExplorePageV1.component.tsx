@@ -669,14 +669,14 @@ const ExplorePageV1WithLayout = withPageLayout(
 // AI-mode presentation: an AI search header rendered above the shared Explore
 // page, with layout overrides that keep the embedded page in the AI flow.
 const EXPLORE_MODE_PAGE_CLASS_NAME =
-  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
+  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary tw:dark:bg-secondary';
 
 const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
   'tw:mt-2 tw:w-full tw:shrink-0 tw:px-2';
 
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
-  'tw:flex tw:h-full tw:flex-col tw:bg-primary',
-  'tw:[&_.explore-page]:!bg-primary',
+  'tw:flex tw:h-full tw:flex-col tw:bg-primary tw:dark:bg-secondary',
+  'tw:[&_.explore-page]:!bg-primary tw:dark:[&_.explore-page]:!bg-secondary',
   'tw:[&_.page-layout-v1-vertical-scroll]:!overflow-visible',
   "tw:[&_[data-testid='page-layout-v1']]:!overflow-visible",
   "tw:[&>[data-testid='loader']]:tw:m-auto"

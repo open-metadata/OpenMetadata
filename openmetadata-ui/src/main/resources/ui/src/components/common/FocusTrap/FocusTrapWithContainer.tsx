@@ -41,9 +41,10 @@ export function useMultiContainerFocusTrap({
     trapRef.current.activate();
   }, [options, ...containers]);
 
+  // No deps: `trapRef.current` re-ran the effect below, re-stealing focus every render.
   const deactivateTrap = useCallback(() => {
     trapRef.current?.deactivate();
-  }, [trapRef.current]);
+  }, []);
 
   useEffect(() => {
     if (active) {

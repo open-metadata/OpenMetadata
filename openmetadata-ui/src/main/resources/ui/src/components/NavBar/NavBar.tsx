@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
-import { Tooltip as CoreTooltip } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
+import {
+  Alert,
+  Badge,
+  Button,
+  Dropdown,
+  InputRef,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -23,11 +31,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
+  DEFAULT_DOMAIN_VALUE,
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
   ONE_HOUR_MS,
@@ -78,8 +88,11 @@ import { NotificationBoxProp } from '../NotificationBox/NotificationBox.interfac
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
-const DomainSelect = withSuspenseFallback(
-  lazy(() => import('../common/DomainSelect/DomainSelect'))
+const DomainSelectableList = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../common/DomainSelectableList/DomainSelectableList.component')
+  )
 );
 
 const cookieStorage = new CookieStorage();
@@ -460,7 +473,7 @@ const NavBar = () => {
   }, [handleKeyPress]);
 
   const handleDomainChange = useCallback(
-    async (domain: EntityReference | EntityReference[] | undefined) => {
+    async (domain: EntityReference | EntityReference[]) => {
       updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
       navigate(0);
@@ -473,6 +486,7 @@ const NavBar = () => {
     [activeDomainEntityRef, activeDomain, t]
   );
 
+  const showAllDomains = !isDomainRestricted;
   const isSingleDomainUser = useMemo(
     () => isDomainRestricted && userDomains.length === 1,
     [isDomainRestricted, userDomains]
@@ -480,39 +494,6 @@ const NavBar = () => {
   const restrictedDomains = useMemo(
     () => (isDomainRestricted ? userDomains : undefined),
     [isDomainRestricted, userDomains]
-  );
-
-  // Domain scope switcher: the native ui-core TreeSelect button trigger shows
-  // the active domain (label) + globe, and turns brand when a domain is
-  // selected. Single-domain users get a disabled, tooltip-wrapped trigger.
-  const domainScopeSelector = isSingleDomainUser ? (
-    <CoreTooltip title={t('message.domain-access-restricted')}>
-      <DomainSelect
-        bordered
-        disabled
-        className="tw:self-center tw:[&_button]:h-10"
-        data-testid="domain-dropdown"
-        label={domainDisplayName}
-        restrictedDomains={restrictedDomains}
-        selectedDomain={activeDomainEntityRef}
-        triggerVariant="button"
-        onUpdate={handleDomainChange}
-      />
-    </CoreTooltip>
-  ) : (
-    <DomainSelect
-      bordered
-      className="tw:self-center tw:[&_button]:h-10"
-      data-testid="domain-dropdown"
-      isOpen={isDomainDropdownOpen}
-      label={domainDisplayName}
-      restrictedDomains={restrictedDomains}
-      selectedDomain={activeDomainEntityRef}
-      showAllDomains={!isDomainRestricted}
-      triggerVariant="button"
-      onOpenChange={setIsDomainDropdownOpen}
-      onUpdate={handleDomainChange}
-    />
   );
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
@@ -594,7 +575,52 @@ const NavBar = () => {
             {!isHomePage && !isTourPage && !isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
-                {domainScopeSelector}
+                <DomainSelectableList
+                  hasPermission
+                  disabled={isSingleDomainUser}
+                  popoverProps={{
+                    open: isDomainDropdownOpen,
+                    onOpenChange: (open) => {
+                      setIsDomainDropdownOpen(open);
+                    },
+                  }}
+                  restrictedDomains={restrictedDomains}
+                  selectedDomain={activeDomainEntityRef}
+                  showAllDomains={showAllDomains}
+                  wrapInButton={false}
+                  onCancel={() => setIsDomainDropdownOpen(false)}
+                  onUpdate={handleDomainChange}>
+                  <Tooltip
+                    title={
+                      isSingleDomainUser
+                        ? t('message.domain-access-restricted')
+                        : undefined
+                    }>
+                    <Button
+                      className={classNames(
+                        'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
+                        {
+                          'domain-active':
+                            activeDomain !== DEFAULT_DOMAIN_VALUE,
+                        }
+                      )}
+                      data-testid="domain-dropdown"
+                      onClick={() =>
+                        setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                      }>
+                      <DomainIcon
+                        className="d-flex"
+                        height={20}
+                        name="domain"
+                        width={20}
+                      />
+                      <Typography.Text ellipsis className="domain-text">
+                        {domainDisplayName}
+                      </Typography.Text>
+                      {!isSingleDomainUser && <DropDownIcon width={12} />}
+                    </Button>
+                  </Tooltip>
+                </DomainSelectableList>
               </>
             )}
           </div>

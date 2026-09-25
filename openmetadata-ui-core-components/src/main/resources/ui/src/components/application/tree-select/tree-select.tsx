@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ChevronDown,
-  Plus,
-  RefreshCw01,
-  SearchLg,
-  XClose,
-} from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
 import {
   DropdownSearchField,
   DropdownStagedFooter,
@@ -224,6 +218,7 @@ export const TreeSelect = <T = unknown,>({
   searchable = false,
   lazyLoad = false,
   showCheckbox = true,
+  showExpandIcon = true,
   showIcon = true,
   cascadeSelection = false,
   debounceMs = 300,
@@ -236,38 +231,31 @@ export const TreeSelect = <T = unknown,>({
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
+  offset,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
-  triggerIcon,
-  onCreate,
-  createLabel,
   onNodeExpand,
   onNodeCollapse,
-  defaultExpandedKeys,
-  maxIndentLevel,
   onSearch,
   filterNode,
 }: TreeSelectProps<T>): ReactElement => {
   const { t } = useCoreTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledIsOpen ?? internalOpen;
-  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
-    () => new Set(defaultExpandedKeys ?? [])
-  );
+  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set());
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef<typeof value>(undefined);
+  // Armed until a focus event consumes it; a timed reset loses the race and reopens.
+  const skipNextFocusOpen = useRef(false);
   // What was expanded before a search took over, restored when it clears.
   const preSearchExpandedRef = useRef<Set<Key> | null>(null);
   // Parents already opened for this search, so a later result never reopens one.
   const autoExpandedRef = useRef<Set<Key>>(new Set());
   const lastSearchRef = useRef('');
-  // defaultExpandedKeys is applied once the referenced nodes exist; afterwards
-  // the user is free to collapse them.
-  const appliedDefaultExpandRef = useRef(false);
   // Stable root IDs captured before any search replaces treeData, so
   // displayedSelectedCount is not zeroed out while the user is searching.
   const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
@@ -343,27 +331,6 @@ export const TreeSelect = <T = unknown,>({
       setStableRootIds(new Set(treeData.map((n) => n.id)));
     }
   }, [treeData, searchTerm]);
-
-  // Expand the defaultExpandedKeys nodes once they first appear in the tree.
-  // Async data can arrive after mount, so seeding the initial expanded set is
-  // not enough on its own. Runs once, so a later user collapse is respected.
-  useEffect(() => {
-    if (appliedDefaultExpandRef.current || !defaultExpandedKeys?.length) {
-      return;
-    }
-    const present = defaultExpandedKeys.filter((key) =>
-      findNode(treeData, key)
-    );
-    if (present.length > 0) {
-      appliedDefaultExpandRef.current = true;
-      setExpandedKeys((prev) => {
-        const next = new Set(prev);
-        present.forEach((key) => next.add(key));
-
-        return next;
-      });
-    }
-  }, [treeData, defaultExpandedKeys]);
 
   // Each parent opens once as it appears; clearing the search restores the old set.
   useEffect(() => {
@@ -443,13 +410,14 @@ export const TreeSelect = <T = unknown,>({
       }
 
       let nodeForSelection = node;
+      // Rendered state, not membership: a parent checked via descendants deselects.
+      const { isFullySelected } = getNodeSelectionState(
+        getDescendantSelection(node),
+        isNodeSelected(node.id)
+      );
 
-      if (
-        cascadeSelection &&
-        multiple &&
-        !isNodeSelected(node.id) &&
-        node.isLeaf !== true
-      ) {
+      // Both directions: a branch selected while collapsed keeps children out of the tree.
+      if (cascadeSelection && multiple && node.isLeaf !== true) {
         try {
           nodeForSelection = await loadAllDescendants(node);
         } catch {
@@ -458,10 +426,12 @@ export const TreeSelect = <T = unknown,>({
         }
       }
 
-      toggleNodeSelection(nodeForSelection, parentNode);
+      toggleNodeSelection(nodeForSelection, parentNode, isFullySelected);
       // Staged single-select waits for Apply, so the dropdown stays open.
       if (!multiple && !isStaged) {
         clearSearch();
+        // The pick returns focus to the trigger; reopening would hide the value.
+        skipNextFocusOpen.current = true;
         setOpen(false);
       }
     },
@@ -472,6 +442,7 @@ export const TreeSelect = <T = unknown,>({
       clearSearch,
       cascadeSelection,
       isNodeSelected,
+      getDescendantSelection,
       loadAllDescendants,
       isStaged,
       setOpen,
@@ -543,10 +514,10 @@ export const TreeSelect = <T = unknown,>({
               isIndeterminate={isPartiallySelected}
               isLoading={loadingNodes.has(node.id)}
               isSelected={isFullySelected}
-              maxIndentLevel={maxIndentLevel}
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
+              showExpandIcon={showExpandIcon}
               showIcon={showIcon}
               onNodeClick={() => {
                 if (!isExclusiveGroup) {
@@ -582,8 +553,8 @@ export const TreeSelect = <T = unknown,>({
       disabled,
       multiple,
       showCheckbox,
+      showExpandIcon,
       showIcon,
-      maxIndentLevel,
       handleNodeAction,
     ]
   );
@@ -610,11 +581,6 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
-  // Dismissing hands focus back to the trigger, whose onFocus would reopen it.
-  // The restore arrives a frame or more later, so the flag has to stay armed
-  // until a focus event consumes it — a timed reset loses the race and reopens.
-  const skipNextFocusOpen = useRef(false);
-
   const openOnFocus = () => {
     if (skipNextFocusOpen.current) {
       skipNextFocusOpen.current = false;
@@ -630,10 +596,10 @@ export const TreeSelect = <T = unknown,>({
     if (isStaged) {
       setSelection(toArray(value));
     }
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-    clearSearch();
-  }, [isStaged, setSelection, value, setOpen, clearSearch]);
+  }, [isStaged, setSelection, value, clearSearch, setOpen]);
 
   // Closing through the trigger is a non-Apply close, so it discards the draft.
   const toggleOpen = useCallback(() => {
@@ -753,28 +719,17 @@ export const TreeSelect = <T = unknown,>({
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it shows a quiet footer instead.
   const showStatusFooter = usesDropdownChrome && multiple && !isStaged;
-  const showCreateRow = Boolean(onCreate && createLabel);
 
   const handleClearAll = useCallback(() => {
     replaceSelection([]);
   }, [replaceSelection]);
 
-  // Hand the term to the consumer (to prefill its create form) and close, so
-  // the picker is not left open behind the form the consumer opens. Route
-  // through dismiss (capturing the term first, since dismiss clears the search)
-  // so this non-Apply close discards the draft like every other one.
-  const handleCreate = useCallback(() => {
-    const term = searchTerm;
-    dismiss();
-    onCreate?.(term);
-  }, [onCreate, searchTerm, dismiss]);
-
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-    clearSearch();
-  }, [onChange, multiple, selectedData, setOpen, clearSearch]);
+  }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
   const treeDropdownContent = (
     <div
@@ -800,22 +755,6 @@ export const TreeSelect = <T = unknown,>({
             size="xs"
             onChange={handleSelectAll}
           />
-        </div>
-      )}
-      {showCreateRow && (
-        <div
-          className="tw:px-2 tw:pb-1"
-          onMouseDown={(event) => event.preventDefault()}>
-          <Button
-            color="link-color"
-            data-testid={
-              dataTestId ? `${dataTestId}-create` : 'tree-select-create'
-            }
-            iconLeading={Plus}
-            size="sm"
-            onPress={handleCreate}>
-            {createLabel}
-          </Button>
         </div>
       )}
       <div
@@ -887,6 +826,7 @@ export const TreeSelect = <T = unknown,>({
       // Stops a dismissable ancestor reading clicks here as outside ones.
       data-react-aria-top-layer="true"
       isOpen={isOpen}
+      offset={offset}
       placement={placement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
@@ -904,8 +844,8 @@ export const TreeSelect = <T = unknown,>({
 
   if (renderTrigger) {
     return (
-      <div className={cx('tw:relative tw:inline-flex', className)}>
-        <div className="tw:flex" ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-block', className)}>
+        <div ref={triggerRef}>
           {renderTrigger({
             isOpen,
             toggle: toggleOpen,
@@ -924,8 +864,8 @@ export const TreeSelect = <T = unknown,>({
     const triggerText = label ?? placeholder ?? '';
 
     return (
-      <div className={cx('tw:relative tw:inline-flex', className)}>
-        <div className="tw:flex" ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-block', className)}>
+        <div ref={triggerRef}>
           <Button
             className={cx(
               'tw:whitespace-nowrap',
@@ -936,7 +876,6 @@ export const TreeSelect = <T = unknown,>({
             )}
             color={bordered ? 'secondary' : 'tertiary'}
             data-testid={dataTestId}
-            iconLeading={triggerIcon}
             iconTrailing={ChevronDown}
             isDisabled={disabled}
             size={bordered ? 'md' : 'sm'}

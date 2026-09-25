@@ -16,9 +16,11 @@ import {
   Box,
   Card,
   EmptyPlaceholder,
+  PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +28,7 @@ import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/person
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../../components/common/Loader/Loader';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { useAuth } from '../../../hooks/authHooks';
@@ -44,6 +47,7 @@ const MAX_PERSONA_PAGES = 20;
 
 const ContextCenterAIContextPage = () => {
   const { t } = useTranslation();
+  const pageLayoutClassNames = useContextCenterPageLayout();
   const navigate = useNavigate();
   const { isAdminUser } = useAuth();
   const [personas, setPersonas] = useState<Persona[]>([]);
@@ -130,25 +134,33 @@ const ContextCenterAIContextPage = () => {
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-ai-context-page">
       <DocumentTitle title={t('label.ai-context')} />
-      <div className="context-center-header-section tw:px-5">
-        <ContextCenterHeader
-          breadcrumbs={[{ label: t('label.ai-context') }]}
-          hasPermission={isAdminUser}
-          subtitle={t('message.persona-ai-context-description')}
-          title={t('label.ai-context')}
-        />
-      </div>
-      <div className="context-center-content-section tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:px-5 tw:pb-5">
-        {isLoading && <Loader />}
-        {!isLoading && personas.length === 0 && (
-          <EmptyPlaceholder
-            description={t('message.no-persona-ai-context-description')}
-            icon={PersonaIcon}
-            title={t('message.no-persona-available')}
+      <PageLayout
+        className={pageLayoutClassNames.root}
+        data-testid="context-center-page-layout">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
+          <ContextCenterHeader
+            breadcrumbs={[{ label: t('label.ai-context') }]}
+            hasPermission={isAdminUser}
+            subtitle={t('message.persona-ai-context-description')}
+            title={t('label.ai-context')}
           />
-        )}
-        {!isLoading && personas.map(renderPersona)}
-      </div>
+        </PageLayout.Header>
+        <PageLayout.Content
+          className={classNames(
+            'tw:min-h-0 tw:overflow-y-auto',
+            pageLayoutClassNames.content
+          )}>
+          {isLoading && <Loader />}
+          {!isLoading && personas.length === 0 && (
+            <EmptyPlaceholder
+              description={t('message.no-persona-ai-context-description')}
+              icon={PersonaIcon}
+              title={t('message.no-persona-available')}
+            />
+          )}
+          {!isLoading && personas.map(renderPersona)}
+        </PageLayout.Content>
+      </PageLayout>
     </div>
   );
 };

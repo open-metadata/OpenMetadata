@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Card, Col, Modal, Row, Tabs, Typography } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Card, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -369,8 +370,8 @@ const RolesDetailPage = () => {
           </ErrorPlaceHolder>
         ) : (
           <>
-            <Row className="flex justify-between">
-              <Col span={23}>
+            <Box justify="between">
+              <div className="tw:min-w-0 tw:flex-1">
                 <EntityHeaderTitle
                   className="w-max-full"
                   displayName={role.displayName}
@@ -386,8 +387,8 @@ const RolesDetailPage = () => {
                   name={role?.name ?? ''}
                   serviceName="role"
                 />
-              </Col>
-              <Col span={1}>
+              </div>
+              <div>
                 <ManageButton
                   isRecursiveDelete
                   afterDeleteAction={() => navigate(rolesPath)}
@@ -401,8 +402,8 @@ const RolesDetailPage = () => {
                   entityType={EntityType.ROLE}
                   onEditDisplayName={handleDisplayNameUpdate}
                 />
-              </Col>
-            </Row>
+              </div>
+            </Box>
 
             <Description
               hasEditAccess
@@ -415,11 +416,25 @@ const RolesDetailPage = () => {
             />
 
             <Tabs
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              defaultActiveKey="policies"
-              items={tabItems}
-            />
+              defaultSelectedKey="policies">
+              <Tabs.List size="sm" type="underline" variant="card">
+                {tabItems.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabItems.map(({ key, children }) => (
+                <Tabs.Panel
+                  className="tw:rounded-xl tw:bg-primary"
+                  id={key}
+                  key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
           </>
         )}
 

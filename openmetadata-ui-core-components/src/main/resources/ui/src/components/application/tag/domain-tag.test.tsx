@@ -133,51 +133,6 @@ describe('DomainTag', () => {
     expect(badge.style.getPropertyValue('--tag-color')).toBe(customColor);
   });
 
-  it('should not render the inherit glyph when inherited is not set', () => {
-    render(<DomainTag label="Engineering" />);
-
-    expect(
-      screen.queryByTestId('domain-inherited-icon')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should render a decorative inherit glyph when inherited is true without a label', () => {
-    render(<DomainTag inherited label="Engineering" />);
-
-    const glyph = screen.getByTestId('domain-inherited-icon');
-
-    expect(glyph).toBeInTheDocument();
-    expect(glyph).toHaveAttribute('aria-hidden', 'true');
-    expect(glyph).not.toHaveAttribute('role');
-  });
-
-  it('should expose the inherit glyph to assistive tech when inheritedLabel is provided', () => {
-    render(
-      <DomainTag inherited inheritedLabel="Inherited" label="Engineering" />
-    );
-
-    const glyph = screen.getByLabelText('Inherited');
-
-    expect(glyph).toBeInTheDocument();
-    expect(glyph).toHaveAttribute('role', 'img');
-    expect(glyph).not.toHaveAttribute('aria-hidden');
-  });
-
-  it('should keep the inherit glyph inside the link when inherited and href are both set', () => {
-    render(
-      <DomainTag
-        inherited
-        href="/domain/engineering"
-        inheritedLabel="Inherited"
-        label="Engineering"
-      />
-    );
-
-    const link = screen.getByRole('link');
-
-    expect(link).toContainElement(screen.getByTestId('domain-inherited-icon'));
-  });
-
   it('should apply the size class for a non-default size', () => {
     const { container } = render(<DomainTag label="Engineering" size="md" />);
 

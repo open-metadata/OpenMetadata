@@ -21,6 +21,7 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
 
@@ -166,8 +167,9 @@ test.describe('User with different Roles', () => {
 
     await domainResponse;
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
-      .waitFor({ state: 'visible' });
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     const searchDomain = adminPage.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
@@ -176,13 +178,15 @@ test.describe('User with different Roles', () => {
     );
 
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
       .fill(domain.responseData.displayName);
     await searchDomain;
     await adminPage
-      .getByTestId('domain-selectable-tree-popover')
-      .getByText(domain.responseData.displayName)
-      .click();
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+    await adminPage.getByText(domain.responseData.displayName).click();
 
     const teamsResponse = adminPage.waitForResponse(
       (response) =>
@@ -190,7 +194,7 @@ test.describe('User with different Roles', () => {
         response.request().method() === 'PATCH'
     );
 
-    await adminPage.getByTestId('update-btn').click();
+    await adminPage.getByText('Update').click();
 
     await teamsResponse;
 
@@ -255,23 +259,27 @@ test.describe('User with different Roles', () => {
   test('User can search for a domain', async ({ adminPage }) => {
     await redirectToUserPage(adminPage);
 
-    await expect(adminPage.getByTestId('add-domain')).toBeVisible();
+    await expect(adminPage.getByTestId('edit-domains')).toBeVisible();
 
-    await adminPage.getByTestId('add-domain').click();
+    await adminPage.getByTestId('edit-domains').click();
 
-    await adminPage
-      .getByTestId('domain-selectable-tree-search')
-      .waitFor({ state: 'visible' });
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    await adminPage.locator('.custom-domain-edit-select').click();
 
     const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
 
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
+      state: 'visible',
+    });
+
     await expect(
-      adminPage.getByTestId('domain-selectable-tree-popover')
+      adminPage.locator('.domain-custom-dropdown-class')
     ).toContainText(domain.responseData.displayName);
   });
 
@@ -283,16 +291,28 @@ test.describe('User with different Roles', () => {
     await redirectToUserPage(adminPage);
 
     // Step 1: Assign domain to user
-    // Verify the domain edit trigger is visible
-    await expect(adminPage.getByTestId('add-domain')).toBeVisible();
+    // Verify domain edit button is visible
+    await expect(adminPage.getByTestId('edit-domains')).toBeVisible();
 
-    // Open the domain picker
-    await adminPage.getByTestId('add-domain').click();
+    // Click on edit domains button
+    await adminPage.getByTestId('edit-domains').click();
 
-    // Wait for the picker search field to be ready
+    // Wait for domain select dropdown to be visible
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    // Click on the select to open dropdown
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    // Wait for domain tree to load
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
+      state: 'visible',
+    });
+
+    // Wait for loader to disappear
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
-      .waitFor({ state: 'visible' });
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     // Search for the domain
     const searchPromise = adminPage.waitForResponse(
@@ -301,25 +321,34 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
 
+    // Wait for search results to load
+    await adminPage
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
     // Click on the domain in the tree
     await adminPage
-      .getByTestId('domain-selectable-tree-popover')
+      .locator('.domain-selectable-tree-new')
       .getByText(domain.responseData.displayName)
       .click();
 
-    // Apply the staged selection to assign the domain
+    // Click save button to assign domain
     const assignDomainResponse = adminPage.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/') &&
         response.request().method() === 'PATCH'
     );
 
-    await adminPage.getByTestId('update-btn').click();
+    await adminPage
+      .getByTestId('user-profile-domain-edit-cancel')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+      .click({ force: true });
 
     await assignDomainResponse;
 
@@ -336,13 +365,25 @@ test.describe('User with different Roles', () => {
     ).toBeVisible();
 
     // Step 2: Remove domain from user
-    // Open the domain picker
-    await adminPage.getByTestId('add-domain').click();
+    // Click on edit domains button
+    await adminPage.getByTestId('edit-domains').click();
 
-    // Wait for the picker search field to be ready
+    // Wait for domain select dropdown to be visible
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    // Click on the select to open dropdown
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    // Wait for domain tree to load
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
+      state: 'visible',
+    });
+
+    // Wait for loader to disappear
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
-      .waitFor({ state: 'visible' });
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     // Search for the domain
     const searchPromise2 = adminPage.waitForResponse(
@@ -351,25 +392,34 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise2;
 
-    // Click on the domain in the tree to deselect it
+    // Wait for search results to load
     await adminPage
-      .getByTestId('domain-selectable-tree-popover')
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
+    // Click on the domain checkbox in the tree to deselect it
+    await adminPage
+      .locator('.domain-selectable-tree-new')
       .getByText(domain.responseData.displayName)
       .click();
 
-    // Apply the staged (now empty) selection to remove the domain
+    // Click save button to remove domain
     const removeDomainResponse = adminPage.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/') &&
         response.request().method() === 'PATCH'
     );
 
-    await adminPage.getByTestId('update-btn').click();
+    await adminPage
+      .getByTestId('user-profile-domain-edit-cancel')
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+      .click({ force: true });
 
     await removeDomainResponse;
 
@@ -392,31 +442,55 @@ test.describe('User with different Roles', () => {
 
     await redirectToUserPage(adminPage);
 
-    // Open the domain picker
-    await adminPage.getByTestId('add-domain').click();
+    // Click on edit domains button
+    await adminPage.getByTestId('edit-domains').click();
 
-    // Wait for the picker search field to be ready
+    // Wait for domain select dropdown to be visible
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    // Click on the select to open dropdown
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    // Wait for domain tree to load
+    await adminPage.locator('.domain-custom-dropdown-class').waitFor({
+      state: 'visible',
+    });
+
+    // Wait for loader to disappear
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
-      .waitFor({ state: 'visible' });
+      .locator('.domain-custom-dropdown-class')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
-    // Search the sub-domain directly; the server-side domain search returns
-    // sub-domains too, so no manual parent-tree expansion is needed.
+    // Search for the domain
     const searchPromise2 = adminPage.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
-        subdomain.responseData.name
+        domain.responseData.displayName
       )}**`
     );
     await adminPage
-      .getByTestId('domain-selectable-tree-search')
-      .fill(subdomain.responseData.name);
+      .getByTestId('domain-search-input')
+      .fill(domain.responseData.displayName);
 
     await searchPromise2;
 
-    // Verify that the subdomain is visible in the tree
+    // Find the parent domain node switcher (expand icon)
+    const parentDomainNode = adminPage
+      .locator('.domain-custom-dropdown-class')
+      .locator('.ant-tree-treenode')
+      .filter({ hasText: domain.responseData.displayName })
+      .first();
+
+    // Click on the switcher icon to expand the parent domain
+    await parentDomainNode.locator('.ant-tree-switcher').click();
+
+    // Wait for the child domains to load
+    await waitForAllLoadersToDisappear(adminPage);
+
+    // Verify that the subdomain is now visible in the tree
     await expect(
       adminPage
-        .getByTestId('domain-selectable-tree-popover')
+        .locator('.domain-custom-dropdown-class')
         .getByText(subdomain.responseData.displayName)
     ).toBeVisible();
 

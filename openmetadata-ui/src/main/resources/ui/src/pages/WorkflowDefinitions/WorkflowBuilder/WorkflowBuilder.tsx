@@ -449,7 +449,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const sidebarClassName = classNames(
     'tw:absolute tw:top-8.5 tw:left-5 tw:bottom-5 tw:w-72 tw:z-10',
     'tw:flex tw:flex-col tw:min-h-0',
-    'tw:rounded-lg tw:bg-primary tw:border tw:border-border-secondary tw:shadow-sm',
+    'tw:rounded-lg tw:bg-surface tw:border tw:border-border-secondary tw:shadow-sm',
     'tw:overflow-y-auto tw:transition-opacity tw:duration-300',
     {
       'tw:opacity-30': focusedConnection || isConnectionModalOpen,
@@ -593,7 +593,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       <div
         className={classNames(
           'tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden',
-          { 'tw:bg-gray-50': !isAiMode }
+          { 'tw:bg-secondary': !isAiMode }
         )}>
         {renderTitleBreadcrumb()}
         <div className="tw:shrink-0">

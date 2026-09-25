@@ -17,6 +17,18 @@
         {"name": "Expired"},
         {"name": "Scheduled"}
       ]
+    },
+    "announcementType": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementType",
+      "description": "Severity/category of the announcement, used to style it in the UI.",
+      "type": "string",
+      "enum": ["Information", "Warning", "Issue"],
+      "javaEnums": [
+        {"name": "Information"},
+        {"name": "Warning"},
+        {"name": "Issue"}
+      ],
+      "default": "Information"
     }
   },
   "properties": {
@@ -37,6 +49,11 @@
     "description": {
       "description": "Announcement content in Markdown format.",
       "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "type": {
+      "description": "Severity/category of the announcement, used to style it in the UI.",
+      "$ref": "#/definitions/announcementType",
+      "default": "Information"
     },
     "entityLink": {
       "description": "Link to the entity this announcement is about.",

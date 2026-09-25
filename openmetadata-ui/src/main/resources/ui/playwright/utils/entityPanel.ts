@@ -404,9 +404,9 @@ export const editDomain = async (page: Page, domainName: string) => {
     state: 'visible',
   });
   await page.locator('[data-testid="add-domain"]').click();
-  const search = page.getByTestId('domain-selectable-tree-search');
+  const tree = page.getByTestId('domain-selectable-tree');
 
-  await search.waitFor({ state: 'visible' });
+  await tree.waitFor({ state: 'visible' });
 
   const searchDomainPromise = page.waitForResponse(
     (response) =>
@@ -414,13 +414,16 @@ export const editDomain = async (page: Page, domainName: string) => {
       response.url().includes(`q=`)
   );
 
-  await search.fill(domainName);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domainName);
 
   const searchDomainResponse = await searchDomainPromise;
   expect(searchDomainResponse.status()).toBe(200);
 
   const tagSelector = page
-    .getByTestId('domain-selectable-tree-popover')
+    .getByTestId('domain-selectable-tree')
     .getByText(domainName);
   await tagSelector.waitFor({ state: 'visible' });
 
@@ -484,9 +487,7 @@ export const navigateToIncidentsTab = async (page: Page) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
   const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
-  const incidentsTabButton = tabContent
-    .locator('.ant-tabs-tab')
-    .filter({ hasText: /incident/i });
+  const incidentsTabButton = tabContent.getByRole('tab', { name: /incident/i });
 
   if (await incidentsTabButton.isVisible()) {
     await incidentsTabButton.click();
@@ -597,8 +598,8 @@ export const removeDomainFromPanel = async (page: Page, domainName: string) => {
   // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('add-domain').click({ force: true });
 
-  const domainSearch = page.getByTestId('domain-selectable-tree-search');
-  await domainSearch.waitFor({ state: 'visible' });
+  const domainTree = page.getByTestId('domain-selectable-tree');
+  await domainTree.waitFor({ state: 'visible' });
 
   const searchDomainPromise = page.waitForResponse(
     (response) =>
@@ -606,13 +607,11 @@ export const removeDomainFromPanel = async (page: Page, domainName: string) => {
       response.url().includes(`q=`)
   );
 
-  await domainSearch.fill(domainName);
+  await domainTree.getByTestId('searchbar').fill(domainName);
 
   await searchDomainPromise;
 
-  const domainItem = page
-    .getByTestId('domain-selectable-tree-popover')
-    .getByText(domainName);
+  const domainItem = domainTree.getByText(domainName);
   const patchPromise = waitForPatchResponse(page);
 
   await domainItem.click();

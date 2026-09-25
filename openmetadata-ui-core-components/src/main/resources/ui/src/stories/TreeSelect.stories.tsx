@@ -314,35 +314,3 @@ export const MutuallyExclusive: StoryObj = {
     );
   },
 };
-
-// The consumer owns the translated create-row label and the create flow itself
-// (e.g. a modal); TreeSelect only surfaces the trigger and the search term.
-export const WithCreate: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode[]>([]);
-    const [lastCreate, setLastCreate] = useState<string | null>(null);
-
-    return (
-      <div style={{ width: 360 }}>
-        <FilterSelect.Tree
-          bordered
-          lazyLoad
-          multiple
-          searchable
-          createLabel="Add new domain"
-          fetchData={fetchGlossaryTerms}
-          label="Domain"
-          triggerVariant="button"
-          value={value}
-          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
-          onCreate={(searchTerm) => setLastCreate(searchTerm)}
-        />
-        <p style={{ fontSize: 12, marginTop: 12, color: '#667085' }}>
-          {lastCreate === null
-            ? 'Open the dropdown and click “Add new domain”.'
-            : `Create requested with search term: "${lastCreate}"`}
-        </p>
-      </div>
-    );
-  },
-};
