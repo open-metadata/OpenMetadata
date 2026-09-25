@@ -19,12 +19,10 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
-import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.ConversationLineageResolver;
@@ -179,10 +177,6 @@ public class RecipientResolver {
       return action;
     }
 
-    return switch (destination.getType()) {
-      case EMAIL -> JsonUtils.convertValue(config, EmailAlertConfig.class);
-      case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> JsonUtils.convertValue(config, Webhook.class);
-      default -> null;
-    };
+    return Channels.required(destination).configRules().receiversOf(destination);
   }
 }

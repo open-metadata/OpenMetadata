@@ -32,7 +32,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -41,6 +40,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
+import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
@@ -172,15 +172,15 @@ public abstract class AbstractEventConsumer
 
   private EventDeliveryResult publishEvent(
       ChangeEvent event, Set<UUID> destinationIds, RecipientResolver resolver) {
-    // Group destinations by type to enable cross-destination recipient deduplication
-    Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
-        groupDestinationsByType(destinationIds);
+    // Group destinations by channel to enable cross-destination recipient deduplication
+    Map<String, List<Destination<ChangeEvent>>> destinationsByChannel =
+        groupDestinationsByChannel(destinationIds);
     List<EventPublisherException> failures = new ArrayList<>();
-    for (List<Destination<ChangeEvent>> sameType : destinationsByType.values()) {
-      sendToDestinationType(event, sameType, resolver).ifPresent(failures::add);
+    for (List<Destination<ChangeEvent>> sameChannel : destinationsByChannel.values()) {
+      sendToDestinationType(event, sameChannel, resolver).ifPresent(failures::add);
     }
     recordSendFailures(event, failures);
-    int successCount = destinationsByType.size() - failures.size();
+    int successCount = destinationsByChannel.size() - failures.size();
     return new EventDeliveryResult(successCount > 0, successCount, failures.size());
   }
 
@@ -227,13 +227,15 @@ public abstract class AbstractEventConsumer
     }
   }
 
-  private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
+  private Map<String, List<Destination<ChangeEvent>>> groupDestinationsByChannel(
       Set<UUID> destinationIds) {
     return destinationIds.stream()
         .map(destinationMap::get)
         .filter(Objects::nonNull)
         .filter(Destination::getEnabled)
-        .collect(Collectors.groupingBy(dest -> dest.getSubscriptionDestination().getType()));
+        .collect(
+            Collectors.groupingBy(
+                dest -> ChannelResolution.of(dest.getSubscriptionDestination()).channelId()));
   }
 
   @Override

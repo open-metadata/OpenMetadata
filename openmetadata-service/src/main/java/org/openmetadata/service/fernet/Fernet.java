@@ -30,16 +30,12 @@ import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
-import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
-import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.events.subscription.channels.Channels;
 
 public class Fernet {
   private static final Fernet instance = new Fernet();
@@ -141,44 +137,8 @@ public class Fernet {
 
     subscriptions.forEach(
         subscription -> {
-          if (SubscriptionDestination.SubscriptionType.WEBHOOK.equals(subscription.getType())) {
-            Webhook webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
-
-            if (webhook != null && webhook.getAuthType() instanceof Map<?, ?> authMap) {
-              String authType = (String) authMap.get("type");
-              Map<String, Object> config = (Map<String, Object>) subscription.getConfig();
-
-              if (WebhookBearerAuth.Type.BEARER.value().equals(authType)) {
-                WebhookBearerAuth bearerAuth =
-                    JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
-                if (bearerAuth != null && !nullOrEmpty(bearerAuth.getSecretKey())) {
-                  bearerAuth.withSecretKey(
-                      Fernet.getInstance().encryptIfApplies(bearerAuth.getSecretKey()));
-                  if (config != null) {
-                    config.put("authType", JsonUtils.convertValue(bearerAuth, Map.class));
-                    subscription.withConfig(config);
-                  }
-                }
-              } else if (WebhookOAuth2Config.Type.OAUTH_2.value().equals(authType)) {
-                WebhookOAuth2Config oauth2Config =
-                    JsonUtils.convertValue(webhook.getAuthType(), WebhookOAuth2Config.class);
-                if (oauth2Config != null) {
-                  if (!nullOrEmpty(oauth2Config.getClientId())) {
-                    oauth2Config.withClientId(
-                        Fernet.getInstance().encryptIfApplies(oauth2Config.getClientId()));
-                  }
-                  if (!nullOrEmpty(oauth2Config.getClientSecret())) {
-                    oauth2Config.withClientSecret(
-                        Fernet.getInstance().encryptIfApplies(oauth2Config.getClientSecret()));
-                  }
-                  if (config != null) {
-                    config.put("authType", JsonUtils.convertValue(oauth2Config, Map.class));
-                    subscription.withConfig(config);
-                  }
-                }
-              }
-            }
-          }
+          Channels.ofTypeOf(subscription)
+              .ifPresent(channel -> channel.configRules().encryptSecrets(subscription));
 
           if (nullOrEmpty(subscription.getId())) {
             subscription.withId(UUID.randomUUID());

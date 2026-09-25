@@ -13,9 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.msteams;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.MS_TEAMS;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
-import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
@@ -35,6 +33,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.channels.builtin.HttpWebhookTransport;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
@@ -54,19 +53,17 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
 
   public MSTeamsPublisher(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType() == MS_TEAMS) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-      this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
-      this.client =
-          getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
-      this.messageEngine =
-          new HandlebarsNotificationMessageEngine(
-              (NotificationTemplateRepository)
-                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
-    } else {
-      throw new IllegalArgumentException("MsTeams Alert Invoked with Illegal Type and Settings.");
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
+    this.client =
+        HttpWebhookTransport.shared()
+            .clientFor(
+                subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
+    this.messageEngine =
+        new HandlebarsNotificationMessageEngine(
+            (NotificationTemplateRepository)
+                Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
   }
 
   @Override
@@ -96,10 +93,12 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       }
     } catch (Exception e) {
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, event, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), event, e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, e.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
   }
@@ -114,7 +113,8 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
           this, getTarget(client, webhook, JsonUtils.pojoToJson(teamsMessage)), teamsMessage);
     } catch (Exception e) {
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(message);
     }
@@ -130,9 +130,6 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
     return subscriptionDestination.getEnabled();
   }
 
-  public void close() {
-    if (null != client) {
-      client.close();
-    }
-  }
+  // The client belongs to the transport, which closes it when the server shuts down.
+  public void close() {}
 }

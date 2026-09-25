@@ -125,14 +125,14 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
     }
     return message == null
         ? Collections.emptySet()
-        : resolveEntityLinks(MessageParser.getEntityLinks(message), destination.getType());
+        : resolveEntityLinks(MessageParser.getEntityLinks(message), destination);
   }
 
   private Set<Recipient> resolveTaskMentions(Task task, SubscriptionDestination destination) {
     // Single source of truth with the filter side (AlertsRuleEvaluator.getTaskMentions): resolve
     // only the latest comment's mentions so earlier comments aren't re-notified on each
     // comment-add.
-    return resolveEntityLinks(AlertsRuleEvaluator.getTaskMentions(task), destination.getType());
+    return resolveEntityLinks(AlertsRuleEvaluator.getTaskMentions(task), destination);
   }
 
   private Set<Recipient> resolveAnnouncementMentions(
@@ -146,12 +146,11 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
-    return resolveEntityLinks(MessageParser.getEntityLinks(description), destination.getType());
+    return resolveEntityLinks(MessageParser.getEntityLinks(description), destination);
   }
 
   private Set<Recipient> resolveEntityLinks(
-      List<MessageParser.EntityLink> entityLinks,
-      SubscriptionDestination.SubscriptionType notificationType) {
+      List<MessageParser.EntityLink> entityLinks, SubscriptionDestination destination) {
 
     Set<Recipient> recipients = new HashSet<>();
 
@@ -160,12 +159,12 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
         if (Entity.USER.equalsIgnoreCase(link.getEntityType())) {
           User user = Entity.getEntity(link, "id,profile,email", Include.NON_DELETED);
           if (user != null) {
-            addIfResolved(recipients, Recipient.fromUser(user, notificationType));
+            addIfResolved(recipients, Recipient.fromUser(user, destination));
           }
         } else if (Entity.TEAM.equalsIgnoreCase(link.getEntityType())) {
           Team team = Entity.getEntity(link, "id,profile,email", Include.NON_DELETED);
           if (team != null) {
-            addIfResolved(recipients, Recipient.fromTeam(team, notificationType));
+            addIfResolved(recipients, Recipient.fromTeam(team, destination));
           }
         }
       } catch (Exception e) {
