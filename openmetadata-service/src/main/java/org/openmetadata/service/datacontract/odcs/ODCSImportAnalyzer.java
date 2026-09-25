@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -26,9 +27,12 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.TestCaseOutcome;
 import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.UnsupportedOutcome;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.ODCSConverter;
 
 /**
@@ -80,9 +84,13 @@ public final class ODCSImportAnalyzer {
     Optional<DataContract> contract =
         odcs.flatMap(document -> convert(document, original, request, issues));
     if (contract.isPresent()) {
-      resolveSlaColumn(contract.get(), issues);
-      validation = contractValidator.apply(contract.get());
-      outcomes = qualityRuleOutcomes(contract.get(), request, issues);
+      try {
+        resolveSlaColumn(contract.get(), issues);
+        validation = contractValidator.apply(contract.get());
+        outcomes = qualityRuleOutcomes(contract.get(), request, issues);
+      } catch (EntityNotFoundException e) {
+        issues.blocking(ODCSImportIssueCategory.DOCUMENT, null, "", e.getMessage());
+      }
     }
     return withReport(
         validation,
@@ -128,17 +136,18 @@ public final class ODCSImportAnalyzer {
       outcomes = notExecuted(contract, TEST_CASES_OFF);
     } else if (!Entity.TABLE.equals(contract.getEntity().getType())) {
       outcomes = notExecuted(contract, TABLES_ONLY);
-    } else if (!options.canCreateTestCases()) {
-      outcomes = notExecuted(contract, NO_PERMISSION);
-      warnNoPermission(contract, issues);
     } else {
+      List<TestCase> writes = new ArrayList<>();
       outcomes =
           qualityRules.preview(
               new ODCSQualityRuleImporter.Request(
                   contract,
                   options.ownedTestCaseIds(),
-                  (testCase, overwrites) -> {},
+                  (testCase, overwrites) -> writes.add(testCase),
                   options.user()));
+      if (!options.canCreateTestCases() && !writes.isEmpty()) {
+        outcomes = withoutPermission(outcomes, issues);
+      }
     }
     return outcomes;
   }
@@ -149,14 +158,25 @@ public final class ODCSImportAnalyzer {
         .toList();
   }
 
-  private static void warnNoPermission(DataContract contract, ODCSImportIssues issues) {
-    if (!listOrEmpty(contract.getOdcsQualityRules()).isEmpty()) {
-      issues.warning(
-          ODCSImportIssueCategory.QUALITY,
-          QUALITY,
-          QUALITY,
-          NO_PERMISSION + " The rules are kept with the contract but do not run.");
-    }
+  /**
+   * The import writes test cases before the contract and rejects the whole request when the caller
+   * may not write one, so the preview blocks rather than reporting the rules as skipped.
+   */
+  private static List<ODCSRuleOutcome> withoutPermission(
+      List<ODCSRuleOutcome> outcomes, ODCSImportIssues issues) {
+    issues.blocking(
+        ODCSImportIssueCategory.QUALITY,
+        QUALITY,
+        QUALITY,
+        NO_PERMISSION
+            + " Import with createTestCases=false to keep the rules without running them.");
+    return outcomes.stream()
+        .map(
+            outcome ->
+                outcome instanceof TestCaseOutcome
+                    ? new UnsupportedOutcome(outcome.rule(), NO_PERMISSION)
+                    : outcome)
+        .toList();
   }
 
   private static ContractValidation withReport(

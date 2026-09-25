@@ -8170,23 +8170,50 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testValidateODCSYamlSaysWhenTestCasesCannotBeCreated(TestNamespace ns) {
+  void testValidateODCSYamlBlocksWhenTestCasesCannotBeCreated(TestNamespace ns) {
     Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
     OpenMetadataClient contractAuthor = contractAuthorWithoutTestPermissions(ns);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_report_perm"), table.getName());
 
-    ODCSImportReport report =
+    ODCSImportReport withTests =
         contractAuthor
             .dataContracts()
-            .validateODCSYaml(
-                odcsWithQualityRules(ns.prefix("odcs_report_perm"), table.getName()),
-                table.getId(),
-                "table")
+            .validateODCSYaml(yaml, table.getId(), "table")
+            .getOdcsImportReport();
+    ODCSImportReport withoutTests =
+        contractAuthor
+            .dataContracts()
+            .validateODCSYaml(yaml, table.getId(), "table", false)
             .getOdcsImportReport();
 
-    assertFalse(report.getCanCreateTestCases());
-    assertTrue(report.getCanImport());
+    assertFalse(withTests.getCanCreateTestCases());
+    assertFalse(withTests.getCanImport());
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, withTests.getIssues().getFirst().getSeverity());
     assertTrue(
-        report.getQualityRules().stream()
-            .allMatch(rule -> rule.getOutcome() == ODCSQualityRuleOutcome.Outcome.NOT_EXECUTED));
+        withTests.getQualityRules().stream()
+            .noneMatch(rule -> rule.getOutcome() == ODCSQualityRuleOutcome.Outcome.TEST_CASE));
+    assertTrue(withoutTests.getCanImport());
+  }
+
+  @Test
+  void testValidateODCSYamlReportsAMissingTable(TestNamespace ns) {
+    UUID missingTable = UUID.randomUUID();
+
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_missing_table"), "missing"),
+                missingTable,
+                "table");
+
+    assertFalse(validation.getValid());
+    assertFalse(validation.getOdcsImportReport().getCanImport());
+    assertTrue(
+        validation.getOdcsImportReport().getIssues().stream()
+            .anyMatch(
+                issue ->
+                    issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING
+                        && issue.getMessage().contains(missingTable.toString())));
   }
 }

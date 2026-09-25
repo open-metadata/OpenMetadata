@@ -72,12 +72,7 @@ public final class ODCSTestCaseMaterializer {
    * the reason; the others are still written.
    */
   public Result materialize(Request request) {
-    List<Step> planned =
-        request.outcomes().stream().map(outcome -> plan(outcome, request)).toList();
-    planned.stream()
-        .filter(Write.class::isInstance)
-        .map(Write.class::cast)
-        .forEach(write -> request.guard().authorize(write.testCase(), write.overwritesExisting()));
+    List<Step> planned = planAndAuthorize(request);
     List<Step> settled =
         planned.stream()
             .map(step -> step instanceof Write write ? persist(write, request.user()) : step)
@@ -95,14 +90,24 @@ public final class ODCSTestCaseMaterializer {
 
   /**
    * What {@link #materialize} would skip because a different test case already has the name,
-   * without writing anything.
+   * without writing anything. Each test case it would write goes through the request's guard, so a
+   * preview can tell which writes the import would need permission for.
    */
-  public List<UnsupportedOutcome> conflicts(Request request) {
-    return request.outcomes().stream()
-        .map(outcome -> plan(outcome, request))
+  public List<UnsupportedOutcome> preview(Request request) {
+    return planAndAuthorize(request).stream()
         .filter(Skip.class::isInstance)
         .map(step -> ((Skip) step).outcome())
         .toList();
+  }
+
+  private List<Step> planAndAuthorize(Request request) {
+    List<Step> planned =
+        request.outcomes().stream().map(outcome -> plan(outcome, request)).toList();
+    planned.stream()
+        .filter(Write.class::isInstance)
+        .map(Write.class::cast)
+        .forEach(write -> request.guard().authorize(write.testCase(), write.overwritesExisting()));
+    return planned;
   }
 
   /** What becomes of one rule's test case, decided before anything is written. */
