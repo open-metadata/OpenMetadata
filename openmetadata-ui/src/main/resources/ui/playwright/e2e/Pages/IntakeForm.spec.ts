@@ -18,7 +18,16 @@ import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
 import { clickDrawerSave } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { openAddGlossaryTermModal } from '../../utils/glossary';
+import {
+  expectGlossaryFormError,
+  fillGlossaryTermForm,
+  getFormNameInput,
+  getGlossaryTermDrawer,
+  openAddGlossaryTermForm,
+  openEditGlossaryTermForm,
+  pressGlossaryFormSave,
+  saveGlossaryTermForm,
+} from '../../utils/glossaryForm';
 import { test } from '../fixtures/pages';
 
 const INTAKE_FORMS_URL = '/settings/governance/intake-forms';
@@ -1573,10 +1582,10 @@ test.describe(
             .includes('/api/v1/governance/intakeForms/entityType/') &&
           response.request().method() === 'GET'
       );
-      await openAddGlossaryTermModal(page);
+      const termForm = await openAddGlossaryTermForm(page);
       await intakeFetch;
 
-      const modal = page.locator('[role="dialog"].edit-glossary-modal');
+      const modal = getGlossaryTermDrawer(page);
       const stringFieldId = `extension-${properties.string}`;
       const hyperlinkUrlId = `extension-${properties.hyperlink}-url`;
       const hyperlinkDisplayTextId = `extension-${properties.hyperlink}-displayText`;
@@ -1600,10 +1609,10 @@ test.describe(
       ).toBeVisible();
 
       const termName = `intake-term-${uuid()}`;
-      await modal.getByTestId('name').fill(termName);
-      await modal
-        .locator(descriptionBox)
-        .fill('Glossary Term intake-form regression');
+      await fillGlossaryTermForm(page, termForm, {
+        name: termName,
+        description: 'Glossary Term intake-form regression',
+      });
 
       let createRequestCount = 0;
       const trackCreateRequest = (request: Request) => {
@@ -1615,8 +1624,12 @@ test.describe(
         }
       };
       page.on('request', trackCreateRequest);
-      await modal.getByTestId('save-glossary-term').click();
-      await expect(modal.getByText(`${stringLabel} is required`)).toBeVisible();
+      await pressGlossaryFormSave(page, 'glossaryTerm');
+      await expectGlossaryFormError(
+        page,
+        'glossaryTerm',
+        `${stringLabel} is required`
+      );
       expect(createRequestCount).toBe(0);
 
       await extensionInput(page, stringFieldId).fill('governed term');
@@ -1627,10 +1640,12 @@ test.describe(
       await extensionInput(page, hyperlinkUrlId).fill(
         'ftp://example.com/glossary-term'
       );
-      await modal.getByTestId('save-glossary-term').click();
-      await expect(
-        modal.getByText('URL must use http or https protocol')
-      ).toBeVisible();
+      await pressGlossaryFormSave(page, 'glossaryTerm');
+      await expectGlossaryFormError(
+        page,
+        'glossaryTerm',
+        'URL must use http or https protocol'
+      );
       expect(createRequestCount).toBe(0);
       page.off('request', trackCreateRequest);
 
@@ -1638,23 +1653,10 @@ test.describe(
         'https://example.com/glossary-term'
       );
 
-      const createRequest = page.waitForRequest(
-        (request) =>
-          request.url().endsWith('/api/v1/glossaryTerms') &&
-          request.method() === 'POST'
-      );
-      const createResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith('/api/v1/glossaryTerms') &&
-          response.request().method() === 'POST'
-      );
-      await modal.getByTestId('save-glossary-term').click();
-
-      const request = await createRequest;
-      const response = await createResponse;
+      const response = await saveGlossaryTermForm(page, 'create');
       expect(response.status()).toBe(201);
 
-      const payload = request.postDataJSON() as {
+      const payload = response.request().postDataJSON() as {
         extension: Record<string, unknown>;
         name: string;
       };
@@ -1665,13 +1667,13 @@ test.describe(
         url: 'https://example.com/glossary-term',
       });
 
-      await expect(modal).not.toBeVisible();
+      const { fullyQualifiedName: termFqn } = (await response.json()) as {
+        fullyQualifiedName: string;
+      };
       const termRow = page.locator(`[data-row-key*="${termName}"]`);
       await expect(termRow).toBeVisible({ timeout: 30000 });
-      await termRow.hover();
-      await termRow.getByTestId('edit-button').click();
-      await expect(modal).toBeVisible();
-      await expect(modal.getByTestId('name')).toHaveValue(termName);
+      const editForm = await openEditGlossaryTermForm(page, termFqn);
+      await expect(getFormNameInput(editForm)).toHaveValue(termName);
       await expect(page.getByTestId(stringFieldId)).toHaveCount(0);
       await expect(page.getByTestId(hyperlinkUrlId)).toHaveCount(0);
     });

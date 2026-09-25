@@ -49,7 +49,7 @@ import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
-import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
+import GlossaryTermDrawer from './GlossaryTermDrawer/GlossaryTermDrawer';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
@@ -242,6 +242,11 @@ const GlossaryV1 = ({
       setActiveGlossaryTerm(glossaryTerm);
       setIsEditModalOpen(true);
     },
+    []
+  );
+
+  const handleGlossaryTermDrawerClose = useCallback(
+    () => setIsEditModalOpen(false),
     []
   );
 
@@ -547,11 +552,10 @@ const GlossaryV1 = ({
       )}
 
       {isEditModalOpen && (
-        <GlossaryTermModal
+        <GlossaryTermDrawer
           editMode={editMode}
           glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
-          visible={isEditModalOpen}
-          onCancel={() => setIsEditModalOpen(false)}
+          onCancel={handleGlossaryTermDrawerClose}
           onSave={handleGlossaryTermSave}
         />
       )}

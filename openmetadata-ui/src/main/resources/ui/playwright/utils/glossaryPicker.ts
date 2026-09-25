@@ -170,10 +170,16 @@ export const removeGlossaryTermChip = async (
 };
 
 // A form picker commits on click, so there is no Apply step to wait on.
+//
+// `dismissWith: 'escape'` is for pickers inside a dismissable drawer
+// (SlideoutMenu): an outside click lands on the drawer's backdrop and closes
+// the drawer too, while the picker's own document-level Escape handler only
+// closes the popover. Keep the default for modals that close on Escape.
 export const pickGlossaryTermInField = async (
   page: Page,
   trigger: Locator,
-  term: GlossaryTermRef
+  term: GlossaryTermRef,
+  { dismissWith = 'outside' }: { dismissWith?: 'outside' | 'escape' } = {}
 ) => {
   await openGlossaryPicker(page, trigger);
   await toggleGlossaryTermInPicker(page, term);
@@ -185,7 +191,11 @@ export const pickGlossaryTermInField = async (
     .catch(() => false);
 
   if (!closedItself) {
-    await clickOutside(page);
+    if (dismissWith === 'escape') {
+      await page.keyboard.press('Escape');
+    } else {
+      await clickOutside(page);
+    }
   }
 
   await expect(popover).not.toBeVisible();

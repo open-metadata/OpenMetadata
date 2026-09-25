@@ -10,567 +10,229 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { Config, CustomProperty } from '../../../generated/entity/type';
-import {
-  FieldKind,
-  IntakeForm,
-  IntakeFormField,
-  RequiredField,
-  TargetEntityType,
-} from '../../../generated/governance/intakeForm';
-import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
-import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useForm } from 'react-hook-form';
+import { IntakeFormField } from '../../../generated/governance/intakeForm';
+import { GlossaryTermIntakeFormState } from '../hooks/useGlossaryTermIntakeForm';
 import AddGlossaryTermForm from './AddGlossaryTermForm.component';
-import {
-  GlossaryTermForm,
-  GlossaryTermFormState,
-} from './AddGlossaryTermForm.interface';
-
-// AddGlossaryTermForm is a legacy antd form whose required `formRef` prop must be
-// a real antd FormInstance from the same module instance the component uses.
-// `jest.requireActual` returns a separate copy (fields stay unregistered,
-// validation hangs), and a static antd import is blocked by the antd/less
-// deprecation guard for new files. `require` returns the shared jest-registry
-// instance the component consumes and is not matched by the guard.
-const { Form } = require('antd') as typeof import('antd');
-
-const mockDataAssetSelectProps: Array<Record<string, unknown>> = [];
+import { GlossaryTermFormValues } from './AddGlossaryTermForm.interface';
+import { GLOSSARY_TERM_FORM_DEFAULTS } from './AddGlossaryTermForm.utils';
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}));
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({
-    currentUser: {
-      id: 'current-user-id',
-    },
-  }),
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 jest.mock('../../../hooks/useEntityRules', () => ({
   useEntityRules: () => ({
     entityRules: {
-      canAddMultipleTeamOwner: true,
       canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
     },
   }),
 }));
 
-jest.mock('../../../rest/intakeFormsAPI', () => ({
-  getIntakeFormByEntityType: jest.fn(),
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
 }));
 
-jest.mock('../../../rest/metadataTypeAPI', () => ({
-  getCustomPropertiesByEntityType: jest.fn(),
+jest.mock('../../../rest/domainAPI', () => ({
+  searchDomains: jest.fn().mockResolvedValue([]),
 }));
-
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
-jest.mock('../../../utils/formUtils', () => {
-  const { Form: AntForm } = jest.requireActual<typeof import('antd')>('antd');
-  const MockInput = ({
-    'data-testid': dataTestId,
-    onChange,
-    value = '',
-  }: {
-    'data-testid': string;
-    onChange?: import('react').ChangeEventHandler<HTMLInputElement>;
-    value?: unknown;
-  }) => (
-    <input
-      aria-label="input"
-      data-testid={dataTestId}
-      value={
-        typeof value === 'string' || typeof value === 'number' ? value : ''
-      }
-      onChange={onChange}
-    />
-  );
-
-  const renderField = (
-    field: import('../../../interface/FormUtils.interface').FieldProp
-  ) => (
-    <AntForm.Item
-      key={field.id}
-      label={field.label}
-      name={field.name}
-      required={field.required}
-      rules={field.rules}>
-      <MockInput
-        data-testid={
-          (field.props?.['data-testid'] as string | undefined) ?? field.id
-        }
-      />
-    </AntForm.Item>
-  );
-
-  return {
-    generateFormFields: (
-      fields: import('../../../interface/FormUtils.interface').FieldProp[]
-    ) => <>{fields.map(renderField)}</>,
-    getField: renderField,
-  };
-});
-
-jest.mock(
-  '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
-  () =>
-    jest.fn().mockImplementation((props: Record<string, unknown>) => {
-      mockDataAssetSelectProps.push(props);
-
-      return (
-        <input
-          aria-label="input"
-          data-testid={props['data-testid'] as string}
-          value=""
-          onChange={() => undefined}
-        />
-      );
-    })
-);
-
-jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
-  jest.fn().mockReturnValue(<textarea aria-label="editor" />)
-);
-
-jest.mock('../../common/DatePicker/DatePicker', () =>
-  jest.fn().mockReturnValue(<input aria-label="date-picker" />)
-);
 
 jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
-  jest
-    .fn()
-    .mockImplementation(({ 'data-testid': dataTestId }) => (
-      <textarea aria-label="editor" data-testid={dataTestId} />
-    ))
+  jest.fn(
+    ({
+      initialValue,
+      onTextChange,
+    }: {
+      initialValue?: string;
+      onTextChange: (value: string) => void;
+    }) => (
+      <textarea
+        aria-label="description-editor"
+        defaultValue={initialValue}
+        onChange={(event) => onTextChange(event.target.value)}
+      />
+    )
+  )
 );
 
-jest.mock(
-  '../../common/CustomPropertyTable/TableTypeProperty/EditTableTypePropertyModal',
-  () => ({
-    getGridColumns: (columns: string[]) =>
-      columns.map((column) => ({ key: column, name: column })),
-  })
+jest.mock('../../Tag/TagSelector/TagSelector', () =>
+  jest.fn(() => <div data-testid="tag-selector" />)
 );
 
-jest.mock(
-  '../../common/CustomPropertyTable/TableTypeProperty/TableTypePropertyEditTable',
-  () => jest.fn().mockReturnValue(<div data-testid="table-editor" />)
+jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () =>
+  jest.fn(() => <div data-testid="related-terms" />)
 );
 
-const mockedGetIntakeForm = getIntakeFormByEntityType as jest.MockedFunction<
-  typeof getIntakeFormByEntityType
->;
-const mockedGetCustomProperties =
-  getCustomPropertiesByEntityType as jest.MockedFunction<
-    typeof getCustomPropertiesByEntityType
-  >;
+jest.mock('../../Domain/AddDomainForm/AddDomainFormExtensionFields', () =>
+  jest.fn(() => <div data-testid="extension-fields" />)
+);
 
-const createCustomProperty = (
-  name: string,
-  propertyType: string,
-  config?: Config | string[] | string
-): CustomProperty => ({
-  customPropertyConfig:
-    config === undefined
-      ? undefined
-      : {
-          config,
-        },
-  description: '',
-  name,
-  propertyType: {
-    id: `${propertyType}-id`,
-    name: propertyType,
-    type: 'type',
-  },
-});
+const onSubmit = jest.fn();
 
-const createRequiredField = (
-  name: string,
-  fieldKind = FieldKind.CustomProperty
-): RequiredField => ({
-  fieldKind,
-  fieldLabel: name,
-  fieldPath:
-    fieldKind === FieldKind.CustomProperty ? `extension.${name}` : name,
-});
+const NO_INTAKE: GlossaryTermIntakeFormState = {
+  customProperties: [],
+  extensionFormFields: [],
+  isLoaded: true,
+  requiredNativeFields: new Map(),
+};
 
-const createIntakeForm = (requiredFields: RequiredField[]): IntakeForm => ({
-  entityType: TargetEntityType.GlossaryTerm,
-  id: 'intake-form-id',
-  name: 'glossaryTermIntakeForm',
-  requiredFields,
-});
-
-const createIntakeFormWithFields = (
-  formFields: IntakeFormField[]
-): IntakeForm => ({
-  entityType: TargetEntityType.GlossaryTerm,
-  formFields,
-  id: 'intake-form-id',
-  name: 'glossaryTermIntakeForm',
-});
-
-interface FormHarnessProps {
-  editMode?: boolean;
-  formValues?: Partial<GlossaryTermFormState>;
-  glossaryTerm?: GlossaryTerm;
-  onSave: (value: GlossaryTermForm) => void | Promise<void>;
-}
-
-const FormHarness = ({
+const Harness = ({
   editMode = false,
-  formValues,
-  glossaryTerm,
-  onSave,
-}: FormHarnessProps) => {
-  const [form] = Form.useForm<GlossaryTermFormState>();
+  intake = NO_INTAKE,
+  defaultValues = GLOSSARY_TERM_FORM_DEFAULTS,
+}: {
+  editMode?: boolean;
+  intake?: GlossaryTermIntakeFormState;
+  defaultValues?: GlossaryTermFormValues;
+}) => {
+  const form = useForm<GlossaryTermFormValues>({ defaultValues });
 
   return (
     <>
       <AddGlossaryTermForm
         editMode={editMode}
-        formRef={form}
-        glossaryTerm={glossaryTerm}
-        onCancel={jest.fn()}
-        onSave={onSave}
+        form={form}
+        intake={intake}
+        onSubmit={onSubmit}
       />
-      {formValues && (
-        <button
-          data-testid="submit-values"
-          onClick={() => {
-            form.setFieldsValue(formValues);
-            form.submit();
-          }}>
-          Submit
-        </button>
-      )}
+      <button onClick={() => form.handleSubmit(onSubmit)()}>submit</button>
     </>
   );
 };
 
-// Text-ish extension fields put their test id on the field wrapper rendered by
-// core-components, so reach through to the control the user actually types in.
-const extensionInput = (testId: string): HTMLElement => {
-  const field = screen.getByTestId(testId);
-
-  return field.tagName === 'INPUT'
-    ? field
-    : (field.querySelector('input') as HTMLElement);
+const fillRequired = () => {
+  fireEvent.change(screen.getByLabelText('label.name'), {
+    target: { value: 'Revenue' },
+  });
+  fireEvent.change(screen.getByLabelText('description-editor'), {
+    target: { value: 'Money in' },
+  });
 };
 
-describe('AddGlossaryTermForm intake fields', () => {
+describe('AddGlossaryTermForm', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockDataAssetSelectProps.length = 0;
-    mockedGetIntakeForm.mockResolvedValue(null);
-    mockedGetCustomProperties.mockResolvedValue([]);
+    onSubmit.mockReset();
   });
 
-  it('renders configured custom intake fields in create mode', async () => {
-    const requiredFields = [
-      createRequiredField('summary'),
-      createRequiredField('relatedTerm'),
-      createRequiredField('documentation'),
-    ];
-    mockedGetIntakeForm.mockResolvedValue(createIntakeForm(requiredFields));
-    mockedGetCustomProperties.mockResolvedValue([
-      createCustomProperty('summary', 'string'),
-      createCustomProperty('relatedTerm', 'entityReference', ['glossaryTerm']),
-      createCustomProperty('documentation', 'hyperlink-cp'),
-    ]);
+  it('renders the term fields', () => {
+    render(<Harness />);
 
-    render(<FormHarness onSave={jest.fn()} />);
-
-    expect(await screen.findByTestId('extension-summary')).toBeInTheDocument();
-    expect(screen.getByTestId('extension-relatedTerm')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('extension-documentation-url')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('extension-documentation-displayText')
-    ).toBeInTheDocument();
-    expect(mockedGetIntakeForm).toHaveBeenCalledWith(
-      TargetEntityType.GlossaryTerm
-    );
-    expect(mockedGetCustomProperties).toHaveBeenCalledWith(
-      TargetEntityType.GlossaryTerm
-    );
-
-    const section = screen.getByTestId('custom-properties-section');
-    const badges = screen.getAllByTestId('custom-property-type-badge');
-
-    expect(section).toBeInTheDocument();
-    expect(badges).toHaveLength(3);
-    expect(badges.map((badge) => badge.textContent)).toEqual([
-      'STRING',
-      'ENTITYREFERENCE',
-      'HYPERLINK',
-    ]);
-
-    const reviewersField = screen.getByTestId('root/reviewers');
-
-    expect(
-      reviewersField.compareDocumentPosition(section) &
-        Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    expect(screen.getByLabelText('label.name')).toBeInTheDocument();
+    expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('related-terms')).toBeInTheDocument();
+    expect(screen.getByText('label.synonym-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.icon')).toBeInTheDocument();
+    expect(screen.getByText('label.color')).toBeInTheDocument();
+    expect(screen.getByText('label.reference-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.reviewer-plural')).toBeInTheDocument();
   });
 
-  it('submits without a value for an included optional custom field', async () => {
-    mockedGetIntakeForm.mockResolvedValue(
-      createIntakeFormWithFields([
-        {
-          fieldKind: FieldKind.CustomProperty,
-          fieldLabel: 'Summary',
-          fieldPath: 'extension.summary',
-          required: false,
-        },
-      ])
-    );
-    mockedGetCustomProperties.mockResolvedValue([
-      createCustomProperty('summary', 'string'),
-    ]);
-    const onSave = jest.fn();
-
+  it('seeds the description editor from the form defaults', () => {
     render(
-      <FormHarness
-        formValues={{
-          description: 'Description',
-          name: 'term-name',
-        }}
-        onSave={onSave}
-      />
-    );
-
-    expect(await screen.findByTestId('extension-summary')).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-values'));
-    });
-
-    await waitFor(() => expect(onSave).toHaveBeenCalled());
-  });
-
-  it('waits for custom-property definitions before rendering intake fields', async () => {
-    const requiredFields = [createRequiredField('summary')];
-    const customProperties = [createCustomProperty('summary', 'string')];
-    let resolveCustomProperties: (properties: CustomProperty[]) => void = (
-      _properties
-    ) => undefined;
-    const customPropertiesRequest = new Promise<CustomProperty[]>((resolve) => {
-      resolveCustomProperties = resolve;
-    });
-    mockedGetIntakeForm.mockResolvedValue(createIntakeForm(requiredFields));
-    mockedGetCustomProperties.mockReturnValue(customPropertiesRequest);
-
-    render(<FormHarness onSave={jest.fn()} />);
-
-    await waitFor(() => expect(mockedGetIntakeForm).toHaveBeenCalled());
-
-    expect(screen.queryByTestId('extension-summary')).not.toBeInTheDocument();
-
-    await act(async () => resolveCustomProperties(customProperties));
-
-    expect(await screen.findByTestId('extension-summary')).toBeInTheDocument();
-  });
-
-  it('does not fetch or render intake fields in edit mode', () => {
-    render(<FormHarness editMode onSave={jest.fn()} />);
-
-    expect(mockedGetIntakeForm).not.toHaveBeenCalled();
-    expect(mockedGetCustomProperties).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('extension-summary')).not.toBeInTheDocument();
-  });
-
-  it('serializes values typed into the intake fields into the submit payload', async () => {
-    mockedGetIntakeForm.mockResolvedValue(
-      createIntakeForm([
-        createRequiredField('score'),
-        createRequiredField('summary'),
-        createRequiredField('documentation'),
-      ])
-    );
-    mockedGetCustomProperties.mockResolvedValue([
-      createCustomProperty('score', 'integer'),
-      createCustomProperty('summary', 'string'),
-      createCustomProperty('documentation', 'hyperlink-cp'),
-    ]);
-    const onSave = jest.fn();
-
-    render(
-      <FormHarness
-        formValues={{
-          description: 'Description',
-          displayName: 'Display name',
-          name: ' term-name ',
-        }}
-        onSave={onSave}
-      />
-    );
-
-    await screen.findByTestId('extension-score');
-
-    fireEvent.change(extensionInput('extension-score'), {
-      target: { value: '42' },
-    });
-    fireEvent.change(extensionInput('extension-summary'), {
-      target: { value: 'governed term' },
-    });
-    fireEvent.change(extensionInput('extension-documentation-url'), {
-      target: { value: 'https://example.com/docs' },
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-values'));
-    });
-
-    await waitFor(() =>
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({
-          extension: {
-            // The integer arrives as a JSON number and the hyperlink as an
-            // object; an empty display text is dropped rather than sent.
-            documentation: { url: 'https://example.com/docs' },
-            score: 42,
-            summary: 'governed term',
-          },
-          name: 'term-name',
-        })
-      )
-    );
-  });
-
-  it('blocks submit while a required intake field is empty', async () => {
-    mockedGetIntakeForm.mockResolvedValue(
-      createIntakeForm([createRequiredField('summary')])
-    );
-    mockedGetCustomProperties.mockResolvedValue([
-      createCustomProperty('summary', 'string'),
-    ]);
-    const onSave = jest.fn();
-
-    render(
-      <FormHarness
-        formValues={{ description: 'Description', name: 'term-name' }}
-        onSave={onSave}
-      />
-    );
-
-    await screen.findByTestId('extension-summary');
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-values'));
-    });
-
-    expect(onSave).not.toHaveBeenCalled();
-  });
-
-  it.each(['displayName', 'synonyms', 'tags', 'reviewers'])(
-    'applies the intake required rule to the native %s field',
-    async (fieldPath) => {
-      const errorMessage = `${fieldPath} intake required`;
-      mockedGetIntakeForm.mockResolvedValue(
-        createIntakeForm([
-          {
-            errorMessage,
-            fieldKind: FieldKind.Native,
-            fieldLabel: fieldPath,
-            fieldPath,
-          },
-        ])
-      );
-
-      render(
-        <FormHarness
-          formValues={{
-            description: 'Description',
-            name: 'term-name',
-          }}
-          onSave={jest.fn()}
-        />
-      );
-
-      await waitFor(() => expect(mockedGetIntakeForm).toHaveBeenCalled());
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('submit-values'));
-      });
-
-      expect(await screen.findByText(errorMessage)).toBeInTheDocument();
-    }
-  );
-});
-
-describe('AddGlossaryTermForm style fields', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (getIntakeFormByEntityType as jest.Mock).mockResolvedValue(undefined);
-    (getCustomPropertiesByEntityType as jest.Mock).mockResolvedValue([]);
-  });
-
-  it('prefills the icon and colour of the term being edited', async () => {
-    render(
-      <FormHarness
+      <Harness
         editMode
-        glossaryTerm={
-          {
-            name: 'term',
-            style: { color: '#FF0000', iconURL: 'File01' },
-          } as GlossaryTerm
-        }
-        onSave={jest.fn()}
+        defaultValues={{
+          ...GLOSSARY_TERM_FORM_DEFAULTS,
+          name: 'Revenue',
+          description: 'Existing description',
+        }}
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('root/iconURL')).toHaveValue('File01');
-    });
-
-    expect(screen.getByTestId('root/color')).toHaveValue('#FF0000');
+    expect(screen.getByLabelText('description-editor')).toHaveValue(
+      'Existing description'
+    );
+    expect(screen.getByLabelText('label.name')).toHaveValue('Revenue');
   });
 
-  it('carries the picked icon and colour into the save payload as style', async () => {
-    const onSave = jest.fn();
+  it('adds, validates and removes references', async () => {
+    render(<Harness />);
+    fillRequired();
 
+    fireEvent.click(screen.getByTestId('add-reference'));
+    fireEvent.change(screen.getAllByLabelText('label.endpoint')[0], {
+      target: { value: 'ftp://wiki' },
+    });
+    fireEvent.click(screen.getByText('submit'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.url-must-start-with-http-or-https')
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('remove-reference-0'));
+    fireEvent.click(screen.getByText('submit'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+
+    expect(onSubmit.mock.calls[0][0].references).toEqual([]);
+  });
+
+  it('submits entered references', async () => {
+    render(<Harness />);
+    fillRequired();
+
+    fireEvent.click(screen.getByTestId('add-reference'));
+    fireEvent.change(screen.getAllByLabelText('label.name')[1], {
+      target: { value: 'Wiki' },
+    });
+    fireEvent.change(screen.getAllByLabelText('label.endpoint')[0], {
+      target: { value: 'https://wiki' },
+    });
+    fireEvent.click(screen.getByText('submit'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+
+    expect(onSubmit.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        name: 'Revenue',
+        description: 'Money in',
+        references: [{ name: 'Wiki', endpoint: 'https://wiki' }],
+      })
+    );
+  });
+
+  it('enforces native fields the intake form makes required', async () => {
     render(
-      <FormHarness
-        formValues={
-          {
-            name: 'term',
-            description: 'a term',
-            color: '#0000FF',
-            iconURL: 'Folder',
-          } as Partial<GlossaryTermFormState>
-        }
-        onSave={onSave}
+      <Harness
+        intake={{
+          ...NO_INTAKE,
+          requiredNativeFields: new Map([
+            [
+              'displayName',
+              {
+                fieldPath: 'displayName',
+                errorMessage: 'Display name is mandatory',
+              } as IntakeFormField,
+            ],
+          ]),
+        }}
       />
     );
+    fillRequired();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-values'));
-    });
+    fireEvent.click(screen.getByText('submit'));
 
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(
-        expect.objectContaining({
-          style: { color: '#0000FF', iconURL: 'Folder' },
-        })
-      );
-    });
+    expect(
+      await screen.findByText('Display name is mandatory')
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('renders intake custom properties on create only', () => {
+    const { rerender } = render(<Harness />);
+
+    expect(screen.getByTestId('extension-fields')).toBeInTheDocument();
+
+    rerender(<Harness editMode />);
+
+    expect(screen.queryByTestId('extension-fields')).not.toBeInTheDocument();
   });
 });

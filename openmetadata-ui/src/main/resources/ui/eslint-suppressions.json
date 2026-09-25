@@ -237,11 +237,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
-    "playwright/no-wait-for-selector": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 7
@@ -669,12 +664,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 9
-    }
-  },
-  "playwright/e2e/Pages/GlossaryFormValidation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 6
     }
   },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {

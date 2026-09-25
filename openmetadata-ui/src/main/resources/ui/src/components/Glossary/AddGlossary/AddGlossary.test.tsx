@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,72 +10,139 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { fireEvent, getByTestId, render } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useForm } from 'react-hook-form';
 import AddGlossary from './AddGlossary.component';
+import { GlossaryFormValues } from './AddGlossary.interface';
+import { GLOSSARY_FORM_DEFAULTS } from './AddGlossary.utils';
 
-jest.mock('../../MyData/LeftSidebar/LeftSidebar.component', () =>
-  jest.fn().mockReturnValue(<p>Sidebar</p>)
-);
-
-jest.mock('../../../rest/glossaryAPI', () => ({
-  addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('../../common/ResizablePanels/ResizablePanels', () =>
-  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
-    <>
-      <div>{firstPanel.children}</div>
-      <div>{secondPanel.children}</div>
-    </>
-  ))
-);
-
 jest.mock('../../../hooks/useEntityRules', () => ({
-  useEntityRules: jest.fn().mockImplementation(() => ({
+  useEntityRules: () => ({
     entityRules: {
       canAddMultipleUserOwners: true,
       canAddMultipleTeamOwner: true,
+      canAddMultipleDomains: true,
     },
-  })),
+  }),
 }));
 
-const mockOnCancel = jest.fn();
-const mockOnSave = jest.fn();
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
+}));
 
-const mockProps = {
-  header: 'Header',
-  allowAccess: true,
-  isLoading: false,
-  onCancel: mockOnCancel,
-  onSave: mockOnSave,
-  slashedBreadcrumb: [],
-};
+jest.mock('../../../rest/domainAPI', () => ({
+  searchDomains: jest.fn().mockResolvedValue([]),
+}));
 
-describe('Test AddGlossary component', () => {
-  it('AddGlossary component should render', () => {
-    const { container } = render(<AddGlossary {...mockProps} />);
+jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
+  jest.fn(({ onTextChange }: { onTextChange: (value: string) => void }) => (
+    <textarea
+      aria-label="description-editor"
+      onChange={(event) => onTextChange(event.target.value)}
+    />
+  ))
+);
 
-    const addGlossaryForm = getByTestId(container, 'add-glossary');
+jest.mock('../../Tag/TagSelector/TagSelector', () =>
+  jest.fn(() => <div data-testid="tag-selector" />)
+);
 
-    expect(addGlossaryForm).toBeInTheDocument();
+const onSubmit = jest.fn();
+
+const Harness = () => {
+  const form = useForm<GlossaryFormValues>({
+    defaultValues: GLOSSARY_FORM_DEFAULTS,
   });
 
-  it('should be able to cancel', () => {
-    const { container } = render(<AddGlossary {...mockProps} />);
+  return (
+    <>
+      <AddGlossary form={form} onSubmit={onSubmit} />
+      <button onClick={() => form.handleSubmit(onSubmit)()}>submit</button>
+    </>
+  );
+};
 
-    const cancelButton = getByTestId(container, 'cancel-glossary');
+describe('AddGlossary', () => {
+  beforeEach(() => {
+    onSubmit.mockReset();
+  });
 
-    expect(cancelButton).toBeInTheDocument();
+  it('renders every glossary field and no configure-glossary side panel', () => {
+    render(<Harness />);
 
-    fireEvent.click(
-      cancelButton,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
+    expect(screen.getByTestId('add-glossary-form')).toBeInTheDocument();
+    expect(screen.getByLabelText('label.name')).toBeInTheDocument();
+    expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
+    expect(screen.getByLabelText('description-editor')).toBeInTheDocument();
+    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+    expect(screen.getByText('label.mutually-exclusive')).toBeInTheDocument();
+    expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.reviewer-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
+    expect(screen.queryByTestId('right-panel')).not.toBeInTheDocument();
+  });
+
+  it('blocks submit until name and description are filled', async () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText('submit'));
+
+    expect(await screen.findAllByText('label.field-required')).toHaveLength(2);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('rejects names that break the entity name pattern', async () => {
+    render(<Harness />);
+
+    fireEvent.change(screen.getByLabelText('label.name'), {
+      target: { value: 'bad::name' },
+    });
+    fireEvent.change(screen.getByLabelText('description-editor'), {
+      target: { value: 'Description' },
+    });
+    fireEvent.click(screen.getByText('submit'));
+
+    expect(
+      await screen.findByText('message.entity-name-validation')
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('submits the entered values', async () => {
+    render(<Harness />);
+
+    fireEvent.change(screen.getByLabelText('label.name'), {
+      target: { value: 'Business' },
+    });
+    fireEvent.change(screen.getByLabelText('description-editor'), {
+      target: { value: 'Business terms' },
+    });
+    fireEvent.click(screen.getByText('submit'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+
+    expect(onSubmit.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        name: 'Business',
+        description: 'Business terms',
+        mutuallyExclusive: false,
       })
     );
+  });
 
-    expect(mockOnCancel).toHaveBeenCalled();
+  it('warns about mutual exclusivity only once it is switched on', async () => {
+    render(<Harness />);
+
+    expect(screen.queryByTestId('form-item-alert')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    expect(await screen.findByTestId('form-item-alert')).toHaveTextContent(
+      'message.mutually-exclusive-alert'
+    );
   });
 });

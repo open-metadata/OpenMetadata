@@ -14,12 +14,9 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-  fillDescriptionBox,
-  getApiContext,
-  redirectToHomePage,
-} from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { selectActiveGlossary } from '../../../utils/glossary';
+import { createGlossaryTermFromForm } from '../../../utils/glossaryForm';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -45,44 +42,14 @@ test.describe('Glossary P2 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Create a new term
-      const addTermButton = page.getByTestId('add-new-tag-button-header');
-      await addTermButton.waitFor({ state: 'visible', timeout: 10000 });
-      await addTermButton.click();
+      const response = await createGlossaryTermFromForm(page, {
+        name: `DraftTerm_${Date.now()}`,
+        description: 'Test term for draft status',
+      });
+      const termData = await response.json();
 
-      // Wait for form dialog
-      await page
-        .locator('[role="dialog"].edit-glossary-modal')
-        .waitFor({ timeout: 10000 });
-
-      const termName = `DraftTerm_${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-      await fillDescriptionBox(page, 'Test term for draft status');
-
-      // Set up response listener before clicking save
-      const termResponse = page.waitForResponse(
-        (res) =>
-          res.url().includes('/api/v1/glossaryTerms') &&
-          res.request().method() === 'POST'
-      );
-
-      await page.click('[data-testid="save-glossary-term"]');
-
-      try {
-        const response = await termResponse;
-        const termData = await response.json();
-
-        // Verify status is Draft or Approved (no reviewers = auto-approved in some configs)
-        expect(['Draft', 'Approved']).toContain(termData.status);
-      } catch {
-        // If response doesn't contain status, just verify term was created
-        const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-        await loadResponse;
-
-        await expect(page.getByTestId('entity-header-name')).toBeVisible({
-          timeout: 5000,
-        });
-      }
+      // No reviewers = auto-approved in some configs
+      expect(['Draft', 'Approved']).toContain(termData.status);
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

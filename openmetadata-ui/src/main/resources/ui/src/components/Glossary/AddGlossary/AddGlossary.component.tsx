@@ -11,383 +11,152 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Form, Space, Typography } from 'antd';
-import { FormProps, useForm } from 'antd/lib/form/Form';
-import { compact, isArray } from 'lodash';
-import { useTranslation } from 'react-i18next';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import {
-  CreateGlossary,
-  EntityReference,
-} from '../../../generated/api/data/createGlossary';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useDomainStore } from '../../../hooks/useDomainStore';
-import { useEntityRules } from '../../../hooks/useEntityRules';
-import {
+  Box,
   FieldProp,
   FieldTypes,
-  FormItemLayout,
-  HelperTextType,
-} from '../../../interface/FormUtils.interface';
-import { getPopupContainer } from '../../../utils/formPureUtils';
-import { generateFormFields, getField } from '../../../utils/formUtils';
-import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import './add-glossary.less';
+  FormField,
+  FormItemLabel,
+  getField,
+  HintText,
+  HookForm,
+} from '@openmetadata/ui-core-components';
+import { useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../enums/entity.enum';
+import { useEntityRules } from '../../../hooks/useEntityRules';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
+import { useEntityReferenceOptions } from '../hooks/useEntityReferenceOptions';
+import { useGlossaryFormFields } from '../hooks/useGlossaryFormFields';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
-const AddGlossary = ({
-  header,
-  allowAccess = true,
-  isLoading,
-  slashedBreadcrumb,
-  onCancel,
-  onSave,
-}: AddGlossaryProps) => {
+const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
   const { t } = useTranslation();
-  const [form] = useForm();
   const { entityRules } = useEntityRules(EntityType.GLOSSARY);
-  const { currentUser } = useApplicationStore();
-  const { activeDomainEntityRef } = useDomainStore();
+  const {
+    domainOptions,
+    userTeamOptions,
+    onDomainFocus,
+    onDomainSearch,
+    onUserTeamFocus,
+    onUserTeamSearch,
+  } = useEntityReferenceOptions();
+  const {
+    nameField,
+    displayNameField,
+    getMutuallyExclusiveField,
+    ownersField,
+    reviewersField,
+  } = useGlossaryFormFields({
+    entityRules,
+    userTeamOptions,
+    onUserTeamFocus,
+    onUserTeamSearch,
+  });
 
-  const selectedOwners =
-    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
-
-  const ownersList = Array.isArray(selectedOwners)
-    ? selectedOwners
-    : [selectedOwners];
-
-  const reviewersData =
-    Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
-
-  const selectedDomain = Form.useWatch<
-    EntityReference | EntityReference[] | undefined
-  >('domains', form);
-
-  const reviewersList = Array.isArray(reviewersData)
-    ? reviewersData
-    : [reviewersData];
-
-  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
-    'mutuallyExclusive',
-    form
-  );
-
-  const handleSave: FormProps['onFinish'] = (formData) => {
-    const { name, displayName, description, tags, mutuallyExclusive } =
-      formData;
-
-    const selectedOwners =
-      ownersList.length > 0
-        ? ownersList
-        : [
-            {
-              id: currentUser?.id ?? '',
-              type: 'user',
-            },
-          ];
-
-    const selectedDomainList: EntityReference[] = isArray(selectedDomain)
-      ? selectedDomain
-      : compact([selectedDomain]);
-
-    const data: CreateGlossary = {
-      name: name.trim(),
-      displayName: displayName?.trim(),
-      description: description,
-      reviewers: reviewersList.filter(Boolean),
-      owners: selectedOwners,
-      tags: tags || [],
-      mutuallyExclusive: Boolean(mutuallyExclusive),
-      domains: selectedDomain
-        ? (selectedDomainList
-            .map((d) => d.fullyQualifiedName)
-            .filter(Boolean) as string[]) ?? []
-        : undefined,
-    };
-    onSave(data);
-  };
-
-  const rightPanel = (
-    <div data-testid="right-panel">
-      <Typography.Title level={5}>
-        {t('label.configure-entity', {
-          entity: t('label.glossary'),
-        })}
-      </Typography.Title>
-      <Typography.Text className="mb-5">
-        {t('message.create-new-glossary-guide')}
-      </Typography.Text>
-    </div>
-  );
-
-  const formFields: FieldProp[] = [
-    {
-      name: 'name',
-      id: 'root/name',
-      label: t('label.name'),
-      required: true,
-      placeholder: t('label.name'),
-      type: FieldTypes.TEXT,
-      props: {
-        'data-testid': 'name',
-      },
-      rules: NAME_FIELD_RULES,
-    },
-    {
-      name: 'displayName',
-      id: 'root/displayName',
-      label: t('label.display-name'),
-      required: false,
-      placeholder: t('label.display-name'),
-      type: FieldTypes.TEXT,
-      props: {
-        'data-testid': 'display-name',
-      },
-    },
-    {
-      name: 'description',
-      required: true,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        className: 'glossary-richtext-editor',
-        initialValue: '',
-        height: 'auto',
-        readonly: !allowAccess,
-      },
-      rules: [
-        {
-          required: true,
-          whitespace: true,
-          message: t('label.field-required', {
-            field: t('label.description'),
-          }),
-        },
-      ],
-    },
-    {
-      name: 'tags',
-      required: false,
-      label: t('label.tag-plural'),
-      id: 'root/tags',
-      type: FieldTypes.TAG_SUGGESTION,
-      props: {
-        'data-testid': 'tags-container',
-      },
-    },
-    {
-      name: 'mutuallyExclusive',
-      label: t('label.mutually-exclusive'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      helperText: t('message.mutually-exclusive-alert', {
-        entity: t('label.glossary'),
-        'child-entity': t('label.glossary-term'),
-      }),
-      helperTextType: HelperTextType.ALERT,
-      showHelperText: Boolean(isMutuallyExclusive),
-      props: {
-        'data-testid': 'mutually-exclusive-button',
-      },
-      id: 'root/mutuallyExclusive',
-      formItemLayout: FormItemLayout.HORIZONTAL,
-    },
-  ];
-
-  const ownerField: FieldProp = {
-    name: 'owners',
-    id: 'root/owner',
-    required: false,
-    label: t('label.owner-plural'),
-    type: FieldTypes.USER_TEAM_SELECT,
-    props: {
-      hasPermission: true,
-      popoverProps: {
-        placement: 'topLeft',
-        getPopupContainer: getPopupContainer,
-      },
-      children: (
-        <Button
-          data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-      multiple: {
-        user: entityRules.canAddMultipleUserOwners,
-        team: entityRules.canAddMultipleTeamOwner,
-      },
-    },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'owners',
-      trigger: 'onUpdate',
-    },
-  };
-
-  const reviewersField: FieldProp = {
-    name: 'reviewers',
-    id: 'root/reviewers',
-    required: false,
-    label: t('label.reviewer-plural'),
-    type: FieldTypes.USER_TEAM_SELECT,
-    props: {
-      hasPermission: true,
-      popoverProps: {
-        placement: 'topLeft',
-        getPopupContainer: getPopupContainer,
-      },
-      children: (
-        <Button
-          data-testid="add-reviewers"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-      multiple: { user: true, team: false },
-      previewSelected: true,
-      label: t('label.reviewer-plural'),
-    },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'selectedUsers',
-      trigger: 'onUpdate',
-    },
-  };
+  const isMutuallyExclusive = useWatch({
+    control: form.control,
+    name: 'mutuallyExclusive',
+  });
 
   const domainsField: FieldProp = {
-    name: 'domains',
     id: 'root/domains',
-    required: false,
     label: t('label.domain-plural'),
-    type: FieldTypes.DOMAIN_SELECT,
+    name: 'domains',
+    placeholder: t('label.select-field', { field: t('label.domain-plural') }),
     props: {
-      selectedDomain: activeDomainEntityRef
-        ? [activeDomainEntityRef]
-        : undefined,
-      popoverProps: {
-        placement: 'topLeft',
-        getPopupContainer: getPopupContainer,
-      },
-      children: (
-        <Button
-          data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-      multiple: entityRules.canAddMultipleDomains,
+      'data-testid': 'domains',
+      filterOption: () => true,
+      multiple: true,
+      onFocus: onDomainFocus,
+      onSearchChange: onDomainSearch,
+      options: domainOptions,
     },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'selectedDomain',
-      trigger: 'onUpdate',
-      initialValue: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
+    rules: {
+      validate: (value: unknown[] = []) =>
+        entityRules.canAddMultipleDomains || value.length <= 1
+          ? true
+          : t('message.select-at-most-one-entity', {
+              entity: t('label.domain'),
+            }),
     },
+    type: FieldTypes.DOMAIN_SELECT,
   };
 
   return (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        cardClassName: 'm-x-auto max-w-md',
-        allowScroll: true,
-        children: (
-          <>
-            <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-            <Typography.Title
-              className="m-t-md"
-              data-testid="form-heading"
-              level={5}>
-              {header}
-            </Typography.Title>
-            <div className="add-glossary" data-testid="add-glossary">
-              <Form form={form} layout="vertical" onFinish={handleSave}>
-                {generateFormFields(formFields)}
-                <div className="m-y-xs">
-                  {getField(ownerField)}
-                  {Boolean(ownersList.length) && (
-                    <Space wrap data-testid="owner-container" size={[8, 8]}>
-                      <Owner
-                        isCompactView={false}
-                        owners={ownersList}
-                        showLabel={false}
-                      />
-                    </Space>
-                  )}
-                </div>
-                <div className="m-y-xs">
-                  {getField(reviewersField)}
-                  {Boolean(reviewersList.length) && (
-                    <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-                      <Owner
-                        isCompactView={false}
-                        owners={reviewersList}
-                        showLabel={false}
-                      />
-                    </Space>
-                  )}
-                </div>
-                <div className="m-t-xss">
-                  {getField(domainsField)}
-                  {selectedDomain && (
-                    <DomainLabel
-                      domains={selectedDomain}
-                      entityFqn=""
-                      entityId=""
-                      entityType={EntityType.GLOSSARY}
-                      hasPermission={false}
-                    />
-                  )}
-                </div>
+    <HookForm
+      className="tw:flex tw:flex-col tw:gap-6 tw:**:data-[testid=form-item-label]:font-medium"
+      data-testid="add-glossary-form"
+      form={form}
+      onSubmit={form.handleSubmit(onSubmit)}>
+      <Box gap={4}>
+        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+          {getField(nameField)}
+        </div>
+        <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
+          {getField(displayNameField)}
+        </div>
+      </Box>
 
-                <Space
-                  className="w-full justify-end"
-                  data-testid="cta-buttons"
-                  size={16}>
-                  <Button
-                    data-testid="cancel-glossary"
-                    type="link"
-                    onClick={onCancel}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    data-testid="save-glossary"
-                    disabled={!allowAccess}
-                    htmlType="submit"
-                    loading={isLoading}
-                    type="primary">
-                    {t('label.save')}
-                  </Button>
-                </Space>
-              </Form>
-            </div>
-          </>
-        ),
-        minWidth: 700,
-        flex: 0.7,
-      }}
-      pageTitle={t('label.add-entity', {
-        entity: t('label.glossary'),
-      })}
-      secondPanel={{
-        children: rightPanel,
-        className: 'content-resizable-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-      }}
-    />
+      <FormField
+        control={form.control}
+        name="description"
+        rules={{
+          required: t('label.field-required', {
+            field: t('label.description'),
+          }),
+          validate: (value: string) =>
+            value?.trim()
+              ? true
+              : t('label.field-required', { field: t('label.description') }),
+        }}>
+        {({ field, fieldState }) => (
+          <Box
+            aria-invalid={fieldState.invalid || undefined}
+            className="tw:gap-1.5"
+            data-testid="description"
+            direction="col">
+            <FormItemLabel required label={t('label.description')} />
+            <RichTextEditor
+              className="new-form-style"
+              // Seeded from the defaults, not the live value, so typing never
+              // re-applies content to the editor; `reset` re-seeds it.
+              initialValue={form.formState.defaultValues?.description}
+              onTextChange={field.onChange}
+            />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+
+      <FormField control={form.control} name="tags">
+        {({ field }) => (
+          <TagSelector
+            className="tw:w-full"
+            data-testid="tags-container"
+            label={t('label.tag-plural')}
+            placeholder={t('label.select-field', {
+              field: t('label.tag-plural'),
+            })}
+            value={field.value ?? []}
+            onChange={field.onChange}
+          />
+        )}
+      </FormField>
+
+      {getField(
+        getMutuallyExclusiveField(
+          Boolean(isMutuallyExclusive),
+          t('label.glossary')
+        )
+      )}
+      {getField(ownersField)}
+      {getField(reviewersField)}
+      {getField(domainsField)}
+    </HookForm>
   );
 };
 

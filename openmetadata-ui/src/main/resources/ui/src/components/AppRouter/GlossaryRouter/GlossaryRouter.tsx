@@ -12,7 +12,7 @@
  */
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -21,9 +21,6 @@ import GlossaryVersion from '../../Glossary/GlossaryVersion/GlossaryVersion.comp
 import AdminProtectedRoute from '../AdminProtectedRoute';
 import { withPageSuspenseFallback } from '../withSuspenseFallback';
 
-const AddGlossaryPageComponent = withPageSuspenseFallback(
-  lazy(() => import('../../../pages/AddGlossary/AddGlossaryPage.component'))
-);
 const GlossaryPage = withPageSuspenseFallback(
   lazy(
     () => import('../../../pages/Glossary/GlossaryPage/GlossaryPage.component')
@@ -41,14 +38,10 @@ const GlossaryRouter = () => {
 
   return (
     <Routes>
+      {/* Glossaries are now created from a drawer on the glossary page; keep
+          old bookmarks of the retired add page working. */}
       <Route
-        element={
-          <AddGlossaryPageComponent
-            pageTitle={t('label.add-entity', {
-              entity: t('label.glossary'),
-            })}
-          />
-        }
+        element={<Navigate replace to={ROUTES.GLOSSARY} />}
         path={ROUTES.ADD_GLOSSARY.replace(ROUTES.GLOSSARY, '')}
       />
       <Route
