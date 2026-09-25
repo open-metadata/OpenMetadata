@@ -273,11 +273,7 @@ export class CrossTabLock {
   }
 
   private markConsumedIfFromRing(message: LockMessage): void {
-    if (
-      message.type === 'done' &&
-      this.recentDone &&
-      this.recentDone.message === message
-    ) {
+    if (message.type === 'done' && this.recentDone?.message === message) {
       this.consumedRecentDoneAt = this.recentDone.at;
     }
   }
