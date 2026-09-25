@@ -484,9 +484,9 @@ test.describe('Glossary tests', () => {
       );
 
       await clickOutside(page1);
-      await expect(
-        page1.locator('.ant-popover:not(.ant-popover-hidden)')
-      ).toHaveCount(0);
+      await expect(page1.getByTestId('workflow-history-popover')).toHaveCount(
+        0
+      );
 
       await page1
         .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
@@ -1342,7 +1342,9 @@ test.describe('Glossary tests', () => {
       await initiateDelete(page);
 
       await expect(
-        page.getByRole('menuitem', { name: glossary1.data.displayName })
+        page
+          .getByTestId('glossary-left-panel')
+          .getByRole('link', { name: glossary1.data.displayName })
       ).not.toBeVisible();
     } finally {
       await afterAction();
@@ -1424,10 +1426,14 @@ test.describe('Glossary tests', () => {
 
       // A and B deleted, C remains
       await expect(
-        page.getByRole('menuitem', { name: glossaryA.data.displayName })
+        page
+          .getByTestId('glossary-left-panel')
+          .getByRole('link', { name: glossaryA.data.displayName })
       ).not.toBeVisible();
       await expect(
-        page.getByRole('menuitem', { name: glossaryB.data.displayName })
+        page
+          .getByTestId('glossary-left-panel')
+          .getByRole('link', { name: glossaryB.data.displayName })
       ).not.toBeVisible();
 
       await expectGlossaryVisible(page, glossaryC.data.displayName);
@@ -1494,7 +1500,9 @@ test.describe('Glossary tests', () => {
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
       await expect(
-        page.getByRole('menuitem', { name: glossaryA.data.displayName })
+        page
+          .getByTestId('glossary-left-panel')
+          .getByRole('link', { name: glossaryA.data.displayName })
       ).not.toBeVisible();
     } finally {
       clearMockedWebSocket();
@@ -2187,7 +2195,7 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
-        await page.locator('[role="dialog"]').waitFor();
+        await page.getByTestId('delete-modal').waitFor();
 
         await expect(page.getByTestId('modal-header')).toContainText(
           glossary.data.name
@@ -2874,7 +2882,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="delete-button"]');
 
       // Verify delete modal is visible
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
       await expect(page.locator('[data-testid="modal-header"]')).toContainText(
         glossary.data.name
       );
@@ -2883,7 +2891,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
-      await expect(page.locator('[role="dialog"]')).not.toBeVisible();
+      await expect(page.getByTestId('delete-modal')).not.toBeVisible();
 
       // Verify glossary still exists
       await expect(
@@ -2917,7 +2925,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="delete-button"]');
 
       // Verify delete modal is visible
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
       await expect(page.locator('[data-testid="modal-header"]')).toContainText(
         glossaryTerm.data.name
       );
@@ -2926,7 +2934,7 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
-      await expect(page.locator('[role="dialog"]')).not.toBeVisible();
+      await expect(page.getByTestId('delete-modal')).not.toBeVisible();
 
       // Verify term still exists by checking header
       await expect(
