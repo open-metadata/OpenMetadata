@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { BadgeColors } from '@openmetadata/ui-core-components';
 import { ReactComponent as AbortedIcon } from '../assets/svg/aborted-status.svg';
 import { ReactComponent as DeprecatedIcon } from '../assets/svg/arrow-down-colored.svg';
 import { ReactComponent as ApprovedIcon } from '../assets/svg/check-colored.svg';
@@ -64,4 +65,25 @@ export const iconsV2: Partial<Record<StatusType, IconComponent>> = {
   [StatusType.Deprecated]: DeprecatedIcon,
   [StatusType.Aborted]: AbortedIcon,
   [StatusType.Archived]: DeprecatedIcon,
+};
+
+// Maps each StatusType to the nearest core Badge (utility-scale) color. The
+// utility palette auto-flips in dark, so every status gains dark support for
+// free; the hue is chosen to stay closest to the legacy light color.
+export const STATUS_TYPE_TO_BADGE_COLOR: Record<StatusType, BadgeColors> = {
+  [StatusType.Success]: 'success',
+  [StatusType.Warning]: 'warning',
+  [StatusType.Pending]: 'warning',
+  [StatusType.Failure]: 'error',
+  [StatusType.Stopped]: 'error',
+  [StatusType.ActiveError]: 'error',
+  [StatusType.Aborted]: 'orange',
+  [StatusType.Running]: 'brand',
+  [StatusType.Acknowledged]: 'blue',
+  [StatusType.Started]: 'purple',
+  [StatusType.InReview]: 'purple',
+  [StatusType.Version]: 'purple',
+  [StatusType.Deprecated]: 'gray',
+  [StatusType.Archived]: 'gray',
+  [StatusType.Unprocessed]: 'gray',
 };
