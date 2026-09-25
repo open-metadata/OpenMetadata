@@ -308,6 +308,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             .addQueryParam("parent", fqn)
             .addQueryParam("directChildrenOf", parentTermFQNParam)
             .addQueryParam("entityStatus", entityStatus);
+    EntityUtil.addDomainQueryParam(securityContext, filter, Entity.GLOSSARY_TERM);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging

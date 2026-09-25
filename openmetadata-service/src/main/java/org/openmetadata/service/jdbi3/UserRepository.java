@@ -132,9 +132,9 @@ public class UserRepository extends EntityRepository<User> {
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
@@ -252,6 +252,15 @@ public class UserRepository extends EntityRepository<User> {
       validateGroupTeams(user.getTeams());
     }
     validateRoles(user.getRoles());
+    validateDefaultDomain(user);
+  }
+
+  /** A navbar selection must resolve to a real domain; anything else is rejected up front. */
+  private void validateDefaultDomain(User user) {
+    if (user.getDefaultDomain() != null) {
+      user.setDefaultDomain(
+          Entity.getEntityReferenceById(Entity.DOMAIN, user.getDefaultDomain().getId(), ALL));
+    }
   }
 
   @Override
@@ -1635,6 +1644,11 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate("personas", () -> updatePersonas(original, updated));
       compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
       compareAndUpdate(
+          "defaultDomain",
+          () ->
+              recordChange(
+                  "defaultDomain", original.getDefaultDomain(), updated.getDefaultDomain(), true));
+      compareAndUpdate(
           "profile",
           () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
       compareAndUpdate(
@@ -1657,7 +1671,8 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdateAny(
           () -> SubjectCache.invalidateUserContext(updated.getName()),
           "personas",
-          "defaultPersona");
+          "defaultPersona",
+          "defaultDomain");
     }
 
     private void updateAllowImpersonation() {

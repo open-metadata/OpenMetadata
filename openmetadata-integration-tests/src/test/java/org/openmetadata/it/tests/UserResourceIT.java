@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -541,6 +542,43 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User updated = patchEntity(user.getId().toString(), user);
 
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  @Test
+  void test_defaultDomainRoundTripsThroughPatch(TestNamespace ns) {
+    // The navbar domain selection is persisted on the user; a PATCH that changes only
+    // defaultDomain must be stored and served back on a fresh read.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar selection"));
+    User user = createEntity(createMinimalRequest(ns));
+    assertNull(user.getDefaultDomain());
+
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchEntity(user.getId().toString(), user);
+
+    User reread = getEntity(user.getId().toString());
+    assertNotNull(reread.getDefaultDomain(), "defaultDomain must persist through PATCH");
+    assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+    assertEquals(domain.getFullyQualifiedName(), reread.getDefaultDomain().getFullyQualifiedName());
+
+    // Clearing the selection must persist too.
+    reread.setDefaultDomain(null);
+    patchEntity(reread.getId().toString(), reread);
+    assertNull(getEntity(user.getId().toString()).getDefaultDomain());
+  }
+
+  @Test
+  void test_defaultDomainMustBeARealDomain(TestNamespace ns) {
+    User user = createEntity(createMinimalRequest(ns));
+    user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));
+    assertThrows(Exception.class, () -> patchEntity(user.getId().toString(), user));
+    assertNull(getEntity(user.getId().toString()).getDefaultDomain());
   }
 
   @Test

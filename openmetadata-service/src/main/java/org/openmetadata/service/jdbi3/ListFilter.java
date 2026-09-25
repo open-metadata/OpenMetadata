@@ -790,16 +790,6 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    // The global (navbar) domain filter must not narrow domain-supporting types whose lists double
-    // as reference/settings surfaces (e.g. user/team/tag/classification) — the strict membership
-    // condition below would empty them. Absent entityType (legacy ?domain= callers) still applies.
-    // Whether a type is domain-scoped at all is enforced via supportsDomains at the injection
-    // point.
-    String entityType = getQueryParam("entityType");
-    if (DomainFilterExclusions.isExcluded(entityType)) {
-      return "";
-    }
-
     String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
