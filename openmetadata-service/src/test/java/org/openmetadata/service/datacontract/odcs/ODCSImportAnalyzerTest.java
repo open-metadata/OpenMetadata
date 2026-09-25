@@ -44,6 +44,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 
@@ -140,16 +141,80 @@ class ODCSImportAnalyzerTest {
   }
 
   @Test
-  void callerWithoutTestPermissionIsWarnedAndNoRuleRuns() throws JsonProcessingException {
+  void callerWithoutTestPermissionIsBlockedWhenRulesWouldBecomeTestCases()
+      throws JsonProcessingException {
     ODCSImportReport report =
         analyze(DOCUMENT, options(true, false), passing()).getOdcsImportReport();
 
     assertFalse(report.getCanCreateTestCases());
-    assertTrue(report.getCanImport());
-    assertTrue(fields(report).contains("quality"));
+    assertFalse(report.getCanImport());
+    ODCSImportIssue blocking = report.getIssues().getFirst();
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, blocking.getSeverity());
+    assertTrue(blocking.getMessage().contains("createTestCases=false"));
     assertTrue(
         report.getQualityRules().stream()
             .allMatch(rule -> rule.getOutcome() == ODCSQualityRuleOutcome.Outcome.NOT_EXECUTED));
+  }
+
+  @Test
+  void callerWithoutTestPermissionCanImportRulesThatWriteNoTestCase()
+      throws JsonProcessingException {
+    String freshnessOnly =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: 4f5b0c52-9f1e-4e89-a6a4-0e0b7a3a1c12
+        name: accounts
+        version: 1.0.0
+        status: active
+        schema:
+          - name: accounts
+            logicalType: object
+            quality:
+              - name: Fresh
+                metric: freshness
+                mustBeLessOrEqualTo: 6
+                unit: hours
+            properties:
+              - name: region
+                logicalType: string
+        quality:
+          - name: Steward review
+            type: text
+        """;
+
+    ODCSImportReport report =
+        analyze(freshnessOnly, options(true, false), passing()).getOdcsImportReport();
+
+    assertTrue(report.getCanImport());
+    assertEquals(
+        List.of(ODCSQualityRuleOutcome.Outcome.NOT_EXECUTED, ODCSQualityRuleOutcome.Outcome.SLA),
+        report.getQualityRules().stream().map(ODCSQualityRuleOutcome::getOutcome).toList());
+  }
+
+  @Test
+  void missingTableIsReportedAsBlocking() throws JsonProcessingException {
+    ODCSImportAnalyzer analyzer =
+        new ODCSImportAnalyzer(
+            importer(
+                ref -> {
+                  throw EntityNotFoundException.byId(ref.getId().toString());
+                }),
+            passing());
+
+    ContractValidation validation =
+        analyzer.analyze(
+            new ODCSImportAnalyzer.Request(
+                YAML, YAML.readTree(DOCUMENT), TABLE, null, options(true, false)));
+
+    assertFalse(validation.getOdcsImportReport().getCanImport());
+    assertTrue(
+        validation
+            .getOdcsImportReport()
+            .getIssues()
+            .getFirst()
+            .getMessage()
+            .contains(TABLE.getId().toString()));
   }
 
   @Test
@@ -286,8 +351,17 @@ class ODCSImportAnalyzerTest {
     return report.getIssues().stream().map(ODCSImportIssue::getField).toList();
   }
 
-  /** A repository with no test cases stands in for the database. */
   private static ODCSQualityRuleImporter importer() {
+    Table table =
+        new Table()
+            .withFullyQualifiedName("svc.db.sch.accounts")
+            .withColumns(
+                List.of(new Column().withName("region").withDataType(ColumnDataType.STRING)));
+    return importer(ref -> table);
+  }
+
+  /** A repository with no test cases stands in for the database. */
+  private static ODCSQualityRuleImporter importer(Function<EntityReference, Table> tableLoader) {
     TestCaseRepository repository = mock(TestCaseRepository.class);
     when(repository.getByNameOrNull(any(), anyString(), any(), any(), anyBoolean()))
         .thenReturn(Optional.empty());
@@ -299,11 +373,6 @@ class ODCSImportAnalyzerTest {
             })
         .when(repository)
         .setFullyQualifiedName(any(TestCase.class));
-    Table table =
-        new Table()
-            .withFullyQualifiedName("svc.db.sch.accounts")
-            .withColumns(
-                List.of(new Column().withName("region").withDataType(ColumnDataType.STRING)));
-    return new ODCSQualityRuleImporter(new ODCSTestCaseMaterializer(repository), ref -> table);
+    return new ODCSQualityRuleImporter(new ODCSTestCaseMaterializer(repository), tableLoader);
   }
 }

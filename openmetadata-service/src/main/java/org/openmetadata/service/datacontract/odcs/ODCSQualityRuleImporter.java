@@ -68,8 +68,9 @@ public final class ODCSQualityRuleImporter {
   }
 
   /**
-   * What {@link #apply} would do, without creating test cases. The contract's SLA is updated as
-   * {@link #apply} would, so pass a contract that is not stored.
+   * What {@link #apply} would do, without creating test cases. The request's guard sees each test
+   * case {@link #apply} would write. The contract's SLA is updated as {@link #apply} would, so pass
+   * a contract that is not stored.
    */
   public List<ODCSRuleOutcome> preview(Request request) {
     return isRunnable(request.contract()) ? previewRules(request) : List.of();
@@ -105,7 +106,7 @@ public final class ODCSQualityRuleImporter {
 
   private List<ODCSRuleOutcome> previewRules(Request request) {
     List<ODCSRuleOutcome> outcomes = mapRules(request.contract());
-    return withSkipped(outcomes, materializer.conflicts(materializationRequest(request, outcomes)));
+    return withSkipped(outcomes, materializer.preview(materializationRequest(request, outcomes)));
   }
 
   private List<ODCSRuleOutcome> mapRules(DataContract contract) {

@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.datacontract.odcs.ODCSTestCaseMaterializer;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthRequest;
@@ -50,22 +51,35 @@ final class ODCSTestCaseWriteGuard implements ODCSTestCaseMaterializer.WriteGuar
     this.securityContext = securityContext;
   }
 
-  /** Whether the caller may create test cases on the entity, when it is a table. */
+  /**
+   * Whether the caller may create test cases on the entity, when it is a table. A table that does
+   * not exist answers false, leaving the import preview to report it.
+   */
   boolean canCreateTestCasesOn(EntityReference entity) {
     boolean allowed = false;
     if (Entity.TABLE.equals(entity.getType()) && entity.getId() != null) {
-      String tableFqn =
-          Entity.getEntityReferenceById(Entity.TABLE, entity.getId(), Include.NON_DELETED)
-              .getFullyQualifiedName();
-      TestCase probe =
-          new TestCase().withEntityLink(new EntityLink(Entity.TABLE, tableFqn).getLinkString());
       try {
-        authorizer.authorizeRequests(
-            securityContext, createRequests(probe, tableContext(probe)), AuthorizationLogic.ANY);
-        allowed = true;
-      } catch (AuthorizationException e) {
-        LOG.debug("Caller may not create test cases on {}: {}", tableFqn, e.getMessage());
+        String tableFqn =
+            Entity.getEntityReferenceById(Entity.TABLE, entity.getId(), Include.NON_DELETED)
+                .getFullyQualifiedName();
+        allowed = canCreateTestCasesOn(tableFqn);
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Table {} not found: {}", entity.getId(), e.getMessage());
       }
+    }
+    return allowed;
+  }
+
+  private boolean canCreateTestCasesOn(String tableFqn) {
+    boolean allowed = false;
+    TestCase probe =
+        new TestCase().withEntityLink(new EntityLink(Entity.TABLE, tableFqn).getLinkString());
+    try {
+      authorizer.authorizeRequests(
+          securityContext, createRequests(probe, tableContext(probe)), AuthorizationLogic.ANY);
+      allowed = true;
+    } catch (AuthorizationException e) {
+      LOG.debug("Caller may not create test cases on {}: {}", tableFqn, e.getMessage());
     }
     return allowed;
   }
