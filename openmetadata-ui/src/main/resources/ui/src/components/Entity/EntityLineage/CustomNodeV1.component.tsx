@@ -461,7 +461,7 @@ const CustomNodeV1 = (props: NodeProps) => {
             onDrill={onSceneDrill}
           />
         )}
-        <div className="label-container bg-white">{nodeLabel}</div>
+        <div className="label-container tw:bg-surface">{nodeLabel}</div>
         <NodeHandles
           expandCollapseHandles={handlesElement}
           id={id}
