@@ -11,36 +11,29 @@
  *  limitations under the License.
  */
 
-import type { FormInstance } from 'antd';
-import { Form } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import { AlertType } from '../../../generated/events/eventSubscription';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
 import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
-  ModifiedCreateEventSubscription,
   ObservabilityFilterResourceDescriptor,
   UseObservabilityAlertResourcesReturn,
 } from '../AddObservabilityPage.interface';
 import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
 
-export function useObservabilityAlertResources(
-  form: FormInstance<ModifiedCreateEventSubscription>,
-  alertType: AlertType = AlertType.Observability
+/** Loads the alert source catalogue and narrows it to the selected source, without a form. */
+export function useAlertResources(
+  alertType: AlertType = AlertType.Observability,
+  selectedTrigger?: string
 ): UseObservabilityAlertResourcesReturn {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [filterResources, setFilterResources] = useState<
     ObservabilityFilterResourceDescriptor[]
   >([]);
-
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
 
   const fetchFunctions = async () => {
     try {

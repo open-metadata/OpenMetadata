@@ -12,6 +12,7 @@
  */
 
 import { AlertTriangle } from '@untitledui/icons';
+import { Form } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +27,7 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import AlertAiForm from './AlertAiForm.component';
 import {
@@ -101,7 +102,6 @@ function AlertEditModal({
     extraFormButtons,
     extraFormWidgets,
     filterResources,
-    form,
     handleSave,
     inlineAlertDetails,
     isLoading,
@@ -112,12 +112,16 @@ function AlertEditModal({
     supportedTriggers,
     templateResourcePermission,
     templates,
-  } = useObservabilityAlertForm({
+  } = useAlertFormData({
     afterSaveAction: onSaved,
     alertType,
     fqn,
     onCancel: onClose,
+    selectedResource: formData.resources?.[0],
   });
+  // Only for extra form buttons that still watch an antd form (Collate's TestAlertButton);
+  // remove once they read `values`.
+  const [form] = Form.useForm<ModifiedCreateEventSubscription>();
 
   useEffect(() => {
     if (isEditMode && alert) {
@@ -131,9 +135,9 @@ function AlertEditModal({
     }
   }, [alertType, isEditMode, isOpen]);
 
-  // Keep the minimal Ant form mirror in sync for OSS widgets/buttons that still
-  // read via Form.useWatch. Syncing the full controlled payload reintroduced
-  // ModalOverlay scroll jumps, so only mirror the watched fields.
+  // Keep the minimal Ant form mirror in sync for extra buttons that still read via
+  // Form.useWatch. Syncing the full controlled payload reintroduced ModalOverlay
+  // scroll jumps, so only mirror the watched fields.
   useEffect(() => {
     form.setFieldsValue({
       customNotificationTemplateData: formData.customNotificationTemplateData,
@@ -170,6 +174,7 @@ function AlertEditModal({
         loading={saving}
         templateResourcePermission={templateResourcePermission}
         templates={templates}
+        values={formData}
       />
     )
   );

@@ -34,15 +34,17 @@ import {
 import AlertEditModal from './AlertEditModal.component';
 import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
-const mockUseObservabilityAlertForm = jest.fn();
+const mockUseAlertFormData = jest.fn();
 
-jest.mock(
-  '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm',
-  () => ({
-    useObservabilityAlertForm: (params: unknown) =>
-      mockUseObservabilityAlertForm(params),
-  })
-);
+const mockForm = { setFieldValue: jest.fn(), setFieldsValue: jest.fn() };
+
+jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+  useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
+}));
+
+jest.mock('antd', () => ({
+  Form: { useForm: () => [mockForm] },
+}));
 
 jest.mock('../../../components/common/Loader/Loader', () => ({
   __esModule: true,
@@ -203,10 +205,6 @@ const getHookState = (overrides = {}) => ({
   alert,
   extraFormButtons: {},
   filterResources: [],
-  form: {
-    setFieldValue: jest.fn(),
-    setFieldsValue: jest.fn(),
-  },
   handleSave: jest.fn(),
   inlineAlertDetails: undefined,
   isLoading: false,
@@ -223,7 +221,7 @@ const getHookState = (overrides = {}) => ({
 describe('AlertEditModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseObservabilityAlertForm.mockReturnValue(getHookState());
+    mockUseAlertFormData.mockReturnValue(getHookState());
   });
 
   it('passes fqn, save callback, and close callback to the OSS alert form hook', () => {
@@ -239,17 +237,64 @@ describe('AlertEditModal', () => {
       />
     );
 
-    expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith({
+    expect(mockUseAlertFormData).toHaveBeenCalledWith({
       afterSaveAction: onSaved,
       alertType: AlertType.Observability,
       fqn: 'service.alert',
       onCancel: onClose,
+      selectedResource: undefined,
     });
+  });
+
+  it('narrows the form resources by the source in the modal state', async () => {
+    render(
+      <AlertEditModal
+        isOpen
+        fqn="service.alert"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    await waitFor(() =>
+      expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
+        expect.objectContaining({ selectedResource: 'table' })
+      )
+    );
+  });
+
+  it('passes the modal values and the mirror form to extra form buttons', async () => {
+    const ExtraButton = jest.fn(
+      ({ values }: { values?: ModifiedCreateEventSubscription }) => (
+        <span data-testid="extra-button">{values?.resources?.[0]}</span>
+      )
+    );
+    mockUseAlertFormData.mockReturnValue(
+      getHookState({ extraFormButtons: { ExtraButton } })
+    );
+
+    render(
+      <AlertEditModal
+        isOpen
+        fqn="service.alert"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('extra-button')).toHaveTextContent('table')
+    );
+
+    expect(ExtraButton).toHaveBeenLastCalledWith(
+      expect.objectContaining({ formRef: mockForm }),
+      expect.anything()
+    );
   });
 
   it('creates a notification alert when opened for notifications', () => {
     const handleSave = jest.fn();
-    mockUseObservabilityAlertForm.mockReturnValue(getHookState({ handleSave }));
+    mockUseAlertFormData.mockReturnValue(getHookState({ handleSave }));
 
     render(
       <AlertEditModal
@@ -261,7 +306,7 @@ describe('AlertEditModal', () => {
       />
     );
 
-    expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith(
+    expect(mockUseAlertFormData).toHaveBeenCalledWith(
       expect.objectContaining({ alertType: AlertType.Notification })
     );
     // Notification alerts have no trigger section, even before a source is picked.
@@ -277,7 +322,7 @@ describe('AlertEditModal', () => {
   });
 
   it('shows loader while edit alert details are loading', () => {
-    mockUseObservabilityAlertForm.mockReturnValue(
+    mockUseAlertFormData.mockReturnValue(
       getHookState({ alert: undefined, isLoading: false })
     );
 
@@ -289,7 +334,6 @@ describe('AlertEditModal', () => {
 
   it('renders edit form with fetched alert values and submits through hook', async () => {
     const handleSave = jest.fn();
-    const form = { setFieldValue: jest.fn(), setFieldsValue: jest.fn() };
     const notificationTemplate = JSON.stringify({
       id: 'template-id',
       name: 'template-name',
@@ -307,8 +351,8 @@ describe('AlertEditModal', () => {
       notificationTemplate,
     } as ModifiedEventSubscription;
 
-    mockUseObservabilityAlertForm.mockReturnValue(
-      getHookState({ alert: alertWithTestTemplateFields, form, handleSave })
+    mockUseAlertFormData.mockReturnValue(
+      getHookState({ alert: alertWithTestTemplateFields, handleSave })
     );
 
     render(
@@ -327,7 +371,7 @@ describe('AlertEditModal', () => {
     expect(screen.getByTestId('form-display-name')).toHaveTextContent(
       'Display Alert'
     );
-    expect(form.setFieldsValue).toHaveBeenCalledWith(
+    expect(mockForm.setFieldsValue).toHaveBeenCalledWith(
       expect.objectContaining({
         destinations: alertWithTestTemplateFields.destinations,
         notificationTemplate,
@@ -380,9 +424,7 @@ describe('AlertEditModal', () => {
   it('prevents dismissal while saving', () => {
     const onClose = jest.fn();
 
-    mockUseObservabilityAlertForm.mockReturnValue(
-      getHookState({ saving: true })
-    );
+    mockUseAlertFormData.mockReturnValue(getHookState({ saving: true }));
 
     render(<AlertEditModal isOpen onClose={onClose} onSaved={jest.fn()} />);
 
@@ -405,7 +447,7 @@ describe('AlertEditModal', () => {
 
   describe('notification template section (classic parity)', () => {
     it('is hidden when no template widget is registered, as in classic OSS', () => {
-      mockUseObservabilityAlertForm.mockReturnValue(
+      mockUseAlertFormData.mockReturnValue(
         getHookState({ extraFormWidgets: {} })
       );
 
