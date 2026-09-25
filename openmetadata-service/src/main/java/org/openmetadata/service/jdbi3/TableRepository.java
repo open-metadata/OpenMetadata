@@ -141,7 +141,8 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS =
+      "tableConstraints,tablePartition,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
       "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
@@ -2258,6 +2259,13 @@ public class TableRepository extends EntityRepository<Table> {
       compareAndUpdate(
           TABLE_CONSTRAINTS_FIELD,
           () -> updateTableConstraints(origTable, updatedTable, operation));
+      compareAndUpdate(
+          "tablePartition",
+          () ->
+              recordChange(
+                  "tablePartition",
+                  origTable.getTablePartition(),
+                  updatedTable.getTablePartition()));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));

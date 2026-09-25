@@ -7535,4 +7535,76 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         response.getData().stream()
             .allMatch(table -> table.getFullyQualifiedName().startsWith(service.getName() + ".")));
   }
+
+  // ===================================================================
+  // PATCH PERSISTENCE: schemaDefinition (#32625) and tablePartition (#33429)
+  // Tables are created by ingestion-bot and patched by admin, as in production. A patch by the
+  // same user inside the session window is consolidated into the previous version and stored
+  // regardless, which would hide the tablePartition no-op.
+  // ===================================================================
+
+  private static final String VIEW_DDL = "CREATE VIEW probe_view AS SELECT id FROM probe";
+
+  @Test
+  void patch_unrelatedField_keepsSchemaDefinition(TestNamespace ns) throws Exception {
+    Table view = createAsIngestionBot(ns, "patch_keeps_ddl", TableType.View, VIEW_DDL);
+
+    patchAsAdmin(view, "[{\"op\": \"add\", \"path\": \"/description\", \"value\": \"edited\"}]");
+
+    Table stored =
+        SdkClients.adminClient().tables().get(view.getId().toString(), "schemaDefinition");
+    assertEquals("edited", stored.getDescription());
+    assertEquals(VIEW_DDL, stored.getSchemaDefinition());
+  }
+
+  @Test
+  void patch_removeSchemaDefinition_keepsStoredDdl(TestNamespace ns) throws Exception {
+    Table view = createAsIngestionBot(ns, "patch_remove_ddl", TableType.View, VIEW_DDL);
+
+    patchAsAdmin(view, "[{\"op\": \"remove\", \"path\": \"/schemaDefinition\"}]");
+
+    Table stored =
+        SdkClients.adminClient().tables().get(view.getId().toString(), "schemaDefinition");
+    assertEquals(VIEW_DDL, stored.getSchemaDefinition());
+  }
+
+  @Test
+  void patch_tablePartition_isPersisted(TestNamespace ns) throws Exception {
+    Table table = createAsIngestionBot(ns, "patch_partition", TableType.Regular, null);
+
+    patchAsAdmin(
+        table,
+        """
+        [{"op": "add", "path": "/tablePartition", "value": {"columns": [
+          {"columnName": "event_date", "intervalType": "TIME-UNIT", "interval": "daily"}]}}]
+        """);
+
+    Table stored =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "tablePartition");
+    assertNotNull(stored.getTablePartition());
+    assertEquals("event_date", stored.getTablePartition().getColumns().getFirst().getColumnName());
+    assertTrue(stored.getVersion() > table.getVersion());
+  }
+
+  private Table createAsIngestionBot(
+      TestNamespace ns, String name, TableType tableType, String schemaDefinition) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    CreateTable request =
+        new CreateTable()
+            .withName(ns.prefix(name))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withTableType(tableType)
+            .withSchemaDefinition(schemaDefinition)
+            .withColumns(
+                List.of(
+                    ColumnBuilder.of("id", "BIGINT").build(),
+                    ColumnBuilder.of("event_date", "DATE").build()));
+    return SdkClients.ingestionBotClient().tables().create(request);
+  }
+
+  private Table patchAsAdmin(Table table, String patchJson) throws Exception {
+    JsonNode patch = new ObjectMapper().readTree(patchJson);
+    return SdkClients.adminClient().tables().patch(table.getId(), patch);
+  }
 }
