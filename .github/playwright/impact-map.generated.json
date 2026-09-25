@@ -9659,10 +9659,26 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiDiagnosticTab.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiFormFields.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/Observability.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiRecentEventsTab.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts"
       ]
     },
     {

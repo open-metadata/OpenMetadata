@@ -13,6 +13,7 @@
 
 import type { ReactNode } from 'react';
 import { AlertDetailTabs } from '../../enums/Alerts.enum';
+import type { EventsRecord } from '../../generated/events/api/eventsRecord';
 import {
   EntityReference,
   EventSubscription,
@@ -62,3 +63,12 @@ export interface UseAlertDetailsPageReturn extends AlertDetailsPermissions {
 }
 
 export type AlertDetailsContentProps = UseAlertDetailsPageReturn;
+
+export interface UseAlertDetailsDataReturn
+  extends Omit<
+    UseAlertDetailsPageReturn,
+    'alertIcon' | 'extraInfo' | 'tabItems'
+  > {
+  alertEventCounts?: EventsRecord;
+  alertEventCountsLoading: boolean;
+}
