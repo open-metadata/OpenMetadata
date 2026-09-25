@@ -39,6 +39,12 @@ export type {
 
 export interface TableComponentProps<T> extends TableProps<T> {
   containerClassName?: string; // Applied to the table container
+  /**
+   * Applied to the inner div that owns `scroll.x`/`scroll.y`'s overflow.
+   * Only pass this alongside `tw:flex tw:flex-col` on `containerClassName`
+   * and a bounded-height ancestor, or the flex chain collapses.
+   */
+  scrollContainerClassName?: string;
   resizableColumns?: boolean;
   /** Filter's in ReactNode that will be aligned with TableColumnFilter. Example: GlossaryTableFilter */
   extraTableFilters?: React.ReactNode;
