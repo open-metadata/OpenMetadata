@@ -905,6 +905,61 @@ public class IngestionPipelineResourceIT
   }
 
   @Test
+  void test_workerStatusUpdatesKeepTheUserWhoTriggeredTheRun(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("triggered_by_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new DatabaseServiceMetadataPipeline()))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId = UUID.randomUUID().toString();
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    // Recorded by OpenMetadata at trigger time; the worker's own reports carry no principal.
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            path,
+            new PipelineStatus()
+                .withPipelineState(PipelineStatusType.QUEUED)
+                .withRunId(runId)
+                .withTimestamp(System.currentTimeMillis())
+                .withTriggeredBy("alice"),
+            PipelineStatus.class);
+    for (PipelineStatusType state :
+        List.of(PipelineStatusType.RUNNING, PipelineStatusType.SUCCESS)) {
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              path,
+              new PipelineStatus()
+                  .withPipelineState(state)
+                  .withRunId(runId)
+                  .withTimestamp(System.currentTimeMillis()),
+              PipelineStatus.class);
+    }
+
+    PipelineStatus retrieved =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, path + "/" + runId, null, PipelineStatus.class);
+
+    assertEquals(PipelineStatusType.SUCCESS, retrieved.getPipelineState());
+    assertEquals("alice", retrieved.getTriggeredBy());
+  }
+
+  @Test
   void test_listPipelineStatusReturnsLatestRunsWithoutTimestampFilters(TestNamespace ns)
       throws OpenMetadataException {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
