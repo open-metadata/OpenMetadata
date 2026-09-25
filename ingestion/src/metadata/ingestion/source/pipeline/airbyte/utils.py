@@ -38,6 +38,15 @@ logger = ingestion_logger()
 
 _WHITESPACE_RUN = re.compile(r"\s+")
 _NON_ALPHANUMERIC_OR_UNDERSCORE = re.compile(r"[^A-Za-z0-9_]")
+# Airbyte's `Transformations.S3_CHARACTER_PATTERN`: alphanumerics plus `/!_.*')(` and the
+# "special" set `&$@=;:+,?-`. Everything else becomes an underscore.
+_NON_S3_SAFE = re.compile(r"[^A-Za-z0-9/!_.*')(&$@=;:+,?-]")
+
+
+def _strip_combining_marks(name: str) -> str:
+    """NFKD-normalise and drop combining marks, as both Airbyte transforms start by doing."""
+    decomposed = unicodedata.normalize("NFKD", name)
+    return "".join(char for char in decomposed if not unicodedata.category(char).startswith("M"))
 
 
 def _table_details(name: str, schema: str | None, database: str | None) -> TableDetails:
@@ -165,9 +174,19 @@ def normalize_airbyte_name(name: str) -> str:
     ``[A-Za-z0-9_]`` with ``_``. A ``{namespace}.{stream}`` topic pattern therefore lands on
     ``shopdb_products``, not ``shopdb.products``.
     """
-    decomposed = unicodedata.normalize("NFKD", name)
-    unmarked = "".join(char for char in decomposed if not unicodedata.category(char).startswith("M"))
-    return _NON_ALPHANUMERIC_OR_UNDERSCORE.sub("_", _WHITESPACE_RUN.sub("_", unmarked))
+    return _NON_ALPHANUMERIC_OR_UNDERSCORE.sub("_", _WHITESPACE_RUN.sub("_", _strip_combining_marks(name)))
+
+
+def to_s3_safe_characters(name: str) -> str:
+    """
+    Apply Airbyte's ``Transformations.toS3SafeCharacters`` to one object-path segment.
+
+    ``ObjectStoragePathFactory`` resolves ``${NAMESPACE}`` and ``${STREAM_NAME}`` through it, so
+    a stream named ``ab prod products`` is written under ``ab_prod_products``. Case is preserved;
+    only the character set is narrowed. The bucket and ``s3_bucket_path`` are not transformed --
+    they are used as the literal path prefix.
+    """
+    return _NON_S3_SAFE.sub("_", _strip_combining_marks(name))
 
 
 def is_object_store_connector(resolved_type: str | None) -> bool:
@@ -234,7 +253,12 @@ def get_destination_container_path(
         )
         return None
 
-    return _build_s3_uri(bucket_name, destination_config.get(S3_DESTINATION_PATH_KEY), stream.namespace, stream.name)
+    return _build_s3_uri(
+        bucket_name,
+        destination_config.get(S3_DESTINATION_PATH_KEY),
+        to_s3_safe_characters(stream.namespace) if stream.namespace else None,
+        to_s3_safe_characters(stream.name),
+    )
 
 
 def get_destination_table_details(

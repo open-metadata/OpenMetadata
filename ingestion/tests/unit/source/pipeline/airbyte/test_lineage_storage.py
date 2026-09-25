@@ -92,6 +92,7 @@ from metadata.ingestion.source.pipeline.airbyte.utils import (
     render_stream_pattern,
     service_supports_database,
     table_fqn_candidates,
+    to_s3_safe_characters,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 
@@ -1452,6 +1453,39 @@ class TestConnectionResolvedDestinationStream:
             DESTINATION,
         )
         assert names == ["shopdb_ab_products"]
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            # A real sync with `prefix: "ab prod "` wrote to `curated/ab_prod_products`.
+            ("ab prod products", "ab_prod_products"),
+            ("products", "products"),
+            # Case is preserved: toS3SafeCharacters narrows the character set, it does not
+            # lower-case, unlike the Elasticsearch and Kafka transforms.
+            ("Products", "Products"),
+            ("Order Items", "Order_Items"),
+            ("caf\u00e9", "cafe"),
+            ("a#b", "a_b"),
+            # Already inside Airbyte's S3-safe set, so untouched.
+            ("x-y", "x-y"),
+            ("p.q", "p.q"),
+        ],
+    )
+    def test_s3_path_segments_are_sanitised(self, raw, expected):
+        """`ObjectStoragePathFactory` resolves `${NAMESPACE}` and `${STREAM_NAME}` through
+        `Transformations.toS3SafeCharacters`, so the written path is not the raw stream name."""
+        assert to_s3_safe_characters(raw) == expected
+
+    def test_s3_destination_path_uses_the_sanitised_names(self):
+        stream = self._connection(namespaceDefinition="destination", prefix="ab prod ").destination_stream(self.STREAM)
+        path = get_destination_container_path(
+            stream,
+            AirbyteDestinationResponse(
+                destinationType="s3",
+                configuration={"s3_bucket_name": "omlin-lake2", "s3_bucket_path": "curated"},
+            ),
+        )
+        assert path == "s3://omlin-lake2/curated/ab_prod_products"
 
     def test_the_source_side_stream_is_untouched(self):
         """Only the destination renames streams; the source reads what it reported."""
