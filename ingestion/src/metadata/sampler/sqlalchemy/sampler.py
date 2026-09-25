@@ -235,7 +235,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         such as _sample, or _rnd.
         """
         encoded_name = self.raw_dataset.__tablename__.encode(UTF_8)
-        hash_object = hashlib.md5(encoded_name)
+        hash_object = hashlib.md5(encoded_name, usedforsecurity=False)
         return hash_object.hexdigest()
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:

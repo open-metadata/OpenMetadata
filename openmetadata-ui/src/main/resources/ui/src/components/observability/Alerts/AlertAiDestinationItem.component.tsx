@@ -70,6 +70,7 @@ const AlertAiDestinationItem = ({
   name,
   onChange,
   remove,
+  selectedSource,
   validationErrors,
   value,
 }: AlertAiDestinationItemProps) => {
@@ -115,8 +116,8 @@ const AlertAiDestinationItem = ({
     [destinationType]
   );
   const destinationCategoryItems = useMemo(
-    () => getDestinationCategoryItems(t),
-    [t]
+    () => getDestinationCategoryItems(t, selectedSource),
+    [selectedSource, t]
   );
 
   /** Rebuilds destination category/type fields to match OSS destination behavior. */

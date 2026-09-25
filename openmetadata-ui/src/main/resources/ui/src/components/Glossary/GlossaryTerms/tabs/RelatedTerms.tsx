@@ -48,11 +48,11 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
-import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../../common/IconButtons/EditIconButton';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
@@ -480,36 +480,28 @@ const RelatedTerms = () => {
   const canEditRelatedTerms = (() =>
     canEditGlossaryTerms && !isVersionView && !isEditing && !isAdding)();
 
-  const renderHeader = () => (
-    <div className="d-flex items-center justify-between w-full">
-      <div className="d-flex items-center gap-2">
-        <Typography as="span" className="text-sm font-medium">
-          {t('label.related-term-plural')}
-        </Typography>
-        {canEditRelatedTerms && (
-          <>
-            <EditIconButton
-              newLook
-              data-testid="edit-button"
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.related-term-plural'),
-              })}
-              onClick={handleStartEditing}
-            />
-            <PlusIconButton
-              data-testid="related-term-add-button"
-              size="small"
-              title={t('label.add-entity', {
-                entity: t('label.related-term-plural'),
-              })}
-              onClick={handleStartAdding}
-            />
-          </>
-        )}
-      </div>
+  const renderHeaderExtra = () => (
+    <>
+      {canEditRelatedTerms && (
+        <>
+          <WidgetEditButton
+            data-testid="edit-button"
+            title={t('label.edit-entity', {
+              entity: t('label.related-term-plural'),
+            })}
+            onClick={handleStartEditing}
+          />
+          <WidgetPlusButton
+            data-testid="related-term-add-button"
+            title={t('label.add-entity', {
+              entity: t('label.related-term-plural'),
+            })}
+            onClick={handleStartAdding}
+          />
+        </>
+      )}
       {(isEditing || isAdding) && (
-        <div className="d-flex items-center gap-2">
+        <div className="tw:flex tw:items-center tw:gap-2">
           <Button
             color="primary"
             data-testid="save-related-terms"
@@ -526,7 +518,7 @@ const RelatedTerms = () => {
           </Button>
         </div>
       )}
-    </div>
+    </>
   );
 
   const sharedEditorProps: TermsRowEditorProps = {
@@ -561,7 +553,7 @@ const RelatedTerms = () => {
     return relatedTermsContainer;
   })();
 
-  // Groups the ExpandableCard prop derivations so their && / || chains are
+  // Groups the WidgetCard prop derivations so their && / || chains are
   // scoped here instead of adding to the component's own complexity.
   const { defaultExpanded, isExpandDisabled, expandableCardKey } = (() => ({
     defaultExpanded: isEditing || isAdding || !isEmpty(termRelations),
@@ -570,14 +562,15 @@ const RelatedTerms = () => {
   }))();
 
   return (
-    <ExpandableCard
-      cardProps={{ title: renderHeader() }}
+    <WidgetCard
       dataTestId="related-term-container"
       defaultExpanded={defaultExpanded}
+      headerExtra={renderHeaderExtra()}
       isExpandDisabled={isExpandDisabled}
-      key={expandableCardKey}>
+      key={expandableCardKey}
+      title={t('label.related-term-plural')}>
       {cardContent}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

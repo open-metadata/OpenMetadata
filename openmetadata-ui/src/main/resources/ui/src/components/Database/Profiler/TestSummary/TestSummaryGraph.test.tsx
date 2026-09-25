@@ -20,11 +20,14 @@ import {
   screen,
 } from '@testing-library/react';
 import { cloneElement } from 'react';
+import { Area } from 'recharts';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { Task } from '../../../../generated/entity/tasks/task';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestSummaryGraph from './TestSummaryGraph';
+import { BOUND_AREA_OPACITY, DOT_OUTLINE } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 jest.mock('../../../../hooks/useChartColors', () => ({
@@ -79,6 +82,11 @@ const TOOLTIP_Y_ATTRIBUTE = 'data-y';
 const POINT_TEST_ID = 'test-summary-point-min';
 const TOOLTIP_TEST_ID = 'recharts-tooltip';
 let mockPointCoordinate = { x: 320, y: 120 };
+const OLDER_RUN_TIMESTAMP = 1720000000000;
+const twoRunResults = [
+  mockProps.testCaseResults[0],
+  { ...mockProps.testCaseResults[0], timestamp: OLDER_RUN_TIMESTAMP },
+];
 
 jest.mock('@tanstack/react-query', () => ({
   useQueries: jest.fn(),
@@ -88,8 +96,16 @@ jest.mock('../../../../rest/tasksAPI', () => ({
   getTaskById: jest.fn(),
 }));
 
+// The Line mock renders one dot per series from a fixed payload; this is the
+// status that payload carries, so a test can render a run of any status.
+let mockDotStatus = 'Success';
+
 jest.mock('recharts', () => ({
-  Area: jest.fn().mockImplementation(() => <div data-testid="area" />),
+  Area: jest
+    .fn()
+    .mockImplementation((props) => (
+      <div data-testid={props['data-testid'] ?? 'area'} />
+    )),
   CartesianGrid: jest
     .fn()
     .mockImplementation(() => <div data-testid="cartesian-grid" />),
@@ -128,16 +144,21 @@ jest.mock('recharts', () => ({
               max: 96612,
               min: 90001,
               name: 1721036998163,
-              status: 'Success',
+              status: mockDotStatus,
             },
           })}
         </svg>
       </div>
     );
   }),
-  ReferenceLine: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="reference-line" />),
+  ReferenceLine: jest.fn().mockImplementation(({ label, x, y, ...rest }) => (
+    <div
+      data-testid={rest['data-testid'] ?? 'reference-line'}
+      data-x={x}
+      data-y={y}>
+      {label?.value}
+    </div>
+  )),
   ResponsiveContainer: jest
     .fn()
     .mockImplementation(({ children, className, id }) => (
@@ -203,17 +224,24 @@ jest.mock(
       ))
 );
 const mockSetShowAILearningBanner = jest.fn();
+const mockSetSelectedRunTimestamp = jest.fn();
+let mockSelectedRunTimestamp: number | undefined;
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
   () => ({
     useTestCaseStore: jest.fn().mockImplementation(() => ({
       setShowAILearningBanner: mockSetShowAILearningBanner,
+      selectedRunTimestamp: mockSelectedRunTimestamp,
+      setSelectedRunTimestamp: mockSetSelectedRunTimestamp,
     })),
   })
 );
 
 describe('TestSummaryGraph', () => {
   beforeEach(() => {
+    mockSelectedRunTimestamp = undefined;
+    mockSetSelectedRunTimestamp.mockClear();
+    mockDotStatus = 'Success';
     mockPointCoordinate = { x: 320, y: 120 };
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       bottom: 280,
@@ -332,23 +360,231 @@ describe('TestSummaryGraph', () => {
     expect(minButton).toBeInTheDocument();
   });
 
-  it('should render reference line when single parameter value', () => {
+  it('should draw the expectation line at the asserted value', () => {
     render(
       <TestSummaryGraph
         {...mockProps}
         testCaseParameterValue={[
+          { name: 'value', value: '10000' },
+          { name: 'threshold', value: '5' },
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('reference-line')).toHaveAttribute(
+      'data-y',
+      '10000'
+    );
+    expect(screen.getByTestId('expectation-label')).toHaveAttribute(
+      'data-y',
+      '10000'
+    );
+    expect(screen.getByTestId('expectation-label')).toHaveTextContent(
+      'label.expected-value'
+    );
+  });
+
+  // Recharts paints in child order: a label drawn before the series would sit
+  // under every run near the expected value.
+  it('should draw the expectation label after the series', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'value', value: '10000' }]}
+      />
+    );
+
+    const label = screen.getByTestId('expectation-label');
+    const series = screen.getByTestId('line-min');
+
+    expect(
+      series.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('should fall back to the learned bound when no parameter asserts a number', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'strategy', value: 'ROWS' }]}
+      />
+    );
+
+    expect(screen.getByTestId('reference-line')).toHaveAttribute(
+      'data-y',
+      '96162'
+    );
+    expect(screen.getByTestId('expectation-label')).toHaveTextContent(
+      'label.learned-baseline'
+    );
+  });
+
+  // A line at no value is the bug this replaced: recharts silently drops it.
+  it('should draw no expectation line when nothing supplies a value', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[{ name: 'strategy', value: 'ROWS' }]}
+        testCaseResults={[
+          { ...mockProps.testCaseResults[0], maxBound: undefined },
+        ]}
+      />
+    );
+
+    expect(screen.queryByTestId('reference-line')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('expectation-label')).not.toBeInTheDocument();
+  });
+
+  // The run-details card is a sibling of the chart, so the selection has to
+  // leave the chart to reach it.
+  it('should guide to the newest run until one is selected', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.getByTestId('run-selection-guide')).toHaveAttribute(
+      'data-x',
+      String(mockProps.testCaseResults[0].timestamp)
+    );
+  });
+
+  it('should guide to the selected run once the store holds one', () => {
+    mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
+
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
+
+    expect(screen.getByTestId('run-selection-guide')).toHaveAttribute(
+      'data-x',
+      String(OLDER_RUN_TIMESTAMP)
+    );
+  });
+
+  // The store keeps the selection across a date-range or dimension change; a
+  // run the refetched data no longer holds must not leave the chart unmarked.
+  it('should fall back to the newest run when the selected run is not plotted', () => {
+    mockSelectedRunTimestamp = 1700000000000;
+
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.getByTestId('run-selection-guide')).toHaveAttribute(
+      'data-x',
+      String(mockProps.testCaseResults[0].timestamp)
+    );
+    expect(screen.getAllByTestId('selected-point-halo').length).toBeGreaterThan(
+      0
+    );
+  });
+
+  // The status key draws aborted as a ring; the chart has to match it or the
+  // key describes a dot that is not on the plot.
+  it('should draw an aborted run as a ring', () => {
+    mockDotStatus = TestCaseStatus.Aborted;
+
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const [abortedPoint] = screen.getAllByTestId(POINT_TEST_ID);
+
+    expect(abortedPoint).toHaveAttribute('fill', 'none');
+    expect(abortedPoint).toHaveAttribute('stroke');
+    expect(abortedPoint).toHaveAttribute('pointer-events', 'all');
+  });
+
+  it('should keep a passing run filled, outlined in the surface colour', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const [passingPoint] = screen.getAllByTestId(POINT_TEST_ID);
+
+    expect(passingPoint).not.toHaveAttribute('fill', 'none');
+    expect(passingPoint).toHaveAttribute('stroke', DOT_OUTLINE);
+  });
+
+  it('should mark only the selected run with a halo', () => {
+    mockSelectedRunTimestamp = 1721036998163;
+
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.getAllByTestId('selected-point-halo').length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it('should draw no halo when another run is selected', () => {
+    mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
+
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
+
+    expect(screen.queryByTestId('selected-point-halo')).not.toBeInTheDocument();
+  });
+
+  // The wash is an area under the series, so it follows each run rather than
+  // filling a fixed band.
+  it('should shade the area under a single series', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[
           {
-            name: 'threshold',
-            value: '100',
+            ...mockProps.testCaseResults[0],
+            testResultValue: [{ name: 'value', value: '9990' }],
           },
         ]}
       />
     );
 
-    expect(
-      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('series-area')).toBeInTheDocument();
   });
+
+  // The default fixture plots min and max: two overlapping washes would stop
+  // meaning "below this line".
+  it('should leave several series unshaded', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(screen.queryByTestId('series-area')).not.toBeInTheDocument();
+  });
+
+  // A stroked band draws a second dashed line wherever the range meets the
+  // expectation line; the mock draws the range as a wash with no edges.
+  it('should draw the allowed range as an edgeless wash', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const band = (Area as unknown as jest.Mock).mock.calls
+      .map(([props]) => props)
+      .find((props) => props.dataKey === 'boundArea');
+
+    expect(band).toMatchObject({
+      stroke: 'none',
+      fillOpacity: BOUND_AREA_OPACITY,
+      type: 'linear',
+    });
+    expect(band.strokeDasharray).toBeUndefined();
+  });
+
+  it('should publish the clicked run to the store', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    fireEvent.click(screen.getByTestId(POINT_TEST_ID));
+
+    expect(mockSetSelectedRunTimestamp).toHaveBeenCalledWith(
+      mockProps.testCaseResults[0].timestamp
+    );
+  });
+
+  it.each(['Enter', ' '])(
+    'should publish the focused run to the store on %p',
+    (key) => {
+      render(<TestSummaryGraph {...mockProps} />);
+
+      const point = screen.getByTestId(POINT_TEST_ID);
+      point.focus();
+
+      expect(point).toHaveFocus();
+
+      // fireEvent returns false once the handler prevents the default, which
+      // for Space is scrolling the page.
+      expect(fireEvent.keyDown(point, { key })).toBe(false);
+      expect(mockSetSelectedRunTimestamp).toHaveBeenCalledWith(
+        mockProps.testCaseResults[0].timestamp
+      );
+    }
+  );
 
   it('should render incident areas when entity threads exist', () => {
     render(<TestSummaryGraph {...mockProps} />);

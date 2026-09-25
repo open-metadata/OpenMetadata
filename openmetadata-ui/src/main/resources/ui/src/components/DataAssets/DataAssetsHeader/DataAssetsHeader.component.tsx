@@ -1211,7 +1211,7 @@ export const DataAssetsHeader = ({
     <>
       <div
         className={classNames(
-          'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5',
+          'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface tw:p-5',
           'data-assets-header-container',
           { 'has-editable-metadata': hasEditableMetadata }
         )}

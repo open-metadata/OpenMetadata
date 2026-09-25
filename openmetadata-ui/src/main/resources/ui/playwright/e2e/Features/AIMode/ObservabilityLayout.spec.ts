@@ -121,7 +121,7 @@ test.describe('AI mode Observability — layout', () => {
       await page.getByTestId('manage-button').click();
       await page.getByRole('menuitem', { name: /Rename/ }).click();
 
-      const dialog = page.getByRole('dialog');
+      const dialog = page.getByTestId('entity-name-modal');
 
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText('Edit Display Name')).toBeVisible();
