@@ -247,12 +247,16 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
             effect,
             arguments: args,
           })),
-          actions:
-            (
-              alert as unknown as {
-                input?: { actions?: EventFilterRule[] };
+          ...(alert
+            ? {
+                actions:
+                  (
+                    alert as unknown as {
+                      input?: { actions?: EventFilterRule[] };
+                    }
+                  )?.input?.actions ?? [],
               }
-            )?.input?.actions ?? [],
+            : {}),
         },
       } as unknown as ModifiedCreateEventSubscription;
 
