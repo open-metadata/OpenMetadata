@@ -180,7 +180,11 @@ export const DomainLabel = ({
                 {t('label.domain-plural')}
               </Typography>
             ) : (
-              <Typography className="domain-link right-panel-label m-r-xss">
+              <Typography
+                as="span"
+                className="domain-link m-r-xss tw:text-secondary"
+                size="text-sm"
+                weight="medium">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
@@ -202,7 +206,11 @@ export const DomainLabel = ({
           <div
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
-            <Typography className="domain-link right-panel-label m-r-xss">
+            <Typography
+              as="span"
+              className="domain-link m-r-xss tw:text-secondary"
+              size="text-sm"
+              weight="medium">
               {t('label.domain-plural')}
             </Typography>
             {selectableList}
