@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, waitFor } from '@testing-library/react';
 import React from 'react';
 
@@ -29,6 +30,8 @@ import {
 interface Item {
   id: number;
 }
+
+type FetchPage = (after?: string) => Promise<InboxListPage<Item> | undefined>;
 
 let intersect: (() => void) | undefined;
 
@@ -50,10 +53,11 @@ class MockIntersectionObserver {
 }
 
 const Harness: React.FC<{
-  fetchPage: (after?: string) => Promise<InboxListPage<Item> | undefined>;
+  listKey: string;
+  fetchPage: FetchPage;
   onApi: (api: UseInboxInfiniteList<Item>) => void;
-}> = ({ fetchPage, onApi }) => {
-  const api = useInboxInfiniteList<Item>(fetchPage);
+}> = ({ listKey, fetchPage, onApi }) => {
+  const api = useInboxInfiniteList<Item>(['list', listKey], fetchPage);
   onApi(api);
 
   return (
@@ -63,30 +67,43 @@ const Harness: React.FC<{
   );
 };
 
+const page = (
+  id: number,
+  { after, total = 1 }: { after?: string; total?: number } = {}
+): InboxListPage<Item> => ({ data: [{ id }], paging: { after, total } });
+
 describe('useInboxInfiniteList', () => {
   let api: UseInboxInfiniteList<Item>;
+  let queryClient: QueryClient;
 
   beforeEach(() => {
     jest.clearAllMocks();
     intersect = undefined;
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     (
       global as unknown as { IntersectionObserver: unknown }
     ).IntersectionObserver = MockIntersectionObserver;
   });
 
-  const renderHarness = (
-    fetchPage: (after?: string) => Promise<InboxListPage<Item> | undefined>
-  ) =>
-    render(<Harness fetchPage={fetchPage} onApi={(value) => (api = value)} />);
+  const harness = (fetchPage: FetchPage, listKey = 'open') => (
+    <QueryClientProvider client={queryClient}>
+      <Harness
+        fetchPage={fetchPage}
+        listKey={listKey}
+        onApi={(value) => (api = value)}
+      />
+    </QueryClientProvider>
+  );
+
+  const renderHarness = (fetchPage: FetchPage, listKey?: string) =>
+    render(harness(fetchPage, listKey));
 
   it('loads the first page and exposes items/total', async () => {
-    const fetchPage = jest
-      .fn()
-      .mockResolvedValue({ data: [{ id: 1 }], paging: { total: 5 } });
+    const fetchPage = jest.fn().mockResolvedValue(page(1, { total: 5 }));
 
-    await act(async () => {
-      renderHarness(fetchPage);
-    });
+    renderHarness(fetchPage);
 
     await waitFor(() => expect(api.items).toHaveLength(1));
 
@@ -98,15 +115,10 @@ describe('useInboxInfiniteList', () => {
   it('loads the next page when the sentinel intersects', async () => {
     const fetchPage = jest
       .fn()
-      .mockResolvedValueOnce({
-        data: [{ id: 1 }],
-        paging: { after: 'c1', total: 5 },
-      })
-      .mockResolvedValueOnce({ data: [{ id: 2 }], paging: { total: 5 } });
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 5 }))
+      .mockResolvedValueOnce(page(2, { total: 5 }));
 
-    await act(async () => {
-      renderHarness(fetchPage);
-    });
+    renderHarness(fetchPage);
     await waitFor(() => expect(api.items).toHaveLength(1));
 
     await act(async () => {
@@ -121,55 +133,69 @@ describe('useInboxInfiniteList', () => {
   it('shows an error toast when a page fetch rejects', async () => {
     const fetchPage = jest.fn().mockRejectedValue(new Error('boom'));
 
-    await act(async () => {
-      renderHarness(fetchPage);
-    });
+    renderHarness(fetchPage);
 
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
 
     expect(api.items).toHaveLength(0);
   });
 
-  it('reloads from the first page when fetchPage identity changes', async () => {
-    const first = jest
-      .fn()
-      .mockResolvedValue({ data: [{ id: 1 }], paging: { total: 1 } });
-    const second = jest
-      .fn()
-      .mockResolvedValue({ data: [{ id: 9 }], paging: { total: 1 } });
-
-    const view = await act(async () =>
-      render(<Harness fetchPage={first} onApi={(value) => (api = value)} />)
+  // A filter switch must not blank the list: the old rows stay until the new
+  // list's first page lands.
+  it('keeps the previous rows while a new key loads', async () => {
+    let resolveClosed: ((value: InboxListPage<Item>) => void) | undefined;
+    const open = jest.fn().mockResolvedValue(page(1));
+    const closed = jest.fn(
+      () =>
+        new Promise<InboxListPage<Item>>((resolve) => {
+          resolveClosed = resolve;
+        })
     );
-    await waitFor(() => expect(api.items[0].id).toBe(1));
 
-    await act(async () => {
-      view.rerender(
-        <Harness fetchPage={second} onApi={(value) => (api = value)} />
-      );
-    });
+    const view = renderHarness(open);
+    await waitFor(() => expect(api.items[0]?.id).toBe(1));
+
+    view.rerender(harness(closed, 'closed'));
+
+    await waitFor(() => expect(closed).toHaveBeenCalledWith(undefined));
+
+    expect(api.items[0]?.id).toBe(1);
+    expect(api.isLoading).toBe(false);
+
+    await act(async () => resolveClosed?.(page(9)));
 
     await waitFor(() => expect(api.items[0]?.id).toBe(9));
+  });
 
-    expect(second).toHaveBeenCalledWith(undefined);
+  it('reads a list it already loaded from the cache', async () => {
+    const open = jest.fn().mockResolvedValue(page(1));
+    const closed = jest.fn().mockResolvedValue(page(9));
+
+    const view = renderHarness(open);
+    await waitFor(() => expect(api.items[0]?.id).toBe(1));
+    view.rerender(harness(closed, 'closed'));
+    await waitFor(() => expect(api.items[0]?.id).toBe(9));
+
+    view.rerender(harness(open, 'open'));
+
+    await waitFor(() => expect(api.items[0]?.id).toBe(1));
+
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it('exposes setItems and setTotal for optimistic updates', async () => {
-    const fetchPage = jest
-      .fn()
-      .mockResolvedValue({ data: [{ id: 1 }], paging: { total: 3 } });
+    const fetchPage = jest.fn().mockResolvedValue(page(1, { total: 3 }));
 
-    await act(async () => {
-      renderHarness(fetchPage);
-    });
+    renderHarness(fetchPage);
     await waitFor(() => expect(api.items).toHaveLength(1));
 
-    await act(async () => {
+    act(() => {
       api.setItems((prev) => prev.filter((i) => i.id !== 1));
       api.setTotal((prev) => prev - 1);
     });
 
-    expect(api.items).toHaveLength(0);
+    await waitFor(() => expect(api.items).toHaveLength(0));
+
     expect(api.total).toBe(2);
   });
 });

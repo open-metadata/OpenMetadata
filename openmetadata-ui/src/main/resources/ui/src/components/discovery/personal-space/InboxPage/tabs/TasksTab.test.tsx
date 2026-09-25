@@ -19,9 +19,9 @@ const mockListTasks = jest.fn();
 const mockListVisibleTasks = jest.fn();
 const mockSetItems = jest.fn();
 const mockSetTotal = jest.fn();
-const mockReload = jest.fn();
 const mockInvalidateQueries = jest.fn();
 let capturedFetchPage: (after?: string) => unknown;
+let capturedQueryKey: unknown[];
 let hookState: { items: Task[]; isLoading: boolean; total: number };
 // Extra fields merged into the task the mock panel resolves with, so a test can
 // simulate resolving into a specific status/type (e.g. an Approved DAR).
@@ -40,7 +40,11 @@ jest.mock('../useInboxCounts', () => ({
 }));
 
 jest.mock('../useInboxInfiniteList', () => ({
-  useInboxInfiniteList: (fetchPage: (after?: string) => unknown) => {
+  useInboxInfiniteList: (
+    queryKey: unknown[],
+    fetchPage: (after?: string) => unknown
+  ) => {
+    capturedQueryKey = queryKey;
     capturedFetchPage = fetchPage;
 
     return {
@@ -50,7 +54,6 @@ jest.mock('../useInboxInfiniteList', () => ({
       total: hookState.total,
       scrollRef: { current: null },
       sentinelRef: { current: null },
-      reload: mockReload,
       setItems: mockSetItems,
       setTotal: mockSetTotal,
     };
@@ -383,7 +386,7 @@ describe('TasksTab', () => {
     expect(mockSetTotal).not.toHaveBeenCalled();
   });
 
-  it('reloads the list and invalidates the count caches after an assignee change', () => {
+  it('refetches the lists and invalidates the count caches after an assignee change', () => {
     hookState = {
       items: [{ id: 't1' }] as unknown as Task[],
       isLoading: false,
@@ -396,7 +399,10 @@ describe('TasksTab', () => {
 
     // A reassigned task can leave the current user's visible set, so the list
     // must re-sync with the server rather than being patched client-side.
-    expect(mockReload).toHaveBeenCalled();
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['inbox-task-list', 'me'],
+      refetchType: 'active',
+    });
     expect(mockSetTotal).not.toHaveBeenCalled();
     // Both the tab-badge and the All/Open/Closed status-count caches are
     // invalidated so their React Query fetches re-run.
@@ -428,6 +434,22 @@ describe('TasksTab', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-counts'],
     });
+    // The other status lists may now hold or miss this task; they re-read on
+    // their next visit while the showing list keeps its in-place edit.
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['inbox-task-list', 'me'],
+      refetchType: 'none',
+    });
+  });
+
+  // Each status and search is its own cached list, so switching back to one
+  // reads the cache instead of refetching it.
+  it('keys the list on scope, status and search', () => {
+    hookState = { items: [], isLoading: false, total: 0 };
+
+    renderTab();
+
+    expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
   });
 
   it('invalidates the sidebar open-task count after a task is resolved', () => {
@@ -495,7 +517,7 @@ describe('TasksTab', () => {
 
       expect(screen.getByTestId('task-t1')).toBeInTheDocument();
       expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
-      expect(mockReload).not.toHaveBeenCalled();
+      expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
     });
 
     it('sends the search text to the server once typing settles', () => {

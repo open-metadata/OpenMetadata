@@ -63,6 +63,9 @@ const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
 // mutation can invalidate them (see handleResolved / handleTaskUpdated).
 export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
 const TASK_COUNTS_STALE_TIME = 30_000;
+// React Query cache key prefix for the task lists, one entry per scope, status
+// and search, so switching back to a list reads it from the cache.
+const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 
 type TaskStatusFilter = 'all' | 'open' | 'closed';
 
@@ -312,10 +315,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
     total,
     scrollRef,
     sentinelRef,
-    reload,
     setItems,
     setTotal,
-  } = useInboxInfiniteList<Task>(fetchPage);
+  } = useInboxInfiniteList<Task>(
+    [TASK_LIST_QUERY_KEY, scope, status, searchQuery],
+    fetchPage
+  );
 
   useEffect(() => {
     onCountChange?.(total);
@@ -327,6 +332,20 @@ const TasksTab: React.FC<TasksTabProps> = ({
       queryKey: [TASK_STATUS_COUNTS_QUERY_KEY],
     });
   }, [queryClient]);
+
+  // A task action can move a task between the All/Open/Closed lists, so the
+  // cached ones go stale. `refetch` re-reads the showing list now; without it
+  // the showing list keeps its in-place edit and every list re-reads on its
+  // next visit.
+  const invalidateTaskLists = useCallback(
+    (refetch = false) => {
+      queryClient.invalidateQueries({
+        queryKey: [TASK_LIST_QUERY_KEY, scope],
+        refetchType: refetch ? 'active' : 'none',
+      });
+    },
+    [queryClient, scope]
+  );
 
   // The server has no `type` filter on the scoped lists, so the chosen types
   // narrow the loaded pages here; search and status stay server-side.
@@ -375,20 +394,28 @@ const TasksTab: React.FC<TasksTabProps> = ({
         setTotal((prev) => Math.max(0, prev - 1));
       }
       // The transition may shift the task across buckets, so re-sync the counts.
+      invalidateTaskLists();
       refreshStatusCounts();
       syncInboxCountBadge();
     },
-    [status, setItems, setTotal, refreshStatusCounts, syncInboxCountBadge]
+    [
+      status,
+      setItems,
+      setTotal,
+      invalidateTaskLists,
+      refreshStatusCounts,
+      syncInboxCountBadge,
+    ]
   );
 
   // Assignee changes can move the task out of the current user's visible set
   // (server-side rule), so refetch instead of patching the list client-side —
   // otherwise the rows and the count badges drift apart.
   const handleTaskUpdated = useCallback(() => {
-    reload();
+    invalidateTaskLists(true);
     refreshStatusCounts();
     syncInboxCountBadge();
-  }, [reload, refreshStatusCounts, syncInboxCountBadge]);
+  }, [invalidateTaskLists, refreshStatusCounts, syncInboxCountBadge]);
 
   // A comment change doesn't affect the task's bucket or visibility, so patch the
   // row in place instead of refetching the list.
@@ -397,8 +424,9 @@ const TasksTab: React.FC<TasksTabProps> = ({
       setItems((prev) =>
         prev.map((task) => (task.id === updated.id ? updated : task))
       );
+      invalidateTaskLists();
     },
-    [setItems]
+    [setItems, invalidateTaskLists]
   );
 
   // A segmented control on a gray track: the selected option is a raised white
