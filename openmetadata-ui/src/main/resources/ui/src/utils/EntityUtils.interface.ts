@@ -63,6 +63,7 @@ export enum FormattedPipelineServiceType {
   Wherescape = 'Wherescape',
   MicrosoftFabricPipeline = 'Microsoft Fabric Pipeline',
   Data360Pipeline = 'Salesforce Data 360 Pipeline',
+  TableauPipeline = 'Tableau Pipeline',
 }
 export enum FormattedSearchServiceType {
   CustomSearch = 'Custom Search',

@@ -204,6 +204,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,
   PipelineServiceType.Prefect,
+  PipelineServiceType.TableauPipeline,
   DatabaseServiceType.Iomete,
   DatabaseServiceType.Clickzetta,
 ];
@@ -369,4 +370,5 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
   [DatabaseServiceType.Data360, 'Salesforce Data 360'],
   [PipelineServiceType.Data360Pipeline, 'Salesforce Data 360 Pipeline'],
+  [PipelineServiceType.TableauPipeline, 'Tableau Pipeline'],
 ]);
