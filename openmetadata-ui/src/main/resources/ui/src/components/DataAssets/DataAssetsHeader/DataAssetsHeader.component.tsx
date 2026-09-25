@@ -1075,7 +1075,6 @@ export const DataAssetsHeader = ({
 
             return editTierPermission ? (
               <TierCard
-                currentTier={tier?.tagFQN}
                 footerActionButtonsClassName="p-x-md"
                 updateTier={onTierUpdate}>
                 <Pressable>

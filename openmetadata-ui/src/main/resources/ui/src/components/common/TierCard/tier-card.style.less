@@ -13,30 +13,15 @@
 
 @import '../../../styles/variables.less';
 
-.tier-card-popover {
-  .ant-popover-inner {
-    box-shadow: none;
-    .ant-popover-inner-content {
-      padding: 0;
-    }
-
-    .tier-card-description {
-      .tiptap.ProseMirror ul {
-        padding-left: var(--om-space-18);
-        font-size: var(--om-font-size-xs);
-        font-weight: var(--om-font-weight-regular);
-        color: @text-color;
-        margin: var(--om-space-4);
-        li {
-          margin: 0;
-        }
-      }
+.tier-card-body .tier-card-description {
+  .tiptap.ProseMirror ul {
+    padding-left: var(--om-space-18);
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-regular);
+    color: @text-color;
+    margin: var(--om-space-4);
+    li {
+      margin: 0;
     }
   }
-}
-
-/* Outline on focus */
-.ant-radio-wrapper:focus-within .ant-radio-inner {
-  outline: 2px solid @focus-outline-color;
-  outline-offset: 2px;
 }

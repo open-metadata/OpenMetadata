@@ -2364,8 +2364,8 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
 
     return (
       <TierCard
+        open
         currentTier={value}
-        popoverProps={{ open: true }}
         updateTier={handleChange}
         onClose={() => onClose(false)}>
         <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
