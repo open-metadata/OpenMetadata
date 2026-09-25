@@ -103,6 +103,12 @@ export interface TreeSelectProps<T = unknown> {
   showCheckbox?: boolean;
   /** @default true */
   showIcon?: boolean;
+  /**
+   * When false, suppresses the expand/collapse chevron entirely — use for flat
+   * trees where no node has children (e.g. a classification tag list).
+   * @default true
+   */
+  showExpandIcon?: boolean;
   /** Selecting a node also selects/deselects all of its descendants. @default false */
   cascadeSelection?: boolean;
 

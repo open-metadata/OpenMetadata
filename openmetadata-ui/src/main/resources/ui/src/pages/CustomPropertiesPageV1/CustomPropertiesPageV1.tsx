@@ -15,7 +15,6 @@ import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { Card } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,8 +36,10 @@ import { CustomProperty } from '../../generated/type/customProperty';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   addPropertyToEntity,
+  CustomPropertyChanges,
+  deleteCustomPropertyByName,
   getTypeByFQN,
-  updateType,
+  updateCustomPropertyByName,
 } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -148,27 +149,56 @@ const CustomEntityDetailV1 = () => {
     ]
   );
 
-  const updateEntityType = useCallback(
-    async (properties: Type['customProperties']) => {
+  // Delete and update are both guarded by-name patches that resolve to
+  // `undefined` when the property no longer exists; resync from the server then.
+  const runCustomPropertyChange = useCallback(
+    async (
+      change: () => Promise<Type | undefined>,
+      onPropertyMissing?: () => void
+    ) => {
       setIsButtonLoading(true);
-      const patch = compare(selectedEntityTypeDetail, {
-        ...selectedEntityTypeDetail,
-        customProperties: properties,
-      });
-
       try {
-        const data = await updateType(selectedEntityTypeDetail.id ?? '', patch);
-        setSelectedEntityTypeDetail((prev) => ({
-          ...prev,
-          customProperties: data.customProperties,
-        }));
+        const data = await change();
+
+        if (data) {
+          setSelectedEntityTypeDetail((prev) => ({
+            ...prev,
+            customProperties: data.customProperties,
+          }));
+        } else {
+          onPropertyMissing?.();
+          await fetchTypeDetail(tabAttributePath);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsButtonLoading(false);
       }
     },
-    [selectedEntityTypeDetail]
+    [fetchTypeDetail, tabAttributePath]
+  );
+
+  const handlePropertyDelete = useCallback(
+    (propertyName: string) =>
+      runCustomPropertyChange(() =>
+        deleteCustomPropertyByName(tabAttributePath, propertyName)
+      ),
+    [runCustomPropertyChange, tabAttributePath]
+  );
+
+  const handlePropertyUpdate = useCallback(
+    (propertyName: string, changes: CustomPropertyChanges) =>
+      runCustomPropertyChange(
+        () =>
+          updateCustomPropertyByName(tabAttributePath, propertyName, changes),
+        () =>
+          showErrorToast(
+            t('server.update-entity-error', {
+              entity: t('label.custom-property'),
+            })
+          )
+      ),
+    [runCustomPropertyChange, tabAttributePath, t]
   );
 
   const customPageHeader = useMemo(() => {
@@ -222,7 +252,8 @@ const CustomEntityDetailV1 = () => {
               hasAccess={editPermission}
               isButtonLoading={isButtonLoading}
               isLoading={isLoading}
-              updateEntityType={updateEntityType}
+              onDeleteProperty={handlePropertyDelete}
+              onUpdateProperty={handlePropertyUpdate}
             />
           </Card>
         ),
@@ -247,7 +278,8 @@ const CustomEntityDetailV1 = () => {
     isLoading,
     activeTab,
     handleAddProperty,
-    updateEntityType,
+    handlePropertyDelete,
+    handlePropertyUpdate,
   ]);
 
   if (isError) {

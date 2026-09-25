@@ -34,6 +34,7 @@ name: playwright-visual-regression
 on:
   merge_group:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
@@ -174,6 +175,7 @@ jobs:
             --network host \
             --ipc host \
             -e CI=true \
+            -e PLAYWRIGHT_IS_OSS=true \
             -e PLAYWRIGHT_TEST_BASE_URL \
             -v "$PWD:/work" \
             -w /work \

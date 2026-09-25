@@ -1333,8 +1333,8 @@
     --color-bg-canvas: theme(--color-gray-900);
     --color-bg-surface: theme(--color-gray-800);
     --color-bg-raised: theme(--color-gray-700);
-    /* Modal panel sits on Raised (gray-700) per palette guideline, not gray-800. */
-    --color-bg-overlay-surface: theme(--color-gray-700);
+    /* Modal/slideout panel matches bg-surface (gray-800, rgb(34,38,47)). */
+    --color-bg-overlay-surface: theme(--color-gray-800);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
 
