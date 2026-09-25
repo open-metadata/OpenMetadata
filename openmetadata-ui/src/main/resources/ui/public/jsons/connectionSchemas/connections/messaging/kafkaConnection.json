@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "KafkaConnection",
   "description": "Kafka Connection Config",
   "type": "object",
@@ -62,7 +61,6 @@
       "title": "SASL Mechanism",
       "description": "sasl.mechanism Consumer Config property",
       "default": "PLAIN",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "javaType": "org.openmetadata.schema.services.connections.messaging.SaslMechanismType",
       "type": "string",
       "enum": [
@@ -106,7 +104,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
@@ -160,7 +157,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
