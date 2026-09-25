@@ -110,16 +110,33 @@ const RESOLUTION_EVENT: Partial<
   },
 };
 
-const getCreatedEvent = (task: Task): TaskTimelineEvent => {
+/** A task type's own wording for its "created" event. */
+export interface TaskCreatedEventText {
+  textKey: string;
+  textParams?: Record<string, string>;
+}
+
+export interface TaskTimelineOptions {
+  /** An incident's status records; they replace the guessed events. */
+  incidentStatuses?: TestCaseResolutionStatus[];
+  createdEvent?: TaskCreatedEventText;
+}
+
+const getCreatedEvent = (
+  task: Task,
+  createdEvent?: TaskCreatedEventText
+): TaskTimelineEvent => {
   const isIncident = task.category === TaskCategory.Incident;
+  const defaultKey = isIncident
+    ? 'message.task-event-incident-opened'
+    : 'message.task-event-created';
 
   return {
     kind: 'event',
     id: 'created',
     actor: task.createdBy,
-    textKey: isIncident
-      ? 'message.task-event-incident-opened'
-      : 'message.task-event-created',
+    textKey: createdEvent?.textKey ?? defaultKey,
+    textParams: createdEvent?.textParams,
     icon: isIncident ? 'incident' : 'created',
     timestamp: task.createdAt,
     tone: isIncident ? 'error' : 'default',
@@ -297,7 +314,7 @@ const getIncidentStatusEvents = (
  */
 export const buildTaskTimeline = (
   task: Task,
-  incidentStatuses?: TestCaseResolutionStatus[]
+  { incidentStatuses, createdEvent }: TaskTimelineOptions = {}
 ): TaskTimelineEntry[] => {
   const comments: TaskTimelineEntry[] = (task.comments ?? []).map(
     (comment) => ({
@@ -316,7 +333,7 @@ export const buildTaskTimeline = (
   const events = incidentStatuses?.length
     ? getIncidentStatusEvents(task, incidentStatuses)
     : [
-        getCreatedEvent(task),
+        getCreatedEvent(task, createdEvent),
         ...getAssignedEvent(task),
         ...getApprovalEvent(task, resolutionEvents),
         ...resolutionEvents,

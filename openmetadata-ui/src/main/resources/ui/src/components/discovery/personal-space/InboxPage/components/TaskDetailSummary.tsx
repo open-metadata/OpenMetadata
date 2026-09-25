@@ -23,8 +23,10 @@ import {
   Users01,
 } from '@untitledui/icons';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { formatInboxDate } from '../inbox.utils';
 import {
@@ -52,6 +54,9 @@ const ROW_ICON: Record<TaskDetailRowIcon, typeof User01> = {
 
 /** Renders one row's value; the union keeps the descriptor free of JSX. */
 const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
+  const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
+
   switch (value.kind) {
     case 'date':
       return (
@@ -70,7 +75,11 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
                 name={ref.name ?? ''}
                 width="20"
               />
-              <Typography size="text-sm">{getEntityName(ref)}</Typography>
+              <Typography size="text-sm">
+                {getEntityName(ref)}
+                {/* The viewer is named as themselves, e.g. "harsh.soni (You)". */}
+                {ref.id === currentUser?.id && ` (${t('label.you')})`}
+              </Typography>
             </Box>
           ))}
         </Box>

@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} revoked this request",
     "task-opened-by": "Opened by {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} opened this incident {{time}}",
+    "task-outcome-by-on": "{{status}} by {{user}} on {{date}}",
     "task-requested": "{{user}} requested {{time}}",
     "tasks-closed-empty-description": "Tasks you resolve or approve move here — your paper trail for every decision.",
     "tasks-empty-description": "Access requests, approvals, and reviews assigned to you land here. Nothing needs you yet — enjoy the quiet.",

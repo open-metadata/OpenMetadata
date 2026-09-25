@@ -63,7 +63,11 @@ import {
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
 } from '../taskDetail.utils';
-import { getTaskStatusLabel } from '../taskResolution.utils';
+import { formatInboxDate, isTaskOpen } from '../inbox.utils';
+import {
+  getTaskStatusBadge,
+  getTaskStatusLabel,
+} from '../taskResolution.utils';
 import {
   applyActionLabels,
   buildResolveBody,
@@ -232,22 +236,32 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   subtitleKey,
 }) => {
   const { t } = useTranslation();
-  const requester = task.createdBy;
+  // A closed task reads as its outcome — "Rejected by harsh.soni on Jul 21,
+  // 2026" — led by whoever decided it, rather than by its request.
+  const resolver = isTaskOpen(task) ? undefined : task.resolution?.resolvedBy;
+  const person = resolver ?? task.createdBy;
+  const text = resolver
+    ? t('message.task-outcome-by-on', {
+        status: getTaskStatusBadge(task, t)?.label,
+        user: getEntityName(resolver),
+        date: formatInboxDate(task.resolution?.resolvedAt),
+      })
+    : t(subtitleKey, {
+        user: getEntityName(task.createdBy),
+        time: getRelativeTime(task.createdAt),
+      });
 
   return (
     <Box align="center" gap={2}>
-      {requester && (
+      {person && (
         <ProfilePicture
-          displayName={getEntityName(requester)}
-          name={requester.name ?? ''}
+          displayName={getEntityName(person)}
+          name={person.name ?? ''}
           width="20"
         />
       )}
       <Typography className="tw:text-tertiary" size="text-sm">
-        {t(subtitleKey, {
-          user: getEntityName(requester),
-          time: getRelativeTime(task.createdAt),
-        })}
+        {text}
       </Typography>
     </Box>
   );
@@ -685,6 +699,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         )}
 
         <TaskActivityTimeline
+          createdEvent={descriptor.createdEvent}
           incidentStatuses={about?.incidentStatuses}
           task={task}
           onCommentChanged={handleCommentMutated}

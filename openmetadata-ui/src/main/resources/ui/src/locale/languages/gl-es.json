@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} revogou esta solicitude",
     "task-opened-by": "Aberta por {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} abriu este incidente {{time}}",
+    "task-outcome-by-on": "{{status}} por {{user}} o {{date}}",
     "task-requested": "{{user}} solicitou {{time}}",
     "tasks-closed-empty-description": "As tarefas que resolvas ou aprobes moveranse aquí: o teu rexistro de cada decisión.",
     "tasks-empty-description": "As solicitudes de acceso, aprobacións e revisións asignadas a ti aparecerán aquí. Nada require a túa atención aínda; goza da calma.",

@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} がこのリクエストを取り消しました",
     "task-opened-by": "{{user}} が {{time}} に開始しました",
     "task-opened-this-incident": "{{user}} が {{time}} にこのインシデントを開始しました",
+    "task-outcome-by-on": "{{date}} に {{user}} が{{status}}",
     "task-requested": "{{user}}が{{time}}にリクエストしました",
     "tasks-closed-empty-description": "解決または承認したタスクはここに移動します。すべての判断の記録になります。",
     "tasks-empty-description": "あなたに割り当てられたアクセスリクエスト、承認、レビューがここに表示されます。今は対応が必要なものはありません。静かな状態をお楽しみください。",

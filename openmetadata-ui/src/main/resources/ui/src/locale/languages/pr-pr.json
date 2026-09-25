@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} این درخواست را لغو کرد",
     "task-opened-by": "باز شده توسط {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} این حادثه را {{time}} باز کرد",
+    "task-outcome-by-on": "{{status}} توسط {{user}} در {{date}}",
     "task-requested": "{{user}} {{time}} درخواست کرد",
     "tasks-closed-empty-description": "وظایفی که حل یا تأیید می‌کنید به اینجا منتقل می‌شوند: سابقه تصمیم‌های شما.",
     "tasks-empty-description": "درخواست‌های دسترسی، تأییدیه‌ها و بازبینی‌های اختصاص‌یافته به شما اینجا قرار می‌گیرند. هنوز چیزی به توجه شما نیاز ندارد؛ از آرامش لذت ببرید.",

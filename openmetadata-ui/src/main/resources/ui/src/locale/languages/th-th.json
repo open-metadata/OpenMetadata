@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} เพิกถอนคำขอนี้",
     "task-opened-by": "เปิดโดย {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} เปิดเหตุการณ์นี้ {{time}}",
+    "task-outcome-by-on": "{{status}} โดย {{user}} เมื่อ {{date}}",
     "task-requested": "{{user}} ร้องขอเมื่อ {{time}}",
     "tasks-closed-empty-description": "งานที่คุณแก้ไขหรืออนุมัติจะย้ายมาที่นี่ เป็นบันทึกการตัดสินใจทุกครั้งของคุณ",
     "tasks-empty-description": "คำขอเข้าถึง การอนุมัติ และการตรวจสอบที่มอบหมายให้คุณจะแสดงที่นี่ ตอนนี้ยังไม่มีอะไรต้องให้คุณดำเนินการ ขอให้เพลิดเพลินกับความเงียบสงบ",

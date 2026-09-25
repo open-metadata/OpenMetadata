@@ -30,6 +30,7 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { formatInboxDateTime } from '../inbox.utils';
 import {
   buildTaskTimeline,
+  TaskCreatedEventText,
   TaskTimelineEntry,
   TaskTimelineEvent,
   TaskTimelineIcon,
@@ -41,6 +42,8 @@ export interface TaskActivityTimelineProps {
   task: Task;
   /** An incident's status records; they replace the guessed events. */
   incidentStatuses?: TestCaseResolutionStatus[];
+  /** The type's own wording for the "created" event. */
+  createdEvent?: TaskCreatedEventText;
   /** Reload the task after a comment is edited or deleted. */
   onCommentChanged: () => void;
 }
@@ -120,12 +123,13 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
 const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
   task,
   incidentStatuses,
+  createdEvent,
   onCommentChanged,
 }) => {
   const { t } = useTranslation();
   const entries = useMemo(
-    () => buildTaskTimeline(task, incidentStatuses),
-    [task, incidentStatuses]
+    () => buildTaskTimeline(task, { incidentStatuses, createdEvent }),
+    [task, incidentStatuses, createdEvent]
   );
 
   const renderEntry = (entry: TaskTimelineEntry) => {

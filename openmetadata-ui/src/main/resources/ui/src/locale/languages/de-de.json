@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} hat diese Anfrage widerrufen",
     "task-opened-by": "Eröffnet von {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} hat diesen Vorfall {{time}} eröffnet",
+    "task-outcome-by-on": "{{status}} von {{user}} am {{date}}",
     "task-requested": "{{user}} hat {{time}} angefordert",
     "tasks-closed-empty-description": "Aufgaben, die Sie lösen oder genehmigen, werden hierher verschoben: Ihr Nachweis für jede Entscheidung.",
     "tasks-empty-description": "Zugriffsanfragen, Genehmigungen und Reviews, die Ihnen zugewiesen sind, landen hier. Noch braucht nichts Ihre Aufmerksamkeit; genießen Sie die Ruhe.",

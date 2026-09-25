@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} यांनी ही विनंती मागे घेतली",
     "task-opened-by": "{{user}} यांनी {{time}} उघडले",
     "task-opened-this-incident": "{{user}} यांनी {{time}} ही घटना उघडली",
+    "task-outcome-by-on": "{{date}} रोजी {{user}} यांनी {{status}}",
     "task-requested": "{{user}} यांनी {{time}} विनंती केली",
     "tasks-closed-empty-description": "Tasks you resolve or approve move here — your paper trail for every decision.",
     "tasks-empty-description": "Access requests, approvals, and reviews assigned to you land here. Nothing needs you yet — enjoy the quiet.",

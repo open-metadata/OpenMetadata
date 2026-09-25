@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}}님이 이 요청을 철회했습니다",
     "task-opened-by": "{{user}}님이 {{time}}에 열었습니다",
     "task-opened-this-incident": "{{user}}님이 {{time}}에 이 사고를 열었습니다",
+    "task-outcome-by-on": "{{date}}에 {{user}}님이 {{status}}",
     "task-requested": "{{user}}님이 {{time}} 요청함",
     "tasks-closed-empty-description": "Tasks you resolve or approve move here — your paper trail for every decision.",
     "tasks-empty-description": "Access requests, approvals, and reviews assigned to you land here. Nothing needs you yet — enjoy the quiet.",

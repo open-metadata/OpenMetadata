@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} 撤销了此请求",
     "task-opened-by": "由 {{user}} 于 {{time}} 打开",
     "task-opened-this-incident": "{{user}} 于 {{time}} 打开了此事件",
+    "task-outcome-by-on": "{{user}} 于 {{date}} {{status}}",
     "task-requested": "{{user}} {{time}}发起请求",
     "tasks-closed-empty-description": "您解决或批准的任务会移到这里，作为每项决策的记录。",
     "tasks-empty-description": "分配给您的访问请求、批准和审核会显示在这里。暂时没有需要您处理的事项，请享受这片刻的安静。",

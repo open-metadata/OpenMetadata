@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} heeft dit verzoek ingetrokken",
     "task-opened-by": "Geopend door {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} heeft dit incident {{time}} geopend",
+    "task-outcome-by-on": "{{status}} door {{user}} op {{date}}",
     "task-requested": "{{user}} heeft {{time}} een aanvraag gedaan",
     "tasks-closed-empty-description": "Taken die je oplost of goedkeurt worden hierheen verplaatst: je bewijs voor elke beslissing.",
     "tasks-empty-description": "Toegangsverzoeken, goedkeuringen en reviews die aan jou zijn toegewezen verschijnen hier. Nog niets vraagt je aandacht; geniet van de rust.",

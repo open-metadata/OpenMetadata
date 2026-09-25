@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} bu talebi geri aldı",
     "task-opened-by": "{{user}} tarafından {{time}} açıldı",
     "task-opened-this-incident": "{{user}} bu olayı {{time}} açtı",
+    "task-outcome-by-on": "{{date}} tarihinde {{user}} tarafından {{status}}",
     "task-requested": "{{user}} {{time}} talep etti",
     "tasks-closed-empty-description": "Tasks you resolve or approve move here — your paper trail for every decision.",
     "tasks-empty-description": "Access requests, approvals, and reviews assigned to you land here. Nothing needs you yet — enjoy the quiet.",

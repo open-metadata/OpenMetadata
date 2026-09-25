@@ -479,6 +479,24 @@ describe('TaskDetailPanel', () => {
     expect(screen.getByText('42')).toBeInTheDocument();
   });
 
+  // A closed task reads as its outcome, led by whoever decided it.
+  it('leads a closed task with its outcome', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        status: 'Rejected',
+        resolution: {
+          resolvedBy: { id: 'u9', name: 'harsh', displayName: 'Harsh' },
+          resolvedAt: 1000,
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.getByText('message.task-outcome-by-on')).toBeInTheDocument();
+  });
+
   it('falls back to the description when the name is only the taskId', async () => {
     mockGetTaskById.mockResolvedValue({
       data: {

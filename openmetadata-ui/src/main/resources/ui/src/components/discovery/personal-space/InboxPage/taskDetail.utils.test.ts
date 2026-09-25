@@ -205,7 +205,7 @@ describe('getTaskDetailDescriptor', () => {
     );
 
     expect(rowKeys(descriptor.rows)).toEqual(
-      expect.arrayContaining(['accessType', 'resolvedBy'])
+      expect.arrayContaining(['accessType', 'resolvedOn'])
     );
   });
 
@@ -236,6 +236,19 @@ describe('getTaskDetailDescriptor', () => {
     expect(descriptor.callout?.text).toBe('Please take a look.');
   });
 
+  // Who resolved it reads in the byline ("Rejected by bob on …"), not twice.
+  it('leaves the resolver out of the rows', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        status: 'Rejected',
+        resolution: { resolvedBy: { id: 'u2', name: 'bob' }, resolvedAt: 5 },
+      } as unknown as Partial<Task>),
+      t
+    );
+
+    expect(rowKeys(descriptor.rows)).not.toContain('resolvedBy');
+  });
+
   it('adds the outcome rows once the task is closed', () => {
     const descriptor = getTaskDetailDescriptor(
       buildTask({
@@ -250,13 +263,13 @@ describe('getTaskDetailDescriptor', () => {
     );
 
     expect(rowKeys(descriptor.rows)).toEqual(
-      expect.arrayContaining(['resolvedBy', 'resolvedOn', 'resolutionComment'])
+      expect.arrayContaining(['resolvedOn', 'resolutionComment'])
     );
   });
 
   it('leaves the outcome rows off an open task', () => {
     expect(rowKeys(getTaskDetailDescriptor(buildTask(), t).rows)).not.toContain(
-      'resolvedBy'
+      'resolvedOn'
     );
   });
 });
@@ -324,6 +337,20 @@ describe('deriveTaskAboutEntity', () => {
       piiColumnCount: 1,
       downstreamCount: 12,
     });
+  });
+
+  // PII.NonSensitive and PII.None classify a column as safe; they share the
+  // prefix but must not count.
+  it('counts only columns tagged PII.Sensitive', () => {
+    expect(
+      deriveTaskAboutEntity({
+        columns: [
+          { tags: [{ tagFQN: 'PII.Sensitive' }] },
+          { tags: [{ tagFQN: 'PII.NonSensitive' }] },
+          { tags: [{ tagFQN: 'PII.None' }] },
+        ],
+      } as unknown as EntityUnion).piiColumnCount
+    ).toBe(1);
   });
 
   it('reads the weekly usage count for the queries tile', () => {

@@ -222,7 +222,7 @@ describe('buildTaskTimeline', () => {
     ] as unknown as TestCaseResolutionStatus[];
 
     const events = () =>
-      buildTaskTimeline(incident, statuses).filter(
+      buildTaskTimeline(incident, { incidentStatuses: statuses }).filter(
         (entry) => entry.kind === 'event'
       );
 
@@ -252,14 +252,17 @@ describe('buildTaskTimeline', () => {
     });
 
     it('names a bare-id assignee from the task', () => {
-      const [assigned] = buildTaskTimeline(incident, [
-        {
-          id: 's5',
-          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-          testCaseResolutionStatusDetails: { assignee: { id: 'h' } },
-          timestamp: 500,
-        },
-      ] as unknown as TestCaseResolutionStatus[]);
+      const [assigned] = buildTaskTimeline(incident, {
+        incidentStatuses: [
+          {
+            id: 's5',
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+            testCaseResolutionStatusDetails: { assignee: { id: 'h' } },
+            timestamp: 500,
+          },
+        ] as unknown as TestCaseResolutionStatus[],
+      });
 
       expect(assigned.kind === 'event' && assigned.textParams?.assignee).toBe(
         harsh
@@ -267,14 +270,17 @@ describe('buildTaskTimeline', () => {
     });
 
     it('says reassigned when nobody can name the assignee', () => {
-      const [assigned] = buildTaskTimeline(incident, [
-        {
-          id: 's6',
-          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-          testCaseResolutionStatusDetails: { assignee: { id: 'stranger' } },
-          timestamp: 600,
-        },
-      ] as unknown as TestCaseResolutionStatus[]);
+      const [assigned] = buildTaskTimeline(incident, {
+        incidentStatuses: [
+          {
+            id: 's6',
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+            testCaseResolutionStatusDetails: { assignee: { id: 'stranger' } },
+            timestamp: 600,
+          },
+        ] as unknown as TestCaseResolutionStatus[],
+      });
 
       expect(assigned).toMatchObject({
         textKey: 'message.task-event-incident-reassigned',
@@ -292,15 +298,18 @@ describe('buildTaskTimeline', () => {
     });
 
     it('reads a resolution by whoever resolved it, as an outcome', () => {
-      const [resolved] = buildTaskTimeline(incident, [
-        {
-          id: 's4',
-          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
-          updatedBy: teddy,
-          testCaseResolutionStatusDetails: { resolvedBy: harsh },
-          timestamp: 400,
-        },
-      ] as unknown as TestCaseResolutionStatus[]);
+      const [resolved] = buildTaskTimeline(incident, {
+        incidentStatuses: [
+          {
+            id: 's4',
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Resolved,
+            updatedBy: teddy,
+            testCaseResolutionStatusDetails: { resolvedBy: harsh },
+            timestamp: 400,
+          },
+        ] as unknown as TestCaseResolutionStatus[],
+      });
 
       expect(resolved).toMatchObject({
         textKey: 'message.task-event-incident-resolved',

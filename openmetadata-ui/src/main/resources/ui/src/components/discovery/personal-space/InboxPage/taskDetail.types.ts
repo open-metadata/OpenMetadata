@@ -95,6 +95,11 @@ export interface TaskDetailDescriptor {
   actionLabels?: TaskActionLabelOverrides;
   rows: TaskDetailRow[];
   callout?: TaskDetailCallout;
+  /**
+   * The timeline's "created" event in the type's own words, e.g. "created this
+   * access request — Full Access, 14 Days". Interpolates `user`.
+   */
+  createdEvent?: { textKey: string; textParams?: Record<string, string> };
 }
 
 /**

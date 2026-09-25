@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} отозвал этот запрос",
     "task-opened-by": "Открыто пользователем {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} открыл этот инцидент {{time}}",
+    "task-outcome-by-on": "{{status}}: {{user}}, {{date}}",
     "task-requested": "Запрос от {{user}} {{time}}",
     "tasks-closed-empty-description": "Задачи, которые вы решаете или утверждаете, перемещаются сюда: ваш журнал каждого решения.",
     "tasks-empty-description": "Назначенные вам запросы доступа, утверждения и проверки появятся здесь. Пока ничто не требует вашего внимания; наслаждайтесь тишиной.",

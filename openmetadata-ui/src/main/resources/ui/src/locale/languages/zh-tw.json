@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} 撤銷了此請求",
     "task-opened-by": "由 {{user}} 於 {{time}} 開啟",
     "task-opened-this-incident": "{{user}} 於 {{time}} 開啟了此事件",
+    "task-outcome-by-on": "{{user}} 於 {{date}} {{status}}",
     "task-requested": "{{user}} {{time}}提出申請",
     "tasks-closed-empty-description": "Tasks you resolve or approve move here — your paper trail for every decision.",
     "tasks-empty-description": "Access requests, approvals, and reviews assigned to you land here. Nothing needs you yet — enjoy the quiet.",

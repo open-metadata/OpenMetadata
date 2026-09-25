@@ -4942,6 +4942,7 @@
     "task-event-revoked": "{{user}} ביטל בקשה זו",
     "task-opened-by": "נפתח על ידי {{user}} {{time}}",
     "task-opened-this-incident": "{{user}} פתח תקרית זו {{time}}",
+    "task-outcome-by-on": "{{status}} על ידי {{user}} ב-{{date}}",
     "task-requested": "{{user}} ביקש {{time}}",
     "tasks-closed-empty-description": "משימות שתפתור או תאשר יעברו לכאן: התיעוד שלך לכל החלטה.",
     "tasks-empty-description": "בקשות גישה, אישורים וסקירות שהוקצו לך יופיעו כאן. שום דבר עוד לא דורש את תשומת לבך; אפשר ליהנות מהשקט.",

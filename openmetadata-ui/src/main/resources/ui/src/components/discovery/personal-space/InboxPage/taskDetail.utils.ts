@@ -39,8 +39,12 @@ import { getTaskResolutionSummary } from './taskResolution.utils';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
-/** The tag prefix Collate classifies personally-identifiable columns under. */
-const PII_TAG_PREFIX = 'PII.';
+/**
+ * The one PII tag that marks a column as holding personal data. Its siblings
+ * `PII.NonSensitive` and `PII.None` say the opposite, so a prefix match would
+ * count a column classified as safe.
+ */
+const PII_SENSITIVE_TAG = 'PII.Sensitive';
 
 // The classification prefixes are read here rather than through the table
 // utils' `getTierTags`: that module reaches the customization and permission
@@ -249,13 +253,9 @@ const getResolutionRows = (task: Task, t: Translate): TaskDetailRow[] => {
     return [];
   }
 
+  // Who resolved it reads in the line under the title ("Rejected by … on …"),
+  // so the rows keep only when and why.
   return [
-    ...usersRow(
-      'resolvedBy',
-      'owner',
-      t('label.resolved-by'),
-      resolution.resolvedBy ? [resolution.resolvedBy] : []
-    ),
     ...textRow(
       'resolvedOn',
       'calendar',
@@ -509,7 +509,7 @@ export const getTaskDetailDescriptor = (
     subtitleKey: 'message.task-opened-by',
     ...specific,
     // Outcome rows are the inbox's, whoever described the rest: a plugin that
-    // supplies its own rows still gets resolved-by / resolved-on appended.
+    // supplies its own rows still gets resolved-on / the comment appended.
     rows: [...(specific.rows ?? []), ...getResolutionRows(task, t)],
   };
 };
@@ -539,7 +539,7 @@ export const deriveTaskAboutEntity = (
     tier: tags.find((tag) => tag.tagFQN?.startsWith(TIER_TAG_PREFIX)),
     columnCount: columns?.length,
     piiColumnCount: columns?.filter((column) =>
-      (column.tags ?? []).some((tag) => tag.tagFQN?.startsWith(PII_TAG_PREFIX))
+      (column.tags ?? []).some((tag) => tag.tagFQN === PII_SENSITIVE_TAG)
     ).length,
     downstreamCount,
     weeklyQueryCount: typed.usageSummary?.weeklyStats?.count,
