@@ -654,7 +654,7 @@ test(
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
       await fillDeleteConfirmationIfPresent(page);

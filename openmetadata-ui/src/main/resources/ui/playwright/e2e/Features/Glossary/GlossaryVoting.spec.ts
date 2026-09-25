@@ -58,20 +58,20 @@ test.describe('Glossary Voting', () => {
     await upvoteButton.click();
     await voteResponse1;
 
-    await expect(upvoteButton).toHaveClass(/\bactive\b/);
+    await expect(upvoteButton).toHaveAttribute('data-active', 'true');
 
     const voteResponse2 = page.waitForResponse(`/api/v1/${apiPath}/*/vote`);
     await downvoteButton.click();
     await voteResponse2;
 
-    await expect(downvoteButton).toHaveClass(/\bactive\b/);
-    await expect(upvoteButton).not.toHaveClass(/\bactive\b/);
+    await expect(downvoteButton).toHaveAttribute('data-active', 'true');
+    await expect(upvoteButton).not.toHaveAttribute('data-active');
 
     const voteResponse3 = page.waitForResponse(`/api/v1/${apiPath}/*/vote`);
     await downvoteButton.click();
     await voteResponse3;
 
-    await expect(downvoteButton).not.toHaveClass(/\bactive\b/);
+    await expect(downvoteButton).not.toHaveAttribute('data-active');
   };
 
   test('should upvote, downvote, and remove vote on glossary', async ({
@@ -94,7 +94,7 @@ test.describe('Glossary Voting', () => {
     await upvoteButton.click();
     await voteResponse;
 
-    await expect(upvoteButton).toHaveClass(/\bactive\b/);
+    await expect(upvoteButton).toHaveAttribute('data-active', 'true');
 
     const reloadResponse = page.waitForResponse(
       '/api/v1/glossaryTerms?directChildrenOf=*'
@@ -102,6 +102,9 @@ test.describe('Glossary Voting', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await reloadResponse;
 
-    await expect(page.getByTestId('up-vote-btn')).toHaveClass(/\bactive\b/);
+    await expect(page.getByTestId('up-vote-btn')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
   });
 });

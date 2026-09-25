@@ -172,7 +172,7 @@ services.forEach((ServiceClass) => {
               waitUntil: 'domcontentloaded',
             });
             await waitForAllLoadersToDisappear(agentsPage);
-            await agentsPage.click('[role="tab"] [data-testid="agents"]');
+            await agentsPage.getByRole('tab', { name: /^Agents/ }).click();
 
             const metadataSubTab = agentsPage.locator(
               '[data-testid="metadata-sub-tab"]'

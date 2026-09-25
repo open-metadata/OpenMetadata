@@ -69,6 +69,7 @@ function ObservabilityAlertAiActions({
           className={ACTION_BUTTON_CLASS_NAME}
           data-testid={`alert-edit-${record.name}`}
           icon={<Edit03 className={ACTION_ICON_CLASS_NAME} />}
+          isDisabled={record.provider === ProviderType.System}
           tooltip={t('label.edit')}
           onClick={(event: MouseEvent<HTMLButtonElement>) => {
             event.preventDefault();

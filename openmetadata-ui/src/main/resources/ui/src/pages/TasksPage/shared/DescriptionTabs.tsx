@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tabs } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
 import { lazy, useCallback, useRef, useState } from 'react';
@@ -40,7 +40,6 @@ export const DescriptionTabs = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation();
-  const { TabPane } = Tabs;
   const [description] = useState(value);
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
@@ -68,13 +67,15 @@ export const DescriptionTabs = ({
 
   return (
     <Tabs
-      activeKey={activeTab}
-      className="ant-tabs-description"
       data-testid="tabs"
-      size="small"
-      type="card"
-      onChange={onTabChange}>
-      <TabPane data-testid="current-tab" key="1" tab="Current">
+      selectedKey={activeTab}
+      onSelectionChange={(key) => onTabChange(String(key))}>
+      <Tabs.List className="tw:self-start" size="sm" type="button-border">
+        <Tabs.Item data-testid="current-tab" id="1" label="Current" />
+        <Tabs.Item data-testid="diff-tab" id="2" label="Diff" />
+        <Tabs.Item data-testid="new-tab" id="3" label="New" />
+      </Tabs.List>
+      <Tabs.Panel id="1">
         <div className="border border-main rounded-4 p-sm m-t-sm">
           {description?.trim() ? (
             <RichTextEditorPreviewerV1
@@ -87,14 +88,15 @@ export const DescriptionTabs = ({
             </span>
           )}
         </div>
-      </TabPane>
-      <TabPane data-testid="diff-tab" key="2" tab="Diff">
+      </Tabs.Panel>
+      <Tabs.Panel id="2">
         <DiffView
           className="border border-main rounded-4 p-sm m-t-sm"
           diffArr={diffs}
         />
-      </TabPane>
-      <TabPane data-testid="new-tab" key="3" tab="New">
+      </Tabs.Panel>
+      {/* Kept mounted so the editor keeps its edits and the Diff tab can read them via markdownRef. */}
+      <Tabs.Panel shouldForceMount className="tw:data-inert:hidden" id="3">
         <RichTextEditor
           className="m-t-sm"
           initialValue={suggestion}
@@ -102,7 +104,7 @@ export const DescriptionTabs = ({
           ref={markdownRef}
           onTextChange={onChange}
         />
-      </TabPane>
+      </Tabs.Panel>
     </Tabs>
   );
 };

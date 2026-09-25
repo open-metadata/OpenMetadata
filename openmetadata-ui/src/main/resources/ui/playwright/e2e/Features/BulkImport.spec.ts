@@ -605,7 +605,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     await test.step('should import and edit with two additional table', async () => {
       await dbSchemaEntity.visitEntityPage(page);
 
-      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')
@@ -730,7 +730,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
     await test.step('should import and edit with two additional columns', async () => {
       await tableEntity.visitEntityPage(page);
-      await page.click('[data-testid="manage-button"]');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')
@@ -800,7 +800,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     await test.step('should import and perform edit operation on entity', async () => {
       await dbEntity.visitEntityPage(page);
 
-      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')
@@ -862,7 +862,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     });
 
     await test.step('Perform Column Select and Delete Operation', async () => {
-      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.getByTestId('manage-button').click();
       await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')

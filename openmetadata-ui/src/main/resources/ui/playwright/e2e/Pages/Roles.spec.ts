@@ -149,7 +149,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(descriptionContainer).toContainText(description);
 
       // click on the policies tab
-      const policiesTab = page.locator('[role="tab"]:has-text("Policies")');
+      const policiesTab = page.getByRole('tab', { name: /^Policies/ });
       await expect(policiesTab).toBeVisible();
       await policiesTab.click();
 
@@ -172,7 +172,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).toBeVisible();
 
       // click on the teams tab
-      const teamsTab = page.locator('[role="tab"]:has-text("Teams")');
+      const teamsTab = page.getByRole('tab', { name: /^Teams/ });
       await expect(teamsTab).toBeVisible();
       await teamsTab.click();
 
@@ -186,7 +186,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).toBeVisible();
 
       // click on the users tab
-      const usersTab = page.locator('[role="tab"]:has-text("Users")');
+      const usersTab = page.getByRole('tab', { name: /^Users/ });
       await expect(usersTab).toBeVisible();
       await usersTab.click();
 

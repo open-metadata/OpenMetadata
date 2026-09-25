@@ -1180,12 +1180,24 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('tags-container')
         .getByTestId('edit-button')
         .click();
-      await page.getByTestId('tag-selector').waitFor();
 
-      // Remove the tag by clicking its close button
-      await page.getByTestId('remove-tags').locator('svg').click();
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
 
-      await page.getByTestId('saveAssociatedTag').click();
+      const searchRemove = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent('Sensitive')}*`
+      );
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Sensitive');
+      await searchRemove;
+
+      await page.getByTestId('tree-node-PII.Sensitive').click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'
@@ -1280,7 +1292,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('rename-button').click();
 
       // Wait for rename modal
-      await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
+      await page.getByTestId('entity-name-modal').waitFor({ state: 'visible' });
 
       const newDisplayName = `UpdatedTerm_${Date.now()}`;
       await page.locator('#displayName').fill(newDisplayName);

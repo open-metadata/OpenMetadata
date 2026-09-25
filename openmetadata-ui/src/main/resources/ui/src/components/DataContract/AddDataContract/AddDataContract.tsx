@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Button, Card, RadioChangeEvent, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -36,6 +37,7 @@ import {
   TermsOfUse,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import {
   getContractTabLabel,
@@ -200,6 +202,10 @@ const AddDataContract: React.FC<{
     entityContractTabs[0]?.toString() ||
       EDataContractTab.CONTRACT_DETAIL.toString()
   );
+
+  // Each form tab seeds itself from `initialValues` on mount, so a remount would
+  // drop in-progress edits.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -582,14 +588,29 @@ const AddDataContract: React.FC<{
 
     return (
       <Tabs
-        activeKey={activeTab.toString()}
-        className="contract-tabs"
-        items={items}
-        tabPosition="left"
-        onChange={handleTabChange}
-      />
+        className="contract-tabs tw:flex-row"
+        orientation="vertical"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(String(key))}>
+        <Tabs.List className="tw:w-50 tw:shrink-0 tw:pt-5" type="line">
+          {items.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {items.map(({ key, children }) => (
+          <Tabs.Panel
+            className="tw:min-h-125 tw:min-w-0 tw:flex-1 tw:rounded-r-lg tw:bg-primary tw:p-6 tw:data-inert:hidden"
+            id={key}
+            key={key}
+            shouldForceMount={visitedTabs.has(key)}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
-  }, [mode, items, handleTabChange, activeTab, yaml]);
+  }, [mode, items, handleTabChange, activeTab, visitedTabs, yaml]);
 
   return (
     <Card
