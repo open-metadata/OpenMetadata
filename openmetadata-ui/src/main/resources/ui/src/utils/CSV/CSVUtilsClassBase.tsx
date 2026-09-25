@@ -2367,7 +2367,9 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
         open
         currentTier={value}
         updateTier={handleChange}
-        onClose={() => onClose(false)}>
+        onClose={() => onClose(false)}
+        // Escape / outside press dismiss the popover; close the grid editor too.
+        onOpenChange={(isOpen) => !isOpen && onClose(false)}>
         <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
       </TierCard>
     );
