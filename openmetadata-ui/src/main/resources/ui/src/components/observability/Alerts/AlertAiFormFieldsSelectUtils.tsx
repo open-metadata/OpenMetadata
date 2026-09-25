@@ -16,6 +16,7 @@ import { TFunction } from 'i18next';
 import { isEmpty, isString, startCase } from 'lodash';
 import {
   DATA_CONTRACT_STATUS_OPTIONS,
+  DESTINATION_DROPDOWN_TABS,
   EXTERNAL_CATEGORY_OPTIONS,
   INTERNAL_CATEGORY_OPTIONS,
 } from '../../../constants/Alerts.constants';
@@ -26,7 +27,9 @@ import { Type } from '../../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { EventType } from '../../../generated/type/changeEvent';
 import {
+  getFilteredDestinationOptions,
   getSelectOptionsFromEnum,
+  getSelectOptionsFromValues,
   getSubscriptionTypeOptions,
 } from '../../../utils/Alerts/AlertsUtilPure';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -63,12 +66,16 @@ export const toSelectItems = (
     label: option.label,
   }));
 
+const toDestinationCategoryItem = (option: {
+  value: string;
+}): SelectItemType => ({
+  icon: getAlertDestinationCategoryIcons(String(option.value)),
+  id: String(option.value),
+  label: startCase(String(option.value)),
+});
+
 export const INTERNAL_DESTINATION_ITEMS: SelectItemType[] =
-  INTERNAL_CATEGORY_OPTIONS.map((option) => ({
-    icon: getAlertDestinationCategoryIcons(String(option.value)),
-    id: String(option.value),
-    label: startCase(String(option.value)),
-  }));
+  INTERNAL_CATEGORY_OPTIONS.map(toDestinationCategoryItem);
 
 export const EXTERNAL_DESTINATION_ITEMS: SelectItemType[] =
   EXTERNAL_CATEGORY_OPTIONS.map((option) => ({
@@ -77,13 +84,23 @@ export const EXTERNAL_DESTINATION_ITEMS: SelectItemType[] =
     label: startCase(String(option.value)),
   }));
 
-export const getDestinationCategoryItems = (t: TFunction): SelectItemType[] => [
+/**
+ * Internal categories are narrowed by source exactly like the classic
+ * `DestinationSelectItem` (e.g. no Assignees/Mentions for plain entity events).
+ */
+export const getDestinationCategoryItems = (
+  t: TFunction,
+  selectedSource?: string
+): SelectItemType[] => [
   {
     id: 'header-internal',
     isDisabled: true,
     label: t('label.internal'),
   },
-  ...INTERNAL_DESTINATION_ITEMS,
+  ...getFilteredDestinationOptions(
+    DESTINATION_DROPDOWN_TABS.internal,
+    selectedSource ?? ''
+  ).map(toDestinationCategoryItem),
   {
     id: 'header-external',
     isDisabled: true,
@@ -109,11 +126,21 @@ export const getSubscriptionItems = (destinationType?: string) =>
   }));
 
 /** Provides Core UI select configuration for enum-backed alert rule arguments. */
-export const getSelectArgumentConfig = (argument: string, t: TFunction) => {
+export const getSelectArgumentConfig = (
+  argument: string,
+  t: TFunction,
+  supportedEventTypes?: EventType[]
+) => {
   switch (argument) {
     case 'eventTypeList':
       return {
-        items: toSelectItems(getSelectOptionsFromEnum(EventType)),
+        // Same narrowing as the classic notification form: only offer event
+        // types the selected source can emit.
+        items: toSelectItems(
+          isEmpty(supportedEventTypes)
+            ? getSelectOptionsFromEnum(EventType)
+            : getSelectOptionsFromValues(supportedEventTypes ?? [])
+        ),
         label: t('label.event-type'),
         placeholder: t('label.search-by-type', {
           type: t('label.event-type-lowercase'),

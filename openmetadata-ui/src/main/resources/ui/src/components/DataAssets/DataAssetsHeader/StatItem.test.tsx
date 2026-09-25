@@ -52,10 +52,39 @@ describe('StatItem', () => {
     const trigger = screen.getByRole('button', { name: 'Open metric tasks' });
 
     expect(trigger).toBeDisabled();
+    expect(trigger).toHaveAttribute('data-loading', 'true');
+    expect(trigger.querySelector('[data-icon="loading"]')).toBeInTheDocument();
 
     fireEvent.click(trigger);
 
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('marks the active state on the trigger', () => {
+    const { rerender } = render(
+      <StatItem
+        isActive
+        testId="up-vote"
+        tooltip="Up Vote"
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('up-vote')).toHaveAttribute(
+      'data-active',
+      'true'
+    );
+
+    rerender(
+      <StatItem
+        isActive={false}
+        testId="up-vote"
+        tooltip="Up Vote"
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('up-vote')).not.toHaveAttribute('data-active');
   });
 
   it('does not expose an enabled action when no click handler exists', () => {
