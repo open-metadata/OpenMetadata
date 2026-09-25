@@ -37,12 +37,14 @@ type InheritedTreeSelectProps = Pick<
   | 'onOpenChange'
   | 'renderTrigger'
   | 'triggerVariant'
+  | 'offset'
   | 'bordered'
   | 'label'
   | 'placeholder'
   | 'required'
   | 'disabled'
   | 'autoFocus'
+  | 'className'
   | 'data-testid'
 >;
 
@@ -67,18 +69,20 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   onOpenChange,
   renderTrigger,
   triggerVariant,
+  offset,
   bordered,
   label,
   placeholder,
   required = false,
   disabled = false,
   autoFocus = false,
+  className,
   'data-testid': dataTestId,
   excludeFqns,
   selectGlossaries = false,
 }) => {
   const { t } = useTranslation();
-  const fetchGlossaryTree = useGlossaryTreeData();
+  const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries, multiple);
 
   const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
 
@@ -105,8 +109,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
             id: tag.tagFQN,
             label: tag.displayName || tag.name || tag.tagFQN,
             value: tag.tagFQN,
-            // Glossary nodes are keyed by name, which is the term FQN's root.
-            parentId: Fqn.split(tag.tagFQN)[0],
+            // Glossary nodes are keyed by the raw name, so a quoted one never matches.
+            parentId: Fqn.unquoteName(Fqn.split(tag.tagFQN)[0]),
             data: tag,
           })
         ),
@@ -154,6 +158,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in, for a picker opened without a click
       autoFocus={autoFocus}
       bordered={bordered}
+      className={className}
       commitMode={commitMode}
       data-testid={dataTestId}
       disabled={disabled}
@@ -166,6 +171,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       isOpen={isOpen}
       label={label}
       multiple={multiple}
+      offset={offset}
       placeholder={
         placeholder ??
         t('label.select-field', { field: t('label.glossary-term-plural') })
