@@ -14,10 +14,10 @@
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
-  CheckCircle,
-  PlusCircle,
+  Check,
+  Plus,
   UserPlus01,
-  XCircle,
+  XClose,
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
@@ -41,13 +41,14 @@ export interface TaskActivityTimelineProps {
   onCommentChanged: () => void;
 }
 
-const EVENT_ICON: Record<TaskTimelineIcon, typeof CheckCircle> = {
-  approved: CheckCircle,
+// Bare glyphs: the event row already draws the ring around them.
+const EVENT_ICON: Record<TaskTimelineIcon, typeof Check> = {
+  approved: Check,
   assigned: UserPlus01,
-  created: PlusCircle,
+  created: Plus,
   incident: AlertTriangle,
-  rejected: XCircle,
-  resolved: CheckCircle,
+  rejected: XClose,
+  resolved: Check,
 };
 
 const TONE_TEXT_CLASS: Record<TaskTimelineTone, string> = {
