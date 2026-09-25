@@ -634,7 +634,7 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
 
 
 def get_query_hash(query: str) -> str:
-    result = hashlib.md5(query.encode())
+    result = hashlib.md5(query.encode(), usedforsecurity=False)
     return str(result.hexdigest())
 
 
