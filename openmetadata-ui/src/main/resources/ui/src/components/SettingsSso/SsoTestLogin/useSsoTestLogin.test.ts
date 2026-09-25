@@ -13,7 +13,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
 import { UserManager } from 'oidc-client';
-import { Status } from '../../../generated/system/testLoginResult';
+import { StageStatus, Status } from '../../../generated/system/testLoginResult';
 import {
   Protocol,
   TestLoginSession,
@@ -125,6 +125,9 @@ const userManagerWith = (
   };
 };
 
+const configurationCheck = (passed: boolean, problems: string[] = []) =>
+  jest.fn().mockResolvedValue({ passed, problems });
+
 describe('useSsoTestLogin', () => {
   const originalOpen = globalThis.open;
 
@@ -227,6 +230,29 @@ describe('useSsoTestLogin', () => {
 
       expect(result.current.error).toBe('message.sso-test-login-popup-failed');
       expect(mockTestLoginValidateToken).not.toHaveBeenCalled();
+    });
+
+    it('should hold the popup at the configuration check and never sign in when it fails', async () => {
+      const signIn = jest.fn();
+      mockUserManager.mockImplementation(() => userManagerWith(signIn));
+      const check = configurationCheck(false, ['Client ID is required']);
+
+      const { result } = renderHook(() => useSsoTestLogin());
+
+      await act(async () => {
+        await result.current.runTestLogin(publicGoogle, check);
+      });
+
+      expect(check).toHaveBeenCalledWith(publicGoogle);
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockTestLoginValidateToken).not.toHaveBeenCalled();
+      expect(result.current.configurationCheck).toEqual({
+        status: StageStatus.Failed,
+        problems: ['Client ID is required'],
+      });
+      expect(result.current.error).toBe(
+        'message.sso-test-login-configuration-invalid'
+      );
     });
 
     it('should refuse an authorization endpoint that is not an http(s) address', async () => {
@@ -354,6 +380,50 @@ describe('useSsoTestLogin', () => {
         'message.sso-test-login-unsafe-redirect'
       );
       expect(mockGetTestLoginResult).not.toHaveBeenCalled();
+    });
+
+    it('should close the popup and not start the test when the configuration check fails', async () => {
+      const popup = fakePopup();
+      globalThis.open = jest.fn(() => popup as unknown as Window);
+
+      const { result } = renderHook(() => useSsoTestLogin());
+
+      await act(async () => {
+        await result.current.runTestLogin(
+          confidentialOidc,
+          configurationCheck(false, ['The discovery document is unreachable'])
+        );
+      });
+
+      expect(mockStartTestLogin).not.toHaveBeenCalled();
+      expect(popup.close).toHaveBeenCalled();
+      expect(popup.location.href).toBe('');
+      expect(result.current.configurationCheck?.status).toBe(
+        StageStatus.Failed
+      );
+    });
+
+    it('should start the test once the configuration check passes', async () => {
+      globalThis.open = jest.fn(() => fakePopup() as unknown as Window);
+      mockStartTestLogin.mockResolvedValue(asResponse(session));
+      mockGetTestLoginResult.mockResolvedValue(
+        asResponse<TestLoginResult>({ status: Status.Success })
+      );
+      const check = configurationCheck(true);
+
+      const { result } = renderHook(() => useSsoTestLogin());
+
+      await act(async () => {
+        await result.current.runTestLogin(confidentialOidc, check);
+      });
+
+      expect(check.mock.invocationCallOrder[0]).toBeLessThan(
+        mockStartTestLogin.mock.invocationCallOrder[0]
+      );
+      expect(result.current.configurationCheck?.status).toBe(
+        StageStatus.Passed
+      );
+      expect(result.current.result?.status).toBe(Status.Success);
     });
 
     it('should report a blocked popup without starting the test', async () => {

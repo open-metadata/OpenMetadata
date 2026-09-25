@@ -596,107 +596,7 @@ describe('SSOConfigurationForm', () => {
     });
   });
 
-  describe('Test Configuration', () => {
-    const selectGoogleProvider = async () => {
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByText('Select Google'));
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('test-sso-configuration')
-        ).toBeInTheDocument();
-      });
-    };
-
-    beforeEach(() => {
-      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
-    });
-
-    it('should render the test configuration button in edit mode', async () => {
-      await selectGoogleProvider();
-
-      expect(screen.getByTestId('test-sso-configuration')).toBeInTheDocument();
-    });
-
-    it('should show a lockout warning for a new configuration', async () => {
-      await selectGoogleProvider();
-
-      expect(
-        screen.getByText('message.sso-new-config-save-warning')
-      ).toBeInTheDocument();
-    });
-
-    it('should validate the configuration without saving when tested', async () => {
-      mockValidateSecurityConfiguration.mockResolvedValue(
-        createAxiosResponse({
-          status: VALIDATION_STATUS.SUCCESS,
-        } as SecurityValidationResponse)
-      );
-
-      await selectGoogleProvider();
-
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
-
-      await waitFor(() => {
-        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
-      });
-
-      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
-      expect(
-        await screen.findByText('message.sso-configuration-test-success')
-      ).toBeInTheDocument();
-    });
-
-    it('should surface validation errors when the test fails', async () => {
-      mockValidateSecurityConfiguration.mockResolvedValue(
-        createAxiosResponse({
-          status: VALIDATION_STATUS.FAILED,
-          errors: [
-            {
-              field: 'authenticationConfiguration.clientId',
-              error: 'Client ID is required',
-            },
-          ],
-        } as SecurityValidationResponse)
-      );
-
-      await selectGoogleProvider();
-
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
-
-      await waitFor(() => {
-        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
-      });
-
-      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
-      expect(
-        await screen.findByText(
-          'message.sso-configuration-test-failed-with-count'
-        )
-      ).toBeInTheDocument();
-    });
-
-    it('should show an error toast when the test request throws', async () => {
-      mockValidateSecurityConfiguration.mockRejectedValue(
-        new Error('Network error') as AxiosError
-      );
-
-      await selectGoogleProvider();
-
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
-
-      await waitFor(() => {
-        expect(mockShowErrorToast).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('Test Login save gate', () => {
+  describe('Test Login', () => {
     const existingGoogleConfig = {
       authenticationConfiguration: {
         provider: AuthProvider.Google,
@@ -753,7 +653,26 @@ describe('SSOConfigurationForm', () => {
       );
     };
 
+    const validationPasses = () =>
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          status: VALIDATION_STATUS.SUCCESS,
+        } as SecurityValidationResponse)
+      );
+
+    // jsdom has no Element.scrollTo, and the form scrolls to the first field in error.
+    const { scrollTo } = Element.prototype;
+
+    beforeAll(() => {
+      Element.prototype.scrollTo = jest.fn();
+    });
+
+    afterAll(() => {
+      Element.prototype.scrollTo = scrollTo;
+    });
+
     beforeEach(() => {
+      validationPasses();
       mockStartTestLogin.mockResolvedValue(
         createAxiosResponse({
           testSessionId: 'test-session',
@@ -761,6 +680,83 @@ describe('SSOConfigurationForm', () => {
           requiresCredentials: true,
         })
       );
+    });
+
+    it('should offer one Test Login button, which replaces Test Configuration', async () => {
+      await selectNewLdapConfiguration();
+
+      expect(
+        screen.getByTestId('test-login-sso-configuration')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-sso-configuration')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('message.sso-new-config-save-warning')
+      ).toBeInTheDocument();
+    });
+
+    it('should run the configuration check before signing in', async () => {
+      await selectNewLdapConfiguration();
+
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
+
+      expect(
+        await screen.findByTestId('sso-test-login-credentials-form')
+      ).toBeInTheDocument();
+      expect(
+        mockValidateSecurityConfiguration.mock.invocationCallOrder[0]
+      ).toBeLessThan(mockStartTestLogin.mock.invocationCallOrder[0]);
+      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+    });
+
+    it('should stop at the configuration check and show its problems', async () => {
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          status: VALIDATION_STATUS.FAILED,
+          errors: [
+            {
+              field: 'authenticationConfiguration.ldapConfiguration.host',
+              error: 'The LDAP server is not reachable',
+            },
+          ],
+        } as SecurityValidationResponse)
+      );
+      await selectNewLdapConfiguration();
+
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
+
+      const modal = await screen.findByTestId('sso-test-login-modal');
+
+      expect(
+        await within(modal).findByText('The LDAP server is not reachable')
+      ).toBeInTheDocument();
+      expect(
+        within(modal).getByText('message.sso-test-login-configuration-invalid')
+      ).toBeInTheDocument();
+      // The same problem is marked on the field it belongs to, behind the modal.
+      expect(
+        screen.getAllByText('The LDAP server is not reachable').length
+      ).toBeGreaterThan(1);
+      expect(
+        screen.getByTestId('sso-test-login-stage-configuration')
+      ).toBeInTheDocument();
+      expect(mockStartTestLogin).not.toHaveBeenCalled();
+      expect(screen.getByTestId('save-sso-configuration')).toBeDisabled();
+    });
+
+    it('should stop when the configuration check itself cannot run', async () => {
+      mockValidateSecurityConfiguration.mockRejectedValue(
+        new Error('Network error') as AxiosError
+      );
+      await selectNewLdapConfiguration();
+
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
+
+      expect(
+        await screen.findByText('message.sso-test-login-configuration-invalid')
+      ).toBeInTheDocument();
+      expect(mockStartTestLogin).not.toHaveBeenCalled();
     });
 
     it('should hold a new configuration until Test Login passes', async () => {

@@ -10,18 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { StageStatus } from '../../../generated/system/testLoginResult';
 import {
   SecurityConfiguration,
   TestLoginResult,
 } from '../../../rest/securityConfigAPI';
 
+/** What the checks a save runs said about a configuration, before Test Login signs in with it. */
+export interface ConfigurationCheckOutcome {
+  passed: boolean;
+  /** Shown in the modal; problems tied to a field are also highlighted in the form. */
+  problems: string[];
+}
+
+export type ConfigurationCheck = (
+  securityConfiguration: SecurityConfiguration
+) => Promise<ConfigurationCheckOutcome>;
+
+export interface ConfigurationCheckState {
+  status: StageStatus.Running | StageStatus.Passed | StageStatus.Failed;
+  problems: string[];
+}
+
 export interface UseSsoTestLoginResult {
   isTesting: boolean;
   /** LDAP/Basic: the test has started and is waiting for the admin's credentials. */
   isAwaitingCredentials: boolean;
+  configurationCheck?: ConfigurationCheckState;
   result?: TestLoginResult;
   error?: string;
-  runTestLogin: (securityConfiguration: SecurityConfiguration) => Promise<void>;
+  /** Signs in with the configuration, once `checkConfiguration` (when given) has passed it. */
+  runTestLogin: (
+    securityConfiguration: SecurityConfiguration,
+    checkConfiguration?: ConfigurationCheck
+  ) => Promise<void>;
   submitCredentials: (email: string, password: string) => Promise<void>;
   reset: () => void;
 }
@@ -30,6 +52,7 @@ export interface SsoTestLoginModalProps {
   open: boolean;
   isTesting: boolean;
   isAwaitingCredentials: boolean;
+  configurationCheck?: ConfigurationCheckState;
   result?: TestLoginResult;
   error?: string;
   onSubmitCredentials: (email: string, password: string) => Promise<void>;

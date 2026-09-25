@@ -27,6 +27,7 @@ const START_URL = `${TEST_LOGIN_URL}/start`;
 const CREDENTIALS_URL = `${TEST_LOGIN_URL}/credentials`;
 const RESULT_URL = `${TEST_LOGIN_URL}/result/**`;
 const SECURITY_CONFIG_URL = '**/system/security/config';
+const VALIDATE_URL = '**/system/security/validate';
 
 // Mirrors E2E_INJECTED_ID_TOKEN_KEY in
 // src/components/SettingsSso/SsoTestLogin/useSsoTestLogin.ts. Injecting a token
@@ -84,6 +85,10 @@ const fulfillJson = (body: unknown) => (route: Route) =>
     body: JSON.stringify(body),
   });
 
+// Test Login starts with the checks a save runs; answer them so a test reaches the sign-in.
+const mockConfigurationCheck = (page: Page, body: Record<string, unknown>) =>
+  page.route(VALIDATE_URL, fulfillJson(body));
+
 const switchToPublicClient = async (page: Page) => {
   const publicRadio = page.getByRole('radio', { name: /public/i }).first();
   await publicRadio.click();
@@ -102,6 +107,53 @@ test.describe('SSO Test Login', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await enableSSOEditMode(page);
+  });
+
+  test('should offer one Test Login button, which replaces Test Configuration', async ({
+    page,
+  }) => {
+    await selectSSOProvider(page, 'google');
+
+    await expect(
+      page.getByTestId('test-login-sso-configuration')
+    ).toBeVisible();
+    await expect(page.getByTestId('test-sso-configuration')).toHaveCount(0);
+    await expect(page.locator('.sso-save-warning')).toBeVisible();
+  });
+
+  test('should stop at the configuration check and show its problems', async ({
+    page,
+  }) => {
+    let signInStarted = false;
+    await mockConfigurationCheck(page, {
+      status: 'failed',
+      errors: [
+        {
+          field: 'authenticationConfiguration.ldapConfiguration.host',
+          error: 'The LDAP server is not reachable',
+        },
+      ],
+    });
+    await page.route(START_URL, (route) => {
+      signInStarted = true;
+
+      return route.abort();
+    });
+
+    await selectSSOProvider(page, 'ldap');
+
+    const configurationChecked = page.waitForResponse(VALIDATE_URL);
+    await page.getByTestId('test-login-sso-configuration').click();
+    await configurationChecked;
+
+    const dialog = page.getByRole('dialog');
+
+    await expect(
+      dialog.getByTestId('sso-test-login-stage-configuration')
+    ).toContainText('The LDAP server is not reachable');
+    await expect(dialog).toContainText(/stopped before signing in/i);
+    await expect(page.getByTestId('save-sso-configuration')).toBeDisabled();
+    expect(signInStarted).toBe(false);
   });
 
   for (const provider of OIDC_PROVIDERS) {
@@ -144,6 +196,7 @@ test.describe('SSO Test Login', () => {
   test('should show the resolved identity when the test login succeeds', async ({
     page,
   }) => {
+    await mockConfigurationCheck(page, { status: 'success' });
     await page.route(VALIDATE_TOKEN_URL, fulfillJson(SIGNED_IN_RESULT));
 
     await selectSSOProvider(page, 'google');
@@ -165,6 +218,7 @@ test.describe('SSO Test Login', () => {
   test('should show the failure reason when the configuration would reject the login', async ({
     page,
   }) => {
+    await mockConfigurationCheck(page, { status: 'success' });
     await page.route(
       VALIDATE_TOKEN_URL,
       fulfillJson({
@@ -191,6 +245,7 @@ test.describe('SSO Test Login', () => {
   test('should sign a confidential client in on the server and read the outcome back', async ({
     page,
   }) => {
+    await mockConfigurationCheck(page, { status: 'success' });
     await page.route(
       START_URL,
       fulfillJson({
@@ -229,6 +284,7 @@ test.describe('SSO Test Login', () => {
   test('should hold a new configuration until an LDAP Test Login signs in', async ({
     page,
   }) => {
+    await mockConfigurationCheck(page, { status: 'success' });
     await page.route(
       START_URL,
       fulfillJson({
@@ -250,7 +306,9 @@ test.describe('SSO Test Login', () => {
     await expect(saveButton).toBeDisabled();
     await expect(saveAnywayButton).toBeVisible();
 
+    const configurationChecked = page.waitForRequest(VALIDATE_URL);
     await page.getByTestId('test-login-sso-configuration').click();
+    await configurationChecked;
     const dialog = page.getByRole('dialog');
     await dialog
       .getByTestId('sso-test-login-email')

@@ -26,7 +26,7 @@ import validator from '@rjsf/validator-ajv8';
 import { Check, UploadCloud02, X } from '@untitledui/icons';
 import { Button, Card, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -80,6 +80,7 @@ import {
   removeSchemaFields,
   updateLoadingState,
 } from '../../../utils/SSOUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
   setOidcToken,
   setRefreshToken,
@@ -101,6 +102,7 @@ import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import { ConfigurationCheckOutcome } from '../SsoTestLogin/SsoTestLogin.interface';
 import { requiresTestLogin } from '../SsoTestLogin/SsoTestLogin.utils';
 import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
 import { useSsoTestLogin } from '../SsoTestLogin/useSsoTestLogin';
@@ -116,11 +118,6 @@ interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
   fileName: string;
   onChangeFile: () => void;
-}
-
-interface SsoTestResult {
-  status: 'success' | 'failed';
-  errorCount: number;
 }
 
 const MetadataUploadStatusCard = ({
@@ -204,12 +201,11 @@ const SSOConfigurationFormRJSF = ({
   >(null);
   const [metadataUploadFileName, setMetadataUploadFileName] =
     useState<string>('');
-  const [isTesting, setIsTesting] = useState<boolean>(false);
-  const [testResult, setTestResult] = useState<SsoTestResult | undefined>();
   const [showTestLoginModal, setShowTestLoginModal] = useState<boolean>(false);
   const {
     isTesting: isTestingLogin,
     isAwaitingCredentials: isAwaitingTestLoginCredentials,
+    configurationCheck: testLoginConfigurationCheck,
     result: testLoginResult,
     error: testLoginError,
     runTestLogin,
@@ -414,6 +410,23 @@ const SSOConfigurationFormRJSF = ({
     [t]
   );
 
+  // Marks each field a validation named, so the form shows the problem where it is.
+  const highlightFieldErrors = useCallback(
+    (errors: Array<{ field: string; error: string }>) => {
+      const fieldErrors = errors.filter(
+        (e) => e.field && e.field.trim() !== ''
+      );
+      if (fieldErrors.length > 0) {
+        // Store in ref immediately - this is what customValidate will use
+        fieldErrorsRef.current = parseValidationErrors(fieldErrors);
+
+        // Scroll to the first error field
+        scrollToFirstError();
+      }
+    },
+    [parseValidationErrors]
+  );
+
   const handleValidationErrors = useCallback(
     (
       validationResult:
@@ -424,34 +437,18 @@ const SSOConfigurationFormRJSF = ({
         'errors' in validationResult &&
         Array.isArray(validationResult.errors)
       ) {
-        // Separate field errors from general errors
-        const fieldErrors = validationResult.errors.filter(
-          (e) => e.field && e.field.trim() !== ''
-        );
+        highlightFieldErrors(validationResult.errors);
+
+        // Show toast only for general errors (no field specified)
         const generalErrors = validationResult.errors.filter(
           (e) => !e.field || e.field.trim() === ''
         );
-
-        // Parse field-level errors
-        if (fieldErrors.length > 0) {
-          const errorSchema = parseValidationErrors(fieldErrors);
-
-          // Store in ref immediately - this is what customValidate will use
-          fieldErrorsRef.current = errorSchema;
-
-          // Scroll to the first error field
-          scrollToFirstError();
-        }
-
-        // Show toast only for general errors (no field specified)
-        if (generalErrors.length > 0) {
-          for (const error of generalErrors) {
-            showErrorToast(error.error);
-          }
+        for (const error of generalErrors) {
+          showErrorToast(error.error);
         }
       }
     },
-    [parseValidationErrors]
+    [highlightFieldErrors]
   );
 
   const getProviderSpecificSchema = (
@@ -729,13 +726,6 @@ const SSOConfigurationFormRJSF = ({
     const authConfig = newFormData.authenticationConfiguration;
 
     clearErrorsForChangedFields(newFormData);
-    // A result for the previous values would vouch for a configuration nobody tested. RJSF also
-    // fires onChange when it merely re-validates, so clear it on a real edit, not on every event.
-    if (
-      !isEqual(normalizeFormData(newFormData), normalizeFormData(internalData))
-    ) {
-      setTestResult(undefined);
-    }
 
     handleClientTypeChange(
       authConfig,
@@ -918,58 +908,45 @@ const SSOConfigurationFormRJSF = ({
     return { cleanedFormData, payload };
   }, [internalData]);
 
-  const getTestResultDescription = useCallback(
-    (result: SsoTestResult): string => {
-      if (result.status === 'success') {
-        return t('message.sso-configuration-test-success');
-      }
+  // Test Login starts with the checks a save runs (fields, reachability, credentials) and signs in
+  // only when they pass. Problems tied to a field are marked in the form; the modal lists them all.
+  const checkConfiguration = useCallback(
+    async (
+      payload: SecurityConfiguration
+    ): Promise<ConfigurationCheckOutcome> => {
+      fieldErrorsRef.current = {};
+      setErrorClearTrigger(0);
+      try {
+        const { data } = await validateSecurityConfiguration(payload);
+        const errors = data.errors ?? [];
+        highlightFieldErrors(errors);
 
-      if (result.errorCount > 0) {
-        return t('message.sso-configuration-test-failed-with-count', {
-          count: result.errorCount,
-        });
-      }
+        return {
+          passed:
+            errors.length === 0 && data.status === VALIDATION_STATUS.SUCCESS,
+          problems: errors.map((e) => e.error),
+        };
+      } catch (error) {
+        const errors = hasFieldValidationErrors(error)
+          ? error.response.data.errors
+          : [];
+        highlightFieldErrors(errors);
 
-      return t('message.sso-configuration-test-failed-description');
+        return {
+          passed: false,
+          problems: isEmpty(errors)
+            ? [
+                getErrorText(
+                  error as AxiosError,
+                  t('message.sso-test-login-error')
+                ),
+              ]
+            : errors.map((e) => e.error),
+        };
+      }
     },
-    [t]
+    [highlightFieldErrors, t]
   );
-
-  // Run the existing backend validation without persisting the configuration
-  const handleTestConfiguration = async () => {
-    setIsTesting(true);
-    setTestResult(undefined);
-    fieldErrorsRef.current = {};
-    setErrorClearTrigger(0);
-
-    const built = buildPayload();
-    if (!built) {
-      setIsTesting(false);
-
-      return;
-    }
-
-    try {
-      const response = await validateSecurityConfiguration(built.payload);
-      const validationResult = response.data;
-      const errors = validationResult.errors ?? [];
-      const isSuccess =
-        errors.length === 0 &&
-        validationResult.status === VALIDATION_STATUS.SUCCESS;
-
-      if (isSuccess) {
-        setTestResult({ status: 'success', errorCount: 0 });
-      } else {
-        handleValidationErrors(validationResult);
-        setTestResult({ status: 'failed', errorCount: errors.length });
-      }
-    } catch (error) {
-      // handleApiError already surfaces the failure (toast or per-field errors)
-      handleApiError(error);
-    } finally {
-      setIsTesting(false);
-    }
-  };
 
   // Interactive round-trip: sign in via the IdP in an isolated popup and confirm
   // the resolved identity, without ever touching the admin's current session.
@@ -984,7 +961,7 @@ const SSOConfigurationFormRJSF = ({
     );
     resetTestLogin();
     setShowTestLoginModal(true);
-    runTestLogin(built.payload);
+    runTestLogin(built.payload, checkConfiguration);
   };
 
   // Closing the modal abandons a test still in flight: its popup closes and polling stops. A pass
@@ -1040,7 +1017,6 @@ const SSOConfigurationFormRJSF = ({
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
     setErrorClearTrigger(0);
-    setTestResult(undefined);
 
     try {
       const built = buildPayload();
@@ -1173,10 +1149,8 @@ const SSOConfigurationFormRJSF = ({
     setInternalData(freshFormData);
   };
 
-  const renderConfigAlerts = () => {
-    const isTestSuccess = testResult?.status === 'success';
-
-    return !hasExistingConfig || testResult || isSaveGatedOnTestLogin ? (
+  const renderConfigAlerts = () =>
+    !hasExistingConfig || isSaveGatedOnTestLogin ? (
       <div className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
         {!hasExistingConfig && (
           <InlineAlert
@@ -1204,18 +1178,8 @@ const SSOConfigurationFormRJSF = ({
             type="warning"
           />
         )}
-        {testResult && (
-          <InlineAlert
-            alertClassName="sso-test-result"
-            description={getTestResultDescription(testResult)}
-            heading={isTestSuccess ? t('label.success') : t('label.failed')}
-            type={isTestSuccess ? 'success' : 'error'}
-            onClose={() => setTestResult(undefined)}
-          />
-        )}
       </div>
     ) : null;
-  };
 
   const renderFormActions = () =>
     isEditMode ? (
@@ -1228,14 +1192,6 @@ const SSOConfigurationFormRJSF = ({
             type="link"
             onClick={handleCancelClick}>
             {t('label.cancel')}
-          </Button>
-          <Button
-            className="test-sso-configuration text-md"
-            data-testid="test-sso-configuration"
-            disabled={isLoading || isTesting || !currentProvider}
-            loading={isTesting}
-            onClick={handleTestConfiguration}>
-            {t('label.test-entity', { entity: t('label.configuration') })}
           </Button>
           {canTestLogin && (
             <Button
@@ -1258,6 +1214,7 @@ const SSOConfigurationFormRJSF = ({
           </Button>
         </div>
         <SsoTestLoginModal
+          configurationCheck={testLoginConfigurationCheck}
           error={testLoginError}
           isAwaitingCredentials={isAwaitingTestLoginCredentials}
           isTesting={isTestingLogin}

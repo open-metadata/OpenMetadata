@@ -18,6 +18,7 @@ import {
   FETCH_INTERVAL,
 } from '../../../constants/ServiceType.constant';
 import { AuthProvider } from '../../../generated/settings/settings';
+import { StageStatus } from '../../../generated/system/testLoginResult';
 import { TestLoginSession } from '../../../generated/system/testLoginSession';
 import {
   getTestLoginResult,
@@ -37,7 +38,11 @@ import {
 import { getErrorText } from '../../../utils/StringUtils';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
 import { SSO_TEST_LOGIN_CANDIDATE_KEY } from './ssoTestCallbackBootstrap';
-import { UseSsoTestLoginResult } from './SsoTestLogin.interface';
+import {
+  ConfigurationCheck,
+  ConfigurationCheckState,
+  UseSsoTestLoginResult,
+} from './SsoTestLogin.interface';
 import { isBrowserTestLogin, isTestLoginSettled } from './SsoTestLogin.utils';
 
 const DEFAULT_SCOPE = 'openid email profile';
@@ -79,15 +84,26 @@ const popupCandidateFor = (
   } as AuthenticationConfigurationWithScope;
 };
 
+/** The configuration check failed; the check itself already reported why. */
+class ConfigurationCheckFailedError extends Error {}
+
 /**
- * oidc-client sends the popup to the discovery document's authorization endpoint without looking at
- * it, and the popup is still a same-origin window at that point.
+ * oidc-client opens the popup at once, inside the click, then reads the authorization endpoint
+ * before sending the popup there. That is the one point where the configuration check can finish
+ * before the sign-in starts, and where the endpoint — taken unchecked from the discovery document
+ * while the popup is still same-origin — can be refused.
  */
-const refuseNonHttpAuthorizationEndpoint = (userManager: UserManager) => {
+const guardAuthorizationEndpoint = (
+  userManager: UserManager,
+  beforeSignIn: () => Promise<boolean>
+) => {
   const { metadataService } = userManager;
   const getAuthorizationEndpoint =
     metadataService.getAuthorizationEndpoint.bind(metadataService);
   metadataService.getAuthorizationEndpoint = async () => {
+    if (!(await beforeSignIn())) {
+      throw new ConfigurationCheckFailedError();
+    }
     const endpoint = await getAuthorizationEndpoint();
     if (!isHttpUrl(endpoint)) {
       throw new UnsafeSignInUrlError();
@@ -98,7 +114,8 @@ const refuseNonHttpAuthorizationEndpoint = (userManager: UserManager) => {
 };
 
 const acquireIdToken = async (
-  candidate: AuthenticationConfigurationWithScope
+  candidate: AuthenticationConfigurationWithScope,
+  beforeSignIn: () => Promise<boolean>
 ): Promise<string | undefined> => {
   const injectedToken = isPlaywrightBuild()
     ? (globalThis as unknown as Record<string, unknown>)[
@@ -106,6 +123,10 @@ const acquireIdToken = async (
       ]
     : undefined;
   if (typeof injectedToken === 'string' && injectedToken) {
+    if (!(await beforeSignIn())) {
+      throw new ConfigurationCheckFailedError();
+    }
+
     return injectedToken;
   }
 
@@ -114,15 +135,15 @@ const acquireIdToken = async (
     JSON.stringify(candidate)
   );
   const userManager = new UserManager(getCandidateUserManagerConfig(candidate));
-  refuseNonHttpAuthorizationEndpoint(userManager);
+  guardAuthorizationEndpoint(userManager, beforeSignIn);
   const user = await userManager.signinPopup();
 
   return user?.id_token;
 };
 
 /**
- * Drives the interactive SSO "Test Login" against a candidate (unsaved) configuration, always
- * exercising the same flow the real login uses:
+ * Drives the interactive SSO "Test Login" against a candidate (unsaved) configuration. It first runs
+ * the checks a save runs, then signs in with the same flow the real login uses:
  *
  * - Public-client OIDC signs in in the browser, so the admin completes the sign-in in an isolated
  *   popup and the resulting id_token is checked by the admin-only validate-token endpoint.
@@ -135,6 +156,9 @@ const acquireIdToken = async (
  */
 export const useSsoTestLogin = (): UseSsoTestLoginResult => {
   const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [configurationCheck, setConfigurationCheck] = useState<
+    ConfigurationCheckState | undefined
+  >();
   const [result, setResult] = useState<TestLoginResult | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [credentialsSessionId, setCredentialsSessionId] = useState<
@@ -156,19 +180,55 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
   const reset = useCallback(() => {
     abandonRun();
     setIsTesting(false);
+    setConfigurationCheck(undefined);
     setResult(undefined);
     setError(undefined);
     setCredentialsSessionId(undefined);
   }, [abandonRun]);
 
+  const passesConfigurationCheck = useCallback(
+    async (
+      securityConfiguration: SecurityConfiguration,
+      checkConfiguration: ConfigurationCheck | undefined,
+      runId: number
+    ): Promise<boolean> => {
+      if (!checkConfiguration) {
+        return true;
+      }
+      setConfigurationCheck({ status: StageStatus.Running, problems: [] });
+      const outcome = await checkConfiguration(securityConfiguration);
+      if (runId !== runIdRef.current) {
+        return false;
+      }
+      setConfigurationCheck({
+        status: outcome.passed ? StageStatus.Passed : StageStatus.Failed,
+        problems: outcome.problems,
+      });
+      if (!outcome.passed) {
+        setError(t('message.sso-test-login-configuration-invalid'));
+      }
+
+      return outcome.passed;
+    },
+    []
+  );
+
   const runBrowserTestLogin = useCallback(
-    async (securityConfiguration: SecurityConfiguration, runId: number) => {
+    async (
+      securityConfiguration: SecurityConfiguration,
+      runId: number,
+      beforeSignIn: () => Promise<boolean>
+    ) => {
       let idToken: string | undefined;
       try {
         idToken = await acquireIdToken(
-          popupCandidateFor(securityConfiguration)
+          popupCandidateFor(securityConfiguration),
+          beforeSignIn
         );
       } catch (err) {
+        if (err instanceof ConfigurationCheckFailedError) {
+          return;
+        }
         // Failure obtaining the token in the popup (cancelled / blocked / refused).
         setError(
           err instanceof UnsafeSignInUrlError
@@ -259,8 +319,14 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
     async (
       securityConfiguration: SecurityConfiguration,
       popup: Window | null,
-      runId: number
+      runId: number,
+      beforeSignIn: () => Promise<boolean>
     ) => {
+      if (!(await beforeSignIn())) {
+        popup?.close();
+
+        return;
+      }
       const { data: session } = await startTestLogin({ securityConfiguration });
       if (runId !== runIdRef.current) {
         return;
@@ -280,9 +346,18 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
   );
 
   const runTestLogin = useCallback(
-    async (securityConfiguration: SecurityConfiguration) => {
+    async (
+      securityConfiguration: SecurityConfiguration,
+      checkConfiguration?: ConfigurationCheck
+    ) => {
       reset();
       const runId = runIdRef.current;
+      const beforeSignIn = () =>
+        passesConfigurationCheck(
+          securityConfiguration,
+          checkConfiguration,
+          runId
+        );
       const { provider, clientType } =
         securityConfiguration.authenticationConfiguration;
       const inBrowser = isBrowserTestLogin(provider, clientType);
@@ -309,8 +384,13 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
       setIsTesting(true);
       try {
         await (inBrowser
-          ? runBrowserTestLogin(securityConfiguration, runId)
-          : runServerTestLogin(securityConfiguration, popup, runId));
+          ? runBrowserTestLogin(securityConfiguration, runId, beforeSignIn)
+          : runServerTestLogin(
+              securityConfiguration,
+              popup,
+              runId,
+              beforeSignIn
+            ));
       } catch (err) {
         popup?.close();
         if (runId === runIdRef.current) {
@@ -326,7 +406,7 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
         }
       }
     },
-    [reset, runBrowserTestLogin, runServerTestLogin]
+    [passesConfigurationCheck, reset, runBrowserTestLogin, runServerTestLogin]
   );
 
   const submitCredentials = useCallback(
@@ -365,6 +445,7 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
   return {
     isTesting,
     isAwaitingCredentials: !!credentialsSessionId,
+    configurationCheck,
     result,
     error,
     runTestLogin,

@@ -32,7 +32,10 @@ import {
 } from '../../../utils/TestConnectionModalUtils';
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
-import { SsoTestLoginModalProps } from './SsoTestLogin.interface';
+import {
+  ConfigurationCheckState,
+  SsoTestLoginModalProps,
+} from './SsoTestLogin.interface';
 import {
   isTestLoginSettled,
   STAGE_LABEL_KEYS,
@@ -40,11 +43,57 @@ import {
 } from './SsoTestLogin.utils';
 import SsoTestLoginCredentialsForm from './SsoTestLoginCredentialsForm';
 
-const StageTimeline = ({ result }: { result: TestLoginResult }) => {
+const TimelineRow = ({
+  label,
+  messages,
+  state,
+  testId,
+}: {
+  label: string;
+  messages: string[];
+  state: ReturnType<typeof toConnectionStepState>;
+  testId: string;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <li className="tw:flex tw:items-start tw:gap-3" data-testid={testId}>
+      {getConnectionStepIcon(state)}
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+        <Typography as="span" size="text-sm" weight="medium">
+          {label}
+        </Typography>
+        {messages.map((message) => (
+          <Typography
+            as="span"
+            className="tw:break-words tw:text-tertiary"
+            key={message}
+            size="text-xs">
+            {message}
+          </Typography>
+        ))}
+      </div>
+      <Typography
+        as="span"
+        className="tw:shrink-0 tw:text-quaternary"
+        size="text-xs">
+        {getStepStatusLabel(t, state)}
+      </Typography>
+    </li>
+  );
+};
+
+const StageTimeline = ({
+  configurationCheck,
+  result,
+}: {
+  configurationCheck?: ConfigurationCheckState;
+  result?: TestLoginResult;
+}) => {
   const { t } = useTranslation();
   const isSettled = isTestLoginSettled(result);
   // A skipped stage does not apply to this protocol at all, so it is not shown.
-  const stages = (result.stages ?? []).filter(
+  const stages = (result?.stages ?? []).filter(
     (stage) => stage.status !== StageStatus.Skipped
   );
 
@@ -53,37 +102,23 @@ const StageTimeline = ({ result }: { result: TestLoginResult }) => {
       aria-label={t('label.test-login')}
       className="tw:flex tw:flex-col tw:gap-3"
       data-testid="sso-test-login-stages">
-      {stages.map((stage) => {
-        const state = toConnectionStepState(stage.status, isSettled);
-
-        return (
-          <li
-            className="tw:flex tw:items-start tw:gap-3"
-            data-testid={`sso-test-login-stage-${stage.stage}`}
-            key={stage.stage}>
-            {getConnectionStepIcon(state)}
-            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-              <Typography as="span" size="text-sm" weight="medium">
-                {t(STAGE_LABEL_KEYS[stage.stage])}
-              </Typography>
-              {stage.message && (
-                <Typography
-                  as="span"
-                  className="tw:break-words tw:text-tertiary"
-                  size="text-xs">
-                  {stage.message}
-                </Typography>
-              )}
-            </div>
-            <Typography
-              as="span"
-              className="tw:shrink-0 tw:text-quaternary"
-              size="text-xs">
-              {getStepStatusLabel(t, state)}
-            </Typography>
-          </li>
-        );
-      })}
+      {configurationCheck && (
+        <TimelineRow
+          label={t('label.sso-test-stage-configuration-checked')}
+          messages={configurationCheck.problems}
+          state={toConnectionStepState(configurationCheck.status, true)}
+          testId="sso-test-login-stage-configuration"
+        />
+      )}
+      {stages.map((stage) => (
+        <TimelineRow
+          key={stage.stage}
+          label={t(STAGE_LABEL_KEYS[stage.stage])}
+          messages={stage.message ? [stage.message] : []}
+          state={toConnectionStepState(stage.status, isSettled)}
+          testId={`sso-test-login-stage-${stage.stage}`}
+        />
+      ))}
     </ol>
   );
 };
@@ -142,6 +177,7 @@ const SsoTestLoginModal = ({
   open,
   isTesting,
   isAwaitingCredentials,
+  configurationCheck,
   result,
   error,
   onSubmitCredentials,
@@ -176,6 +212,8 @@ const SsoTestLoginModal = ({
   }, [result, t]);
 
   const isWaiting = isTesting && !isAwaitingCredentials;
+  const isCheckingConfiguration =
+    configurationCheck?.status === StageStatus.Running;
 
   return (
     <ModalOverlay isOpen={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -207,7 +245,9 @@ const SsoTestLoginModal = ({
                   data-testid="sso-test-login-loading">
                   <Loader size="small" />
                   <Typography as="span" size="text-sm">
-                    {t('message.sso-test-login-waiting')}
+                    {isCheckingConfiguration
+                      ? t('message.sso-test-login-checking-configuration')
+                      : t('message.sso-test-login-waiting')}
                   </Typography>
                 </div>
               )}
@@ -217,7 +257,12 @@ const SsoTestLoginModal = ({
                   onSubmit={onSubmitCredentials}
                 />
               )}
-              {result && <StageTimeline result={result} />}
+              {(result || configurationCheck) && (
+                <StageTimeline
+                  configurationCheck={configurationCheck}
+                  result={result}
+                />
+              )}
               {isTestLoginSettled(result) && result && (
                 <ResolvedIdentity result={result} />
               )}

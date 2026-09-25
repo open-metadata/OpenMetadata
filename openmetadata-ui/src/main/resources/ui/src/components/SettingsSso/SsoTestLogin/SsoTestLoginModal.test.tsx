@@ -145,4 +145,42 @@ describe('SsoTestLoginModal', () => {
       screen.queryByTestId('sso-test-login-loading')
     ).not.toBeInTheDocument();
   });
+
+  it("should list the configuration check's problems when it stops the test", () => {
+    renderModal({
+      configurationCheck: {
+        status: StageStatus.Failed,
+        problems: [
+          'Client ID is required',
+          'The discovery document is unreachable',
+        ],
+      },
+      error: 'message.sso-test-login-configuration-invalid',
+    });
+
+    const check = screen.getByTestId('sso-test-login-stage-configuration');
+
+    expect(check).toHaveTextContent(
+      'label.sso-test-stage-configuration-checked'
+    );
+    expect(check).toHaveTextContent('Client ID is required');
+    expect(check).toHaveTextContent('The discovery document is unreachable');
+    expect(
+      screen.getByText('message.sso-test-login-configuration-invalid')
+    ).toBeInTheDocument();
+  });
+
+  it('should say it is checking the configuration while the check runs', () => {
+    renderModal({
+      isTesting: true,
+      configurationCheck: { status: StageStatus.Running, problems: [] },
+    });
+
+    expect(
+      screen.getByText('message.sso-test-login-checking-configuration')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.sso-test-login-waiting')
+    ).not.toBeInTheDocument();
+  });
 });
