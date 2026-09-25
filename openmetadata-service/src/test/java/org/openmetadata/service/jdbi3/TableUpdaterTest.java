@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.TablePartition;
@@ -20,15 +21,21 @@ class TableUpdaterTest {
 
   @Test
   void recordsTablePartitionAddedByPatch() {
-    assertTablePartitionChange(null, tablePartition("daily"));
+    ChangeDescription change = applyPartitionChange(null, tablePartition("daily"));
+
+    assertEquals(List.of(TABLE_PARTITION_FIELD), fieldNames(change.getFieldsAdded()));
   }
 
   @Test
   void recordsTablePartitionUpdatedByPatch() {
-    assertTablePartitionChange(tablePartition("daily"), tablePartition("monthly"));
+    ChangeDescription change =
+        applyPartitionChange(tablePartition("daily"), tablePartition("monthly"));
+
+    assertTrue(change.getFieldsAdded().isEmpty());
+    assertEquals(List.of(TABLE_PARTITION_FIELD), fieldNames(change.getFieldsUpdated()));
   }
 
-  private void assertTablePartitionChange(
+  private ChangeDescription applyPartitionChange(
       TablePartition originalPartition, TablePartition updatedPartition) {
     Table original = table(originalPartition);
     Table updated = table(updatedPartition);
@@ -41,9 +48,11 @@ class TableUpdaterTest {
     updater.entitySpecificUpdate(false);
 
     assertTrue(updater.fieldsChanged());
-    assertEquals(
-        List.of(TABLE_PARTITION_FIELD),
-        updater.changeDescription.getFieldsAdded().stream().map(field -> field.getName()).toList());
+    return updater.changeDescription;
+  }
+
+  private List<String> fieldNames(List<FieldChange> changes) {
+    return changes.stream().map(FieldChange::getName).toList();
   }
 
   private Table table(TablePartition tablePartition) {
