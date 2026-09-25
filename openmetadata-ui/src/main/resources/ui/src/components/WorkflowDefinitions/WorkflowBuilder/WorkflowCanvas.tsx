@@ -277,7 +277,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
   const canvasClassName = classNames(
     'workflow-canvas',
     isViewMode ? 'view-mode' : 'edit-mode',
-    'tw:relative tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-hidden'
+    'tw:relative tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-hidden tw:bg-canvas'
   );
 
   return (
