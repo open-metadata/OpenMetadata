@@ -346,6 +346,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     canEditDescription,
     canEditOwners,
     canDelete,
+    isLoading: isPermissionLoading,
   } = useEntityPermissions(ResourceEntity.EVENT_SUBSCRIPTION, fqn, {
     enabled: Boolean(fqn),
   });
@@ -379,12 +380,15 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   }, [fqn]);
 
   useEffect(() => {
+    if (isPermissionLoading) {
+      return;
+    }
     if (hasViewAccess) {
       fetchAlertDetails();
     } else {
       setIsLoading(false);
     }
-  }, [fetchAlertDetails, hasViewAccess]);
+  }, [fetchAlertDetails, hasViewAccess, isPermissionLoading]);
 
   const handleSaveDescription = useCallback(async () => {
     if (!alert || !editorRef.current) {
@@ -510,7 +514,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     }
   }, [alertName, onNameResolved]);
 
-  if (isLoading) {
+  if (isLoading || isPermissionLoading) {
     return <Loader />;
   }
 

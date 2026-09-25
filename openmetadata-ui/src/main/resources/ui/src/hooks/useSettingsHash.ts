@@ -18,6 +18,7 @@ import {
   useRef,
   useSyncExternalStore,
 } from 'react';
+import { PROFILE_NAV_IDS } from '../constants/Profile.constants';
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
 import type { ProfileNavId } from '../components/discovery/personal-space/Profile/profileNavConfig';
 
@@ -53,7 +54,10 @@ function parseHash(hash: string): SettingsHashState {
 
   const [pathPart, queryPart] = raw.split('?', 2);
   const segments = pathPart.split('/');
-  const tab = (segments[0] || null) as ProfileNavId | null;
+  const candidate = segments[0] || '';
+  const tab = PROFILE_NAV_IDS.has(candidate)
+    ? (candidate as ProfileNavId)
+    : null;
 
   if (!tab) {
     return EMPTY_STATE;
