@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 // With `prefix(tw)`, Tailwind v4 only generates a class when the prefix comes
 // first (`tw:hover:bg-x`). The variant-first form (`hover:tw:bg-x`) compiles
-// to nothing, so the hover/dark/focus style is silently lost.
-const VARIANT_BEFORE_PREFIX =
-  /(?<=^|[\s'"`])[a-z][\w-]*(?:\/[\w-]+)?:tw:[\w[\]/.-]+/g;
+// to nothing, so the hover/dark/focus style is silently lost. Any token with
+// `:tw:` after its start is variant-first, including bracketed (`data-[x]:`)
+// and stacked (`dark:hover:`) variants.
+const VARIANT_BEFORE_PREFIX = /(?<=^|[\s'"`])(?!tw:)[^\s'"`]+?:tw:[^\s'"`]+/g;
 
 const SRC_DIR = join(__dirname, '..');
 
