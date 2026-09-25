@@ -36,7 +36,13 @@ const SummaryCardV1 = ({
   return (
     <div>
       <div className="tw:flex tw:w-full tw:min-w-52 tw:items-center tw:gap-3 tw:rounded-lg tw:border tw:border-secondary tw:px-2.5 tw:py-4 tw:shadow-xs">
-        <Icon height={40} width={40} />
+        {/* The stat icons bake a pale backdrop square into the SVG; in dark it
+            reads as a white box, so fade it to a 16% tint (light unchanged). */}
+        <Icon
+          className="tw:dark:[&>rect:first-child]:[fill-opacity:0.16]"
+          height={40}
+          width={40}
+        />
         <div>
           <p className="tw:m-0 tw:text-base tw:font-semibold tw:text-primary">
             {value}
