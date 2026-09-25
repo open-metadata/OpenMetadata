@@ -66,6 +66,23 @@ class IngestionPipelineRepositoryTest {
   }
 
   @Test
+  void deleteUndeployedPipelineDoesNotRequireRunner() {
+    // Direct hard delete of an undeployed pipeline: the runner call is
+    // ATTEMPTED (a failed first-deploy can still have left files on the
+    // runner) but a resulting IngestionRunnerUnavailableException is
+    // swallowed rather than thrown — the pipeline may be metadata-only and
+    // never have touched Airflow, so requiring a live runner just to
+    // hard-delete it would leave it stuck. Returns false because no cleanup
+    // was actually "skipped" from a completed deploy — the caller's intent
+    // was metadata-only.
+    IngestionPipeline pipeline = createBasicPipeline().withDeployed(false);
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertFalse(cleanupRepository.deleteDeployedPipeline(pipeline, false));
+  }
+
+  @Test
   void deleteDeployedPipelineReportsSkippedCleanupForUnavailableRunner() {
     IngestionPipeline pipeline = createBasicPipeline();
     IngestionPipelineRepository cleanupRepository =
@@ -614,6 +631,7 @@ class IngestionPipelineRepositoryTest {
   private static IngestionPipeline createBasicPipeline() {
     IngestionPipeline pipeline = new IngestionPipeline();
     pipeline.setName("test-pipeline");
+    pipeline.setDeployed(true);
     pipeline.setFullyQualifiedName("test-service.test-pipeline");
 
     EntityReference serviceRef = new EntityReference();
