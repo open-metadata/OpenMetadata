@@ -38,8 +38,8 @@ import { ResourceEntity } from '../../../../../../context/PermissionProvider/Per
 import { AlertDetailTabs } from '../../../../../../enums/Alerts.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../../generated/entity/data/table';
-import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { EventsRecord } from '../../../../../../generated/events/api/eventsRecord';
+import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
   EventSubscription,
   ProviderType,
@@ -542,9 +542,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
             }
           />
         </Box>
-        {eventsRecord && (
-          <DiagnosticStatsSummary eventsRecord={eventsRecord} />
-        )}
+        {eventsRecord && <DiagnosticStatsSummary eventsRecord={eventsRecord} />}
       </Box>
 
       <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>

@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PROFILE_NAV_IDS } from '../constants/Profile.constants';
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
@@ -123,10 +118,7 @@ export const useSettingsHash = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const state = useMemo(
-    () => parseHash(location.hash),
-    [location.hash]
-  );
+  const state = useMemo(() => parseHash(location.hash), [location.hash]);
 
   const setHash = useCallback(
     (
