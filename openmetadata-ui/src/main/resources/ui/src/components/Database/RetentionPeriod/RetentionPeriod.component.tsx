@@ -13,25 +13,18 @@
 import {
   Alert,
   Button,
-  Form,
-  FormProps,
+  Dialog,
   Input,
   Modal,
-  Space,
+  ModalOverlay,
   Tooltip,
-  Typography,
-} from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Duration } from 'luxon';
-import { useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-  VALIDATION_MESSAGES,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
@@ -78,16 +71,25 @@ const RetentionPeriod = ({
   hasPermission,
 }: RetentionPeriodProps) => {
   const { t } = useTranslation();
-  const [form] = useForm();
+  const [value, setValue] = useState(retentionPeriod);
   const [isLoading, setIsLoading] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
 
   const onCancel = useCallback(() => setIsEdit(false), []);
 
-  const handleSubmit: FormProps['onFinish'] = async ({ retentionPeriod }) => {
+  const onEdit = () => {
+    setValue(retentionPeriod);
+    setIsEdit(true);
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setIsLoading(true);
     try {
-      await onUpdate(retentionPeriod);
+      // ponytail: an untouched empty field submits undefined, exactly as the
+      // antd form did; drop the cast once DataAssetsHeader's
+      // onUpdateRetentionPeriod accepts `value?: string` (the Table handler does).
+      await onUpdate(value as string);
       onCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -96,80 +98,83 @@ const RetentionPeriod = ({
     }
   };
 
-  useEffect(() => {
-    form.setFieldsValue({ retentionPeriod });
-  }, [retentionPeriod]);
+  const editTitle = t('label.edit-entity', {
+    entity: t('label.retention-period'),
+  });
 
   return (
     <div className="d-flex items-start gap-1">
-      <Space
+      <div
         className="d-flex retention-period-container align-start"
         data-testid="retention-period-container">
-        <div className="d-flex ">
-          <Typography.Text className="text-sm d-flex flex-col gap-2">
-            <div className="d-flex items-center gap-1">
-              <span className="extra-info-label-heading tw:text-secondary">
-                {t('label.retention-period')}
-              </span>
-              {hasPermission && (
-                <Tooltip
-                  title={t('label.edit-entity', {
-                    entity: t('label.retention-period'),
-                  })}>
-                  <Button
-                    className="remove-button-default-styling  flex-center edit-retention-period-button p-0"
-                    data-testid="edit-retention-period-button"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-                    type="text"
-                    onClick={() => setIsEdit(true)}
-                  />
-                </Tooltip>
-              )}
-            </div>
-
-            <span className={`font-medium extra-info-value `}>
-              {formatRetentionPeriod(retentionPeriod) ?? NO_DATA_PLACEHOLDER}
+        <div className="text-sm d-flex flex-col gap-2 tw:text-primary">
+          <div className="d-flex items-center gap-1">
+            <span className="extra-info-label-heading tw:text-secondary">
+              {t('label.retention-period')}
             </span>
-          </Typography.Text>
-        </div>
-      </Space>
+            {hasPermission && (
+              <Tooltip title={editTitle}>
+                <Button
+                  aria-label={editTitle}
+                  className="tw:size-5 tw:rounded-sm tw:p-0 tw:text-quaternary tw:shadow-none tw:after:outline-secondary tw:data-icon-only:p-0"
+                  color="secondary"
+                  data-testid="edit-retention-period-button"
+                  iconLeading={<EditIcon aria-hidden width="12px" />}
+                  onPress={onEdit}
+                />
+              </Tooltip>
+            )}
+          </div>
 
-      <Modal
-        centered
-        destroyOnClose
-        cancelText={t('label.cancel')}
-        closable={false}
-        confirmLoading={isLoading}
-        data-testid="retention-period-modal"
-        maskClosable={false}
-        okButtonProps={{
-          form: 'retention-period-form',
-          type: 'primary',
-          htmlType: 'submit',
-        }}
-        okText={t('label.save')}
-        open={isEdit}
-        title={t('label.edit-entity', {
-          entity: t('label.retention-period'),
-        })}
-        onCancel={onCancel}>
-        <Alert
-          className="m-b-sm"
-          description={t('message.retention-period-description')}
-          type="info"
-        />
-        <Form
-          data-testid="retention-period-form"
-          form={form}
-          id="retention-period-form"
-          layout="vertical"
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSubmit}>
-          <Form.Item label={t('label.retention-period')} name="retentionPeriod">
-            <Input data-testid="retention-period-input" />
-          </Form.Item>
-        </Form>
-      </Modal>
+          <span className="font-medium extra-info-value">
+            {formatRetentionPeriod(retentionPeriod)}
+          </span>
+        </div>
+      </div>
+
+      <ModalOverlay
+        isKeyboardDismissDisabled={isLoading}
+        isOpen={isEdit}
+        onOpenChange={(open) => !open && onCancel()}>
+        <Modal>
+          <Dialog
+            data-testid="retention-period-modal"
+            title={editTitle}
+            width={520}>
+            <form
+              data-testid="retention-period-form"
+              id="retention-period-form"
+              onSubmit={handleSubmit}>
+              <Dialog.Content>
+                <Alert variant="brand">
+                  {t('message.retention-period-description')}
+                </Alert>
+                <Input
+                  inputDataTestId="retention-period-input"
+                  label={t('label.retention-period')}
+                  value={value ?? ''}
+                  onChange={setValue}
+                />
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button
+                  color="secondary"
+                  data-testid="cancel-button"
+                  onPress={onCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  data-testid="save-button"
+                  isLoading={isLoading}
+                  type="submit">
+                  {t('label.save')}
+                </Button>
+              </Dialog.Footer>
+            </form>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     </div>
   );
 };
