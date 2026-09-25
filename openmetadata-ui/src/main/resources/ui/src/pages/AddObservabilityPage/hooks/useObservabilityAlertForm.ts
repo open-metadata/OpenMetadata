@@ -40,6 +40,7 @@ import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates
 
 export function useObservabilityAlertForm({
   afterSaveAction,
+  alertType,
   form: providedForm,
   fqn: fqnProp,
   onCancel,
@@ -73,7 +74,7 @@ export function useObservabilityAlertForm({
     () => alertsClassBase.getAddAlertFormExtraButtons(),
     []
   );
-  const alertResources = useObservabilityAlertResources(form);
+  const alertResources = useObservabilityAlertResources(form, alertType);
   const alertTemplates = useObservabilityAlertTemplates({
     extraFormWidgets,
     getResourcePermission,
@@ -136,14 +137,14 @@ export function useObservabilityAlertForm({
           createAlertAPI: createObservabilityAlert,
           updateAlertAPI: updateObservabilityAlert,
           afterSaveAction: async (savedFqn: string) => {
+            if (!isEditMode) {
+              await getResourceLimit('eventsubscription', true, true);
+            }
+
             if (afterSaveAction) {
               await afterSaveAction(savedFqn);
 
               return;
-            }
-
-            if (!isEditMode) {
-              await getResourceLimit('eventsubscription', true, true);
             }
 
             navigate(
