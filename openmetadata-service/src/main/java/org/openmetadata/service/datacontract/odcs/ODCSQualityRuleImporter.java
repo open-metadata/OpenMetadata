@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import org.openmetadata.schema.api.data.ContractSLA;
+import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
@@ -105,8 +106,8 @@ public final class ODCSQualityRuleImporter {
   }
 
   /**
-   * The first freshness rule sets the SLA's refresh frequency unless the contract's own SLA
-   * properties already did; later ones cannot, and are reported as such.
+   * Freshness rules set the SLA's refresh frequency. Once the contract's own SLA properties or an
+   * earlier rule has set it, a rule that agrees counts as applied and one that does not is reported.
    */
   private static List<ODCSRuleOutcome> applyFreshness(
       DataContract contract, List<ODCSRuleOutcome> outcomes) {
@@ -121,11 +122,11 @@ public final class ODCSQualityRuleImporter {
   private static ODCSRuleOutcome applyToSla(DataContract contract, SlaOutcome freshness) {
     ContractSLA sla =
         contract.getSla() == null ? new ContractSLA().withTimezone(null) : contract.getSla();
+    RefreshFrequency declared = sla.getRefreshFrequency();
     ODCSRuleOutcome outcome = freshness;
-    if (sla.getRefreshFrequency() != null) {
-      outcome =
-          new UnsupportedOutcome(
-              freshness.rule(), "The contract SLA already defines a refresh frequency.");
+    if (declared != null
+        && !ODCSFreshness.isSameFrequency(declared, freshness.refreshFrequency())) {
+      outcome = conflictWithTheSla(declared, freshness);
     } else {
       sla.setRefreshFrequency(freshness.refreshFrequency());
       if (sla.getColumnName() == null) {
@@ -134,6 +135,17 @@ public final class ODCSQualityRuleImporter {
       contract.setSla(sla);
     }
     return outcome;
+  }
+
+  private static UnsupportedOutcome conflictWithTheSla(
+      RefreshFrequency declared, SlaOutcome freshness) {
+    return new UnsupportedOutcome(
+        freshness.rule(),
+        String.format(
+            "The contract SLA already sets a refresh frequency of %s, which this rule's %s would"
+                + " change.",
+            ODCSFreshness.describe(declared),
+            ODCSFreshness.describe(freshness.refreshFrequency())));
   }
 
   private static List<TestCaseOutcome> testCaseOutcomes(List<ODCSRuleOutcome> outcomes) {

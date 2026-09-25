@@ -132,6 +132,23 @@ class ODCSTestCaseExporterTest {
   }
 
   @Test
+  void countingSqlTestWhoseQueryGroupsRowsStaysAnOpenMetadataRule() {
+    ODCSQualityRule rule =
+        ODCSTestCaseExporter.toRule(
+            tableTest(
+                "first_group_count",
+                "tableCustomSQLQuery",
+                parameter(
+                    "sqlExpression", "SELECT COUNT(*) FROM SALES.PUBLIC.orders GROUP BY status"),
+                parameter("strategy", "COUNT"),
+                parameter("threshold", "10")),
+            TABLE_ANCHOR);
+
+    assertEquals(ODCSQualityRule.Type.CUSTOM, rule.getType());
+    assertEquals("openmetadata", rule.getEngine());
+  }
+
+  @Test
   void nameThatIsNotAValidOdcsIdIsNotUsedAsId() {
     ODCSQualityRule rule =
         ODCSTestCaseExporter.toRule(
@@ -200,6 +217,30 @@ class ODCSTestCaseExporterTest {
             "tableCustomSQLQuery",
             parameter("sqlExpression", "SELECT id FROM SALES.PUBLIC.orders"),
             parameter("strategy", "ROWS")),
+        tableTest(
+            "counted_duplicates",
+            "tableCustomSQLQuery",
+            parameter(
+                "sqlExpression",
+                "SELECT COUNT(*) FROM (SELECT id FROM SALES.PUBLIC.orders GROUP BY id"
+                    + " HAVING COUNT(*) > 1) dups"),
+            parameter("strategy", "COUNT"),
+            parameter("operator", "=="),
+            parameter("threshold", "0")),
+        tableTest(
+            "first_group_count",
+            "tableCustomSQLQuery",
+            parameter("sqlExpression", "SELECT COUNT(*) FROM SALES.PUBLIC.orders GROUP BY status"),
+            parameter("strategy", "COUNT"),
+            parameter("operator", "<="),
+            parameter("threshold", "10")),
+        tableTest(
+            "fractional_threshold",
+            "tableCustomSQLQuery",
+            parameter("sqlExpression", "SELECT COUNT(*) FROM SALES.PUBLIC.orders"),
+            parameter("strategy", "COUNT"),
+            parameter("operator", "<"),
+            parameter("threshold", "0.5")),
         columnTest(
             "amount_range",
             "amount",

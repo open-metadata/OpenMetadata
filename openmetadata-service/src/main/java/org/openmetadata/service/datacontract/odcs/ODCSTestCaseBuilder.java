@@ -41,7 +41,6 @@ import static org.openmetadata.service.datacontract.odcs.ODCSTestDefinitions.par
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
@@ -59,9 +58,6 @@ import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.UnsupportedOut
  * once it has seen every rule.
  */
 final class ODCSTestCaseBuilder {
-  private static final Set<String> REFRESH_FREQUENCY_UNITS =
-      Set.of("hour", "day", "week", "month", "year");
-
   /** A rule together with the table it applies to and, for column rules, the column. */
   record RuleOnTarget(ODCSQualityRule rule, ODCSTableTarget target, String column) {
     String columnLink() {
@@ -227,27 +223,24 @@ final class ODCSTestCaseBuilder {
   private static ODCSRuleOutcome freshness(RuleOnTarget ruleOnTarget) {
     ODCSQualityRule rule = ruleOnTarget.rule();
     String unit = ODCSTimeUnits.normalize(rule.getUnit());
-    Double interval =
-        rule.getMustBeLessOrEqualTo() != null ? rule.getMustBeLessOrEqualTo() : rule.getMustBe();
+    Optional<RefreshFrequency> frequency = ODCSFreshness.refreshFrequency(rule);
     ODCSRuleOutcome outcome;
-    if (unit == null || !REFRESH_FREQUENCY_UNITS.contains(unit)) {
+    if (!ODCSFreshness.isRefreshFrequencyUnit(unit)) {
       outcome =
           unsupported(
               rule,
               String.format(
                   "OpenMetadata measures refresh frequency in hours or longer; the rule uses '%s'.",
                   unit == null ? "no unit" : unit));
-    } else if (!ODCSRuleOperators.isWhole(interval) || interval < 1) {
+    } else if (frequency.isEmpty()) {
       outcome = unsupportedComparison(rule);
     } else {
-      RefreshFrequency frequency =
-          new RefreshFrequency()
-              .withInterval(interval.intValue())
-              .withUnit(RefreshFrequency.Unit.fromValue(unit));
       String column = ruleOnTarget.column();
       outcome =
           new SlaOutcome(
-              rule, frequency, column == null ? null : ruleOnTarget.target().columnFqn(column));
+              rule,
+              frequency.get(),
+              column == null ? null : ruleOnTarget.target().columnFqn(column));
     }
     return outcome;
   }

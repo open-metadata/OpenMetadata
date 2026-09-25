@@ -356,6 +356,47 @@ class ODCSQualityRuleMapperTest {
     assertEquals("ROWS", parameter(test, "strategy"));
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT COUNT(*) FROM (SELECT id FROM ${object} GROUP BY id HAVING COUNT(*) > 1) dups",
+        "WITH dups AS (SELECT id FROM ${object} GROUP BY id HAVING COUNT(*) > 1)"
+            + " SELECT COUNT(*) FROM dups"
+      })
+  void sqlRuleThatGroupsOnlyInsideASubqueryComparesTheValueItReturns(String query) {
+    CreateTestCase test = mapToTestCase(sql("No duplicates", query, null).withMustBe(0.0));
+
+    assertEquals("COUNT", parameter(test, "strategy"));
+  }
+
+  @Test
+  void sqlRuleComparedWithAFractionIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            sql(
+                    "Few missing statuses",
+                    "SELECT AVG(CASE WHEN status IS NULL THEN 1.0 ELSE 0 END) FROM ${object}",
+                    null)
+                .withMustBeLessThan(0.05));
+
+    assertTrue(outcome.reason().contains("whole number"));
+  }
+
+  @Test
+  void propertyPlaceholderIsQuotedWhenTheColumnNameNeedsIt() {
+    CreateTestCase test =
+        mapToTestCase(
+            sql(
+                    "Region is set",
+                    "SELECT COUNT(*) FROM {object} WHERE {property} IS NULL",
+                    "Account Region")
+                .withMustBe(0.0));
+
+    assertEquals(
+        "SELECT COUNT(*) FROM SALES.PUBLIC.orders WHERE \"Account Region\" IS NULL",
+        parameter(test, "sqlExpression"));
+  }
+
   @Test
   void sqlRuleWithBetweenComparisonIsNotExecutable() {
     UnsupportedOutcome outcome =
