@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import {
   TestCaseDimensionResult,
@@ -25,54 +26,62 @@ import {
   getListTestCaseResults,
   getTestCaseDimensionResultsByFqn,
 } from '../../../../rest/testAPI';
-import {
-  getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
-  getStartOfDayInMillis,
-} from '../../../../utils/date-time/DateTimeUtils';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
-import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../../common/Loader/Loader';
+import { getPastDaysRange } from '../../../observability/DataQuality/Dashboard/calendarDate.utils';
+import DqDateRangeFilter from '../../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
+import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';
 import './test-summary.less';
+import { getResultHistoryCaption } from './TestSummary.utils';
 import TestSummaryGraph from './TestSummaryGraph';
 
 const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
+  const { t } = useTranslation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
-  const defaultRange = useMemo(
-    () => ({
-      initialRange: {
-        startTs: getStartOfDayInMillis(
-          getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
-        ),
-        endTs: getEndOfDayInMillis(getCurrentMillis()),
-      },
-      key: 'last30days',
-      title: translateWithNestedKeys(
-        PROFILER_FILTER_RANGE.last30days.title,
-        PROFILER_FILTER_RANGE.last30days.titleData
-      ),
-    }),
-    []
-  );
   const [results, setResults] = useState<
     TestCaseResult[] | TestCaseDimensionResult[]
   >([]);
-  const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
-    defaultRange.initialRange
+  // Bounded at local midnight, as a range picked in the date picker is; UTC
+  // bounds would show tomorrow's date as the end of the default window.
+  const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(() =>
+    getPastDaysRange(PROFILER_FILTER_RANGE.last30days.days)
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
-    defaultRange.title
+  // Names the window in the chart's empty state. It opens on the default
+  // preset's name and switches to the dates once the reader picks a range.
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>(() =>
+    translateWithNestedKeys(
+      PROFILER_FILTER_RANGE.last30days.title,
+      PROFILER_FILTER_RANGE.last30days.titleData
+    )
   );
 
+  const caption = useMemo(() => {
+    const { metric, comparison, tolerance } = getResultHistoryCaption(data);
+    const metricText = t(metric.key, metric.values);
+    const measured = comparison
+      ? t('message.metric-vs-comparison', {
+          metric: metricText,
+          comparison: t(comparison.key, comparison.values),
+        })
+      : metricText;
+
+    return tolerance
+      ? `${measured} · ${t(tolerance.key, tolerance.values)}`
+      : measured;
+  }, [data, t]);
+
   const handleDateRangeChange = (value: DateRangeObject) => {
-    if (!isEqual(value, dateRangeObject)) {
+    if (!isEqual(value, pick(dateRangeObject, ['startTs', 'endTs']))) {
       setDateRangeObject(value);
+      setSelectedTimeRange(
+        `${formatDate(value.startTs)} – ${formatDate(value.endTs)}`
+      );
     }
   };
 
@@ -102,51 +111,58 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     }
   };
 
-  const getGraph = useMemo(() => {
-    if (isGraphLoading) {
-      return <Loader />;
-    }
-
-    return (
-      <TestSummaryGraph
-        selectedTimeRange={selectedTimeRange}
-        testCaseFqn={data.fullyQualifiedName ?? ''}
-        testCaseName={data.name}
-        testCaseParameterValue={data.parameterValues}
-        testCaseResults={results}
-        testDefinitionName={data.testDefinition.name}
-      />
-    );
-  }, [isGraphLoading, data, results, selectedTimeRange]);
-
   useEffect(() => {
     if (dateRangeObject) {
       fetchTestResults(dateRangeObject);
     }
   }, [dateRangeObject, dimensionKey]);
 
-  const handleSelectedTimeRange = useCallback((range: string) => {
-    setSelectedTimeRange(range);
-  }, []);
-
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <Row data-testid="test-summary-container" gutter={[0, 16]}>
-      <Col className="d-flex justify-end" span={24}>
-        <DatePickerMenu
-          showSelectedCustomRange
-          defaultDateRange={pick(defaultRange, ['key', 'title'])}
-          handleDateRangeChange={handleDateRangeChange}
-          handleSelectedTimeRange={handleSelectedTimeRange}
+    <Box data-testid="test-summary-container" direction="col" gap={4}>
+      <Box align="start" gap={4} justify="between">
+        <Box direction="col" gap={1}>
+          {/* The global h2 style otherwise wins over the size class and renders
+              the title at 24px. */}
+          <Typography
+            as="h2"
+            className="tw:m-0 tw:text-lg! tw:leading-7!"
+            size="text-lg"
+            weight="semibold">
+            {t('label.result-history')}
+          </Typography>
+          <Typography
+            className="tw:text-tertiary"
+            data-testid="result-history-caption"
+            size="text-sm">
+            {caption}
+          </Typography>
+        </Box>
+        <DqDateRangeFilter
+          endTs={dateRangeObject.endTs}
+          startTs={dateRangeObject.startTs}
+          onApply={handleDateRangeChange}
         />
-      </Col>
-      <Col data-testid="graph-container" span={24}>
-        {getGraph}
-      </Col>
-    </Row>
+      </Box>
+      <div data-testid="graph-container">
+        {isGraphLoading ? (
+          <Loader />
+        ) : (
+          <TestSummaryGraph
+            selectedTimeRange={selectedTimeRange}
+            testCaseFqn={data.fullyQualifiedName ?? ''}
+            testCaseName={data.name}
+            testCaseParameterValue={data.parameterValues}
+            testCaseResults={results}
+            testDefinitionName={data.testDefinition.name}
+          />
+        )}
+      </div>
+      {!isGraphLoading && <RunSummaryTiles results={results} />}
+    </Box>
   );
 };
 
