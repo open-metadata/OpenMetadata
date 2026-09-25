@@ -195,7 +195,9 @@ test.describe(
       // deploy call blocks until the scheduler registers the DAG (up to 60s), so the default
       // expect timeout on the next page is not enough. Waiting here also lets the no-pipeline
       // check below see a POST that lands after the test case response.
-      await page.getByTestId('test-case-form-v1').waitFor({ state: 'detached' });
+      await page
+        .getByTestId('test-case-form-v1')
+        .waitFor({ state: 'detached' });
 
       if (!expectSchedulerCard) {
         expect(ingestionPipelineCalled).toBe(false);
