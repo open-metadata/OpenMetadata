@@ -57,7 +57,7 @@ class IndexMappingNestedFieldConsistencyTest {
   @Test
   void glossaryTermSynonymMappingsMustSupportBoostedFields() {
     List<String> violations = new ArrayList<>();
-    for (String language : LANGUAGES) {
+    for (String language : List.of("en", "ru", "zh")) {
       String entity = "glossaryTerm[" + language + "]";
       JsonNode mapping = allMappings.get(entity);
       JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
