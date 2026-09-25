@@ -641,8 +641,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       direction="col">
       <Box
         className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-5"
-        direction="col"
-        gap={4}>
+        direction="col">
         <TaskDetailHeader
           actions={actions}
           loadingTransitionId={loadingTransitionId}
@@ -662,7 +661,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       {/* Sections keep their height and the body scrolls: a flex child with
           overflow-hidden (the asset card) would otherwise shrink to nothing. */}
       <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:py-5 tw:*:shrink-0"
+        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:py-6 tw:*:shrink-0"
         direction="col"
         gap={6}>
         <TaskAssetCard

@@ -46,7 +46,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
 
   return (
     <Box align="center" className="tw:flex-wrap tw:gap-x-2 tw:gap-y-1">
-      <Typography className="tw:font-mono tw:text-tertiary" size="text-xs">
+      <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
         {`#${shortId}`}
       </Typography>
       {requesterName && (
@@ -63,7 +63,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
       )}
       {assetName && (
         <Badge
-          className="tw:max-w-40 tw:font-mono tw:text-tertiary"
+          className="tw:max-w-40 tw:text-tertiary tw:font-medium"
           size="sm"
           type="modern">
           <span className="tw:truncate">{assetName}</span>

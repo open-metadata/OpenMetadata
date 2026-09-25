@@ -84,7 +84,7 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
           <Box className="tw:min-w-0" direction="col" gap={1}>
             <Box align="center" className="tw:flex-wrap" gap={2}>
               <Typography
-                className="tw:font-mono tw:break-all"
+                className="tw:break-all"
                 size="text-sm"
                 weight="semibold">
                 {getEntityName(aboutRef)}

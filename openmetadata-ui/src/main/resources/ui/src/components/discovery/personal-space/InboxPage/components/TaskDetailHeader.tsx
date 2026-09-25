@@ -155,7 +155,7 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   const extraButtons = overflow.filter((action) => action.kind === 'assignee');
 
   return (
-    <Box align="start" className="tw:justify-between tw:gap-3" gap={3}>
+    <Box align="center" className="tw:justify-between tw:gap-3 tw:mb-2" gap={3}>
       <Box align="center" className="tw:min-w-0 tw:flex-wrap" gap={2}>
         <Badge
           color={typeBadge.color}
