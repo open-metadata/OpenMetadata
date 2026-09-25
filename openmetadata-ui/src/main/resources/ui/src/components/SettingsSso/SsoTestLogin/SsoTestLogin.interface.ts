@@ -17,16 +17,31 @@ import {
 
 export interface UseSsoTestLoginResult {
   isTesting: boolean;
+  /** LDAP/Basic: the test has started and is waiting for the admin's credentials. */
+  isAwaitingCredentials: boolean;
   result?: TestLoginResult;
   error?: string;
   runTestLogin: (securityConfiguration: SecurityConfiguration) => Promise<void>;
+  submitCredentials: (email: string, password: string) => Promise<void>;
   reset: () => void;
 }
 
 export interface SsoTestLoginModalProps {
   open: boolean;
   isTesting: boolean;
+  isAwaitingCredentials: boolean;
   result?: TestLoginResult;
   error?: string;
+  onSubmitCredentials: (email: string, password: string) => Promise<void>;
   onClose: () => void;
+}
+
+export interface SsoTestLoginCredentialsFormProps {
+  isSubmitting: boolean;
+  onSubmit: (email: string, password: string) => Promise<void>;
+}
+
+export interface SsoTestLoginCredentialsFormValues {
+  email: string;
+  password: string;
 }

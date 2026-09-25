@@ -129,6 +129,24 @@ describe('getAuthConfig — every OIDC provider respects the server-provided res
   });
 });
 
+describe('getCandidateUserManagerConfig — the tested identity leaves nothing behind', () => {
+  afterEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  it('keeps the tested identity out of storage and does not monitor its session', async () => {
+    const config = getCandidateUserManagerConfig(withScope());
+
+    await config.userStore?.set('user:tested', 'tested-identity-tokens');
+
+    expect(config.monitorSession).toBe(false);
+    expect(await config.userStore?.get('user:tested')).toBe(
+      'tested-identity-tokens'
+    );
+    expect(globalThis.localStorage.length).toBe(0);
+  });
+});
+
 describe('getCandidateUserManagerConfig — SSO test-login popup respects responseType', () => {
   it('should use the configured response_type instead of a hardcoded "id_token"', () => {
     const config = getCandidateUserManagerConfig(

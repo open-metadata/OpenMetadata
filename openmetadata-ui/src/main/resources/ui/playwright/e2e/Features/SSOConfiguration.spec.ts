@@ -966,7 +966,8 @@ test.describe('SAML Metadata XML Upload', () => {
           response.request().method() === 'POST'
       );
 
-      await page.getByTestId('save-sso-configuration').click();
+      // A new configuration is held until Test Login passes; this test only needs the submit.
+      await page.getByTestId('save-anyway-sso-configuration').click();
 
       const errors = (await (await validateResponse).json())?.errors ?? [];
       const certificateError = errors.find(

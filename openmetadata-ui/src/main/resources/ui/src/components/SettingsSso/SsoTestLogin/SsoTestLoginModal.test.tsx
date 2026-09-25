@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { Status } from '../../../generated/system/testLoginResult';
+import {
+  Stage,
+  StageStatus,
+  Status,
+  TestLoginResult,
+} from '../../../generated/system/testLoginResult';
+import { SsoTestLoginModalProps } from './SsoTestLogin.interface';
 import SsoTestLoginModal from './SsoTestLoginModal';
 
 jest.mock('react-i18next', () => ({
@@ -24,35 +30,49 @@ jest.mock('../../common/Loader/Loader', () => {
   };
 });
 
+const renderModal = (props: Partial<SsoTestLoginModalProps>) =>
+  render(
+    <SsoTestLoginModal
+      open
+      isAwaitingCredentials={false}
+      isTesting={false}
+      onClose={jest.fn()}
+      onSubmitCredentials={jest.fn()}
+      {...props}
+    />
+  );
+
+const oidcTimeline = (domainStatus: StageStatus): TestLoginResult['stages'] => [
+  { stage: Stage.Started, status: StageStatus.Passed },
+  { stage: Stage.Redirected, status: StageStatus.Passed },
+  { stage: Stage.CredentialsVerified, status: StageStatus.Skipped },
+  { stage: Stage.IdentityResolved, status: StageStatus.Passed },
+  {
+    stage: Stage.DomainChecked,
+    status: domainStatus,
+    message:
+      domainStatus === StageStatus.Failed ? 'domain rejected' : undefined,
+  },
+];
+
 describe('SsoTestLoginModal', () => {
   it('should show the loading state while the test is running', () => {
-    render(
-      <SsoTestLoginModal
-        isTesting
-        open
-        result={undefined}
-        onClose={jest.fn()}
-      />
-    );
+    renderModal({ isTesting: true });
 
     expect(screen.getByTestId('sso-test-login-loading')).toBeInTheDocument();
   });
 
   it('should show the resolved identity on success', () => {
-    render(
-      <SsoTestLoginModal
-        open
-        isTesting={false}
-        result={{
-          status: Status.Success,
-          resolvedPrincipal: 'alice',
-          resolvedEmail: 'alice@example.com',
-          mappedRoles: ['DataConsumer'],
-          domainCheck: { passed: true },
-        }}
-        onClose={jest.fn()}
-      />
-    );
+    renderModal({
+      result: {
+        status: Status.Success,
+        resolvedPrincipal: 'alice',
+        resolvedEmail: 'alice@example.com',
+        mappedRoles: ['DataConsumer'],
+        domainCheck: { passed: true },
+        stages: oidcTimeline(StageStatus.Passed),
+      },
+    });
 
     expect(screen.getByTestId('sso-test-login-details')).toBeInTheDocument();
     expect(screen.getByText('alice@example.com')).toBeInTheDocument();
@@ -60,31 +80,69 @@ describe('SsoTestLoginModal', () => {
   });
 
   it('should show the failure reason when the configuration would reject the login', () => {
-    render(
-      <SsoTestLoginModal
-        open
-        isTesting={false}
-        result={{ status: Status.Failed, errors: ['domain rejected'] }}
-        onClose={jest.fn()}
-      />
-    );
+    renderModal({
+      result: {
+        status: Status.Failed,
+        errors: ['domain rejected'],
+        stages: oidcTimeline(StageStatus.Failed),
+      },
+    });
 
-    expect(screen.getByText('domain rejected')).toBeInTheDocument();
+    expect(screen.getAllByText('domain rejected').length).toBeGreaterThan(0);
   });
 
   it('should show a popup error message', () => {
-    render(
-      <SsoTestLoginModal
-        open
-        error="message.sso-test-login-popup-failed"
-        isTesting={false}
-        result={undefined}
-        onClose={jest.fn()}
-      />
-    );
+    renderModal({ error: 'message.sso-test-login-popup-failed' });
 
     expect(
       screen.getByText('message.sso-test-login-popup-failed')
     ).toBeInTheDocument();
+  });
+
+  it('should list the stages that apply and hide the ones that do not', () => {
+    renderModal({
+      result: {
+        status: Status.Failed,
+        stages: oidcTimeline(StageStatus.Failed),
+      },
+    });
+
+    expect(
+      screen.getByTestId(`sso-test-login-stage-${Stage.DomainChecked}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`sso-test-login-stage-${Stage.CredentialsVerified}`)
+    ).not.toBeInTheDocument();
+  });
+
+  it('should call out the rejected domain even when domain enforcement is off', () => {
+    // allowedEmailDomains rejects an identity without enforcePrincipalDomain being on.
+    renderModal({
+      result: {
+        status: Status.Failed,
+        resolvedEmail: 'contractor@partner.io',
+        domainCheck: {
+          enforced: false,
+          passed: false,
+          resolvedDomain: 'partner.io',
+        },
+        stages: oidcTimeline(StageStatus.Failed),
+      },
+    });
+
+    expect(
+      screen.getByText('partner.io (label.failed)', { exact: false })
+    ).toBeInTheDocument();
+  });
+
+  it('should ask for credentials instead of waiting on a popup', () => {
+    renderModal({ isAwaitingCredentials: true, isTesting: false });
+
+    expect(
+      screen.getByTestId('sso-test-login-credentials-form')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sso-test-login-loading')
+    ).not.toBeInTheDocument();
   });
 });

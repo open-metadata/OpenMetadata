@@ -12,11 +12,13 @@
  */
 
 import { removeSession } from '@analytics/session-utils';
+import { Button as CoreButton } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
   CustomValidator,
   ErrorSchema,
   FormValidation,
+  getDefaultFormState,
   RegistryFieldsType,
   RJSFSchema,
 } from '@rjsf/utils';
@@ -24,6 +26,7 @@ import validator from '@rjsf/validator-ajv8';
 import { Check, UploadCloud02, X } from '@untitledui/icons';
 import { Button, Card, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
+import { isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -41,6 +44,7 @@ import {
 } from '../../../constants/SSO.constant';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider, ClientType } from '../../../generated/settings/settings';
+import { Status as TestLoginStatus } from '../../../generated/system/testLoginResult';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import authenticationConfigSchema from '../../../jsons/configuration/authenticationConfiguration.json';
 import authorizerConfigSchema from '../../../jsons/configuration/authorizerConfiguration.json';
@@ -80,7 +84,11 @@ import {
   setOidcToken,
   setRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+  showWarningToast,
+} from '../../../utils/ToastUtils';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
@@ -93,6 +101,7 @@ import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import { requiresTestLogin } from '../SsoTestLogin/SsoTestLogin.utils';
 import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
 import { useSsoTestLogin } from '../SsoTestLogin/useSsoTestLogin';
 import './sso-configuration-form.less';
@@ -164,17 +173,6 @@ const widgets = {
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
-// Providers whose public-client login can be exercised end-to-end in the browser
-// for an interactive Test Login (the browser obtains an id_token directly).
-const OIDC_TEST_LOGIN_PROVIDERS: AuthProvider[] = [
-  AuthProvider.Google,
-  AuthProvider.Okta,
-  AuthProvider.Azure,
-  AuthProvider.Auth0,
-  AuthProvider.AwsCognito,
-  AuthProvider.CustomOidc,
-];
-
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
@@ -211,11 +209,16 @@ const SSOConfigurationFormRJSF = ({
   const [showTestLoginModal, setShowTestLoginModal] = useState<boolean>(false);
   const {
     isTesting: isTestingLogin,
+    isAwaitingCredentials: isAwaitingTestLoginCredentials,
     result: testLoginResult,
     error: testLoginError,
     runTestLogin,
+    submitCredentials: submitTestLoginCredentials,
     reset: resetTestLogin,
   } = useSsoTestLogin();
+  // The exact candidate a Test Login last passed for: any later edit re-arms the save gate.
+  const [passedTestLoginKey, setPassedTestLoginKey] = useState<string>();
+  const testedPayloadKeyRef = useRef<string>();
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -497,6 +500,26 @@ const SSOConfigurationFormRJSF = ({
     return getProviderSpecificSchema(currentProvider, hasExistingConfig);
   }, [currentProvider, hasExistingConfig]);
 
+  // RJSF fills schema defaults into the form data lazily, so two snapshots of one configuration can
+  // differ only by defaults. Normalizing both sides before comparing keeps a re-render from reading
+  // as an edit — for the stale-result check, the Test Login key, and the save gate alike.
+  const normalizeFormData = useCallback(
+    (data?: FormData) =>
+      getDefaultFormState(validator, schema, data) as FormData | undefined,
+    [schema]
+  );
+
+  // Both sides of every comparison go through exactly this pipeline; mixing the order of
+  // normalizing and cleaning re-adds defaults for fields the cleanup removed.
+  const comparableFormData = useCallback(
+    (data?: FormData) =>
+      cleanupProviderSpecificFields(
+        normalizeFormData(data),
+        data?.authenticationConfiguration?.provider as string
+      ),
+    [normalizeFormData]
+  );
+
   // Dynamic UI schema using the optimized constants
   // Custom validate function to inject our validation errors
   const customValidate: CustomValidator<FormData> = useCallback(
@@ -706,6 +729,13 @@ const SSOConfigurationFormRJSF = ({
     const authConfig = newFormData.authenticationConfiguration;
 
     clearErrorsForChangedFields(newFormData);
+    // A result for the previous values would vouch for a configuration nobody tested. RJSF also
+    // fires onChange when it merely re-validates, so clear it on a real edit, not on every event.
+    if (
+      !isEqual(normalizeFormData(newFormData), normalizeFormData(internalData))
+    ) {
+      setTestResult(undefined);
+    }
 
     handleClientTypeChange(
       authConfig,
@@ -949,10 +979,62 @@ const SSOConfigurationFormRJSF = ({
       return;
     }
 
+    testedPayloadKeyRef.current = JSON.stringify(
+      comparableFormData(internalData)
+    );
     resetTestLogin();
     setShowTestLoginModal(true);
     runTestLogin(built.payload);
   };
+
+  // Closing the modal abandons a test still in flight: its popup closes and polling stops. A pass
+  // already recorded for this configuration stays.
+  const handleTestLoginModalClose = () => {
+    resetTestLogin();
+    setShowTestLoginModal(false);
+  };
+
+  useEffect(() => {
+    if (
+      testLoginResult?.status === TestLoginStatus.Success &&
+      testedPayloadKeyRef.current
+    ) {
+      setPassedTestLoginKey(testedPayloadKeyRef.current);
+    }
+  }, [testLoginResult]);
+
+  const canTestLogin =
+    !!currentProvider && currentProvider !== AuthProvider.Basic;
+
+  // A new configuration, or an edit that changes how users sign in, must be proven by a passing
+  // Test Login before it can be saved — saving an unproven one is how admins lock themselves out.
+  // "Save anyway" remains the explicit override.
+  const isSaveGatedOnTestLogin = useMemo(() => {
+    const built = buildPayload();
+    if (!built || !canTestLogin) {
+      return false;
+    }
+    const candidate = comparableFormData(internalData);
+    // Compare like with like, or an untouched configuration would look edited and be gated.
+    const saved = hasExistingConfig ? comparableFormData(savedData) : undefined;
+
+    return (
+      requiresTestLogin(saved, candidate) &&
+      passedTestLoginKey !== JSON.stringify(candidate)
+    );
+  }, [
+    buildPayload,
+    canTestLogin,
+    comparableFormData,
+    hasExistingConfig,
+    internalData,
+    passedTestLoginKey,
+    savedData,
+  ]);
+
+  const testLoginGateMessage = hasExistingConfig
+    ? t('message.sso-test-login-required-for-edit')
+    : t('message.sso-test-login-required-before-save');
 
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
@@ -1038,6 +1120,15 @@ const SSOConfigurationFormRJSF = ({
   };
 
   const handleSaveAndExit = async () => {
+    // The unsaved-changes modal must not become a way around the Test Login gate; "Save anyway"
+    // on the form stays the only override.
+    if (isSaveGatedOnTestLogin) {
+      setShowCancelModal(false);
+      showWarningToast(testLoginGateMessage);
+
+      return;
+    }
+
     setModalSaveLoading(true);
     setIsModalSave(true);
 
@@ -1082,25 +1173,34 @@ const SSOConfigurationFormRJSF = ({
     setInternalData(freshFormData);
   };
 
-  const isOidcPublicClientProvider = useMemo(
-    () =>
-      !!currentProvider &&
-      OIDC_TEST_LOGIN_PROVIDERS.includes(currentProvider as AuthProvider) &&
-      internalData?.authenticationConfiguration?.clientType ===
-        ClientType.Public,
-    [currentProvider, internalData]
-  );
-
   const renderConfigAlerts = () => {
     const isTestSuccess = testResult?.status === 'success';
 
-    return !hasExistingConfig || testResult ? (
+    return !hasExistingConfig || testResult || isSaveGatedOnTestLogin ? (
       <div className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
         {!hasExistingConfig && (
           <InlineAlert
             alertClassName="sso-save-warning"
             description={t('message.sso-new-config-save-warning')}
             heading={t('label.warning')}
+            type="warning"
+          />
+        )}
+        {isSaveGatedOnTestLogin && (
+          <InlineAlert
+            alertClassName="sso-test-login-required"
+            description={testLoginGateMessage}
+            heading={t('label.test-login')}
+            subDescription={
+              <CoreButton
+                color="secondary"
+                data-testid="save-anyway-sso-configuration"
+                isDisabled={isLoading}
+                size="sm"
+                onClick={handleSave}>
+                {t('label.save-anyway')}
+              </CoreButton>
+            }
             type="warning"
           />
         )}
@@ -1137,7 +1237,7 @@ const SSOConfigurationFormRJSF = ({
             onClick={handleTestConfiguration}>
             {t('label.test-entity', { entity: t('label.configuration') })}
           </Button>
-          {isOidcPublicClientProvider && (
+          {canTestLogin && (
             <Button
               className="test-login-sso-configuration text-md"
               data-testid="test-login-sso-configuration"
@@ -1150,7 +1250,7 @@ const SSOConfigurationFormRJSF = ({
           <Button
             className="save-sso-configuration text-md"
             data-testid="save-sso-configuration"
-            disabled={isLoading}
+            disabled={isLoading || isSaveGatedOnTestLogin}
             loading={isLoading}
             type="primary"
             onClick={handleSave}>
@@ -1159,10 +1259,12 @@ const SSOConfigurationFormRJSF = ({
         </div>
         <SsoTestLoginModal
           error={testLoginError}
+          isAwaitingCredentials={isAwaitingTestLoginCredentials}
           isTesting={isTestingLogin}
           open={showTestLoginModal}
           result={testLoginResult}
-          onClose={() => setShowTestLoginModal(false)}
+          onClose={handleTestLoginModalClose}
+          onSubmitCredentials={submitTestLoginCredentials}
         />
       </>
     ) : null;

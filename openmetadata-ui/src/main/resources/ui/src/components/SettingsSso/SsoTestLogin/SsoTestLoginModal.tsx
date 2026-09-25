@@ -10,138 +10,231 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Modal, Space, Typography } from 'antd';
+import {
+  Button,
+  Dialog,
+  Divider,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Status } from '../../../generated/system/testLoginResult';
+import {
+  StageStatus,
+  Status,
+  TestLoginResult,
+} from '../../../generated/system/testLoginResult';
+import {
+  getConnectionStepIcon,
+  getStepStatusLabel,
+} from '../../../utils/TestConnectionModalUtils';
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import { SsoTestLoginModalProps } from './SsoTestLogin.interface';
+import {
+  isTestLoginSettled,
+  STAGE_LABEL_KEYS,
+  toConnectionStepState,
+} from './SsoTestLogin.utils';
+import SsoTestLoginCredentialsForm from './SsoTestLoginCredentialsForm';
+
+const StageTimeline = ({ result }: { result: TestLoginResult }) => {
+  const { t } = useTranslation();
+  const isSettled = isTestLoginSettled(result);
+  // A skipped stage does not apply to this protocol at all, so it is not shown.
+  const stages = (result.stages ?? []).filter(
+    (stage) => stage.status !== StageStatus.Skipped
+  );
+
+  return (
+    <ol
+      aria-label={t('label.test-login')}
+      className="tw:flex tw:flex-col tw:gap-3"
+      data-testid="sso-test-login-stages">
+      {stages.map((stage) => {
+        const state = toConnectionStepState(stage.status, isSettled);
+
+        return (
+          <li
+            className="tw:flex tw:items-start tw:gap-3"
+            data-testid={`sso-test-login-stage-${stage.stage}`}
+            key={stage.stage}>
+            {getConnectionStepIcon(state)}
+            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+              <Typography as="span" size="text-sm" weight="medium">
+                {t(STAGE_LABEL_KEYS[stage.stage])}
+              </Typography>
+              {stage.message && (
+                <Typography
+                  as="span"
+                  className="tw:break-words tw:text-tertiary"
+                  size="text-xs">
+                  {stage.message}
+                </Typography>
+              )}
+            </div>
+            <Typography
+              as="span"
+              className="tw:shrink-0 tw:text-quaternary"
+              size="text-xs">
+              {getStepStatusLabel(t, state)}
+            </Typography>
+          </li>
+        );
+      })}
+    </ol>
+  );
+};
+
+const ResolvedIdentity = ({ result }: { result: TestLoginResult }) => {
+  const { t } = useTranslation();
+  const domainCheck = result.domainCheck;
+  // The domain line matters whenever the rules are on, or whenever they rejected the identity.
+  const showDomain =
+    !!domainCheck && (domainCheck.enforced || domainCheck.passed === false);
+
+  return (
+    <dl
+      className="tw:grid tw:grid-cols-[max-content_1fr] tw:gap-x-4 tw:gap-y-1 tw:text-sm"
+      data-testid="sso-test-login-details">
+      {result.resolvedPrincipal && (
+        <>
+          <dt className="tw:font-medium">{t('label.user')}</dt>
+          <dd>{result.resolvedPrincipal}</dd>
+        </>
+      )}
+      {result.resolvedEmail && (
+        <>
+          <dt className="tw:font-medium">{t('label.email')}</dt>
+          <dd>{result.resolvedEmail}</dd>
+        </>
+      )}
+      {!isEmpty(result.mappedRoles) && (
+        <>
+          <dt className="tw:font-medium">{t('label.role-plural')}</dt>
+          <dd>{result.mappedRoles?.join(', ')}</dd>
+        </>
+      )}
+      {!isEmpty(result.mappedTeams) && (
+        <>
+          <dt className="tw:font-medium">{t('label.team-plural')}</dt>
+          <dd>{result.mappedTeams?.join(', ')}</dd>
+        </>
+      )}
+      {showDomain && (
+        <>
+          <dt className="tw:font-medium">{t('label.domain')}</dt>
+          <dd>
+            {domainCheck?.resolvedDomain ?? '-'}{' '}
+            {domainCheck?.passed
+              ? `(${t('label.success')})`
+              : `(${t('label.failed')})`}
+          </dd>
+        </>
+      )}
+    </dl>
+  );
+};
 
 const SsoTestLoginModal = ({
   open,
   isTesting,
+  isAwaitingCredentials,
   result,
   error,
+  onSubmitCredentials,
   onClose,
 }: Readonly<SsoTestLoginModalProps>) => {
   const { t } = useTranslation();
 
-  const resultDetails = useMemo(() => {
-    if (!result) {
+  const outcome = useMemo(() => {
+    if (!isTestLoginSettled(result)) {
       return null;
     }
-
-    return (
-      <div
-        className="sso-test-login-details"
-        data-testid="sso-test-login-details">
-        {result.resolvedPrincipal && (
-          <Typography.Paragraph className="m-b-0">
-            <strong>{t('label.user')}:</strong> {result.resolvedPrincipal}
-          </Typography.Paragraph>
-        )}
-        {result.resolvedEmail && (
-          <Typography.Paragraph className="m-b-0">
-            <strong>{t('label.email')}:</strong> {result.resolvedEmail}
-          </Typography.Paragraph>
-        )}
-        {!isEmpty(result.mappedRoles) && (
-          <Typography.Paragraph className="m-b-0">
-            <strong>{t('label.role-plural')}:</strong>{' '}
-            {result.mappedRoles?.join(', ')}
-          </Typography.Paragraph>
-        )}
-        {!isEmpty(result.mappedTeams) && (
-          <Typography.Paragraph className="m-b-0">
-            <strong>{t('label.team-plural')}:</strong>{' '}
-            {result.mappedTeams?.join(', ')}
-          </Typography.Paragraph>
-        )}
-        {result.domainCheck?.enforced && (
-          <Typography.Paragraph className="m-b-0">
-            <strong>{t('label.domain')}:</strong>{' '}
-            {result.domainCheck.resolvedDomain}{' '}
-            {result.domainCheck.passed
-              ? `(${t('label.success')})`
-              : `(${t('label.failed')})`}
-          </Typography.Paragraph>
-        )}
-      </div>
-    );
-  }, [result, t]);
-
-  const resultContent = useMemo(() => {
-    if (!result) {
-      return null;
-    }
-
-    const isSuccess = result.status === Status.Success;
+    const isSuccess = result?.status === Status.Success;
     let description = t('message.sso-test-login-failed');
     if (isSuccess) {
       description = t('message.sso-test-login-success', {
-        email: result.resolvedEmail ?? '',
+        email: result?.resolvedEmail ?? '',
       });
-    } else if (!isEmpty(result.errors)) {
-      description = (result.errors ?? []).join(' ');
+    } else if (!isEmpty(result?.errors)) {
+      description = (result?.errors ?? []).join(' ');
     }
 
     return (
-      <Space className="w-full" direction="vertical" size={12}>
-        <InlineAlert
-          alertClassName={
-            isSuccess ? 'sso-test-login-success' : 'sso-test-login-failed'
-          }
-          description={description}
-          heading={isSuccess ? t('label.success') : t('label.failed')}
-          type={isSuccess ? 'success' : 'error'}
-        />
-        {resultDetails}
-      </Space>
+      <InlineAlert
+        alertClassName={
+          isSuccess ? 'sso-test-login-success' : 'sso-test-login-failed'
+        }
+        description={description}
+        heading={isSuccess ? t('label.success') : t('label.failed')}
+        type={isSuccess ? 'success' : 'error'}
+      />
     );
-  }, [result, resultDetails, t]);
+  }, [result, t]);
 
-  const body = useMemo(() => {
-    if (isTesting) {
-      return (
-        <div
-          className="d-flex flex-col items-center gap-3 p-md"
-          data-testid="sso-test-login-loading">
-          <Loader size="small" />
-          <Typography.Text>
-            {t('message.sso-test-login-waiting')}
-          </Typography.Text>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <InlineAlert
-          alertClassName="sso-test-login-error"
-          description={error}
-          heading={t('label.failed')}
-          type="error"
-        />
-      );
-    }
-
-    return resultContent;
-  }, [isTesting, error, resultContent, t]);
+  const isWaiting = isTesting && !isAwaitingCredentials;
 
   return (
-    <Modal
-      destroyOnClose
-      footer={null}
-      open={open}
-      title={t('label.test-login')}
-      onCancel={onClose}>
-      <Typography.Paragraph className="text-grey-muted">
-        {t('message.sso-test-login-description')}
-      </Typography.Paragraph>
-      {body}
-    </Modal>
+    <ModalOverlay isOpen={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <Modal>
+        <Dialog
+          aria-label={t('label.test-login')}
+          data-testid="sso-test-login-modal"
+          width={560}>
+          <div className="tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-4">
+            <Typography as="h2" size="text-md" weight="semibold">
+              {t('label.test-login')}
+            </Typography>
+            <Typography as="p" className="tw:text-tertiary" size="text-sm">
+              {t('message.sso-test-login-description')}
+            </Typography>
+            <div aria-live="polite" className="tw:flex tw:flex-col tw:gap-4">
+              {error && (
+                <InlineAlert
+                  alertClassName="sso-test-login-error"
+                  description={error}
+                  heading={t('label.failed')}
+                  type="error"
+                />
+              )}
+              {outcome}
+              {isWaiting && (
+                <div
+                  className="tw:flex tw:items-center tw:gap-3"
+                  data-testid="sso-test-login-loading">
+                  <Loader size="small" />
+                  <Typography as="span" size="text-sm">
+                    {t('message.sso-test-login-waiting')}
+                  </Typography>
+                </div>
+              )}
+              {isAwaitingCredentials && (
+                <SsoTestLoginCredentialsForm
+                  isSubmitting={isTesting}
+                  onSubmit={onSubmitCredentials}
+                />
+              )}
+              {result && <StageTimeline result={result} />}
+              {isTestLoginSettled(result) && result && (
+                <ResolvedIdentity result={result} />
+              )}
+            </div>
+          </div>
+          <Divider />
+          <div className="tw:flex tw:justify-end tw:px-5 tw:py-3">
+            <Button
+              color="secondary"
+              data-testid="sso-test-login-close"
+              onClick={onClose}>
+              {t('label.close')}
+            </Button>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
