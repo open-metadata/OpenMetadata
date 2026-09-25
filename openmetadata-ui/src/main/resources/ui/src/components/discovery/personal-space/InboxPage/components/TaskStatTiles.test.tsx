@@ -90,13 +90,15 @@ describe('TaskStatTiles', () => {
 describe('TaskStatTileGrid', () => {
   const tile = (key: string) => ({ key, label: key, value: '1' });
 
-  // A hidden tile must not leave an empty cell behind, which the separator
-  // background would paint as a grey block.
-  it('gives the row exactly as many columns as tiles', () => {
+  // Tiles size from their content and never wrap a label, so a long label
+  // takes the width it needs rather than splitting across lines.
+  it('lets tiles grow from their content and keeps labels on one line', () => {
     render(<TaskStatTileGrid tiles={[tile('a'), tile('b')]} />);
 
-    expect(screen.getByTestId('task-stat-tiles')).toHaveClass(
-      'tw:sm:grid-cols-2'
+    expect(screen.getByTestId('task-stat-tiles')).toHaveClass('tw:flex-wrap');
+    expect(screen.getByTestId('task-stat-a')).toHaveClass('tw:flex-auto');
+    expect(screen.getByText('a', { selector: 'span' })).toHaveClass(
+      'tw:whitespace-nowrap'
     );
   });
 

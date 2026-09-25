@@ -24,16 +24,6 @@ import { Link } from 'react-router-dom';
 import { StatTile, TaskStatTilesProps } from '../taskDetail.types';
 import { getTaskStatTiles } from '../taskStatTiles.utils';
 
-// Enumerated so Tailwind sees every class literally. The grid always has exactly
-// as many columns as tiles: a hidden tile must not leave an empty cell, which
-// the separator background would paint as a grey block.
-const COLUMNS_CLASS: Record<number, string> = {
-  1: 'tw:sm:grid-cols-1',
-  2: 'tw:sm:grid-cols-2',
-  3: 'tw:sm:grid-cols-3',
-  4: 'tw:sm:grid-cols-4',
-  5: 'tw:sm:grid-cols-5',
-};
 const PLACEHOLDER_TILES = [0, 1, 2, 3];
 
 const TONE_CLASS: Record<NonNullable<StatTile['tone']>, string> = {
@@ -92,10 +82,10 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
   if (isLoading) {
     return (
       <Box
-        className={classNames('tw:grid tw:gap-px', COLUMNS_CLASS[4])}
+        className="tw:flex tw:flex-wrap tw:gap-px"
         data-testid={`${testIdPrefix}-tiles-loading`}>
         {PLACEHOLDER_TILES.map((index) => (
-          <Box className="tw:p-4" direction="col" gap={2} key={index}>
+          <Box className="tw:flex-1 tw:p-4" direction="col" gap={2} key={index}>
             <Skeleton height={24} variant="rounded" width={48} />
             <Skeleton height={14} width="70%" />
           </Box>
@@ -108,16 +98,19 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
     return null;
   }
 
+  // A wrapping row rather than equal columns: each tile grows from its content's
+  // width, so a long label ("Active access requests") takes the room it needs
+  // instead of wrapping, and a narrow pane wraps whole tiles, never words. The
+  // tiles always fill the row, so no empty cell shows the separator colour.
   return (
     <Box
-      className={classNames(
-        'tw:grid tw:grid-cols-1 tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary',
-        COLUMNS_CLASS[Math.min(tiles.length, 5)]
-      )}
+      className="tw:flex tw:flex-wrap tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary"
       data-testid={`${testIdPrefix}-tiles`}>
       {tiles.map((tile) => {
         const label = (
-          <Typography className="tw:text-tertiary" size="text-xs">
+          <Typography
+            className="tw:whitespace-nowrap tw:text-tertiary"
+            size="text-xs">
             {tile.label}
           </Typography>
         );
@@ -126,7 +119,7 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
         return (
           <Box
             align="start"
-            className="tw:bg-secondary tw:px-4 tw:py-3"
+            className="tw:flex-auto tw:bg-secondary tw:px-4 tw:py-3"
             data-testid={`${testIdPrefix}-${tile.key}`}
             direction="col"
             gap={1}
