@@ -53,7 +53,6 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   AddTestCaseListFilter,
   getListTestCaseBySearch,
-  ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import {
   COLUMN_AGGREGATE_FIELD,
@@ -355,7 +354,7 @@ export const AddTestCaseList = ({
 
   // Snapshot of the active search/filter, shaped for the bulk `selectAll` payload so
   // the backend resolves "all N" to the filtered subset (not every test case). Mirrors
-  // the mapping in buildTestCaseSearchParams.
+  // the request params built in fetchTestCases, including its `*term*` wildcard `q`.
   const activeFilter = useMemo<AddTestCaseListFilter>(() => {
     const filterTable = filterTables[0];
     const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
@@ -365,7 +364,7 @@ export const AddTestCaseList = ({
         : undefined;
 
     return {
-      ...(searchTerm && { q: searchTerm }),
+      ...(searchTerm && { q: `*${searchTerm}*` }),
       ...(filterStatus && { testCaseStatus: filterStatus }),
       ...(filterTestType !== TestCaseType.all && {
         testCaseType: filterTestType,

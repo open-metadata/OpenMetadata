@@ -250,7 +250,7 @@ export const addTestCaseToLogicalTestSuite = async (
 
 export type AddTestCaseListFilter = {
   q?: string;
-  testCaseStatus?: string;
+  testCaseStatus?: TestCaseStatus;
   testCaseType?: string;
   entityLink?: string;
   includeAllTests?: boolean;
