@@ -338,6 +338,59 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   }
 
   @Test
+  void testListAnnouncementsByType(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    String entityLink = "<#E::table::" + ns.prefix("service.db.schema.typed") + ">";
+    Announcement warning =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("type-filter-warning"))
+                .withDescription("Warning announcement")
+                .withType(AnnouncementType.Warning)
+                .withEntityLink(entityLink)
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+    Announcement information =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("type-filter-info"))
+                .withDescription("Information announcement")
+                .withEntityLink(entityLink)
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+
+    ListResponse<Announcement> warnings =
+        listEntities(
+            new ListParams()
+                .addQueryParam("type", "Warning")
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100));
+    assertEquals(
+        List.of(warning.getId()), warnings.getData().stream().map(Announcement::getId).toList());
+
+    ListResponse<Announcement> informational =
+        listEntities(
+            new ListParams()
+                .addQueryParam("type", "Information")
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100));
+    assertEquals(
+        List.of(information.getId()),
+        informational.getData().stream().map(Announcement::getId).toList());
+
+    ListResponse<Announcement> activeWarnings =
+        listEntities(
+            new ListParams()
+                .addQueryParam("type", "Warning")
+                .addQueryParam("active", "true")
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100));
+    assertEquals(
+        List.of(warning.getId()),
+        activeWarnings.getData().stream().map(Announcement::getId).toList());
+  }
+
+  @Test
   void testListActiveAnnouncements(TestNamespace ns) {
     long now = System.currentTimeMillis();
     String entityLink = "<#E::table::" + ns.prefix("service.db.schema.active") + ">";

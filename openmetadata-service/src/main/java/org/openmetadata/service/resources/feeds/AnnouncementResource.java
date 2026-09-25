@@ -46,6 +46,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.type.AnnouncementStatus;
+import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -111,6 +112,8 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Parameter(description = "Filter by entity link") @QueryParam("entityLink") String entityLink,
       @Parameter(description = "Filter by status") @QueryParam("status") AnnouncementStatus status,
       @Parameter(description = "Filter active announcements") @QueryParam("active") Boolean active,
+      @Parameter(description = "Filter by announcement type") @QueryParam("type")
+          AnnouncementType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results")
           @DefaultValue("10")
@@ -136,6 +139,9 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
     }
     if (active != null) {
       filter.addQueryParam("active", String.valueOf(active));
+    }
+    if (type != null) {
+      filter.addQueryParam("announcementType", type.value());
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
