@@ -14,7 +14,7 @@ Models required for dbt
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DbtFiles(BaseModel):
@@ -68,3 +68,4 @@ class UpstreamNode(BaseModel):
     name: str
     qualified_name: str | None = None
     fqn: str
+    table: Any | None = Field(default=None, exclude=True)
