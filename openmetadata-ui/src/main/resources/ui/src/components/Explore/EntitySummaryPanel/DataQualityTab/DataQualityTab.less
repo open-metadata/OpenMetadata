@@ -347,22 +347,22 @@
             &.failure {
               background-color: @red-9;
               color: @red-10;
-              border: 1px solid @grey-15;
+              outline-color: @grey-15;
             }
             &.success {
               background-color: @green-9;
               color: @green-17;
-              border: 1px solid @grey-15;
+              outline-color: @grey-15;
             }
             &.aborted {
               background-color: @yellow-10;
               color: @yellow-11;
-              border: 1px solid @grey-15;
+              outline-color: @grey-15;
             }
 
             // Dark: keep the custom light tints frozen, swap only the fills to
             // the utility scale (auto-flips in dark) so these override-styled
-            // pills gain dark support. Border is @grey-15 (bridged, flips).
+            // pills gain dark support. Outline is @grey-15 (bridged, flips).
             .dark-mode & {
               &.failure {
                 background-color: var(--color-utility-error-50);
@@ -380,7 +380,7 @@
           }
         }
         .status-badge.status-badge-v2 {
-          border-color: @grey-15;
+          outline-color: @grey-15;
         }
       }
 
