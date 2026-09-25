@@ -12,6 +12,10 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import {
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
+} from '../../utils/common';
 
 const readOptions = async (listbox: Locator) => {
   const options = listbox.getByRole('option');
@@ -27,32 +31,11 @@ const openCombobox = async (combobox: Locator) => {
 };
 
 /**
- * Opens a core Select or ComboBox and clicks one of its options.
- * React Aria closes a popover when an ancestor of its trigger scrolls, and click() scrolls a
- * trigger below the fold into view a frame after the popover opens, so every picker helper
- * scrolls its trigger into view before opening. The short option timeout turns a late close
- * into a retry that reopens it, instead of waiting forever on a detached option.
- */
-const pickOption = async (
-  trigger: Locator,
-  option: Locator,
-  open: () => Promise<void> = () => trigger.click()
-) => {
-  await trigger.scrollIntoViewIfNeeded();
-  await expect(async () => {
-    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
-      await open();
-    }
-    await option.click({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
-};
-
-/**
  * Opens a combobox and reads only the listbox it controls, ignoring any other open popover.
  * A focused combobox does not always reopen on click, so retry the open until it is expanded.
  */
 const openComboboxOptions = async (page: Page, combobox: Locator) => {
-  await combobox.scrollIntoViewIfNeeded();
+  await scrollIntoViewAndSettle(combobox);
   await expect(async () => {
     if ((await combobox.getAttribute('aria-expanded')) !== 'true') {
       await openCombobox(combobox);
@@ -69,7 +52,7 @@ const openComboboxOptions = async (page: Page, combobox: Locator) => {
 /** Opens a core Select; like the combobox, a first click can land before the trigger is ready. */
 const openSelect = async (select: Locator) => {
   const trigger = select.getByRole('button');
-  await trigger.scrollIntoViewIfNeeded();
+  await scrollIntoViewAndSettle(trigger);
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
       await trigger.click();
@@ -103,7 +86,7 @@ export const fillAlertName = async (dialog: Locator, name: string) => {
 };
 
 export const selectAlertSource = async (page: Page, source: string) => {
-  await pickOption(
+  await selectOptionWithRetry(
     page.getByTestId('source-select').getByRole('button'),
     page.getByRole('option', { name: source, exact: true })
   );
@@ -133,7 +116,7 @@ export const selectDestinationCategory = async (
     .getByTestId(`destination-category-select-${index}`)
     .getByRole('combobox');
 
-  await pickOption(
+  await selectOptionWithRetry(
     combobox,
     page
       .getByRole('listbox', { name: /Destination/ })
@@ -149,7 +132,7 @@ export const addFilter = async (
   index = 0
 ) => {
   await dialog.getByTestId('add-filters').click();
-  await pickOption(
+  await selectOptionWithRetry(
     dialog.getByTestId(`filters-select-${index}`).getByRole('button'),
     page.getByRole('option', { name: filter, exact: true })
   );
@@ -211,7 +194,7 @@ export const selectInternalDestinationType = async (
   type: string,
   index: number
 ) => {
-  await pickOption(
+  await selectOptionWithRetry(
     dialog.getByTestId(`destination-type-select-${index}`).getByRole('button'),
     page
       .getByRole('listbox', { name: 'Type' })
@@ -268,7 +251,7 @@ export const selectWebhookAuthType = async (
     .getByTestId(`destination-${index}`)
     .getByText('Advanced Configuration')
     .click();
-  await pickOption(
+  await selectOptionWithRetry(
     dialog.getByTestId(`auth-type-select-${index}`).getByRole('button'),
     page.getByRole('option', { name: label, exact: true })
   );
