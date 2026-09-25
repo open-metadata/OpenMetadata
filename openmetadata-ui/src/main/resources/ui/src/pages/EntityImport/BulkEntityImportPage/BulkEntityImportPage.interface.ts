@@ -16,6 +16,7 @@ import type { Column } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
 import { EntityStatus } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { CSVImportAsyncResponse } from '../../../interface/entity/csv.interface';
 import type { getImportOperationSummary } from '../../../utils/CSV/CSV.utils';
 
 export type TranslateFn = (

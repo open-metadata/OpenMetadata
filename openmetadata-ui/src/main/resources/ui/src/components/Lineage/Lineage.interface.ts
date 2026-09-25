@@ -15,6 +15,11 @@ import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
 import {
+  EdgeDetails,
+  EdgeFromToData,
+  LineageNodeType,
+} from '../../interface/lineage.interface';
+import {
   SearchSourceAlias,
   TableSearchSource,
 } from '../../interface/search.interface';
