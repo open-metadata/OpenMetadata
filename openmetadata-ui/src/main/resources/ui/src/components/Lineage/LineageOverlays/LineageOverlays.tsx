@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Edge, Node } from 'reactflow';
 import { useShallow } from 'zustand/react/shallow';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
+import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { EntityReference } from '../../../generated/type/entityLineage';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -55,6 +56,7 @@ export type LineageOverlaysHandlers = {
   onConfirmAddEdge: (pipeline?: SelectedEdgeInfo) => void | Promise<void>;
   onEntityUpdate: (updatedEntity: SourceType) => Promise<void>;
   onCloseDrawer: () => void;
+  onEdgeDetailsUpdate: (updatedEdgeDetails: AddLineage) => Promise<void>;
 };
 
 type LineageOverlaysProps = {
@@ -91,6 +93,7 @@ type LineageDrawerOverlayProps = {
   nodes: Node[];
   lineageConfig: LineageConfig;
   onCloseDrawer: () => void;
+  onEdgeDetailsUpdate: (updatedEdgeDetails: AddLineage) => Promise<void>;
   onEntityUpdate: (updatedEntity: Partial<SourceType>) => void;
 };
 
@@ -102,6 +105,7 @@ const LineageDrawerOverlay = ({
   nodes,
   lineageConfig,
   onCloseDrawer,
+  onEdgeDetailsUpdate,
   onEntityUpdate,
 }: LineageDrawerOverlayProps) => {
   if (isEditMode || (!selectedNode && !selectedEdge)) {
@@ -141,6 +145,7 @@ const LineageDrawerOverlay = ({
           edge={selectedEdge}
           nodes={nodes}
           onClose={onCloseDrawer}
+          onEdgeDetailsUpdate={onEdgeDetailsUpdate}
         />
       )}
     </SlideoutMenu>
@@ -330,6 +335,7 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
         selectedEdge={selectedEdge}
         selectedNode={selectedNode}
         onCloseDrawer={handlers.onCloseDrawer}
+        onEdgeDetailsUpdate={handlers.onEdgeDetailsUpdate}
         onEntityUpdate={handleEntityUpdate}
       />
       <LineageDeleteModal

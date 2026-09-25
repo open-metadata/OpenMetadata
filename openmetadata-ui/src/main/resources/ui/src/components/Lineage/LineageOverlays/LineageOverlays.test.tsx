@@ -25,9 +25,14 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => ({
   default: () => ({ search: '' }),
 }));
 
+const mockEdgeInfoDrawer = jest.fn();
 jest.mock('../../Entity/EntityInfoDrawer/EdgeInfoDrawer.component', () => ({
   __esModule: true,
-  default: () => <div data-testid="edge-info-drawer" />,
+  default: (props: Record<string, unknown>) => {
+    mockEdgeInfoDrawer(props);
+
+    return <div data-testid="edge-info-drawer" />;
+  },
 }));
 
 jest.mock(
@@ -108,6 +113,7 @@ const mockHandlers: LineageOverlaysHandlers = {
   onConfirmAddEdge: jest.fn(),
   onEntityUpdate: jest.fn(),
   onCloseDrawer: jest.fn(),
+  onEdgeDetailsUpdate: jest.fn(),
 };
 
 describe('LineageOverlays', () => {
@@ -132,5 +138,18 @@ describe('LineageOverlays', () => {
     fireEvent.click(screen.getByTestId('confirm-button'));
 
     expect(mockHandlers.onConfirmDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes onEdgeDetailsUpdate to the edge drawer so edge edits persist', () => {
+    useLineageStore.setState({ selectedEdge: mockEdge, isDrawerOpen: true });
+
+    render(<LineageOverlays handlers={mockHandlers} />);
+
+    expect(screen.getByTestId('edge-info-drawer')).toBeInTheDocument();
+    expect(mockEdgeInfoDrawer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        onEdgeDetailsUpdate: mockHandlers.onEdgeDetailsUpdate,
+      })
+    );
   });
 });

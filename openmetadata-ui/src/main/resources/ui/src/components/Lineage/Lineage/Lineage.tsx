@@ -132,7 +132,6 @@ import '../../Entity/EntityLineage/entity-lineage.style.less';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
-import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import {
   EdgeDetails,
@@ -553,7 +552,7 @@ export const Lineage = ({
   const [init, setInit] = useState(false);
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
-  const [selectedQuickFilters] = useState<ExploreQuickFilterField[]>([]);
+  const selectedQuickFilters = useLineageStore((s) => s.selectedQuickFilters);
   const [entityType, setEntityType] = useState<EntityType | undefined>(
     entityTypeProp
   );
@@ -566,14 +565,48 @@ export const Lineage = ({
 
   const [entityFqn, setEntityFqn] = useState<string>(entityFqnProp);
 
-  const [timeFilter] = useState<LineageTimeRange>(() => {
+  // Seed the store from the URL before children mount so the first fetch already carries the saved range.
+  useState(() => {
     const searchData = new URLSearchParams(location.search);
-
-    return {
+    useLineageStore.getState().setTimeFilter({
       endTime: parseEpochParam(searchData.get(LINEAGE_END_TIME_PARAM)),
       startTime: parseEpochParam(searchData.get(LINEAGE_START_TIME_PARAM)),
-    };
+    });
   });
+  const timeFilter = useLineageStore((s) => s.timeFilter);
+
+  useEffect(() => {
+    const params = QueryString.parse(location.search, {
+      ignoreQueryPrefix: true,
+    });
+    const nextStart = timeFilter.startTime?.toString();
+    const nextEnd = timeFilter.endTime?.toString();
+    if (
+      params[LINEAGE_START_TIME_PARAM] === nextStart &&
+      params[LINEAGE_END_TIME_PARAM] === nextEnd
+    ) {
+      return;
+    }
+    if (nextStart === undefined) {
+      delete params[LINEAGE_START_TIME_PARAM];
+    } else {
+      params[LINEAGE_START_TIME_PARAM] = nextStart;
+    }
+    if (nextEnd === undefined) {
+      delete params[LINEAGE_END_TIME_PARAM];
+    } else {
+      params[LINEAGE_END_TIME_PARAM] = nextEnd;
+    }
+    navigate(
+      {
+        search: QueryString.stringify(params, {
+          addQueryPrefix: true,
+          encode: false,
+        }),
+      },
+      { replace: true }
+    );
+  }, [timeFilter.startTime, timeFilter.endTime]);
 
   const queryFilter = useMemo(() => {
     const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
@@ -2211,6 +2244,13 @@ export const Lineage = ({
       .setEntityContext({ entity, entityType, entityFqn });
   }, [entity, entityType, entityFqn]);
 
+  useEffect(() => {
+    useLineageStore.setState({
+      dataQualityLineage,
+      dqHighlightedEdges: dqHighlightedEdges ?? new Set(),
+    });
+  }, [dataQualityLineage, dqHighlightedEdges]);
+
   const handlers = useMemo<LineageHandlersValue>(
     () => ({
       loadChildNodesHandler,
@@ -2246,8 +2286,15 @@ export const Lineage = ({
         handleEntityUpdate(updatedEntity);
       },
       onCloseDrawer,
+      onEdgeDetailsUpdate,
     }),
-    [onRemove, onAddPipelineModalSave, handleEntityUpdate, onCloseDrawer]
+    [
+      onRemove,
+      onAddPipelineModalSave,
+      handleEntityUpdate,
+      onCloseDrawer,
+      onEdgeDetailsUpdate,
+    ]
   );
 
   return (

@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Node } from 'reactflow';
@@ -21,6 +27,7 @@ import {
   getDataQualityLineage,
   getLineageDataByFQN,
 } from '../../../rest/lineageAPI';
+import tableClassBase from '../../../utils/TableClassBase';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { LineageNodeType } from '../Lineage.interface';
 import { Lineage } from './Lineage';
@@ -410,6 +417,101 @@ describe('Lineage integration', () => {
 
     await waitFor(() => {
       expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  const renderMounted = () =>
+    render(
+      <MemoryRouter>
+        <Lineage
+          entity={entityFixture}
+          entityFqn="svc.db.s.t1"
+          entityType={EntityType.TABLE}
+          isPlatformLineage={false}
+        />
+      </MemoryRouter>
+    );
+
+  const emptyLineageResponse = {
+    nodes: {},
+    downstreamEdges: {},
+    upstreamEdges: {},
+  };
+
+  it('seeds the store time filter from the URL and fetches with it', async () => {
+    mockLocation.search = '?lineageStartTime=100&lineageEndTime=200';
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(emptyLineageResponse);
+
+    renderMounted();
+
+    expect(useLineageStore.getState().timeFilter).toEqual({
+      startTime: 100,
+      endTime: 200,
+    });
+
+    await waitFor(() => {
+      expect(getLineageDataByFQN).toHaveBeenCalledWith(
+        expect.objectContaining({ startTime: 100, endTime: 200 })
+      );
+    });
+  });
+
+  it('refetches with the new range when the store time filter changes', async () => {
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(emptyLineageResponse);
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useLineageStore.getState().setTimeFilter({ startTime: 5, endTime: 9 });
+    });
+
+    await waitFor(() => {
+      expect(getLineageDataByFQN).toHaveBeenLastCalledWith(
+        expect.objectContaining({ startTime: 5, endTime: 9 })
+      );
+    });
+  });
+
+  it('refetches with the quick filter query when the store quick filters change', async () => {
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(emptyLineageResponse);
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useLineageStore.getState().setSelectedQuickFilters([
+        {
+          key: 'owners.displayName.keyword',
+          label: 'Owner',
+          value: [{ key: 'alice', label: 'alice' }],
+        },
+      ]);
+    });
+
+    await waitFor(() => {
+      const lastCall = (getLineageDataByFQN as jest.Mock).mock.calls.at(-1)[0];
+
+      expect(lastCall.queryFilter).toContain('alice');
+    });
+  });
+
+  it('publishes data-quality lineage to the store', async () => {
+    jest.spyOn(tableClassBase, 'getAlertEnableStatus').mockReturnValue(true);
+    const dqResponse = { nodes: [{ id: 'dq-node' }], edges: [] };
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(emptyLineageResponse);
+    (getDataQualityLineage as jest.Mock).mockResolvedValue(dqResponse);
+
+    renderMounted();
+
+    act(() => {
+      useLineageStore.setState({ isDQEnabled: true });
+    });
+
+    await waitFor(() => {
+      expect(useLineageStore.getState().dataQualityLineage).toEqual(dqResponse);
     });
   });
 });
