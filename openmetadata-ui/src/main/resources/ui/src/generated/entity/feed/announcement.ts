@@ -75,6 +75,10 @@ export interface Announcement {
     startTime: number;
     status?:   AnnouncementStatus;
     /**
+     * Severity/category of the announcement, used to style it in the UI.
+     */
+    type?: AnnouncementType;
+    /**
      * Last update timestamp.
      */
     updatedAt?: number;
@@ -245,4 +249,13 @@ export enum AnnouncementStatus {
     Active = "Active",
     Expired = "Expired",
     Scheduled = "Scheduled",
+}
+
+/**
+ * Severity/category of the announcement, used to style it in the UI.
+ */
+export enum AnnouncementType {
+    Information = "Information",
+    Issue = "Issue",
+    Warning = "Warning",
 }
