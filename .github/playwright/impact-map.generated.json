@@ -6071,6 +6071,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TestSummary/TestSummaryGraph.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TestSummaryCustomTooltip/TestSummaryCustomTooltip.component.tsx"
       ],
       "specs": [
