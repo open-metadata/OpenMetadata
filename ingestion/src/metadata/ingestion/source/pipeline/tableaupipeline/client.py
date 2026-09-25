@@ -13,15 +13,19 @@
 Tableau Pipeline Client - wraps tableauserverclient for pipeline operations
 """
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 
 from tableauserverclient import (
+    Filter,
     Pager,
     PersonalAccessTokenAuth,
     RequestOptions,
     Server,
+    Sort,
     TableauAuth,
 )
+from tableauserverclient.models import FlowItem, FlowRunItem
+from tableauserverclient.server.endpoint.exceptions import ServerResponseError
 
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection,
@@ -35,14 +39,16 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.queries import (
     TABLEAU_FLOW_LINEAGE_QUERY,
+    TABLEAU_METADATA_API_PROBE_QUERY,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
 
 DEFAULT_NUMBER_OF_STATUS = 10
-MAX_FLOW_RUNS_HARD_LIMIT = 10000
+USER_EMAIL_CACHE_SIZE = 512
 
 
 class TableauPipelineClient:
@@ -62,15 +68,12 @@ class TableauPipelineClient:
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
         self.ssl_manager = ssl_manager
-        self.number_of_status = getattr(config, "numberOfStatus", None) or DEFAULT_NUMBER_OF_STATUS
-        self._runs_by_flow: dict[str, list[TableauFlowRunItem]] = {}
-        self._runs_iter: Iterator | None = None
-        self._runs_iter_exhausted: bool = False
-        self._runs_scanned: int = 0
-        self._user_email_cache: dict[str, str | None] = {}
+        self.number_of_status = config.numberOfStatus or DEFAULT_NUMBER_OF_STATUS
+        self._user_emails: LRUCache[str | None] = LRUCache(USER_EMAIL_CACHE_SIZE)
 
     def get_flows(self) -> Iterable[TableauFlowItem]:
         """Fetch all Tableau Prep flows"""
+        flow: FlowItem
         for flow in Pager(self.tableau_server.flows):
             yield TableauFlowItem(
                 id=str(flow.id),
@@ -82,99 +85,67 @@ class TableauPipelineClient:
                 webpage_url=flow.webpage_url,
                 created_at=flow.created_at,
                 updated_at=flow.updated_at,
-                tags=sorted(flow.tags) if getattr(flow, "tags", None) else [],
+                tags=sorted(flow.tags) if flow.tags else [],
             )
 
     def get_user_email(self, user_id: str) -> str | None:
         """Resolve a Tableau user id to an email address, or None on failure.
 
-        Cached per client instance because a single flow owner typically
-        owns many flows and the API charges per call.
-        """
+        A single owner typically owns many flows, so lookups (misses included)
+        are cached. Tableau Cloud usernames are email addresses, so the username
+        is used when the email attribute is empty."""
         if not user_id:
             return None
-        cache = self._user_email_cache
-        if user_id in cache:
-            return cache[user_id]
+        if user_id in self._user_emails:
+            return self._user_emails.get(user_id)
         try:
             user = self.tableau_server.users.get_by_id(user_id)
-            email = getattr(user, "email", None) or getattr(user, "name", None)
+            email = user.email or (user.name if user.name and "@" in user.name else None)
         except Exception as exc:
-            logger.debug(f"Unable to resolve Tableau user {user_id}: {exc}")
+            logger.debug("Unable to resolve Tableau user %s: %s", user_id, exc)
             email = None
-        cache[user_id] = email
+        self._user_emails.put(user_id, email)
         return email
 
-    def _ensure_runs_for(self, flow_id: str) -> None:
-        """Advance the lazy flow-runs iterator until `flow_id` has
-        `number_of_status` runs cached, the iterator exhausts, or the
-        hard limit is hit.
-
-        Streaming approach sidesteps the fact that Tableau's REST API
-        only exposes `/flows/runs` at the site level (and TSC's
-        RequestOptions filter enum has no FlowId field): we still have
-        to scan the site-wide stream, but we stop as soon as we have
-        enough for the flow being asked about. When `pipelineFilterPattern`
-        excludes most flows, subsequent calls for the remaining flows
-        reuse the already-scanned runs without re-paging.
-
-        Assumes Tableau returns runs ordered newest-first — per-flow
-        caches accept runs in arrival order up to `number_of_status`.
-        If the ordering assumption ever breaks the cached runs will
-        still be correct per-flow, just not guaranteed to be the
-        most recent N."""
-        if self._has_enough_runs(flow_id) or self._runs_iter_exhausted:
-            return
-        if self._runs_iter is None:
-            self._runs_iter = iter(Pager(self.tableau_server.flow_runs))
-
-        for run in self._runs_iter:
-            self._runs_scanned += 1
-            if run.flow_id:
-                run_flow_id = str(run.flow_id)
-                cached = self._runs_by_flow.setdefault(run_flow_id, [])
-                if len(cached) < self.number_of_status:
-                    cached.append(
-                        TableauFlowRunItem(
-                            id=str(run.id),
-                            flow_id=run_flow_id,
-                            status=run.status,
-                            started_at=run.started_at,
-                            completed_at=run.completed_at,
-                            progress=run.progress,
-                        )
-                    )
-            if self._runs_scanned >= MAX_FLOW_RUNS_HARD_LIMIT:
-                self._runs_iter_exhausted = True
-                logger.warning(
-                    f"Reached hard flow-run traversal limit "
-                    f"({MAX_FLOW_RUNS_HARD_LIMIT}). Some older runs may "
-                    "be excluded. Consider lowering numberOfStatus or "
-                    "tightening pipelineFilterPattern."
-                )
-                return
-            if self._has_enough_runs(flow_id):
-                return
-
-        self._runs_iter_exhausted = True
-
-    def _has_enough_runs(self, flow_id: str) -> bool:
-        cached = self._runs_by_flow.get(flow_id)
-        return cached is not None and len(cached) >= self.number_of_status
-
     def get_flow_runs(self, flow_id: str) -> list[TableauFlowRunItem]:
-        """Return the most recent runs for a flow. Streams lazily — reads
-        just enough of the global flow-runs list to satisfy the request."""
-        self._ensure_runs_for(flow_id)
-        return list(self._runs_by_flow.get(flow_id, []))
+        """Return the most recent `numberOfStatus` runs of a flow, newest first.
 
-    def clear_flow_runs_cache(self) -> None:
-        """Reset the streaming state. Called during sign_out cleanup so a
-        reused client starts fresh."""
-        self._runs_by_flow.clear()
-        self._runs_iter = None
-        self._runs_iter_exhausted = False
-        self._runs_scanned = 0
+        Get Flow Runs filters on flowId and sorts on any filterable field, so one
+        request per flow is enough. TSC's FlowRuns.get returns a bare list rather
+        than (items, pagination), so it cannot be driven through Pager.
+        ref: https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_filtering_and_sorting.htm
+        """
+        try:
+            runs = self.tableau_server.flow_runs.get(self._flow_runs_options(flow_id, newest_first=True))
+        except ServerResponseError as exc:
+            # The Get Flow Runs reference documents the filter but not the sort; a
+            # server that rejects it still answers the filter-only request.
+            if not str(exc.code).startswith("400"):
+                raise
+            logger.debug("Tableau rejected sorting flow runs, retrying unsorted: %s", exc)
+            runs = self.tableau_server.flow_runs.get(self._flow_runs_options(flow_id, newest_first=False))
+
+        items = [self._to_run_item(run) for run in runs]
+        items.sort(key=lambda run: run.started_at.timestamp() if run.started_at else 0.0, reverse=True)
+        return items[: self.number_of_status]
+
+    def _flow_runs_options(self, flow_id: str, newest_first: bool) -> RequestOptions:
+        options = RequestOptions(pagesize=self.number_of_status) if newest_first else RequestOptions()
+        options.filter.add(Filter(RequestOptions.Field.FlowId, RequestOptions.Operator.Equals, flow_id))
+        if newest_first:
+            options.sort.add(Sort(RequestOptions.Field.StartedAt, RequestOptions.Direction.Desc))
+        return options
+
+    @staticmethod
+    def _to_run_item(run: FlowRunItem) -> TableauFlowRunItem:
+        return TableauFlowRunItem(
+            id=str(run.id),
+            flow_id=str(run.flow_id) if run.flow_id else None,
+            status=run.status,
+            started_at=run.started_at,
+            completed_at=run.completed_at,
+            progress=run.progress,
+        )
 
     def get_pipelines(self) -> Iterable[TableauPipelineDetails]:
         """Get all pipelines (Prep Flows) without run history"""
@@ -191,22 +162,20 @@ class TableauPipelineClient:
                 tags=flow.tags,
             )
 
-    def test_get_flows(self) -> None:
-        """Validate that we can list flows. Raises on failure."""
-        req_options = RequestOptions(pagesize=1)
-        self.tableau_server.flows.get(req_options)
+    def test_get_flows(self) -> list[FlowItem]:
+        flows, _ = self.tableau_server.flows.get(RequestOptions(pagesize=1))
+        return flows
+
+    def test_get_flow_runs(self) -> list[FlowRunItem]:
+        return self.tableau_server.flow_runs.get(RequestOptions(pagesize=1))
 
     def test_metadata_api(self) -> None:
-        """Validate the Tableau Metadata API is reachable. Raises on failure.
-
-        Used as a non-mandatory connection test so users without the Metadata
-        API enabled still pass base connection validation — lineage just won't
-        be extracted.
-        """
-        self.tableau_server.metadata.query(query="{ serverInfo { serverName } }")
+        """Run a real flow query so a disabled Metadata API or a query the
+        server rejects fails here instead of silently yielding no lineage."""
+        self.tableau_server.metadata.query(query=TABLEAU_METADATA_API_PROBE_QUERY, abort_on_error=True)
 
     def get_flow_lineage(self, flow_luid: str) -> TableauFlowLineage | None:
-        """Fetch upstream and output lineage for a flow via the Metadata API.
+        """Fetch the inputs and outputs of a flow via the Metadata API.
 
         Returns None when the Metadata API is unavailable or the flow has no
         lineage records yet (the Metadata store lags live publishes by a few
@@ -215,27 +184,28 @@ class TableauPipelineClient:
         try:
             result = self.tableau_server.metadata.query(query=TABLEAU_FLOW_LINEAGE_QUERY.format(flow_luid=flow_luid))
         except Exception as exc:
-            logger.debug(
-                "Failed to query Tableau Metadata API for flow lineage. "
-                "Ensure the Metadata API is enabled: "
-                "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+            logger.warning(
+                "Tableau Metadata API lineage query failed for flow %s: %s. Lineage requires the Metadata API: "
+                "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html",
+                flow_luid,
+                exc,
             )
-            logger.warning(f"Tableau Metadata API lineage query failed: {exc}")
             return None
 
-        if not result or not result.get("data"):
-            logger.debug(f"No lineage data returned for flow luid={flow_luid}")
-            return None
+        # A node-limit or permission error still returns partial data next to
+        # `errors`; keep the data but make the truncation visible.
+        if result.get("errors"):
+            logger.warning("Tableau Metadata API returned errors for flow %s: %s", flow_luid, result["errors"])
 
-        flows = result["data"].get("flows") or []
+        flows = (result.get("data") or {}).get("flows") or []
         if not flows:
-            logger.debug(f"Metadata API returned no flow record for luid={flow_luid}")
+            logger.debug("Metadata API returned no flow record for luid=%s", flow_luid)
             return None
 
         try:
             return TableauFlowLineage.model_validate(flows[0])
         except Exception as exc:
-            logger.debug(f"Failed to parse flow lineage response: {exc}")
+            logger.debug("Failed to parse flow lineage response: %s", exc)
             return None
 
     def sign_out(self) -> None:
@@ -245,6 +215,6 @@ class TableauPipelineClient:
             self.cleanup()
 
     def cleanup(self) -> None:
-        self.clear_flow_runs_cache()
+        self._user_emails.clear()
         if self.ssl_manager:
             self.ssl_manager.cleanup_temp_files()

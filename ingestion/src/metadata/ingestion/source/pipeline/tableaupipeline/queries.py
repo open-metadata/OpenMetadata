@@ -15,6 +15,8 @@ via the Tableau Metadata API.
 ref: https://help.tableau.com/current/api/metadata_api/en-us/reference/flow.doc.html
 """
 
+# nextDownstreamFlows rather than downstreamFlows: the latter is transitive and
+# would add an A -> C edge next to A -> B -> C.
 TABLEAU_FLOW_LINEAGE_QUERY = """
 {{
   flows(filter: {{luid: "{flow_luid}"}}) {{
@@ -27,10 +29,6 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
       name
       fullName
       schema
-      columns {{
-        id
-        name
-      }}
       database {{
         name
         connectionType
@@ -41,36 +39,48 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
         query
       }}
     }}
+    upstreamDatasources {{
+      id
+      luid
+      name
+      projectName
+    }}
     outputSteps {{
       id
       name
     }}
-    outputFields {{
-      id
-      name
-      upstreamColumns {{
-        id
-        name
-        table {{
-          id
-          luid
-          name
-        }}
-      }}
-    }}
-    downstreamFlows {{
+    downstreamTables {{
       id
       luid
       name
+      fullName
+      schema
+      database {{
+        name
+        connectionType
+      }}
     }}
     downstreamDatasources {{
       id
       luid
       name
-      ... on PublishedDatasource {{
-        projectName
-      }}
+      projectName
+    }}
+    nextDownstreamFlows {{
+      id
+      luid
+      name
     }}
   }}
 }}
+"""
+
+TABLEAU_METADATA_API_PROBE_QUERY = """
+{
+  flowsConnection(first: 1) {
+    nodes {
+      id
+    }
+  }
+}
 """

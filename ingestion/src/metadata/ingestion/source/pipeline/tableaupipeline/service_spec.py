@@ -10,9 +10,12 @@
 #  limitations under the License.
 """Service spec for the Tableau Pipeline connector."""
 
+from metadata.ingestion.source.pipeline.tableaupipeline.connection import (
+    TableauPipelineConnection,
+)
 from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
     TableaupipelineSource,
 )
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=TableaupipelineSource)
+ServiceSpec = BaseSpec(metadata_source_class=TableaupipelineSource, connection_class=TableauPipelineConnection)  # pyright: ignore[reportArgumentType]

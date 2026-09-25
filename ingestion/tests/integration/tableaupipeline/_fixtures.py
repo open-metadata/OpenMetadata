@@ -19,17 +19,14 @@ files on the import path, so importing them as modules fails in CI.
 from datetime import datetime, timezone
 
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-    TableauDownstreamDatasource,
-    TableauDownstreamFlow,
     TableauFlowLineage,
-    TableauFlowOutputField,
     TableauFlowOutputStep,
     TableauFlowRunItem,
-    TableauFlowUpstreamColumn,
-    TableauLineageColumn,
     TableauLineageDatabase,
     TableauLineageTable,
+    TableauLinkedFlow,
     TableauPipelineDetails,
+    TableauPublishedDatasource,
     TableauReferencedQuery,
     TableauTaskType,
 )
@@ -100,7 +97,7 @@ FLOW_MARKETING = TableauPipelineDetails(
 )
 
 SALES_LINEAGE = TableauFlowLineage(
-    id="flow-sales",
+    id="gql-flow-sales",
     luid="flow-sales",
     name="Sales Prep Flow",
     upstream_tables=[
@@ -108,44 +105,48 @@ SALES_LINEAGE = TableauFlowLineage(
             id="Table-orders",
             luid="orders",
             name="orders",
-            full_name="warehouse.public.orders",
+            full_name="[public].[orders]",
             schema_="public",
-            columns=[
-                TableauLineageColumn(id="order_id", name="order_id"),
-                TableauLineageColumn(id="customer_id", name="customer_id"),
-            ],
             database=TableauLineageDatabase(name="warehouse", connection_type="postgres"),
+            # Every custom SQL query on the site that reads `orders`, including
+            # ones in unrelated workbooks. A named table must not be expanded
+            # through them.
+            referenced_by_queries=[
+                TableauReferencedQuery(id="q-other", query="SELECT * FROM warehouse.public.payroll JOIN orders ON 1=1")
+            ],
         ),
         TableauLineageTable(
             id="Table-customers",
             luid="customers",
             name="customers",
-            full_name="warehouse.public.customers",
+            full_name="[public].[customers]",
             schema_="public",
             database=TableauLineageDatabase(name="warehouse"),
         ),
     ],
+    upstream_datasources=[
+        TableauPublishedDatasource(id="gql-ds-targets", luid="ds-targets", name="Sales Targets", project_name="Sales"),
+    ],
     output_steps=[
         TableauFlowOutputStep(id="Output-clean-sales", name="Clean Sales"),
     ],
-    output_fields=[
-        TableauFlowOutputField(
-            id="of-clean-order",
-            name="clean_order_id",
-            upstream_columns=[
-                TableauFlowUpstreamColumn(
-                    id="order_id",
-                    name="order_id",
-                    table=TableauLineageTable(id="Table-orders", name="orders"),
-                )
-            ],
+    downstream_tables=[
+        TableauLineageTable(
+            id="Table-sales-clean",
+            luid="sales-clean",
+            name="sales_clean",
+            full_name="[mart].[sales_clean]",
+            schema_="mart",
+            database=TableauLineageDatabase(name="warehouse", connection_type="postgres"),
         ),
     ],
-    downstream_flows=[
-        TableauDownstreamFlow(luid="flow-marketing", name="Marketing Prep Flow"),
-    ],
     downstream_datasources=[
-        TableauDownstreamDatasource(luid="ds-sales-published", name="Published Sales Datasource"),
+        TableauPublishedDatasource(
+            id="gql-ds-sales-published", luid="ds-sales-published", name="Published Sales Datasource"
+        ),
+    ],
+    next_downstream_flows=[
+        TableauLinkedFlow(id="gql-flow-marketing", luid="flow-marketing", name="Marketing Prep Flow"),
     ],
 )
 

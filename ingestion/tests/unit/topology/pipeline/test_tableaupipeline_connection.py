@@ -1,110 +1,148 @@
-"""
-Unit tests for the Tableau pipeline connection module — get_connection /
-test_connection wiring.
-"""
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Tableau pipeline connection handling and its test-connection checks."""
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from tableauserverclient.server.endpoint.exceptions import (
+    GraphQLError,
+    ServerResponseError,
+)
 
+from metadata.core.connections.lifetime import Borrowed
+from metadata.core.connections.test_connection import collect_checks
+from metadata.core.connections.test_connection.check import CheckError
+from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
+    TableauPipelineConnection as TableauPipelineConnectionConfig,
+)
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.pipeline.tableaupipeline import connection as conn_mod
+from metadata.ingestion.source.pipeline.tableaupipeline.connection import (
+    TABLEAU_PIPELINE_ERRORS,
+    TableauPipelineChecks,
+    TableauPipelineConnection,
+    get_connection,
+)
+from metadata.ingestion.source.pipeline.tableaupipeline.service_spec import ServiceSpec
+
+CONNECTION_MODULE = "metadata.ingestion.source.pipeline.tableaupipeline.connection"
+TEST_CONNECTION_DEFINITION = (
+    Path(__file__).parents[5]
+    / "openmetadata-service/src/main/resources/json/data/testConnections/pipeline/tableaupipeline.json"
+)
 
 
-class TestGetConnection:
-    def test_builds_client_with_auth_and_ssl(self):
-        fake_auth = object()
-        fake_verify = object()
-        fake_ssl = object()
-        fake_client = MagicMock()
-        connection = MagicMock()
-
-        with (
-            patch.object(conn_mod, "build_server_config", return_value=fake_auth) as mock_build,
-            patch.object(conn_mod, "set_verify_ssl", return_value=(fake_verify, fake_ssl)) as mock_ssl,
-            patch.object(conn_mod, "TableauPipelineClient", return_value=fake_client) as mock_client_ctor,
-        ):
-            result = conn_mod.get_connection(connection)
-
-        assert result is fake_client
-        mock_build.assert_called_once_with(connection)
-        mock_ssl.assert_called_once_with(connection)
-        mock_client_ctor.assert_called_once_with(
-            tableau_server_auth=fake_auth,
-            config=connection,
-            verify_ssl=fake_verify,
-            ssl_manager=fake_ssl,
-        )
-
-    def test_raises_source_connection_exception_on_client_failure(self):
-        host_port = "https://tab.example.com"
-        connection = MagicMock()
-        connection.type.value = "TableauPipeline"
-        connection.hostPort = host_port
-        original = RuntimeError("sign-in 401")
-
-        with (
-            patch.object(conn_mod, "build_server_config", return_value=object()),
-            patch.object(conn_mod, "set_verify_ssl", return_value=(None, None)),
-            patch.object(
-                conn_mod,
-                "TableauPipelineClient",
-                side_effect=original,
-            ),
-            pytest.raises(SourceConnectionException) as excinfo,
-        ):
-            conn_mod.get_connection(connection)
-
-        # Message should carry service type + host, not the whole connection
-        # object (which may include credentials in repr).
-        message = str(excinfo.value)
-        assert "TableauPipeline" in message
-        assert host_port in message
-        assert "sign-in 401" in message
-        # Exception chain must preserve the original traceback via __cause__
-        assert excinfo.value.__cause__ is original
+def _config(**overrides) -> TableauPipelineConnectionConfig:
+    return TableauPipelineConnectionConfig(
+        hostPort="https://tableau.example.com",
+        authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+        siteName="MarketingTeam",
+        **overrides,
+    )
 
 
-class TestTestConnection:
-    def test_wires_both_capability_steps(self):
-        metadata = MagicMock()
-        client = MagicMock()
-        service_connection = MagicMock()
-        service_connection.type.value = "TableauPipeline"
+@pytest.fixture
+def client():
+    return MagicMock()
 
-        with patch.object(conn_mod, "test_connection_steps") as mock_steps:
-            mock_steps.return_value = "result-sentinel"
-            result = conn_mod.test_connection(
-                metadata=metadata,
-                client=client,
-                service_connection=service_connection,
-            )
 
-        assert result == "result-sentinel"
-        call_kwargs = mock_steps.call_args.kwargs
-        assert call_kwargs["metadata"] is metadata
-        assert call_kwargs["service_type"] == "TableauPipeline"
-        assert call_kwargs["test_fn"] == {
-            "GetPipelines": client.test_get_flows,
-            "GetLineage": client.test_metadata_api,
-        }
+@pytest.fixture
+def checks(client):
+    return TableauPipelineChecks(server=Borrowed.of(client))
 
-    def test_passes_optional_automation_workflow_and_timeout(self):
-        metadata = MagicMock()
-        client = MagicMock()
-        service_connection = MagicMock()
-        service_connection.type.value = "TableauPipeline"
-        workflow = MagicMock()
 
-        with patch.object(conn_mod, "test_connection_steps") as mock_steps:
-            conn_mod.test_connection(
-                metadata=metadata,
-                client=client,
-                service_connection=service_connection,
-                automation_workflow=workflow,
-                timeout_seconds=42,
-            )
+def test_service_spec_uses_the_base_connection():
+    assert ServiceSpec.connection_class == f"{CONNECTION_MODULE}.TableauPipelineConnection"
+    assert issubclass(TableauPipelineConnection, BaseConnection)
 
-        call_kwargs = mock_steps.call_args.kwargs
-        assert call_kwargs["automation_workflow"] is workflow
-        assert call_kwargs["timeout_seconds"] == 42
+
+def test_every_definition_step_has_a_check():
+    """A step without a check is silently Skipped, so the JSON definition and the
+    provider must name the same steps."""
+    steps = {step["name"] for step in json.loads(TEST_CONNECTION_DEFINITION.read_text())["steps"]}
+    with patch(f"{CONNECTION_MODULE}.get_connection"):
+        resolved = collect_checks(TableauPipelineConnection(_config()).checks())
+
+    assert set(resolved) == {PipelineStep.GetPipelines, PipelineStep.GetRuns, PipelineStep.GetLineage}
+    assert steps == {step.value for step in resolved}
+
+
+def test_get_connection_signs_in_with_the_pat_and_ssl_mode():
+    with patch(f"{CONNECTION_MODULE}.TableauPipelineClient") as client_cls:
+        get_connection(_config(verifySSL="ignore"))
+
+    kwargs = client_cls.call_args.kwargs
+    assert kwargs["verify_ssl"] is False
+    assert kwargs["tableau_server_auth"].token_name == "pat"
+    assert kwargs["tableau_server_auth"].site_id == "MarketingTeam"
+
+
+def test_get_connection_wraps_client_failures():
+    with (
+        patch(f"{CONNECTION_MODULE}.TableauPipelineClient", side_effect=RuntimeError("boom")),
+        pytest.raises(SourceConnectionException, match="boom"),
+    ):
+        get_connection(_config())
+
+
+def test_closing_the_connection_signs_out():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as build:
+        conn = TableauPipelineConnection(_config())
+        _ = conn.client
+        conn.close()
+
+    build.return_value.sign_out.assert_called_once_with()
+
+
+def test_get_pipelines_counts_flows(checks, client):
+    client.test_get_flows.return_value = [MagicMock()]
+
+    evidence = checks.get_pipelines()
+
+    assert evidence.summary == "1 flow enumerated"
+    assert evidence.caveat is None
+
+
+def test_get_pipelines_caveats_a_site_with_no_flows(checks, client):
+    client.test_get_flows.return_value = []
+
+    assert checks.get_pipelines().caveat.title == "No Prep flows visible"
+
+
+def test_get_runs_caveats_flows_that_never_ran(checks, client):
+    client.test_get_flow_runs.return_value = []
+
+    assert checks.get_runs().caveat.title == "No flow runs visible"
+
+
+def test_get_lineage_reports_what_it_ran_when_it_fails(checks, client):
+    client.test_metadata_api.side_effect = GraphQLError([{"message": "disabled"}])
+
+    with pytest.raises(CheckError) as failure:
+        checks.get_lineage()
+
+    assert failure.value.evidence.command == "query flows through the Tableau Metadata API"
+
+
+def test_metadata_api_errors_are_diagnosed():
+    diagnosis = TABLEAU_PIPELINE_ERRORS.classify(GraphQLError([{"message": "disabled"}]))
+
+    assert diagnosis.title == "Metadata API query failed"
+
+
+def test_shared_tableau_auth_diagnosis_still_applies():
+    diagnosis = TABLEAU_PIPELINE_ERRORS.classify(ServerResponseError("401002", "Unauthorized", "bad token"))
+
+    assert diagnosis.title == "Authentication failed"

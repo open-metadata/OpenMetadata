@@ -15,7 +15,6 @@ Tableau Pipeline Source Model module
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -71,15 +70,6 @@ class TableauPipelineDetails(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
-class TableauLineageColumn(BaseModel):
-    """Column reference in a Tableau Metadata API lineage response."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: str | None = None
-    name: str | None = None
-
-
 class TableauReferencedQuery(BaseModel):
     """Custom SQL query referenced by an upstream DatabaseTable."""
 
@@ -109,25 +99,8 @@ class TableauLineageTable(BaseModel):
     name: str | None = None
     full_name: str | None = Field(default=None, alias="fullName")
     schema_: str | None = Field(default=None, alias="schema")
-    columns: list[TableauLineageColumn] = Field(default_factory=list)
     database: TableauLineageDatabase | None = None
     referenced_by_queries: list[TableauReferencedQuery] = Field(default_factory=list, alias="referencedByQueries")
-
-
-class TableauFlowUpstreamColumn(TableauLineageColumn):
-    """Upstream column referencing its source table, used for column-level lineage."""
-
-    table: TableauLineageTable | None = None
-
-
-class TableauFlowOutputField(BaseModel):
-    """Output field on a flow with its upstream columns."""
-
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    id: str | None = None
-    name: str | None = None
-    upstream_columns: list[TableauFlowUpstreamColumn] = Field(default_factory=list, alias="upstreamColumns")
 
 
 class TableauFlowOutputStep(BaseModel):
@@ -139,7 +112,7 @@ class TableauFlowOutputStep(BaseModel):
     name: str | None = None
 
 
-class TableauDownstreamFlow(BaseModel):
+class TableauLinkedFlow(BaseModel):
     """A flow that consumes this flow's output (cross-flow lineage)."""
 
     model_config = ConfigDict(extra="allow")
@@ -149,9 +122,11 @@ class TableauDownstreamFlow(BaseModel):
     name: str | None = None
 
 
-class TableauDownstreamDatasource(BaseModel):
-    """A datasource produced by this flow — typically a published
-    datasource consumed by Tableau workbooks/dashboards."""
+class TableauPublishedDatasource(BaseModel):
+    """A published datasource a flow reads from or writes to.
+
+    The dashboard Tableau connector names its DashboardDataModel after the
+    Metadata API ``id``, not the REST ``luid``, so ``id`` is the lookup key."""
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
@@ -170,17 +145,10 @@ class TableauFlowLineage(BaseModel):
     luid: str | None = None
     name: str | None = None
     upstream_tables: list[TableauLineageTable] = Field(default_factory=list, alias="upstreamTables")
+    upstream_datasources: list[TableauPublishedDatasource] = Field(default_factory=list, alias="upstreamDatasources")
     output_steps: list[TableauFlowOutputStep] = Field(default_factory=list, alias="outputSteps")
-    output_fields: list[TableauFlowOutputField] = Field(default_factory=list, alias="outputFields")
-    downstream_flows: list[TableauDownstreamFlow] = Field(default_factory=list, alias="downstreamFlows")
-    downstream_datasources: list[TableauDownstreamDatasource] = Field(
+    downstream_tables: list[TableauLineageTable] = Field(default_factory=list, alias="downstreamTables")
+    downstream_datasources: list[TableauPublishedDatasource] = Field(
         default_factory=list, alias="downstreamDatasources"
     )
-
-
-class TableauFlowLineageResponse(BaseModel):
-    """Top-level wrapper for the GraphQL response of the flow lineage query."""
-
-    model_config = ConfigDict(extra="allow")
-
-    data: dict[str, Any] | None = None
+    next_downstream_flows: list[TableauLinkedFlow] = Field(default_factory=list, alias="nextDownstreamFlows")

@@ -1,5 +1,17 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """
 Pytest-style tests for the Tableau pipeline connector.
+
+Lineage edges are exercised end to end in tests/integration/tableaupipeline.
 """
 
 from datetime import datetime, timezone
@@ -26,17 +38,13 @@ from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
     TableaupipelineSource,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-    TableauDownstreamDatasource,
-    TableauDownstreamFlow,
     TableauFlowLineage,
-    TableauFlowOutputField,
     TableauFlowOutputStep,
     TableauFlowRunItem,
-    TableauFlowUpstreamColumn,
     TableauLineageDatabase,
     TableauLineageTable,
     TableauPipelineDetails,
-    TableauReferencedQuery,
+    TableauPublishedDatasource,
     TableauTaskType,
 )
 
@@ -270,6 +278,17 @@ class TestNodeLevelTasks:
         for t in input_tasks:
             assert t.downstreamTasks == ["flow-abc-123"]
 
+    def test_published_datasource_inputs_become_input_tasks(self, source, mock_conn):
+        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
+            id="flow-abc-123",
+            upstream_datasources=[TableauPublishedDatasource(id="ds-1", name="Targets", project_name="Sales")],
+        )
+        tasks = source._get_tasks(PIPELINE_DETAILS)
+        inputs = [t for t in tasks if t.taskType == "FlowInput"]
+        assert [t.displayName for t in inputs] == ["Targets"]
+        assert inputs[0].downstreamTasks == ["flow-abc-123"]
+        assert "Sales" in inputs[0].description.root
+
     def test_sanitizes_opaque_ids(self, source, mock_conn):
         mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
             id="flow-abc-123",
@@ -311,6 +330,18 @@ class TestYieldPipelineStatus:
         status = results[0].right.pipeline_status
         assert len(status.taskStatus) == 3
         assert {ts.executionStatus.value for ts in status.taskStatus} == {"Successful"}
+        assert status.timestamp.root == _expected_ms(FLOW_RUN_STARTED)
+        assert status.endTime.root == _expected_ms(FLOW_RUN_COMPLETED)
+        assert status.executionId == "run-001"
+
+    def test_in_progress_run_is_keyed_on_its_start(self, source, mock_conn):
+        mock_conn.get_flow_runs.return_value = [
+            TableauFlowRunItem(id="run-live", status="InProgress", started_at=FLOW_RUN_STARTED)
+        ]
+        status = next(iter(source.yield_pipeline_status(PIPELINE_DETAILS))).right.pipeline_status
+        assert status.timestamp.root == _expected_ms(FLOW_RUN_STARTED)
+        assert status.endTime is None
+        assert status.executionStatus.value == "Pending"
 
     def test_empty_runs(self, source, mock_conn):
         mock_conn.get_flow_runs.return_value = []
@@ -345,49 +376,6 @@ class TestLineage:
         mock_conn.get_flow_lineage.return_value = None
         assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
 
-    def test_upstream_resolved_with_column_lineage(self, source, mock_conn):
-        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
-            id="flow-abc-123",
-            upstream_tables=[
-                TableauLineageTable(
-                    id="Tabl-1",
-                    name="orders",
-                    full_name="sales.public.orders",
-                    schema_="public",
-                    database=TableauLineageDatabase(name="sales"),
-                )
-            ],
-            output_fields=[
-                TableauFlowOutputField(
-                    id="o1",
-                    name="order_id_clean",
-                    upstream_columns=[
-                        TableauFlowUpstreamColumn(
-                            id="c1",
-                            name="order_id",
-                            table=TableauLineageTable(id="Tabl-1", name="orders"),
-                        )
-                    ],
-                )
-            ],
-        )
-        table_uuid, pipeline_uuid = uuid4(), uuid4()
-        table_entity = MagicMock()
-        table_entity.id = Uuid(root=table_uuid)
-        pipeline_entity = MagicMock()
-        pipeline_entity.id = Uuid(root=pipeline_uuid)
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.return_value = pipeline_entity
-        source.metadata.search_in_any_service.return_value = table_entity
-
-        results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
-        rights = [r for r in results if r.right is not None]
-        assert len(rights) >= 1
-        edge = rights[0].right.edge
-        assert str(edge.fromEntity.id.root) == str(table_uuid)
-        assert str(edge.toEntity.id.root) == str(pipeline_uuid)
-        assert edge.lineageDetails.columnsLineage is not None
-
     def test_pipeline_entity_missing(self, source, mock_conn):
         mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
             id="flow-abc-123",
@@ -397,85 +385,27 @@ class TestLineage:
         source.metadata.get_by_name.return_value = None
         assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
 
-    def test_upstream_unresolved(self, source, mock_conn):
+    def test_a_failing_reference_does_not_drop_the_rest(self, source, mock_conn):
         mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
             id="flow-abc-123",
-            upstream_tables=[TableauLineageTable(id="Tabl-3", name="missing")],
+            upstream_tables=[TableauLineageTable(id="Tabl-1", name="orders")],
+            downstream_datasources=[TableauPublishedDatasource(id="ds-1", name="Sales")],
         )
         pipeline_entity = MagicMock()
         pipeline_entity.id = Uuid(root=uuid4())
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.return_value = pipeline_entity
-        source.metadata.search_in_any_service.return_value = None
-        assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
-
-    def test_downstream_flow_edge(self, source, mock_conn):
-        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
-            id="flow-abc-123",
-            upstream_tables=[],
-            downstream_flows=[TableauDownstreamFlow(luid="flow-xyz", name="Next Flow")],
-        )
-        pipeline_uuid, downstream_uuid = uuid4(), uuid4()
-        this_pipeline = MagicMock()
-        this_pipeline.id = Uuid(root=pipeline_uuid)
-        downstream = MagicMock()
-        downstream.id = Uuid(root=downstream_uuid)
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.side_effect = [this_pipeline, downstream]
-        results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
-        rights = [r for r in results if r.right is not None]
-        assert len(rights) == 1
-        edge = rights[0].right.edge
-        assert edge.fromEntity.type == "pipeline"
-        assert edge.toEntity.type == "pipeline"
-        assert str(edge.toEntity.id.root) == str(downstream_uuid)
-
-    def test_downstream_datasource_edge(self, source, mock_conn):
-        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
-            id="flow-abc-123",
-            upstream_tables=[],
-            downstream_datasources=[TableauDownstreamDatasource(luid="datasource-xyz", name="Sales Datasource")],
-        )
-        pipeline_uuid, dm_uuid = uuid4(), uuid4()
-        this_pipeline = MagicMock()
-        this_pipeline.id = Uuid(root=pipeline_uuid)
         datamodel = MagicMock()
-        datamodel.id = Uuid(root=dm_uuid)
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.return_value = this_pipeline
-        source.metadata.es_search_from_fqn.return_value = [datamodel]
-        results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
-        rights = [r for r in results if r.right is not None]
-        assert len(rights) == 1
-        assert rights[0].right.edge.toEntity.type == "dashboardDataModel"
-
-    def test_custom_sql_parsing(self, source, mock_conn):
-        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
-            id="flow-abc-123",
-            upstream_tables=[
-                TableauLineageTable(
-                    id="Tabl-1",
-                    name="",
-                    referenced_by_queries=[
-                        TableauReferencedQuery(
-                            id="q1",
-                            query="SELECT a, b FROM sales.public.orders JOIN sales.public.customers ON a = b",
-                        )
-                    ],
-                )
-            ],
-        )
-        table_uuid, pipeline_uuid = uuid4(), uuid4()
-        table_entity = MagicMock()
-        table_entity.id = Uuid(root=table_uuid)
-        pipeline_entity = MagicMock()
-        pipeline_entity.id = Uuid(root=pipeline_uuid)
+        datamodel.id = Uuid(root=uuid4())
         source.metadata = MagicMock()
         source.metadata.get_by_name.return_value = pipeline_entity
-        source.metadata.search_in_any_service.return_value = table_entity
+        source.metadata.search_in_any_service.side_effect = RuntimeError("search down")
+        source.metadata.es_search_from_fqn.side_effect = lambda entity_type, **_: (
+            [datamodel] if entity_type.__name__ == "DashboardDataModel" else None
+        )
+
         results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
-        rights = [r for r in results if r.right is not None]
-        assert len(rights) >= 1
+
+        assert [r.left.name for r in results if r.left] == ["Lineage"]
+        assert [r.right.edge.toEntity.type for r in results if r.right] == ["dashboardDataModel"]
 
 
 class TestOwners:
@@ -487,6 +417,11 @@ class TestOwners:
         result = source.get_owners(PIPELINE_DETAILS)
         assert result is owners_ref
         source.metadata.get_reference_by_email.assert_called_once_with(email="alice@example.com", is_owner=True)
+
+    def test_include_owners_off_skips_the_lookup(self, source, mock_conn):
+        source.source_config.includeOwners = False
+        assert source.get_owners(PIPELINE_DETAILS) is None
+        mock_conn.get_user_email.assert_not_called()
 
     def test_no_owner_id_returns_none(self, source):
         result = source.get_owners(PIPELINE_DETAILS_MIN)
@@ -577,9 +512,6 @@ class TestTaskHelpers:
         assert TableaupipelineSource._unique_name("input_bar", set()) == "input_bar"
 
     def test_input_task_description_includes_source_and_connection(self):
-        from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-            TableauLineageDatabase,
-        )
 
         upstream = TableauLineageTable(
             id="Tabl-1",
@@ -587,8 +519,7 @@ class TestTaskHelpers:
             full_name="warehouse.public.orders",
             database=TableauLineageDatabase(name="warehouse", connection_type="postgres"),
         )
-        desc = TableaupipelineSource._input_task_description(upstream)
-        assert desc is not None
+        desc = TableaupipelineSource._input_task_description(upstream).root
         assert "warehouse.public.orders" in desc
         assert "postgres" in desc
 
@@ -618,67 +549,23 @@ class TestTaskHelpers:
 
 
 class TestLineageEdgeCases:
-    def test_downstream_flow_edge_skips_when_not_found(self, source, mock_conn):
-        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
-            id="flow-abc-123",
-            upstream_tables=[],
-            downstream_flows=[
-                TableauDownstreamFlow(luid="flow-missing", name="Next"),
-            ],
-        )
-        this_pipeline = MagicMock()
-        this_pipeline.id = Uuid(root=uuid4())
-        source.metadata = MagicMock()
-        # first get_by_name returns this pipeline, second returns None (downstream missing)
-        source.metadata.get_by_name.side_effect = [this_pipeline, None]
-
-        results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
-        rights = [r for r in results if r.right is not None]
-        assert rights == []
-
-    def test_downstream_flow_edge_skips_when_id_blank(self, source, mock_conn):
-        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
-            id="flow-abc-123",
-            upstream_tables=[],
-            downstream_flows=[TableauDownstreamFlow()],  # no luid / id
-        )
-        this_pipeline = MagicMock()
-        this_pipeline.id = Uuid(root=uuid4())
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.return_value = this_pipeline
-
-        results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
-        assert [r for r in results if r.right is not None] == []
-
-    def test_downstream_datasource_skips_when_id_blank(self, source, mock_conn):
-        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
-            id="flow-abc-123",
-            upstream_tables=[],
-            downstream_datasources=[TableauDownstreamDatasource()],
-        )
-        this_pipeline = MagicMock()
-        this_pipeline.id = Uuid(root=uuid4())
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.return_value = this_pipeline
-
-        results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
-        assert [r for r in results if r.right is not None] == []
-
-    def test_lookup_datamodel_by_id_no_matches(self, source):
+    def test_lookup_datamodel_no_matches(self, source):
         source.metadata = MagicMock()
         source.metadata.es_search_from_fqn.return_value = []
-        assert source._lookup_datamodel_by_id("missing") is None
+        assert source._lookup_datamodel(TableauPublishedDatasource(id="missing")) is None
 
-    def test_lookup_datamodel_by_id_on_exception(self, source):
+    def test_lookup_datamodel_on_exception(self, source):
         source.metadata = MagicMock()
         source.metadata.es_search_from_fqn.side_effect = RuntimeError("ES down")
-        assert source._lookup_datamodel_by_id("anything") is None
+        assert source._lookup_datamodel(TableauPublishedDatasource(id="anything")) is None
+
+    def test_lookup_datamodel_without_id(self, source):
+        source.metadata = MagicMock()
+        assert source._lookup_datamodel(TableauPublishedDatasource(luid="only-luid")) is None
+        source.metadata.es_search_from_fqn.assert_not_called()
 
     def test_resolve_upstream_with_db_service_names(self, source, mock_conn):
         """Exercises the db_service_names loop in _resolve_table_entity."""
-        from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-            TableauLineageDatabase,
-        )
 
         source.source_config = MagicMock()
         source.source_config.lineageInformation = MagicMock()
@@ -799,50 +686,8 @@ class TestExceptionPaths:
         # All runs skipped — no statuses, but no errors either
         assert results == []
 
-    def test_build_column_lineage_skips_malformed_output_fields(self, source):
-        """Covers the continue branches in _build_column_lineage_index."""
-        from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-            TableauFlowOutputField,
-            TableauFlowUpstreamColumn,
-        )
-
-        lineage = TableauFlowLineage(
-            id="flow",
-            output_fields=[
-                TableauFlowOutputField(id="f1", name=None),  # no name → skip
-                TableauFlowOutputField(
-                    id="f2",
-                    name="out",
-                    upstream_columns=[
-                        TableauFlowUpstreamColumn(name=None),  # no col name
-                        TableauFlowUpstreamColumn(name="col", table=None),  # no table
-                    ],
-                ),
-                TableauFlowOutputField(
-                    id="f3",
-                    name="out2",
-                    upstream_columns=[
-                        TableauFlowUpstreamColumn(
-                            name="a",
-                            table=TableauLineageTable(id="t1", name="x"),
-                        ),
-                        TableauFlowUpstreamColumn(
-                            name="a",  # duplicate (a, out2) → dedup continue
-                            table=TableauLineageTable(id="t1", name="x"),
-                        ),
-                    ],
-                ),
-            ],
-        )
-        idx = source._build_column_lineage_index(lineage)
-        assert "t1" in idx
-        assert len(idx["t1"]) == 1  # deduplicated
-
     def test_input_task_name_no_id(self):
-        task_name = TableaupipelineSource._input_task_name(
-            TableauLineageTable(),  # no id, luid, or name
-            set(),
-        )
+        task_name = TableaupipelineSource._input_task_name(None, set())
         assert task_name is None
 
     def test_output_task_name_no_id(self):
@@ -874,13 +719,5 @@ class TestCloseLifecycle:
     def test_close_swallows_signout_errors(self, source, mock_conn):
         source.metadata = MagicMock()
         mock_conn.sign_out.side_effect = RuntimeError("offline")
-        # Should not raise
-        source.close()
 
-    def test_close_without_connection_attribute(self, source):
-        source.metadata = MagicMock()
-        # Simulate partial init where connection was never set
-        if hasattr(source, "connection"):
-            del source.connection
-        # Should not raise
         source.close()

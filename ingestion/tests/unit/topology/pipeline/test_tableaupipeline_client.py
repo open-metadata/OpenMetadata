@@ -1,510 +1,355 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """
-Unit tests for TableauPipelineClient — streaming flow-run cache,
-user-email cache, metadata API calls, and lifecycle.
+TableauPipelineClient against a fake Tableau at the HTTP transport.
+
+Only ``HTTPAdapter.send`` is replaced, so tableauserverclient builds every
+request, parses every XML body and drives ``Pager`` exactly as it would against
+a real server. Bodies follow the REST and Metadata API reference examples.
 """
 
-from datetime import datetime, timezone
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+import json
+import logging
+from urllib.parse import parse_qs, urlparse
 
 import pytest
+import requests
+from requests.adapters import HTTPAdapter
+from tableauserverclient import PersonalAccessTokenAuth
+from tableauserverclient.server.endpoint.exceptions import (
+    GraphQLError,
+    ServerResponseError,
+)
+
+from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
+    TableauPipelineConnection,
+)
+from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauPipelineClient,
+)
+
+HOST = "https://tableau.example.com"
+SITE_ID = "site-luid"
+NS = 'xmlns="http://tableau.com/api"'
+
+SERVER_INFO = f"""<tsResponse {NS}><serverInfo>
+<productVersion build="20241.24.0312.0830">2024.1.0</productVersion>
+<restApiVersion>3.22</restApiVersion></serverInfo></tsResponse>"""
+
+SIGN_IN = f"""<tsResponse {NS}><credentials token="token">
+<site id="{SITE_ID}" contentUrl="MarketingTeam"/><user id="api-user"/></credentials></tsResponse>"""
 
 
-def _make_run(run_id, flow_id, started):
-    return SimpleNamespace(
-        id=run_id,
-        flow_id=flow_id,
-        status="Success",
-        started_at=started,
-        completed_at=started,
-        progress=None,
+def _flow_xml(flow_id: str, name: str) -> str:
+    return (
+        f'<flow id="{flow_id}" name="{name}" description="{name} flow" '
+        f'webpageUrl="{HOST}/#/site/MarketingTeam/flows/{flow_id}" '
+        'createdAt="2025-01-01T00:00:00Z" updatedAt="2025-01-02T00:00:00Z">'
+        '<project id="project-1" name="Finance"/><owner id="owner-1"/>'
+        '<tags><tag label="pii"/><tag label="finance"/></tags></flow>'
     )
 
 
-def _fake_pager(runs):
-    """Stand-in for tableauserverclient.Pager — yields runs and exposes iter()."""
-
-    def ctor(endpoint, *_, **__):
-        return iter(runs)
-
-    return ctor
+def _flows_page(page: int, total: int, flows: list[str]) -> str:
+    return (
+        f'<tsResponse {NS}><pagination pageNumber="{page}" pageSize="1" totalAvailable="{total}"/>'
+        f"<flows>{''.join(flows)}</flows></tsResponse>"
+    )
 
 
-def _make_client(runs, number_of_status=3):
-    from metadata.ingestion.source.pipeline.tableaupipeline import client as client_mod
-
-    with patch.object(client_mod, "Pager", side_effect=_fake_pager(runs)), patch.object(client_mod, "Server"):
-        cfg = SimpleNamespace(
-            hostPort="https://tableau.example.com",
-            apiVersion=None,
-            numberOfStatus=number_of_status,
-        )
-        instance = client_mod.TableauPipelineClient.__new__(client_mod.TableauPipelineClient)
-        instance.tableau_server = MagicMock()
-        instance.config = cfg
-        instance.ssl_manager = None
-        instance.number_of_status = number_of_status
-        instance._runs_by_flow = {}
-        instance._runs_iter = None
-        instance._runs_iter_exhausted = False
-        instance._runs_scanned = 0
-        instance._user_email_cache = {}
-        return instance, client_mod
+def _run_xml(run_id: str, started: str, status: str = "Success") -> str:
+    return (
+        f'<flowRuns id="{run_id}" flowId="flow-1" status="{status}" startedAt="{started}" '
+        f'completedAt="{started[:-1]}5Z" progress="100" backgroundJobId="job-{run_id}"/>'
+    )
 
 
-BASE_TIME = datetime(2025, 1, 1, tzinfo=timezone.utc)
+def _runs(*runs: str) -> str:
+    return (
+        f'<tsResponse {NS}><pagination pageNumber="1" pageSize="100" totalAvailable="{len(runs)}"/>'
+        f"<flowRuns>{''.join(runs)}</flowRuns></tsResponse>"
+    )
 
 
-class TestStreamingFlowRuns:
-    def test_early_exit_when_flow_has_enough_runs(self):
-        runs = [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(5)] + [
-            _make_run(f"b-{i}", "flow-b", BASE_TIME) for i in range(5)
+def _error(code: str) -> str:
+    return (
+        f'<tsResponse {NS}><error code="{code}"><summary>Bad Request</summary>'
+        "<detail>sort is not supported</detail></error></tsResponse>"
+    )
+
+
+class FakeTableau:
+    """Answers TSC's HTTP calls from canned bodies and records every request."""
+
+    def __init__(self):
+        self.requests: list[requests.PreparedRequest] = []
+        self.flow_pages = [
+            _flows_page(1, 2, [_flow_xml("flow-1", "Sales")]),
+            _flows_page(2, 2, [_flow_xml("flow-2", "Ops")]),
         ]
-        instance, client_mod = _make_client(runs, number_of_status=3)
+        self.runs_response: tuple[int, str] = (200, _runs())
+        self.unsorted_runs_response: tuple[int, str] | None = None
+        self.users: dict[str, str] = {}
+        self.graphql_response: dict = {"data": {"flows": []}}
 
-        with patch.object(client_mod, "Pager", return_value=iter(runs)):
-            result = instance.get_flow_runs("flow-a")
-
-        assert len(result) == 3
-        assert instance._runs_scanned == 3
-        assert not instance._runs_iter_exhausted
-
-    def test_subsequent_call_continues_stream_without_restart(self):
-        runs = [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(3)] + [
-            _make_run(f"b-{i}", "flow-b", BASE_TIME) for i in range(3)
-        ]
-        instance, client_mod = _make_client(runs, number_of_status=3)
-
-        with patch.object(client_mod, "Pager", return_value=iter(runs)):
-            first = instance.get_flow_runs("flow-a")
-            second = instance.get_flow_runs("flow-b")
-
-        assert len(first) == 3
-        assert len(second) == 3
-        assert instance._runs_scanned == 6
-
-    def test_interleaved_runs_stop_at_enough(self):
-        runs = []
-        for i in range(3):
-            runs.append(_make_run(f"a-{i}", "flow-a", BASE_TIME))
-            runs.append(_make_run(f"b-{i}", "flow-b", BASE_TIME))
-        instance, client_mod = _make_client(runs, number_of_status=2)
-
-        with patch.object(client_mod, "Pager", return_value=iter(runs)):
-            result = instance.get_flow_runs("flow-a")
-
-        assert len(result) == 2
-        assert instance._runs_scanned <= 4
-
-    def test_exhausted_iterator_is_sticky(self):
-        runs = [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(2)]
-        instance, client_mod = _make_client(runs, number_of_status=10)
-
-        with patch.object(client_mod, "Pager", return_value=iter(runs)):
-            first = instance.get_flow_runs("flow-a")
-
-        assert len(first) == 2
-        assert instance._runs_iter_exhausted
-
-        with patch.object(client_mod, "Pager", return_value=iter([])) as pager:
-            second = instance.get_flow_runs("flow-never-seen")
-            assert second == []
-            pager.assert_not_called()
-
-    def test_hard_limit_stops_traversal(self):
-        from metadata.ingestion.source.pipeline.tableaupipeline import (
-            client as client_mod,
-        )
-
-        runs = [
-            _make_run(f"x-{i}", f"flow-{i % 100}", BASE_TIME) for i in range(client_mod.MAX_FLOW_RUNS_HARD_LIMIT + 50)
-        ]
-        instance, _ = _make_client(runs, number_of_status=5)
-
-        with patch.object(client_mod, "Pager", return_value=iter(runs)):
-            result = instance.get_flow_runs("flow-999999-not-present")
-
-        assert result == []
-        assert instance._runs_iter_exhausted
-        assert instance._runs_scanned == client_mod.MAX_FLOW_RUNS_HARD_LIMIT
-
-    def test_cleared_cache_reuses_new_stream(self):
-        runs_1 = [_make_run(f"a-{i}", "flow-a", BASE_TIME) for i in range(3)]
-        runs_2 = [_make_run(f"b-{i}", "flow-b", BASE_TIME) for i in range(3)]
-        instance, client_mod = _make_client(runs_1, number_of_status=3)
-
-        with patch.object(client_mod, "Pager", return_value=iter(runs_1)):
-            first = instance.get_flow_runs("flow-a")
-        assert len(first) == 3
-
-        instance.clear_flow_runs_cache()
-        assert instance._runs_by_flow == {}
-        assert instance._runs_iter is None
-        assert not instance._runs_iter_exhausted
-
-        with patch.object(client_mod, "Pager", return_value=iter(runs_2)):
-            second = instance.get_flow_runs("flow-b")
-        assert len(second) == 3
-
-    def test_normalizes_non_string_flow_id(self):
-        """Tableau's SDK occasionally surfaces UUID-like flow_id objects.
-        The cache must key on the string form so str-keyed get_flow_runs
-        calls hit the cache instead of missing silently."""
-
-        class FlowIdLike:
-            def __init__(self, value):
-                self.value = value
-
-            def __str__(self):
-                return self.value
-
-            def __bool__(self):
-                return bool(self.value)
-
-        runs = [
-            SimpleNamespace(
-                id="a-1",
-                flow_id=FlowIdLike("flow-a"),
-                status="Success",
-                started_at=BASE_TIME,
-                completed_at=BASE_TIME,
-                progress=None,
+    def send(self, request: requests.PreparedRequest, **_kwargs) -> requests.Response:
+        self.requests.append(request)
+        path = urlparse(request.url).path
+        query = parse_qs(urlparse(request.url).query)
+        status, body, content_type = 200, "", "text/xml"
+        if path.endswith("/serverInfo"):
+            body = SERVER_INFO
+        elif path.endswith("/auth/signin"):
+            body = SIGN_IN
+        elif path.endswith("/auth/signout"):
+            status = 204
+        elif path.endswith("/flows/runs"):
+            status, body = (
+                self.unsorted_runs_response
+                if "sort" not in query and self.unsorted_runs_response
+                else self.runs_response
             )
-        ]
-        instance, client_mod = _make_client(runs, number_of_status=5)
-        with patch.object(client_mod, "Pager", return_value=iter(runs)):
-            result = instance.get_flow_runs("flow-a")
-
-        assert len(result) == 1
-        assert result[0].flow_id == "flow-a"  # normalized to str
-        # Cache must be keyed on the string form, not the FlowIdLike object
-        assert "flow-a" in instance._runs_by_flow
-
-    def test_runs_without_flow_id_are_skipped(self):
-        runs = [
-            _make_run("a-1", "flow-a", BASE_TIME),
-            _make_run("orphan", None, BASE_TIME),
-            _make_run("a-2", "flow-a", BASE_TIME),
-        ]
-        instance, client_mod = _make_client(runs, number_of_status=5)
-        with patch.object(client_mod, "Pager", return_value=iter(runs)):
-            result = instance.get_flow_runs("flow-a")
-        assert len(result) == 2
-        assert {r.id for r in result} == {"a-1", "a-2"}
-
-
-class TestGetPipelines:
-    def test_get_pipelines_propagates_flow_fields(self):
-        instance, _ = _make_client([], number_of_status=10)
-        from metadata.ingestion.source.pipeline.tableaupipeline.models import (
-            TableauFlowItem,
-        )
-
-        flow = TableauFlowItem(
-            id="flow-1",
-            name="My Flow",
-            description="Cleans data",
-            project_name="Sales",
-            owner_id="user-1",
-            webpage_url="https://tab/#/flow-1",
-            tags=["daily", "sales"],
-        )
-        with patch.object(instance, "get_flows", return_value=iter([flow])):
-            pipelines = list(instance.get_pipelines())
-        assert len(pipelines) == 1
-        p = pipelines[0]
-        assert p.id == "flow-1"
-        assert p.name == "flow-1"
-        assert p.display_name == "My Flow"
-        assert p.description == "Cleans data"
-        assert p.project_name == "Sales"
-        assert p.owner_id == "user-1"
-        assert p.webpage_url == "https://tab/#/flow-1"
-        assert p.tags == ["daily", "sales"]
-
-
-class TestGetFlows:
-    def test_get_flows_yields_shape(self):
-        instance, client_mod = _make_client([], number_of_status=10)
-        raw_flow = SimpleNamespace(
-            id="abc-123",
-            name="Flow Name",
-            description="Desc",
-            project_id="proj-1",
-            project_name="My Project",
-            owner_id="user-x",
-            webpage_url="https://tab/#/flow",
-            created_at=BASE_TIME,
-            updated_at=BASE_TIME,
-            tags={"b", "a"},
-        )
-        with patch.object(client_mod, "Pager", return_value=iter([raw_flow])):
-            items = list(instance.get_flows())
-        assert len(items) == 1
-        item = items[0]
-        assert item.id == "abc-123"
-        assert item.owner_id == "user-x"
-        assert item.project_id == "proj-1"
-        # tags sorted
-        assert item.tags == ["a", "b"]
-
-    def test_get_flows_handles_none_ids_and_missing_tags(self):
-        instance, client_mod = _make_client([], number_of_status=10)
-        raw_flow = SimpleNamespace(
-            id="abc-123",
-            name="Flow Name",
-            description=None,
-            project_id=None,
-            project_name=None,
-            owner_id=None,
-            webpage_url=None,
-            created_at=None,
-            updated_at=None,
-        )
-        with patch.object(client_mod, "Pager", return_value=iter([raw_flow])):
-            items = list(instance.get_flows())
-        assert items[0].project_id is None
-        assert items[0].owner_id is None
-        assert items[0].tags == []
-
-
-class TestGetUserEmail:
-    def test_resolves_and_caches(self):
-        instance, _ = _make_client([], number_of_status=10)
-        mock_users = MagicMock()
-        mock_users.get_by_id.return_value = SimpleNamespace(email="alice@example.com", name="alice")
-        instance.tableau_server.users = mock_users
-
-        first = instance.get_user_email("user-1")
-        second = instance.get_user_email("user-1")
-
-        assert first == "alice@example.com"
-        assert second == "alice@example.com"
-        # Second call must be a cache hit
-        mock_users.get_by_id.assert_called_once_with("user-1")
-
-    def test_falls_back_to_name_when_email_missing(self):
-        instance, _ = _make_client([], number_of_status=10)
-        mock_users = MagicMock()
-        mock_users.get_by_id.return_value = SimpleNamespace(email=None, name="alice")
-        instance.tableau_server.users = mock_users
-
-        assert instance.get_user_email("user-1") == "alice"
-
-    def test_returns_none_on_api_error(self):
-        instance, _ = _make_client([], number_of_status=10)
-        mock_users = MagicMock()
-        mock_users.get_by_id.side_effect = RuntimeError("403 forbidden")
-        instance.tableau_server.users = mock_users
-
-        assert instance.get_user_email("user-1") is None
-        assert instance._user_email_cache["user-1"] is None
-
-    def test_empty_user_id_returns_none(self):
-        instance, _ = _make_client([], number_of_status=10)
-        assert instance.get_user_email("") is None
-        assert instance.get_user_email(None) is None
-
-
-class TestConnectionTests:
-    def test_test_get_flows_calls_api_with_pagesize_1(self):
-        instance, _ = _make_client([], number_of_status=10)
-        mock_flows = MagicMock()
-        instance.tableau_server.flows = mock_flows
-
-        instance.test_get_flows()
-
-        mock_flows.get.assert_called_once()
-        req_options = mock_flows.get.call_args[0][0]
-        assert req_options.pagesize == 1
-
-    def test_test_metadata_api_invokes_graphql(self):
-        instance, _ = _make_client([], number_of_status=10)
-        mock_metadata = MagicMock()
-        instance.tableau_server.metadata = mock_metadata
-
-        instance.test_metadata_api()
-
-        mock_metadata.query.assert_called_once()
-        query = mock_metadata.query.call_args.kwargs.get("query") or mock_metadata.query.call_args[0][0]
-        assert "serverInfo" in query
-
-
-class TestGetFlowLineage:
-    def _mk_metadata(self, payload=None, raises=None):
-        mock_metadata = MagicMock()
-        if raises is not None:
-            mock_metadata.query.side_effect = raises
+        elif path.endswith("/flows"):
+            body = self.flow_pages[int(query.get("pageNumber", ["1"])[0]) - 1]
+        elif "/users/" in path:
+            body = self.users[path.rsplit("/", 1)[-1]]
+        elif path.endswith("/api/metadata/graphql"):
+            body, content_type = json.dumps(self.graphql_response), "application/json"
         else:
-            mock_metadata.query.return_value = payload
-        return mock_metadata
+            raise AssertionError(f"Unexpected Tableau call {request.method} {request.url}")
 
-    def test_success_returns_parsed_lineage(self):
-        instance, _ = _make_client([], number_of_status=10)
-        payload = {
-            "data": {
-                "flows": [
-                    {
-                        "id": "flow-1",
-                        "luid": "flow-1",
-                        "name": "My Flow",
-                        "upstreamTables": [
-                            {
-                                "id": "Table-1",
-                                "name": "orders",
-                                "fullName": "db.schema.orders",
-                            }
-                        ],
-                        "outputSteps": [{"id": "Out-1", "name": "Out"}],
-                    }
-                ]
-            }
+        response = requests.Response()
+        response.status_code = status
+        response._content = body.encode()
+        response.headers["Content-Type"] = content_type
+        response.url = request.url
+        response.request = request
+        return response
+
+    def calls_to(self, suffix: str) -> list[requests.PreparedRequest]:
+        return [r for r in self.requests if urlparse(r.url).path.endswith(suffix)]
+
+
+@pytest.fixture
+def tableau(monkeypatch):
+    fake = FakeTableau()
+    monkeypatch.setattr(HTTPAdapter, "send", fake.send)
+    return fake
+
+
+def _client(number_of_status: int = 2) -> TableauPipelineClient:
+    config = TableauPipelineConnection(
+        hostPort=HOST,
+        authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+        siteName="MarketingTeam",
+        numberOfStatus=number_of_status,
+    )
+    return TableauPipelineClient(
+        tableau_server_auth=PersonalAccessTokenAuth("pat", "secret", site_id="MarketingTeam"),
+        config=config,
+        verify_ssl=True,
+    )
+
+
+class TestFlows:
+    def test_pages_through_every_flow(self, tableau):
+        flows = list(_client().get_flows())
+
+        assert [flow.id for flow in flows] == ["flow-1", "flow-2"]
+        assert len(tableau.calls_to("/flows")) == 2
+        sales = flows[0]
+        assert sales.name == "Sales"
+        assert sales.project_name == "Finance"
+        assert sales.owner_id == "owner-1"
+        assert sales.tags == ["finance", "pii"]
+        assert sales.webpage_url == f"{HOST}/#/site/MarketingTeam/flows/flow-1"
+
+    def test_pipelines_are_named_after_the_flow_id(self, tableau):
+        pipelines = list(_client().get_pipelines())
+
+        assert [(p.name, p.display_name) for p in pipelines] == [("flow-1", "Sales"), ("flow-2", "Ops")]
+
+
+class TestFlowRuns:
+    def test_requests_the_newest_runs_of_one_flow(self, tableau):
+        tableau.runs_response = (
+            200,
+            _runs(_run_xml("run-new", "2025-03-02T10:00:00Z"), _run_xml("run-old", "2025-03-01T10:00:00Z")),
+        )
+
+        runs = _client(number_of_status=2).get_flow_runs("flow-1")
+
+        query = parse_qs(urlparse(tableau.calls_to("/flows/runs")[0].url).query)
+        assert query["filter"] == ["flowId:eq:flow-1"]
+        assert query["sort"] == ["startedAt:desc"]
+        assert query["pageSize"] == ["2"]
+        assert [run.id for run in runs] == ["run-new", "run-old"]
+        assert runs[0].status == "Success"
+        assert runs[0].flow_id == "flow-1"
+        assert runs[0].started_at.isoformat() == "2025-03-02T10:00:00+00:00"
+
+    def test_orders_newest_first_and_caps_even_if_the_server_does_not(self, tableau):
+        tableau.runs_response = (
+            200,
+            _runs(
+                _run_xml("run-1", "2025-03-01T10:00:00Z"),
+                _run_xml("run-3", "2025-03-03T10:00:00Z"),
+                _run_xml("run-2", "2025-03-02T10:00:00Z"),
+            ),
+        )
+
+        runs = _client(number_of_status=2).get_flow_runs("flow-1")
+
+        assert [run.id for run in runs] == ["run-3", "run-2"]
+
+    def test_retries_unsorted_when_the_server_rejects_the_sort(self, tableau):
+        tableau.runs_response = (400, _error("400006"))
+        tableau.unsorted_runs_response = (
+            200,
+            _runs(_run_xml("run-1", "2025-03-01T10:00:00Z"), _run_xml("run-2", "2025-03-02T10:00:00Z")),
+        )
+
+        runs = _client(number_of_status=5).get_flow_runs("flow-1")
+
+        retry = parse_qs(urlparse(tableau.calls_to("/flows/runs")[1].url).query)
+        assert retry["filter"] == ["flowId:eq:flow-1"]
+        assert "sort" not in retry
+        assert [run.id for run in runs] == ["run-2", "run-1"]
+
+    def test_other_errors_propagate(self, tableau):
+        tableau.runs_response = (403, _error("403004"))
+
+        with pytest.raises(ServerResponseError):
+            _client().get_flow_runs("flow-1")
+        assert len(tableau.calls_to("/flows/runs")) == 1
+
+    def test_connection_probe_returns_the_runs_it_read(self, tableau):
+        tableau.runs_response = (200, _runs(_run_xml("run-1", "2025-03-01T10:00:00Z")))
+
+        runs = _client().test_get_flow_runs()
+
+        assert len(runs) == 1
+        assert parse_qs(urlparse(tableau.calls_to("/flows/runs")[0].url).query)["pageSize"] == ["1"]
+
+
+def _user(user_id: str, name: str, email: str | None) -> str:
+    email_attr = f' email="{email}"' if email else ""
+    return f'<tsResponse {NS}><user id="{user_id}" name="{name}" siteRole="Viewer"{email_attr}/></tsResponse>'
+
+
+class TestUserEmail:
+    def test_hits_and_misses_are_cached(self, tableau):
+        tableau.users["owner-1"] = _user("owner-1", "alice", "alice@example.com")
+        tableau.users["owner-2"] = _user("owner-2", "bob", None)
+        client = _client()
+
+        assert client.get_user_email("owner-1") == "alice@example.com"
+        assert client.get_user_email("owner-1") == "alice@example.com"
+        assert client.get_user_email("owner-2") is None
+        assert client.get_user_email("owner-2") is None
+        assert len([r for r in tableau.requests if "/users/" in r.url]) == 2
+
+    def test_email_shaped_username_is_used_when_email_is_empty(self, tableau):
+        tableau.users["owner-1"] = _user("owner-1", "carol@example.com", None)
+
+        assert _client().get_user_email("owner-1") == "carol@example.com"
+
+
+LINEAGE = {
+    "id": "gql-flow-1",
+    "luid": "flow-1",
+    "name": "Sales",
+    "upstreamTables": [
+        {
+            "id": "gql-orders",
+            "luid": "orders-luid",
+            "name": "orders",
+            "fullName": "[public].[orders]",
+            "schema": "public",
+            "database": {"name": "sales_db", "connectionType": "postgres"},
+            "referencedByQueries": [],
         }
-        instance.tableau_server.metadata = self._mk_metadata(payload=payload)
+    ],
+    "upstreamDatasources": [{"id": "gql-ds-in", "luid": "ds-in", "name": "Targets", "projectName": "Finance"}],
+    "outputSteps": [{"id": "step-1", "name": "Output"}],
+    "downstreamTables": [
+        {
+            "id": "gql-sales",
+            "luid": "sales-luid",
+            "name": "sales_clean",
+            "fullName": "[analytics].[sales_clean]",
+            "schema": "analytics",
+            "database": {"name": "warehouse", "connectionType": "snowflake"},
+        }
+    ],
+    "downstreamDatasources": [{"id": "gql-ds-out", "luid": "ds-out", "name": "Sales Clean", "projectName": "Finance"}],
+    "nextDownstreamFlows": [{"id": "gql-flow-2", "luid": "flow-2", "name": "Ops"}],
+}
 
-        lineage = instance.get_flow_lineage("flow-1")
+
+class TestFlowLineage:
+    def test_parses_inputs_and_outputs_of_the_flow(self, tableau):
+        tableau.graphql_response = {"data": {"flows": [LINEAGE]}}
+
+        lineage = _client().get_flow_lineage("flow-1")
+
+        sent = json.loads(tableau.calls_to("/api/metadata/graphql")[0].body)["query"]
+        assert 'flows(filter: {luid: "flow-1"})' in sent
+        assert lineage.upstream_tables[0].database.connection_type == "postgres"
+        assert lineage.upstream_datasources[0].id == "gql-ds-in"
+        assert lineage.downstream_tables[0].schema_ == "analytics"
+        assert lineage.downstream_datasources[0].project_name == "Finance"
+        assert lineage.next_downstream_flows[0].luid == "flow-2"
+        assert lineage.output_steps[0].name == "Output"
+
+    def test_keeps_partial_data_and_logs_the_errors(self, tableau, caplog):
+        tableau.graphql_response = {
+            "data": {"flows": [LINEAGE]},
+            "errors": [{"message": "Showing partial results. The request exceeded the 20000 node limit"}],
+        }
+
+        with caplog.at_level(logging.WARNING):
+            lineage = _client().get_flow_lineage("flow-1")
 
         assert lineage is not None
-        assert lineage.luid == "flow-1"
-        assert len(lineage.upstream_tables) == 1
-        assert lineage.upstream_tables[0].name == "orders"
-        assert len(lineage.output_steps) == 1
+        assert "20000 node limit" in caplog.text
 
-    def test_query_exception_returns_none(self):
-        instance, _ = _make_client([], number_of_status=10)
-        instance.tableau_server.metadata = self._mk_metadata(raises=RuntimeError("API down"))
+    def test_a_rejected_query_yields_no_lineage(self, tableau, caplog):
+        tableau.graphql_response = {"errors": [{"message": "Validation error of type FieldUndefined"}]}
 
-        assert instance.get_flow_lineage("flow-1") is None
+        with caplog.at_level(logging.WARNING):
+            assert _client().get_flow_lineage("flow-1") is None
+        assert "FieldUndefined" in caplog.text
 
-    def test_empty_data_returns_none(self):
-        instance, _ = _make_client([], number_of_status=10)
-        instance.tableau_server.metadata = self._mk_metadata(payload={})
+    def test_unknown_flow_yields_no_lineage(self, tableau):
+        tableau.graphql_response = {"data": {"flows": []}}
 
-        assert instance.get_flow_lineage("flow-1") is None
+        assert _client().get_flow_lineage("flow-1") is None
 
-    def test_no_flows_in_response_returns_none(self):
-        instance, _ = _make_client([], number_of_status=10)
-        instance.tableau_server.metadata = self._mk_metadata(payload={"data": {"flows": []}})
+    def test_probe_fails_on_graphql_errors(self, tableau):
+        tableau.graphql_response = {"errors": [{"message": "Metadata API is disabled"}]}
 
-        assert instance.get_flow_lineage("flow-1") is None
+        with pytest.raises(GraphQLError):
+            _client().test_metadata_api()
 
-    def test_invalid_flow_shape_returns_none(self):
-        instance, _ = _make_client([], number_of_status=10)
-        # upstreamTables must be a list — passing a dict triggers validation error
-        instance.tableau_server.metadata = self._mk_metadata(
-            payload={"data": {"flows": [{"upstreamTables": {"bogus": True}}]}}
-        )
+    def test_probe_passes_on_a_valid_answer(self, tableau):
+        tableau.graphql_response = {"data": {"flowsConnection": {"nodes": []}}}
 
-        assert instance.get_flow_lineage("flow-1") is None
-
-
-class TestClientInit:
-    def test_init_wires_tsc_server_with_ssl_and_auth(self):
-        from metadata.ingestion.source.pipeline.tableaupipeline import (
-            client as client_mod,
-        )
-
-        fake_server_instance = MagicMock()
-        auth = MagicMock()
-        config = SimpleNamespace(
-            hostPort="https://tab.example.com",
-            apiVersion="3.22",
-            numberOfStatus=5,
-        )
-        ssl_manager = MagicMock()
-
-        with patch.object(client_mod, "Server", return_value=fake_server_instance):
-            instance = client_mod.TableauPipelineClient(
-                tableau_server_auth=auth,
-                config=config,
-                verify_ssl=True,
-                ssl_manager=ssl_manager,
-            )
-
-        # apiVersion explicitly set on the server
-        assert fake_server_instance.version == "3.22"
-        # SSL option passed through
-        fake_server_instance.add_http_options.assert_called_once_with({"verify": True})
-        # Auth called with the provided credentials
-        fake_server_instance.auth.sign_in.assert_called_once_with(auth)
-        # Config and caches initialized
-        assert instance.config is config
-        assert instance.ssl_manager is ssl_manager
-        assert instance.number_of_status == 5
-        assert instance._runs_by_flow == {}
-        assert instance._runs_iter is None
-        assert instance._runs_iter_exhausted is False
-        assert instance._runs_scanned == 0
-        assert instance._user_email_cache == {}
-
-    def test_init_omits_version_when_not_provided(self):
-        from metadata.ingestion.source.pipeline.tableaupipeline import (
-            client as client_mod,
-        )
-
-        fake_server_instance = MagicMock()
-        # version attribute fresh on the MagicMock — should not be explicitly set
-        del fake_server_instance.version
-        config = SimpleNamespace(
-            hostPort="https://tab.example.com",
-            apiVersion=None,
-            numberOfStatus=None,
-        )
-
-        with patch.object(client_mod, "Server", return_value=fake_server_instance):
-            instance = client_mod.TableauPipelineClient(
-                tableau_server_auth=MagicMock(),
-                config=config,
-                verify_ssl=False,
-            )
-
-        # When apiVersion is falsy the client must not write to server.version
-        assert not hasattr(fake_server_instance, "version")
-        # Default numberOfStatus
-        assert instance.number_of_status == client_mod.DEFAULT_NUMBER_OF_STATUS
+        _client().test_metadata_api()
 
 
 class TestLifecycle:
-    def test_sign_out_runs_cleanup_on_error(self):
-        instance, _ = _make_client([], number_of_status=10)
-        instance.tableau_server.auth = MagicMock()
-        instance.tableau_server.auth.sign_out.side_effect = RuntimeError("offline")
-        instance.ssl_manager = MagicMock()
-        instance._runs_by_flow = {"flow-a": ["run1"]}
+    def test_sign_out_releases_the_session(self, tableau):
+        client = _client()
 
-        with pytest.raises(RuntimeError):
-            instance.sign_out()
+        client.sign_out()
 
-        # cleanup must still have been called
-        assert instance._runs_by_flow == {}
-        instance.ssl_manager.cleanup_temp_files.assert_called_once()
-
-    def test_cleanup_without_ssl_manager_is_noop(self):
-        instance, _ = _make_client([], number_of_status=10)
-        instance.ssl_manager = None
-        instance._runs_by_flow = {"flow-a": ["run1"]}
-
-        instance.cleanup()
-
-        assert instance._runs_by_flow == {}
-
-    def test_default_number_of_status_when_config_field_absent(self):
-        """Exercise the real __init__ with a config object that has no
-        `numberOfStatus` attribute at all — proves the `getattr(..., None)`
-        fallback in production actually fires."""
-        from metadata.ingestion.source.pipeline.tableaupipeline import (
-            client as client_mod,
-        )
-
-        # SimpleNamespace without numberOfStatus attribute
-        config = SimpleNamespace(hostPort="https://tab.example.com", apiVersion=None)
-        assert not hasattr(config, "numberOfStatus")
-
-        with patch.object(client_mod, "Server", return_value=MagicMock()):
-            instance = client_mod.TableauPipelineClient(
-                tableau_server_auth=MagicMock(),
-                config=config,
-                verify_ssl=False,
-            )
-
-        assert instance.number_of_status == client_mod.DEFAULT_NUMBER_OF_STATUS
+        assert len(tableau.calls_to("/auth/signout")) == 1
