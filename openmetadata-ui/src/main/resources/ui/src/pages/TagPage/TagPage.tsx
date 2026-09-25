@@ -10,18 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Button, Divider, Dropdown, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -107,6 +99,7 @@ import {
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -760,6 +753,8 @@ const TagPage = () => {
     t,
   ]);
 
+  const renderedActiveTab = getRenderedActiveTab(tabItems, activeTab);
+
   const aiHeaderTabs = useMemo<EntityDetailTab[]>(
     () => tabItems.map((tab) => ({ key: tab.key, label: tab.label })),
     [tabItems]
@@ -901,7 +896,7 @@ const TagPage = () => {
   const renderAiHeader = () => (
     <div>
       <EntityDetailHeader
-        activeKey={activeTab}
+        activeKey={renderedActiveTab}
         badge={
           <>
             {badge}
@@ -926,11 +921,12 @@ const TagPage = () => {
   );
 
   const renderClassicHeader = () => (
-    <Row
+    <Box
       className="data-classification"
       data-testid="data-classification"
-      gutter={[0, 12]}>
-      <Col className="p-x-md" flex="1">
+      rowGap={3}
+      wrap="wrap">
+      <div className="p-x-md tw:min-w-0 tw:flex-1">
         <EntityHeader
           badge={badge}
           breadcrumb={breadcrumb}
@@ -941,16 +937,16 @@ const TagPage = () => {
           suffix={learningIcon}
           titleColor={tagItem.style?.color ?? BLACK_COLOR}
         />
-      </Col>
+      </div>
       {haveAssetEditPermission && (
-        <Col className="p-x-md">
+        <div className="p-x-md">
           <div className="d-flex self-end">
             {renderAddAssetsButton()}
             {manageDropdown}
           </div>
-        </Col>
+        </div>
       )}
-    </Row>
+    </Box>
   );
 
   const renderModals = () => (
@@ -1010,10 +1006,8 @@ const TagPage = () => {
     <PageLayoutV1
       pageTitle={tagItem.name}
       variant={isAiMode ? 'compact' : 'default'}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
-          {showAiHeader ? renderAiHeader() : renderClassicHeader()}
-        </Col>
+      <Box direction="col" gap={3}>
+        <div>{showAiHeader ? renderAiHeader() : renderClassicHeader()}</div>
 
         <GenericProvider<Tag>
           customizedPage={customizedPage}
@@ -1024,24 +1018,31 @@ const TagPage = () => {
           onUpdate={(updatedData: Tag) =>
             Promise.resolve(updateTag(updatedData))
           }>
-          <Col
-            span={24}
-            style={{
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              height: 'calc(100vh - 170px)',
-            }}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="tabs-new tag-page-tabs"
-              items={tabItems}
-              renderTabBar={showAiHeader ? () => <></> : undefined}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <div className="tw:h-[calc(100vh-170px)] tw:overflow-x-hidden tw:overflow-y-auto">
+            {showAiHeader ? (
+              tabItems.find((tab) => tab.key === renderedActiveTab)?.children
+            ) : (
+              <Tabs
+                className="tw:gap-3"
+                selectedKey={renderedActiveTab}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Tabs.List size="sm" type="underline" variant="card">
+                  {tabItems.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabItems.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            )}
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       {renderModals()}
     </PageLayoutV1>

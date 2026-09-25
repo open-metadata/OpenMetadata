@@ -370,6 +370,12 @@ a[href].link-text-grey,
   }
 }
 
+// @primary-1 is the light brand-100 tint (never flips); use the dark selected
+// surface instead.
+.dark-mode .activeCategory {
+  background: var(--tw-background-color-brand-primary);
+}
+
 .shadow-custom {
   box-shadow: 1px 1px 8px var(--om-legacy-color-0-0-0-0-06);
 }
@@ -805,19 +811,6 @@ a[href].link-text-grey,
   color: @text-grey-muted !important;
 }
 
-/* Description tabs CSS */
-.ant-tabs-description {
-  margin-top: var(--om-space-8);
-}
-
-.ant-tabs-description > .ant-tabs-nav {
-  margin-bottom: 0;
-}
-
-.ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
-  padding: 0 var(--om-space-16);
-}
-
 /* React flow */
 .react-flow {
   height: 110%;
@@ -938,6 +931,13 @@ a[href].link-text-grey,
 .dark-mode a.ant-typography,
 .dark-mode .ant-typography a {
   color: var(--om-color-link);
+}
+
+// Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
+// static near-black that vanishes on dark surfaces. The variable can't take a
+// var() (antd runs shade() on it), so retint the class in dark only.
+.dark-mode .ant-typography.ant-typography-secondary {
+  color: var(--om-color-text-tertiary);
 }
 
 // Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
@@ -1112,6 +1112,15 @@ a[href].link-text-grey,
   align-items: center;
   flex-direction: column;
   height: 100%;
+
+  // antd Result hardcodes rgba(0,0,0,…) text, unreadable on the dark surface.
+  .ant-result-title {
+    color: var(--om-color-text-primary);
+  }
+
+  .ant-result-subtitle {
+    color: var(--om-color-text-tertiary);
+  }
 }
 
 .alert-icon {

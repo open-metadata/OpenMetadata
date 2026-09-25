@@ -145,6 +145,36 @@
   }
 }
 
+// Dark: the *-active.svg nav icons hardcode brand-800 (#1849A9, the light
+// selected fg) with light knock-out details. Repaint them so the selected icon
+// matches the label (currentColor = --ask-selected-fg) and knock-outs read
+// against the dark nav surface. Light keeps the SVGs' own colours.
+.dark-mode {
+  .ask-nav-item--active,
+  .ask-rail__item--active,
+  .ask-sub-rail__item--active,
+  .ask-sub-panel__item--active {
+    svg {
+      [fill='#1849A9' i] {
+        fill: currentColor;
+      }
+      [stroke='#1849A9' i] {
+        stroke: currentColor;
+      }
+      [fill='#EFF8FF' i],
+      [fill='#F8F9FC' i],
+      [fill='white' i] {
+        fill: var(--om-color-bg-surface);
+      }
+      [stroke='#EFF8FF' i],
+      [stroke='#F8F9FC' i],
+      [stroke='white' i] {
+        stroke: var(--om-color-bg-surface);
+      }
+    }
+  }
+}
+
 // ---- Shell ----
 // Outer card width = inner panel width + left/right padding (4px each).
 @ask-sidebar-card-width: (@ask-sidebar-width + @ask-sub-outer-padding * 2);
@@ -155,7 +185,8 @@
   width: @ask-sidebar-card-width;
   min-width: @ask-sidebar-card-width;
   max-width: @ask-sidebar-card-width;
-  height: calc(100% - 16px);
+  // 6px margin top + bottom, so the card ends on the content panel's bottom edge.
+  height: calc(100% - 12px);
   overflow: hidden;
   background: @ask-bg-card;
   border-radius: 16px;

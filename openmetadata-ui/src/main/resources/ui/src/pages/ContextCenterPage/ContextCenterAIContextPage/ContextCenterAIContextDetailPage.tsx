@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, PageLayout } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../../components/common/Loader/Loader';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import { PersonaAIContext } from '../../../components/ContextCenter/PersonaAIContext/PersonaAIContext.component';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { useAuth } from '../../../hooks/authHooks';
@@ -30,6 +32,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const ContextCenterAIContextDetailPage = () => {
   const { t } = useTranslation();
+  const pageLayoutClassNames = useContextCenterPageLayout();
   const { fqn } = useFqn();
   const { isAdminUser } = useAuth();
   const [persona, setPersona] = useState<Persona>();
@@ -63,37 +66,45 @@ const ContextCenterAIContextDetailPage = () => {
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-ai-context-detail-page">
       <DocumentTitle title={personaName} />
-      <div className="context-center-header-section tw:px-5">
-        <ContextCenterHeader
-          breadcrumbs={[
-            {
-              label: t('label.ai-context'),
-              href: contextCenterClassBase.getAIContextListPath(),
-            },
-            { label: personaName },
-          ]}
-          hasPermission={isAdminUser}
-          subtitle={t('message.persona-ai-context-description')}
-          title={personaName}
-        />
-      </div>
-      <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:px-5 tw:pb-5">
-        {isLoading && <Loader />}
-        {!isLoading && !persona && (
-          <EmptyPlaceholder
-            description={t('message.no-persona-ai-context-description')}
-            icon={PersonaIcon}
-            title={t('message.no-persona-available')}
+      <PageLayout
+        className={pageLayoutClassNames.root}
+        data-testid="context-center-page-layout">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
+          <ContextCenterHeader
+            breadcrumbs={[
+              {
+                label: t('label.ai-context'),
+                href: contextCenterClassBase.getAIContextListPath(),
+              },
+              { label: personaName },
+            ]}
+            hasPermission={isAdminUser}
+            subtitle={t('message.persona-ai-context-description')}
+            title={personaName}
           />
-        )}
-        {!isLoading && persona && (
-          <PersonaAIContext
-            canEdit={Boolean(isAdminUser)}
-            persona={persona}
-            onPersonaUpdate={fetchPersona}
-          />
-        )}
-      </div>
+        </PageLayout.Header>
+        <PageLayout.Content
+          className={classNames(
+            'tw:flex tw:flex-col tw:min-h-0 tw:overflow-y-auto',
+            pageLayoutClassNames.content
+          )}>
+          {isLoading && <Loader />}
+          {!isLoading && !persona && (
+            <EmptyPlaceholder
+              description={t('message.no-persona-ai-context-description')}
+              icon={PersonaIcon}
+              title={t('message.no-persona-available')}
+            />
+          )}
+          {!isLoading && persona && (
+            <PersonaAIContext
+              canEdit={Boolean(isAdminUser)}
+              persona={persona}
+              onPersonaUpdate={fetchPersona}
+            />
+          )}
+        </PageLayout.Content>
+      </PageLayout>
     </div>
   );
 };
