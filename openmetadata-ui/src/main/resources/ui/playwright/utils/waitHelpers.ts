@@ -11,7 +11,44 @@
  *  limitations under the License.
  */
 
-import { Locator, Page, Response } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
+
+export const waitForAntOverlayToOpen = async (overlay: Locator) => {
+  await expect(overlay).toBeVisible();
+  // Ant's invisible enter-start frame has a stable box, so click auto-waiting
+  // can finish before the zoom motion starts changing the target's position.
+  await expect(overlay).not.toHaveClass(
+    /\bant-zoom(?:-big)?-(?:appear|enter|leave)(?:-|\b)/
+  );
+  await expect(overlay).toHaveCSS('opacity', '1');
+};
+
+/** Match the request first so a later HTTP 200 cannot hide its earlier failure. */
+export const waitForResponseWithStatus = (
+  page: Page,
+  matchesRequest: (response: Response) => boolean | Promise<boolean>,
+  expectedStatus: number | number[] | 'ok',
+  options?: { timeout?: number }
+): Promise<Response> => {
+  const statuses = Array.isArray(expectedStatus)
+    ? expectedStatus
+    : [expectedStatus];
+  const label = expectedStatus === 'ok' ? '2xx' : statuses.join(' or ');
+  return page.waitForResponse(matchesRequest, options).then((response) => {
+    if (
+      expectedStatus === 'ok'
+        ? !response.ok()
+        : !statuses.includes(response.status())
+    ) {
+      throw new Error(
+        `${response.request().method()} ${
+          new URL(response.url()).pathname
+        }: expected HTTP ${label}, received ${response.status()}`
+      );
+    }
+    return response;
+  });
+};
 
 /**
  * Registers the response listener *before* triggering the click, which is the
