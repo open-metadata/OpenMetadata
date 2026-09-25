@@ -115,6 +115,8 @@ export const ldapProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: false,
   supportsSilentCallback: false,
   usesBackendRefresh: true,
+  hasBackendIssuedRefreshCookie: true,
+  usesPkce: false,
   supportsColdLoadRefresh: true,
 
   // The compose service is expected up when this profile runs; when it is

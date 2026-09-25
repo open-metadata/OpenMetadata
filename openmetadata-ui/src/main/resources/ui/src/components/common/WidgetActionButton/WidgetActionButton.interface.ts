@@ -17,5 +17,7 @@ export interface WidgetActionButtonProps {
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
   'data-testid'?: string;
+  'aria-expanded'?: boolean;
+  'aria-haspopup'?: 'dialog';
   className?: string;
 }

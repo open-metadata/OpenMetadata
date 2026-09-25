@@ -162,6 +162,11 @@ export const addInternalDestination = async ({
         `[data-testid="destination-${destinationNumber}"] [data-testid="team-user-select-trigger-${destinationNumber}"]`
       );
       await expect(dropdownTrigger).toBeVisible();
+      // The popover is non-modal, so React Aria closes it when an ancestor of
+      // the trigger scrolls. Scroll here, not inside click(): click() fires
+      // right after its own scroll, before the async scroll event lands, and
+      // that event then closes the just-opened popover.
+      await dropdownTrigger.scrollIntoViewIfNeeded();
 
       const resultsDropdown = page.getByTestId(
         `team-user-select-dropdown-${destinationNumber}`
@@ -181,11 +186,14 @@ export const addInternalDestination = async ({
         // The controlled portal clears its search when React Aria closes it.
         // Repeat the query after reopening so a late close cannot strand this
         // helper waiting on an option from an already unmounted popup.
+        // Each step needs its own timeout: the default is unbounded, so one
+        // hung step would consume the whole toPass budget without a retry.
         if ((await searchInput.inputValue()) !== searchText) {
           const getSearchResult = page.waitForResponse(
-            '/api/v1/search/query?q=*'
+            '/api/v1/search/query?q=*',
+            { timeout: 5_000 }
           );
-          await searchInput.fill(searchText);
+          await searchInput.fill(searchText, { timeout: 3_000 });
           await getSearchResult;
         }
 
