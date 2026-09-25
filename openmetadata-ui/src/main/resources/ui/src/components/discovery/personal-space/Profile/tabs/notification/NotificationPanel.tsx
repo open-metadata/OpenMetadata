@@ -58,11 +58,15 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   // Actions injected by detail panels (e.g. edit/delete buttons).
   const [detailHeaderActions, setDetailHeaderActions] =
     useState<React.ReactNode>(undefined);
+  const [resolvedDetailName, setResolvedDetailName] = useState<string>('');
+
+  const viewFqn = 'fqn' in view ? view.fqn : undefined;
 
   // Clear detail header state when navigating away.
   useEffect(() => {
     setDetailHeaderActions(undefined);
-  }, [view.type]);
+    setResolvedDetailName('');
+  }, [view.type, viewFqn]);
 
   const permissionsLoaded = !isEmpty(permissions);
 
@@ -82,8 +86,6 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       onNavigate({ type: 'list' });
     }
   }, [view.type, permissionsLoaded, canAddAlert, onNavigate]);
-
-  const [resolvedDetailName, setResolvedDetailName] = useState<string>('');
 
   // Push header updates up to ProfilePage whenever the internal view changes.
   useEffect(() => {

@@ -255,12 +255,13 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
       let currentPaging: Paging = paging;
 
       while (page < newPage && currentPaging.after) {
+        const usedCursor = currentPaging.after;
         page++;
         // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
         const { data, paging: responsePaging } = await getAllAlerts({
           alertType: AlertType.Notification,
           limit: pageSize,
-          after: currentPaging.after,
+          after: usedCursor,
         });
 
         if (requestId !== fetchRequestIdRef.current) {
@@ -273,8 +274,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
         if (page === newPage) {
           setAlerts(data);
           setPaging(responsePaging);
-          const prevCursor = cursorCache.get(newPage - 1)?.after;
-          setHashPage(newPage, undefined, prevCursor, pageSize);
+          setHashPage(newPage, undefined, usedCursor, pageSize);
           await fetchAllAlertsPermission(data);
         }
       }
@@ -309,6 +309,10 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
 
     if (newPage > currentPage) {
       await navigateSequentially(newPage);
+    } else {
+      setHashPage(1, undefined, undefined, pageSize);
+      setCursorCache(new Map());
+      fetchAlerts(undefined, 1);
     }
   };
 
