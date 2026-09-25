@@ -34,6 +34,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String ANNOUNCEMENT_TABLE = "announcement_entity";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
@@ -110,6 +111,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getActiveCondition(tableName));
+    conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -430,7 +432,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getActiveCondition(String tableName) {
     String active = queryParams.get("active");
-    if (active == null || !"announcement_entity".equals(tableName)) {
+    if (active == null || !ANNOUNCEMENT_TABLE.equals(tableName)) {
       return "";
     }
 
@@ -441,6 +443,11 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return String.format("(startTime > %d OR endTime < %d)", now, now);
+  }
+
+  private String getAnnouncementTypeCondition() {
+    String announcementType = queryParams.get("announcementType");
+    return announcementType == null ? "" : "type = :announcementType";
   }
 
   private String getEntityStatusCondition(String tableName) {

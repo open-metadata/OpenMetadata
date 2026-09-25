@@ -42,4 +42,17 @@ export interface CreateAnnouncement {
      * Start time from when the announcement should be shown.
      */
     startTime: number;
+    /**
+     * Severity/category of the announcement, used to style it in the UI.
+     */
+    type?: AnnouncementType;
+}
+
+/**
+ * Severity/category of the announcement, used to style it in the UI.
+ */
+export enum AnnouncementType {
+    Information = "Information",
+    Issue = "Issue",
+    Warning = "Warning",
 }
