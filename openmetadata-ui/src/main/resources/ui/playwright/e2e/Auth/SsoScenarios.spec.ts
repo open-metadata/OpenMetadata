@@ -277,11 +277,17 @@ for (const fixture of FIXTURES) {
           const authorizeUrls: string[] = [];
           page.on('request', (req) => {
             const url = req.url();
-            // Match a REAL OIDC /authorize endpoint — the trailing
-            // path segment is exactly `authorize`. Guards against
-            // matching OM's own `/api/v1/system/config/auth` (a
-            // config endpoint on the OM host, not an IdP handshake).
-            if (/\/authorize(\?|$)/i.test(new URL(url).pathname)) {
+            // Match a REAL IdP authorization endpoint. Keycloak
+            // exposes it as `/realms/{realm}/protocol/openid-connect/auth`,
+            // Auth0 / Okta / most others as `.../authorize`. Exclude
+            // URLs on the OM host's `/api/` prefix so OM's own
+            // `/api/v1/system/config/auth` config endpoint isn't
+            // mis-matched (gitar-bot r4101190852).
+            const path = new URL(url).pathname;
+            if (
+              !path.startsWith('/api/') &&
+              /\/authorize(\?|$)|\/openid-connect\/auth(\?|$)/i.test(path)
+            ) {
               authorizeUrls.push(url);
             }
           });
