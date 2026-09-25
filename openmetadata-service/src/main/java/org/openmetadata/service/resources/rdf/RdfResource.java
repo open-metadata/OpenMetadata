@@ -25,6 +25,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.sparql.modify.request.UpdateDeleteWhere;
@@ -55,6 +56,7 @@ public class RdfResource {
   private static final int MIN_GRAPH_DEPTH = 1;
   private static final int MAX_GRAPH_DEPTH = 5;
   private final Authorizer authorizer;
+  private final Supplier<RdfRepository> repositorySupplier;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private OpenMetadataApplicationConfig config;
 
@@ -67,7 +69,12 @@ public class RdfResource {
   public static final String SPARQL_CSV = "text/csv";
 
   public RdfResource(Authorizer authorizer) {
+    this(authorizer, RdfRepository::getInstanceOrNull);
+  }
+
+  RdfResource(Authorizer authorizer, Supplier<RdfRepository> repositorySupplier) {
     this.authorizer = authorizer;
+    this.repositorySupplier = repositorySupplier;
   }
 
   private RdfRepository getRdfRepository() {
@@ -75,7 +82,7 @@ public class RdfResource {
     // RdfUpdater.initialize() calls RdfRepository.reset() and rebuilds the singleton (durable live
     // projection / reindex), so a pinned reference would keep serving a closed store after a swap
     // (e.g. #33098's live-projection path), surfacing as 500s on the RDF endpoints.
-    return RdfRepository.getInstanceOrNull();
+    return repositorySupplier.get();
   }
 
   private SemanticSearchEngine getSemanticSearchEngine() {
