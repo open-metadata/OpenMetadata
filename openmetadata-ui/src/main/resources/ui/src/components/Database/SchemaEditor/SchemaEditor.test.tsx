@@ -11,26 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { CSMode } from '../../../enums/codemirror.enum';
 import SchemaEditor from './SchemaEditor';
 
 const mockOnChange = jest.fn();
 const mockOnCopyToClipBoard = jest.fn();
-
-const mockEditor = {
-  refresh: jest.fn(),
-  scrollTo: jest.fn(),
-  getWrapperElement: jest.fn().mockReturnValue({ remove: jest.fn() }),
-};
-
-jest.mock('../../../constants/constants', () => ({
-  JSON_TAB_SIZE: 25,
-}));
-
-jest.mock('../../../utils/SchemaEditor.utils', () => ({
-  getSchemaEditorValue: jest.fn().mockReturnValue('test SQL query'),
-}));
 
 jest.mock('../../../hooks/useClipBoard', () => ({
   ...jest.requireActual('../../../hooks/useClipBoard'),
@@ -39,260 +25,261 @@ jest.mock('../../../hooks/useClipBoard', () => ({
     .mockImplementation(() => ({ onCopyToClipBoard: mockOnCopyToClipBoard })),
 }));
 
-jest.mock('react-codemirror2', () => ({
-  ...jest.requireActual('react-codemirror2'),
-  Controlled: jest
-    .fn()
-    .mockImplementation(({ value, onChange, editorDidMount }) => {
-      React.useEffect(() => {
-        editorDidMount?.(mockEditor);
-      }, []);
+// The real editor needs layout APIs JSDOM does not implement. The stub keeps
+// the contract SchemaEditor relies on: a value in, edits out, and a view whose
+// focus state decides whether an external value is applied now or on blur.
+let isEditorFocused = false;
 
-      return (
-        <div>
-          <span>{value}</span>
-          <input
-            aria-label="code-mirror-editor-input"
-            data-testid="code-mirror-editor-input"
-            type="text"
-            onChange={onChange}
-          />
-        </div>
-      );
-    }),
-}));
+jest.mock('@uiw/react-codemirror', () => {
+  const { forwardRef, useImperativeHandle } = jest.requireActual('react');
 
-let intersectionCallback: (entries: IntersectionObserverEntry[]) => void;
-const mockObserve = jest.fn();
-const mockDisconnect = jest.fn();
+  return {
+    __esModule: true,
+    default: forwardRef(
+      (
+        {
+          value,
+          extensions,
+          onChange,
+          onBlur,
+          onFocus,
+        }: {
+          value: string;
+          extensions: unknown[];
+          onChange?: (value: string) => void;
+          onBlur?: () => void;
+          onFocus?: () => void;
+        },
+        ref: unknown
+      ) => {
+        useImperativeHandle(ref, () => ({
+          view: {
+            get hasFocus() {
+              return isEditorFocused;
+            },
+          },
+        }));
 
-class MockIntersectionObserver implements IntersectionObserver {
-  readonly root: Element | Document | null = null;
-  readonly rootMargin: string = '';
-  readonly thresholds: ReadonlyArray<number> = [];
-
-  constructor(callback: IntersectionObserverCallback) {
-    intersectionCallback = (entries) => callback(entries, this);
-  }
-
-  observe(target: Element): void {
-    mockObserve(target);
-  }
-
-  unobserve(_target: Element): void {}
-
-  disconnect(): void {
-    mockDisconnect();
-  }
-
-  takeRecords(): IntersectionObserverEntry[] {
-    return [];
-  }
-}
-
-const makeRect = (x = 0, y = 0, width = 0, height = 0): DOMRectReadOnly => ({
-  x,
-  y,
-  width,
-  height,
-  top: y,
-  left: x,
-  right: x + width,
-  bottom: y + height,
-  toJSON: () => ({}),
-});
-
-const makeEntry = (height: number): IntersectionObserverEntry => ({
-  boundingClientRect: makeRect(0, 0, 100, height),
-  intersectionRatio: height > 0 ? 1 : 0,
-  intersectionRect: makeRect(),
-  isIntersecting: height > 0,
-  rootBounds: null,
-  target: document.createElement('div'),
-  time: 0,
+        return (
+          <div>
+            <span data-testid="editor-value">{value}</span>
+            <span data-testid="editor-extension-count">
+              {extensions.length}
+            </span>
+            <input
+              aria-label="code editor"
+              data-testid="code-mirror-editor-input"
+              value={value}
+              onBlur={() => {
+                isEditorFocused = false;
+                onBlur?.();
+              }}
+              onChange={(event) => onChange?.(event.target.value)}
+              onFocus={() => {
+                isEditorFocused = true;
+                onFocus?.();
+              }}
+            />
+          </div>
+        );
+      }
+    ),
+  };
 });
 
 const mockProps = {
-  value: 'test SQL query',
+  value: 'select 1',
   showCopyButton: true,
   onChange: mockOnChange,
 };
 
-describe('SchemaEditor component test', () => {
-  beforeAll(() => {
-    window.IntersectionObserver = MockIntersectionObserver;
-  });
+const getEditorValue = () => screen.getByTestId('editor-value').textContent;
 
+describe('SchemaEditor component test', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Set in beforeEach because jest.useRealTimers() restores the original
-    // (undefined in JSDOM), clobbering a beforeAll assignment.
-    window.requestAnimationFrame = jest
-      .fn()
-      .mockImplementation((cb: FrameRequestCallback) => {
-        cb(0);
-
-        return 0;
-      });
+    isEditorFocused = false;
   });
 
-  it('Component should render properly', async () => {
+  it('should render the editor and the copy button', () => {
     render(<SchemaEditor {...mockProps} />);
 
-    expect(
-      await screen.findByTestId('code-mirror-container')
-    ).toBeInTheDocument();
-
-    expect(await screen.findByTestId('query-copy-button')).toBeInTheDocument();
+    expect(screen.getByTestId('code-mirror-container')).toBeInTheDocument();
+    expect(screen.getByTestId('query-copy-button')).toBeInTheDocument();
   });
 
-  it('Value provided via props should be visible', async () => {
+  it('should show the value provided via props', () => {
     render(<SchemaEditor {...mockProps} />);
 
-    expect(
-      (await screen.findByTestId('code-mirror-container')).textContent
-    ).toBe('test SQL query');
+    expect(getEditorValue()).toBe('select 1');
   });
 
-  it('Copy button should not be visible', async () => {
+  it('should hide the copy button when asked', () => {
     render(<SchemaEditor {...mockProps} showCopyButton={false} />);
 
     expect(screen.queryByTestId('query-copy-button')).not.toBeInTheDocument();
   });
 
-  it('Should call onCopyToClipBoard', async () => {
+  it('should copy the current buffer', () => {
     render(<SchemaEditor {...mockProps} />);
 
     fireEvent.click(screen.getByTestId('query-copy-button'));
 
-    expect(mockOnCopyToClipBoard).toHaveBeenCalled();
+    expect(mockOnCopyToClipBoard).toHaveBeenCalledWith('select 1');
   });
 
-  it('Should call onChange handler', async () => {
-    render(<SchemaEditor {...mockProps} />);
+  it('should format a JSON value on mount when autoFormat is on', () => {
+    render(<SchemaEditor {...mockProps} value='{"a":1}' />);
 
-    fireEvent.change(screen.getByTestId('code-mirror-editor-input'), {
-      target: { value: 'new SQL query' },
-    });
-
-    expect(mockOnChange).toHaveBeenCalled();
+    expect(getEditorValue()).toBe('{\n  "a": 1\n}');
   });
 
-  describe('refreshEditor prop', () => {
-    it('Should call scrollTo and refresh when refreshEditor is true', () => {
-      jest.useFakeTimers();
-      render(<SchemaEditor {...mockProps} refreshEditor />);
+  it('should not format the value on mount when autoFormat is off', () => {
+    render(<SchemaEditor {...mockProps} autoFormat={false} value='{"a":1}' />);
 
-      act(() => {
-        jest.advanceTimersByTime(50);
+    expect(getEditorValue()).toBe('{"a":1}');
+  });
+
+  describe('editing', () => {
+    it('should report the formatted value but leave the buffer as typed', () => {
+      render(<SchemaEditor {...mockProps} value="" />);
+
+      fireEvent.change(screen.getByTestId('code-mirror-editor-input'), {
+        target: { value: '{"a":1}' },
       });
 
-      expect(mockEditor.scrollTo).toHaveBeenCalledWith(0, 0);
-      expect(mockEditor.refresh).toHaveBeenCalled();
-
-      jest.useRealTimers();
+      // Reformatting the buffer mid-edit is what used to move the caret.
+      expect(getEditorValue()).toBe('{"a":1}');
+      expect(mockOnChange).toHaveBeenCalledWith('{\n  "a": 1\n}');
     });
 
-    it('Should not call refresh if refreshEditor is false', () => {
-      jest.useFakeTimers();
-      render(<SchemaEditor {...mockProps} refreshEditor={false} />);
+    it('should ignore the parent echoing the emitted value back', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} value="" />);
 
-      act(() => {
-        jest.advanceTimersByTime(50);
+      fireEvent.change(screen.getByTestId('code-mirror-editor-input'), {
+        target: { value: '{"a":1}' },
       });
+      rerender(<SchemaEditor {...mockProps} value={'{\n  "a": 1\n}'} />);
 
-      expect(mockEditor.refresh).not.toHaveBeenCalled();
-
-      jest.useRealTimers();
-    });
-
-    it('Should call scrollTo(0,0) via requestAnimationFrame after refresh', () => {
-      jest.useFakeTimers();
-      render(<SchemaEditor {...mockProps} refreshEditor />);
-
-      act(() => {
-        jest.runAllTimers();
-      });
-
-      // scrollTo called twice: once before refresh, once in rAF after refresh
-      expect(mockEditor.scrollTo).toHaveBeenCalledTimes(2);
-      expect(mockEditor.scrollTo).toHaveBeenNthCalledWith(1, 0, 0);
-      expect(mockEditor.scrollTo).toHaveBeenNthCalledWith(2, 0, 0);
-
-      jest.useRealTimers();
+      expect(getEditorValue()).toBe('{"a":1}');
     });
   });
 
-  describe('IntersectionObserver visibility detection', () => {
-    it('Should set up IntersectionObserver on mount', () => {
-      render(<SchemaEditor {...mockProps} />);
+  describe('external value updates', () => {
+    it('should apply a new value while the editor is blurred', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
 
-      // intersectionCallback is populated by the constructor, confirming observer was created
-      expect(intersectionCallback).toBeDefined();
-      expect(mockObserve).toHaveBeenCalled();
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+
+      expect(getEditorValue()).toBe('select 2');
     });
 
-    it('Should call refresh and scrollTo when transitioning from hidden to visible', () => {
-      render(<SchemaEditor {...mockProps} />);
+    it('should let a later edit win over a value deferred to blur', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+      const input = screen.getByTestId('code-mirror-editor-input');
 
-      mockEditor.refresh.mockClear();
-      mockEditor.scrollTo.mockClear();
+      fireEvent.focus(input);
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+      fireEvent.change(input, { target: { value: 'select 3' } });
+      fireEvent.blur(input);
 
-      // Simulate element being hidden (display: none → height collapses to 0)
-      act(() => {
-        intersectionCallback([makeEntry(0)]);
-      });
-
-      expect(mockEditor.refresh).not.toHaveBeenCalled();
-
-      // Simulate element becoming visible again (height > 0)
-      act(() => {
-        intersectionCallback([makeEntry(100)]);
-      });
-
-      expect(mockEditor.scrollTo).toHaveBeenCalledWith(0, 0);
-      expect(mockEditor.refresh).toHaveBeenCalled();
+      expect(getEditorValue()).toBe('select 3');
     });
 
-    it('Should not trigger refresh on first visible callback if not previously hidden', () => {
-      render(<SchemaEditor {...mockProps} />);
+    it.each([
+      ['the readOnly prop', { readOnly: true }],
+      ['a readOnly option', { options: { readOnly: true } }],
+      ['a nocursor option', { options: { readOnly: 'nocursor' as const } }],
+    ])(
+      'should apply a value immediately when read only via %s',
+      (_, readOnlyProps) => {
+        const { rerender } = render(
+          <SchemaEditor {...mockProps} {...readOnlyProps} />
+        );
 
-      mockEditor.refresh.mockClear();
-      mockEditor.scrollTo.mockClear();
+        fireEvent.focus(screen.getByTestId('code-mirror-editor-input'));
+        rerender(
+          <SchemaEditor {...mockProps} {...readOnlyProps} value="select 2" />
+        );
 
-      act(() => {
-        intersectionCallback([makeEntry(100)]);
-      });
+        expect(getEditorValue()).toBe('select 2');
+      }
+    );
 
-      expect(mockEditor.refresh).not.toHaveBeenCalled();
-      expect(mockEditor.scrollTo).not.toHaveBeenCalled();
+    it('should apply a value the parent resets back to an earlier one', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+
+      expect(getEditorValue()).toBe('select 2');
+
+      // Back to the value the editor started on: the round trip must not be
+      // mistaken for an echo of something the editor emitted.
+      rerender(<SchemaEditor {...mockProps} value="select 1" />);
+
+      expect(getEditorValue()).toBe('select 1');
     });
 
-    it('Should not trigger refresh when scrolled out and back into viewport', () => {
-      render(<SchemaEditor {...mockProps} />);
+    it('should drop a deferred update the parent has already reverted', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+      const input = screen.getByTestId('code-mirror-editor-input');
 
-      mockEditor.refresh.mockClear();
-      mockEditor.scrollTo.mockClear();
+      // Focused with no local edit: the parent moves away and straight back.
+      fireEvent.focus(input);
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+      rerender(<SchemaEditor {...mockProps} value="select 1" />);
+      fireEvent.blur(input);
 
-      // Height stays > 0 when scrolled out of viewport (not display:none)
-      act(() => {
-        intersectionCallback([makeEntry(200)]);
-      });
-
-      act(() => {
-        intersectionCallback([makeEntry(200)]);
-      });
-
-      expect(mockEditor.refresh).not.toHaveBeenCalled();
-      expect(mockEditor.scrollTo).not.toHaveBeenCalled();
+      // Blur must not resurrect the intermediate value the parent left behind.
+      expect(getEditorValue()).toBe('select 1');
     });
 
-    it('Should disconnect observer on unmount', () => {
-      const { unmount } = render(<SchemaEditor {...mockProps} />);
+    it('should apply a reset that arrives mid-edit once the editor blurs', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+      const input = screen.getByTestId('code-mirror-editor-input');
 
-      unmount();
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+      fireEvent.focus(input);
+      rerender(<SchemaEditor {...mockProps} value="select 1" />);
+      fireEvent.blur(input);
 
-      expect(mockDisconnect).toHaveBeenCalled();
+      expect(getEditorValue()).toBe('select 1');
     });
+
+    it('should defer a value that arrives mid-edit until blur', () => {
+      const { rerender } = render(<SchemaEditor {...mockProps} />);
+      const input = screen.getByTestId('code-mirror-editor-input');
+
+      fireEvent.focus(input);
+      rerender(<SchemaEditor {...mockProps} value="select 2" />);
+
+      expect(getEditorValue()).toBe('select 1');
+
+      fireEvent.blur(input);
+
+      expect(getEditorValue()).toBe('select 2');
+    });
+  });
+
+  it('should append the extensions passed by the call site', () => {
+    const extensions = [[], []];
+    const { rerender } = render(<SchemaEditor {...mockProps} />);
+    const baseCount = Number(
+      screen.getByTestId('editor-extension-count').textContent
+    );
+
+    rerender(<SchemaEditor {...mockProps} extensions={extensions} />);
+
+    expect(
+      Number(screen.getByTestId('editor-extension-count').textContent)
+    ).toBe(baseCount + extensions.length);
+  });
+
+  it('should build a language extension for the requested mode', () => {
+    render(<SchemaEditor {...mockProps} mode={{ name: CSMode.SQL }} />);
+
+    expect(
+      Number(screen.getByTestId('editor-extension-count').textContent)
+    ).toBeGreaterThan(0);
   });
 });

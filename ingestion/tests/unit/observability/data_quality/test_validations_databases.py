@@ -1149,14 +1149,18 @@ def test_suite_validation_database(  # noqa: C901
             assert dim.impactScore == expected_dim[6]
 
 
+BETWEEN_2_AND_11 = "Expected between 2 and 11, with no tolerance applied"
+FULL_TABLE = "Evaluated on the full table."
+
+
 @pytest.mark.parametrize(
     "column_count,expected_message",
     [
-        (1, "Found columnCount=1 column vs. the expected min=2.0 and max=11.0"),
-        (2, "Found columnCount=2 columns vs. the expected min=2.0 and max=11.0"),
-        (5, "Found columnCount=5 columns vs. the expected min=2.0 and max=11.0"),
-        (11, "Found columnCount=11 columns vs. the expected min=2.0 and max=11.0"),
-        (0, "Found columnCount=0 columns vs. the expected min=2.0 and max=11.0"),
+        (1, f"Column count is 1. {BETWEEN_2_AND_11}, so this test failed. {FULL_TABLE}"),
+        (2, f"Column count is 2. {BETWEEN_2_AND_11}, so this test passed. {FULL_TABLE}"),
+        (5, f"Column count is 5. {BETWEEN_2_AND_11}, so this test passed. {FULL_TABLE}"),
+        (11, f"Column count is 11. {BETWEEN_2_AND_11}, so this test passed. {FULL_TABLE}"),
+        (0, f"Column count is 0. {BETWEEN_2_AND_11}, so this test failed. {FULL_TABLE}"),
     ],
 )
 def test_table_column_count_to_be_between_result_message(
@@ -1165,7 +1169,7 @@ def test_table_column_count_to_be_between_result_message(
     test_case_table_column_count_to_be_between,
     create_sqlite_table,
 ):
-    """Test that tableColumnCountToBeBetween uses correct singular/plural form and exact message format"""
+    """The message names the observed count, the bounds, the tolerance applied and the verdict"""
     test_case = test_case_table_column_count_to_be_between
 
     with patch(

@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, EmptyPlaceholder, Owner } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  EmptyPlaceholder,
+  Owner,
+  PageHeader,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { Plus, Tag01 } from '@untitledui/icons';
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
@@ -32,8 +38,7 @@ import { ReactComponent as IconTag } from '../../../assets/svg/classification.sv
 import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -60,7 +65,6 @@ import {
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import {
   DerivedPermissionFlags,
   getDerivedPermissionFlags,
@@ -76,6 +80,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
@@ -88,6 +93,7 @@ import {
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
@@ -600,8 +606,73 @@ const ClassificationDetails = forwardRef(
       }
 
       return (
-        <Row data-testid="header" wrap={false}>
-          <Col flex="auto">
+        <PageHeader
+          actions={
+            <Box align="center" gap={4}>
+              {createPermission && (
+                <Tooltip
+                  isDisabled={!addTagButtonToolTip}
+                  title={addTagButtonToolTip ?? ''}>
+                  <Button
+                    color="primary"
+                    data-testid="add-new-tag-button"
+                    isDisabled={isClassificationDisabled}
+                    size="sm"
+                    onPress={handleAddNewTagClick}>
+                    {t('label.add-entity', {
+                      entity: t('label.tag'),
+                    })}
+                  </Button>
+                </Tooltip>
+              )}
+
+              <StatItem
+                count={currentVersion}
+                icon={RefreshCcw01}
+                testId="version-button"
+                tooltip={t(
+                  `label.${
+                    isVersionView
+                      ? 'exit-version-history'
+                      : 'version-plural-history'
+                  }`
+                )}
+                onClick={versionHandler}
+              />
+
+              {showManageButton && (
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={handleAfterDeleteAction}
+                  allowSoftDelete={false}
+                  canDelete={deletePermission && !isClassificationDisabled}
+                  displayName={getEntityName(currentClassification)}
+                  entityFQN={currentClassification?.fullyQualifiedName}
+                  entityId={currentClassification.id}
+                  entityName={currentClassification.name}
+                  entityType={EntityType.CLASSIFICATION}
+                  extraDropdownContent={extraDropdownContent}
+                />
+              )}
+            </Box>
+          }
+          breadcrumb={
+            <HeaderBreadcrumb
+              autoCollapse
+              className="tw:mb-0"
+              items={[
+                {
+                  label: t('label.classification-plural'),
+                  href: ROUTES.TAGS,
+                },
+                { label: getEntityName(currentClassification) },
+              ]}
+              showHome={false}
+              size="xs"
+            />
+          }
+          data-testid="header"
+          title={
             <EntityHeaderTitle
               badge={
                 <div className="d-flex gap-1">
@@ -626,59 +697,8 @@ const ClassificationDetails = forwardRef(
               name={name ?? currentClassification.name}
               serviceName="classification"
             />
-          </Col>
-
-          <Col className="d-flex justify-end items-start" flex="270px">
-            <Space size={12}>
-              {createPermission && (
-                <Tooltip title={addTagButtonToolTip}>
-                  <Button
-                    data-testid="add-new-tag-button"
-                    disabled={isClassificationDisabled}
-                    type="primary"
-                    onClick={handleAddNewTagClick}>
-                    {t('label.add-entity', {
-                      entity: t('label.tag'),
-                    })}
-                  </Button>
-                </Tooltip>
-              )}
-
-              <ButtonGroup className="spaced" size="small">
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className="w-16 p-0"
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={versionHandler}>
-                    <Typography.Text>{currentVersion}</Typography.Text>
-                  </Button>
-                </Tooltip>
-                {showManageButton && (
-                  <ManageButton
-                    isRecursiveDelete
-                    afterDeleteAction={handleAfterDeleteAction}
-                    allowSoftDelete={false}
-                    canDelete={deletePermission && !isClassificationDisabled}
-                    displayName={getEntityName(currentClassification)}
-                    entityFQN={currentClassification?.fullyQualifiedName}
-                    entityId={currentClassification.id}
-                    entityName={currentClassification.name}
-                    entityType={EntityType.CLASSIFICATION}
-                    extraDropdownContent={extraDropdownContent}
-                  />
-                )}
-              </ButtonGroup>
-            </Space>
-          </Col>
-        </Row>
+          }
+        />
       );
     }
 
@@ -746,78 +766,72 @@ const ClassificationDetails = forwardRef(
           onUpdate={(updatedData: Classification) =>
             Promise.resolve(handleUpdateClassification?.(updatedData))
           }>
-          <Row className="m-t-md classification-details-content" gutter={16}>
-            <Col span={18}>
-              <Card className="classification-details-card">
-                <div className="m-b-sm" data-testid="description-container">
-                  <Description
-                    wrapInCard
-                    description={description}
-                    entityName={getEntityName(currentClassification)}
-                    entityType={EntityType.CLASSIFICATION}
-                    hasEditAccess={editDescriptionPermission}
-                    isDescriptionExpanded={isEmpty(tags)}
-                    showCommentsIcon={false}
-                    onDescriptionUpdate={handleUpdateDescription}
-                  />
-                </div>
-
-                {renderTagsPanel()}
-              </Card>
-            </Col>
-            <Col span={6}>
-              <div className="d-flex flex-column gap-5">
-                <DomainLabelV2
-                  multiple
-                  showDomainHeading
-                  hasPermission={editDomainPermission}
+          <div className="classification-details-content tw:mt-4 tw:flex tw:min-h-0 tw:flex-1 tw:gap-4">
+            <Card className="classification-details-card tw:flex tw:min-w-0 tw:flex-3 tw:flex-col tw:p-4">
+              <div className="m-b-sm" data-testid="description-container">
+                <Description
+                  wrapInCard
+                  description={description}
+                  entityName={getEntityName(currentClassification)}
+                  entityType={EntityType.CLASSIFICATION}
+                  hasEditAccess={editDescriptionPermission}
+                  isDescriptionExpanded={isEmpty(tags)}
+                  showCommentsIcon={false}
+                  onDescriptionUpdate={handleUpdateDescription}
                 />
-                <WidgetCard
-                  dataTestId="classification-owner-name"
-                  headerExtra={
-                    !isVersionView && editOwnerPermission ? (
-                      <UserTeamSelectableList
-                        hasPermission={Boolean(editOwnerPermission)}
-                        listHeight={200}
-                        multiple={{
-                          user: entityRules.canAddMultipleUserOwners,
-                          team: entityRules.canAddMultipleTeamOwner,
-                        }}
-                        owner={currentClassification.owners}
-                        onUpdate={async (updatedOwners?: EntityReference[]) => {
-                          handleUpdateClassification?.({
-                            ...currentClassification,
-                            owners: updatedOwners,
-                          });
-                        }}>
-                        {isEmpty(currentClassification.owners) ? (
-                          <WidgetPlusButton
-                            data-testid="add-owner"
-                            title={t('label.add-entity', {
-                              entity: t('label.owner-plural'),
-                            })}
-                          />
-                        ) : (
-                          <WidgetEditButton
-                            data-testid="edit-owner"
-                            title={t('label.edit-entity', {
-                              entity: t('label.owner-plural'),
-                            })}
-                          />
-                        )}
-                      </UserTeamSelectableList>
-                    ) : null
-                  }
-                  isExpandDisabled={isEmpty(currentClassification.owners)}
-                  title={t('label.owner-plural')}>
-                  <Owner
-                    owners={toOwnerRefs(currentClassification.owners ?? [])}
-                  />
-                </WidgetCard>
-                {tagClassBase.getClassificationReviewerWidget()}
               </div>
-            </Col>
-          </Row>
+
+              {renderTagsPanel()}
+            </Card>
+            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-5">
+              <DomainLabelV2
+                multiple
+                showDomainHeading
+                hasPermission={editDomainPermission}
+              />
+              <WidgetCard
+                dataTestId="classification-owner-name"
+                headerExtra={
+                  !isVersionView && editOwnerPermission ? (
+                    <UserTeamSelectableList
+                      hasPermission={Boolean(editOwnerPermission)}
+                      listHeight={200}
+                      multiple={{
+                        user: entityRules.canAddMultipleUserOwners,
+                        team: entityRules.canAddMultipleTeamOwner,
+                      }}
+                      owner={currentClassification.owners}
+                      onUpdate={async (updatedOwners?: EntityReference[]) => {
+                        handleUpdateClassification?.({
+                          ...currentClassification,
+                          owners: updatedOwners,
+                        });
+                      }}>
+                      {isEmpty(currentClassification.owners) ? (
+                        <WidgetPlusButton
+                          data-testid="add-owner"
+                          title={t('label.add-entity', {
+                            entity: t('label.owner-plural'),
+                          })}
+                        />
+                      ) : (
+                        <WidgetEditButton
+                          data-testid="edit-owner"
+                          title={t('label.edit-entity', {
+                            entity: t('label.owner-plural'),
+                          })}
+                        />
+                      )}
+                    </UserTeamSelectableList>
+                  ) : null
+                }
+                isExpandDisabled={isEmpty(currentClassification.owners)}
+                title={t('label.owner-plural')}>
+                <Owner owners={currentClassification.owners ?? []} />
+              </WidgetCard>
+              {tagClassBase.getClassificationReviewerWidget()}
+            </div>
+          </div>
         </GenericProvider>
       );
     }

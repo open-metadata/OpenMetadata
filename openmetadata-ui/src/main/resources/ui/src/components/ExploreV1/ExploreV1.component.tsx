@@ -500,7 +500,9 @@ const ExploreResultsPanel = ({
   selectedQuickFilters,
 }: ExploreResultsPanelProps) => {
   return (
-    <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+    <Box
+      className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
+      colGap={3}>
       <ExploreResultsListPanel
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
@@ -1185,8 +1187,18 @@ const ExploreV1: React.FC<ExploreProps> = ({
             />
           </Col>
           {/* Content-sized: a grow factor here would swallow the free space the
-              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide). */}
-          <Col className="d-flex items-center justify-end gap-3" flex="none">
+              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide).
+              Top-aligned, and offset by the filters' own `mt-1`, so the controls
+              sit on the first filter row: centring them inside a column the
+              wrapped filters have made two rows tall floats them into the gap
+              and reads as a much heavier block. */}
+          {/* `self-start` keeps this column at its content height. Left to
+              stretch, it grows with the wrapped filters, and the vertical
+              dividers — which are `self-stretch` — grow with it, towering over
+              the controls they separate. */}
+          <Col
+            className="d-flex items-start justify-end gap-3 tw:mt-1 tw:self-start"
+            flex="none">
             <Button
               aria-label={t('label.sort-order')}
               className="tw:p-0"
@@ -1300,14 +1312,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
-          // Ant Card owns the title padding, so the spacing belongs on its header rather than the inner row.
-          cardClassName: 'tw:[&_.ant-card-head-title]:pb-2',
           className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
           titleClassName: 'tw:capitalize tw:font-medium',
-          titleContainerClassName: 'tw:items-center',
+          titleContainerClassName: 'tw:items-center tw:pb-2',
           titleStrong: false,
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}

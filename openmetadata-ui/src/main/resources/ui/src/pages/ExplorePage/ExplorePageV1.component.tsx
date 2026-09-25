@@ -94,17 +94,11 @@ const ExplorePageV1: FC<unknown> = () => {
   const defaultPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(globalPageSize)
     ? globalPageSize
     : PAGE_SIZE_BASE;
+  // Handed to usePaging rather than corrected afterwards: correcting wrote the size back to the
+  // shared URL, and this page stays mounted in app mode (KeepAliveRoutes), so it overwrote the
+  // selection of whichever page the user was actually on.
   const { currentPage, handlePageChange, handlePageSizeChange, pageSize } =
-    usePaging(defaultPageSize);
-  const currentPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)
-    ? pageSize
-    : defaultPageSize;
-
-  useEffect(() => {
-    if (!EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)) {
-      handlePageSizeChange(defaultPageSize);
-    }
-  }, [defaultPageSize, handlePageSizeChange, pageSize]);
+    usePaging(defaultPageSize, EXPLORE_PAGE_SIZE_OPTIONS);
 
   const { tab } = useRequiredParams<UrlParams>();
 
@@ -395,7 +389,7 @@ const ExplorePageV1: FC<unknown> = () => {
       sortOrder,
       showDeleted,
       page: currentPage,
-      size: currentPageSize,
+      size: pageSize,
       searchIndex: tab
         ? searchIndex
         : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex),
@@ -410,7 +404,7 @@ const ExplorePageV1: FC<unknown> = () => {
     sortOrder,
     showDeleted,
     currentPage,
-    currentPageSize,
+    pageSize,
     searchIndex,
     tab,
     showRankingDetails,
@@ -563,7 +557,7 @@ const ExplorePageV1: FC<unknown> = () => {
         sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
-        size: currentPageSize,
+        size: pageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -595,7 +589,7 @@ const ExplorePageV1: FC<unknown> = () => {
         sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
-        size: currentPageSize,
+        size: pageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -642,7 +636,7 @@ const ExplorePageV1: FC<unknown> = () => {
       currentPage={currentPage}
       isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
-      pageSize={currentPageSize}
+      pageSize={pageSize}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
       searchResults={isTourOpen ? tourMockSearchResults : searchResults}
@@ -675,14 +669,14 @@ const ExplorePageV1WithLayout = withPageLayout(
 // AI-mode presentation: an AI search header rendered above the shared Explore
 // page, with layout overrides that keep the embedded page in the AI flow.
 const EXPLORE_MODE_PAGE_CLASS_NAME =
-  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
+  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary tw:dark:bg-secondary';
 
 const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
   'tw:mt-2 tw:w-full tw:shrink-0 tw:px-2';
 
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
-  'tw:flex tw:h-full tw:flex-col tw:bg-primary',
-  'tw:[&_.explore-page]:!bg-primary',
+  'tw:flex tw:h-full tw:flex-col tw:bg-primary tw:dark:bg-secondary',
+  'tw:[&_.explore-page]:!bg-primary tw:dark:[&_.explore-page]:!bg-secondary',
   'tw:[&_.page-layout-v1-vertical-scroll]:!overflow-visible',
   "tw:[&_[data-testid='page-layout-v1']]:!overflow-visible",
   "tw:[&>[data-testid='loader']]:tw:m-auto"

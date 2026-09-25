@@ -379,6 +379,7 @@ jest.mock('../../utils/EntitySearchUtils', () => ({
   highlightEntityNameAndDescription: jest
     .fn()
     .mockImplementation((entity) => entity),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -574,13 +575,8 @@ describe('ExploreV1', () => {
   it('uses parent header spacing and actions without persistent focus styles', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    expect(screen.getByTestId('resizable-left-panel-card')).toHaveClass(
-      'tw:[&_.ant-card-head-title]:pb-2'
-    );
     expect(screen.getByTestId('resizable-left-panel-title')).toHaveClass(
-      'tw:items-center'
-    );
-    expect(screen.getByTestId('resizable-left-panel-title')).not.toHaveClass(
+      'tw:items-center',
       'tw:pb-2'
     );
     expect(screen.getByTestId('resizable-left-panel-title-text')).toHaveClass(

@@ -13,13 +13,6 @@
 
 @import (reference) '../../styles/variables.less';
 
-.data-quality-page-tabs.ant-tabs.tabs-new {
-  .ant-tabs-tabpane {
-    margin-top: @size-md;
-    background-color: unset;
-  }
-}
-
 .data-quality-page {
   .data-assets-coverage-icon,
   .all-tests-icon {
@@ -38,5 +31,16 @@
         color: @green-500;
       }
     }
+  }
+}
+
+// Dark: the DQ page's header card and table container both
+// draw their border from @global-border (@grey-15) — a solid gray that stands
+// out in dark. Align them to the subtle white-alpha border (border-subtle =
+// rgba(255,255,255,0.08)) used across dark surfaces. Dark only; light unchanged.
+.dark-mode {
+  .data-quality-page .ant-card,
+  .data-quality-page .data-quality-tab-container {
+    border-color: var(--color-border-subtle);
   }
 }

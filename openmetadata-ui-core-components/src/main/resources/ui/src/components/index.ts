@@ -116,6 +116,7 @@ export * from './application/tag/glossary-tag';
 export * from './application/tag/domain-tag';
 export * from './application/tag/data-product-tag';
 export * from './application/tag/auto-classification-tag';
+export * from './application/tag/metric-tag';
 export * from './application/tag/tag.types';
 export * from './application/tree/tree';
 export * from './application/tree-select/tree-select.types';
@@ -193,6 +194,7 @@ export * from './checkbox-icons';
 export * from './application/owner/owner';
 export * from './application/owner/owner-chip';
 export * from './application/owner/owner-avatar-stack';
+export * from './application/owner/owner-renderer';
 export * from './application/owner/owner-utils';
 export type {
   OwnerProps,

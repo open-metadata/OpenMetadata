@@ -10,19 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Box,
+  Button,
+  PageHeader,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -33,7 +29,6 @@ import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
@@ -45,6 +40,10 @@ import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallbac
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import EntityDetailHeader from '../../components/common/EntityDetailHeader/EntityDetailHeader.component';
 import { EntityDetailTab } from '../../components/common/EntityDetailHeader/EntityDetailHeader.interface';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
@@ -55,12 +54,11 @@ import StatusBadge from '../../components/common/StatusBadge/StatusBadge.compone
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
-import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
+import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -69,7 +67,7 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
-import IconColorModal from '../../components/Modals/IconColorModal';
+import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
@@ -107,6 +105,7 @@ import {
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -241,26 +240,25 @@ const TagPage = () => {
     [queryClient, tagCacheKey]
   );
 
-  const breadcrumb: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
-    return tagItem
-      ? [
-          {
-            name: 'Classifications',
-            url: ROUTES.TAGS,
-            activeTitle: false,
-          },
-          {
-            name: tagItem.classification?.name ?? '',
-            url: tagItem.classification?.fullyQualifiedName
-              ? getClassificationDetailsPath(
-                  tagItem.classification.fullyQualifiedName
-                )
-              : '',
-            activeTitle: false,
-          },
-        ]
-      : [];
-  }, [tagItem]);
+  // Same trail DataAssetsHeader renders: ancestors link, the tag itself closes it.
+  const breadcrumbItems = useMemo(
+    () =>
+      tagItem
+        ? [
+            { label: t('label.classification-plural'), href: ROUTES.TAGS },
+            {
+              label: tagItem.classification?.name ?? '',
+              href: tagItem.classification?.fullyQualifiedName
+                ? getClassificationDetailsPath(
+                    tagItem.classification.fullyQualifiedName
+                  )
+                : undefined,
+            },
+            { label: getEntityName(tagItem) },
+          ]
+        : [],
+    [tagItem, t]
+  );
 
   const aiBreadcrumbItems = useMemo(
     () => [
@@ -516,7 +514,7 @@ const TagPage = () => {
     }
   }, [assetTabRef, activeTab, activeTabHandler, fetchClassificationTagAssets]);
 
-  const getManageButtonContent = (): ItemType[] => [
+  const getManageButtonContent = (): ManageMenuItem[] => [
     ...(editTagsPermission
       ? [
           {
@@ -610,7 +608,7 @@ const TagPage = () => {
       : []),
   ];
 
-  const manageButtonContent: ItemType[] = getManageButtonContent();
+  const manageButtonContent: ManageMenuItem[] = getManageButtonContent();
 
   const tabItems = useMemo(() => {
     if (!tagItem) {
@@ -760,6 +758,8 @@ const TagPage = () => {
     t,
   ]);
 
+  const renderedActiveTab = getRenderedActiveTab(tabItems, activeTab);
+
   const aiHeaderTabs = useMemo<EntityDetailTab[]>(
     () => tabItems.map((tab) => ({ key: tab.key, label: tab.label })),
     [tabItems]
@@ -861,9 +861,10 @@ const TagPage = () => {
   const renderAddAssetsButton = () =>
     !isCertificationClassification && !tagItem.disabled ? (
       <Button
+        color="primary"
         data-testid="data-classification-add-button"
-        type="primary"
-        onClick={() => setAssetModalVisible(true)}>
+        size="sm"
+        onPress={() => setAssetModalVisible(true)}>
         {t('label.add-entity', {
           entity: t('label.asset-plural'),
         })}
@@ -872,36 +873,20 @@ const TagPage = () => {
 
   const manageDropdown =
     manageButtonContent.length > 0 ? (
-      <Dropdown
-        align={{ targetOffset: [-12, 0] }}
-        className="m-l-xs"
-        menu={{
-          items: manageButtonContent,
-        }}
-        open={showActions}
-        overlayStyle={{ width: '350px' }}
-        placement="bottomRight"
-        trigger={['click']}
-        onOpenChange={setShowActions}>
-        <Tooltip
-          placement="topRight"
-          title={t('label.manage-entity', {
-            entity: t('label.tag-lowercase'),
-          })}>
-          <Button
-            className="flex-center"
-            data-testid="manage-button"
-            icon={<IconDropdown className="manage-dropdown-icon" />}
-            onClick={() => setShowActions(true)}
-          />
-        </Tooltip>
-      </Dropdown>
+      <ManageMenu
+        isOpen={showActions}
+        items={manageButtonContent}
+        label={t('label.manage-entity', {
+          entity: t('label.tag-lowercase'),
+        })}
+        onOpenChange={setShowActions}
+      />
     ) : null;
 
   const renderAiHeader = () => (
     <div>
       <EntityDetailHeader
-        activeKey={activeTab}
+        activeKey={renderedActiveTab}
         badge={
           <>
             {badge}
@@ -926,31 +911,39 @@ const TagPage = () => {
   );
 
   const renderClassicHeader = () => (
-    <Row
-      className="data-classification"
-      data-testid="data-classification"
-      gutter={[0, 12]}>
-      <Col className="p-x-md" flex="1">
-        <EntityHeader
-          badge={badge}
-          breadcrumb={breadcrumb}
-          entityData={tagItem}
-          entityType={EntityType.TAG}
-          icon={icon}
-          serviceName={tagItem.name}
-          suffix={learningIcon}
-          titleColor={tagItem.style?.color ?? BLACK_COLOR}
-        />
-      </Col>
-      {haveAssetEditPermission && (
-        <Col className="p-x-md">
-          <div className="d-flex self-end">
+    <PageHeader
+      actions={
+        haveAssetEditPermission ? (
+          <Box align="center">
             {renderAddAssetsButton()}
             {manageDropdown}
-          </div>
-        </Col>
-      )}
-    </Row>
+          </Box>
+        ) : undefined
+      }
+      breadcrumb={
+        <HeaderBreadcrumb
+          autoCollapse
+          className="tw:mb-0"
+          items={breadcrumbItems}
+          showHome={false}
+          size="xs"
+        />
+      }
+      className="data-classification"
+      data-testid="data-classification"
+      title={
+        <EntityHeaderTitle
+          badge={badge}
+          color={tagItem.style?.color ?? BLACK_COLOR}
+          deleted={tagItem.deleted}
+          displayName={tagItem.displayName}
+          icon={icon}
+          name={tagItem.name}
+          serviceName={tagItem.name}
+          suffix={learningIcon}
+        />
+      }
+    />
   );
 
   const renderModals = () => (
@@ -1010,10 +1003,8 @@ const TagPage = () => {
     <PageLayoutV1
       pageTitle={tagItem.name}
       variant={isAiMode ? 'compact' : 'default'}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
-          {showAiHeader ? renderAiHeader() : renderClassicHeader()}
-        </Col>
+      <Box direction="col" gap={3}>
+        <div>{showAiHeader ? renderAiHeader() : renderClassicHeader()}</div>
 
         <GenericProvider<Tag>
           customizedPage={customizedPage}
@@ -1024,24 +1015,31 @@ const TagPage = () => {
           onUpdate={(updatedData: Tag) =>
             Promise.resolve(updateTag(updatedData))
           }>
-          <Col
-            span={24}
-            style={{
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              height: 'calc(100vh - 170px)',
-            }}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="tabs-new tag-page-tabs"
-              items={tabItems}
-              renderTabBar={showAiHeader ? () => <></> : undefined}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <div className="tw:h-[calc(100vh-170px)] tw:overflow-x-hidden tw:overflow-y-auto">
+            {showAiHeader ? (
+              tabItems.find((tab) => tab.key === renderedActiveTab)?.children
+            ) : (
+              <Tabs
+                className="tw:gap-3"
+                selectedKey={renderedActiveTab}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Tabs.List size="sm" type="underline" variant="card">
+                  {tabItems.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabItems.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            )}
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       {renderModals()}
     </PageLayoutV1>

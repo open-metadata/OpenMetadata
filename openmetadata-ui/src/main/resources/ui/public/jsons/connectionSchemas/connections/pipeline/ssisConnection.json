@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SSISConnection",
   "description": "SSIS Metadata Database Connection Config",
   "type": "object",
@@ -32,7 +31,6 @@
     "databaseConnection": {
       "title": "Metadata Database Connection",
       "description": "Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only mode and run history is not extracted.",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.schema.services.connections.database.MssqlConnection",
       "definitions": {
@@ -105,13 +103,13 @@
         },
         "encrypt": {
           "title": "Encrypt Connection",
-          "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+          "description": "Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc. mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is decided by FreeTDS configuration.",
           "type": "boolean",
           "default": false
         },
         "trustServerCertificate": {
           "title": "Trust Server Certificate",
-          "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+          "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority. On mssql+pytds the certificate chain is always validated against the supplied CA certificate and only the host name check is dropped.",
           "type": "boolean",
           "default": false
         },
@@ -122,7 +120,6 @@
           "mask": true,
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "Validate SSL Client Config",
               "description": "OpenMetadata Client configured to validate SSL certificates.",
               "type": "object",
@@ -397,7 +394,6 @@
                       "oneOf": [
                         {
                           "title": "AWS S3 Storage Config",
-                          "$schema": "http://json-schema.org/draft-07/schema#",
                           "description": "AWS credentials configs.",
                           "type": "object",
                           "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -427,7 +423,8 @@
                             "awsSessionToken": {
                               "title": "AWS Session Token",
                               "description": "AWS Session Token.",
-                              "type": "string"
+                              "type": "string",
+                              "format": "password"
                             },
                             "endPointURL": {
                               "title": "Endpoint URL",
@@ -499,7 +496,6 @@
       "description": "Underlying storage connection",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "S3 Connection",
           "description": "S3 Connection.",
           "type": "object",
@@ -526,7 +522,6 @@
             },
             "awsConfig": {
               "title": "AWS Credentials Configuration",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -556,7 +551,8 @@
                 "awsSessionToken": {
                   "title": "AWS Session Token",
                   "description": "AWS Session Token.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "endPointURL": {
                   "title": "Endpoint URL",

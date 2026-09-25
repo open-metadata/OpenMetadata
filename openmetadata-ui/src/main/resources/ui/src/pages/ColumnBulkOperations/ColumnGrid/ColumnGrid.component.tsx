@@ -17,6 +17,7 @@ import {
   ButtonUtility,
   Card,
   EmptyPlaceholder,
+  FeaturedIcon,
   GlossaryTag,
   Input,
   Table,
@@ -27,6 +28,9 @@ import {
 import {
   NoFilterFunnel,
   NoSearch,
+  PendingChanges,
+  TotalOccurrences,
+  TotalUniqueColumn,
 } from '@openmetadata/ui-core-components/icons';
 import {
   ArrowRight,
@@ -49,18 +53,15 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic_occurrences.svg';
-import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic_pending-changes.svg';
-import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
+import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
+import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -358,21 +359,9 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
         };
       });
 
-    const glossaryTermOptions: SelectOption[] = currentTags
-      .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
-      .map((tag: TagLabel) => {
-        const displayLabel = getTagDisplayLabel(tag);
-
-        return {
-          label: displayLabel,
-          value: tag.tagFQN ?? '',
-          data: {
-            ...tag,
-            displayName: tag.displayName || displayLabel,
-            name: tag.name || displayLabel,
-          },
-        };
-      });
+    const glossaryTermValue: TagLabel[] = currentTags.filter(
+      (tag: TagLabel) => tag.source === TagSource.Glossary
+    );
 
     return (
       <div
@@ -504,37 +493,17 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
             className="tw:text-sm tw:font-semibold tw:text-secondary">
             {t('label.glossary-term-plural')}
           </Typography>
-          <TreeAsyncSelectList
-            hasNoActionButtons
-            getPopupContainer={(triggerNode) => triggerNode.parentElement}
-            initialOptions={glossaryTermOptions}
+          <GlossaryTermPicker
+            data-testid="glossary-terms-picker"
             key={`glossaryTerms-${drawerKey}`}
-            open={false}
             placeholder={t('label.select-tags')}
+            value={glossaryTermValue}
             onChange={(selectedTerms) => {
-              const options = (
-                Array.isArray(selectedTerms) ? selectedTerms : [selectedTerms]
-              ) as SelectOption[];
-              const newTerms: TagLabel[] = options
-                .filter((option: SelectOption) => option.data)
-                .map((option: SelectOption) => {
-                  const termData = option.data as {
-                    fullyQualifiedName?: string;
-                    name?: string;
-                    displayName?: string;
-                    description?: string;
-                  };
-
-                  return {
-                    tagFQN: termData.fullyQualifiedName ?? option.value,
-                    source: TagSource.Glossary,
-                    labelType: LabelType.Manual,
-                    state: State.Confirmed,
-                    name: termData.name,
-                    displayName: termData.displayName,
-                    description: termData.description,
-                  };
-                });
+              const newTerms: TagLabel[] = selectedTerms.map((term) => ({
+                ...term,
+                labelType: term.labelType ?? LabelType.Manual,
+                state: term.state ?? State.Confirmed,
+              }));
               selectedRowsData.forEach((selectedRow) => {
                 const rowId = selectedRow.id;
                 const foundRow = allRows.find(
@@ -610,7 +579,7 @@ const ColumnGridSelectionActions = ({
           {t('label.edit')}
         </Button>
         <Button
-          className="tw:text-secondary"
+          className="tw:text-fg-secondary"
           color="tertiary"
           data-testid="cancel-selection-button"
           size="sm"
@@ -704,10 +673,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const getMetadataStatusClassName = (status: MetadataStatus): string => {
     const map: Record<MetadataStatus, string> = {
-      [MetadataStatus.Missing]: 'tw:text-gray-500 tw:font-medium',
-      [MetadataStatus.Incomplete]: 'tw:text-yellow-600 tw:font-medium',
-      [MetadataStatus.Inconsistent]: 'tw:text-red-600 tw:font-medium',
-      [MetadataStatus.Complete]: 'tw:text-green-600 tw:font-medium',
+      [MetadataStatus.Missing]: 'tw:text-quaternary tw:font-medium',
+      [MetadataStatus.Incomplete]: 'tw:text-warning-primary tw:font-medium',
+      [MetadataStatus.Inconsistent]: 'tw:text-error-primary tw:font-medium',
+      [MetadataStatus.Complete]: 'tw:text-success-primary tw:font-medium',
     };
 
     return map[status] ?? map[MetadataStatus.Missing];
@@ -2620,7 +2589,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       return (
         <EmptyPlaceholder
           description={t('message.check-spelling-or-try-shorter-term')}
-          icon={<NoSearch className="tw:text-secondary" />}
+          icon={<NoSearch className="tw:text-fg-secondary" />}
           title={t('label.no-matching-result-plural')}
           variant="blank"
         />
@@ -2639,7 +2608,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             },
           ]}
           description={t('message.nothing-matches-current-filter')}
-          icon={<NoFilterFunnel className="tw:text-secondary" />}
+          icon={<NoFilterFunnel className="tw:text-fg-secondary" />}
           title={t('label.no-result-for-these-filter-plural')}
           variant="blank"
         />
@@ -2649,7 +2618,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     return (
       <EmptyPlaceholder
         description={t('message.column-bulk-empty-description')}
-        icon={<TableIcon className="tw:text-secondary" />}
+        icon={<TableIcon className="tw:text-fg-secondary" />}
         title={t('message.no-columns-to-work-with')}
         variant="blank"
       />
@@ -2663,7 +2632,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     if (isColumnDataEmpty) {
       return (
         <div
-          className="tw:relative tw:min-h-[calc(100vh-16rem)] tw:bg-primary"
+          className="tw:relative tw:min-h-[calc(100vh-16rem)] tw:bg-surface"
           data-testid="column-grid-empty-placeholder">
           {emptyPlaceholder}
         </div>
@@ -2705,7 +2674,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             <div
               className="tw:flex tw:min-w-0 tw:flex-1 tw:shrink-0 tw:items-center tw:gap-4 tw:pl-6 first:tw:pl-0 last:tw:pr-0"
               data-testid="total-unique-columns-card">
-              <UniqueColumnsIcon height={47} width={47} />
+              <FeaturedIcon color="brand" icon={TotalUniqueColumn} size="lg" />
               <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
                 <Typography
                   as="p"
@@ -2731,7 +2700,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             <div
               className="tw:flex tw:min-w-0 tw:flex-1 tw:shrink-0 tw:items-center tw:gap-4 tw:pl-6 first:tw:pl-0 last:tw:pr-0"
               data-testid="total-occurrences-card">
-              <OccurrencesIcon height={47} width={47} />
+              <FeaturedIcon color="success" icon={TotalOccurrences} size="lg" />
               <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
                 <Typography
                   as="p"
@@ -2757,7 +2726,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             <div
               className="tw:flex tw:min-w-0 tw:flex-1 tw:shrink-0 tw:items-center tw:gap-4 tw:pl-6 first:tw:pl-0 last:tw:pr-0"
               data-testid="pending-changes-card">
-              <PendingChangesIcon height={47} width={47} />
+              <FeaturedIcon color="warning" icon={PendingChanges} size="lg" />
               <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
                 <Typography
                   as="p"
@@ -2783,7 +2752,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </div>
 
       {/* Table Container - Same structure as DomainListPage */}
-      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary">
+      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:-outline-offset-1 tw:outline-secondary">
         {!showEmptyOnboarding && (
           <div className="tw:flex tw:flex-col tw:gap-4 tw:px-6 tw:py-4 tw:border-b tw:border-border-secondary">
             <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">

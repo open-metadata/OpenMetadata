@@ -19,7 +19,7 @@ from ast import literal_eval
 
 from sqlalchemy import Column
 
-from metadata.data_quality.validations import utils
+from metadata.data_quality.validations import result_messages, utils
 from metadata.data_quality.validations.base_test_handler import (
     BaseTestValidator,
     DimensionInfo,
@@ -139,7 +139,8 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         For in-set test, behavior depends on match_enum flag:
         - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
-        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
+        - match_enum=True: Pass if the values outside the set (row_count - count_in_set)
+          stay within the failure threshold, counted against the table row count
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -162,7 +163,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         if match_enum:
             row_count = metric_values.get(Metrics.rowCount.name, 0)
             failed_count = row_count - count_in_set
-            matched = failed_count == 0
+            matched = self._apply_row_threshold(failed_count, row_count)
             total_rows = row_count
         else:
             matched = count_in_set > 0
@@ -193,14 +194,25 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             str: Formatted result message
         """
         count_in_set = metric_values[Metrics.countInSet.name]
+        matched = self._matched(metric_values, test_params)
+        row_count = metric_values.get(Metrics.rowCount.name)
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found countInSet={count_in_set}"
+        if test_params and test_params.get(self.MATCH_ENUM):
+            # Every row has to be in the set, so the rows outside it are the violations.
+            return self.format_violation_message(
+                violations=(row_count - count_in_set) if row_count is not None else None,
+                population=row_count,
+                violation_noun="values outside the allowed set",
+                matched=matched,
+                dimension_info=dimension_info,
             )
-        else:  # noqa: RET505
-            return f"Found countInSet={count_in_set}."
+
+        # Without matchEnum the test only asks that the set be used at all, so there is no
+        # violation count and no threshold to apply: the population is the whole story.
+        return self._dimension_prefix(dimension_info) + (
+            f"Found {result_messages.format_count(count_in_set)} values in the allowed set. "
+            f"Expected at least one, {result_messages.verdict(matched)}."
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for in-set test

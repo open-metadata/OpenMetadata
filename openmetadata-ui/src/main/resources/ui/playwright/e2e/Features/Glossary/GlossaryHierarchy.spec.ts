@@ -39,6 +39,7 @@ test.describe('Glossary Hierarchy', () => {
   test('should move nested term to root level of same glossary', async ({
     page,
   }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary);
@@ -62,10 +63,25 @@ test.describe('Glossary Hierarchy', () => {
         glossary.responseData.fullyQualifiedName
       );
 
-      // Refresh responseData so cleanup uses the post-move FQN.
-      // Moving to root rewrites the term's fullyQualifiedName in the DB, and
-      // GlossaryTerm.delete() looks up by name — without this, the finally
-      // block tries to delete by the stale pre-move FQN and 404s.
+      // moveAsync is async — poll until the backend clears the term's parent.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+            );
+            if (!res.ok()) {
+              return true; // keep retrying on transient errors
+            }
+            const term = await res.json();
+
+            return term.parent;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBeFalsy();
+
+      // Refresh so cleanup deletes by the post-move FQN, not the stale one.
       const refreshed = await apiContext.get(
         `/api/v1/glossaryTerms/${childTerm.responseData.id}`
       );
@@ -284,7 +300,9 @@ test.describe('Glossary Hierarchy', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('change-parent-button').click();
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(
+        page.getByTestId('change-parent-hierarchy-modal')
+      ).toBeVisible();
 
       // Click cancel button
       await page
@@ -294,7 +312,7 @@ test.describe('Glossary Hierarchy', () => {
 
       // Verify modal is closed
       await expect(
-        page.locator('[role="dialog"].change-parent-hierarchy-modal')
+        page.getByTestId('change-parent-hierarchy-modal')
       ).not.toBeVisible();
       await waitForAllLoadersToDisappear(page);
 
@@ -401,17 +419,13 @@ test.describe('Glossary Hierarchy', () => {
       );
 
       // Wait for confirmation modal content to be visible
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeVisible();
+      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
 
       // Click Cancel button
       await page.getByRole('button', { name: 'Cancel' }).click();
 
       // Verify modal content is closed
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeHidden();
+      await expect(page.getByTestId('confirmation-modal')).toBeHidden();
 
       // Verify terms are still at root level (no hierarchy change)
       await expect(

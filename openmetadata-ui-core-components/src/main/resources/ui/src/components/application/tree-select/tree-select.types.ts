@@ -26,8 +26,12 @@ export interface TreeSelectNode<T = unknown> {
   allowSelection?: boolean;
   lazyLoad?: boolean;
   isParentMutuallyExclusive?: boolean;
+  /** Parent id, for selections seeded before that branch is in the tree. */
+  parentId?: string;
   /** Child count displayed as a trailing badge on parent nodes. */
   count?: number;
+  /** Set when the loaded children are a truncated page, not the whole branch. */
+  hasMoreChildren?: boolean;
   /**
    * When true, children of this node are mutually exclusive (radio buttons)
    * and this node itself will not render a selection control.
@@ -54,6 +58,19 @@ export type TreeSelectDataFetcher<T = unknown> = (
 ) => Promise<TreeSelectDataResponse<T>>;
 
 export type TreeSelectTriggerVariant = 'input' | 'button';
+
+/** 'staged' buffers toggles and reports once on Apply; any other close discards. */
+export type TreeSelectCommitMode = 'immediate' | 'staged';
+
+/** Arguments handed to `renderTrigger` for a consumer-owned trigger. */
+export interface TreeSelectTriggerRenderProps {
+  isOpen: boolean;
+  toggle: () => void;
+  open: () => void;
+  close: () => void;
+  /** Selected node count — the draft count while staged. */
+  selectedCount: number;
+}
 
 export interface TreeSelectProps<T = unknown> {
   /** Label text rendered above the field. */
@@ -86,6 +103,12 @@ export interface TreeSelectProps<T = unknown> {
   showCheckbox?: boolean;
   /** @default true */
   showIcon?: boolean;
+  /**
+   * When false, suppresses the expand/collapse chevron entirely — use for flat
+   * trees where no node has children (e.g. a classification tag list).
+   * @default true
+   */
+  showExpandIcon?: boolean;
   /** Selecting a node also selects/deselects all of its descendants. @default false */
   cascadeSelection?: boolean;
 
@@ -95,6 +118,8 @@ export interface TreeSelectProps<T = unknown> {
   pageSize?: number;
 
   noDataMessage?: string;
+  /** Shown under a branch that loaded no children; defaults to noDataMessage. */
+  emptyBranchMessage?: string;
   loadingMessage?: string;
   searchPlaceholder?: string;
 
@@ -116,6 +141,13 @@ export interface TreeSelectProps<T = unknown> {
    * Only applies when `multiple` is `true`. @default false
    */
   showSelectAll?: boolean;
+  /** @default 'immediate' */
+  commitMode?: TreeSelectCommitMode;
+  /** Controls the dropdown; omit to let the component own its open state. */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Consumer-owned trigger, rendered in place of the built-in one. */
+  renderTrigger?: (props: TreeSelectTriggerRenderProps) => ReactNode;
 
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;

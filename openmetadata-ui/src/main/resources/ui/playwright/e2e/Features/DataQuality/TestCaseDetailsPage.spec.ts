@@ -12,8 +12,12 @@
  */
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
+import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { getCurrentMillis } from '../../../utils/dateTime';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   openTestCaseDetailsPage,
   verifyTestCaseLastRunBanner,
@@ -25,6 +29,7 @@ import { enableAiAppMode } from '../../Utils/appMode';
 // name is fixed at construction, so a retry that reuses this worker would
 // re-run `create` with the same name and get a 409.
 let table!: TableClass;
+let bundleSuite: BundleTestSuiteClass;
 
 const openDetailsPage = async (page: Page) => {
   await enableAiAppMode(page);
@@ -39,7 +44,7 @@ test.describe(
   { tag: ['@Features', '@Observability'] },
   () => {
     test.beforeAll(
-      'Create a table, a test case and one result',
+      'Create a table, a test case in a bundle suite and one result',
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -57,14 +62,94 @@ test.describe(
           }
         );
 
+        bundleSuite = new BundleTestSuiteClass();
+        await bundleSuite.createBundleTestSuite(apiContext);
+        const addResponse = await bundleSuite.addTestCases(apiContext, [
+          testCase.id as string,
+        ]);
+        expect(addResponse.status()).toBe(200);
+
         await afterAction();
       }
     );
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await bundleSuite.delete(apiContext);
       await table.delete(apiContext);
       await afterAction();
+    });
+
+    test('lists the test suites the test case belongs to, above the tags', async ({
+      page,
+    }) => {
+      await openDetailsPage(page);
+
+      const testSuites = page.getByTestId('test-suites-container');
+      const tableSuiteLink = testSuites.getByTestId(
+        `test-suite-link-${table.testSuiteResponseData.fullyQualifiedName}`
+      );
+      const bundleSuiteLink = testSuites.getByTestId(
+        `test-suite-link-${bundleSuite.bundleTestSuiteResponseData.fullyQualifiedName}`
+      );
+
+      await test.step('The table suite links to its table and the bundle suite to its page', async () => {
+        await expect(tableSuiteLink).toHaveAccessibleName(
+          `Table ${table.entityResponseData.name}`
+        );
+        await expect(bundleSuiteLink).toHaveAccessibleName(
+          `Bundle Suite ${bundleSuite.bundleTestSuiteResponseData.name}`
+        );
+        await expect(tableSuiteLink).toHaveAttribute(
+          'href',
+          /\/profiler\/data-quality$/
+        );
+        // Matched as a suffix, like the table suite above. `openDetailsPage`
+        // enables AI mode, and `getTestSuitePath` namespaces the route under
+        // `/observability` there — in OSS since #33502, and in Collate through
+        // its override — so pinning either literal asserts a prefix this spec
+        // has no business knowing.
+        await expect(bundleSuiteLink).toHaveAttribute(
+          'href',
+          new RegExp(
+            `/test-suites/${escapeRegExp(
+              bundleSuite.bundleTestSuiteResponseData
+                .fullyQualifiedName as string
+            )}$`
+          )
+        );
+      });
+
+      await test.step('Only the name is the link, the rest of the row does not navigate', async () => {
+        const detailsUrl = page.url();
+
+        await testSuites
+          .getByRole('listitem')
+          .filter({
+            has: page.getByTestId(
+              `test-suite-link-${table.testSuiteResponseData.fullyQualifiedName}`
+            ),
+          })
+          .locator('svg')
+          .click();
+
+        await expect(page).toHaveURL(detailsUrl);
+      });
+
+      await test.step('The panel sits above the tags', async () => {
+        const suitesBox = await testSuites.boundingBox();
+        const tagsBox = await page.getByTestId('tags-container').boundingBox();
+
+        expect(suitesBox).not.toBeNull();
+        expect(tagsBox).not.toBeNull();
+        expect(Number(suitesBox?.y)).toBeLessThan(Number(tagsBox?.y));
+      });
+
+      await test.step('The panel collapses like the tags panel', async () => {
+        await testSuites.getByTestId('expand-collapse-icon').click();
+
+        await expect(bundleSuiteLink).toBeHidden();
+      });
     });
 
     test('renders the page frame with a two column result tab', async ({
@@ -146,7 +231,7 @@ test.describe(
       await expect(maxRow).toContainText('34');
     });
 
-    test('aligns the page header card with the tab body content', async ({
+    test('insets the page header card 8px less than the tab body content', async ({
       page,
     }) => {
       await openDetailsPage(page);
@@ -167,12 +252,18 @@ test.describe(
 
       expect(headerCard).not.toBeNull();
       expect(grid).not.toBeNull();
+
+      // AI padding standard: the header band sits 8px inside the shell and
+      // page content 16px, so the header card extends 8px past the tab body
+      // on each side.
+      const headerOutset = 8;
+
       expect(Math.round(Number(headerCard?.x))).toBe(
-        Math.round(Number(grid?.x))
+        Math.round(Number(grid?.x)) - headerOutset
       );
       expect(
         Math.round(Number(headerCard?.x) + Number(headerCard?.width))
-      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)));
+      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)) + headerOutset);
     });
 
     test('aligns the last run banner with the tab body grid', async ({
@@ -199,6 +290,162 @@ test.describe(
       expect(Math.round(Number(banner?.x) + Number(banner?.width))).toBe(
         Math.round(Number(grid?.x) + Number(grid?.width))
       );
+    });
+
+    test('opens the app mode details page from the Data Quality test cases tab', async ({
+      page,
+    }) => {
+      const testCaseName = table.testCasesResponseData[0].name as string;
+      const isTestCaseListResponse = (url: URL) =>
+        url.pathname.endsWith('/dataQuality/testCases/search/list');
+
+      await test.step('Open the Test Cases tab in app mode', async () => {
+        await enableAiAppMode(page);
+        await page.goto('/observability/data-quality', {
+          waitUntil: 'domcontentloaded',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        const listResponse = page.waitForResponse((response) =>
+          isTestCaseListResponse(new URL(response.url()))
+        );
+        await page.getByRole('tab', { name: 'Test Cases' }).click();
+        await listResponse;
+
+        await expect(page).toHaveURL(
+          /\/observability\/data-quality\/test-cases/
+        );
+      });
+
+      await test.step('Search for the test case', async () => {
+        const searchResponse = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            isTestCaseListResponse(url) &&
+            url.searchParams.get('q') === testCaseName
+          );
+        });
+        await page.getByTestId('searchbar').fill(testCaseName);
+        await searchResponse;
+
+        await expect(page.getByTestId(testCaseName)).toBeVisible();
+      });
+
+      await test.step('Test case link stays inside app mode', async () => {
+        await page.getByTestId(testCaseName).getByRole('link').click();
+
+        await expect(page).toHaveURL(
+          /\/observability\/test-case\/[^/]+\/test-case-results/
+        );
+        await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Incident strip',
+  { tag: ['@Observability'] },
+  () => {
+    let failedTable: TableClass;
+    let failedTestCase: { name: string; fullyQualifiedName: string };
+
+    test.beforeAll(
+      'Create a test case whose failed run opens an incident',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        failedTable = new TableClass();
+        await failedTable.create(apiContext);
+        const testCase = await failedTable.createTestCase(apiContext);
+        failedTestCase = {
+          name: testCase.name as string,
+          fullyQualifiedName: testCase.fullyQualifiedName as string,
+        };
+
+        const failedTimestamp = getCurrentMillis();
+        await failedTable.addTestCaseResult(
+          apiContext,
+          failedTestCase.fullyQualifiedName,
+          {
+            result: 'Found rowCount=2 vs. the expected range 12 to 34',
+            testCaseStatus: 'Failed',
+            timestamp: failedTimestamp,
+          }
+        );
+
+        // The incident is opened asynchronously by the server once the failed
+        // result lands, so the strip has nothing to render until it exists.
+        await expect
+          .poll(
+            async () => {
+              // Filtered by FQN server-side: an unfiltered window holds every
+              // incident other workers opened at the same time, and the
+              // endpoint's default page of 10 can drop this one.
+              const response = await apiContext.get(
+                `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&testCaseFQN=${encodeURIComponent(
+                  failedTestCase.fullyQualifiedName
+                )}&startTs=${failedTimestamp - 60_000}&endTs=${
+                  failedTimestamp + 60_000
+                }`
+              );
+              const { data } = await response.json();
+
+              return Boolean(data?.length);
+            },
+            { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+          )
+          .toBe(true);
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await failedTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('acknowledges the incident from the failed run banner', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, failedTestCase.fullyQualifiedName);
+
+      const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+      const strip = page.getByTestId('test-case-last-run-incident');
+      const acknowledge = strip.getByTestId('acknowledge-incident-button');
+      const headerStatus = page.getByTestId(`${failedTestCase.name}-status`);
+
+      await test.step('The strip carries the reason and a new incident', async () => {
+        await expect(banner).toContainText(
+          'Found rowCount=2 vs. the expected range 12 to 34'
+        );
+        await expect(strip).toBeVisible();
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'New'
+        );
+        await expect(acknowledge).toBeVisible();
+      });
+
+      await test.step('Acknowledge updates the strip and the header chip', async () => {
+        const transition = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tasks/') &&
+            response.url().endsWith('/resolve') &&
+            response.request().method() === 'POST'
+        );
+        await acknowledge.click();
+        await transition;
+
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'Acknowledged'
+        );
+        await expect(acknowledge).toBeHidden();
+        await expect(headerStatus).toContainText('Ack');
+      });
     });
   }
 );
