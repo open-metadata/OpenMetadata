@@ -41,14 +41,22 @@ export const settleAll = async (operations: Iterable<unknown>) => {
   assertFulfilled(await Promise.allSettled(operations));
 };
 
-/** Cleanup is idempotent, but an HTTP error must not silently leak a fixture. */
+// 401 during teardown means the JWT expired mid-test — the fixture may
+// leak, but failing the whole test on a cleanup auth error is worse than
+// warning and moving on (the same reason main's bare apiContext.delete
+// tolerated it silently). 404 is already-gone. Everything else surfaces.
+// 403 stays a hard fail: it means the token is valid but the caller lacks
+// permission, which is a real test-setup bug.
+const CLEANUP_TOLERATED_STATUSES = new Set([401, 404]);
+
+/** Cleanup is idempotent, but a real HTTP error must not silently leak a fixture. */
 export const deleteFixtureEntity = async (
   apiContext: APIRequestContext,
   url: string,
   options?: Parameters<APIRequestContext['delete']>[1]
 ): Promise<APIResponse> => {
   const response = await apiContext.delete(url, options);
-  if (!response.ok() && response.status() !== 404) {
+  if (!response.ok() && !CLEANUP_TOLERATED_STATUSES.has(response.status())) {
     throw new Error(
       `Fixture DELETE ${url}: HTTP ${response.status()}: ${await response.text()}`
     );

@@ -51,7 +51,7 @@ test('fixture setup accepts a complete successful batch', async () => {
   ).resolves.toBeUndefined();
 });
 
-for (const status of [200, 204, 404, 403, 503]) {
+for (const status of [200, 204, 401, 404, 403, 503]) {
   test(`fixture cleanup handles HTTP ${status} without repeating the DELETE`, async ({
     playwright,
   }) => {
