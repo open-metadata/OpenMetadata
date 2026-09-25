@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "此LDAP群組DN已被對應。每個LDAP群組只能對應一次。",
     "learn-more-about": "了解更多關於",
     "learning-resources-management-description": "探索產品功能，透過我們的資源了解它們的運作方式",
+    "leave-a-comment": "留下留言…",
     "leave-page-ingestion-continues": "您可以離開此頁面 — 擷取作業將在背景繼續進行",
     "leave-the-team-team-name": "離開團隊 {{teamName}}",
     "length-validator-error": "至少需要 {{length}} 個 {{field}}",

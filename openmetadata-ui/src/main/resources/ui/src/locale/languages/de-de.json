@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "Diese LDAP-Gruppen-DN ist bereits zugeordnet. Jede LDAP-Gruppe kann nur einmal zugeordnet werden.",
     "learn-more-about": "Mehr erfahren über",
     "learning-resources-management-description": "Erkunden Sie Produktfunktionen und erfahren Sie, wie sie funktionieren, durch unsere Ressourcen",
+    "leave-a-comment": "Kommentar hinterlassen…",
     "leave-page-ingestion-continues": "Sie können diese Seite verlassen — die Aufnahme wird im Hintergrund fortgesetzt",
     "leave-the-team-team-name": "Verlassen Sie das Team {{teamName}}",
     "length-validator-error": "Mindestens {{length}} {{field}} erforderlich.",

@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "این DN گروه LDAP قبلاً نگاشت شده است. هر گروه LDAP فقط یک بار قابل نگاشت است.",
     "learn-more-about": "بیشتر بدانید درباره",
     "learning-resources-management-description": "ویژگی‌های محصول را کشف کنید و از طریق منابع ما یاد بگیرید که چگونه کار می‌کنند",
+    "leave-a-comment": "نظری بگذارید…",
     "leave-page-ingestion-continues": "می‌توانید این صفحه را ترک کنید — دریافت داده در پس‌زمینه ادامه می‌یابد",
     "leave-the-team-team-name": "تیم {{teamName}} را ترک کنید.",
     "length-validator-error": "حداقل {{length}} {{field}} لازم است.",

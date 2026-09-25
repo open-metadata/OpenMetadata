@@ -21,7 +21,6 @@
   // while the `--om-*` aliases carry a fallback and still follow dark mode.
   @composer-border: var(--om-color-border-primary);
   @composer-bg: var(--om-color-bg-primary);
-  @send-bg: var(--om-color-bg-brand-solid);
 
   .editor-container {
     border: 1px solid @composer-border;
@@ -53,22 +52,6 @@
     content: var(--inbox-composer-placeholder, 'Add Comment');
     font-style: normal;
     left: 14px;
-  }
-
-  // Enter also sends; the "Shift+Enter" hint is dropped in this compact layout.
-  [data-testid='key-help'] {
-    display: none;
-  }
-
-  .ant-btn.send-button {
-    top: 50%;
-    bottom: auto;
-    right: 8px;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    background: @send-bg;
-    transform: translateY(-50%);
   }
 
   // The OSS link bubble is a fixed 300px with nowrap content, so its

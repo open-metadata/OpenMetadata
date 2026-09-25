@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "DN של קבוצת LDAP זו כבר ממופה. כל קבוצת LDAP יכולה להיות ממופה רק פעם אחת.",
     "learn-more-about": "למד עוד על",
     "learning-resources-management-description": "חקור את תכונות המוצר ולמד כיצד הן עובדות באמצעות המשאבים שלנו",
+    "leave-a-comment": "השאר תגובה…",
     "leave-page-ingestion-continues": "אפשר לעזוב את הדף — הקליטה נמשכת ברקע",
     "leave-the-team-team-name": "עזוב את הקבוצה {{teamName}}",
     "length-validator-error": "נדרשים לפחות {{length}} {{field}}",

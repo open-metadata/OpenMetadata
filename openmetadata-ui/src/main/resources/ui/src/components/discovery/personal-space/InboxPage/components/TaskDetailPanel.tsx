@@ -686,9 +686,15 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
         direction="col"
         gap={2}>
+        {/* A soft shade above the footer, so the activity reads as scrolling
+            under the composer rather than stopping at a line. */}
+        <span
+          aria-hidden
+          className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-secondary tw:to-transparent"
+        />
         <InboxCommentComposer onSave={handleAddComment} />
         <Box align="center" className="tw:justify-between tw:gap-2 tw:pl-8">
           <Typography className="tw:text-tertiary" size="text-xs">

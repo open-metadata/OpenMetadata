@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "Bu LDAP grup DN'i zaten eşlenmiştir. Her LDAP grubu sadece bir kez eşlenebilir.",
     "learn-more-about": "Daha fazla bilgi edinin:",
     "learning-resources-management-description": "Ürün özelliklerini keşfedin ve kaynaklarımız aracılığıyla nasıl çalıştıklarını öğrenin",
+    "leave-a-comment": "Yorum bırakın…",
     "leave-page-ingestion-continues": "Bu sayfadan ayrılabilirsiniz — veri alımı arka planda devam eder",
     "leave-the-team-team-name": "{{teamName}} takımından ayrıl",
     "length-validator-error": "En az {{length}} {{field}} gerekli",

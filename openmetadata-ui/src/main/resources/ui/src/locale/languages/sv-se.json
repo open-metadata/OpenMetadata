@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "Detta LDAP-grupp-DN är redan mappat. Varje LDAP-grupp kan endast mappas en gång.",
     "learn-more-about": "Läs mer om",
     "learning-resources-management-description": "Utforska produktfunktioner och lär dig hur de fungerar genom våra resurser",
+    "leave-a-comment": "Lämna en kommentar…",
     "leave-page-ingestion-continues": "Du kan lämna den här sidan — inläsningen fortsätter i bakgrunden",
     "leave-the-team-team-name": "Lämna teamet {{teamName}}",
     "length-validator-error": "Minst {{length}} {{field}} krävs",

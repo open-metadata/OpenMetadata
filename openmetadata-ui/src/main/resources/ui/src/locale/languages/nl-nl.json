@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "Deze LDAP-groep DN is al toegewezen. Elke LDAP-groep kan slechts één keer worden toegewezen.",
     "learn-more-about": "Meer informatie over",
     "learning-resources-management-description": "Ontdek productfuncties en leer hoe ze werken via onze bronnen",
+    "leave-a-comment": "Laat een reactie achter…",
     "leave-page-ingestion-continues": "Je kunt deze pagina verlaten — de opname gaat op de achtergrond door",
     "leave-the-team-team-name": "Verlaat het team {{teamName}}",
     "length-validator-error": "Minimaal {{length}} {{field}} vereist",

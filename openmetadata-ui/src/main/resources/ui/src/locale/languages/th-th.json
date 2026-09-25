@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "LDAP group DN นี้ได้ถูกแมปแล้ว แต่ละกลุ่ม LDAP สามารถแมปได้เพียงครั้งเดียวเท่านั้น",
     "learn-more-about": "เรียนรู้เพิ่มเติมเกี่ยวกับ",
     "learning-resources-management-description": "สำรวจคุณสมบัติของผลิตภัณฑ์และเรียนรู้วิธีการทำงานผ่านทรัพยากรของเรา",
+    "leave-a-comment": "แสดงความคิดเห็น…",
     "leave-page-ingestion-continues": "คุณสามารถออกจากหน้านี้ได้ — การนำเข้าจะดำเนินต่อในเบื้องหลัง",
     "leave-the-team-team-name": "ออกจากทีม {{teamName}}",
     "length-validator-error": "จำเป็นต้องมีอย่างน้อย {{length}} {{field}}",

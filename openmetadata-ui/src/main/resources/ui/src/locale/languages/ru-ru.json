@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "Этот DN группы LDAP уже сопоставлен. Каждая группа LDAP может быть сопоставлена только один раз.",
     "learn-more-about": "Узнать больше о",
     "learning-resources-management-description": "Изучайте возможности продукта и узнавайте, как они работают, с помощью наших ресурсов",
+    "leave-a-comment": "Оставьте комментарий…",
     "leave-page-ingestion-continues": "Вы можете покинуть эту страницу — загрузка продолжится в фоновом режиме",
     "leave-the-team-team-name": "Покинуть команду «{{teamName}}»",
     "length-validator-error": "Требуется не менее {{length}} {{field}}",

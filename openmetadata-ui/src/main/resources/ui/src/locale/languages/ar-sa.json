@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "هذا DN لمجموعة LDAP مُعيَّن بالفعل. يمكن تعيين كل مجموعة LDAP مرة واحدة فقط.",
     "learn-more-about": "تعلم المزيد حول",
     "learning-resources-management-description": "استكشف ميزات المنتج وتعلم كيفية عملها من خلال مواردنا",
+    "leave-a-comment": "اترك تعليقًا…",
     "leave-page-ingestion-continues": "يمكنك مغادرة هذه الصفحة — يستمر الاستيعاب في الخلفية",
     "leave-the-team-team-name": "مغادرة الفريق {{teamName}}",
     "length-validator-error": "مطلوب ما لا يقل عن {{length}} {{field}}",

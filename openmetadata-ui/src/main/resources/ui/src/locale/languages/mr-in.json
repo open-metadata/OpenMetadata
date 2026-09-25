@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "हा LDAP ग्रुप DN आधीच मॅप केला आहे. प्रत्येक LDAP ग्रुप फक्त एकदाच मॅप केला जाऊ शकतो.",
     "learn-more-about": "याबद्दल अधिक जाणून घ्या",
     "learning-resources-management-description": "उत्पादन वैशिष्ट्ये एक्सप्लोर करा आणि आमच्या संसाधनांद्वारे ते कसे कार्य करतात ते शिका",
+    "leave-a-comment": "टिप्पणी द्या…",
     "leave-page-ingestion-continues": "तुम्ही हे पृष्ठ सोडू शकता — अंतर्भूतीकरण पार्श्वभूमीत सुरू राहते",
     "leave-the-team-team-name": "टीम {{teamName}} सोडा",
     "length-validator-error": "किमान {{length}} {{field}} आवश्यक",

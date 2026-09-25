@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "Este DN do grupo LDAP já está mapeado. Cada grupo LDAP pode ser mapeado apenas uma vez.",
     "learn-more-about": "Saiba mais sobre",
     "learning-resources-management-description": "Explore os recursos do produto e aprenda como eles funcionam através dos nossos recursos",
+    "leave-a-comment": "Deixe um comentário…",
     "leave-page-ingestion-continues": "Você pode sair desta página — a ingestão continua em segundo plano",
     "leave-the-team-team-name": "Sair da equipe {{teamName}}",
     "length-validator-error": "Pelo menos {{length}} {{field}} necessário",

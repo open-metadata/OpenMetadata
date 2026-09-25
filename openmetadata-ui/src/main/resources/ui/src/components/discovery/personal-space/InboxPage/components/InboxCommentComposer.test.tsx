@@ -20,6 +20,9 @@ let mockCurrentUser: { name?: string; displayName?: string } = {
   displayName: 'Alice Johnson',
 };
 
+let mockEditorContent = '';
+const mockClearEditor = jest.fn();
+
 jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
@@ -37,23 +40,44 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
 
 jest.mock(
   'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew',
-  () => ({
-    __esModule: true,
-    default: ({
-      onSave,
-      placeHolder,
-    }: {
-      onSave?: (m: string) => void;
-      placeHolder?: string;
-    }) => (
-      <button
-        aria-label="feed-editor"
-        data-placeholder={placeHolder}
-        data-testid="feed-editor"
-        onClick={() => onSave?.('hello')}
-      />
-    ),
-  })
+  () => {
+    const { forwardRef, useImperativeHandle } = jest.requireActual('react');
+
+    return {
+      __esModule: true,
+      default: forwardRef(
+        (
+          {
+            onSave,
+            placeHolder,
+            editAction,
+          }: {
+            onSave?: (m: string) => void;
+            placeHolder?: string;
+            editAction?: React.ReactNode;
+          },
+          ref: React.Ref<unknown>
+        ) => {
+          useImperativeHandle(ref, () => ({
+            getEditorContent: () => mockEditorContent,
+            clearEditorContent: mockClearEditor,
+          }));
+
+          return (
+            <>
+              <button
+                aria-label="feed-editor"
+                data-placeholder={placeHolder}
+                data-testid="feed-editor"
+                onClick={() => onSave?.('hello')}
+              />
+              {editAction}
+            </>
+          );
+        }
+      ),
+    };
+  }
 );
 
 jest.mock('react-i18next', () => ({
@@ -62,6 +86,20 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Button: ({
+    onClick,
+    ...rest
+  }: {
+    onClick?: () => void;
+    'aria-label'?: string;
+    'data-testid'?: string;
+  }) => (
+    <button
+      aria-label={rest['aria-label']}
+      data-testid={rest['data-testid']}
+      onClick={onClick}
+    />
+  ),
 }));
 
 import InboxCommentComposer from './InboxCommentComposer';
@@ -81,6 +119,26 @@ describe('InboxCommentComposer', () => {
     expect(avatar).toHaveAttribute('data-display-name', 'Alice Johnson');
   });
 
+  // The design's arrow button replaces the editor's own send button.
+  it('posts and clears the draft from the send button', () => {
+    mockEditorContent = 'Looks right';
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    fireEvent.click(screen.getByTestId('send-button'));
+
+    expect(mockOnSave).toHaveBeenCalledWith('Looks right');
+    expect(mockClearEditor).toHaveBeenCalled();
+  });
+
+  it('sends nothing for an empty draft', () => {
+    mockEditorContent = '';
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    fireEvent.click(screen.getByTestId('send-button'));
+
+    expect(mockOnSave).not.toHaveBeenCalled();
+  });
+
   it('forwards the editor save to onSave', () => {
     render(<InboxCommentComposer onSave={mockOnSave} />);
 
@@ -94,7 +152,7 @@ describe('InboxCommentComposer', () => {
 
     expect(screen.getByTestId('feed-editor')).toHaveAttribute(
       'data-placeholder',
-      'label.add-comment'
+      'message.leave-a-comment'
     );
   });
 

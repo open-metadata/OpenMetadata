@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "このLDAPグループDNはすでにマップされています。各LDAPグループは一度のみマップできます。",
     "learn-more-about": "詳細については",
     "learning-resources-management-description": "製品の機能を探索し、リソースを通じてその仕組みを学びましょう",
+    "leave-a-comment": "コメントを残す…",
     "leave-page-ingestion-continues": "このページを離れても構いません — 取り込みはバックグラウンドで続行されます",
     "leave-the-team-team-name": "チーム {{teamName}} から退出する",
     "length-validator-error": "{{length}} 文字以上の {{field}} が必要です",

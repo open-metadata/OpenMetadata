@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "이 LDAP 그룹 DN은 이미 매핑되어 있습니다. 각 LDAP 그룹은 한 번만 매핑할 수 있습니다.",
     "learn-more-about": "자세히 알아보기",
     "learning-resources-management-description": "제품 기능을 탐색하고 리소스를 통해 작동 방식을 알아보세요",
+    "leave-a-comment": "댓글 남기기…",
     "leave-page-ingestion-continues": "이 페이지를 벗어나도 됩니다 — 수집은 백그라운드에서 계속됩니다",
     "leave-the-team-team-name": "{{teamName}} 팀 떠나기",
     "length-validator-error": "최소 {{length}}개의 {{field}}이(가) 필요합니다",

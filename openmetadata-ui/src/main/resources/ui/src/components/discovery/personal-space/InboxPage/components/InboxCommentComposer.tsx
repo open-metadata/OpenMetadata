@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import React from 'react';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { ArrowRight } from '@untitledui/icons';
+import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { EditorContentRef } from '../../../../../components/common/RichTextEditor/RichTextEditor.interface';
+import { getBackendFormat } from '../../../../../utils/FeedUtilsPure';
 import './inbox-comment-composer.less';
 
 export interface InboxCommentComposerProps {
@@ -29,8 +32,9 @@ export interface InboxCommentComposerProps {
  * reuses the OSS {@link ActivityFeedEditorNew} verbatim — so mention (@),
  * hashtag (#), markdown, the send button and Enter-to-send all keep working —
  * and only restyles it via the scoped `inbox-comment-composer__editor` class:
- * one white input line, the send button inside it, no format bar. The current
- * user's avatar sits on the left.
+ * one white input line with no format bar. The send button is the design's
+ * arrow button in place of the editor's own; Enter still sends through the
+ * editor. The current user's avatar sits on the left.
  */
 const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   onSave,
@@ -38,7 +42,17 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const placeholderText = placeHolder ?? t('label.add-comment');
+  const placeholderText = placeHolder ?? t('message.leave-a-comment');
+  const editorRef = useRef<EditorContentRef>(null);
+
+  // Mirrors the editor's own Enter-to-send: post the content, then clear it.
+  const handleSend = () => {
+    const content = editorRef.current?.getEditorContent();
+    if (content) {
+      editorRef.current?.clearEditorContent();
+      onSave(getBackendFormat(content));
+    }
+  };
 
   return (
     <Box
@@ -62,7 +76,19 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
         }>
         <ActivityFeedEditorNew
           className="inbox-comment-composer__editor tw:w-full"
+          editAction={
+            <Button
+              aria-label={t('label.send')}
+              className="tw:absolute tw:top-1/2 tw:right-2 tw:-translate-y-1/2"
+              color="primary"
+              data-testid="send-button"
+              iconLeading={<ArrowRight className="tw:size-4" />}
+              size="sm"
+              onClick={handleSend}
+            />
+          }
           placeHolder={placeholderText}
+          ref={editorRef}
           onSave={onSave}
         />
       </div>

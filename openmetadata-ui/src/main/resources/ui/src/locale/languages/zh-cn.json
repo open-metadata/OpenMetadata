@@ -4201,6 +4201,7 @@
     "ldap-group-duplicate-error": "此LDAP组DN已被映射。每个LDAP组只能映射一次。",
     "learn-more-about": "了解更多关于",
     "learning-resources-management-description": "探索产品功能，通过我们的资源了解它们的工作原理",
+    "leave-a-comment": "发表评论…",
     "leave-page-ingestion-continues": "您可以离开此页面 — 提取将在后台继续",
     "leave-the-team-team-name": "离开团队{{teamName}}",
     "length-validator-error": "至少需要{{length}}个{{field}}",
