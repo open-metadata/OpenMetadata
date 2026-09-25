@@ -12,6 +12,7 @@
  */
 
 import {
+  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -19,12 +20,14 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
+import { EventType } from '../../../generated/type/changeEvent';
 import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import {
   getAlertAiSectionVisibility,
   getDestinationTypeUpdate,
   getDestinationWithNotifyDownstream,
+  getRuleEventTypes,
   getRuleItems,
   getRulesWithAddedRule,
   getRulesWithEffect,
@@ -243,5 +246,24 @@ describe('AlertAiFormFieldsPureUtils', () => {
         } as ModifiedDestination,
       ])
     ).toBe(false);
+  });
+
+  describe('getRuleEventTypes (per-flow classic parity)', () => {
+    const resource = {
+      name: 'table',
+      supportedEventTypes: [EventType.EntityCreated],
+    };
+
+    it('narrows event types for notification alerts, like Settings → Notifications', () => {
+      expect(getRuleEventTypes(AlertType.Notification, resource)).toEqual([
+        EventType.EntityCreated,
+      ]);
+    });
+
+    it('never narrows observability alerts, like Observability → Alerts', () => {
+      expect(
+        getRuleEventTypes(AlertType.Observability, resource)
+      ).toBeUndefined();
+    });
   });
 });
