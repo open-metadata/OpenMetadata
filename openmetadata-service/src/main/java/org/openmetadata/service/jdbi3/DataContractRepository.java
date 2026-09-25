@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
 import jakarta.ws.rs.core.Response;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.datacontract.SlaValidation;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -76,6 +79,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.datacontract.sla.ContractSlaValidator;
+import org.openmetadata.service.datacontract.sla.TableRefreshHistoryLoader;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -117,6 +122,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private final IngestionPipelineMapper ingestionPipelineMapper;
   @Getter @Setter private PipelineServiceClientInterface pipelineServiceClient;
   private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private final ContractSlaValidator slaValidator;
 
   private static final List<TestCaseStatus> FAILED_DQ_STATUSES =
       List.of(TestCaseStatus.Failed, TestCaseStatus.Aborted);
@@ -131,6 +137,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         DATA_CONTRACT_UPDATE_FIELDS);
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
     this.openMetadataApplicationConfig = config;
+    Clock clock = Clock.systemUTC();
+    this.slaValidator =
+        new ContractSlaValidator(
+            clock,
+            table ->
+                Entity.getEntity(
+                    Entity.TABLE, table.getId(), "columns,lifeCycle", Include.NON_DELETED),
+            new TableRefreshHistoryLoader(daoCollection.profilerDataTimeSeriesDao(), clock));
   }
 
   @Override
@@ -1097,6 +1111,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       SemanticsValidation semanticsValidation = validateSemantics(dataContract);
       result.withSemanticsValidation(semanticsValidation);
     }
+    result.withSlaValidation(validateSla(dataContract));
 
     // If we don't have quality expectations, flag the results based on schema and semantics
     // Otherwise, keep it Running and wait for the DQ results to kick in
@@ -1152,6 +1167,32 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   /**
+   * Validates the contract that applies to an entity: its own contract together with what it
+   * inherits from an approved Data Product contract. An entity that only inherits one gets an empty
+   * contract of its own to hold the results.
+   *
+   * @return the stored result, or empty when no contract applies to the entity
+   */
+  public Optional<RestUtil.PutResponse<DataContractResult>> validateEntityContract(
+      EntityInterface entity, String user) {
+    return Optional.ofNullable(getEffectiveDataContract(entity))
+        .map(
+            effective ->
+                validateContractWithEffective(
+                    contractForResults(entity, effective, user), effective));
+  }
+
+  private DataContract contractForResults(
+      EntityInterface entity, DataContract effective, String user) {
+    DataContract direct = getEntityDataContractSafely(entity);
+    DataContract contract = direct != null ? direct : effective;
+    if (direct == null && Boolean.TRUE.equals(effective.getInherited())) {
+      contract = materializeInheritedContract(entity, effective.getName(), user);
+    }
+    return contract;
+  }
+
+  /**
    * Validate a contract using the effective contract rules (which may include inherited properties)
    * but store the results against the provided contract entity.
    */
@@ -1180,6 +1221,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       SemanticsValidation semanticsValidation = validateSemantics(effectiveContract);
       result.withSemanticsValidation(semanticsValidation);
     }
+    result.withSlaValidation(validateSla(effectiveContract));
 
     // Handle quality expectations
     if (!nullOrEmpty(effectiveContract.getQualityExpectations())) {
@@ -1323,10 +1365,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           RuleEngine.getInstance()
               .evaluateAndReturn(entity, dataContract.getSemantics(), false, false);
 
+      int total = dataContract.getSemantics().size();
+      int applied =
+          (int)
+              dataContract.getSemantics().stream()
+                  .filter(rule -> RuleEngine.getInstance().shouldApplyRule(entity, rule))
+                  .count();
       validation
           .withFailed(failedRules.size())
-          .withPassed(dataContract.getSemantics().size() - failedRules.size())
-          .withTotal(dataContract.getSemantics().size())
+          .withPassed(applied - failedRules.size())
+          .withSkipped(total - applied)
+          .withTotal(total)
           .withFailedRules(
               failedRules.stream()
                   .map(
@@ -1343,7 +1392,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           e.getMessage(),
           e);
       int totalRules = Optional.ofNullable(dataContract.getSemantics()).map(List::size).orElse(0);
-      validation.withFailed(totalRules).withPassed(0).withTotal(totalRules);
+      validation.withFailed(totalRules).withPassed(0).withSkipped(0).withTotal(totalRules);
     }
 
     return validation;
@@ -1402,6 +1451,31 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
+
+    if (missesSla(result.getSlaValidation())) {
+      result.withContractExecutionStatus(ContractExecutionStatus.Failed);
+    }
+  }
+
+  /** An SLA requirement that was not evaluated does not fail the run; one that was missed does. */
+  private static boolean missesSla(SlaValidation sla) {
+    return sla != null
+        && Stream.of(sla.getRefreshFrequencyMet(), sla.getLatencyMet(), sla.getAvailabilityMet())
+            .anyMatch(Boolean.FALSE::equals);
+  }
+
+  private SlaValidation validateSla(DataContract dataContract) {
+    SlaValidation validation;
+    try {
+      validation = slaValidator.validate(dataContract);
+    } catch (EntityNotFoundException e) {
+      LOG.warn(
+          "Could not check the SLA of data contract {}: {}",
+          dataContract.getFullyQualifiedName(),
+          e.getMessage());
+      validation = new SlaValidation().withMessage("Not evaluated: " + e.getMessage());
+    }
+    return validation;
   }
 
   public RestUtil.PutResponse<DataContractResult> addContractResult(
