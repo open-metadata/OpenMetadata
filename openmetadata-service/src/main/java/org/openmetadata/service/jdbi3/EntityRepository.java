@@ -1685,23 +1685,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fromCache = cacheAllowed(fromCache);
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
-      // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
-      // negative cache before touching the DB is a clear win — short-circuits a known-missing
-      // entity without paying for the DB round-trip.
-      if (include == NON_DELETED
-          && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
-        throw new EntityNotFoundException(entityNotFound(entityType, id));
-      }
+      // A read that bypasses the cache is answered by the database alone. A not-found marker
+      // can only be stale here, for example one left by a delete that rolled back.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       T entity;
       try (var ignored = phase("dbFindByIdNoCache")) {
         entity = dao.findEntityById(id, include);
       }
       if (entity == null) {
-        if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundById(entityType, id);
-        }
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
       if (entity.getId() == null) {
@@ -2334,23 +2325,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
-      // Explicit cache bypass — checking the negative cache before the DB still saves the
-      // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)
-      String bypassCanonicalFqn = cacheNameKey(entityType, fqn).getRight();
-      if (include == NON_DELETED
-          && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundByName(entityType, bypassCanonicalFqn)) {
-        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
-      }
+      // Answered by the database alone, as in find(UUID, …).
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       T entity;
       try (var ignored = phase("dbFindByNameNoCache")) {
         entity = dao.findEntityByName(fqn, include);
       }
       if (entity == null) {
-        if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundByName(entityType, bypassCanonicalFqn);
-        }
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
