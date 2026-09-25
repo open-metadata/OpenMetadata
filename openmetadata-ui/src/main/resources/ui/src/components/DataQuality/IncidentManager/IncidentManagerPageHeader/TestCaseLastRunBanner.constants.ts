@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ButtonProps } from '@openmetadata/ui-core-components';
 import { Check, Clock, Minus, SlashCircle01, XClose } from '@untitledui/icons';
 import {
   TestCaseResolutionStatusTypes,
@@ -19,67 +20,96 @@ import {
 
 export const NO_RUN_BANNER_TEST_ID = 'test-case-last-run-banner-not-run-yet';
 
+// The banner carries the status tint, so the incident strip washes it back with
+// translucent white to sit a shade lighter than the summary row above it.
+const INCIDENT_STRIP_CLASS = 'tw:bg-primary/55';
+
 export const NO_RUN_CONFIG = {
-  containerClassName: 'tw:border-utility-gray-200 tw:border-l-utility-gray-400',
+  containerClassName:
+    'tw:border-utility-gray-200 tw:border-l-utility-gray-400 tw:bg-secondary',
   icon: Minus,
   iconColor: 'gray',
   statusClassName: 'tw:text-secondary',
   statusLabel: 'label.not-run-yet',
-  summaryClassName: 'tw:bg-secondary',
   testId: NO_RUN_BANNER_TEST_ID,
 } as const;
 
-export const STATUS_CONFIG = {
+// Typed against the core Button so a status can only name a variant the
+// button actually ships; its own colours then carry border, text, hover,
+// loading and disabled states without an override here.
+type ActionButtonColor = NonNullable<ButtonProps['color']>;
+
+/**
+ * FeaturedIcon's colour set. It is not exported from core-components, and
+ * widening it to `string` here would push the error onto every consumer.
+ */
+type StatusIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+
+export const STATUS_CONFIG: Record<
+  TestCaseStatus,
+  {
+    actionButtonColor: ActionButtonColor;
+    containerClassName: string;
+    dividerClassName: string;
+    icon: typeof Check;
+    iconColor: StatusIconColor;
+    incidentClassName: string;
+    resultClassName: string;
+    statusClassName: string;
+    statusLabel: string;
+    testId: string;
+  }
+> = {
   [TestCaseStatus.Aborted]: {
+    actionButtonColor: 'secondary-warning',
     containerClassName:
-      'tw:border-utility-warning-200 tw:border-l-utility-warning-500',
+      'tw:border-utility-warning-200 tw:border-l-utility-warning-600 tw:bg-warning-primary',
     dividerClassName: 'tw:border-utility-warning-200',
     icon: SlashCircle01,
     iconColor: 'warning',
-    incidentClassName: 'tw:bg-utility-warning-50',
+    incidentClassName: INCIDENT_STRIP_CLASS,
     resultClassName: 'tw:text-warning-primary',
     statusClassName: 'tw:text-warning-primary',
     statusLabel: 'label.aborted',
-    summaryClassName: 'tw:bg-utility-warning-50',
     testId: 'test-case-last-run-banner-aborted',
   },
   [TestCaseStatus.Failed]: {
+    actionButtonColor: 'secondary-destructive',
     containerClassName:
-      'tw:border-utility-error-200 tw:border-l-utility-error-500',
+      'tw:border-utility-error-200 tw:border-l-utility-error-600 tw:bg-error-primary',
     dividerClassName: 'tw:border-utility-error-200',
     icon: XClose,
     iconColor: 'error',
-    incidentClassName: 'tw:bg-utility-error-50',
+    incidentClassName: INCIDENT_STRIP_CLASS,
     resultClassName: 'tw:text-error-primary',
     statusClassName: 'tw:text-error-primary',
     statusLabel: 'label.failed',
-    summaryClassName: 'tw:bg-utility-error-50',
     testId: 'test-case-last-run-banner-failed',
   },
   [TestCaseStatus.Queued]: {
+    actionButtonColor: 'secondary-brand',
     containerClassName:
-      'tw:border-utility-brand-200 tw:border-l-utility-brand-500',
+      'tw:border-utility-brand-200 tw:border-l-utility-brand-600 tw:bg-brand-primary',
     dividerClassName: 'tw:border-utility-brand-200',
     icon: Clock,
     iconColor: 'brand',
-    incidentClassName: 'tw:bg-brand-primary',
+    incidentClassName: INCIDENT_STRIP_CLASS,
     resultClassName: 'tw:text-brand-primary',
     statusClassName: 'tw:text-brand-primary',
     statusLabel: 'label.queued',
-    summaryClassName: 'tw:bg-brand-primary',
     testId: 'test-case-last-run-banner-queued',
   },
   [TestCaseStatus.Success]: {
+    actionButtonColor: 'secondary-success',
     containerClassName:
-      'tw:border-utility-success-200 tw:border-l-utility-success-500',
+      'tw:border-utility-success-200 tw:border-l-utility-success-600 tw:bg-success-primary',
     dividerClassName: 'tw:border-utility-success-200',
     icon: Check,
     iconColor: 'success',
-    incidentClassName: 'tw:bg-success-primary',
+    incidentClassName: INCIDENT_STRIP_CLASS,
     resultClassName: 'tw:text-success-primary',
     statusClassName: 'tw:text-success-primary',
     statusLabel: 'label.success',
-    summaryClassName: 'tw:bg-success-primary',
     testId: 'test-case-last-run-banner-success',
   },
 } as const;
@@ -94,7 +124,7 @@ export const INCIDENT_STATUS_CONFIG = {
     label: 'label.assigned',
   },
   [TestCaseResolutionStatusTypes.New]: {
-    color: 'brand',
+    color: 'error',
     label: 'label.new',
   },
   [TestCaseResolutionStatusTypes.Resolved]: {
@@ -125,6 +155,5 @@ export type BannerLayoutConfig =
       | 'iconColor'
       | 'statusClassName'
       | 'statusLabel'
-      | 'summaryClassName'
       | 'testId'
     >;

@@ -144,3 +144,21 @@ export const METRIC_DUMMY_DATA: Metric = {
     downVoters: [],
   },
 };
+
+/**
+ * Name of the seeded governance workflow that drives metric approval. Must match
+ * `openmetadata-service/src/main/resources/json/data/governance/workflows/MetricApprovalWorkflow.json`.
+ */
+export const METRIC_APPROVAL_WORKFLOW_DEFINITION_NAME =
+  'MetricApprovalWorkflow';
+
+/** How many children are fetched per expand before a load-more row appears. */
+export const METRIC_CHILDREN_PAGE_SIZE = 50;
+
+/**
+ * Ceiling on the peer and variant rows the detail page's hierarchy card reads.
+ *
+ * The card is an orientation aid, not a browser — past a couple of dozen rows it stops helping, and
+ * the list page is where a large group is actually explored.
+ */
+export const METRIC_HIERARCHY_PEER_LIMIT = 25;

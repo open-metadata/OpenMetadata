@@ -21,7 +21,6 @@ from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     TableData,
 )
-from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
@@ -149,15 +148,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             raw_dataset = self._partitioned_table()
 
         static = self._resolve_sample_config
-        if (
-            not static
-            or not static.profileSample
-            or (
-                static.profileSample == 100
-                and static.profileSampleType == ProfileSampleType.PERCENTAGE
-                and self.sample_config.randomizedSample is not True
-            )
-        ):
+        if not static or not self.applies_sampling:
             return raw_dataset
         return self.get_sampled_dataframe(raw_dataset, static)
 

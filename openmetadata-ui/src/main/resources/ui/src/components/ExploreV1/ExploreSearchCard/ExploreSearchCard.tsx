@@ -821,11 +821,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             return (
               <img
                 alt={source.entityType}
-                className="align-middle m-r-xs object-contain"
+                className="align-middle tw:mr-1.5 object-contain"
                 data-testid="icon"
-                height={24}
+                height={20}
                 src={source.style.iconURL}
-                width={24}
+                width={20}
               />
             );
           }
@@ -834,10 +834,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         }
 
         return (
-          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
+          <span className="tw:mr-1.5 d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(
               source.entityType ?? '',
-              'text-link-color'
+              'text-link-color tw:w-5 tw:h-5'
             )}
           </span>
         );

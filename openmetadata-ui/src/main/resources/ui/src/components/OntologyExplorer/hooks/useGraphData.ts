@@ -41,7 +41,7 @@ import {
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
-  OBSERVED_LINEAGE_EDGE_KIND,
+  METRIC_NODE_TYPE,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
 import {
@@ -56,6 +56,7 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  buildStudioMetricNodeStyle,
   formatRelationLabel,
   getCanvasColor,
   getEdgeRelationLabelStyle,
@@ -890,6 +891,9 @@ function buildDefaultNodeData(
         studioAccentColor: state.studioAccentColor ?? STUDIO_DEFAULT_ACCENT,
         studioEditMode: ctx.isEditMode,
       }),
+      ...(ctx.studioMode &&
+        node.type === METRIC_NODE_TYPE &&
+        buildStudioMetricNodeStyle(getCanvasColor)),
     },
     ...(!ctx.studioMode &&
       node.glossaryId && {
@@ -1065,16 +1069,6 @@ function computeEdgeGroupInfo(
   };
 }
 
-function computeEdgeKindFlags(singleEdge: MergedEdge): {
-  isSemanticProjection: boolean;
-  isObservedLineage: boolean;
-} {
-  return {
-    isSemanticProjection: singleEdge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND,
-    isObservedLineage: singleEdge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND,
-  };
-}
-
 function computeIsDataModeAssetEdge(
   explorationMode: ExplorationMode,
   isTermTermInDataMode: boolean,
@@ -1117,7 +1111,6 @@ function computeEdgeLabelVisibility(
   isClickedEdge: boolean,
   isTermTermInDataMode: boolean,
   isSemanticProjection: boolean,
-  isObservedLineage: boolean,
   explorationMode: ExplorationMode,
   showEdgeLabelsSetting: boolean
 ): boolean {
@@ -1126,10 +1119,7 @@ function computeEdgeLabelVisibility(
     explorationMode === 'hierarchy' ||
     isClickedEdge;
   const isLabelableEdge =
-    isLabelableByMode ||
-    isTermTermInDataMode ||
-    isSemanticProjection ||
-    isObservedLineage;
+    isLabelableByMode || isTermTermInDataMode || isSemanticProjection;
 
   return showEdgeLabelsSetting && isLabelableEdge;
 }
@@ -1285,8 +1275,8 @@ function buildG6EdgeForSingle(
     ctx
   );
   const isClickedEdge = edgeId === ctx.clickedEdgeId;
-  const { isSemanticProjection, isObservedLineage } =
-    computeEdgeKindFlags(singleEdge);
+  const isSemanticProjection =
+    singleEdge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND;
 
   const isDataModeAssetEdge = computeIsDataModeAssetEdge(
     ctx.explorationMode,
@@ -1303,7 +1293,6 @@ function buildG6EdgeForSingle(
     isClickedEdge,
     isTermTermInDataMode,
     isSemanticProjection,
-    isObservedLineage,
     ctx.explorationMode,
     ctx.showEdgeLabels
   );

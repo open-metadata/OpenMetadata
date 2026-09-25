@@ -23,14 +23,18 @@ def test_sftp_connection_is_base_connection():
 
 
 def test_get_client_builds_sftp_client():
-    from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
-        BasicAuth,
+    from metadata.generated.schema.entity.services.connections.drive.sftp.basicAuth import (
+        UsernamePasswordAuthentication,
     )
     from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
         SftpConnection as SftpConnectionConfig,
     )
 
-    config = SftpConnectionConfig(host="localhost", port=22, authType=BasicAuth(username="u", password="p"))
+    config = SftpConnectionConfig(
+        host="localhost",
+        port=22,
+        authType=UsernamePasswordAuthentication(username="u", password="p"),
+    )
     with (
         patch(f"{CONNECTION_MODULE}.Transport") as mock_transport,
         patch(f"{CONNECTION_MODULE}.SFTPClient") as mock_sftp,

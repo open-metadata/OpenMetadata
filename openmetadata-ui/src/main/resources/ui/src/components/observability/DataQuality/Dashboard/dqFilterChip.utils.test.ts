@@ -25,7 +25,7 @@ describe('dqFilterChip utils', () => {
       // against.
       expect(chipTriggerClassName).toContain('tw:shadow-xs-skeuomorphic');
       expect(chipTriggerClassName).toContain('tw:after:outline-primary');
-      expect(chipTriggerClassName).toContain('tw:bg-primary');
+      expect(chipTriggerClassName).toContain('tw:bg-surface');
       expect(chipTriggerClassName).toContain('tw:px-3.5');
     });
 

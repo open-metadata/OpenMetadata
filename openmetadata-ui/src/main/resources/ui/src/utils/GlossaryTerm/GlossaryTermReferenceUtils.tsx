@@ -11,47 +11,10 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
-import { ReactComponent as IconTerm } from '../../assets/svg/book.svg';
-import { DE_ACTIVE_COLOR } from '../../constants/constants';
-import type { EntityReference } from '../../generated/entity/data/table';
-import { TagSource, type TagLabel } from '../../generated/type/tagLabel';
-import { getEntityName } from '../EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from '../EntityPureUtils';
-import {
-  convertEntityReferencesToTagLabels,
-  convertTagLabelsToEntityReferences,
-} from '../EntityReferenceUtils';
 
 export const createGlossaryTermEntityLink = (
   fullyQualifiedName: string
 ): string => {
   return `<#E${ENTITY_LINK_SEPARATOR}glossaryTerm${ENTITY_LINK_SEPARATOR}${fullyQualifiedName}>`;
-};
-
-export const GlossaryTermListItemRenderer = (props: EntityReference) => {
-  return (
-    <Space>
-      <IconTerm
-        className="align-middle"
-        color={DE_ACTIVE_COLOR}
-        height={16}
-        name="doc"
-        width={16}
-      />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
-    </Space>
-  );
-};
-
-export const convertTermsToEntityReferences = (
-  terms: TagLabel[]
-): EntityReference[] => {
-  return convertTagLabelsToEntityReferences(terms);
-};
-
-export const convertEntityReferencesToTerms = (
-  refs: EntityReference[]
-): TagLabel[] => {
-  return convertEntityReferencesToTagLabels(refs, TagSource.Glossary);
 };

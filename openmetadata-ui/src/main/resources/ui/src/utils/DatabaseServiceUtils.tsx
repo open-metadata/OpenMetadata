@@ -46,14 +46,11 @@ export const ExtraDatabaseServiceDropdownOptions = (
                 icon={ImportIcon}
                 id="import-button"
                 name={t('label.import')}
-                onClick={() =>
-                  navigate(
-                    getEntityImportPath(EntityType.DATABASE_SERVICE, fqn)
-                  )
-                }
               />
             ),
             key: 'import-button',
+            onClick: () =>
+              navigate(getEntityImportPath(EntityType.DATABASE_SERVICE, fqn)),
           },
         ]
       : []),
@@ -70,16 +67,15 @@ export const ExtraDatabaseServiceDropdownOptions = (
                 icon={ExportIcon}
                 id="export-button"
                 name={t('label.export')}
-                onClick={() =>
-                  showModal({
-                    name: fqn,
-                    onExport: exportDatabaseServiceDetailsInCSV,
-                    exportTypes: [ExportTypes.CSV],
-                  })
-                }
               />
             ),
             key: 'export-button',
+            onClick: () =>
+              showModal({
+                name: fqn,
+                onExport: exportDatabaseServiceDetailsInCSV,
+                exportTypes: [ExportTypes.CSV],
+              }),
           },
         ]
       : []),

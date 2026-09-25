@@ -6,6 +6,7 @@ from sqlalchemy.engine import make_url
 from metadata.data_quality.validations.utils import render_url_for_data_diff
 from metadata.generated.schema.entity.data.table import (
     Column,
+    PartitionProfilerConfig,
     Table,
     TableProfilerConfig,
 )
@@ -14,6 +15,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
@@ -57,3 +59,43 @@ class TableCustomSQLQueryRuntimeParameters(BaseModel):
 class RuleLibrarySqlExpressionRuntimeParameters(BaseModel):
     conn_config: DatabaseConnection
     test_definition: TestDefinition
+
+
+class EvaluationScopeRuntimeParameters(BaseModel):
+    """What the test case was actually measured against.
+
+    A test case run against a sampled or partitioned table is evaluated on that subset, and
+    nothing extrapolates the verdict back to the table. The subset is therefore part of the
+    result: `EvaluationScopeParamsSetter` resolves it from the sampler and every validator
+    renders it into `TestCaseResult.result`.
+
+    The defaults describe a test case run against everything, which is what a table with no
+    sampling and no partitioning gives and what an unset scope has to fall back to.
+    """
+
+    profile_sample: float | None = None
+    profile_sample_type: ProfileSampleType | None = None
+    # Whether the sampler actually read a subset. A configured amount does not say so on its
+    # own: a 100% percentage that is not randomized resolves to the whole table, and that run
+    # has none of a sample's caveats.
+    sampling_applied: bool = False
+    partition_details: PartitionProfilerConfig | None = None
+    # The partition filter as SQL, when the sampler can compile one. Rendered verbatim into the
+    # result message; falls back to `partition_details` when absent.
+    partition_predicate: str | None = None
+    sample_query: str | None = None
+
+    @property
+    def is_sampled(self) -> bool:
+        """Whether only part of the table was read"""
+        return self.sampling_applied
+
+    @property
+    def is_partitioned(self) -> bool:
+        """Whether the rows read were restricted to a partition"""
+        return bool(self.partition_details and self.partition_details.enablePartitioning)
+
+    @property
+    def is_full_table(self) -> bool:
+        """Whether the test case saw the whole table"""
+        return not self.is_sampled and not self.is_partitioned

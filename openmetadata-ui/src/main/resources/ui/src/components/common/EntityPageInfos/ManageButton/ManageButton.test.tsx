@@ -200,8 +200,11 @@ describe('Test manage button component', () => {
 
     expect(modalBody).toBeInTheDocument();
 
-    const modalRestoreButton = await screen.findAllByText('label.restore');
-    fireEvent.click(modalRestoreButton[1]);
+    // The menu closes on selection, so the modal's OK is the only Restore button.
+    const modalRestoreButton = await screen.findByRole('button', {
+      name: 'label.restore',
+    });
+    fireEvent.click(modalRestoreButton);
 
     expect(mockOnRestoreEntity).toHaveBeenCalled();
   });
@@ -212,8 +215,11 @@ describe('Test manage button component', () => {
 
     fireEvent.click(await screen.findByTestId('manage-button'));
     fireEvent.click(await screen.findByTestId('restore-button'));
-    const modalRestoreButton = await screen.findAllByText('label.restore');
-    fireEvent.click(modalRestoreButton[1]);
+    // The menu closes on selection, so the modal's OK is the only Restore button.
+    const modalRestoreButton = await screen.findByRole('button', {
+      name: 'label.restore',
+    });
+    fireEvent.click(modalRestoreButton);
 
     await waitFor(() => expect(mockOnRestoreEntity).toHaveBeenCalled());
 
@@ -226,8 +232,11 @@ describe('Test manage button component', () => {
 
     fireEvent.click(await screen.findByTestId('manage-button'));
     fireEvent.click(await screen.findByTestId('restore-button'));
-    const modalRestoreButton = await screen.findAllByText('label.restore');
-    fireEvent.click(modalRestoreButton[1]);
+    // The menu closes on selection, so the modal's OK is the only Restore button.
+    const modalRestoreButton = await screen.findByRole('button', {
+      name: 'label.restore',
+    });
+    fireEvent.click(modalRestoreButton);
 
     await waitFor(() => expect(mockOnRestoreEntity).toHaveBeenCalled());
 

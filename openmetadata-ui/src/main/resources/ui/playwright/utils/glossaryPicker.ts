@@ -23,6 +23,8 @@ export type GlossaryTermRef = {
 
 // The popover's testid varies per instance; this class is set by the component.
 const POPOVER = '.glossary-term-picker-popover';
+// Long enough for the close transition, short enough to fall back quickly.
+const POPOVER_CLOSE_TIMEOUT = 3000;
 
 // Only the button and custom-trigger variants put a search box in the popover.
 const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
@@ -176,9 +178,17 @@ export const pickGlossaryTermInField = async (
   await openGlossaryPicker(page, trigger);
   await toggleGlossaryTermInPicker(page, term);
 
-  // Not Escape: these pickers sit in editors and drawers that close on it too.
-  await clickOutside(page);
-  await expect(page.locator(POPOVER)).not.toBeVisible();
+  const popover = page.locator(POPOVER);
+  const closedItself = await popover
+    .waitFor({ state: 'hidden', timeout: POPOVER_CLOSE_TIMEOUT })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!closedItself) {
+    await clickOutside(page);
+  }
+
+  await expect(popover).not.toBeVisible();
 };
 
 // Open, pick one term, apply — the whole flow for a single-term assignment.

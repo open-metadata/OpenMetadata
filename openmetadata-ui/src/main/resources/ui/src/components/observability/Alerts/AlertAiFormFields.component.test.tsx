@@ -27,6 +27,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
@@ -417,7 +418,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {hint ? <span>{hint}</span> : null}
       </label>
     ),
+    Label: ({ children }: MockCoreProps) => <span>{children}</span>,
     MultiSelect,
+    RadioButton: () => null,
+    RadioGroup: ({
+      children,
+      'data-testid': testId,
+      isDisabled,
+      onChange,
+      value,
+    }: MockCoreProps) => (
+      <div data-testid={testId}>
+        {children}
+        <select
+          aria-label="http-method"
+          disabled={isDisabled}
+          value={value}
+          onChange={(event) => onChange?.(event.target.value)}>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+        </select>
+      </div>
+    ),
     PasswordInput: ({
       'data-testid': testId,
       hint,
@@ -745,8 +767,19 @@ describe('AlertAi form field components', () => {
       );
     });
 
-    await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByText('Domain 1')).toBeInTheDocument()
+    );
     (searchQuery as jest.Mock).mockClear();
+    (searchQuery as jest.Mock).mockResolvedValueOnce({
+      hits: {
+        hits: [
+          {
+            _source: { displayName: 'Domain 2', fullyQualifiedName: 'domain2' },
+          },
+        ],
+      },
+    });
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('domainList-autocomplete'), {
@@ -765,10 +798,67 @@ describe('AlertAi form field components', () => {
         expect.objectContaining({ query: 'dom' })
       )
     );
+    // Search results replace the initial options, as in the classic form.
     await waitFor(() =>
-      expect(screen.getByText('Domain 1')).toBeInTheDocument()
+      expect(screen.getByText('Domain 2')).toBeInTheDocument()
     );
-    jest.useRealTimers();
+
+    expect(screen.queryByText('Domain 1')).not.toBeInTheDocument();
+  });
+
+  it('keeps a typed search when the initial options load during the debounce', async () => {
+    jest.useFakeTimers();
+    let resolveInitialLoad: ((value: unknown) => void) | undefined;
+    (searchQuery as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveInitialLoad = resolve;
+        })
+    );
+    const selectedRule: ArgumentsInput = {
+      arguments: [{ input: [], name: 'domainList' }],
+      effect: Effect.Include,
+      name: 'matchAnyDomain',
+    };
+
+    render(
+      <AlertAiRuleSection
+        field="filters"
+        selectedSource="table"
+        supportedRules={[
+          {
+            arguments: ['domainList'],
+            condition: '',
+            effect: Effect.Include,
+            inputType: InputType.Runtime,
+            name: 'matchAnyDomain',
+          } as EventFilterRule,
+        ]}
+        title="Filters"
+        value={
+          {
+            ...baseValue,
+            input: { filters: [selectedRule] },
+          } as ModifiedCreateEventSubscription
+        }
+        onChange={jest.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('domainList-autocomplete'), {
+      target: { value: 'dom' },
+    });
+
+    await act(async () => {
+      resolveInitialLoad?.({ hits: { hits: [] } });
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'dom' })
+    );
   });
 
   it('renders fixed runtime options with the fqn autocomplete contract', () => {
@@ -1076,6 +1166,60 @@ describe('AlertAi form field components', () => {
     expect(screen.getByTestId('endpoint-input-0')).toBeDisabled();
     expect(screen.getByTestId('auth-type-select-0')).toBeDisabled();
     expect(screen.getByTestId('secret-key-input-0')).toHaveValue('secret');
+  });
+
+  it('edits webhook headers, query params, and HTTP method like the classic form', () => {
+    const onChange = jest.fn();
+    const destination = {
+      config: {
+        endpoint: 'https://hooks.example.com',
+        headers: [{ key: 'X-Token', value: 'abc' }],
+      },
+      destinationType: SubscriptionType.Webhook,
+    } as ModifiedDestination;
+    const value = {
+      ...baseValue,
+      destinations: [destination],
+    } as ModifiedCreateEventSubscription;
+
+    render(
+      <AlertAiDestinationConfigFields
+        destination={destination}
+        name={0}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    const lastConfig = () =>
+      onChange.mock.calls[onChange.mock.calls.length - 1][0].destinations[0]
+        .config;
+
+    expect(screen.getByTestId('header-key-input-0-0')).toHaveValue('X-Token');
+
+    fireEvent.change(screen.getByTestId('header-value-input-0-0'), {
+      target: { value: 'xyz' },
+    });
+
+    expect(lastConfig().headers).toEqual([{ key: 'X-Token', value: 'xyz' }]);
+
+    fireEvent.click(screen.getByTestId('add-query-param-button-0'));
+
+    expect(lastConfig().queryParams).toEqual([{ key: '', value: '' }]);
+
+    fireEvent.click(screen.getByTestId('remove-header-button-0-0'));
+
+    expect(lastConfig().headers).toEqual([]);
+
+    const httpMethod = within(screen.getByTestId('http-method-0')).getByRole(
+      'combobox'
+    );
+
+    expect(httpMethod).toHaveValue('POST');
+
+    fireEvent.change(httpMethod, { target: { value: 'PUT' } });
+
+    expect(lastConfig().httpMethod).toBe('PUT');
   });
 
   it('defaults downstream depth when notify downstream is enabled', () => {
@@ -1599,6 +1743,36 @@ describe('AlertAi form field components', () => {
     expect(
       screen.getByTestId('hint-doc-slot').querySelector('.form-hint-doc')
     ).toBeInTheDocument();
+  });
+
+  it('hides the notification template section when templates are not supported', () => {
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        filterResources={[{ name: 'table' }]}
+        shouldShowTemplateSection={false}
+        value={{} as ModifiedCreateEventSubscription}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('template-select')).not.toBeInTheDocument();
+  });
+
+  it('shows the notification template section when templates are supported', () => {
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        shouldShowTemplateSection
+        filterResources={[{ name: 'table' }]}
+        value={{} as ModifiedCreateEventSubscription}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('template-select')).toBeInTheDocument();
   });
 
   it('registers a form hint doc for each main alert field', async () => {

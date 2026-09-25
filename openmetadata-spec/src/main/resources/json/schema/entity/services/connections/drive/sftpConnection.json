@@ -11,53 +11,6 @@
       "type": "string",
       "enum": ["Sftp"],
       "default": "Sftp"
-    },
-    "basicAuth": {
-      "title": "Username/Password Authentication",
-      "description": "Username and password authentication for SFTP",
-      "type": "object",
-      "properties": {
-        "username": {
-          "title": "Username",
-          "description": "SFTP username",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "SFTP password",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["username", "password"],
-      "additionalProperties": false
-    },
-    "keyAuth": {
-      "title": "Private Key Authentication",
-      "description": "SSH private key authentication for SFTP",
-      "type": "object",
-      "properties": {
-        "username": {
-          "title": "Username",
-          "description": "SFTP username",
-          "type": "string"
-        },
-        "privateKey": {
-          "title": "Private Key",
-          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-          "type": "string",
-          "format": "password",
-          "uiFieldType": "fileOrInput"
-        },
-        "privateKeyPassphrase": {
-          "title": "Private Key Passphrase",
-          "description": "Passphrase for the private key (if encrypted)",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["username", "privateKey"],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -83,10 +36,10 @@
       "description": "Authentication method: username/password or SSH private key",
       "oneOf": [
         {
-          "$ref": "#/definitions/basicAuth"
+          "$ref": "sftp/basicAuth.json"
         },
         {
-          "$ref": "#/definitions/keyAuth"
+          "$ref": "sftp/keyAuth.json"
         }
       ]
     },

@@ -37,7 +37,6 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -61,7 +60,6 @@ import {
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import {
   certificationTableObject,
@@ -114,11 +112,7 @@ export const DatabaseSchemaTable = ({
   }, [permissions, isVersionPage]);
 
   const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        permissions.databaseSchema,
-        Operation.ViewUsage
-      ),
+    () => getDerivedPermissionFlags(permissions.databaseSchema).canViewUsage,
     [permissions.databaseSchema]
   );
 

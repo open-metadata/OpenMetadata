@@ -186,13 +186,13 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         match_count = metric_values[Metrics.regexCount.name]
         count = metric_values[Metrics.valuesCount.name]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found {match_count} value(s) matching regex pattern vs {count} value(s) in the column."
-            )
-        else:  # noqa: RET505
-            return f"Found {match_count} value(s) matching regex pattern vs {count} value(s) in the column."
+        return self.format_violation_message(
+            violations=count - match_count,
+            population=count,
+            violation_noun="values not matching the regex",
+            matched=self._matched(metric_values, test_params),
+            dimension_info=dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for in-set test

@@ -1594,17 +1594,6 @@ public class IngestionPipelineResource
         ingestionPipeline);
   }
 
-  /**
-   * @deprecated botName was always null and the server connection it pre-set was overwritten by
-   *     decryptOrNullify. Kept only so Collate's AIAutomationResource keeps compiling until it
-   *     drops the argument; delete this overload once it has.
-   */
-  @Deprecated(forRemoval = true)
-  public PipelineServiceClientResponse triggerPipelineInternal(
-      UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
-    return triggerPipelineInternal(id, uriInfo, securityContext);
-  }
-
   public PipelineServiceClientResponse triggerPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
     // FIELD_OWNERS is read because both checks in authorizeTrigger can be conditioned on owners.

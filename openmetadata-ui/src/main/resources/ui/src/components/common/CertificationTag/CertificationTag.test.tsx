@@ -111,20 +111,20 @@ describe('CertificationTag', () => {
     expect(Icon).toHaveBeenCalledWith(
       expect.objectContaining({
         iconValue: 'https://example.com/gold.png',
-        size: 14,
+        size: 16,
         alt: 'certification: Gold Medal',
       }),
       expect.anything()
     );
   });
 
-  it('should use a smaller icon size when showName is true', () => {
+  it('should keep the same icon size when showName is true', () => {
     renderCertificationTag(mockCertification, true);
 
     expect(Icon).toHaveBeenCalledWith(
       expect.objectContaining({
         iconValue: 'https://example.com/gold.png',
-        size: 14,
+        size: 16,
       }),
       expect.anything()
     );

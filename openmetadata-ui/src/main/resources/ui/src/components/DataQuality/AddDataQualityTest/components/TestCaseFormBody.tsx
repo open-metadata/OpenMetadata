@@ -89,6 +89,7 @@ import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import ThresholdPreview from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
 import {
   FormValues,
@@ -388,7 +389,9 @@ const TestDetailsCard: FC<{
     <FormField control={form.control} name="tags">
       {({ field }) => (
         <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-          <TagSuggestion
+          <TagSelector
+            className="tw:w-full"
+            data-testid="tags-input"
             label={t('label.tag-plural')}
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),
@@ -1099,6 +1102,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     onContextChange?.({
       selectedDefinition: selectedTestDefinition,
       selectedTableData,
+      selectedTableFqn,
       selectedColumn,
       selectedTestLevel,
       generateName: generateDynamicTestName,
@@ -1108,6 +1112,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   }, [
     selectedTestDefinition,
     selectedTableData,
+    selectedTableFqn,
     selectedColumn,
     selectedTestLevel,
     generateDynamicTestName,

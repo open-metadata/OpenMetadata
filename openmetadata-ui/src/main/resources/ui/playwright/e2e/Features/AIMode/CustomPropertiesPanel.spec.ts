@@ -44,6 +44,10 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../../utils/common';
+import {
+  recordCustomPropertySaves,
+  removeCustomPropertyViaApi,
+} from '../../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode } from '../../Utils/appMode';
 
@@ -120,7 +124,9 @@ const chooseSelectOption = async (
 ): Promise<void> => {
   // The wrapper div contains a react-aria <button aria-haspopup="listbox">.
   await page.getByTestId(wrapperTestId).getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: optionName }).click();
+  const option = page.getByRole('option', { exact: true, name: optionName });
+  await expect(option).toBeVisible();
+  await option.click();
 };
 
 /**
@@ -133,9 +139,16 @@ const submitAddForm = async (page: Page): Promise<void> => {
       res.url().includes('/api/v1/metadata/types/') &&
       res.request().method() === 'PUT'
   );
+  const getResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/name/') &&
+      res.request().method() === 'GET'
+  );
   await page.getByTestId('custom-property-save').click();
   const res = await putResponse;
   expect(res.status()).toBe(200);
+  const getRes = await getResponse;
+  expect(getRes.status()).toBe(200);
   await page.getByTestId('custom-property-table').waitFor();
 };
 
@@ -149,17 +162,7 @@ const deletePropertyViaApi = async (
 ): Promise<void> => {
   const { apiContext, afterAction } = await getApiContext(page);
   try {
-    const typeRes = await apiContext.get(
-      `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
-    );
-    const typeData = await typeRes.json();
-    const remaining = (typeData.customProperties ?? []).filter(
-      (p: { name: string }) => p.name !== propertyName
-    );
-    await apiContext.patch(`/api/v1/metadata/types/${typeData.id}`, {
-      data: [{ op: 'replace', path: '/customProperties', value: remaining }],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
+    await removeCustomPropertyViaApi(apiContext, TABLE_FQN, propertyName);
   } finally {
     await afterAction();
   }
@@ -325,21 +328,15 @@ test.describe('Custom Properties Panel — AI Mode', () => {
 
     await fillDescriptionBox(page, 'Updated description');
 
-    // Hoist PATCH listener before clicking Save.
-    const patchResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/metadata/types/') &&
-        res.request().method() === 'PATCH'
-    );
+    const saves = recordCustomPropertySaves(page);
     await page.getByTestId('edit-custom-property-save').click();
-    const res = await patchResponse;
-    expect(res.status()).toBe(200);
 
     // Back on detail page — updated display name is visible.
     await page.getByTestId('custom-property-table').waitFor();
     await expect(
       page.locator('tr').filter({ hasText: updatedDisplayName })
     ).toBeVisible();
+    await saves.expectSaved();
 
     // Cleanup (property name key is unchanged; display name is cosmetic).
     await deletePropertyViaApi(page, name);
@@ -374,20 +371,16 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     // Wait for the confirmation modal.
     await page.getByTestId('delete-modal').waitFor();
 
-    // Hoist PATCH listener before confirming.
-    const patchResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/metadata/types/') &&
-        res.request().method() === 'PATCH'
-    );
+    const saves = recordCustomPropertySaves(page);
     await page.getByTestId('confirm-button').click();
-    const res = await patchResponse;
-    expect(res.status()).toBe(200);
 
-    // The property row must no longer appear.
+    await page.getByTestId('delete-modal').waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(page);
+
     await expect(
       page.locator('tr').filter({ hasText: name })
     ).not.toBeVisible();
+    await saves.expectSaved();
   });
 });
 
@@ -569,18 +562,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
-      // Remove the seeded property from the Table type.
-      const typeDataRes = await apiContext.get(
-        `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
-      );
-      const typeData = await typeDataRes.json();
-      const remaining = (typeData.customProperties ?? []).filter(
-        (p: { name: string }) => p.name !== typePropertyName
-      );
-      await apiContext.patch(`/api/v1/metadata/types/${typeData.id}`, {
-        data: [{ op: 'replace', path: '/customProperties', value: remaining }],
-        headers: { 'Content-Type': 'application/json-patch+json' },
-      });
+      await removeCustomPropertyViaApi(apiContext, TABLE_FQN, typePropertyName);
 
       // Clean up user, role, policy.
       await typeUser.delete(apiContext);

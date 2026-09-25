@@ -108,7 +108,10 @@ describe('createStreamOpenHandler', () => {
       createStreamOpenHandler(state, jest.fn())(response(401))
     ).rejects.toBeInstanceOf(RetriableStreamError);
 
+    // Assert the exact `{ force: true }` — dropping it would silently
+    // restore the fast-path 401 loop.
     expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
+    expect(mockEnsureFreshToken).toHaveBeenCalledWith({ force: true });
     expect(state.consecutiveUnauthorized).toBe(1);
   });
 

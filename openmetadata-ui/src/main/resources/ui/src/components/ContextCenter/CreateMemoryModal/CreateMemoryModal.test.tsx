@@ -73,11 +73,6 @@ jest.mock(
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
 
-jest.mock(
-  '../../../components/Tag/TagsSelectForm/TagsSelectForm.component',
-  () => jest.fn(() => <div data-testid="tag-select-form" />)
-);
-
 jest.mock('antd', () => ({
   ConfigProvider: jest.fn(({ children }: { children: React.ReactNode }) => (
     <>{children}</>

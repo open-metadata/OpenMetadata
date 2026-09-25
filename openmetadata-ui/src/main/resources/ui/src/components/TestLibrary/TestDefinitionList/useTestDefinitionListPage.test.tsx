@@ -260,6 +260,9 @@ describe('useTestDefinitionListPage', () => {
         limit: 15,
         entityType: undefined,
         testPlatform: undefined,
+        q: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
       expect(result.current.testDefinitions).toEqual(MOCK_TEST_DEFINITIONS);
       expect(mockHandlePagingChange).toHaveBeenCalledWith(MOCK_PAGING);
@@ -385,6 +388,7 @@ describe('useTestDefinitionListPage', () => {
       });
 
       expect(mockUpdateUrlParams).toHaveBeenCalledWith({
+        q: null,
         entityType: null,
         testPlatforms: null,
       });
@@ -409,6 +413,9 @@ describe('useTestDefinitionListPage', () => {
           limit: 15,
           entityType: 'table',
           testPlatform: 'OpenMetadata',
+          q: undefined,
+          sortField: 'displayName',
+          sortOrder: 'asc',
         });
       });
 

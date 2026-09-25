@@ -22,7 +22,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
@@ -147,42 +147,71 @@ const PlatformLineage = () => {
     },
     [navigate]
   );
+  // `debounce` only coalesces calls inside its own window, so the empty search
+  // that `onFocus` starts and a search for what the user then types are two
+  // requests in flight at once — and the empty one is the slower of the pair,
+  // since it has no term to narrow three indices by. Without this guard its
+  // late answer overwrites the newer one and the list shows results for a
+  // query the box is no longer holding.
+  //
+  // Token bump is SYNCHRONOUS on every call (before debounce), not inside the
+  // debounced body: a keystroke fires debouncedSearch immediately, which
+  // advances searchOrder and invalidates any in-flight request from the
+  // previous keystroke. If we bumped inside the debounced body instead, a
+  // request that resolved between the keystroke and the next debounced fire
+  // would still match the current token and paint stale results.
+  const searchOrder = useRef(0);
+  const runSearch = useMemo(
+    () =>
+      debounce(async (value: string, request: number) => {
+        try {
+          setIsSearchLoading(true);
+          const searchIndices = [
+            SearchIndex.DATA_ASSET,
+            SearchIndex.DOMAIN,
+            SearchIndex.SERVICE,
+          ];
+
+          const response = await searchQuery({
+            query: escapeESReservedCharacters(value),
+            searchIndex: searchIndices,
+            pageSize: PAGE_SIZE_BASE,
+            queryFilter: getLineageEntityExclusionFilter(),
+            includeDeleted: false,
+          });
+
+          if (request !== searchOrder.current) {
+            return;
+          }
+
+          setOptions(
+            response.hits.hits.map((hit) => ({
+              value: hit._source.fullyQualifiedName ?? '',
+              label: (
+                <EntitySuggestionOption
+                  showEntityTypeBadge
+                  entity={hit._source as EntityReference}
+                  onSelectHandler={handleEntitySelect}
+                />
+              ),
+              data: hit,
+            }))
+          );
+        } finally {
+          if (request === searchOrder.current) {
+            setIsSearchLoading(false);
+          }
+        }
+      }, 300),
+    [handleEntitySelect]
+  );
+
   const debouncedSearch = useCallback(
-    debounce(async (value: string) => {
-      try {
-        setIsSearchLoading(true);
-        const searchIndices = [
-          SearchIndex.DATA_ASSET,
-          SearchIndex.DOMAIN,
-          SearchIndex.SERVICE,
-        ];
-
-        const response = await searchQuery({
-          query: escapeESReservedCharacters(value),
-          searchIndex: searchIndices,
-          pageSize: PAGE_SIZE_BASE,
-          queryFilter: getLineageEntityExclusionFilter(),
-          includeDeleted: false,
-        });
-
-        setOptions(
-          response.hits.hits.map((hit) => ({
-            value: hit._source.fullyQualifiedName ?? '',
-            label: (
-              <EntitySuggestionOption
-                showEntityTypeBadge
-                entity={hit._source as EntityReference}
-                onSelectHandler={handleEntitySelect}
-              />
-            ),
-            data: hit,
-          }))
-        );
-      } finally {
-        setIsSearchLoading(false);
-      }
-    }, 300),
-    []
+    (value: string) => {
+      const request = ++searchOrder.current;
+      runSearch(value, request);
+    },
+    [runSearch]
   );
 
   const init = useCallback(async () => {

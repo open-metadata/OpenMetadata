@@ -122,6 +122,13 @@ export const Avatar = ({
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
 
+  // Normalize an unknown `size` (e.g. a stray numeric value from an untyped
+  // caller) to `md` once, so every size-keyed consumer below — the styles
+  // lookup and the badge sub-components — degrades safely instead of crashing
+  // on `.root`.
+  const resolvedSize: AvatarSize = size in styles ? size : 'md';
+  const sizeStyles = styles[resolvedSize];
+
   // Color the initials only when we actually fall back to them (no usable
   // image). `auto`/`solid` derive a theme-adapting utility color from the name;
   // `neutral` keeps the plain gray surface.
@@ -151,7 +158,7 @@ export const Avatar = ({
       return (
         // Color is inherited from the root (see className above) so a caller can
         // override it; the span only carries sizing.
-        <span className={cx('tw:text-current', styles[size].initials)}>
+        <span className={cx('tw:text-current', sizeStyles.initials)}>
           {initials}
         </span>
       );
@@ -159,13 +166,13 @@ export const Avatar = ({
 
     if (PlaceholderIcon) {
       return (
-        <PlaceholderIcon className={cx('tw:text-current', styles[size].icon)} />
+        <PlaceholderIcon className={cx('tw:text-current', sizeStyles.icon)} />
       );
     }
 
     return (
       placeholder || (
-        <User01 className={cx('tw:text-fg-quaternary', styles[size].icon)} />
+        <User01 className={cx('tw:text-fg-quaternary', sizeStyles.icon)} />
       )
     );
   };
@@ -174,7 +181,7 @@ export const Avatar = ({
     if (status) {
       return (
         <AvatarOnlineIndicator
-          size={size === 'xxs' ? 'xs' : size}
+          size={resolvedSize === 'xxs' ? 'xs' : resolvedSize}
           status={status}
         />
       );
@@ -185,9 +192,10 @@ export const Avatar = ({
         <VerifiedTick
           className={cx(
             'tw:absolute tw:right-0 tw:bottom-0',
-            (size === 'xxs' || size === 'xs') && 'tw:-right-px tw:-bottom-px'
+            (resolvedSize === 'xxs' || resolvedSize === 'xs') &&
+              'tw:-right-px tw:-bottom-px'
           )}
-          size={size === 'xxs' ? 'xs' : size}
+          size={resolvedSize === 'xxs' ? 'xs' : resolvedSize}
         />
       );
     }
@@ -212,7 +220,7 @@ export const Avatar = ({
         // Honor the contrast outline regardless of the initials color treatment
         // — AvatarGroup relies on it to separate negatively-overlapped avatars.
         contrastBorder && 'tw:outline tw:outline-avatar-contrast-border',
-        styles[size].root,
+        sizeStyles.root,
         className
       )}
       data-testid={dataTestId}

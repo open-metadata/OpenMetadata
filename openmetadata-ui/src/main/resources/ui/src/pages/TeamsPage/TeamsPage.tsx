@@ -524,10 +524,11 @@ const TeamsPage = () => {
   // manages isPageLoading internally via its own try/finally, matching the granted-view path
   // exactly. The denied-view path needs the separate effect below since nothing else would
   // otherwise flip isPageLoading back to false.
+  // Sequenced, not parallel: fetchTeamBasicDetails replaces selectedTeam wholesale, so if it
+  // resolved after fetchTeamAdvancedDetails it would drop the `users` that call merged in.
   useEffect(() => {
     if (hasViewPermission) {
-      fetchTeamBasicDetails(fqn, true);
-      loadAdvancedDetails();
+      fetchTeamBasicDetails(fqn, true).then(loadAdvancedDetails);
     }
   }, [hasViewPermission, fqn]);
 

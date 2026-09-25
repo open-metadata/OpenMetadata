@@ -76,9 +76,8 @@ export const MarketplaceOverviewHeader: FC = () => {
           showHome={false}
         />
       }
-      className="tw:mb-5"
+      className="tw:mb-4"
       data-testid="marketplace-overview-header"
-      density="compact"
       title={headerLayout}
       variant="gradient"
     />
