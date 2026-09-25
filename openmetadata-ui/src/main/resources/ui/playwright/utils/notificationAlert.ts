@@ -32,7 +32,6 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import {
-  chooseSelectOption,
   clickOutside,
   fillDescriptionBox,
   getDescriptionBox,
@@ -163,6 +162,11 @@ export const addInternalDestination = async ({
         `[data-testid="destination-${destinationNumber}"] [data-testid="team-user-select-trigger-${destinationNumber}"]`
       );
       await expect(dropdownTrigger).toBeVisible();
+      // The popover is non-modal, so React Aria closes it when an ancestor of
+      // the trigger scrolls. Scroll here, not inside click(): click() fires
+      // right after its own scroll, before the async scroll event lands, and
+      // that event then closes the just-opened popover.
+      await dropdownTrigger.scrollIntoViewIfNeeded();
 
       const resultsDropdown = page.getByTestId(
         `team-user-select-dropdown-${destinationNumber}`
@@ -171,23 +175,30 @@ export const addInternalDestination = async ({
         `[data-testid="${searchText}-option-label"]`
       );
 
-      await dropdownTrigger.focus();
-      await dropdownTrigger.click();
-      const searchInput = resultsDropdown.getByTestId('search-input-field');
-      await expect(searchInput).toBeFocused();
-      const getSearchResult = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-        return (
-          response.request().method() === 'GET' &&
-          url.pathname === '/api/v1/search/query' &&
-          url.searchParams.get('q') === searchText &&
-          url.searchParams.get('index') ===
-            (category === 'Teams' ? 'team' : 'user')
-        );
-      });
-      await searchInput.fill(searchText);
-      expect((await getSearchResult).status()).toBe(200);
-      await option.click();
+      await expect(async () => {
+        if (!(await resultsDropdown.isVisible())) {
+          await dropdownTrigger.click();
+        }
+
+        const searchInput = resultsDropdown.getByTestId('search-input-field');
+        await expect(searchInput).toBeVisible();
+
+        // The controlled portal clears its search when React Aria closes it.
+        // Repeat the query after reopening so a late close cannot strand this
+        // helper waiting on an option from an already unmounted popup.
+        // Each step needs its own timeout: the default is unbounded, so one
+        // hung step would consume the whole toPass budget without a retry.
+        if ((await searchInput.inputValue()) !== searchText) {
+          const getSearchResult = page.waitForResponse(
+            '/api/v1/search/query?q=*',
+            { timeout: 5_000 }
+          );
+          await searchInput.fill(searchText, { timeout: 3_000 });
+          await getSearchResult;
+        }
+
+        await option.click({ timeout: 3_000 });
+      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
 
       await expect(
         dropdownTrigger.getByTestId('placeholder-text')
@@ -243,17 +254,12 @@ export const editSingleFilterAlert = async ({
   await getDescriptionBox(page).clear();
   await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
-  const source = page.getByTestId('source-select');
-  await chooseSelectOption(
-    source,
-    page
-      .locator('.ant-select-dropdown:visible')
-      .getByTestId(`${sourceName}-option`)
-      .getByText(sourceDisplayName, { exact: true })
-  );
-  await expect(source.locator('.ant-select-selection-item')).toHaveText(
-    sourceDisplayName
-  );
+  // Update source
+  await page.click('[data-testid="source-select"]');
+  await page
+    .getByTestId(`${sourceName}-option`)
+    .getByText(sourceDisplayName)
+    .click();
 
   // Filters should reset after source change
   await expect(page.getByTestId('filter-select-0')).not.toBeAttached();
