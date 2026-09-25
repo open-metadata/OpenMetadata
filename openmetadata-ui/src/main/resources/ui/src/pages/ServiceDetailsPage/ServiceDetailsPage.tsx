@@ -178,7 +178,9 @@ import {
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { escapeESReservedCharacters } from '../../utils/StringUtils';
+import {
+  escapeESReservedCharacters,
+} from '../../utils/StringUtils';
 import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
