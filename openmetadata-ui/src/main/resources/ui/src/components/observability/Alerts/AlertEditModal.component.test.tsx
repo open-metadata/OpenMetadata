@@ -32,6 +32,7 @@ import {
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import AlertEditModal from './AlertEditModal.component';
+import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockUseObservabilityAlertForm = jest.fn();
 
@@ -54,17 +55,27 @@ jest.mock('./AlertAiForm.component', () => ({
     mode,
     onChange,
     onSubmit,
+    shouldShowActionsSection,
+    shouldShowTemplateSection,
     showHint,
     value,
   }: {
     mode: string;
     onChange: (value: ModifiedCreateEventSubscription) => void;
     onSubmit: (value: ModifiedCreateEventSubscription) => void;
+    shouldShowActionsSection?: boolean;
+    shouldShowTemplateSection?: boolean;
     showHint?: boolean;
     value: ModifiedCreateEventSubscription;
   }) => (
     <div data-testid="alert-ai-form">
       <span data-testid="form-mode">{mode}</span>
+      <span data-testid="form-shows-triggers">
+        {String(Boolean(shouldShowActionsSection))}
+      </span>
+      <span data-testid="form-shows-templates">
+        {String(Boolean(shouldShowTemplateSection))}
+      </span>
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="form-display-name">{value.displayName}</span>
       <span data-testid="form-show-hint">{String(showHint)}</span>
@@ -230,9 +241,39 @@ describe('AlertEditModal', () => {
 
     expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith({
       afterSaveAction: onSaved,
+      alertType: AlertType.Observability,
       fqn: 'service.alert',
       onCancel: onClose,
     });
+  });
+
+  it('creates a notification alert when opened for notifications', () => {
+    const handleSave = jest.fn();
+    mockUseObservabilityAlertForm.mockReturnValue(getHookState({ handleSave }));
+
+    render(
+      <AlertEditModal
+        isOpen
+        kind={NOTIFICATION_ALERT_KIND}
+        mode="add"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith(
+      expect.objectContaining({ alertType: AlertType.Notification })
+    );
+    // Notification alerts have no trigger section, even before a source is picked.
+    expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
+      'false'
+    );
+
+    fireEvent.click(screen.getByTestId('submit-form'));
+
+    expect(handleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ alertType: AlertType.Notification })
+    );
   });
 
   it('shows loader while edit alert details are loading', () => {
@@ -360,5 +401,26 @@ describe('AlertEditModal', () => {
     fireEvent.click(screen.getByTestId('modal-close'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  describe('notification template section (classic parity)', () => {
+    it('is hidden when no template widget is registered, as in classic OSS', () => {
+      mockUseObservabilityAlertForm.mockReturnValue(
+        getHookState({ extraFormWidgets: {} })
+      );
+
+      render(
+        <AlertEditModal
+          isOpen
+          mode="add"
+          onClose={jest.fn()}
+          onSaved={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('form-shows-templates')).toHaveTextContent(
+        'false'
+      );
+    });
   });
 });

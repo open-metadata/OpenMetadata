@@ -80,13 +80,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Table.Head = ({
     className,
     id,
+    isRowHeader,
     label,
   }: {
     className?: string;
     id: string;
+    isRowHeader?: boolean;
     label: string;
   }) => (
-    <div className={className} data-testid={`header-${id}`}>
+    <div
+      className={className}
+      data-row-header={String(Boolean(isRowHeader))}
+      data-testid={`header-${id}`}>
       {label}
     </div>
   );
@@ -350,7 +355,21 @@ describe('ObservabilityAlertsAiTable', () => {
     expect(onViewAlert).toHaveBeenCalledWith(alertRecord);
   });
 
-  it('disables delete action for system alerts', () => {
+  it('marks only the alert name column as the row header', () => {
+    render(<ObservabilityAlertsAiTable {...baseProps} />);
+
+    // react-aria throws at runtime when a table has no row-header column.
+    expect(screen.getByTestId('header-name')).toHaveAttribute(
+      'data-row-header',
+      'true'
+    );
+    expect(screen.getByTestId('header-trigger')).toHaveAttribute(
+      'data-row-header',
+      'false'
+    );
+  });
+
+  it('disables edit and delete actions for system alerts', () => {
     render(
       <ObservabilityAlertsAiTable
         {...baseProps}
@@ -359,6 +378,8 @@ describe('ObservabilityAlertsAiTable', () => {
     );
 
     expect(screen.getByTestId('alert-delete-test-alert')).toBeDisabled();
+    // Notification lists include the read-only system ActivityFeedAlert.
+    expect(screen.getByTestId('alert-edit-test-alert')).toBeDisabled();
   });
 
   it('renders the features EmptyPlaceholder when there are no alerts', () => {

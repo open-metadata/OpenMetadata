@@ -955,7 +955,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             String.format(
                 K8S_AVAILABLE_MISSING_CONFIGMAP_FORMAT, namespace, serviceAccount, e.getMessage());
         LOG.error(error);
-        return buildUnhealthyStatus(error);
+        return apiFailureStatus(e, error);
       }
 
       // Test Secret permissions (required for pipeline credentials)
@@ -966,7 +966,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             String.format(
                 K8S_AVAILABLE_MISSING_SECRET_FORMAT, namespace, serviceAccount, e.getMessage());
         LOG.error(error);
-        return buildUnhealthyStatus(error);
+        return apiFailureStatus(e, error);
       }
 
       String message = String.format(K8S_AVAILABLE_FORMAT, namespace, serviceAccount);
@@ -982,7 +982,8 @@ public class K8sPipelineClient extends PipelineServiceClient {
               "Failed to parse Kubernetes pod/job status (namespace: %s, service account: %s)",
               namespace, serviceAccount);
       LOG.error(error, e);
-      return buildUnhealthyStatus(error);
+      // A client/server model mismatch persists until one of them is upgraded, so don't retry it.
+      return buildStatus(CONFIGURATION_ERROR, error);
     } catch (ApiException e) {
       String error =
           String.format(
@@ -993,8 +994,24 @@ public class K8sPipelineClient extends PipelineServiceClient {
               e.getCode(),
               e.getResponseBody());
       LOG.error(error);
-      return buildUnhealthyStatus(error);
+      return apiFailureStatus(e, error);
     }
+  }
+
+  /**
+   * A standing API error keeps the API server's own code; anything transient stays on 500 for
+   * {@link #getServiceStatus()} to retry.
+   */
+  private PipelineServiceClientResponse apiFailureStatus(ApiException e, String reason) {
+    return isStandingApiError(e) ? buildStatus(e.getCode(), reason) : buildUnhealthyStatus(reason);
+  }
+
+  /**
+   * A 4xx is an RBAC or configuration problem that outlives a retry — except the ones {@link
+   * #isRetryableException} already treats as transient, such as 429 throttling.
+   */
+  private static boolean isStandingApiError(ApiException e) {
+    return e.getCode() >= 400 && e.getCode() < 500 && !isRetryableException(e);
   }
 
   @Override
