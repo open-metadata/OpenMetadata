@@ -1,4 +1,11 @@
-.prose:not(:where([class~='not-prose'], [class~='not-prose'] *)) {
+/*
+ * Zero specificity on purpose. Typography puts `prose` on a span or div itself
+ * (no wrapper), next to utilities such as `tw:text-xs tw:text-tertiary`. Both are
+ * unlayered and this file loads after the utilities, so a class-level selector
+ * here would override every size and colour a caller sets. `:where` lets any
+ * utility win, which is what the old wrapper achieved through inheritance.
+ */
+:where(.prose):not(:where([class~='not-prose'], [class~='not-prose'] *)) {
   --tw-prose-body: theme(--color-text-tertiary);
   --tw-prose-headings: theme(--color-text-primary);
   --tw-prose-lead: theme(--color-text-tertiary);
