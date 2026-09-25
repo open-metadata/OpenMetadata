@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StorageServiceMetadataPipeline",
   "description": "StorageService Metadata Pipeline Configuration.",
   "type": "object",
@@ -56,7 +55,6 @@
           "$ref": "#/definitions/noMetadataConfigurationSource"
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Storage Metadata Local Config",
           "description": "Storage Metadata Manifest file path config.",
           "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataLocalConfig",
@@ -74,7 +72,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Storage Metadata Http Config",
           "description": "Storage Metadata Manifest file HTTP path config.",
           "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataHttpConfig",
@@ -92,7 +89,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Storage Metadata S3 Config",
           "description": "Storage Metadata Manifest file S3 path config.",
           "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config",
@@ -100,7 +96,6 @@
           "properties": {
             "securityConfig": {
               "title": "S3 Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -130,7 +125,8 @@
                 "awsSessionToken": {
                   "title": "AWS Session Token",
                   "description": "AWS Session Token.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "endPointURL": {
                   "title": "Endpoint URL",
@@ -167,7 +163,6 @@
             },
             "prefixConfig": {
               "title": "Storage Metadata Prefix Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Details of the bucket where the storage metadata manifest file is stored",
               "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",
               "type": "object",
@@ -195,7 +190,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Storage Metadata ADLS Config",
           "description": "Storage Metadata Manifest file ADLS path config.",
           "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataADLSConfig",
@@ -203,7 +197,6 @@
           "properties": {
             "securityConfig": {
               "title": "ADLS Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "Azure Cloud Credentials",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -253,7 +246,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Storage Metadata GCS Config",
           "description": "Storage Metadata Manifest file GCS path config.",
           "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig",
@@ -261,7 +253,6 @@
           "properties": {
             "securityConfig": {
               "title": "GCS Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "GCP credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
@@ -350,7 +341,6 @@
                   "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                       "title": "GCP Credentials Values",
@@ -444,7 +434,6 @@
                       "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/definitions/gcpCredentialsPath"
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                       "title": "GCP External Account",

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/logStreamEvent.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LogStreamEvent",
   "description": "One event delivered on an ingestion pipeline log Server-Sent Events stream. Every event carries the cursor a client needs to resume the stream where it left off.",
   "type": "object",

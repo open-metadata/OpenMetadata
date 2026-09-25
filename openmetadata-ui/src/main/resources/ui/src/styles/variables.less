@@ -40,6 +40,14 @@
 @green-6: #effffb;
 @green-7: #00b871;
 @green-8: #48ca9e08;
+// DARK-MODE BRIDGE: palette vars written as `var(--om-*, #hex)` below (e.g.
+// @green-9/10/12/100, @red-9/10/22, @yellow-10, @blue-13/22/500,
+// @grey-1/2/5/7/9/15/25/26/50, @green-500, @warning-100/400, @alert-*) resolve
+// through an --om-* custom property so they adapt in dark. LESS color functions
+// (darken/lighten/fade/mix/tint/shade/…) CANNOT evaluate a var() — passing a
+// bridged var to one fails the build at compile time (this broke Collate's
+// `darken(@grey-9)` in code-widget). Never wrap a bridged var in a LESS color
+// function; use a non-bridged palette step or handle the shade in CSS.
 @green-9: var(--om-green-9, #ecfdf3);
 @green-10: var(--om-green-10, #027a48);
 @green-11: #3f9593;
@@ -321,18 +329,10 @@
     @om-navbar-height - @size-md
 );
 
-@app-details-page-tabs-height: calc(
-  100vh - 132px - @tab-height - @om-navbar-height - @size-md
-);
 @app-install-page-tabs-height: calc(
   100vh - 70px - @om-navbar-height - @size-md
 );
 
-@users-page-tabs-height: calc(100vh - @om-navbar-height - 58px);
-
-@services-page-tabs-height: calc(
-  100vh - 36px - @tab-height - @om-navbar-height - @size-md
-);
 /* navbar+tab_height+padding = 64+46+12  */
 
 @glossary-page-height: calc(
@@ -485,4 +485,19 @@
 
 @body-background: var(--tw-color-utility-gray-blue-50);
 @component-background: var(--tw-color-bg-primary);
-@popover-background: var(--tw-color-bg-primary);
+// Raised surfaces (== bg-primary in light, lifted in dark).
+@btn-default-bg: var(--om-color-bg-surface);
+@table-bg: var(--om-color-bg-surface);
+// Popups, modals, dropdowns and drawers read the overlay surface (== bg-primary in
+// light, gray-800 in dark).
+@popover-background: var(--om-color-bg-overlay-surface);
+@popover-bg: var(--om-color-bg-overlay-surface);
+@dropdown-menu-bg: var(--om-color-bg-overlay-surface);
+@dropdown-menu-submenu-disabled-bg: var(--om-color-bg-overlay-surface);
+@menu-popup-bg: var(--om-color-bg-overlay-surface);
+@select-dropdown-bg: var(--om-color-bg-overlay-surface);
+@mentions-dropdown-bg: var(--om-color-bg-overlay-surface);
+@calendar-bg: var(--om-color-bg-overlay-surface);
+@modal-content-bg: var(--om-color-bg-overlay-surface);
+@modal-header-bg: var(--om-color-bg-overlay-surface);
+@drawer-bg: var(--om-color-bg-overlay-surface);
