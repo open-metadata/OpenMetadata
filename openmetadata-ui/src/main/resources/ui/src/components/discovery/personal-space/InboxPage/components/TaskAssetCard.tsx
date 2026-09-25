@@ -12,6 +12,7 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { startCase } from 'lodash';
 import React, { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -20,7 +21,6 @@ import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { getTagDisplay } from '../../../../../utils/TagsPureUtils';
 import { TaskAboutEntity, TaskStatTilesProps } from '../taskDetail.types';
 import { formatEntityType } from '../taskList.utils';
 import TaskStatTiles from './TaskStatTiles';
@@ -91,7 +91,7 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
               </Typography>
               {about?.tier && (
                 <Badge color="blue" size="sm" type="color">
-                  {getTagDisplay(about.tier.tagFQN)}
+                  {about.tier.displayName || startCase(about.tier.name)}
                 </Badge>
               )}
               {Boolean(about?.piiColumnCount) && (

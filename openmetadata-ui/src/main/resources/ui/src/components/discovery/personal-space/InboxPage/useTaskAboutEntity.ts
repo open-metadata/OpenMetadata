@@ -15,7 +15,10 @@ import { useQuery } from '@tanstack/react-query';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { Task } from '../../../../generated/entity/tasks/task';
+import { maxBy } from 'lodash';
+import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { getLineageByEntityCount } from '../../../../rest/lineageAPI';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import { getTestCaseByFqn } from '../../../../rest/testAPI';
 import { getEntityByFqnUtil } from '../../../../utils/EntityByFqnUtils';
 import EntityLink from '../../../../utils/EntityLink';
@@ -58,19 +61,45 @@ const getAboutTarget = (task?: Task): TaskAboutTarget | undefined => {
 };
 
 /** The test case's own context: what it tests, and against which table. */
+// The incident's status history, keyed by the task id (a task-first incident's
+// state id). Only the latest record's severity is wanted; a failed read just
+// drops the severity tile.
+const fetchIncidentSeverity = (stateId: string) =>
+  getListTestCaseIncidentByStateId(stateId)
+    .then((response) => maxBy(response.data, 'timestamp')?.severity)
+    .catch(() => undefined);
+
+// A test case carries no tier of its own; the tier that matters is the tested
+// table's. Needs the test case's entity link, so it follows that fetch.
+const fetchTableTier = (tableFqn?: string) =>
+  tableFqn
+    ? getTableDetailsByFQN(tableFqn, { fields: TabSpecificField.TAGS })
+        .then((table) => deriveTaskAboutEntity(table).tier)
+        .catch(() => undefined)
+    : Promise.resolve(undefined);
+
 // Fetched directly rather than through `getEntityByFqnUtil`, whose test-case
 // handler asks for owners only and so never returns the test definition.
-const fetchTestCaseContext = async (fqn: string): Promise<TaskAboutEntity> => {
-  const testCase = await getTestCaseByFqn(fqn, {
-    fields: [TabSpecificField.OWNERS, TabSpecificField.TEST_DEFINITION],
-  });
+const fetchTestCaseContext = async (
+  fqn: string,
+  stateId?: string
+): Promise<TaskAboutEntity> => {
+  const [testCase, incidentSeverity] = await Promise.all([
+    getTestCaseByFqn(fqn, {
+      fields: [TabSpecificField.OWNERS, TabSpecificField.TEST_DEFINITION],
+    }),
+    stateId ? fetchIncidentSeverity(stateId) : undefined,
+  ]);
+  const testCaseTableFqn = testCase.entityLink
+    ? EntityLink.getEntityFqn(testCase.entityLink)
+    : undefined;
 
   return {
     ...deriveTaskAboutEntity(testCase),
+    tier: await fetchTableTier(testCaseTableFqn),
     testCase,
-    testCaseTableFqn: testCase.entityLink
-      ? EntityLink.getEntityFqn(testCase.entityLink)
-      : undefined,
+    testCaseTableFqn,
+    incidentSeverity,
   };
 };
 
@@ -111,14 +140,21 @@ export const useTaskAboutEntity = (task?: Task): UseTaskAboutEntityResult => {
   const target = getAboutTarget(task);
 
   const { data, isFetching } = useQuery({
-    queryKey: [TASK_ABOUT_ENTITY_QUERY_KEY, target?.entityType, target?.fqn],
+    // An incident's severity is per task, and two incidents can share a test
+    // case, so the task keys those.
+    queryKey: [
+      TASK_ABOUT_ENTITY_QUERY_KEY,
+      target?.entityType,
+      target?.fqn,
+      target?.entityType === EntityType.TEST_CASE ? task?.id : undefined,
+    ],
     enabled: Boolean(target),
     staleTime: ABOUT_STALE_TIME,
     queryFn: async () => {
       const { fqn, entityType } = target as TaskAboutTarget;
       // A test case has no lineage of its own; its tiles describe the test.
       if (entityType === EntityType.TEST_CASE) {
-        return fetchTestCaseContext(fqn);
+        return fetchTestCaseContext(fqn, task?.id);
       }
       const fields =
         entityType === EntityType.TABLE ? TABLE_FIELDS : COMMON_FIELDS;

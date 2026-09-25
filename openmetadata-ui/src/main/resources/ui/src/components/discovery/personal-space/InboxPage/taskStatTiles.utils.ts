@@ -108,8 +108,11 @@ const getIncidentTiles = (
 ): StatTile[] => {
   const testDefinition = about.testCase?.testDefinition;
   const tableFqn = about.testCaseTableFqn;
-  const severity = (task.payload as Partial<TestCaseResolutionPayload>)
-    ?.severity;
+  // The incident's status record holds the severity; the payload copy is
+  // usually empty.
+  const severity =
+    about.incidentSeverity ??
+    (task.payload as Partial<TestCaseResolutionPayload>)?.severity;
   // The workflow names the incident's stage (new, acknowledged, assigned…);
   // the raw task status only says whether it is still open.
   const status =

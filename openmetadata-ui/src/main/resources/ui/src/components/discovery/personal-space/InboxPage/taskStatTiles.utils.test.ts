@@ -89,6 +89,16 @@ describe('getTaskStatTiles', () => {
       ).toBe('Assigned');
     });
 
+    it('prefers the severity on the incident record to the payload copy', () => {
+      expect(
+        getTaskStatTiles(
+          incident,
+          { ...about, incidentSeverity: 'Severity2' } as TaskAboutEntity,
+          t
+        ).find((tile) => tile.key === 'severity')?.value
+      ).toBe('Severity 2');
+    });
+
     it('drops tiles whose facts are missing', () => {
       expect(
         keys(getTaskStatTiles(task({ category: TaskCategory.Incident }), {}, t))
