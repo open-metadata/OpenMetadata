@@ -65,7 +65,6 @@ export const deleteFixtureEntity = async (
   // 401 is tolerated so a JWT expiry doesn't fail the test, but it leaks
   // the fixture — surface it so cleanup regressions don't hide in green runs.
   if (status === 401) {
-    // eslint-disable-next-line no-console
     console.warn(
       `Fixture DELETE ${url}: HTTP 401 during cleanup; fixture may leak`
     );
