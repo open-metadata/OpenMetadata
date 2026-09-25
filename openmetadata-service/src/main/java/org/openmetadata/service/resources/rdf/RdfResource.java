@@ -54,9 +54,9 @@ public class RdfResource {
   public static final String COLLECTION_PATH = "/v1/rdf";
   private static final int MIN_GRAPH_DEPTH = 1;
   private static final int MAX_GRAPH_DEPTH = 5;
-  private volatile RdfRepository rdfRepository;
   private final Authorizer authorizer;
   private volatile SemanticSearchEngine semanticSearchEngine;
+  private volatile RdfRepository semanticSearchEngineRepository;
   private OpenMetadataApplicationConfig config;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -72,21 +72,32 @@ public class RdfResource {
   }
 
   private RdfRepository getRdfRepository() {
-    if (rdfRepository == null) {
-      rdfRepository = RdfRepository.getInstanceOrNull();
-    }
-    return rdfRepository;
+    // Resolve the live singleton on every call rather than pinning the first instance.
+    // RdfUpdater.initialize() calls RdfRepository.reset() and rebuilds the singleton (durable live
+    // projection / reindex), so a pinned reference would keep serving a closed store after a swap
+    // (e.g. #33098's live-projection path), surfacing as 500s on the RDF endpoints.
+    return RdfRepository.getInstanceOrNull();
   }
 
   private SemanticSearchEngine getSemanticSearchEngine() {
+    RdfRepository repository = getRdfRepository();
+    if (repository == null) {
+      return null;
+    }
+    // Rebuild the engine when the underlying repository instance changes, since it holds a
+    // reference to the repository that a reset()/rebuild would leave stale.
     SemanticSearchEngine local = semanticSearchEngine;
-    if (local == null) {
+    if (local == null || semanticSearchEngineRepository != repository) {
       synchronized (this) {
-        local = semanticSearchEngine;
-        if (local == null && getRdfRepository() != null) {
-          local = new SemanticSearchEngine(getRdfRepository(), Entity.getSearchRepository());
-          semanticSearchEngine = local;
+        repository = getRdfRepository();
+        if (repository == null) {
+          return null;
         }
+        if (semanticSearchEngine == null || semanticSearchEngineRepository != repository) {
+          semanticSearchEngine = new SemanticSearchEngine(repository, Entity.getSearchRepository());
+          semanticSearchEngineRepository = repository;
+        }
+        local = semanticSearchEngine;
       }
     }
     return local;
