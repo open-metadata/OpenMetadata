@@ -12,7 +12,9 @@
  */
 @import (reference) '../../styles/variables.less';
 .marketplace-widget-section {
-  background: var(--tw-color-bg-primary);
+  // Surface token: white in light (as before), raised gray-800 in dark so the
+  // section and its item cards share one colour instead of a darker frame.
+  background: var(--om-color-bg-surface);
   border: 1px solid @border-color;
   border-radius: var(--om-radius-xl);
   padding: var(--om-space-20) var(--om-space-24);
