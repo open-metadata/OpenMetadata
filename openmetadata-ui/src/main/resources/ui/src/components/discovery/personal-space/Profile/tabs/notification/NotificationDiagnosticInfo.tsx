@@ -43,7 +43,7 @@ interface NotificationDiagnosticInfoProps {
 function NotificationDiagnosticInfo({
   diagnosticData: diagnosticDataProp,
   fqn,
-}: NotificationDiagnosticInfoProps) {
+}: Readonly<NotificationDiagnosticInfoProps>) {
   const { t } = useTranslation();
   const [fetchedData, setFetchedData] =
     useState<EventSubscriptionDiagnosticInfo>();

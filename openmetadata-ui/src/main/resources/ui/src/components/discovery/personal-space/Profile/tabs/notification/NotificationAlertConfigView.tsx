@@ -56,10 +56,10 @@ interface AlertConfigLoadingState {
 function ReadOnlyTriggerDisplay({
   actions,
   supportedTriggers,
-}: {
+}: Readonly<{
   actions: EventFilterRule[];
   supportedTriggers?: EventFilterRule[];
-}) {
+}>) {
   const { t } = useTranslation();
 
   return (

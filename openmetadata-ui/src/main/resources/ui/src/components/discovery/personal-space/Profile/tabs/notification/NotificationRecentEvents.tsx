@@ -81,7 +81,7 @@ interface NotificationRecentEventsProps {
 
 function NotificationRecentEvents({
   alertDetails,
-}: NotificationRecentEventsProps) {
+}: Readonly<NotificationRecentEventsProps>) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<AlertRecentEventFilters | Status>(
     AlertRecentEventFilters.ALL

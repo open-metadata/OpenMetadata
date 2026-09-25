@@ -56,7 +56,7 @@ function ControlledFilterArgsField({
   selectedTrigger,
   supportedEventTypes,
   supportedFilters,
-}: ControlledFilterArgsFieldProps) {
+}: Readonly<ControlledFilterArgsFieldProps>) {
   const selectedFilterDef = useMemo(
     () => supportedFilters?.find((f) => f.name === filter.name),
     [filter.name, supportedFilters]

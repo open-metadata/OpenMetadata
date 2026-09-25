@@ -57,7 +57,7 @@ function AlertAsyncAutocomplete({
   placeholder,
   'data-testid': dataTestId,
   isDisabled,
-}: AlertAsyncAutocompleteProps) {
+}: Readonly<AlertAsyncAutocompleteProps>) {
   const [asyncItemMap, setAsyncItemMap] = useState<Map<string, SelectItemType>>(
     () => new Map()
   );

@@ -124,7 +124,7 @@ function NotificationDestinationBridge({
     }
 
     if (!coreFormIsValid) {
-      throw new Error();
+      throw new Error('Form validation failed');
     }
   }, [getValues, isRequired, setError, t, trigger]);
 
