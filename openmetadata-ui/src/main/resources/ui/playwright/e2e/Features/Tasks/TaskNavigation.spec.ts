@@ -379,7 +379,7 @@ test.describe('Task Navigation - Notification Box', () => {
       await expect(notificationBox).toBeVisible();
 
       // Look for Tasks tab
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+      const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
       if (await tasksTab.isVisible()) {
         await tasksTab.click();
@@ -411,7 +411,7 @@ test.describe('Task Navigation - Notification Box', () => {
       const notificationBox = page.locator('.notification-box');
       await expect(notificationBox).toBeVisible();
 
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+      const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
       if (await tasksTab.isVisible()) {
         await tasksTab.click();

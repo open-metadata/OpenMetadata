@@ -187,9 +187,10 @@ test.describe('Ontology Studio', () => {
       await expect(
         page.getByTestId('ontology-edit-lease-status')
       ).toContainText('Active');
+      // Edit mode authors concepts, so it hides the Model/Data switch.
       await expect(
         page.getByRole('tab', { name: 'Data', exact: true })
-      ).toBeDisabled();
+      ).toHaveCount(0);
 
       const addConcept = page.getByTestId('ontology-add-concept');
       await expect(addConcept).toBeEnabled();

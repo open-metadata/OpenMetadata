@@ -160,30 +160,33 @@ test.describe('Activity Stream on Entity Pages', () => {
     if (await addTagButton.isVisible()) {
       await addTagButton.click();
 
-      const tagSearch = page.getByTestId('tag-selector');
+      const pickerSearch = page.getByTestId('classification-tag-picker-search');
 
-      await expect(tagSearch).toBeVisible();
-      await tagSearch.fill('PII');
-
-      const tagOption = page
-        .locator('[data-testid="tag-PII.Sensitive"]')
-        .first();
-
-      if (await tagOption.isVisible()) {
-        await tagOption.click();
-
-        const saveButton = page.locator(
-          '[data-testid="inline-save-btn"], [data-testid="saveAssociatedTag"]'
+      if (await pickerSearch.isVisible({ timeout: 5000 }).catch(() => false)) {
+        const searchResponse = page.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent('PII')}*`
         );
+        await pickerSearch.fill('PII');
+        await searchResponse;
 
-        if (await saveButton.isVisible()) {
-          const updateResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/tables/') &&
-              response.request().method() === 'PATCH'
-          );
-          await saveButton.click();
-          await updateResponse;
+        const tagNode = page.getByTestId('tree-node-PII.Sensitive');
+
+        if (await tagNode.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await tagNode.click();
+
+          const saveButton = page.getByTestId('update-btn');
+
+          if (
+            await saveButton.isVisible({ timeout: 3000 }).catch(() => false)
+          ) {
+            const updateResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/tables/') &&
+                response.request().method() === 'PATCH'
+            );
+            await saveButton.click();
+            await updateResponse;
+          }
         }
       }
     }

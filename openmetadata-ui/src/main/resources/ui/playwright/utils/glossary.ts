@@ -47,7 +47,9 @@ import {
 } from './common';
 import {
   addMultiOwner,
+  escapeESReservedCharacters,
   getEntityDisplayName,
+  openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
 import { pickGlossaryTermInField } from './glossaryPicker';
@@ -181,17 +183,15 @@ export const selectActiveGlossary = async (
   bWaitForResponse = true
 ) => {
   const sidebar = page.getByTestId('glossary-left-panel');
-  await sidebar.locator('[role="menuitem"]').first().waitFor();
+  await sidebar.getByRole('link').first().waitFor();
 
-  const menuItem = sidebar.getByRole('menuitem', {
+  const menuItem = sidebar.getByRole('link', {
     name: glossaryLabel,
     exact: true,
   });
   await menuItem.waitFor({ state: 'visible' });
 
-  const isSelected = await menuItem.evaluate((element) => {
-    return element.classList.contains('ant-menu-item-selected');
-  });
+  const isSelected = (await menuItem.getAttribute('aria-current')) === 'page';
   if (!isSelected) {
     if (bWaitForResponse) {
       const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
@@ -509,9 +509,9 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await page.locator('[role="dialog"]').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.getByTestId('delete-modal')).toBeVisible();
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     glossary.displayName
   );
@@ -1235,9 +1235,7 @@ export const confirmationDragAndDropGlossary = async (
   isHeader = false,
   tickCheckbox = false
 ) => {
-  await expect(
-    page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
-  ).toContainText(
+  await expect(page.getByTestId('confirmation-modal')).toContainText(
     `Click on Confirm if you’d like to move ${
       isHeader
         ? `${dragElement} under ${dropElement} .`
@@ -1271,15 +1269,9 @@ export const changeTermHierarchyFromModal = async (
   await page.getByTestId('manage-button').click();
   await page.getByTestId('change-parent-button').click();
 
-  // Ant's Modal spreads data-testid onto `.ant-modal-root`, a zero-size wrapper
-  // that never satisfies toBeVisible even while the dialog is on screen — the
-  // dialog itself is the element with a box. Scoping still matters: the bare
-  // `Select Parent` label also matches the control of a hierarchy modal left in
-  // the DOM by an earlier step, and clicking that waits out the whole test on a
-  // hidden element.
-  const hierarchyModal = page
-    .locator('[data-testid="change-parent-hierarchy-modal"]')
-    .getByRole('dialog');
+  // Scope to the dialog: the bare `Select Parent` label can also match other
+  // pickers on the page.
+  const hierarchyModal = page.getByTestId('change-parent-hierarchy-modal');
   await expect(hierarchyModal).toBeVisible();
 
   // A glossary sits at the picker's root; only a term has to be searched for.
@@ -1294,15 +1286,10 @@ export const changeTermHierarchyFromModal = async (
   );
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
-  await page
-    .locator('[data-testid="change-parent-hierarchy-modal"]')
-    .getByRole('button', { name: 'Save' })
-    .click();
+  await hierarchyModal.getByRole('button', { name: 'Save' }).click();
   await saveRes;
 
-  await expect(
-    page.locator('[role="dialog"].change-parent-hierarchy-modal')
-  ).toBeHidden();
+  await expect(hierarchyModal).toBeHidden();
 };
 
 export const deleteGlossaryOrGlossaryTerm = async (
@@ -1313,7 +1300,7 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.getByTestId('delete-modal')).toBeVisible();
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     entityName
   );
@@ -1450,22 +1437,26 @@ export const assignTagToGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add',
   parentTestId = 'KnowledgePanel.GlossaryTerms'
 ) => {
-  await page
+  const trigger = page
     .getByTestId(parentTestId)
     .getByTestId('tags-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
+
+  await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
-  await page.locator('#tagsForm_tags').fill(tag);
+  await page.getByTestId('classification-tag-picker-search').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tag}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await page.getByTestId(`tree-node-${tag}`).click();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
 
   await expect(page.getByRole('heading')).toContainText(
     'Would you like to proceed with updating the tags?'

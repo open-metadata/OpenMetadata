@@ -16,7 +16,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
+import { FC } from 'react';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -1137,6 +1139,47 @@ describe('CSV utils ClassBase', () => {
         true
       );
       expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('should keep the glossary cell search in the popover, not in the cell', async () => {
+      const editor = csvUtils.getEditor(
+        'relatedTerms',
+        EntityType.GLOSSARY,
+        multipleOwner
+      );
+
+      if (!editor) {
+        throw new Error('Expected relatedTerms editor to be defined');
+      }
+
+      // Rendered, not called: this editor owns hooks of its own.
+      const GlossaryCellEditor = editor as unknown as FC<Record<string, never>>;
+
+      await act(async () => {
+        render(
+          <GlossaryCellEditor
+            {...({
+              row: { relatedTerms: 'BusinessGlossary.Revenue' },
+              column: { key: 'relatedTerms' },
+              rowIdx: 0,
+              onClose: jest.fn(),
+              onRowChange: jest.fn(),
+            } as unknown as Record<string, never>)}
+          />
+        );
+      });
+
+      // The cell shows the value it is editing; nothing to type into.
+      const trigger = screen.getByTestId('csv-glossary-terms-picker');
+
+      expect(trigger).toHaveTextContent('Revenue');
+      expect(trigger.querySelector('input')).toBeNull();
+
+      const popover = await screen.findByTestId(
+        'csv-glossary-terms-picker-popover'
+      );
+
+      expect(within(popover).getByRole('textbox')).toBeInTheDocument();
     });
 
     it('should commit selected metric domains from the picker', async () => {
