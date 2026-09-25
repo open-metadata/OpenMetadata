@@ -72,6 +72,7 @@ import {
 } from '../taskResolve.utils';
 import { getTaskTitle } from '../taskTitle.utils';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
+import ClampedText from './ClampedText';
 import InboxCommentComposer from './InboxCommentComposer';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
@@ -621,16 +622,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // getTaskTitle composes a title from the task type and the entity it is about
   // instead of repeating the id.
   const titleText = getTaskTitle(task, t);
-  // Not using Typography's `ellipsis` here: it wraps content in a pressable and
-  // stringifies children, which would drop the asset Link. A plain line-clamp
-  // keeps the two-row clamp while preserving the inline link.
+  // Two lines, the full title in a tooltip when clamped; see ClampedText for
+  // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
-    <Typography
-      className="tw:line-clamp-2 tw:break-words tw:text-left"
-      size="text-lg"
-      weight="semibold">
-      {resolveTaskAboutTitle(task, titleText)}
-    </Typography>
+    <ClampedText text={titleText}>
+      <Typography size="text-lg" weight="semibold">
+        {resolveTaskAboutTitle(task, titleText)}
+      </Typography>
+    </ClampedText>
   ) : null;
   const LegacyPanel = contribution?.component;
 

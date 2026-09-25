@@ -15,6 +15,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 // Boundary stub: the real chip renders the OSS user popover.
+// Clamping and its tooltip have their own suite; render the text as is.
+jest.mock('./ClampedText', () => ({
+  __esModule: true,
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
   default: () => <div />,

@@ -29,6 +29,12 @@ let mockCurrentUser: { id?: string; name?: string; isAdmin?: boolean } = {
 
 // `TASK_ENTITY_TYPES` is built by indexing the `tasksAPI` enum mocked above, so
 // stub the map directly rather than re-declaring every enum member.
+// Clamping and its tooltip have their own suite; render the text as is.
+jest.mock('./ClampedText', () => ({
+  __esModule: true,
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 jest.mock('constants/Task.constant', () => ({
   TASK_TYPES: {},
   TASK_ENTITY_TYPES: {
