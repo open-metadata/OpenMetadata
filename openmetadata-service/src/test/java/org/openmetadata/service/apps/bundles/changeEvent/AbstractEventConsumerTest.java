@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEve
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -509,7 +510,7 @@ class AbstractEventConsumerTest {
     SubscriptionDestination subB = emailB.getSubscriptionDestination();
     UUID idA = UUID.randomUUID();
     UUID idB = UUID.randomUUID();
-    Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
+    Map<UUID, Destination<ChangeEvent>> destinations = new LinkedHashMap<>();
     destinations.put(idA, emailA);
     destinations.put(idB, emailB);
     consumer.destinationMap = destinations;
@@ -519,48 +520,32 @@ class AbstractEventConsumerTest {
 
     Recipient r1 = new EmailRecipient("a@example.com");
     Recipient r2 = new EmailRecipient("b@example.com");
-    Set<Recipient> union = Set.of(r1, r2);
 
-    List<Set<Recipient>> sent = new ArrayList<>();
-    // Only the primary is sent to (Set order picks which), so record both and assert the total.
-    lenient()
-        .doAnswer(
-            inv -> {
-              sent.add(inv.getArgument(1));
-              return null;
-            })
-        .when(emailA)
-        .sendMessage(any(), any());
-    lenient()
-        .doAnswer(
-            inv -> {
-              sent.add(inv.getArgument(1));
-              return null;
-            })
-        .when(emailB)
-        .sendMessage(any(), any());
+    List<Recipient> sent = new ArrayList<>();
+    lenient().doAnswer(inv -> sent.add(inv.getArgument(1))).when(emailA).sendTo(any(), any());
+    lenient().doAnswer(inv -> sent.add(inv.getArgument(1))).when(emailB).sendTo(any(), any());
 
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(
                 RecipientResolver.class,
-                (mock, ctx) -> when(mock.resolveRecipients(any(), anyList())).thenReturn(union))) {
+                (mock, ctx) -> {
+                  when(mock.recipientsOf(any(), eq(subA))).thenReturn(Recipients.of(Set.of(r1)));
+                  when(mock.recipientsOf(any(), eq(subB)))
+                      .thenReturn(Recipients.of(Set.of(r1, r2)));
+                })) {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
 
       consumer.publishEvents(events);
 
-      assertEquals(1, sent.size(), "One send per SubscriptionType, via the primary destination");
-      assertEquals(union, sent.getFirst(), "Recipients unioned across same-type destinations");
-
-      RecipientResolver resolver = resolverCtor.constructed().getFirst();
-      ArgumentCaptor<List<SubscriptionDestination>> captor = ArgumentCaptor.forClass(List.class);
-      verify(resolver).resolveRecipients(eq(event), captor.capture());
-      assertEquals(2, captor.getValue().size());
-      assertTrue(
-          captor.getValue().containsAll(List.of(subA, subB)),
-          "Resolver receives every same-type destination so recipients dedup across them");
+      assertEquals(2, sent.size(), "One send per address, however many destinations lead to it");
+      assertEquals(Set.of(r1, r2), Set.copyOf(sent));
+      verify(emailA).sendTo(any(), eq(r1));
+      verify(emailB).sendTo(any(), eq(r2));
+      verify(emailA, times(1)).prepare(eq(event), any());
+      verify(emailB, never()).prepare(any(), any());
     }
 
     assertEquals(
@@ -585,7 +570,7 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) ->
-                    when(mock.resolveRecipients(any(), anyList())).thenReturn(Set.of()))) {
+                    when(mock.recipientsOf(any(), any())).thenReturn(Recipients.none()))) {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
@@ -620,7 +605,7 @@ class AbstractEventConsumerTest {
       consumer.publishEvents(events);
 
       RecipientResolver resolver = resolverCtor.constructed().getFirst();
-      verify(resolver, never()).resolveRecipients(any(), any());
+      verify(resolver, never()).recipientsOf(any(), any());
     }
 
     verify(destination).sendMessage(eq(event), eq(Set.of()));
@@ -665,19 +650,26 @@ class AbstractEventConsumerTest {
         1, consumer.capturedFailures.size(), "handleFailedEvent invoked for the failing type");
   }
 
-  private Destination<ChangeEvent> mockDestination(SubscriptionType type) {
+  private Destination<ChangeEvent> mockDestination(SubscriptionType type) throws Exception {
     return mockDestination(type, false);
   }
 
   @SuppressWarnings("unchecked")
   private Destination<ChangeEvent> mockDestination(
-      SubscriptionType type, boolean requiresRecipients) {
+      SubscriptionType type, boolean requiresRecipients) throws Exception {
     Destination<ChangeEvent> destination = mock(Destination.class);
     SubscriptionDestination subscriptionDestination = mock(SubscriptionDestination.class);
     lenient().when(subscriptionDestination.getType()).thenReturn(type);
     lenient().when(destination.getEnabled()).thenReturn(true);
     lenient().when(destination.getSubscriptionDestination()).thenReturn(subscriptionDestination);
     lenient().when(destination.requiresRecipients()).thenReturn(requiresRecipients);
+    lenient().when(subscriptionDestination.getId()).thenReturn(UUID.randomUUID());
+    // A mock answers false for a Boolean, which would read as a destination switched off.
+    lenient().when(subscriptionDestination.getEnabled()).thenReturn(true);
+    lenient().when(destination.prepare(any())).thenCallRealMethod();
+    lenient().when(destination.prepare(any(), any())).thenCallRealMethod();
+    lenient().doCallRealMethod().when(destination).sendTo(any(), any());
+    lenient().when(destination.notAttemptedBecause()).thenCallRealMethod();
     return destination;
   }
 

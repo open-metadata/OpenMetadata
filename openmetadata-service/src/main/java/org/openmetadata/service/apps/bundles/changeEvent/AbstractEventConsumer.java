@@ -43,9 +43,10 @@ import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
@@ -79,6 +80,8 @@ public abstract class AbstractEventConsumer
   protected AbstractEventConsumer(DIContainer dependencies) {
     this.dependencies = dependencies;
   }
+
+  private TickHealth healthOfThisTick = new TickHealth();
 
   /** Which kind of consumer this is. The kind decides what a tick reads and guarantees. */
   protected abstract ConsumerKind kind();
@@ -181,8 +184,10 @@ public abstract class AbstractEventConsumer
     Map<String, List<Destination<ChangeEvent>>> destinationsByChannel =
         groupDestinationsByChannel(destinationIds);
     List<EventPublisherException> failures = new ArrayList<>();
+    // Rendered when the first channel that renders asks, and shared by the alert's other channels.
+    EventContent content = new EventContent(event, eventSubscription);
     for (List<Destination<ChangeEvent>> sameChannel : destinationsByChannel.values()) {
-      sendToDestinationType(event, sameChannel, resolver).ifPresent(failures::add);
+      sendToDestinationType(event, content, sameChannel, resolver).ifPresent(failures::add);
     }
     recordSendFailures(event, failures);
     int successCount = destinationsByChannel.size() - failures.size();
@@ -192,25 +197,21 @@ public abstract class AbstractEventConsumer
   private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}
 
   private Optional<EventPublisherException> sendToDestinationType(
-      ChangeEvent event, List<Destination<ChangeEvent>> destinations, RecipientResolver resolver) {
+      ChangeEvent event,
+      EventContent content,
+      List<Destination<ChangeEvent>> destinations,
+      RecipientResolver resolver) {
     Destination<ChangeEvent> publisher = destinations.getFirst();
-    // Resolve recipients from all destinations of this type for deduplication
-    Set<Recipient> recipients = Set.of();
-    if (publisher.requiresRecipients()) {
-      List<SubscriptionDestination> subDestinations =
-          destinations.stream().map(Destination::getSubscriptionDestination).toList();
-      recipients = resolver.resolveRecipients(event, subDestinations);
-    }
-    // Send via primary destination only, with deduplicated recipients (one send per type).
-    // Empty recipients is treated as successful (no-op send).
     EventPublisherException failure = null;
-    if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
-      try {
-        publisher.sendMessage(event, recipients);
-      } catch (EventPublisherException e) {
-        LOG.error("Failed to send alert: {}", e.getMessage());
-        failure = e;
-      }
+    try {
+      failure = dispatchOf(destinations, resolver).send(event, content).orElse(null);
+    } catch (EventPublisherException e) {
+      LOG.error("Failed to send alert: {}", e.getMessage());
+      failure = e;
+    } catch (RuntimeException e) {
+      // Anything unexpected costs this channel for this event, never the rest of the batch.
+      LOG.error("Unexpected error sending alert for change event {}", event.getId(), e);
+      failure = unexpectedSendFailure(publisher, event, e);
     }
     return Optional.ofNullable(failure);
   }
@@ -219,16 +220,36 @@ public abstract class AbstractEventConsumer
   // one, so a second failure on the same event adds detail and never overwrites the first.
   private void recordSendFailures(ChangeEvent event, List<EventPublisherException> failures) {
     if (failures.size() == 1) {
-      handleFailedEvent(failures.getFirst(), true);
+      recordSendFailure(failures.getFirst());
     } else if (failures.size() > 1) {
       String everyReason =
           failures.stream().map(Throwable::getMessage).collect(Collectors.joining("; "));
       UUID firstFailing = failures.getFirst().getChangeEventWithSubscription().getLeft();
-      handleFailedEvent(
+      recordSendFailure(
           new EventPublisherException(
               StringUtils.abbreviate(everyReason, MAX_FAILURE_REASON_LENGTH),
-              Pair.of(firstFailing, event)),
-          true);
+              Pair.of(firstFailing, event)));
+    }
+  }
+
+  private ChannelDispatch dispatchOf(
+      List<Destination<ChangeEvent>> ofOneChannel, RecipientResolver resolver) {
+    return new ChannelDispatch(
+        ofOneChannel, new TargetResolver(resolver::recipientsOf), healthOfThisTick);
+  }
+
+  private static EventPublisherException unexpectedSendFailure(
+      Destination<ChangeEvent> publisher, ChangeEvent event, RuntimeException cause) {
+    return new EventPublisherException(
+        String.format("Unexpected error while sending: %s", cause.getMessage()),
+        Pair.of(publisher.getSubscriptionDestination().getId(), event));
+  }
+
+  private void recordSendFailure(EventPublisherException failure) {
+    try {
+      handleFailedEvent(failure, true);
+    } catch (RuntimeException recordingError) {
+      LOG.error("Failed to record a send failure: {}", failure.getMessage(), recordingError);
     }
   }
 
@@ -353,8 +374,10 @@ public abstract class AbstractEventConsumer
     this.eventSubscription = alert;
     this.ledger = openLedger;
     this.destinationMap = loadDestinationsMap();
+    this.healthOfThisTick = new TickHealth();
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
+    TickMemory.begin(stopSignal);
     try {
       doInit(context);
       if (kind() != ConsumerKind.SELF_DRIVEN) {
@@ -363,6 +386,7 @@ public abstract class AbstractEventConsumer
     } catch (Exception e) {
       LOG.error("Tick of alert {} failed at position {}", alert.getName(), ledger.position(), e);
     } finally {
+      TickMemory.end();
       finishTick(context);
     }
   }
@@ -469,10 +493,14 @@ public abstract class AbstractEventConsumer
   }
 
   private void finishTick(JobExecutionContext context) {
-    reportDestinationStatus();
-    commit(context);
-    ledger.clearOpeningNote();
-    runAgainAtOnceIfStoppedForTime(context);
+    try {
+      reportDestinationStatus();
+      commit(context);
+      ledger.clearOpeningNote();
+      runAgainAtOnceIfStoppedForTime(context);
+    } finally {
+      closeDestinations();
+    }
   }
 
   // A one-off trigger for the same job. Quartz holds it until this tick is over, and it then
@@ -493,13 +521,25 @@ public abstract class AbstractEventConsumer
     }
   }
 
-  // Publishers leave their outcome on the destination they sent through. The alert was read from
-  // its row a moment ago, so anything found here was set by this tick.
+  // A consumer that sends by itself leaves its outcome on the destination it sent through. What
+  // the tick sent target by target is summed per destination, and is what counts when both exist.
   private void reportDestinationStatus() {
     for (Map.Entry<UUID, Destination<ChangeEvent>> entry : destinationMap.entrySet()) {
       Object status = entry.getValue().getSubscriptionDestination().getStatusDetails();
-      if (status instanceof SubscriptionStatus reported) {
+      boolean sentByItself = !healthOfThisTick.covers(entry.getKey());
+      if (sentByItself && status instanceof SubscriptionStatus reported) {
         ledger.destinationStatus(entry.getKey(), reported);
+      }
+    }
+    healthOfThisTick.reportTo(ledger::destinationStatus);
+  }
+
+  private void closeDestinations() {
+    for (Destination<ChangeEvent> destination : destinationMap.values()) {
+      try {
+        destination.close();
+      } catch (RuntimeException e) {
+        LOG.warn("Failed to close a destination of {}", eventSubscription.getName(), e);
       }
     }
   }
