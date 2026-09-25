@@ -524,10 +524,8 @@ test.describe(
         await expect(abortedPoint).toBeAttached();
       });
 
-      await test.step('The legend names only the series', async () => {
-        await expect(chart.locator('.recharts-legend-item-text')).toHaveText([
-          'value',
-        ]);
+      await test.step('A single series draws no legend', async () => {
+        await expect(chart.locator('.recharts-legend-item')).toHaveCount(0);
       });
 
       await test.step('Clicking a run moves the selection guide', async () => {
@@ -545,6 +543,112 @@ test.describe(
             )
           )
           .not.toBe(before);
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Result history card',
+  { tag: ['@Observability'] },
+  () => {
+    let cardTable: TableClass;
+    let cardTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case with runs today and earlier in the month',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        cardTable = new TableClass();
+        await cardTable.create(apiContext);
+        const testCase = await cardTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        cardTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        const now = getCurrentMillis();
+        const minute = 60_000;
+        const day = 86_400_000;
+
+        // Three runs minutes ago and two more than a week back, so narrowing
+        // the window to today drops exactly the older two.
+        const runs = [
+          { at: now - 12 * day, status: 'Aborted' },
+          { at: now - 10 * day, status: 'Success' },
+          { at: now - 3 * minute, status: 'Success' },
+          { at: now - 2 * minute, status: 'Failed' },
+          { at: now - minute, status: 'Success' },
+        ];
+
+        for (const run of runs) {
+          await cardTable.addTestCaseResult(apiContext, cardTestCaseFqn, {
+            result: `Run ${run.status}`,
+            testCaseStatus: run.status,
+            ...(run.status === 'Aborted'
+              ? {}
+              : { testResultValue: [{ name: 'value', value: '10000' }] }),
+            timestamp: run.at,
+          });
+        }
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await cardTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('captions the chart and recounts the tiles for a new range', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, cardTestCaseFqn);
+
+      const card = page.getByTestId('test-summary-container');
+      const tile = (key: string) =>
+        card.getByTestId(`run-summary-${key}`).locator('[data-value]');
+
+      await test.step('The header names what the chart measures', async () => {
+        await expect(
+          card.getByRole('heading', { name: 'Result history' })
+        ).toBeVisible();
+        await expect(card.getByTestId('result-history-caption')).toHaveText(
+          'Row count vs. expected 10,000'
+        );
+      });
+
+      await test.step('The tiles count the default 30-day window', async () => {
+        await expect(tile('runs')).toHaveText('5');
+        await expect(tile('passed')).toHaveText('3');
+        await expect(tile('failed')).toHaveText('1');
+        await expect(tile('aborted')).toHaveText('1');
+        await expect(tile('success-rate')).toHaveText('60%');
+      });
+
+      await test.step('Narrowing the range to today recounts them', async () => {
+        await card
+          .getByRole('button', { name: 'Calendar Date range picker' })
+          .click();
+        await page.getByRole('button', { name: 'Today', exact: true }).click();
+
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/testCaseResults/') &&
+            response.request().method() === 'GET'
+        );
+        await page.getByRole('button', { name: 'Apply', exact: true }).click();
+        await resultsResponse;
+
+        await expect(tile('runs')).toHaveText('3');
+        await expect(tile('passed')).toHaveText('2');
+        await expect(tile('failed')).toHaveText('1');
+        await expect(tile('aborted')).toHaveText('0');
+        await expect(tile('success-rate')).toHaveText('66.7%');
       });
     });
   }

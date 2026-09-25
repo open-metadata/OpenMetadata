@@ -133,6 +133,12 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
   }
 );
+const mockUseIsAiMode = jest.fn().mockReturnValue(false);
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: () => mockUseIsAiMode(),
+}));
 jest.mock('../../../../hooks/useEntityRules', () => ({
   useEntityRules: jest.fn().mockReturnValue({
     entityRules: {
@@ -245,6 +251,28 @@ describe('TestCaseResultTab', () => {
       await screen.findByTestId('test-case-result-tab-container')
     ).toBeInTheDocument();
     expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
+  });
+
+  it('should frame the result history as a card outside AI mode', async () => {
+    render(<TestCaseResultTab />);
+
+    expect(await screen.findByTestId('test-case-result-tab-graph')).toHaveClass(
+      'test-case-result-tab-graph'
+    );
+  });
+
+  // The AI mode mock sets the chart straight on the page; only its summary
+  // tiles are bordered.
+  it('should leave the result history unframed in AI mode', async () => {
+    mockUseIsAiMode.mockReturnValue(true);
+
+    render(<TestCaseResultTab />);
+
+    expect(
+      await screen.findByTestId('test-case-result-tab-graph')
+    ).not.toHaveClass('test-case-result-tab-graph');
+
+    mockUseIsAiMode.mockReturnValue(false);
   });
 
   it("EditTestCaseModal should be rendered when 'Edit' button is clicked", async () => {

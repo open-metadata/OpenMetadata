@@ -618,13 +618,17 @@ function TestSummaryGraph({
               x={activeRunTimestamp}
             />
           )}
-          <Legend
-            payload={customLegendPayLoad}
-            wrapperStyle={{ bottom: 2 }}
-            onClick={handleLegendClick}
-            onMouseEnter={handleLegendMouseEnter}
-            onMouseLeave={handleLegendMouseLeave}
-          />
+          {/* The legend filters and highlights series; with one series there
+              is nothing to tell apart, so the mock draws none. */}
+          {!isSingleSeries && (
+            <Legend
+              payload={customLegendPayLoad}
+              wrapperStyle={{ bottom: 2 }}
+              onClick={handleLegendClick}
+              onMouseEnter={handleLegendMouseEnter}
+              onMouseLeave={handleLegendMouseLeave}
+            />
+          )}
           {isSingleSeries &&
             chartData.information.map((info) => (
               // The mock shades the area under the line, not a fixed band:
