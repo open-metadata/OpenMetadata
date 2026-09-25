@@ -14,6 +14,7 @@
 import { get, noop, uniqueId } from 'lodash';
 import type { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
+import { WidgetWidths } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import type { Page, Tab } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
@@ -68,6 +69,11 @@ export const getAddWidgetHandler =
       pageType,
       newWidgetData.fullyQualifiedName
     );
+    // Height is measured from content (DynamicHeightWidget), so the picked size is
+    // kept as explicit meta for widgets to render against. Only small/large exist.
+    const config = {
+      size: widgetWidth === WidgetWidths.large ? 'large' : 'small',
+    };
 
     if (
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
@@ -85,6 +91,7 @@ export const getAddWidgetHandler =
           h: widgetHeight,
           w: widgetWidth,
           static: false,
+          config,
           ...newPlacement,
         },
       ];
@@ -108,10 +115,25 @@ export const getAddWidgetHandler =
           w: widgetWidth,
           x: widgetX,
           y: widgetY,
+          config,
         },
       ];
     }
   };
+
+/**
+ * Apply react-grid-layout's `onLayoutChange` output to stored widgets. RGL only
+ * returns grid fields (i/x/y/w/h/...), so widget-owned fields such as `config`
+ * and `children` are carried over from the previous widget with the same `i`.
+ */
+export const mergeGridLayout = (
+  gridLayout: WidgetConfig[],
+  previous: WidgetConfig[] = []
+): WidgetConfig[] =>
+  gridLayout.map((widget) => ({
+    ...previous.find((prev) => prev.i === widget.i),
+    ...widget,
+  }));
 
 export const asyncNoop = async () => {
   noop();

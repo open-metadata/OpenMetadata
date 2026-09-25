@@ -105,8 +105,8 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
 // matching (e.g. a `p` would silently lose its margins).
 //
 // `span` and `div` are targeted by no such rule, so the wrapper contributes
-// only the element-level `.prose` layer — `--tw-prose-*` vars plus `color`,
-// `font-size` and `line-height`, all of which are inherited properties. Setting
+// only the element-level `.prose` layer — `--tw-prose-*` vars, plus `color`
+// inside a link — all of which are inherited properties. Setting
 // `prose` directly on the element therefore yields an identical computed style
 // on the text, while dropping a block-level `<div>` that otherwise breaks
 // inline flow and produces invalid `<div>`-inside-`<span>` nesting when

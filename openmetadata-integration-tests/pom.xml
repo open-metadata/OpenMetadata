@@ -21,9 +21,13 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
+    <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
+         builds from docker/rdf-store; every other run leaves RDF off and they skip. -->
+    <integrationTests.rdfTests>Rdf*IT,LodResourceIT,AgentSparqlResourceIT</integrationTests.rdfTests>
+    <integrationTests.enableRdf>false</integrationTests.enableRdf>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
          -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
     <ui.it.excludedGroups>sso-bootstrap</ui.it.excludedGroups>
@@ -387,6 +391,21 @@
         <it.test>${integrationTests.retryQueueTests}</it.test>
       </properties>
     </profile>
+    <profile>
+      <id>integration-lane-rdf</id>
+      <activation>
+        <property>
+          <name>integrationTests.lane</name>
+          <value>rdf</value>
+        </property>
+      </activation>
+      <properties>
+        <integrationTests.skipIsolated>true</integrationTests.skipIsolated>
+        <integrationTests.skipParallel>false</integrationTests.skipParallel>
+        <integrationTests.enableRdf>true</integrationTests.enableRdf>
+        <it.test>${integrationTests.rdfTests}</it.test>
+      </properties>
+    </profile>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>
       <id>mysql-elasticsearch</id>
@@ -424,6 +443,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -473,6 +493,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -490,6 +511,7 @@
                        added one from silently landing here when someone forgets the file list. -->
                   <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
+                    <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -551,6 +573,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -600,6 +623,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -617,6 +641,7 @@
                        added one from silently landing here when someone forgets the file list. -->
                   <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
+                    <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
@@ -679,6 +704,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -729,6 +755,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -746,6 +773,7 @@
                        added one from silently landing here when someone forgets the file list. -->
                   <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
+                    <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
@@ -808,6 +836,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -857,6 +886,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -874,6 +904,7 @@
                        added one from silently landing here when someone forgets the file list. -->
                   <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
+                    <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -935,6 +966,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -984,6 +1016,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -1001,6 +1034,7 @@
                        added one from silently landing here when someone forgets the file list. -->
                   <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
+                    <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>opensearch</searchType>
@@ -1061,6 +1095,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -1111,6 +1146,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -1128,6 +1164,7 @@
                        added one from silently landing here when someone forgets the file list. -->
                   <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
+                    <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -1205,6 +1242,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -1256,6 +1294,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
@@ -1273,6 +1312,7 @@
                        added one from silently landing here when someone forgets the file list. -->
                   <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
+                    <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:16-alpine</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -1340,6 +1380,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
@@ -1390,6 +1431,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>

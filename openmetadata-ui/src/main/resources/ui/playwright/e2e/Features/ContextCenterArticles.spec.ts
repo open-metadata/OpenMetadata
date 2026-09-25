@@ -1599,9 +1599,17 @@ test.describe('Context Center Articles', () => {
     expect(versionsListRes.ok()).toBeTruthy();
     await waitForAllLoadersToDisappear(page);
 
+    // Editor autosave can land the data consumer's edit as one or several
+    // versions, so assert on the newest entry rather than every match.
+    const { versions } = await versionsListRes.json();
+    const latestVersion = parseFloat(JSON.parse(versions[0]).version).toFixed(
+      1
+    );
+
     await expect(
       page
         .getByTestId('versions-list-container')
+        .getByTestId(`version-entry-v${latestVersion}`)
         .getByRole('link', { name: /PW DataConsumer/i })
     ).toBeVisible();
 

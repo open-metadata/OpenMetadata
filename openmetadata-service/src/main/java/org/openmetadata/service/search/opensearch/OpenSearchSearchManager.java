@@ -77,6 +77,7 @@ import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import os.org.opensearch.client.json.JsonData;
@@ -1172,15 +1173,22 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Keys a compiled RBAC query by the subject fields that end up embedded in it as literal ids.
-   * Roles select the policies; {@code hasDomain()} compiles domain ids into term clauses; {@code
-   * isOwner()}, {@code isReviewer()} and {@code inAnyTeam()} compile team ids the same way. Nothing
-   * invalidates this cache, so any field left out of the key is served stale for the remainder of
-   * the TTL after it changes. Keep this in step with {@link RBACConditionEvaluator} whenever a new
-   * condition starts reading another subject field.
+   * Keys a compiled RBAC query by everything that ends up embedded in it as literal ids.
+   *
+   * <p>Subject side: roles select the policies; {@code hasDomain()} compiles domain ids into term
+   * clauses; {@code isOwner()}, {@code isReviewer()} and {@code inAnyTeam()} compile team ids the
+   * same way. Resource side: the {@code matchAnyService*} conditions compile the ids of the
+   * services matching their arguments, which is global state no subject field can stand for —
+   * hence the resolver generation, which changes whenever that service state does.
+   *
+   * <p>Nothing invalidates this cache, so any input left out of the key is served stale for the
+   * remainder of the TTL after it changes. Keep this in step with {@link RBACConditionEvaluator}
+   * whenever a new condition starts reading anything else.
    */
   static String rbacCacheKey(SubjectContext subjectContext) {
-    return subjectContext.user().getId()
+    return ServiceAttributeResolver.generation()
+        + ":"
+        + subjectContext.user().getId()
         + ":"
         + sortedIds(subjectContext.user().getRoles())
         + ":"
