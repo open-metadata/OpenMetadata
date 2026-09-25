@@ -688,7 +688,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         />
       )}
 
-      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
+      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:pl-4">
         {!isOnboardingActive && (
           <>
             <div className="tw:mb-[18px]">
