@@ -478,7 +478,7 @@ export const openAgentsTab = async (page: Page, service: EntityClass) => {
   await redirectToHomePage(page);
   await service.visitEntityPage(page);
   await page.getByTestId('data-assets-header').waitFor();
-  await page.click('[role="tab"] [data-testid="agents"]');
+  await page.getByRole('tab', { name: /^Agents/ }).click();
 
   const metadataSubTab = page.getByTestId('metadata-sub-tab');
   if (await metadataSubTab.isVisible()) {

@@ -851,6 +851,7 @@ const TagsPage = () => {
           className="content-height-with-resizable-panel"
           firstPanel={{
             className: 'content-resizable-panel-container',
+            cardClassName: 'tw:dark:bg-surface',
             minWidth: 280,
             flex: 0.13,
             children: leftPanelLayout,

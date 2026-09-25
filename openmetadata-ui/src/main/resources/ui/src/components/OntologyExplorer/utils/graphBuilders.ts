@@ -47,8 +47,6 @@ export const ASSET_NODE_TYPE = 'dataAsset';
 export const ASSET_RELATION_TYPE = 'hasGlossaryTerm';
 export const ASSET_BINDING_EDGE_KIND = 'assetBinding';
 export const SEMANTIC_PROJECTION_EDGE_KIND = 'semanticProjection';
-export const OBSERVED_LINEAGE_EDGE_KIND = 'observedLineage';
-export const OBSERVED_LINEAGE_RELATION_TYPE = 'lineage';
 export const DATA_MODE_MAX_PROJECTED_EDGES = 1000;
 
 export function isValidUUID(str: string): boolean {
@@ -536,15 +534,6 @@ export function buildGraphFromOntologyData(
     relationType: edge.relationType,
     relationshipType: edge.relationshipType,
   }));
-  edges.push(
-    ...(data.lineageEdges ?? []).map<OntologyEdge>((edge) => ({
-      edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
-      from: edge.fromEntity,
-      label: t('label.observed-lineage'),
-      relationType: OBSERVED_LINEAGE_RELATION_TYPE,
-      to: edge.toEntity,
-    }))
-  );
 
   data.clusters.forEach((cluster) => {
     const glossary = glossaryForTerm(

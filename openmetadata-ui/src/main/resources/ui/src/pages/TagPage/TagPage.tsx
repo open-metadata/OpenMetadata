@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  PageHeader,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Divider, Row, Space, Tabs } from 'antd';
+import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -100,6 +105,7 @@ import {
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -752,6 +758,8 @@ const TagPage = () => {
     t,
   ]);
 
+  const renderedActiveTab = getRenderedActiveTab(tabItems, activeTab);
+
   const aiHeaderTabs = useMemo<EntityDetailTab[]>(
     () => tabItems.map((tab) => ({ key: tab.key, label: tab.label })),
     [tabItems]
@@ -878,7 +886,7 @@ const TagPage = () => {
   const renderAiHeader = () => (
     <div>
       <EntityDetailHeader
-        activeKey={activeTab}
+        activeKey={renderedActiveTab}
         badge={
           <>
             {badge}
@@ -995,10 +1003,8 @@ const TagPage = () => {
     <PageLayoutV1
       pageTitle={tagItem.name}
       variant={isAiMode ? 'compact' : 'default'}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
-          {showAiHeader ? renderAiHeader() : renderClassicHeader()}
-        </Col>
+      <Box direction="col" gap={3}>
+        <div>{showAiHeader ? renderAiHeader() : renderClassicHeader()}</div>
 
         <GenericProvider<Tag>
           customizedPage={customizedPage}
@@ -1009,24 +1015,31 @@ const TagPage = () => {
           onUpdate={(updatedData: Tag) =>
             Promise.resolve(updateTag(updatedData))
           }>
-          <Col
-            span={24}
-            style={{
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              height: 'calc(100vh - 170px)',
-            }}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="tabs-new tag-page-tabs"
-              items={tabItems}
-              renderTabBar={showAiHeader ? () => <></> : undefined}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <div className="tw:h-[calc(100vh-170px)] tw:overflow-x-hidden tw:overflow-y-auto">
+            {showAiHeader ? (
+              tabItems.find((tab) => tab.key === renderedActiveTab)?.children
+            ) : (
+              <Tabs
+                className="tw:gap-3"
+                selectedKey={renderedActiveTab}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Tabs.List size="sm" type="underline" variant="card">
+                  {tabItems.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabItems.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            )}
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       {renderModals()}
     </PageLayoutV1>

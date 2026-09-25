@@ -23,6 +23,18 @@
   // scrollbar and the pagination row stays visible below the scrolling rows.
   overflow: hidden;
 
+  // Dark: no wrapper surface — the description and table cards sit directly on
+  // the canvas; the description lifts to bg-surface to match the table.
+  .dark-mode & {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+
+    [data-testid='asset-description-container'] {
+      background: var(--om-color-bg-surface);
+    }
+  }
+
   > [data-testid='description-container'] {
     flex: 0 0 auto;
   }

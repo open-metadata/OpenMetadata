@@ -56,11 +56,8 @@ jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: jest
-    .fn()
-    .mockImplementation(({ children, className }) => (
-      <div className={className}>{children}</div>
-    )),
+  Box: jest.requireActual('@openmetadata/ui-core-components').Box,
+  Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
   Breadcrumbs: jest
     .fn()
     .mockImplementation(

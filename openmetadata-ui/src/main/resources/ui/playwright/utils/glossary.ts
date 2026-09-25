@@ -47,7 +47,9 @@ import {
 } from './common';
 import {
   addMultiOwner,
+  escapeESReservedCharacters,
   getEntityDisplayName,
+  openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
 import { pickGlossaryTermInField } from './glossaryPicker';
@@ -1435,22 +1437,26 @@ export const assignTagToGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add',
   parentTestId = 'KnowledgePanel.GlossaryTerms'
 ) => {
-  await page
+  const trigger = page
     .getByTestId(parentTestId)
     .getByTestId('tags-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
+
+  await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
-  await page.locator('#tagsForm_tags').fill(tag);
+  await page.getByTestId('classification-tag-picker-search').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tag}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await page.getByTestId(`tree-node-${tag}`).click();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
 
   await expect(page.getByRole('heading')).toContainText(
     'Would you like to proceed with updating the tags?'

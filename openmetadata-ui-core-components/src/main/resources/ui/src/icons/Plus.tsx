@@ -10,13 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../styles/variables.less';
-
-.ant-tabs.services-tabs {
-  .ant-tabs-tabpane {
-    padding: @padding-mlg;
-    border: 1px solid @grey-15;
-    height: @services-page-tabs-height;
-    overflow-y: auto;
-  }
+import * as React from 'react';
+import type { SVGProps, FC } from 'react';
+interface Props extends SVGProps<SVGSVGElement> {
+  color?: string;
+  size?: number;
 }
+
+export const Plus: FC<Props> = ({
+  size = 24,
+  color = 'currentColor',
+  ...props
+}) => (
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height={size}
+    stroke={color}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 24 24"
+    width={size}
+    {...props}>
+    <path d="M12 5v14m-7-7h14" stroke="currentColor" strokeWidth={2} />
+  </svg>
+);
+Plus.displayName = 'Plus';
