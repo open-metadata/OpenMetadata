@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Card } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { Col, Divider, Row, Tag, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

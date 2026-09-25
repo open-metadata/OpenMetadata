@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dataflow01, Plus } from '@untitledui/icons';
 import { Button } from '@openmetadata/ui-core-components';
+import { Dataflow01, Plus } from '@untitledui/icons';
 import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';

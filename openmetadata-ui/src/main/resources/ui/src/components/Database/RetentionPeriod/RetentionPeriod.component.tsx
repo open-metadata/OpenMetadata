@@ -19,8 +19,8 @@ import {
   ModalOverlay,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { Duration } from 'luxon';
 import { FormEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';

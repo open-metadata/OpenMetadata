@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import classNames from 'classnames';
 import {
   ButtonGroup,
   ButtonGroupItem,
   Card,
 } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
+import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import {

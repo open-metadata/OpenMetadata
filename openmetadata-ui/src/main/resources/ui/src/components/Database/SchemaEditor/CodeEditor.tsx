@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import CodeMirror from '@uiw/react-codemirror';
 import { Card } from '@openmetadata/ui-core-components';
+import CodeMirror from '@uiw/react-codemirror';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
