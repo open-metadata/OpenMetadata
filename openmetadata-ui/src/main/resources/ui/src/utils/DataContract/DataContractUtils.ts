@@ -30,7 +30,10 @@ import {
   ContractExecutionStatus,
   DataContract,
 } from '../../generated/entity/data/dataContract';
-import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
+import {
+  DataContractResult,
+  SlaValidation,
+} from '../../generated/entity/datacontract/dataContractResult';
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
@@ -53,6 +56,24 @@ export const semanticRuleValidator = (_: RuleObject, value: string) => {
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
+};
+
+/**
+ * An SLA requirement nothing could evaluate is neither passed nor failed, so
+ * an SLA with no evaluated requirement is reported as not evaluated.
+ */
+export const getSlaStatusLabel = (slaValidation: SlaValidation) => {
+  const evaluated = [
+    slaValidation.refreshFrequencyMet,
+    slaValidation.latencyMet,
+    slaValidation.availabilityMet,
+  ].filter((met) => met !== undefined && met !== null);
+
+  if (evaluated.includes(false)) {
+    return t('label.failed');
+  }
+
+  return isEmpty(evaluated) ? t('label.not-evaluated') : t('label.passed');
 };
 
 export const getConstraintStatus = (
@@ -79,6 +100,10 @@ export const getConstraintStatus = (
     statusArray['quality'] = getContractStatusLabelBasedOnFailedResult(
       latestContractResults.qualityValidation.failed
     );
+  }
+
+  if (latestContractResults.slaValidation) {
+    statusArray['sla'] = getSlaStatusLabel(latestContractResults.slaValidation);
   }
 
   return statusArray;
