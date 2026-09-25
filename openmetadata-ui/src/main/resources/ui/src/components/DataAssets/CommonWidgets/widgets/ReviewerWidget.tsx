@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type {
-  WidgetCommonProps,
-  WidgetConfig,
-} from '../../interface/customization.interface';
+import { lazy } from 'react';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { CommonWidgetComponent } from '../CommonWidgets.types';
+
+const ReviewerLabelV2Lazy = withSuspenseFallback(
+  lazy(() =>
+    import('../../ReviewerLabelV2/ReviewerLabelV2').then((m) => ({
+      default: m.ReviewerLabelV2,
+    }))
+  )
+);
+
+export const ReviewerWidget: CommonWidgetComponent = () => (
+  <ReviewerLabelV2Lazy />
+);
