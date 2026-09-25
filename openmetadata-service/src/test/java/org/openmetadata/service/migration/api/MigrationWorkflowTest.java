@@ -10,8 +10,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
@@ -33,6 +36,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.InOrder;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -61,6 +65,29 @@ class MigrationWorkflowTest {
     when(jdbi.onDemand(MigrationDAO.class)).thenReturn(migrationDAO);
     when(jdbi.open()).thenReturn(handle);
     when(handle.createQuery(anyString()).mapTo(Integer.class).one()).thenReturn(0);
+    // These tests select on SQL, and several of their version strings collide with a real
+    // migration package (1.13.0 -> postgres.v1130.Migration). Record every Java data migration so
+    // that collision doesn't pull versions in; MigrationWorkflowDataMigrationTest covers pending
+    // ones.
+    when(migrationDAO.getSqlQuery(anyString(), anyString())).thenReturn("-- already recorded");
+  }
+
+  @Test
+  void loadMigrationsReprocessesAVersionWhoseJavaDataMigrationHasNotRun() throws Exception {
+    // A version already in SERVER_CHANGE_LOG whose SQL has all run still has to come back when it
+    // ships an unrecorded Java data migration, which is the whole of issue #33045.
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    createMigrationDir(nativeRoot, "1.2.0", "");
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of("1.2.0"));
+    when(migrationDAO.getSqlQuery(anyString(), anyString())).thenReturn(null);
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+
+    workflow.loadMigrations();
+
+    assertEquals(List.of("1.2.0"), getMigrationVersions(workflow));
   }
 
   @Test
@@ -263,7 +290,7 @@ class MigrationWorkflowTest {
   }
 
   @Test
-  void loadMigrationsSkipsPreviousMinorReprocessingWhenAllSqlAlreadyRan() throws Exception {
+  void loadMigrationsSkipsPreviousMinorReprocessingWhenNothingIsPending() throws Exception {
     Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
     createMigrationDir(nativeRoot, "1.12.9", "SELECT 12;");
     createMigrationDir(nativeRoot, "1.13.0", "SELECT 13;");
@@ -487,6 +514,10 @@ class MigrationWorkflowTest {
     when(process.getDatabaseConnectionType()).thenReturn("postgres");
     when(process.getMigrationsPath()).thenReturn("/tmp/1.12.9");
     when(process.isReprocessing()).thenReturn(true);
+    // A real Java migration with nothing recorded: every deployment's state on the first migrate
+    // after the data migration ledger shipped.
+    when(process.getDataMigrationIdentity()).thenReturn("identity-1.12.9");
+    when(migrationDAO.getSqlQuery(anyString(), anyString())).thenReturn(null);
     when(process.runSchemaChanges(false))
         .thenReturn(Map.of("ALTER TABLE", new QueryStatus(QueryStatus.Status.SUCCESS, "ok")));
     when(process.runPostDDLScripts(false))
@@ -500,9 +531,68 @@ class MigrationWorkflowTest {
     }
 
     verify(process, never()).runDataMigration();
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
     verify(process).runPostDDLScripts(false);
     verify(migrationDAO)
         .upsertServerMigration(eq("1.12.9"), eq("/tmp/1.12.9"), anyString(), anyString());
+  }
+
+  @Test
+  void runMigrationWorkflowsRecordsADataMigrationOnlyAfterItSucceeds() throws Exception {
+    MigrationProcess process = reprocessedJavaMigration("1.13.0");
+
+    runWorkflows(process, "1.13.0", false);
+
+    InOrder order = inOrder(process, migrationDAO);
+    order.verify(process).runDataMigration();
+    order
+        .verify(migrationDAO)
+        .upsertServerMigrationSQL(
+            eq("1.13.0"), startsWith("-- data migration "), eq("identity-1.13.0"));
+    order
+        .verify(migrationDAO)
+        .upsertServerMigration(eq("1.13.0"), eq("/tmp/1.13.0"), anyString(), anyString());
+  }
+
+  @Test
+  void runMigrationWorkflowsLeavesADataMigrationThatFailedUnderForceUnrecorded() throws Exception {
+    MigrationProcess process = reprocessedJavaMigration("1.13.0");
+    doThrow(new IllegalStateException("data migration failed")).when(process).runDataMigration();
+
+    runWorkflows(process, "1.13.0", true);
+
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
+    // --force still records the version, so the next migrate reprocesses it and, finding the data
+    // migration unrecorded, runs it again.
+    verify(migrationDAO)
+        .upsertServerMigration(eq("1.13.0"), eq("/tmp/1.13.0"), anyString(), anyString());
+  }
+
+  @Test
+  void runMigrationWorkflowsFailsWhenASucceededDataMigrationCannotBeRecorded() throws Exception {
+    MigrationProcess process = reprocessedJavaMigration("1.13.0");
+    doThrow(new IllegalStateException("SERVER_MIGRATION_SQL_LOGS rejected the write"))
+        .when(migrationDAO)
+        .upsertServerMigrationSQL(anyString(), anyString(), anyString());
+
+    assertThrows(IllegalStateException.class, () -> runWorkflows(process, "1.13.0", false));
+
+    // Not recorded as migrated either: migrate fails here instead of reporting success and leaving
+    // the next startup to find the version pending.
+    verify(migrationDAO, never())
+        .upsertServerMigration(anyString(), anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void runMigrationWorkflowsStopsOnAFailedDataMigrationWithoutRecordingIt() throws Exception {
+    MigrationProcess process = reprocessedJavaMigration("1.13.0");
+    doThrow(new IllegalStateException("data migration failed")).when(process).runDataMigration();
+
+    assertThrows(IllegalStateException.class, () -> runWorkflows(process, "1.13.0", false));
+
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
+    verify(migrationDAO, never())
+        .upsertServerMigration(anyString(), anyString(), anyString(), anyString());
   }
 
   @Test
@@ -1113,6 +1203,36 @@ class MigrationWorkflowTest {
     Field field = MigrationWorkflow.class.getDeclaredField("currentMaxMigrationVersion");
     field.setAccessible(true);
     return (Optional<String>) field.get(workflow);
+  }
+
+  private MigrationProcess reprocessedJavaMigration(String version) {
+    MigrationProcess process = mock(MigrationProcess.class);
+    when(process.getVersion()).thenReturn(version);
+    when(process.getDatabaseConnectionType()).thenReturn("postgres");
+    when(process.getMigrationsPath()).thenReturn("/tmp/" + version);
+    when(process.isReprocessing()).thenReturn(true);
+    when(process.getDataMigrationIdentity()).thenReturn("identity-" + version);
+    when(process.runSchemaChanges(anyBoolean())).thenReturn(Map.of());
+    when(process.runPostDDLScripts(anyBoolean())).thenReturn(Map.of());
+    return process;
+  }
+
+  private void runWorkflows(MigrationProcess process, String currentMaxVersion, boolean force)
+      throws Exception {
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            tempDir.resolve("native").toString(),
+            ConnectionType.POSTGRES,
+            null,
+            null,
+            config,
+            force);
+    setMigrations(workflow, List.of(process));
+    setCurrentMaxVersion(workflow, Optional.of(currentMaxVersion));
+    try (var ignored = mockConstruction(MigrationWorkflowContext.class, this::mockContext)) {
+      workflow.runMigrationWorkflows(false);
+    }
   }
 
   private void setMigrations(MigrationWorkflow workflow, List<MigrationProcess> migrations)

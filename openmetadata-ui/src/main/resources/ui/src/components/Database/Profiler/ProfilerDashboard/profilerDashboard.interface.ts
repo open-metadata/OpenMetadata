@@ -108,7 +108,8 @@ export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
   data: Record<
     string,
-    string | number | undefined | Task | Thread | number[]
+    // string[] carries the keys a run's placed values sit under.
+    string | number | undefined | Task | Thread | number[] | string[]
   >[];
 };
 

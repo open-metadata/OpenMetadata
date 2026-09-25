@@ -14,6 +14,7 @@
 import { TFunction } from 'i18next';
 import { AlertType } from '../../../generated/events/eventSubscription';
 import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getValidationPath } from './AlertAiFormFieldsPureUtils';
 import { validateAlertAiForm } from './AlertAiFormFieldsValidationUtils';
 
 const t = ((key: string, params?: Record<string, string | number>) =>
@@ -36,6 +37,73 @@ describe('AlertAiFormFieldsValidationUtils', () => {
       )
     ).toEqual({
       destinations: 'message.field-text-is-required:label.destination',
+    });
+  });
+
+  describe('name follows the classic NAME_FIELD_RULES', () => {
+    const validate = (displayName: string) =>
+      validateAlertAiForm(
+        {
+          destinations: [{ category: 'Owners', type: 'Email' }],
+          displayName,
+          input: {},
+          name: '',
+          alertType: AlertType.Notification,
+          readTimeout: 12,
+          resources: ['table'],
+          timeout: 10,
+        } as unknown as ModifiedCreateEventSubscription,
+        t
+      );
+
+    it('rejects names longer than 128 characters', () => {
+      expect(validate('a'.repeat(129)).displayName).toBe(
+        'message.entity-size-in-between:label.name:1:128'
+      );
+    });
+
+    it('rejects names the entity-name pattern forbids', () => {
+      expect(validate('orders::alert').displayName).toBe(
+        'message.entity-name-validation'
+      );
+    });
+
+    it('accepts a valid name', () => {
+      expect(validate('Orders table – failures').displayName).toBeUndefined();
+    });
+  });
+
+  it('requires a key and value for every webhook header and query param', () => {
+    const errors = validateAlertAiForm(
+      {
+        destinations: [
+          {
+            category: 'External',
+            destinationType: 'Webhook',
+            type: 'Webhook',
+            config: {
+              endpoint: 'https://hooks.example.com',
+              headers: [{ key: 'X-Token', value: '' }],
+              queryParams: [{ key: '', value: 'v' }],
+            },
+          },
+        ],
+        displayName: 'alert',
+        input: {},
+        name: 'alert',
+        alertType: AlertType.Observability,
+        readTimeout: 12,
+        resources: ['table'],
+        timeout: 10,
+      } as unknown as ModifiedCreateEventSubscription,
+      t
+    );
+
+    expect(errors).toEqual({
+      [getValidationPath('destinations', 0, 'config', 'headers', 0, 'value')]:
+        'message.field-text-is-required:label.value',
+      [getValidationPath('destinations', 0, 'config', 'queryParams', 0, 'key')]:
+        'message.field-text-is-required:label.key',
     });
   });
 });

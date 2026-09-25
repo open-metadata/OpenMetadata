@@ -228,11 +228,11 @@ export const Tab = (props: TabComponentProps) => {
           // `tw:relative` anchors the button-minimal selected ::after border — the tab's
           // own outline is reserved for the focus ring.
           'tw:relative tw:z-10 tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
-          'group-orientation-vertical:tw:justify-start',
+          'tw:group-orientation-vertical:justify-start',
           fullWidth && 'tw:w-full tw:flex-1',
           sizes[size][type],
           // Balances the underline tab inside the fixed-height card bar.
-          variant === 'card' && type === 'underline' && 'tw:pt-2.5 tw:pb-2',
+          variant === 'card' && type === 'underline' && 'tw:pt-2.5 tw:pb-1',
           // z-10 only lifts the underline above the list's separator line, which the card
           // variant does not draw; keeping it would paint tabs over fixed overlays such as
           // full-screen lineage.

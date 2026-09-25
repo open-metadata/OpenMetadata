@@ -14,9 +14,11 @@
 
 @border-radius: var(--om-radius-md);
 @border-color: var(--om-legacy-color-e8e8ed);
-@markdown-bg-color: var(--om-legacy-color-f8f8fa);
+// Semantic surface so inline code, table headers and callouts follow dark mode
+// (the legacy #f8f8fa alias has no dark value).
+@markdown-bg-color: var(--om-color-bg-secondary);
 @hover-bg: var(--om-legacy-color-0-0-0-0-02);
-@callout-bg: var(--om-legacy-color-f8f8fa);
+@callout-bg: var(--om-color-bg-secondary);
 @callout-warning-bg: var(--om-legacy-color-fff3dc);
 @callout-info-bg: @primary-1;
 @callout-danger-bg: var(--om-legacy-color-255-76-59-0-2);

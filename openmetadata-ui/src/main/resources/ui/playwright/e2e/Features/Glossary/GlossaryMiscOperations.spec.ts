@@ -97,7 +97,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await page.getByTestId('delete-button').click();
 
       // Wait for delete confirmation modal
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
       // Confirm deletion
 
@@ -247,7 +247,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await page.getByTestId('delete-button').click();
 
       // Wait for delete confirmation modal
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
       // Confirm deletion
 
@@ -392,7 +392,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await page.getByTestId('delete-button').click();
 
       // Wait for delete confirmation modal
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
       // Confirm deletion
 
