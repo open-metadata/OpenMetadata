@@ -249,14 +249,20 @@ function TestSummaryGraph({
     }, TOOLTIP_CLOSE_DELAY);
   }, [cancelTooltipClose]);
 
-  const handleTooltipKeyDown = useCallback(
-    (event: KeyboardEvent<SVGElement>) => {
+  const handlePointKeyDown = useCallback(
+    (event: KeyboardEvent<SVGElement>, timestamp: number) => {
       if (event.key === 'Escape') {
         cancelTooltipClose();
         setActiveTooltip(undefined);
       }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        // Space would otherwise scroll the page.
+        event.preventDefault();
+        setSelectedRunTimestamp(timestamp);
+      }
     },
-    [cancelTooltipClose]
+    [cancelTooltipClose, setSelectedRunTimestamp]
   );
 
   useEffect(() => cancelTooltipClose, [cancelTooltipClose]);
@@ -345,13 +351,55 @@ function TestSummaryGraph({
     [useFreshnessFormat]
   );
 
-  // Nothing is selected until the user picks a run, so the card beside the
-  // chart opens on the newest one. A point's `name` is typed as the union of
-  // every field the tooltip reads, so it is narrowed back to its timestamp.
-  const latestPointName = chartData.data[chartData.data.length - 1]?.name;
-  const activeRunTimestamp =
-    selectedRunTimestamp ??
-    (typeof latestPointName === 'number' ? latestPointName : undefined);
+  // A ReferenceLine with no `y` draws nothing, so the expectation line was
+  // absent for every test: the parameter name was passed as its label and the
+  // value it should sit at was never supplied.
+  const thresholdReference = useMemo(
+    () =>
+      getThresholdReference(
+        testCaseParameterValue ?? [],
+        // Dimension results carry no learned bound, so the fallback simply
+        // finds nothing for them.
+        testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
+      ),
+    [testCaseParameterValue, testCaseResults]
+  );
+
+  const plottedStatuses = useMemo(
+    () =>
+      chartData.data
+        .map((point) => point.status)
+        .filter((status): status is TestCaseStatus => Boolean(status)),
+    [chartData.data]
+  );
+
+  const plottedData = useMemo(
+    () =>
+      applyStatusPlacements(
+        chartData.data,
+        chartData.information.map((info) => info.label),
+        thresholdReference?.y
+      ),
+    [chartData, thresholdReference]
+  );
+
+  // Until the user picks a run, the card beside the chart opens on the newest
+  // one. The store outlives a date-range or dimension change, so a selection
+  // the refetched data no longer holds falls back to the newest run as well.
+  // A point's `name` is typed as the union of every field the tooltip reads,
+  // so it is narrowed back to its timestamp.
+  const activeRunTimestamp = useMemo(() => {
+    if (
+      !isUndefined(selectedRunTimestamp) &&
+      plottedData.some((point) => point.name === selectedRunTimestamp)
+    ) {
+      return selectedRunTimestamp;
+    }
+
+    const latestPointName = plottedData[plottedData.length - 1]?.name;
+
+    return typeof latestPointName === 'number' ? latestPointName : undefined;
+  }, [plottedData, selectedRunTimestamp]);
 
   const handleRunSelect = useCallback(
     (timestamp: number) => setSelectedRunTimestamp(timestamp),
@@ -432,7 +480,7 @@ function TestSummaryGraph({
           onBlur={handleTooltipClose}
           onClick={() => handleRunSelect(payload.name)}
           onFocus={() => handleTooltipOpen(cx, cy, payload)}
-          onKeyDown={handleTooltipKeyDown}
+          onKeyDown={(event) => handlePointKeyDown(event, payload.name)}
           onMouseEnter={() => handleTooltipOpen(cx, cy, payload)}
           onMouseLeave={handleTooltipClose}
         />
@@ -440,41 +488,9 @@ function TestSummaryGraph({
     );
   };
 
-  // A ReferenceLine with no `y` draws nothing, so the expectation line was
-  // absent for every test: the parameter name was passed as its label and the
-  // value it should sit at was never supplied.
-  const thresholdReference = useMemo(
-    () =>
-      getThresholdReference(
-        testCaseParameterValue ?? [],
-        // Dimension results carry no learned bound, so the fallback simply
-        // finds nothing for them.
-        testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
-      ),
-    [testCaseParameterValue, testCaseResults]
-  );
-
-  const plottedStatuses = useMemo(
-    () =>
-      chartData.data
-        .map((point) => point.status)
-        .filter((status): status is TestCaseStatus => Boolean(status)),
-    [chartData.data]
-  );
-
-  const plottedData = useMemo(
-    () =>
-      applyStatusPlacements(
-        chartData.data,
-        chartData.information.map((info) => info.label),
-        thresholdReference?.y
-      ),
-    [chartData, thresholdReference]
-  );
-
   const referenceArea = useMemo(() => {
     if (!thresholdReference) {
-      return <></>;
+      return null;
     }
 
     return (
@@ -492,7 +508,7 @@ function TestSummaryGraph({
   // surface-coloured halo then clears the dots and path behind the text.
   const expectationLabel = useMemo(() => {
     if (!thresholdReference) {
-      return <></>;
+      return null;
     }
 
     return (
@@ -669,13 +685,8 @@ function TestSummaryGraph({
           {expectationLabel}
         </ComposedChart>
       </ResponsiveContainer>
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:pb-2">
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:px-4 tw:pb-2">
         <TestSummaryStatusKey statuses={plottedStatuses} />
-        <span
-          className="tw:text-xs tw:text-tertiary"
-          data-testid="run-selection-hint">
-          {t('message.click-a-point-for-run-details')}
-        </span>
       </div>
     </Box>
   );

@@ -141,15 +141,19 @@ export const prepareChartData = ({
   };
 };
 
-// Aborted and Queued used to share one colour, which read as a single state:
-// a run that produced no result and a run that has not happened yet.
 /**
- * Parameters that qualify the assertion rather than state it. `threshold` is a
- * tolerance on tableRowCountToEqual and friends, but the assertion itself on
- * tableCustomSQLQuery, which carries no other numeric parameter - so it is
- * only read once nothing else can supply the line.
+ * Parameters on the `*ToEqual` tests that state the one value a run must hit.
+ * Any other numeric parameter that is not a min or max bound - such as
+ * rangeInterval, a time window, or radius, a distance - says nothing about
+ * where the charted value should sit, so it never becomes the line.
  */
-const TOLERANCE_PARAMETERS = new Set(['threshold', 'thresholdUnit']);
+const EXPECTED_VALUE_PARAMETERS = new Set([
+  'value',
+  'columnCount',
+  'missingCountValue',
+]);
+const MIN_BOUND_PARAMETER = /^min($|[A-Z])/;
+const MAX_BOUND_PARAMETER = /^max($|[A-Z])/;
 
 export interface ThresholdReference {
   y: number;
@@ -172,23 +176,38 @@ export const getThresholdReference = (
   testCaseParameterValue: TestCaseParameterValue[],
   latestResult?: Pick<TestCaseResult, 'maxBound'>
 ): ThresholdReference | undefined => {
-  const assertions = testCaseParameterValue
-    .filter((parameter) => !TOLERANCE_PARAMETERS.has(parameter.name ?? ''))
-    .map((parameter) => toFiniteNumber(parameter.value))
-    .filter((value): value is number => !isUndefined(value));
+  const valuesOf = (matches: (name: string) => boolean) =>
+    testCaseParameterValue
+      .filter((parameter) => matches(parameter.name ?? ''))
+      .map((parameter) => toFiniteNumber(parameter.value))
+      .filter((value): value is number => !isUndefined(value));
 
-  if (assertions.length === 1) {
+  const [expected] = valuesOf((name) => EXPECTED_VALUE_PARAMETERS.has(name));
+
+  if (!isUndefined(expected)) {
     return {
-      y: assertions[0],
+      y: expected,
       labelKey: 'label.expected-value',
-      labelValue: assertions[0].toLocaleString(),
+      labelValue: expected.toLocaleString(),
     };
   }
 
-  if (assertions.length > 1) {
-    return { y: Math.max(...assertions), labelKey: 'label.allowed-max' };
+  // Both bounds are optional on the `*ToBeBetween` tests, so a range may be
+  // one-sided. The line sits at the upper bound when there is one.
+  const maxBounds = valuesOf((name) => MAX_BOUND_PARAMETER.test(name));
+
+  if (!isEmpty(maxBounds)) {
+    return { y: Math.max(...maxBounds), labelKey: 'label.allowed-max' };
   }
 
+  const minBounds = valuesOf((name) => MIN_BOUND_PARAMETER.test(name));
+
+  if (!isEmpty(minBounds)) {
+    return { y: Math.min(...minBounds), labelKey: 'label.allowed-min' };
+  }
+
+  // `threshold` is a tolerance on most tests but the assertion itself on
+  // tableCustomSQLQuery, so it is read only once nothing else supplies the line.
   const threshold = toFiniteNumber(
     testCaseParameterValue.find((parameter) => parameter.name === 'threshold')
       ?.value
@@ -263,6 +282,8 @@ export const applyStatusPlacements = (
   });
 };
 
+// Aborted and Queued used to share one colour, which read as a single state:
+// a run that produced no result and a run that has not happened yet.
 export const getStatusDotColor = (status: TestCaseStatus): string => {
   if (status === TestCaseStatus.Success) {
     return GREEN_3;

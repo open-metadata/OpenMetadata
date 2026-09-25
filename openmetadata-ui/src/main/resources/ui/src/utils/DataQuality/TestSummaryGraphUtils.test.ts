@@ -652,6 +652,39 @@ describe('getThresholdReference', () => {
     ).toEqual({ y: 3489, labelKey: 'label.allowed-max' });
   });
 
+  // tableRowInsertedCountToBeBetween requires rangeInterval, a time window,
+  // while its bounds are optional.
+  it('should read a lone min as the allowed min, not the range interval', () => {
+    expect(
+      getThresholdReference(params({ min: '50', rangeInterval: '1000' }))
+    ).toEqual({ y: 50, labelKey: 'label.allowed-min' });
+  });
+
+  it('should read a lone minValue as the allowed min', () => {
+    expect(getThresholdReference(params({ minValue: '12' }))).toEqual({
+      y: 12,
+      labelKey: 'label.allowed-min',
+    });
+  });
+
+  it('should read a lone maxValue as the allowed max', () => {
+    expect(getThresholdReference(params({ maxValue: '99' }))).toEqual({
+      y: 99,
+      labelKey: 'label.allowed-max',
+    });
+  });
+
+  it('should ignore numeric parameters that are not bounds', () => {
+    expect(
+      getThresholdReference(params({ rangeInterval: '1000' }), {
+        maxBound: 10500,
+      })
+    ).toEqual({ y: 10500, labelKey: 'label.learned-baseline' });
+    expect(
+      getThresholdReference(params({ max: '500', rangeInterval: '1000' }))
+    ).toEqual({ y: 500, labelKey: 'label.allowed-max' });
+  });
+
   it('should fall back to the learned bound when no parameter is numeric', () => {
     expect(getThresholdReference([], { maxBound: 10500 })).toEqual({
       y: 10500,

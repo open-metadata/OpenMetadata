@@ -82,6 +82,11 @@ const TOOLTIP_Y_ATTRIBUTE = 'data-y';
 const POINT_TEST_ID = 'test-summary-point-min';
 const TOOLTIP_TEST_ID = 'recharts-tooltip';
 let mockPointCoordinate = { x: 320, y: 120 };
+const OLDER_RUN_TIMESTAMP = 1720000000000;
+const twoRunResults = [
+  mockProps.testCaseResults[0],
+  { ...mockProps.testCaseResults[0], timestamp: OLDER_RUN_TIMESTAMP },
+];
 
 jest.mock('@tanstack/react-query', () => ({
   useQueries: jest.fn(),
@@ -235,6 +240,7 @@ jest.mock(
 describe('TestSummaryGraph', () => {
   beforeEach(() => {
     mockSelectedRunTimestamp = undefined;
+    mockSetSelectedRunTimestamp.mockClear();
     mockDotStatus = 'Success';
     mockPointCoordinate = { x: 320, y: 120 };
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
@@ -441,13 +447,29 @@ describe('TestSummaryGraph', () => {
   });
 
   it('should guide to the selected run once the store holds one', () => {
+    mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
+
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
+
+    expect(screen.getByTestId('run-selection-guide')).toHaveAttribute(
+      'data-x',
+      String(OLDER_RUN_TIMESTAMP)
+    );
+  });
+
+  // The store keeps the selection across a date-range or dimension change; a
+  // run the refetched data no longer holds must not leave the chart unmarked.
+  it('should fall back to the newest run when the selected run is not plotted', () => {
     mockSelectedRunTimestamp = 1700000000000;
 
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(screen.getByTestId('run-selection-guide')).toHaveAttribute(
       'data-x',
-      '1700000000000'
+      String(mockProps.testCaseResults[0].timestamp)
+    );
+    expect(screen.getAllByTestId('selected-point-halo').length).toBeGreaterThan(
+      0
     );
   });
 
@@ -485,9 +507,9 @@ describe('TestSummaryGraph', () => {
   });
 
   it('should draw no halo when another run is selected', () => {
-    mockSelectedRunTimestamp = 1;
+    mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
 
-    render(<TestSummaryGraph {...mockProps} />);
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
 
     expect(screen.queryByTestId('selected-point-halo')).not.toBeInTheDocument();
   });
@@ -545,13 +567,24 @@ describe('TestSummaryGraph', () => {
     );
   });
 
-  it('should tell the user the points are clickable', () => {
-    render(<TestSummaryGraph {...mockProps} />);
+  it.each(['Enter', ' '])(
+    'should publish the focused run to the store on %p',
+    (key) => {
+      render(<TestSummaryGraph {...mockProps} />);
 
-    expect(screen.getByTestId('run-selection-hint')).toHaveTextContent(
-      'message.click-a-point-for-run-details'
-    );
-  });
+      const point = screen.getByTestId(POINT_TEST_ID);
+      point.focus();
+
+      expect(point).toHaveFocus();
+
+      // fireEvent returns false once the handler prevents the default, which
+      // for Space is scrolling the page.
+      expect(fireEvent.keyDown(point, { key })).toBe(false);
+      expect(mockSetSelectedRunTimestamp).toHaveBeenCalledWith(
+        mockProps.testCaseResults[0].timestamp
+      );
+    }
+  );
 
   it('should render incident areas when entity threads exist', () => {
     render(<TestSummaryGraph {...mockProps} />);

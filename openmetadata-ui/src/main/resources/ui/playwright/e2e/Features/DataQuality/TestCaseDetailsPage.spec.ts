@@ -546,12 +546,6 @@ test.describe(
           )
           .not.toBe(before);
       });
-
-      await test.step('The chart says its points are clickable', async () => {
-        await expect(page.getByTestId('run-selection-hint')).toHaveText(
-          'Click a point for run details'
-        );
-      });
     });
   }
 );
