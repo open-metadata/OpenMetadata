@@ -1684,6 +1684,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   /**
    * Test cases are written before the contract, so everything that would stop the contract from
    * being stored is checked first; otherwise the import would leave test cases behind for nothing.
+   * An import that creates no test cases leaves the ones the contract links as they are, even in
+   * replace mode, where dropping them would delete the contract's test suite.
    *
    * @param existing the contract the import updates, or null when it creates one
    */
@@ -1692,7 +1694,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       ODCSImportRequest request,
       DataContract contract,
       DataContract existing) {
-    if (request.createTestCases() && !nullOrEmpty(contract.getOdcsQualityRules())) {
+    if (!request.createTestCases()) {
+      keepLinkedTestCases(contract, existing);
+    } else if (!nullOrEmpty(contract.getOdcsQualityRules())) {
       authorizeContractWrite(securityContext, contract, existing);
       repository.assertImportable(contract, existing != null);
       qualityRuleImporter.apply(
@@ -1723,6 +1727,12 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     }
   }
 
+  private static void keepLinkedTestCases(DataContract imported, DataContract existing) {
+    if (existing != null) {
+      imported.setQualityExpectations(existing.getQualityExpectations());
+    }
+  }
+
   private static Set<UUID> linkedTestCaseIds(DataContract contract) {
     return contract == null
         ? Set.of()
@@ -1737,7 +1747,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   private ODCSDataContract toODCS(DataContract contract) {
-    return ODCSConverter.toODCS(contract, qualityRuleExporter.nativeTestCaseRules(contract));
+    return qualityRuleExporter.toODCS(contract);
   }
 
   private DataContract loadExistingContract(EntityReference entityRef) {

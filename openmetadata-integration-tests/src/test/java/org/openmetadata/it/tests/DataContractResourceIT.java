@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
@@ -54,6 +55,8 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -63,6 +66,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -7758,6 +7762,219 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     assertEquals(403, denied.getStatusCode());
     assertNoOdcsTestCasesOn(table);
+  }
+
+  @Test
+  void testODCSReplaceImportWithoutCreatingTestCasesKeepsTheContractsTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    TestCase ownTest =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("own_row_count"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    DataContract existing =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("odcs_replace_keep"))
+                .withEntity(table.getEntityReference())
+                .withQualityExpectations(List.of(ownTest.getEntityReference())));
+
+    DataContract replaced =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                odcsWithQualityRules(existing.getName(), table.getName()),
+                table.getId(),
+                "table",
+                "replace",
+                false);
+
+    assertEquals(
+        List.of(ownTest.getId()),
+        replaced.getQualityExpectations().stream().map(EntityReference::getId).toList());
+    assertEquals(existing.getTestSuite().getId(), replaced.getTestSuite().getId());
+    assertEquals(9, replaced.getOdcsQualityRules().size());
+  }
+
+  @Test
+  void testODCSImportLinksAnExistingTestCaseOnlyWhenItRunsTheSameTest(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    TestCase sameTest =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name("exact_rows")
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    TestCase otherParameters =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name("row_count_range")
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "1")
+            .parameter("maxValue", "50")
+            .create();
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            quality:
+              - id: exact_rows
+                name: Exact rows
+                metric: rowCount
+                mustBe: 100
+              - id: row_count_range
+                name: Row count range
+                metric: rowCount
+                mustBeBetween: [1, 1000]
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("odcs_link_existing"), table.getName());
+
+    DataContract first =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+    DataContract second =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+
+    for (DataContract imported : List.of(first, second)) {
+      assertEquals(
+          List.of(sameTest.getId()),
+          imported.getQualityExpectations().stream().map(EntityReference::getId).toList());
+    }
+    TestCase untouched =
+        SdkClients.adminClient().testCases().get(otherParameters.getId().toString());
+    assertEquals("50", parameter(untouched, "maxValue"));
+  }
+
+  @Test
+  void testODCSReimportUpdatesATestCaseWhoseDefinitionWasDisabled(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    CreateTestDefinition createDefinition = new CreateTestDefinition();
+    createDefinition.setName(ns.prefix("odcs_custom_check"));
+    createDefinition.setDescription("A check only this test uses");
+    createDefinition.setEntityType(TestDefinitionEntityType.TABLE);
+    createDefinition.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+    TestDefinition definition = SdkClients.adminClient().testDefinitions().create(createDefinition);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            quality:
+              - name: Custom check
+                description: Checked before release
+                type: custom
+                engine: openmetadata
+                implementation: '{"name":"custom_check","testDefinition":"%s"}'
+        """
+            .formatted(
+                UUID.randomUUID(),
+                ns.prefix("odcs_disabled_definition"),
+                table.getName(),
+                definition.getFullyQualifiedName());
+    SdkClients.adminClient()
+        .dataContracts()
+        .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+    TestDefinition disabled =
+        SdkClients.adminClient().testDefinitions().get(definition.getId().toString());
+    disabled.setEnabled(false);
+    SdkClients.adminClient().testDefinitions().update(definition.getId().toString(), disabled);
+
+    DataContract reimported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                yaml.replace("Checked before release", "Checked before every release"),
+                table.getId(),
+                "table");
+
+    assertEquals(
+        "Checked before every release",
+        testCaseNamed(reimported, "custom_check").getDescription(),
+        "Only new test cases need an enabled definition, as with PUT /testCases");
+  }
+
+  @Test
+  void testODCSReimportKeepsTheReviewStatusOfItsTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_keep_status"), table.getName());
+    DataContract first =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+    TestCase approved = testCaseNamed(first, "odcs_row_count_range");
+    approved.setEntityStatus(EntityStatus.APPROVED);
+    SdkClients.adminClient().testCases().update(approved.getId().toString(), approved);
+
+    DataContract second =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                yaml.replace("mustBeBetween: [1, 1000]", "mustBeBetween: [1, 5000]"),
+                table.getId(),
+                "table");
+
+    TestCase reimported = testCaseNamed(second, "odcs_row_count_range");
+    assertEquals("5000", parameter(reimported, "maxValue"));
+    assertEquals(EntityStatus.APPROVED, reimported.getEntityStatus());
+  }
+
+  @Test
+  void testODCSExportStatesTheFreshnessRuleOnceSoEditingItTakesEffect(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_fresh_edit"), table.getName()),
+                table.getId(),
+                "table");
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(contract.getId());
+
+    assertTrue(
+        nullOrEmpty(exported.getSlaProperties())
+            || exported.getSlaProperties().stream()
+                .noneMatch(property -> "freshness".equals(property.getProperty())),
+        "The SLA must not restate the freshness rule");
+    freshnessRuleOf(exported).setMustBeLessOrEqualTo(12.0);
+    DataContract reimported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCS(exported, table.getId(), "table", "merge");
+
+    assertEquals(12, reimported.getSla().getRefreshFrequency().getInterval());
+    assertEquals(
+        FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"),
+        reimported.getSla().getColumnName());
+  }
+
+  private static ODCSQualityRule freshnessRuleOf(ODCSDataContract odcs) {
+    return odcs.getSchema().stream()
+        .flatMap(object -> object.getProperties().stream())
+        .filter(property -> !nullOrEmpty(property.getQuality()))
+        .flatMap(property -> property.getQuality().stream())
+        .filter(rule -> rule.getMetric() == ODCSQualityRule.OdcsQualityMetric.FRESHNESS)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("The export has no freshness rule"));
   }
 
   private static void assertNoOdcsTestCasesOn(Table table) {

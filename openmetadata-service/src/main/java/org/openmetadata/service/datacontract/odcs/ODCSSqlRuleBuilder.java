@@ -43,12 +43,15 @@ final class ODCSSqlRuleBuilder {
   private static final Pattern PROPERTY_PLACEHOLDER = Pattern.compile("\\$?\\{\\s*property\\s*}");
   private static final Pattern GROUP_BY =
       Pattern.compile("\\bgroup\\s+by\\b", Pattern.CASE_INSENSITIVE);
+  private static final Pattern INNERMOST_PARENTHESES = Pattern.compile("\\([^()]*\\)");
 
   private ODCSSqlRuleBuilder() {}
 
   static ODCSRuleOutcome build(RuleOnTarget ruleOnTarget) {
     ODCSQualityRule rule = ruleOnTarget.rule();
-    Optional<Comparison> comparison = ODCSRuleOperators.singleComparison(rule);
+    Optional<Comparison> comparison =
+        ODCSRuleOperators.singleComparison(rule)
+            .filter(candidate -> ODCSRuleOperators.isWhole(candidate.value()));
     ODCSRuleOutcome outcome;
     if (nullOrEmpty(rule.getQuery())) {
       outcome = ODCSTestCaseBuilder.unsupported(rule, "The SQL rule has no query.");
@@ -70,11 +73,19 @@ final class ODCSSqlRuleBuilder {
   }
 
   /**
+   * Whether the outer query groups its rows. A GROUP BY in a subquery or CTE does not count: {@code
+   * SELECT COUNT(*) FROM (SELECT id ... GROUP BY id HAVING COUNT(*) > 1) d} still returns one value.
+   */
+  static boolean groupsRows(String query) {
+    return GROUP_BY.matcher(withoutParenthesizedParts(query)).find();
+  }
+
+  /**
    * An ODCS SQL rule compares the value its query returns. A grouped query returns one row per
    * offending group instead, so for those OpenMetadata counts the rows.
    */
   private static List<TestCaseParameterValue> parameters(String query, Comparison comparison) {
-    String strategy = GROUP_BY.matcher(query).find() ? ROWS_STRATEGY : COUNT_STRATEGY;
+    String strategy = groupsRows(query) ? ROWS_STRATEGY : COUNT_STRATEGY;
     return List.of(
         parameter(SQL_EXPRESSION, query),
         parameter(STRATEGY, strategy),
@@ -88,7 +99,20 @@ final class ODCSSqlRuleBuilder {
             ruleOnTarget.rule().getQuery(), OBJECT_PLACEHOLDER, ruleOnTarget.target().sqlName());
     return ruleOnTarget.column() == null
         ? query
-        : replace(query, PROPERTY_PLACEHOLDER, ruleOnTarget.column());
+        : replace(
+            query,
+            PROPERTY_PLACEHOLDER,
+            ruleOnTarget.target().sqlColumnName(ruleOnTarget.column()));
+  }
+
+  private static String withoutParenthesizedParts(String query) {
+    String outer = query;
+    String previous = null;
+    while (!outer.equals(previous)) {
+      previous = outer;
+      outer = INNERMOST_PARENTHESES.matcher(outer).replaceAll(" ");
+    }
+    return outer;
   }
 
   private static String replace(String query, Pattern placeholder, String value) {
@@ -104,7 +128,8 @@ final class ODCSSqlRuleBuilder {
     return ODCSTestCaseBuilder.unsupported(
         rule,
         String.format(
-            "A SQL rule needs exactly one comparison of the query result; this one has %s.",
+            "A SQL rule needs exactly one comparison of the query result with a whole number,"
+                + " as OpenMetadata compares counts; this one has %s.",
             ODCSRuleOperators.describe(rule)));
   }
 }

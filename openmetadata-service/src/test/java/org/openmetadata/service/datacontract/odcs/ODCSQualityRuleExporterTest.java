@@ -15,14 +15,19 @@ package org.openmetadata.service.datacontract.odcs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.data.ContractSLA;
+import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -84,6 +89,63 @@ class ODCSQualityRuleExporterTest {
     DataContract contract = contract(List.of()).withQualityExpectations(List.of(gone));
 
     assertTrue(exporter.nativeTestCaseRules(contract).isEmpty());
+  }
+
+  @Test
+  void slaFreshnessThatAStoredRuleStatesIsExportedOnlyAsTheRule() {
+    DataContract contract =
+        contract(List.of())
+            .withOdcsQualityRules(List.of(freshnessRule(24.0)))
+            .withSla(refreshEvery(24, TABLE_FQN + ".updated_at"));
+
+    ODCSDataContract odcs = exporter.toODCS(contract);
+
+    assertEquals(List.of(), slaPropertyNames(odcs));
+  }
+
+  @Test
+  void slaFreshnessTheRulesDoNotStateIsExported() {
+    DataContract contract =
+        contract(List.of())
+            .withOdcsQualityRules(List.of(freshnessRule(24.0)))
+            .withSla(refreshEvery(12, TABLE_FQN + ".updated_at"));
+
+    ODCSDataContract odcs = exporter.toODCS(contract);
+
+    assertEquals(List.of("freshness"), slaPropertyNames(odcs));
+    assertEquals("12", odcs.getSlaProperties().getFirst().getValue());
+  }
+
+  @Test
+  void slaFreshnessOnAnotherColumnThanTheRuleIsExported() {
+    DataContract contract =
+        contract(List.of())
+            .withOdcsQualityRules(List.of(freshnessRule(24.0)))
+            .withSla(refreshEvery(24, TABLE_FQN + ".status"));
+
+    ODCSDataContract odcs = exporter.toODCS(contract);
+
+    assertEquals(List.of("freshness"), slaPropertyNames(odcs));
+  }
+
+  private static ODCSQualityRule freshnessRule(double hours) {
+    return new ODCSQualityRule()
+        .withName("Fresh")
+        .withMetric(ODCSQualityRule.OdcsQualityMetric.FRESHNESS)
+        .withColumn("updated_at")
+        .withMustBeLessOrEqualTo(hours)
+        .withUnit("hours");
+  }
+
+  private static ContractSLA refreshEvery(int hours, String columnFqn) {
+    return new ContractSLA()
+        .withRefreshFrequency(
+            new RefreshFrequency().withInterval(hours).withUnit(RefreshFrequency.Unit.HOUR))
+        .withColumnName(columnFqn);
+  }
+
+  private static List<String> slaPropertyNames(ODCSDataContract odcs) {
+    return listOrEmpty(odcs.getSlaProperties()).stream().map(ODCSSlaProperty::getProperty).toList();
   }
 
   private static DataContract contract(List<TestCase> linked) {
