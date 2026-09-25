@@ -88,7 +88,7 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
     // The full tag FQN, as a reviewer searches for it: "PII.Sensitive".
     case 'tags':
       return (
-        <Typography className="tw:font-mono" size="text-xs">
+        <Typography size="text-sm">
           {value.tags.map((tag) => tag.tagFQN).join(', ')}
         </Typography>
       );
