@@ -118,7 +118,9 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
 }) => (
   <Box data-testid="task-detail-summary" direction="col" gap={5}>
     {rows.length > 0 && (
-      <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-3 tw:sm:grid-cols-2">
+      // Content-sized columns: a short left value ("Full Access") lends its
+      // spare width to a long right one ("14 Days · expires Oct 8, 2026").
+      <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-3 tw:sm:grid-cols-[auto_auto]">
         {rows.map((row) => {
           const Icon = ROW_ICON[row.icon];
 

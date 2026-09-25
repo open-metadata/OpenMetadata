@@ -199,7 +199,7 @@ export const isWithinInboxRange = (
 };
 
 const INBOX_DATE_TIME_FORMAT = 'LLL dd, yyyy, hh:mm a';
-const INBOX_DATE_FORMAT = 'LLL dd, yyyy';
+const INBOX_DATE_FORMAT = 'LLL d, yyyy';
 
 // Task timeline timestamp in the design format, e.g. "May 13, 2026, 08:45 PM".
 export const formatInboxDateTime = (timestamp?: number): string =>
@@ -207,7 +207,7 @@ export const formatInboxDateTime = (timestamp?: number): string =>
     ? DateTime.fromMillis(timestamp).toFormat(INBOX_DATE_TIME_FORMAT)
     : '';
 
-// Date-only variant, e.g. "May 13, 2026".
+// Date-only variant, e.g. "May 13, 2026" or "Oct 8, 2026".
 export const formatInboxDate = (timestamp?: number): string =>
   timestamp ? DateTime.fromMillis(timestamp).toFormat(INBOX_DATE_FORMAT) : '';
 

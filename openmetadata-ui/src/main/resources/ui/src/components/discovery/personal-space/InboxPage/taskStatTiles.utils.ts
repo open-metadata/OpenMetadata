@@ -20,7 +20,7 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
-import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
+import { getElapsedTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
@@ -96,7 +96,7 @@ export const metadataUpdatedTile = (
         {
           key: 'updatedAt',
           label: t('label.metadata-updated'),
-          value: getRelativeTime(about.updatedAt),
+          value: getElapsedTime(about.updatedAt),
         },
       ]
     : [];

@@ -54,6 +54,7 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  formatInboxDate,
   formatInboxDateTime,
   getActivityBuckets,
   getActivityEventLabel,
@@ -241,6 +242,17 @@ describe('inbox.utils', () => {
       // Same both-present shape as the sort test above: display stays createdAt,
       // never updatedAt, so displayed "Posted on" time is unaffected by the fix.
       expect(getFeedTimestamp(feed)).toBe(200);
+    });
+  });
+
+  describe('formatInboxDate', () => {
+    // "expires Oct 8, 2026" reads without a padded day.
+    it('leaves a single-digit day unpadded', () => {
+      expect(
+        formatInboxDate(
+          DateTime.fromObject({ year: 2026, month: 10, day: 8 }).toMillis()
+        )
+      ).toBe('Oct 8, 2026');
     });
   });
 

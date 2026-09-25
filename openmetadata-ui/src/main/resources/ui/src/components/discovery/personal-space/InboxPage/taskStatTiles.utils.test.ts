@@ -15,7 +15,7 @@
 // the builder read the rest of the module at import time.
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
-  getRelativeTime: (ts: number) => `ago-${ts}`,
+  getElapsedTime: (ts: number) => `ago-${ts}`,
 }));
 
 import {
