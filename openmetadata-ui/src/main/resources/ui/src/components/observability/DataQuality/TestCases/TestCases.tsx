@@ -115,7 +115,7 @@ const TestCases = () => {
         testSummary={testCaseSummary}
       />
       <Box
-        className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+        className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
         direction="col">
         <Box className="tw:p-4">
           <TestCaseListTableHeader
