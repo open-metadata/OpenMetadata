@@ -95,43 +95,35 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('../../../common/ExpandableCard/ExpandableCard', () => ({
+jest.mock('../../../common/WidgetCard/WidgetCard', () => ({
   __esModule: true,
   default: jest.fn(
     ({
       children,
-      cardProps,
+      headerExtra,
+      title,
     }: {
       children: unknown;
-      cardProps?: { title?: unknown };
+      headerExtra?: unknown;
+      title?: unknown;
     }) => {
       const React = require('react');
 
-      return React.createElement('div', {}, cardProps?.title, children);
+      return React.createElement('div', {}, title, headerExtra, children);
     }
   ),
 }));
 
-jest.mock('../../../common/IconButtons/EditIconButton', () => ({
-  EditIconButton: ({
-    children,
-    newLook: _newLook,
-    ...props
-  }: Record<string, unknown>) => {
-    const React = require('react');
+jest.mock('../../../common/WidgetActionButton/WidgetActionButton', () => {
+  const React = require('react');
 
-    return React.createElement('button', props, children);
-  },
-  PlusIconButton: ({
-    children,
-    newLook: _newLook,
-    ...props
-  }: Record<string, unknown>) => {
-    const React = require('react');
-
-    return React.createElement('button', props, children);
-  },
-}));
+  return {
+    WidgetEditButton: (props: Record<string, unknown>) =>
+      React.createElement('button', props),
+    WidgetPlusButton: (props: Record<string, unknown>) =>
+      React.createElement('button', props),
+  };
+});
 
 jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),

@@ -10,28 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
-import { uniqueId } from 'lodash';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
-import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
-import LabelCountSkeleton from '../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
 import { SkeletonInterface } from '../Skeleton.interfaces';
 
 const TagsLeftPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
   return loading ? (
-    <div className="m-b-md p-md">
-      <LabelCountSkeleton isLabel />
-      <Row gutter={32} justify="space-between">
-        <Col className="m-l-xss" span={24}>
-          <ButtonSkeleton />
-        </Col>
-
-        <Col className="m-t-md" span={24}>
-          {getSkeletonMockData().map(() => (
-            <LabelCountSkeleton isCount isLabel key={uniqueId()} />
-          ))}
-        </Col>
-      </Row>
+    <div
+      className="tw:mb-4 tw:flex tw:flex-col tw:gap-4 tw:p-4"
+      data-testid="tags-left-panel-skeleton">
+      <Skeleton height={16} width="40%" />
+      <Skeleton height={24} variant="rounded" />
+      <div className="tw:flex tw:flex-col tw:gap-2">
+        {getSkeletonMockData().map((key) => (
+          <div className="tw:flex tw:items-center tw:gap-2" key={key}>
+            <Skeleton className="tw:flex-1" height={20} />
+            <Skeleton height={20} variant="rounded" width={28} />
+          </div>
+        ))}
+      </div>
     </div>
   ) : (
     children

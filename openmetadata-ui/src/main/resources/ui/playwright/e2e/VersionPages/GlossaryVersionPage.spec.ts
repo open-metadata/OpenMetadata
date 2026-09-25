@@ -169,7 +169,7 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-      page.locator('[data-testid="test-synonym"].diff-added')
+      page.locator('[data-testid="test-synonym"][data-diff="added"]')
     ).toBeVisible();
 
     await expect(
@@ -177,7 +177,9 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-      page.locator('.diff-added [data-testid="reference-link-reference1"]')
+      page.locator(
+        '[data-testid="reference-link-reference1"][data-diff="added"]'
+      )
     ).toBeVisible();
   });
 
@@ -368,7 +370,9 @@ test('Version diff shows synonym changes', async ({ page }) => {
     await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Check for synonym diff
-    const synonymDiff = page.locator('[data-testid="test-synonym"].diff-added');
+    const synonymDiff = page.locator(
+      '[data-testid="test-synonym"][data-diff="added"]'
+    );
 
     await expect(synonymDiff).toBeVisible();
   } finally {
@@ -390,7 +394,7 @@ test('Version diff shows reference changes', async ({ page }) => {
 
     // Check for reference diff
     const referenceDiff = page.locator(
-      '.diff-added [data-testid="reference-link-reference1"]'
+      '[data-testid="reference-link-reference1"][data-diff="added"]'
     );
 
     await expect(referenceDiff).toBeVisible();

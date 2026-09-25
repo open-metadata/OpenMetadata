@@ -129,13 +129,15 @@ export function resolveColumnTitle<T>(
  */
 export function getColumnStickyStyle(
   fixed: ColumnType<unknown>['fixed'],
-  zIndex: number
+  zIndex: number,
+  // Opaque so scrolled content doesn't show through; a token so it flips in dark.
+  background = 'var(--om-color-bg-surface)'
 ): React.CSSProperties {
   if (fixed === 'left') {
-    return { background: 'white', left: 0, position: 'sticky', zIndex };
+    return { background, left: 0, position: 'sticky', zIndex };
   }
   if (fixed === 'right') {
-    return { background: 'white', position: 'sticky', right: 0, zIndex };
+    return { background, position: 'sticky', right: 0, zIndex };
   }
 
   return {};

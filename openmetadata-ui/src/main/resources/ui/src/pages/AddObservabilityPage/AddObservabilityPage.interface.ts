@@ -19,7 +19,11 @@ import type {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import type { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
-import { EventFilterRule } from '../../generated/events/eventSubscription';
+import {
+  AlertType,
+  EventFilterRule,
+} from '../../generated/events/eventSubscription';
+import { EventType } from '../../generated/type/changeEvent';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import type {
   AddAlertPageLoadingState,
@@ -40,11 +44,15 @@ export interface ObservabilityFilterResourceDescriptor {
   containerEntities?: string[];
   name?: string;
   supportedActions?: EventFilterRule[];
+  /** Event types the source emits; narrows the event-type filter options. */
+  supportedEventTypes?: EventType[];
   supportedFilters?: EventFilterRule[];
 }
 
 export interface UseObservabilityAlertFormOptions {
   afterSaveAction?: (fqn: string) => Promise<void> | void;
+  /** Defaults to Observability; selects which resource catalogue to load. */
+  alertType?: AlertType;
   form?: FormInstance<ModifiedCreateEventSubscription>;
   fqn?: string;
   onCancel?: () => void;

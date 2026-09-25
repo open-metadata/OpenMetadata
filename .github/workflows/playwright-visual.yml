@@ -34,6 +34,7 @@ name: playwright-visual-regression
 on:
   merge_group:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
@@ -98,6 +99,9 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/.npmrc'
               - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
               - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              # The UI links and builds core-components (see its package.json
+              # `preinstall`), so a core-components change reaches every screenshot.
+              - 'openmetadata-ui-core-components/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts'
               - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts'
@@ -174,6 +178,7 @@ jobs:
             --network host \
             --ipc host \
             -e CI=true \
+            -e PLAYWRIGHT_IS_OSS=true \
             -e PLAYWRIGHT_TEST_BASE_URL \
             -v "$PWD:/work" \
             -w /work \
