@@ -19,6 +19,7 @@ import {
   ModalOverlay,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { AxiosError } from 'axios';
 import { Duration } from 'luxon';
 import { FormEvent, useCallback, useState } from 'react';
@@ -137,17 +138,35 @@ const RetentionPeriod = ({
         isOpen={isEdit}
         onOpenChange={(open) => !open && onCancel()}>
         <Modal>
+          {/* Overrides reproduce the antd Modal (modal.less) this replaced. */}
           <Dialog
             data-testid="retention-period-modal"
-            title={editTitle}
+            panelClassName="tw:rounded-lg tw:shadow-[2px_4px_12px_var(--om-legacy-color-0-0-0-0-2)] tw:dark:shadow-overlay"
             width={520}>
+            <Dialog.Header
+              className={classNames(
+                'tw:border-b tw:border-[var(--om-legacy-color-dde3ea)] tw:px-6 tw:py-4',
+                'tw:sm:px-6 tw:sm:pt-4 tw:*:font-medium! tw:*:leading-[22px]!',
+                'tw:*:text-black/85! tw:dark:border-subtle tw:dark:*:text-primary!'
+              )}
+              title={editTitle}
+            />
             <form
               data-testid="retention-period-form"
               id="retention-period-form"
               onSubmit={handleSubmit}>
-              <Dialog.Content>
-                <Alert variant="brand">
-                  {t('message.retention-period-description')}
+              <Dialog.Content className="tw:gap-3 tw:px-6 tw:pt-6 tw:pb-12 tw:sm:px-6">
+                <Alert
+                  className={classNames(
+                    'tw:rounded-xs tw:border-[var(--ant-info-color-deprecated-border)]',
+                    'tw:bg-[var(--ant-info-color-deprecated-bg)] tw:p-[15px]',
+                    'tw:dark:border-utility-blue-300 tw:dark:bg-utility-blue-50'
+                  )}
+                  showIcon={false}
+                  variant="brand">
+                  <span className="tw:leading-[22px] tw:text-primary">
+                    {t('message.retention-period-description')}
+                  </span>
                 </Alert>
                 <Input
                   inputDataTestId="retention-period-input"
@@ -156,14 +175,16 @@ const RetentionPeriod = ({
                   onChange={setValue}
                 />
               </Dialog.Content>
-              <Dialog.Footer>
+              <Dialog.Footer className="tw:mt-0 tw:border-[var(--om-legacy-color-dde3ea)] tw:sm:mt-0 tw:dark:border-subtle tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
                 <Button
-                  color="secondary"
+                  className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+                  color="tertiary"
                   data-testid="cancel-button"
                   onPress={onCancel}>
                   {t('label.cancel')}
                 </Button>
                 <Button
+                  className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal"
                   color="primary"
                   data-testid="save-button"
                   isLoading={isLoading}

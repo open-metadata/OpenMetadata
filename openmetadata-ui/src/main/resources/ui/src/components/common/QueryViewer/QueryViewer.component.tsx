@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Badge, Button, Card, Tooltip } from '@openmetadata/ui-core-components';
-import { Copy } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -64,7 +64,12 @@ const QueryViewer = ({
             hasQuery ? (
               <div className="tw:flex tw:items-center tw:gap-2">
                 <Badge
-                  className="tw:h-6.5 tw:rounded-xl tw:bg-quaternary tw:px-2 tw:text-quaternary tw:outline-secondary"
+                  className={classNames(
+                    'tw:h-6.5 tw:rounded-xl tw:bg-[var(--om-legacy-color-eeeeee)] tw:px-2',
+                    'tw:text-[var(--om-legacy-color-757575)]',
+                    'tw:outline-utility-gray-blue-100 tw:dark:bg-quaternary',
+                    'tw:dark:text-quaternary tw:dark:outline-secondary'
+                  )}
                   data-testid="query-line"
                   size="sm">
                   {queryLine}
@@ -74,10 +79,17 @@ const QueryViewer = ({
                   title={t('message.copy-to-clipboard')}>
                   <Button
                     aria-label={t('message.copy-to-clipboard')}
-                    className="tw:size-8 tw:*:data-icon:size-4"
+                    className="tw:size-8"
                     color="secondary"
                     data-testid="query-entity-copy-button"
-                    iconLeading={Copy}
+                    iconLeading={
+                      <CopyIcon
+                        aria-hidden
+                        className="tw:text-[var(--om-legacy-color-37352f)] tw:dark:text-fg-secondary tw:[&_path]:fill-current"
+                        height={16}
+                        width={16}
+                      />
+                    }
                     onPress={() => onCopyToClipBoard()}
                   />
                 </Tooltip>
