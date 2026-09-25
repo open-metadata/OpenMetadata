@@ -42,7 +42,11 @@ const injectTestIdToken = (page: Page) =>
     (window as unknown as Record<string, string>)[key] = 'e2e-fake-id-token';
   }, E2E_ID_TOKEN_KEY);
 
-test.describe('SSO Test Login', () => {
+// Tagged so the SSO nightly's Basic leg (`--grep @basic`) enrols this
+// spec — it only needs an authenticated admin (default Basic auth is
+// fine) and now runs under the `sso-auth` project exclusively (see
+// playwright.config.ts `sso-auth.testMatch`).
+test.describe('SSO Test Login', { tag: ['@sso', '@basic'] }, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await enableSSOEditMode(page);
