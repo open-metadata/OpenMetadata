@@ -73,12 +73,13 @@ jest.mock(
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     // Echo the interpolated user so a test can tell the events apart.
-    t: (key: string, options?: { user?: string }) =>
-      options?.user ? `${key}:${options.user}` : key,
+    t: (key: string, options?: { user?: string; assignee?: string }) =>
+      [key, options?.user, options?.assignee].filter(Boolean).join(':'),
   }),
 }));
 
 import { Task, TaskCategory } from '../../../../../generated/entity/tasks/task';
+import { TestCaseResolutionStatus } from '../../../../../generated/tests/testCaseResolutionStatus';
 import TaskActivityTimeline from './TaskActivityTimeline';
 
 const task = {
@@ -146,6 +147,32 @@ describe('TaskActivityTimeline', () => {
       screen.getByText('message.task-event-created:X')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('task-comment-card')).not.toBeInTheDocument();
+  });
+
+  it('names the assignee of an incident reassignment', () => {
+    render(
+      <TaskActivityTimeline
+        incidentStatuses={
+          [
+            {
+              id: 's1',
+              testCaseResolutionStatusType: 'Assigned',
+              updatedBy: { id: 't', name: 'teddy', displayName: 'Teddy' },
+              testCaseResolutionStatusDetails: {
+                assignee: { id: 'h', name: 'harsh', displayName: 'Harsh' },
+              },
+              timestamp: 20,
+            },
+          ] as unknown as TestCaseResolutionStatus[]
+        }
+        task={{ ...task, category: TaskCategory.Incident } as Task}
+        onCommentChanged={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByText('message.task-event-incident-assigned:Teddy:Harsh')
+    ).toBeInTheDocument();
   });
 
   it('reads an incident as opened rather than created', () => {

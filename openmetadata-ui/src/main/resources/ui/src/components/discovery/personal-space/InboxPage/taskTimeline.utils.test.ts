@@ -12,6 +12,10 @@
  */
 
 import { Task, TaskCategory } from '../../../../generated/entity/tasks/task';
+import {
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../../../../generated/tests/testCaseResolutionStatus';
 import { buildTaskTimeline } from './taskTimeline.utils';
 
 const buildTask = (overrides: Partial<Task> = {}): Task =>
@@ -182,6 +186,127 @@ describe('buildTaskTimeline', () => {
           entry.id.startsWith('assigned-')
         )
       ).toBe(false);
+    });
+  });
+
+  // An incident's status records are its real history: each change, who made
+  // it and when, in place of the events guessed from the task's own fields.
+  describe('incident status history', () => {
+    const teddy = { id: 't', name: 'teddy' };
+    const harsh = { id: 'h', name: 'harsh.vador' };
+    const incident = buildTask({
+      category: TaskCategory.Incident,
+      payload: { failureReason: 'Row count dropped' },
+      assignees: [harsh],
+    } as unknown as Partial<Task>);
+    const statuses = [
+      {
+        id: 's1',
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
+        updatedBy: teddy,
+        timestamp: 100,
+      },
+      {
+        id: 's2',
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK,
+        updatedBy: teddy,
+        timestamp: 200,
+      },
+      {
+        id: 's3',
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+        updatedBy: teddy,
+        testCaseResolutionStatusDetails: { assignee: harsh },
+        timestamp: 300,
+      },
+    ] as unknown as TestCaseResolutionStatus[];
+
+    const events = () =>
+      buildTaskTimeline(incident, statuses).filter(
+        (entry) => entry.kind === 'event'
+      );
+
+    it('reads one timed event per status change, by who made it', () => {
+      expect(
+        events().map((event) =>
+          event.kind === 'event'
+            ? [event.textKey, event.actor?.name, event.timestamp]
+            : []
+        )
+      ).toEqual([
+        ['message.task-event-incident-opened-with-reason', 'teddy', 100],
+        ['message.task-event-incident-acknowledged', 'teddy', 200],
+        ['message.task-event-incident-assigned', 'teddy', 300],
+      ]);
+    });
+
+    it('names the assignee and the failure reason', () => {
+      const [opened, , assigned] = events();
+
+      expect(opened.kind === 'event' && opened.textParams?.reason).toBe(
+        'Row count dropped'
+      );
+      expect(assigned.kind === 'event' && assigned.textParams?.assignee).toBe(
+        harsh
+      );
+    });
+
+    it('names a bare-id assignee from the task', () => {
+      const [assigned] = buildTaskTimeline(incident, [
+        {
+          id: 's5',
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+          testCaseResolutionStatusDetails: { assignee: { id: 'h' } },
+          timestamp: 500,
+        },
+      ] as unknown as TestCaseResolutionStatus[]);
+
+      expect(assigned.kind === 'event' && assigned.textParams?.assignee).toBe(
+        harsh
+      );
+    });
+
+    it('says reassigned when nobody can name the assignee', () => {
+      const [assigned] = buildTaskTimeline(incident, [
+        {
+          id: 's6',
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+          testCaseResolutionStatusDetails: { assignee: { id: 'stranger' } },
+          timestamp: 600,
+        },
+      ] as unknown as TestCaseResolutionStatus[]);
+
+      expect(assigned).toMatchObject({
+        textKey: 'message.task-event-incident-reassigned',
+      });
+    });
+
+    it('drops the guessed untimed assignment', () => {
+      expect(
+        events().some(
+          (event) =>
+            event.kind === 'event' &&
+            event.textKey === 'message.task-event-assigned'
+        )
+      ).toBe(false);
+    });
+
+    it('reads a resolution by whoever resolved it, as an outcome', () => {
+      const [resolved] = buildTaskTimeline(incident, [
+        {
+          id: 's4',
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+          updatedBy: teddy,
+          testCaseResolutionStatusDetails: { resolvedBy: harsh },
+          timestamp: 400,
+        },
+      ] as unknown as TestCaseResolutionStatus[]);
+
+      expect(resolved).toMatchObject({
+        textKey: 'message.task-event-incident-resolved',
+        actor: harsh,
+        tone: 'success',
+      });
     });
   });
 });

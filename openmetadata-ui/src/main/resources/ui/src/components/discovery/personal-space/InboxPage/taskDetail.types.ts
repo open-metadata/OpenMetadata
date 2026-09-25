@@ -14,7 +14,10 @@
 import { BadgeColors } from '@openmetadata/ui-core-components';
 import { EntityReference, Task } from '../../../../generated/entity/tasks/task';
 import { TestCase } from '../../../../generated/tests/testCase';
-import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import {
+  Severities,
+  TestCaseResolutionStatus,
+} from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 
@@ -113,6 +116,8 @@ export interface TaskAboutEntity {
   testCaseTableFqn?: string;
   /** Severity on the incident's latest status record, which the task does not carry. */
   incidentSeverity?: Severities;
+  /** The incident's status records, oldest first: its real event history. */
+  incidentStatuses?: TestCaseResolutionStatus[];
   ownerCount?: number;
   updatedAt?: number;
 }

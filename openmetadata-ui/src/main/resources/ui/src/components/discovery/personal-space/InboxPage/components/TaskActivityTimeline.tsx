@@ -20,10 +20,12 @@ import {
   XClose,
 } from '@untitledui/icons';
 import classNames from 'classnames';
+import { mapValues } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
+import { TestCaseResolutionStatus } from '../../../../../generated/tests/testCaseResolutionStatus';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { formatInboxDateTime } from '../inbox.utils';
 import {
@@ -37,6 +39,8 @@ import TaskCommentRow from './TaskCommentRow';
 
 export interface TaskActivityTimelineProps {
   task: Task;
+  /** An incident's status records; they replace the guessed events. */
+  incidentStatuses?: TestCaseResolutionStatus[];
   /** Reload the task after a comment is edited or deleted. */
   onCommentChanged: () => void;
 }
@@ -90,6 +94,9 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
           size="text-xs">
           {t(event.textKey, {
             user: event.actor ? getEntityName(event.actor) : '',
+            ...mapValues(event.textParams, (value) =>
+              typeof value === 'string' ? value : getEntityName(value)
+            ),
           })}
         </Typography>
       </Box>
@@ -112,10 +119,14 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
  */
 const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
   task,
+  incidentStatuses,
   onCommentChanged,
 }) => {
   const { t } = useTranslation();
-  const entries = useMemo(() => buildTaskTimeline(task), [task]);
+  const entries = useMemo(
+    () => buildTaskTimeline(task, incidentStatuses),
+    [task, incidentStatuses]
+  );
 
   const renderEntry = (entry: TaskTimelineEntry) => {
     if (entry.kind === 'event') {

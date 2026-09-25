@@ -96,8 +96,8 @@ describe('useTaskAboutEntity', () => {
   it('reads the severity from the latest incident status', async () => {
     mockGetIncidents.mockResolvedValue({
       data: [
-        { timestamp: 1, severity: 'Severity4' },
         { timestamp: 2, severity: 'Severity1' },
+        { timestamp: 1, severity: 'Severity4' },
       ],
     });
 
@@ -109,6 +109,10 @@ describe('useTaskAboutEntity', () => {
 
     expect(mockGetIncidents).toHaveBeenCalledWith('t1');
     expect(result.current.about?.incidentSeverity).toBe('Severity1');
+    // Kept oldest first: it is the incident's timeline.
+    expect(
+      result.current.about?.incidentStatuses?.map((status) => status.timestamp)
+    ).toEqual([1, 2]);
   });
 
   // A test case has no tier; the tested table's is the one that matters.

@@ -685,6 +685,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         )}
 
         <TaskActivityTimeline
+          incidentStatuses={about?.incidentStatuses}
           task={task}
           onCommentChanged={handleCommentMutated}
         />

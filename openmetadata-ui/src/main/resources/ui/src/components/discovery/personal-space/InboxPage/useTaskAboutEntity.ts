@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { maxBy } from 'lodash';
+import { last, sortBy } from 'lodash';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { getLineageByEntityCount } from '../../../../rest/lineageAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
@@ -61,12 +61,12 @@ const getAboutTarget = (task?: Task): TaskAboutTarget | undefined => {
 };
 
 /** The test case's own context: what it tests, and against which table. */
-// The incident's status history, keyed by the task id (a task-first incident's
-// state id). Only the latest record's severity is wanted; a failed read just
-// drops the severity tile.
-const fetchIncidentSeverity = (stateId: string) =>
+// The incident's status history, oldest first, keyed by the task id (a
+// task-first incident's state id). It drives the timeline and the severity
+// tile; a failed read just leaves both to what the task itself records.
+const fetchIncidentStatuses = (stateId: string) =>
   getListTestCaseIncidentByStateId(stateId)
-    .then((response) => maxBy(response.data, 'timestamp')?.severity)
+    .then((response) => sortBy(response.data, 'timestamp'))
     .catch(() => undefined);
 
 // A test case carries no tier of its own; the tier that matters is the tested
@@ -84,11 +84,11 @@ const fetchTestCaseContext = async (
   fqn: string,
   stateId?: string
 ): Promise<TaskAboutEntity> => {
-  const [testCase, incidentSeverity] = await Promise.all([
+  const [testCase, incidentStatuses] = await Promise.all([
     getTestCaseByFqn(fqn, {
       fields: [TabSpecificField.OWNERS, TabSpecificField.TEST_DEFINITION],
     }),
-    stateId ? fetchIncidentSeverity(stateId) : undefined,
+    stateId ? fetchIncidentStatuses(stateId) : undefined,
   ]);
   const testCaseTableFqn = testCase.entityLink
     ? EntityLink.getEntityFqn(testCase.entityLink)
@@ -99,7 +99,8 @@ const fetchTestCaseContext = async (
     tier: await fetchTableTier(testCaseTableFqn),
     testCase,
     testCaseTableFqn,
-    incidentSeverity,
+    incidentSeverity: last(incidentStatuses)?.severity,
+    incidentStatuses,
   };
 };
 
