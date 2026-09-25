@@ -20,14 +20,6 @@ const readOptions = async (listbox: Locator) => {
   return (await options.allInnerTexts()).map((text) => text.trim());
 };
 
-/**
- * React Aria closes a popover when an ancestor of its trigger scrolls. click() scrolls a
- * trigger below the fold into view, and that scroll event can land a frame after the popover
- * opened, closing it again. Scrolling first leaves nothing to scroll during the click.
- */
-const scrollTriggerIntoView = (trigger: Locator) =>
-  trigger.scrollIntoViewIfNeeded();
-
 /** A focused combobox does not always reopen on click; ArrowDown opens it. */
 const openCombobox = async (combobox: Locator) => {
   await combobox.click();
@@ -35,16 +27,18 @@ const openCombobox = async (combobox: Locator) => {
 };
 
 /**
- * Opens a core Select or ComboBox and clicks one of its options. The short option timeout
- * turns a popover that still closed late into a retry that reopens it, instead of waiting
- * forever on a detached option.
+ * Opens a core Select or ComboBox and clicks one of its options.
+ * React Aria closes a popover when an ancestor of its trigger scrolls, and click() scrolls a
+ * trigger below the fold into view a frame after the popover opens, so every picker helper
+ * scrolls its trigger into view before opening. The short option timeout turns a late close
+ * into a retry that reopens it, instead of waiting forever on a detached option.
  */
 const pickOption = async (
   trigger: Locator,
   option: Locator,
   open: () => Promise<void> = () => trigger.click()
 ) => {
-  await scrollTriggerIntoView(trigger);
+  await trigger.scrollIntoViewIfNeeded();
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
       await open();
@@ -58,7 +52,7 @@ const pickOption = async (
  * A focused combobox does not always reopen on click, so retry the open until it is expanded.
  */
 const openComboboxOptions = async (page: Page, combobox: Locator) => {
-  await scrollTriggerIntoView(combobox);
+  await combobox.scrollIntoViewIfNeeded();
   await expect(async () => {
     if ((await combobox.getAttribute('aria-expanded')) !== 'true') {
       await openCombobox(combobox);
@@ -75,7 +69,7 @@ const openComboboxOptions = async (page: Page, combobox: Locator) => {
 /** Opens a core Select; like the combobox, a first click can land before the trigger is ready. */
 const openSelect = async (select: Locator) => {
   const trigger = select.getByRole('button');
-  await scrollTriggerIntoView(trigger);
+  await trigger.scrollIntoViewIfNeeded();
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
       await trigger.click();
