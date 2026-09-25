@@ -53,8 +53,8 @@ export interface UseObservabilityAlertFormOptions {
 
 export interface UseAlertFormDataOptions
   extends Omit<UseObservabilityAlertFormOptions, 'form'> {
-  /** The chosen alert source; narrows filters and triggers to what it supports. */
-  selectedResource?: string;
+  /** The source catalogue, narrowed to the chosen source (see useAlertResources). */
+  alertResources: UseObservabilityAlertResourcesReturn;
 }
 
 export interface UseObservabilityAlertResourcesReturn {

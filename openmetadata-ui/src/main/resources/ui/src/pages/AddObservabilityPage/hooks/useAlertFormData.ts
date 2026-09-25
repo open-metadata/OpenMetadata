@@ -34,20 +34,18 @@ import {
   UseAlertFormDataOptions,
   UseAlertFormDataReturn,
 } from '../AddObservabilityPage.interface';
-import { useAlertResources } from './useAlertResources';
 import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 
 /**
- * Alert form state, resources, templates and save for a caller that owns the form values,
- * so it needs no antd form. The selected source narrows the filters and triggers.
+ * Alert form state, templates and save for a caller that owns the form values, so it needs
+ * no antd form. The caller loads the resources (see useAlertResources) and passes them in.
  */
 export function useAlertFormData({
   afterSaveAction,
-  alertType,
+  alertResources,
   fqn: fqnProp,
   onCancel,
-  selectedResource,
-}: UseAlertFormDataOptions = {}): UseAlertFormDataReturn {
+}: UseAlertFormDataOptions): UseAlertFormDataReturn {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { getResourcePermission } = usePermissionProvider();
@@ -75,7 +73,6 @@ export function useAlertFormData({
     () => alertsClassBase.getAddAlertFormExtraButtons(),
     []
   );
-  const alertResources = useAlertResources(alertType, selectedResource);
   const alertTemplates = useObservabilityAlertTemplates({
     extraFormWidgets,
     getResourcePermission,

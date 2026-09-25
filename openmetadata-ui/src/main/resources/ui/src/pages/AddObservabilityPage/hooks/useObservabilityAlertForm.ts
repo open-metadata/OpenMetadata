@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { Form } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import {
   ModifiedCreateEventSubscription,
   UseObservabilityAlertFormOptions,
   UseObservabilityAlertFormReturn,
 } from '../AddObservabilityPage.interface';
 import { useAlertFormData } from './useAlertFormData';
+import { useObservabilityAlertResources } from './useObservabilityAlertResources';
 
 export function useObservabilityAlertForm({
   form: providedForm,
@@ -27,9 +26,10 @@ export function useObservabilityAlertForm({
 }: UseObservabilityAlertFormOptions = {}): UseObservabilityAlertFormReturn {
   const [internalForm] = useForm<ModifiedCreateEventSubscription>();
   const form = providedForm ?? internalForm;
-  const [selectedResource] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
+  const alertResources = useObservabilityAlertResources(
+    form,
+    options.alertType
+  );
 
-  return { ...useAlertFormData({ ...options, selectedResource }), form };
+  return { ...useAlertFormData({ ...options, alertResources }), form };
 }
