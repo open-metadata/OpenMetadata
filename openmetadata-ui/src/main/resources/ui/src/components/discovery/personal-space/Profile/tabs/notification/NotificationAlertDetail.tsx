@@ -560,17 +560,17 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           </Tabs.Item>
         </Tabs.List>
         <Tabs.Panel
-          className="tw:overflow-auto tw:p-1"
+          className="tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.CONFIGURATION}>
           {alert && <NotificationAlertConfigView alertDetails={alert} />}
         </Tabs.Panel>
         <Tabs.Panel
-          className="tw:overflow-auto tw:p-1"
+          className="tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.RECENT_EVENTS}>
           {alert && <NotificationRecentEvents alertDetails={alert} />}
         </Tabs.Panel>
         <Tabs.Panel
-          className="tw:overflow-auto tw:p-1"
+          className="tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.DIAGNOSTIC_INFO}>
           <NotificationDiagnosticInfo
             diagnosticData={diagnosticData}

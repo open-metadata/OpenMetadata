@@ -23,6 +23,7 @@ import { ResourceEntity } from '../../../../../../context/PermissionProvider/Per
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import Loader from '../../../../../common/Loader/Loader';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { NotificationView } from './Notification.types';
 import { hashSubPathToView, viewToSubPath } from './Notification.utils';
@@ -63,16 +64,24 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     setDetailHeaderActions(undefined);
   }, [view.type]);
 
+  const permissionsLoaded = !isEmpty(permissions);
+
   const canAddAlert = useMemo(
     () =>
-      !isEmpty(permissions) &&
+      permissionsLoaded &&
       checkPermission(
         Operation.Create,
         ResourceEntity.EVENT_SUBSCRIPTION,
         permissions
       ),
-    [permissions]
+    [permissions, permissionsLoaded]
   );
+
+  useEffect(() => {
+    if (view.type === 'add' && permissionsLoaded && !canAddAlert) {
+      onNavigate({ type: 'list' });
+    }
+  }, [view.type, permissionsLoaded, canAddAlert, onNavigate]);
 
   const [resolvedDetailName, setResolvedDetailName] = useState<string>('');
 
@@ -225,13 +234,13 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     }
 
     if (view.type === 'add') {
-      if (!canAddAlert) {
-        onNavigate({ type: 'list' });
-
-        return null;
+      if (!permissionsLoaded) {
+        return <Loader />;
       }
 
-      return <NotificationAlertForm onNavigate={onNavigate} />;
+      return canAddAlert ? (
+        <NotificationAlertForm onNavigate={onNavigate} />
+      ) : null;
     }
 
     if (view.type === 'edit') {
