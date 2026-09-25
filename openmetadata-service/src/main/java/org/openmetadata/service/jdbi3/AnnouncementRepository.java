@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.type.AnnouncementStatus;
+import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -73,6 +74,11 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       announcement.setName("announcement-" + announcement.getId());
     }
     inheritOwnersAndDomainsFromTargetEntity(announcement);
+    // Backfill the default so a type is guaranteed even when the POJO initializer is bypassed
+    // (e.g. an explicit "type": null on create, or a JSON Patch that removes /type).
+    if (announcement.getType() == null) {
+      announcement.setType(AnnouncementType.Information);
+    }
     if (announcement.getStatus() == null) {
       long now = System.currentTimeMillis();
       if (announcement.getEndTime() < now) {

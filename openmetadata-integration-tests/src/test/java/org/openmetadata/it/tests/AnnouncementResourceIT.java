@@ -241,6 +241,24 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   }
 
   @Test
+  void testAnnouncementExplicitNullTypeBackfillsInformation(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("null-type-ann"))
+            .withDescription("Type omitted explicitly")
+            .withType(null)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = createEntity(request);
+    assertEquals(AnnouncementType.Information, created.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Information, fetched.getType());
+  }
+
+  @Test
   void testPatchAnnouncementType(TestNamespace ns) {
     Announcement created = createEntity(createMinimalRequest(ns));
     assertEquals(AnnouncementType.Information, created.getType());
