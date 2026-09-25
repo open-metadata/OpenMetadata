@@ -232,3 +232,16 @@
 tbody {
   --markdown-clamp-fade-color: var(--om-color-bg-surface);
 }
+
+// Dark: hovered/selected rows switch to bg-secondary; the fade has to follow or
+// it paints a surface-coloured band over the row.
+.dark-mode tbody tr:hover,
+.dark-mode tbody tr[data-selected] {
+  --markdown-clamp-fade-color: var(--om-color-bg-secondary);
+
+  // Pinned (sticky) cells paint an inline surface background, so they stayed a
+  // lighter strip while the rest of the row highlighted.
+  > td[style*='sticky'] {
+    background-color: var(--om-color-bg-secondary) !important;
+  }
+}

@@ -34,7 +34,8 @@
 
   &.lineage-path-highlight > .lineage-scene-layer-node {
     border-color: @primary-color;
-    box-shadow: 0 0 0 1px @primary-color, 0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+    box-shadow: 0 0 0 1px @primary-color,
+      0 2px 8px var(--om-legacy-color-16-24-40-0-12);
   }
 }
 
@@ -45,8 +46,8 @@
   border: 1px solid @lineage-border;
   border-radius: var(--om-radius-10);
   overflow: hidden;
-  transition: border-color var(--om-duration-150) ease, box-shadow var(--om-duration-150) ease,
-    opacity var(--om-duration-150) ease;
+  transition: border-color var(--om-duration-150) ease,
+    box-shadow var(--om-duration-150) ease, opacity var(--om-duration-150) ease;
 
   &.lineage-path-highlight {
     border-color: @primary-color;
@@ -63,7 +64,8 @@
     &.lineage-path-highlight,
     &.custom-node-header-active {
       border-color: @primary-color;
-      box-shadow: 0 0 0 1px @primary-color, 0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+      box-shadow: 0 0 0 1px @primary-color,
+        0 2px 8px var(--om-legacy-color-16-24-40-0-12);
     }
 
     .lineage-node-content {
@@ -95,7 +97,8 @@
     .custom-node-label-container {
       .entity-label-container {
         min-height: 64px;
-        padding: var(--om-space-10) var(--om-space-46) var(--om-space-10) var(--om-space-14);
+        padding: var(--om-space-10) var(--om-space-46) var(--om-space-10)
+          var(--om-space-14);
 
         .entity-service-icon {
           display: inline-flex;
@@ -200,7 +203,8 @@
       cursor: pointer;
       opacity: 0;
       box-shadow: @box-shadow-base;
-      transition: opacity var(--om-duration-150) ease, background-color var(--om-duration-150) ease;
+      transition: opacity var(--om-duration-150) ease,
+        background-color var(--om-duration-150) ease;
 
       svg {
         width: 14px;
@@ -899,4 +903,55 @@
 
 .react-flow__edge :hover {
   stroke: @primary-color;
+}
+
+// Dark: the lineage canvas hardcodes white surfaces (node shell, handles,
+// badge tab, expand/drill buttons) and a static grey border. Map them to the
+// theme tokens; light keeps the rules above unchanged.
+.dark-mode {
+  .ant-btn.ant-btn-background-ghost.expand-btn,
+  .ant-btn.ant-btn-background-ghost.expand-btn:hover {
+    background-color: var(--om-color-bg-surface);
+  }
+
+  .react-flow__node-default,
+  .react-flow__node-group,
+  .react-flow__node-input,
+  .react-flow__node-output {
+    background-color: var(--om-color-bg-surface) !important;
+  }
+
+  .lineage-node {
+    border-color: var(--om-color-border-primary);
+
+    &.lineage-scene-layer-node {
+      background: var(--om-color-bg-surface);
+    }
+
+    // Drill/zoom button: @primary-1 is the static light brand tint.
+    .lineage-node-content .lineage-scene-drill-button {
+      &,
+      &:hover,
+      &:focus-visible {
+        background: var(--tw-background-color-brand-primary);
+      }
+    }
+  }
+
+  .lineage-base-node .lineage-node-badge-container {
+    border-color: var(--om-color-border-primary);
+    background: var(--om-color-bg-surface);
+  }
+
+  .lineage-node
+    .custom-node-column-container.custom-node-header-column-tracing {
+    background-color: var(--om-color-bg-surface);
+    color: var(--om-color-text-primary);
+  }
+
+  .react-flow .lineage-node-handle,
+  .react-flow .lineage-node-handle-expand-all {
+    border-color: var(--om-color-border-primary) !important;
+    background: var(--om-color-bg-surface) !important;
+  }
 }

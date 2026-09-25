@@ -55,4 +55,25 @@
   .bar-menu-wrapper--format-group--separator {
     border-left: 1px solid @format-group-separator-color;
   }
+
+  // The @*-color hexes above are static light greys; in dark the toolbar sits a
+  // step below the editor surface with theme-aware hover/active fills.
+  .dark-mode & {
+    background-color: var(--om-color-bg-secondary);
+    border-bottom-color: var(--om-color-border-secondary);
+
+    .bar-menu-wrapper--format-group--button {
+      &:hover {
+        background-color: var(--om-color-bg-secondary-hover);
+      }
+
+      &.active {
+        background-color: var(--om-color-bg-tertiary);
+      }
+    }
+
+    .bar-menu-wrapper--format-group--separator {
+      border-left-color: var(--om-color-border-secondary);
+    }
+  }
 }
