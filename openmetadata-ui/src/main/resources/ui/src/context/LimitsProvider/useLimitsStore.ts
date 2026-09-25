@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { isNil, startCase } from 'lodash';
+import { useCallback } from 'react';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
 import i18n from '../../utils/i18next/LocalUtil';
@@ -205,3 +206,22 @@ export const useLimitStore = create<{
     return rLimit;
   },
 }));
+
+/**
+ * Whether a resource's hard limit blocks new entries, using the same rule as
+ * `LimitWrapper`: limits apply only when enabled and counted (-1 = unlimited).
+ */
+export const useIsLimitReached = () => {
+  const { config, resourceLimit } = useLimitStore();
+
+  return useCallback(
+    (resource?: string) => {
+      const limit = resource ? resourceLimit[resource] : undefined;
+
+      return Boolean(
+        config?.enable && limit?.currentCount !== -1 && limit?.limitReached
+      );
+    },
+    [config?.enable, resourceLimit]
+  );
+};
