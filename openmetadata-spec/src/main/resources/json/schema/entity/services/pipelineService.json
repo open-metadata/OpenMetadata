@@ -43,7 +43,8 @@
         "Mulesoft",
         "MicrosoftFabricPipeline",
         "Data360Pipeline",
-        "SapBw4HanaPipeline"
+        "SapBw4HanaPipeline",
+        "TableauPipeline"
       ],
       "javaEnums": [
         {
@@ -126,6 +127,9 @@
         },
         {
           "name": "SapBw4HanaPipeline"
+        },
+        {
+          "name": "TableauPipeline"
         }
       ]
     },
@@ -220,6 +224,9 @@
             },
             {
               "$ref": "./connections/pipeline/sapBw4HanaPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/tableauPipelineConnection.json"
             }
           ]
         }

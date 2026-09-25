@@ -447,6 +447,11 @@ plugins: dict[str, set[str]] = {
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
+    "tableaupipeline": {
+        VERSIONS["tableau"],
+        VERSIONS["validators"],
+        VERSIONS["packaging"],
+    },
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {VERSIONS["sqlalchemy-vertica"], DATA_DIFF["vertica"]},

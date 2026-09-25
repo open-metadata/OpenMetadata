@@ -62,6 +62,9 @@ from metadata.utils.ssl_manager import SSLManager
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
+        TableauPipelineConnection,
+    )
 
 logger = ingestion_logger()
 
@@ -172,8 +175,8 @@ def get_connection(connection: TableauConnectionConfig) -> TableauClient:
 
 
 def set_verify_ssl(
-    connection: TableauConnectionConfig,
-) -> tuple[bool | str, SSLManager | None]:
+    connection: TableauConnectionConfig | TableauPipelineConnection,
+) -> tuple[bool | str | None, SSLManager | None]:
     """
     Set verify ssl based on connection configuration
     ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
@@ -207,7 +210,9 @@ def set_verify_ssl(
     )
 
 
-def build_server_config(connection: TableauConnectionConfig) -> dict[str, dict[str, Any]]:
+def build_server_config(
+    connection: TableauConnectionConfig | TableauPipelineConnection,
+) -> dict[str, dict[str, Any]]:
     """
     Build client configuration
     Args:
