@@ -21,13 +21,15 @@ jest.mock('../../../rest/alertsAPI', () => ({
   getAlertEventsFromId: jest.fn(),
 }));
 
+let mockInitialPage = 1;
+
 jest.mock('../../../hooks/paging/usePaging', () => {
   const { useState } = jest.requireActual('react');
 
   return {
     usePaging: () => {
       const [paging, setPaging] = useState({ total: 0 });
-      const [currentPage, setCurrentPage] = useState(1);
+      const [currentPage, setCurrentPage] = useState(mockInitialPage);
 
       return {
         currentPage,
@@ -79,6 +81,7 @@ const successfulEvent = {
 describe('AlertAiRecentEventsTab', () => {
   beforeEach(() => {
     mockGetEvents.mockReset();
+    mockInitialPage = 1;
   });
 
   it('lists recent events and shows the event details when expanded', async () => {
@@ -169,6 +172,24 @@ describe('AlertAiRecentEventsTab', () => {
     expect(
       await screen.findByText('message.no-results-for-filters')
     ).toBeInTheDocument();
+  });
+
+  it('loads the page restored from the URL', async () => {
+    mockInitialPage = 3;
+    mockGetEvents.mockResolvedValue({
+      data: [successfulEvent],
+      paging: { total: 40 },
+    });
+
+    render(<AlertAiRecentEventsTab alertDetails={alertDetails} />);
+
+    await screen.findByTestId('event-collapse-event-1');
+
+    expect(mockGetEvents).toHaveBeenCalledTimes(1);
+    expect(mockGetEvents).toHaveBeenCalledWith({
+      id: 'alert-id',
+      params: { limit: 15, paginationOffset: 30 },
+    });
   });
 
   it('fetches the next page by offset', async () => {

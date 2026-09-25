@@ -232,18 +232,14 @@ const AlertAiRecentEventsTab = ({
     [filter, handlePagingChange, id, isFiltered, pageSize]
   );
 
+  // The page can come from the URL (usePaging restores it), so every fetch follows currentPage.
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+    fetchEvents((currentPage - 1) * pageSize);
+  }, [currentPage, fetchEvents, pageSize]);
 
   const handleFilterChange = (key: Key | null) => {
     setFilter((key as AlertRecentEventFilters) ?? AlertRecentEventFilters.ALL);
     handlePageChange(INITIAL_PAGING_VALUE);
-  };
-
-  const handleEventsPageChange = (page: number) => {
-    handlePageChange(page);
-    fetchEvents((page - 1) * pageSize);
   };
 
   const renderEvents = () => {
@@ -343,7 +339,7 @@ const AlertAiRecentEventsTab = ({
           pageSize={pageSize}
           pageSizeOptions={PAGE_SIZE_OPTIONS}
           total={computeTotalPages(pageSize, paging.total)}
-          onPageChange={handleEventsPageChange}
+          onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
       )}
