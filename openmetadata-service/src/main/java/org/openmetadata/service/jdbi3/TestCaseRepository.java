@@ -1232,10 +1232,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String searchFilter, String query, List<UUID> excludeIds) {
     Set<String> excluded = excludeIds.stream().map(UUID::toString).collect(Collectors.toSet());
     SearchRepository searchRepository = Entity.getSearchRepository();
-    // Sort on the keyword subfield (fullyQualifiedName is analyzed text): a unique, stable key
-    // for search_after paging, matching how the search layer sorts FQN elsewhere.
-    SearchSortFilter sortFilter =
-        new SearchSortFilter("fullyQualifiedName.keyword", "asc", null, null);
+    // search_after skips ties at a page boundary, so the sort key must be unique. Not FQN:
+    // fullyQualifiedName.keyword is lowercase-normalized, so case-variant names tie.
+    SearchSortFilter sortFilter = new SearchSortFilter("id.keyword", "asc", null, null);
     List<UUID> matchingIds = new ArrayList<>();
     Object[] searchAfter = null;
     while (true) {
