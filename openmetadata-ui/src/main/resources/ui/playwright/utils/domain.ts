@@ -50,6 +50,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
 import {
@@ -1053,45 +1054,26 @@ export const addAssetsToDataProduct = async (
 
   await checkAssetsCount(page, assets.length);
 
+  // Data-product page URL to return to after visiting each asset's page.
+  const dataProductUrl = page.url();
+
   for (const asset of assets) {
-    const name = get(asset, 'entityResponseData.name') as string | undefined;
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
       | string
       | undefined;
 
-    if (!name || !fqn) {
+    if (!fqn) {
       throw new Error(
-        `addAssetsToDataProduct verification: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+        `addAssetsToDataProduct verification: asset missing entityResponseData.fullyQualifiedName`
       );
     }
 
-    // Narrow the asset tab to this one card before clicking. Under
-    // SharedInfra the data-product asset tab is stable in count (we just
-    // added N), but goBack() re-mounts the list and click retries can
-    // race the re-render — see the sibling narrow in the picker helper
-    // in utils/tag.ts:verifyEntityTypeFilterInTagAssets. The tab wraps
-    // the search into `*<value>*`, so match the name anywhere in the URL
-    // rather than `q=<name>`.
-    const searchRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(name)
-    );
-    await page.getByTestId('searchbar').fill(name);
-    await searchRes;
-    // The response arrives before React finishes swapping the list from
-    // N cards to 1; without a loader-wait here the entity-link click
-    // sees the target repositioning and retries "element is not stable"
-    // until the test-timeout closes the browser.
-    await waitForAllLoadersToDisappear(page);
-
-    await page
-      .locator(
-        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
-      )
-      .click();
-
-    await waitForAllLoadersToDisappear(page);
+    // Navigate to the entity page via URL instead of clicking the
+    // entity-link inside the asset card. The card body re-renders
+    // asynchronously as tags / owners / counts stream in, so `.click()`
+    // retries "element is not stable" for the full test timeout under
+    // SharedInfra load. Direct navigation bypasses the stability race.
+    await visitEntityPageByFqn({ page, endpoint: asset.endpoint, fqn });
 
     await expect(
       page
@@ -1099,10 +1081,12 @@ export const addAssetsToDataProduct = async (
         .getByTestId('data-products-list')
         .getByTestId(`data-product-${dataProductFqn}`)
     ).toBeVisible();
-
-    await page.goBack();
-    await waitForAllLoadersToDisappear(page);
   }
+
+  // Return to the data-product page so the caller's next assertions
+  // (asset count, remove-assets, delete) can run against it.
+  await page.goto(dataProductUrl);
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeAssetsFromDataProduct = async (
