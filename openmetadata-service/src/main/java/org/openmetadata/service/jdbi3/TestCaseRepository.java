@@ -1449,17 +1449,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             relationshipChange.set(
                 addAllTestCasesToLogicalTestSuiteFlush(testSuite.getId(), excludedTestCaseIds)));
 
+    postLogicalSuiteRelationshipUpdatesInBatches(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private void postLogicalSuiteRelationshipUpdatesInBatches(
+      LogicalSuiteRelationshipChange relationshipChange) {
     for (List<EntityReference> batch :
-        Lists.partition(relationshipChange.get().testCaseReferences(), 100)) {
+        Lists.partition(
+            relationshipChange.testCaseReferences(), LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE)) {
       Map<UUID, Long> batchRevisions = new HashMap<>();
       for (EntityReference testCase : batch) {
         batchRevisions.put(
-            testCase.getId(), relationshipChange.get().testCaseRevisions().get(testCase.getId()));
+            testCase.getId(), relationshipChange.testCaseRevisions().get(testCase.getId()));
       }
       postLogicalSuiteRelationshipUpdate(List.copyOf(batch), batchRevisions);
     }
-    updateLogicalTestSuite(relationshipChange.get());
-    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
   private LogicalSuiteRelationshipChange addAllTestCasesToLogicalTestSuiteFlush(
@@ -1501,6 +1507,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   // Cap each relationship write + post-update so a large filtered selection cannot exceed DB
   // statement/bind limits or transaction memory (the unfiltered "all" path batches similarly).
   private static final int BULK_MATCH_WRITE_BATCH_SIZE = 500;
+  private static final int LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE = 100;
 
   /**
    * Add every test case matching the given search/filter (as shown in the UI) to the bundle suite,
@@ -1513,11 +1520,35 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (matchingIds.isEmpty()) {
       return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE);
     }
-    RestUtil.PutResponse<TestSuite> response = null;
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                addMatchingTestCasesToLogicalTestSuiteFlush(testSuite.getId(), matchingIds)));
+
+    postLogicalSuiteRelationshipUpdatesInBatches(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private LogicalSuiteRelationshipChange addMatchingTestCasesToLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> matchingIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
     for (List<UUID> batch : Lists.partition(matchingIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
-      response = addTestCasesToLogicalTestSuite(testSuite, batch);
+      bulkAddToRelationship(testSuiteId, batch, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     }
-    return response;
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> addedTestCases =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
   }
 
   private List<UUID> resolveMatchingTestCaseIds(
