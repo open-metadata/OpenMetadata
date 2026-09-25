@@ -1502,7 +1502,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     ODCSImportAnalyzer.QualityRuleOptions quality =
         new ODCSImportAnalyzer.QualityRuleOptions(
             createTestCases,
-            testCaseGuard.canCreateTestCasesOn(entityRef),
+            createTestCases && testCaseGuard.canCreateTestCasesOn(entityRef),
             linkedTestCaseIds(loadExistingContract(entityRef)),
             securityContext.getUserPrincipal().getName());
     ContractValidation validation =
