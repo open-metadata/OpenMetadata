@@ -14,20 +14,25 @@
 import { act, renderHook } from '@testing-library/react';
 import { useSettingsHash } from './useSettingsHash';
 
+const mockNavigate = jest.fn();
+let mockHash = '';
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: () => ({
+    hash: mockHash,
+    pathname: '/',
+    search: '',
+    state: null,
+    key: 'default',
+  }),
+  useNavigate: () => mockNavigate,
+}));
+
 describe('useSettingsHash', () => {
-  let replaceStateSpy: jest.SpyInstance;
-  let dispatchEventSpy: jest.SpyInstance;
-
   beforeEach(() => {
-    window.location.hash = '';
-    replaceStateSpy = jest.spyOn(window.history, 'replaceState');
-    dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
-  });
-
-  afterEach(() => {
-    replaceStateSpy.mockRestore();
-    dispatchEventSpy.mockRestore();
-    window.location.hash = '';
+    mockHash = '';
+    mockNavigate.mockClear();
   });
 
   it('should return null tab when no hash', () => {
@@ -39,7 +44,7 @@ describe('useSettingsHash', () => {
   });
 
   it('should parse #notification correctly', () => {
-    window.location.hash = '#notification';
+    mockHash = '#notification';
     const { result } = renderHook(() => useSettingsHash());
 
     expect(result.current.state.tab).toBe('notification');
@@ -48,7 +53,7 @@ describe('useSettingsHash', () => {
   });
 
   it('should parse #notification/subpath correctly', () => {
-    window.location.hash = '#notification/alerts';
+    mockHash = '#notification/alerts';
     const { result } = renderHook(() => useSettingsHash());
 
     expect(result.current.state.tab).toBe('notification');
@@ -56,7 +61,7 @@ describe('useSettingsHash', () => {
   });
 
   it('should parse hash with query params', () => {
-    window.location.hash = '#notification?page=2&cursorType=after';
+    mockHash = '#notification?page=2&cursorType=after';
     const { result } = renderHook(() => useSettingsHash());
 
     expect(result.current.state.tab).toBe('notification');
@@ -73,10 +78,9 @@ describe('useSettingsHash', () => {
       result.current.setHash('notification', 'my-alert');
     });
 
-    expect(replaceStateSpy).toHaveBeenCalledWith(
-      null,
-      '',
-      '#notification/my-alert'
+    expect(mockNavigate).toHaveBeenCalledWith(
+      { hash: 'notification/my-alert' },
+      { replace: true }
     );
   });
 
@@ -87,14 +91,14 @@ describe('useSettingsHash', () => {
       result.current.setHash('notification', undefined, { page: '2' });
     });
 
-    expect(replaceStateSpy).toHaveBeenCalledWith(
-      null,
-      '',
-      '#notification?page=2'
+    expect(mockNavigate).toHaveBeenCalledWith(
+      { hash: 'notification?page=2' },
+      { replace: true }
     );
   });
 
   it('should clear hash via clearHash', () => {
+    mockHash = '#notification';
     window.location.hash = '#notification';
     const { result } = renderHook(() => useSettingsHash());
 
@@ -102,10 +106,9 @@ describe('useSettingsHash', () => {
       result.current.clearHash();
     });
 
-    expect(replaceStateSpy).toHaveBeenCalled();
-
-    const callArg = replaceStateSpy.mock.calls[0][2] as string;
-
-    expect(callArg).not.toContain('#');
+    expect(mockNavigate).toHaveBeenCalledWith(
+      { pathname: '/', search: '', hash: '' },
+      { replace: true }
+    );
   });
 });

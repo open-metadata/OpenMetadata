@@ -225,6 +225,12 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     }
 
     if (view.type === 'add') {
+      if (!canAddAlert) {
+        onNavigate({ type: 'list' });
+
+        return null;
+      }
+
       return <NotificationAlertForm onNavigate={onNavigate} />;
     }
 

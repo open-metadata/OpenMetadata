@@ -103,6 +103,7 @@ jest.mock('../../../../../../utils/AlertsClassBase', () => ({
     }),
     handleAlertSave: jest.fn(),
     getAddAlertFormExtraWidgets: jest.fn().mockReturnValue({}),
+    getAddAlertFormExtraButtons: jest.fn().mockReturnValue({}),
   },
 }));
 
@@ -133,16 +134,37 @@ jest.mock('../../../../../../constants/Form.constants', () => ({
   NAME_FIELD_RULES: [],
 }));
 
+jest.mock('../../../../../../constants/constants', () => ({
+  PAGE_SIZE_LARGE: 50,
+}));
+
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({
+    usePermissionProvider: jest.fn().mockReturnValue({
+      getResourcePermission: jest.fn().mockResolvedValue({}),
+    }),
+  })
+);
+
+jest.mock('../../../../../../utils/PermissionDerivation', () => ({
+  getDerivedPermissionFlags: jest.fn().mockReturnValue({ canViewAll: false }),
+}));
+
+jest.mock('../../../../../../utils/PermissionsUtils', () => ({
+  DEFAULT_ENTITY_PERMISSION: {},
+}));
+
+jest.mock('../../../../../../rest/notificationtemplateAPI', () => ({
+  getAllNotificationTemplates: jest.fn().mockResolvedValue({ data: [] }),
+}));
+
 jest.mock('../../../../../common/Loader/Loader', () =>
   jest.fn(() => <div data-testid="loader" />)
 );
 
 jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
   jest.fn(() => <div data-testid="rich-text-editor" />)
-);
-
-jest.mock('../../../../../common/InlineAlert/InlineAlert', () =>
-  jest.fn(() => null)
 );
 
 jest.mock('./NotificationSourceSelect', () =>

@@ -54,6 +54,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         .mockImplementation(({ children, id }) => (
           <div data-testid={`tab-${id}`}>{children}</div>
         )),
+      Panel: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
 }));
@@ -111,6 +114,12 @@ jest.mock('../../../../../../rest/observabilityAPI', () => ({
     latestOffset: 100,
     currentOffset: 95,
   }),
+  getAlertEventsDiagnosticsInfo: jest.fn().mockResolvedValue({
+    totalEventsCount: 12,
+    pendingEventsCount: 5,
+    successfulEventsCount: 10,
+    failedEventsCount: 2,
+  }),
   syncOffset: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -121,6 +130,7 @@ jest.mock(
       hasViewAccess: true,
       canEditAll: true,
       canEditDescription: true,
+      canEditOwners: true,
       canDelete: true,
       isLoading: false,
     }),

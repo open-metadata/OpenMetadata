@@ -39,6 +39,7 @@ import { AlertDetailTabs } from '../../../../../../enums/Alerts.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../../generated/entity/data/table';
 import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
+import { EventsRecord } from '../../../../../../generated/events/api/eventsRecord';
 import {
   EventSubscription,
   ProviderType,
@@ -50,6 +51,7 @@ import {
   updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
 import {
+  getAlertEventsDiagnosticsInfo,
   getDiagnosticInfo,
   syncOffset,
 } from '../../../../../../rest/observabilityAPI';
@@ -164,16 +166,9 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
 // ─── Diagnostic stats row ────────────────────────────────────────────────────
 
 const DiagnosticStatsSummary: FC<{
-  diagnosticData: EventSubscriptionDiagnosticInfo;
-}> = ({ diagnosticData }) => {
+  eventsRecord: EventsRecord;
+}> = ({ eventsRecord }) => {
   const { t } = useTranslation();
-  const totalEvents =
-    (diagnosticData.successfulEventsCount ?? 0) +
-    (diagnosticData.failedEventsCount ?? 0);
-  const pendingEvents = Math.max(
-    0,
-    (diagnosticData.latestOffset ?? 0) - (diagnosticData.currentOffset ?? 0)
-  );
 
   return (
     <>
@@ -182,7 +177,7 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.total-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {totalEvents}
+          {eventsRecord.totalEventsCount ?? 0}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -190,7 +185,7 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {pendingEvents}
+          {eventsRecord.pendingEventsCount ?? 0}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -198,7 +193,7 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.failed-event-plural')}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {diagnosticData.failedEventsCount ?? 0}
+          {eventsRecord.failedEventsCount ?? 0}
         </Typography>
       </Box>
     </>
@@ -271,31 +266,6 @@ function buildHeaderActions({
   );
 }
 
-// ─── Tab content ─────────────────────────────────────────────────────────────
-
-const AlertDetailTabContent: FC<{
-  activeTab: AlertDetailTabs;
-  alert?: EventSubscription;
-  diagnosticData?: EventSubscriptionDiagnosticInfo;
-  fqn: string;
-}> = ({ activeTab, alert, diagnosticData, fqn }) => {
-  if (activeTab === AlertDetailTabs.CONFIGURATION && alert) {
-    return <NotificationAlertConfigView alertDetails={alert} />;
-  }
-
-  if (activeTab === AlertDetailTabs.RECENT_EVENTS && alert) {
-    return <NotificationRecentEvents alertDetails={alert} />;
-  }
-
-  if (activeTab === AlertDetailTabs.DIAGNOSTIC_INFO) {
-    return (
-      <NotificationDiagnosticInfo diagnosticData={diagnosticData} fqn={fqn} />
-    );
-  }
-
-  return null;
-};
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
@@ -326,6 +296,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   };
   const [diagnosticData, setDiagnosticData] =
     useState<EventSubscriptionDiagnosticInfo>();
+  const [eventsRecord, setEventsRecord] = useState<EventsRecord>();
 
   // Inline description editing
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -361,9 +332,10 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   const fetchAlertDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [alertData, diagData] = await Promise.allSettled([
+      const [alertData, diagData, eventsData] = await Promise.allSettled([
         getAlertsFromName(fqn),
         getDiagnosticInfo(fqn),
+        getAlertEventsDiagnosticsInfo({ fqn, listCountOnly: true }),
       ]);
 
       if (alertData.status === 'fulfilled') {
@@ -373,6 +345,9 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
       }
       if (diagData.status === 'fulfilled') {
         setDiagnosticData(diagData.value);
+      }
+      if (eventsData.status === 'fulfilled') {
+        setEventsRecord(eventsData.value);
       }
     } finally {
       setIsLoading(false);
@@ -567,8 +542,8 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
             }
           />
         </Box>
-        {diagnosticData && (
-          <DiagnosticStatsSummary diagnosticData={diagnosticData} />
+        {eventsRecord && (
+          <DiagnosticStatsSummary eventsRecord={eventsRecord} />
         )}
       </Box>
 
@@ -584,16 +559,25 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
             {t('label.diagnostic-info')}
           </Tabs.Item>
         </Tabs.List>
+        <Tabs.Panel
+          className="tw:overflow-auto tw:p-1"
+          id={AlertDetailTabs.CONFIGURATION}>
+          {alert && <NotificationAlertConfigView alertDetails={alert} />}
+        </Tabs.Panel>
+        <Tabs.Panel
+          className="tw:overflow-auto tw:p-1"
+          id={AlertDetailTabs.RECENT_EVENTS}>
+          {alert && <NotificationRecentEvents alertDetails={alert} />}
+        </Tabs.Panel>
+        <Tabs.Panel
+          className="tw:overflow-auto tw:p-1"
+          id={AlertDetailTabs.DIAGNOSTIC_INFO}>
+          <NotificationDiagnosticInfo
+            diagnosticData={diagnosticData}
+            fqn={fqn}
+          />
+        </Tabs.Panel>
       </Tabs>
-
-      <div className="tw:overflow-auto tw:p-1">
-        <AlertDetailTabContent
-          activeTab={activeTab}
-          alert={alert}
-          diagnosticData={diagnosticData}
-          fqn={fqn}
-        />
-      </div>
 
       <DeleteModal
         entityTitle={alertName}

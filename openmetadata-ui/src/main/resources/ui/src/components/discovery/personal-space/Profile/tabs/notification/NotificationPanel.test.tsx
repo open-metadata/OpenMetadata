@@ -40,6 +40,20 @@ jest.mock('@untitledui/icons', () => ({
   Bell01: jest.fn(() => <span data-testid="bell-icon" />),
 }));
 
+let mockSubPath = '';
+const mockSetHash = jest.fn((_tab: string, subPath?: string) => {
+  mockSubPath = subPath ?? '';
+});
+
+jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useSettingsHash: () => ({
+    state: { tab: 'notification', subPath: mockSubPath, params: {} },
+    setHash: mockSetHash,
+    clearHash: jest.fn(),
+    updateParams: jest.fn(),
+  }),
+}));
+
 const mockCheckPermission = jest.fn().mockReturnValue(true);
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
@@ -84,6 +98,7 @@ describe('NotificationPanel', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSubPath = '';
   });
 
   it('should render NotificationLanding by default', () => {
@@ -93,11 +108,8 @@ describe('NotificationPanel', () => {
   });
 
   it('should render NotificationAlertsPanel when navigated to list view', () => {
+    mockSubPath = 'alerts';
     render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
-
-    act(() => {
-      capturedLandingProps.onNavigate({ type: 'list' });
-    });
 
     expect(screen.getByTestId('notification-alerts-panel')).toBeInTheDocument();
   });
@@ -115,25 +127,15 @@ describe('NotificationPanel', () => {
   });
 
   it('should render NotificationAlertForm when navigated to add view', () => {
+    mockSubPath = 'alerts/add';
     render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
-
-    act(() => {
-      capturedLandingProps.onNavigate({ type: 'add' });
-    });
 
     expect(screen.getByTestId('notification-alert-form')).toBeInTheDocument();
   });
 
   it('should render NotificationAlertDetail when navigated to detail view', () => {
+    mockSubPath = 'alerts/test-fqn';
     render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
-
-    act(() => {
-      capturedLandingProps.onNavigate({
-        type: 'detail',
-        fqn: 'test-fqn',
-        name: 'Test Alert',
-      });
-    });
 
     expect(screen.getByTestId('notification-alert-detail')).toBeInTheDocument();
   });

@@ -76,6 +76,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   const {
     page: currentPage,
     pageSize: hashPageSize,
+    cursor: hashCursor,
     setPage: setHashPage,
   } = useHashPagingParams();
   const pageSize = hashPageSize || PAGE_SIZE_BASE;
@@ -272,7 +273,8 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
         if (page === newPage) {
           setAlerts(data);
           setPaging(responsePaging);
-          setHashPage(newPage, undefined, undefined, pageSize);
+          const prevCursor = cursorCache.get(newPage - 1)?.after;
+          setHashPage(newPage, undefined, prevCursor, pageSize);
           await fetchAllAlertsPermission(data);
         }
       }
@@ -299,7 +301,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
 
     const cachedCursor = cursorCache.get(newPage - 1)?.after;
     if (cachedCursor) {
-      setHashPage(newPage, undefined, undefined, pageSize);
+      setHashPage(newPage, undefined, cachedCursor, pageSize);
       fetchAlerts({ after: cachedCursor }, newPage);
 
       return;
@@ -316,47 +318,10 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   };
 
   useEffect(() => {
-    if (currentPage <= 1) {
+    if (currentPage <= 1 || !hashCursor) {
       fetchAlerts(undefined, 1);
     } else {
-      // Cursor-based API: fetch page 1 for its cursor, then walk forward.
-      (async () => {
-        const page1Paging = await fetchAlerts(undefined, 1);
-        if (!page1Paging?.after) {
-          return;
-        }
-        const requestId = ++fetchRequestIdRef.current;
-        setIsLoading(true);
-        try {
-          let pg = 1;
-          let cursor: Paging = page1Paging;
-          while (pg < currentPage && cursor.after) {
-            pg++;
-            // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk on mount
-            const { data, paging: rp } = await getAllAlerts({
-              alertType: AlertType.Notification,
-              limit: pageSize,
-              after: cursor.after,
-            });
-            if (requestId !== fetchRequestIdRef.current) {
-              return;
-            }
-            cursor = rp;
-            setCursorCache((prev) => updateCursorCache(prev, pg, rp));
-            if (pg === currentPage) {
-              setAlerts(data);
-              setPaging(rp);
-              await fetchAllAlertsPermission(data);
-            }
-          }
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          if (requestId === fetchRequestIdRef.current) {
-            setIsLoading(false);
-          }
-        }
-      })();
+      fetchAlerts({ after: hashCursor }, currentPage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize]);

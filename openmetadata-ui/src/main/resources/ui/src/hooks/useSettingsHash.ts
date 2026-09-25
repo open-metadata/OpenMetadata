@@ -16,8 +16,8 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useSyncExternalStore,
 } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PROFILE_NAV_IDS } from '../constants/Profile.constants';
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
 import type { ProfileNavId } from '../components/discovery/personal-space/Profile/profileNavConfig';
@@ -113,16 +113,6 @@ function buildHash(
   return hash;
 }
 
-function subscribeToHash(callback: () => void) {
-  window.addEventListener('hashchange', callback);
-
-  return () => window.removeEventListener('hashchange', callback);
-}
-
-function getHashSnapshot() {
-  return window.location.hash;
-}
-
 /**
  * Hook that syncs settings modal navigation with `location.hash`.
  *
@@ -130,9 +120,13 @@ function getHashSnapshot() {
  * Hash presence means the modal should be open; clearing the hash closes it.
  */
 export const useSettingsHash = () => {
-  const hash = useSyncExternalStore(subscribeToHash, getHashSnapshot);
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const state = useMemo(() => parseHash(hash), [hash]);
+  const state = useMemo(
+    () => parseHash(location.hash),
+    [location.hash]
+  );
 
   const setHash = useCallback(
     (
@@ -143,23 +137,20 @@ export const useSettingsHash = () => {
       const next = buildHash(tab, subPath, params);
 
       if (window.location.hash !== next) {
-        window.history.replaceState(null, '', next);
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        navigate({ hash: next.slice(1) }, { replace: true });
       }
     },
-    []
+    [navigate]
   );
 
   const clearHash = useCallback(() => {
     if (window.location.hash) {
-      window.history.replaceState(
-        null,
-        '',
-        window.location.pathname + window.location.search
+      navigate(
+        { pathname: location.pathname, search: location.search, hash: '' },
+        { replace: true }
       );
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
     }
-  }, []);
+  }, [navigate, location.pathname, location.search]);
 
   const updateParams = useCallback(
     (params: Record<string, string | undefined>) => {
