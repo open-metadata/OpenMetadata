@@ -22,8 +22,7 @@
 }
 
 .custom-menu.ant-menu-root.ant-menu-inline {
-  // Surface: white in light (as before); in dark it matches the card it sits in.
-  background: var(--om-color-bg-surface);
+  background: var(--tw-color-bg-primary);
 
   .ant-menu-item::after {
     left: 0;
@@ -79,12 +78,6 @@
 
   .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
     border-right: 1px solid @left-panel-border-color;
-  }
-
-  // antd paints the selected item with the static light brand tint
-  // (@primary-1); use the dark selected brand surface instead.
-  .dark-mode & .ant-menu-item-selected {
-    background-color: var(--tw-background-color-brand-primary);
   }
 }
 

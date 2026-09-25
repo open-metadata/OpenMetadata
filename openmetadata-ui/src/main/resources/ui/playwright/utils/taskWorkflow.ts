@@ -366,7 +366,9 @@ export const openEntityTasksTab = async (page: Page) => {
   await activityFeedTab.click();
   await waitForPageLoaded(page);
 
-  const menuItemTaskTab = page.getByRole('menuitem', { name: /tasks/i });
+  const menuItemTaskTab = page
+    .getByTestId('global-setting-left-panel')
+    .getByRole('button', { name: /tasks/i });
   await menuItemTaskTab.waitFor({ state: 'visible' });
 
   const taskListResponse = waitForTaskListResponse(page);
