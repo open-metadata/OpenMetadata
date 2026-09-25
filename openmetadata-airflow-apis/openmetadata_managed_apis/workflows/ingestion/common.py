@@ -479,9 +479,7 @@ class CustomPythonOperator(PythonOperator):
             else:
                 dag_run = context.get("dag_run")
                 if dag_run is not None:
-                    workflow_config.pipelineRunId = Uuid(
-                        pipeline_run_id(dag_run.dag_id, dag_run.run_id)
-                    )
+                    workflow_config.pipelineRunId = Uuid(pipeline_run_id(dag_run.dag_id, dag_run.run_id))
             apply_source_config_override(workflow_config, params.get(SOURCE_CONFIG_OVERRIDE_PARAM))
         return super().execute(context)
 
