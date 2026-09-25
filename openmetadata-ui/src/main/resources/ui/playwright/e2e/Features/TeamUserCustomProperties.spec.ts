@@ -37,6 +37,8 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 const STRING_PROPERTY_TYPE = 'String';
 
 // UserClass has no page-visit helper; the profile route takes the user name directly.

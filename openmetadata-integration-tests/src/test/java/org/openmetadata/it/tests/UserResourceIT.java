@@ -2992,14 +2992,14 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String property = ns.prefix("userDeskLocation");
     CustomPropertyTestSupport.registerStringProperty(client, "user", property);
     try {
-      String name = ns.prefix("cpUser").replaceAll("[^a-zA-Z0-9._-]", "");
+      String name = ns.prefix("cpUser");
       User user =
           client
               .users()
               .create(
                   new CreateUser()
                       .withName(name)
-                      .withEmail(name + "@open-metadata.org")
+                      .withEmail(toValidEmail(name))
                       .withDescription("User carrying a custom property")
                       .withExtension(Map.of(property, "desk-7")));
       String id = user.getId().toString();
