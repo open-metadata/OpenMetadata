@@ -32,6 +32,7 @@ import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
@@ -47,6 +48,7 @@ import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
+import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -120,18 +122,6 @@ import {
 } from './DataAssetsHeader.interface';
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';
-
-// `!` beats the secondary Button's own bg/text/hover utilities, as the old
-// header-scoped less rule did. Aborted stays in data-asset-header.less: its
-// light hexes (@orange-*) have no matching token.
-const CONTRACT_RESULT_BUTTON_CLASS: Partial<
-  Record<ContractExecutionStatus, string>
-> = {
-  [ContractExecutionStatus.Failed]:
-    'tw:text-utility-error-600! tw:bg-utility-error-50!',
-  [ContractExecutionStatus.Running]:
-    'tw:text-utility-brand-700! tw:bg-utility-brand-50!',
-};
 
 // Extracted so the boolean short-circuits live in their own complexity scope
 // instead of DataAssetsHeader's render body.
@@ -1044,28 +1034,35 @@ export const DataAssetsHeader = ({
                 currentTier={tier?.tagFQN}
                 footerActionButtonsClassName="p-x-md"
                 updateTier={onTierUpdate}>
-                <EditIconButton
-                  newLook
-                  data-testid="edit-tier"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.tier'),
-                  })}
-                />
+                <Pressable>
+                  <EditIconButton
+                    newLook
+                    data-testid="edit-tier"
+                    size="small"
+                    title={t('label.edit-entity', {
+                      entity: t('label.tier'),
+                    })}
+                  />
+                </Pressable>
               </TierCard>
             )}
           </div>
           {(() => {
-            const tierValue = tier ? (
-              <ClassificationTag
-                color={tier.style?.color}
-                data-testid="Tier"
-                href={getTagRedirectLink(tier)}
-                icon={tier.style?.iconURL}
-                label={getTagName(tier)}
-                size="sm"
-              />
-            ) : (
+            if (tier) {
+              // The chip is a link to the tag, so it is not also a tier trigger.
+              return (
+                <ClassificationTag
+                  color={tier.style?.color}
+                  data-testid="Tier"
+                  href={getTagRedirectLink(tier)}
+                  icon={tier.style?.iconURL}
+                  label={getTagName(tier)}
+                  size="sm"
+                />
+              );
+            }
+
+            const placeholder = (
               <Typography
                 as="span"
                 className="tw:cursor-pointer tw:text-primary"
@@ -1081,12 +1078,20 @@ export const DataAssetsHeader = ({
                 currentTier={tier?.tagFQN}
                 footerActionButtonsClassName="p-x-md"
                 updateTier={onTierUpdate}>
-                <span className="tw:inline-flex tw:cursor-pointer">
-                  {tierValue}
-                </span>
+                <Pressable>
+                  <span
+                    aria-label={t('label.edit-entity', {
+                      entity: t('label.tier'),
+                    })}
+                    className="tw:inline-flex tw:cursor-pointer"
+                    role="button"
+                    tabIndex={0}>
+                    {placeholder}
+                  </span>
+                </Pressable>
               </TierCard>
             ) : (
-              tierValue
+              placeholder
             );
           })()}
         </div>

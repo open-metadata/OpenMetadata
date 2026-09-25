@@ -14,6 +14,7 @@
 import type { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import { ContractExecutionStatus } from '../generated/type/contractExecutionStatus';
 
 export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
 
@@ -90,3 +91,18 @@ export const DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS: {
 export const MAX_LATENCY_UNITS = ['minute', 'hour', 'day'];
 export const REFRESH_FREQUENCY_UNITS = ['hour', 'day', 'week', 'month', 'year'];
 export const RETENTION_UNITS = ['day', 'week', 'month', 'year'];
+
+// Latest-result button tints. `!` beats the secondary core Button's own
+// bg/text/hover utilities. Aborted's light hexes (legacy @orange-7/@orange-50)
+// have no upstream palette step, so they come from legacy tokens and flip to
+// the utility-orange pair in dark.
+export const CONTRACT_RESULT_BUTTON_CLASS: Partial<
+  Record<ContractExecutionStatus, string>
+> = {
+  [ContractExecutionStatus.Failed]:
+    'tw:text-utility-error-600! tw:bg-utility-error-50!',
+  [ContractExecutionStatus.Aborted]:
+    'tw:text-(--om-legacy-color-b93815)! tw:bg-(--om-legacy-color-fef6ee)! tw:dark:text-utility-orange-700! tw:dark:bg-utility-orange-50!',
+  [ContractExecutionStatus.Running]:
+    'tw:text-utility-brand-700! tw:bg-utility-brand-50!',
+};

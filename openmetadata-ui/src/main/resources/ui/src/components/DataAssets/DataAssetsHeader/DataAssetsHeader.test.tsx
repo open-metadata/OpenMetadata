@@ -1212,6 +1212,30 @@ describe('DataAssetsHeader component', () => {
       expect(button).toHaveClass('failed');
     });
 
+    it('should tint the aborted contract button via legacy tokens that flip in dark', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
+      });
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          ...MOCK_DATA_CONTRACT,
+          latestResult: { status: ContractExecutionStatus.Aborted },
+        })
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      expect(screen.getByTestId('data-contract-latest-result-btn')).toHaveClass(
+        'tw:text-(--om-legacy-color-b93815)!',
+        'tw:bg-(--om-legacy-color-fef6ee)!',
+        'tw:dark:text-utility-orange-700!',
+        'tw:dark:bg-utility-orange-50!'
+      );
+    });
+
     it('should render data contract button when customizedPage tabs is undefined', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
