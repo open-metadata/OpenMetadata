@@ -71,6 +71,26 @@ export interface SsoProviderFixture {
    */
   usesBackendRefresh: boolean;
   /**
+   * true when the backend's refresh response for this provider sets a
+   * Set-Cookie header the browser can observe (Basic/LDAP via
+   * BasicAuthAuthenticator, confidential OIDC via
+   * GenericAuthenticator). false for backend-refresh providers that
+   * carry the session inside the JWT body without setting a cookie —
+   * asserting HttpOnly/SameSite/Secure on those would be a false-fail
+   * because there's no cookie to inspect. Subset of `usesBackendRefresh`.
+   */
+  hasBackendIssuedRefreshCookie: boolean;
+  /**
+   * true when the browser drives an OIDC /authorize handshake with
+   * PKCE (`code_challenge` + `S256`). Every public-OIDC client OM
+   * ships — oidc-client via UserManager (keycloak-oidc-public),
+   * Auth0's SPA SDK, MSAL, Okta's OIDC — uses PKCE by default.
+   * false for providers with no /authorize step at all (Basic, LDAP,
+   * SAML) and for confidential OIDC (client_secret binds the code
+   * exchange server-side; no browser PKCE). Gates Scenario 1a.
+   */
+  usesPkce: boolean;
+  /**
    * true when the provider's Renewer can recover on cold load (page
    * reload with a mangled `app_state.primary` in storage) without
    * re-prompting the IdP. Backend-refresh providers always can (the
