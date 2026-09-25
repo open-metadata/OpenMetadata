@@ -3,7 +3,9 @@
 Ingests Tableau Prep flows as OpenMetadata Pipelines. Captures the flow DAG,
 run history for observability, and flow-level lineage — the tables and
 published data sources a flow reads and writes, and the flows that consume
-it — via the Tableau Metadata API.
+it — via the Tableau Metadata API. Extract refreshes of published data
+sources and workbooks are ingested as pipelines too, with their refresh jobs
+as run history.
 
 ## Capability matrix
 
@@ -20,7 +22,10 @@ it — via the Tableau Metadata API.
 | Custom SQL input parsing | Yes | Only for upstream tables Tableau returns without a name, as the dashboard connector does |
 | Downstream flow lineage (pipeline → pipeline) | Yes | `Flow.nextDownstreamFlows` (direct consumers only) |
 | Column-level lineage | No | The flow is a lineage node, and OpenMetadata drops column lineage on edges that end at a pipeline |
-| Extract refresh history | No | Planned — see below |
+| Extract refresh pipelines | Yes | One pipeline per data source / workbook with an extract refresh task; `includeExtractRefreshes` (default on) |
+| Extract refresh status | Yes | Refresh jobs (full and incremental) as pipeline status, with Tableau's job notes as the failure reason; needs a site administrator |
+| Extract refresh lineage (pipeline → data model) | Yes | The published data source, or each embedded extract of the workbook, resolved to the dashboard connector's data model |
+| Failure reason on flow runs | Yes | Notes of the flow run's background job |
 | Schedule metadata | No | Planned |
 
 ## Requirements
@@ -34,6 +39,9 @@ it — via the Tableau Metadata API.
   the Metadata API. Non-admin users only see runs of flows they can view.
 - Flows can run manually without Data Management, but scheduled runs need
   [Tableau Prep Conductor](https://help.tableau.com/current/prep/en-us/prep_conductor_overview.htm).
+- **Extract refresh status needs a site administrator.** Query Jobs only
+  answers server and site administrators; other users still get extract
+  refresh pipelines (for the refresh tasks they own), without status.
 
 ## Connection configuration
 
@@ -47,7 +55,8 @@ Key fields on `TableauPipelineConnection`:
 | `apiVersion` | Optional REST API version override |
 | `verifySSL` + `sslConfig` | TLS validation mode and CA/cert/key when `verifySSL=validate` |
 | `pipelineFilterPattern` | Include/exclude regex for flows |
-| `numberOfStatus` | Most recent runs kept per flow (default 10) |
+| `numberOfStatus` | Most recent runs kept per flow or extract refresh (default 10) |
+| `includeExtractRefreshes` | Ingest extract refreshes as pipelines (default `true`) |
 
 ## Lineage resolution
 
@@ -73,6 +82,13 @@ the edge is skipped — it will resolve on a subsequent ingestion.
   `flowId` and sorted on `startedAt` descending with a page size of
   `numberOfStatus`. TSC's `FlowRuns.get` returns a plain list, so it cannot
   be driven through `Pager`.
+- **Extract refresh jobs are looked up one by one.** Query Jobs cannot filter
+  by data source or workbook, so jobs are read newest first
+  (`jobType:in:[refresh_extracts,increment_extracts]`, `createdAt:desc`) and
+  each needs a Query Job call to learn its target. Reading stops once every
+  target has `numberOfStatus` runs, or after 1,000 lookups per ingestion.
+  History depth is bounded by Tableau's job retention (about 30 days on
+  Tableau Cloud). Queued jobs are skipped until they start.
 - **Flow-step status is flow-level.** Tableau reports one execution status
   per flow run. Each task in the DAG receives that same status.
 - **Intermediate step metadata** (cleaning / join / aggregation nodes
@@ -86,5 +102,8 @@ the edge is skipped — it will resolve on a subsequent ingestion.
 
 - `GetPipelines` (mandatory) — lists flows with a single-page REST call.
 - `GetRuns` (optional) — lists one flow run, proving run history is readable.
+- `GetJobs` (optional) — lists one background job, proving extract refresh
+  history is readable (site administrator only). Skipped when
+  `includeExtractRefreshes` is off.
 - `GetLineage` (optional) — runs a `flowsConnection(first: 1)` Metadata API
   query to confirm lineage extraction will work.

@@ -29,7 +29,12 @@ from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
-from ._fixtures import FLOW_MARKETING, FLOW_SALES  # noqa: TID252
+from ._fixtures import (  # noqa: TID252
+    EXTRACT_EXEC_WORKBOOK,
+    EXTRACT_SALES,
+    FLOW_MARKETING,
+    FLOW_SALES,
+)
 
 SERVICE = "tableau_prep_integration"
 
@@ -85,7 +90,7 @@ class TestIngestionFlow:
     def test_pipeline_list_includes_sales_and_marketing(self, tableau_source):
         source, _ = tableau_source
         names = [p.name for p in source.get_pipelines_list()]
-        assert names == ["flow-sales", "flow-marketing"]
+        assert names == ["flow-sales", "flow-marketing", "ds-sales-published", "wb-exec"]
 
     def test_yield_pipeline_sales_has_full_node_dag(self, tableau_source):
         source, _ = tableau_source
@@ -249,3 +254,51 @@ class TestLineage:
         catalog.add(Pipeline, f"{SERVICE}.flow-sales")
 
         assert _lineage(source, FLOW_SALES, catalog) == []
+
+
+class TestExtractRefresh:
+    def test_is_a_single_task_pipeline_without_flow_lineage(self, tableau_source):
+        source, client = tableau_source
+
+        request = next(iter(source.yield_pipeline(EXTRACT_SALES))).right
+
+        assert request.displayName == "Published Sales Datasource extract refresh"
+        assert [(t.name, t.taskType) for t in request.tasks] == [("ds-sales-published", "ExtractRefresh")]
+        assert str(request.sourceUrl.root) == "https://tableau.example.com/#/datasources/ds-sales-published"
+        assert client.lineage_requests == []
+
+    def test_refresh_jobs_become_status_with_the_failure_reason(self, tableau_source):
+        source, _ = tableau_source
+        source.context.get().__dict__["pipeline"] = EXTRACT_SALES.name
+
+        statuses = [r.right.pipeline_status for r in source.yield_pipeline_status(EXTRACT_SALES)]
+
+        assert [(s.executionId, s.executionStatus.value) for s in statuses] == [
+            ("job-2", "Failed"),
+            ("job-1", "Successful"),
+        ]
+        failed = statuses[0]
+        assert failed.error.errorMessage == "Unable to connect to the server warehouse.example.com"
+        assert failed.timestamp.root == int(datetime(2025, 4, 22, 7, 0, 0, tzinfo=timezone.utc).timestamp() * 1000)
+        assert [t.name for t in failed.taskStatus] == ["ds-sales-published"]
+        assert statuses[1].error is None
+
+    def test_points_at_the_data_models_it_refreshes(self, tableau_source):
+        source, _ = tableau_source
+        catalog = Catalog()
+        refresh = catalog.add(Pipeline, f"{SERVICE}.wb-exec")
+        orders = catalog.add_datamodel("gql-exec-orders")
+        targets = catalog.add_datamodel("gql-exec-targets")
+
+        requests = _lineage(source, EXTRACT_EXEC_WORKBOOK, catalog)
+
+        refresh_id = str(refresh.id.root)
+        assert {_edge(r) for r in requests} == {(refresh_id, str(orders.id.root)), (refresh_id, str(targets.id.root))}
+        assert all(r.edge.lineageDetails.pipeline.id == refresh.id for r in requests)
+
+    def test_no_edge_until_the_dashboard_connector_has_the_data_model(self, tableau_source):
+        source, _ = tableau_source
+        catalog = Catalog()
+        catalog.add(Pipeline, f"{SERVICE}.ds-sales-published")
+
+        assert _lineage(source, EXTRACT_SALES, catalog) == []

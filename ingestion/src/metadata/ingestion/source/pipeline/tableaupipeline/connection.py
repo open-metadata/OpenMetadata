@@ -46,6 +46,7 @@ from metadata.ingestion.source.dashboard.tableau.connection import (
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauPipelineClient,
+    TableauSiteAdminRequiredError,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -57,6 +58,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 PREP_CONDUCTOR_DOC = "https://help.tableau.com/current/prep/en-us/prep_conductor_overview.htm"
+JOBS_DOC = "https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_ref_jobs_tasks_and_schedules.htm"
 
 NO_FLOWS_CAVEAT = Diagnosis(
     title="No Prep flows visible",
@@ -74,6 +76,13 @@ NO_RUNS_CAVEAT = Diagnosis(
 # Shared Tableau rules cover auth, SSL, site and network failures; the pipeline
 # connector only adds the Metadata API failure its lineage step can hit.
 TABLEAU_PIPELINE_ERRORS = ErrorPack(
+    when(Matchers.exception(TableauSiteAdminRequiredError)).diagnose(
+        "Extract refresh history needs a site administrator",
+        fix="Tableau only lists background jobs to server and site administrators, so extract refresh "
+        "pipelines will be ingested without status. Use a site administrator account, or turn off "
+        "Include Extract Refreshes.",
+        doc=JOBS_DOC,
+    ),
     when(Matchers.exception(GraphQLError)).diagnose(
         "Metadata API query failed",
         fix="The Tableau Metadata API rejected the flow query, so flows and runs will be ingested without "
@@ -108,7 +117,8 @@ class TableauPipelineChecks:
 
     ``GetPipelines`` is the gate: borrowing the client signs in, so bad
     credentials or an unreachable server fail there and the rest are skipped.
-    Runs and lineage are optional - flows still ingest without them.
+    Runs, extract refresh jobs and lineage are optional - flows still ingest
+    without them.
     """
 
     errors = TABLEAU_PIPELINE_ERRORS
@@ -132,6 +142,17 @@ class TableauPipelineChecks:
             noun="flow run",
             command="fetch the flow runs of the site",
             empty_caveat=NO_RUNS_CAVEAT,
+        )
+
+    @check(PipelineStep.GetJobs)
+    def get_jobs(self) -> Evidence:
+        command = "fetch the extract refresh jobs of the site"
+        if not self._server.client.config.includeExtractRefreshes:
+            return Evidence(summary="extract refresh ingestion is turned off", command=command)
+        return fetch_list(
+            lambda: self._server.client.test_get_extract_refresh_jobs(),  # noqa: PLW0108
+            noun="job",
+            command=command,
         )
 
     @check(PipelineStep.GetLineage)

@@ -17,6 +17,12 @@
            "mandatory": false
        },
        {
+           "name": "GetJobs",
+           "description": "List the extract refresh jobs of the site, ingested as the status of extract refresh pipelines",
+           "errorMessage": "Failed to fetch extract refresh jobs. Tableau only lists background jobs to site administrators; extract refresh pipelines will be ingested without status.",
+           "mandatory": false
+       },
+       {
            "name": "GetLineage",
            "description": "Query flows through the Tableau Metadata API to verify lineage extraction will work",
            "errorMessage": "Failed to query the Tableau Metadata API. Lineage extraction requires the Metadata API to be enabled: https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html",

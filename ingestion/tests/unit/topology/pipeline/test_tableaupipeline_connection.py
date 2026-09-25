@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauSiteAdminRequiredError,
+)
 from metadata.ingestion.source.pipeline.tableaupipeline.connection import (
     TABLEAU_PIPELINE_ERRORS,
     TableauPipelineChecks,
@@ -75,7 +78,12 @@ def test_every_definition_step_has_a_check():
     with patch(f"{CONNECTION_MODULE}.get_connection"):
         resolved = collect_checks(TableauPipelineConnection(_config()).checks())
 
-    assert set(resolved) == {PipelineStep.GetPipelines, PipelineStep.GetRuns, PipelineStep.GetLineage}
+    assert set(resolved) == {
+        PipelineStep.GetPipelines,
+        PipelineStep.GetRuns,
+        PipelineStep.GetJobs,
+        PipelineStep.GetLineage,
+    }
     assert steps == {step.value for step in resolved}
 
 
@@ -125,6 +133,28 @@ def test_get_runs_caveats_flows_that_never_ran(checks, client):
     client.test_get_flow_runs.return_value = []
 
     assert checks.get_runs().caveat.title == "No flow runs visible"
+
+
+def test_get_jobs_is_skipped_when_extract_refreshes_are_off(checks, client):
+    client.config.includeExtractRefreshes = False
+
+    evidence = checks.get_jobs()
+
+    assert evidence.summary == "extract refresh ingestion is turned off"
+    client.test_get_extract_refresh_jobs.assert_not_called()
+
+
+def test_get_jobs_counts_the_jobs(checks, client):
+    client.config.includeExtractRefreshes = True
+    client.test_get_extract_refresh_jobs.return_value = [MagicMock(), MagicMock()]
+
+    assert checks.get_jobs().summary == "2 jobs enumerated"
+
+
+def test_a_non_admin_is_told_jobs_need_a_site_administrator():
+    diagnosis = TABLEAU_PIPELINE_ERRORS.classify(TableauSiteAdminRequiredError("403004"))
+
+    assert diagnosis.title == "Extract refresh history needs a site administrator"
 
 
 def test_get_lineage_reports_what_it_ran_when_it_fails(checks, client):

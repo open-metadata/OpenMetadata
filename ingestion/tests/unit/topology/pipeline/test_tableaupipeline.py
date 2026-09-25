@@ -40,11 +40,11 @@ from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
     TableauFlowOutputStep,
-    TableauFlowRunItem,
     TableauLineageDatabase,
     TableauLineageTable,
     TableauPipelineDetails,
     TableauPublishedDatasource,
+    TableauRunItem,
     TableauTaskType,
 )
 
@@ -147,16 +147,14 @@ PIPELINE_DETAILS_MIN = TableauPipelineDetails(
 )
 
 FLOW_RUNS = [
-    TableauFlowRunItem(
+    TableauRunItem(
         id="run-001",
-        flow_id="flow-abc-123",
         status="Success",
         started_at=FLOW_RUN_STARTED,
         completed_at=FLOW_RUN_COMPLETED,
     ),
-    TableauFlowRunItem(
+    TableauRunItem(
         id="run-002",
-        flow_id="flow-abc-123",
         status="Failed",
         started_at=FLOW_RUN_2_STARTED,
         completed_at=FLOW_RUN_2_COMPLETED,
@@ -336,7 +334,7 @@ class TestYieldPipelineStatus:
 
     def test_in_progress_run_is_keyed_on_its_start(self, source, mock_conn):
         mock_conn.get_flow_runs.return_value = [
-            TableauFlowRunItem(id="run-live", status="InProgress", started_at=FLOW_RUN_STARTED)
+            TableauRunItem(id="run-live", status="InProgress", started_at=FLOW_RUN_STARTED)
         ]
         status = next(iter(source.yield_pipeline_status(PIPELINE_DETAILS))).right.pipeline_status
         assert status.timestamp.root == _expected_ms(FLOW_RUN_STARTED)
@@ -349,11 +347,11 @@ class TestYieldPipelineStatus:
         assert results == []
 
     def test_status_mapping(self):
-        assert TableaupipelineSource._get_status(TableauFlowRunItem(id="1", status="Success")).value == "Successful"
-        assert TableaupipelineSource._get_status(TableauFlowRunItem(id="2", status="Failed")).value == "Failed"
-        assert TableaupipelineSource._get_status(TableauFlowRunItem(id="3", status="Cancelled")).value == "Failed"
-        assert TableaupipelineSource._get_status(TableauFlowRunItem(id="4", status="InProgress")).value == "Pending"
-        assert TableaupipelineSource._get_status(TableauFlowRunItem(id="5", status=None)).value == "Pending"
+        assert TableaupipelineSource._get_status(TableauRunItem(id="1", status="Success")).value == "Successful"
+        assert TableaupipelineSource._get_status(TableauRunItem(id="2", status="Failed")).value == "Failed"
+        assert TableaupipelineSource._get_status(TableauRunItem(id="3", status="Cancelled")).value == "Failed"
+        assert TableaupipelineSource._get_status(TableauRunItem(id="4", status="InProgress")).value == "Pending"
+        assert TableaupipelineSource._get_status(TableauRunItem(id="5", status=None)).value == "Pending"
 
     def test_timestamp_none(self):
         assert TableaupipelineSource._to_timestamp(None) is None
@@ -538,13 +536,13 @@ class TestTaskHelpers:
     def test_get_status_with_missing_status(self):
         from metadata.generated.schema.entity.data.pipeline import StatusType
 
-        run = TableauFlowRunItem(id="r", status=None)
+        run = TableauRunItem(id="r", status=None)
         assert TableaupipelineSource._get_status(run) == StatusType.Pending
 
     def test_get_status_with_unknown_status(self):
         from metadata.generated.schema.entity.data.pipeline import StatusType
 
-        run = TableauFlowRunItem(id="r", status="NeverSeenBefore")
+        run = TableauRunItem(id="r", status="NeverSeenBefore")
         assert TableaupipelineSource._get_status(run) == StatusType.Pending
 
 
@@ -552,16 +550,16 @@ class TestLineageEdgeCases:
     def test_lookup_datamodel_no_matches(self, source):
         source.metadata = MagicMock()
         source.metadata.es_search_from_fqn.return_value = []
-        assert source._lookup_datamodel(TableauPublishedDatasource(id="missing")) is None
+        assert source._lookup_datamodel("missing", None) is None
 
     def test_lookup_datamodel_on_exception(self, source):
         source.metadata = MagicMock()
         source.metadata.es_search_from_fqn.side_effect = RuntimeError("ES down")
-        assert source._lookup_datamodel(TableauPublishedDatasource(id="anything")) is None
+        assert source._lookup_datamodel("anything", "Sales") is None
 
     def test_lookup_datamodel_without_id(self, source):
         source.metadata = MagicMock()
-        assert source._lookup_datamodel(TableauPublishedDatasource(luid="only-luid")) is None
+        assert source._lookup_datamodel(None, "Sales") is None
         source.metadata.es_search_from_fqn.assert_not_called()
 
     def test_resolve_upstream_with_db_service_names(self, source, mock_conn):
@@ -680,7 +678,7 @@ class TestExceptionPaths:
 
     def test_yield_pipeline_status_skips_run_without_timestamps(self, source, mock_conn):
         mock_conn.get_flow_runs.return_value = [
-            TableauFlowRunItem(id="r", status="Success", started_at=None, completed_at=None)
+            TableauRunItem(id="r", status="Success", started_at=None, completed_at=None)
         ]
         results = list(source.yield_pipeline_status(PIPELINE_DETAILS))
         # All runs skipped — no statuses, but no errors either

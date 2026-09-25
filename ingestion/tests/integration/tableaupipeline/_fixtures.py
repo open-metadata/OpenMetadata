@@ -21,13 +21,13 @@ from datetime import datetime, timezone
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
     TableauFlowOutputStep,
-    TableauFlowRunItem,
     TableauLineageDatabase,
     TableauLineageTable,
     TableauLinkedFlow,
     TableauPipelineDetails,
     TableauPublishedDatasource,
     TableauReferencedQuery,
+    TableauRunItem,
     TableauTaskType,
 )
 
@@ -168,18 +168,63 @@ MARKETING_LINEAGE = TableauFlowLineage(
     ],
 )
 
-FLOW_RUNS_BY_FLOW: dict[str, list[TableauFlowRunItem]] = {
+EXTRACT_SALES = TableauPipelineDetails(
+    id="ds-sales-published",
+    name="ds-sales-published",
+    display_name="Published Sales Datasource extract refresh",
+    description="Refreshes the extract of the published data source **Published Sales Datasource**.",
+    pipeline_type=TableauTaskType.EXTRACT_REFRESH,
+    project_name="Sales",
+    webpage_url="https://tableau.example.com/#/datasources/ds-sales-published",
+    owner_id="user-alice",
+    target_type="datasource",
+)
+
+EXTRACT_EXEC_WORKBOOK = TableauPipelineDetails(
+    id="wb-exec",
+    name="wb-exec",
+    display_name="Exec Dashboard extract refresh",
+    description="Refreshes the extract of the workbook **Exec Dashboard**.",
+    pipeline_type=TableauTaskType.EXTRACT_REFRESH,
+    project_name="Exec",
+    webpage_url="https://tableau.example.com/#/workbooks/wb-exec",
+    target_type="workbook",
+)
+
+EXTRACT_RUNS_BY_TARGET: dict[str, list[TableauRunItem]] = {
+    "ds-sales-published": [
+        TableauRunItem(
+            id="job-2",
+            status="Failed",
+            started_at=datetime(2025, 4, 22, 7, 0, 0, tzinfo=timezone.utc),
+            completed_at=datetime(2025, 4, 22, 7, 0, 42, tzinfo=timezone.utc),
+            error="Unable to connect to the server warehouse.example.com",
+        ),
+        TableauRunItem(
+            id="job-1",
+            status="Success",
+            started_at=datetime(2025, 4, 21, 7, 0, 0, tzinfo=timezone.utc),
+            completed_at=datetime(2025, 4, 21, 7, 4, 10, tzinfo=timezone.utc),
+        ),
+    ],
+}
+
+# Metadata API ids of the data sources each extract refresh writes.
+EXTRACT_DATASOURCE_IDS: dict[str, list[str]] = {
+    "ds-sales-published": ["gql-ds-sales-published"],
+    "wb-exec": ["gql-exec-orders", "gql-exec-targets"],
+}
+
+FLOW_RUNS_BY_FLOW: dict[str, list[TableauRunItem]] = {
     "flow-sales": [
-        TableauFlowRunItem(
+        TableauRunItem(
             id="run-s1",
-            flow_id="flow-sales",
             status="Success",
             started_at=datetime(2025, 4, 22, 6, 0, 0, tzinfo=timezone.utc),
             completed_at=datetime(2025, 4, 22, 6, 3, 15, tzinfo=timezone.utc),
         ),
-        TableauFlowRunItem(
+        TableauRunItem(
             id="run-s2",
-            flow_id="flow-sales",
             status="Failed",
             started_at=datetime(2025, 4, 21, 6, 0, 0, tzinfo=timezone.utc),
             completed_at=datetime(2025, 4, 21, 6, 1, 45, tzinfo=timezone.utc),

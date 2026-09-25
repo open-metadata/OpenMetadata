@@ -186,9 +186,16 @@
       "additionalProperties": false
     },
     "numberOfStatus": {
-      "description": "Number of recent flow runs to fetch per flow.",
+      "title": "Number of Status",
+      "description": "Number of recent runs to fetch per flow or extract refresh.",
       "type": "integer",
       "default": 10
+    },
+    "includeExtractRefreshes": {
+      "title": "Include Extract Refreshes",
+      "description": "Ingest the extract refresh tasks of published data sources and workbooks as pipelines, with their refresh jobs as pipeline status. Reading refresh job history requires a site administrator.",
+      "type": "boolean",
+      "default": true
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

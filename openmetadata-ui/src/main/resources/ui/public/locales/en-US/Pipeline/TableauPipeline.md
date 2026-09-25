@@ -1,6 +1,6 @@
 # Tableau Pipeline
 
-In this section, we provide guides and references to use the Tableau Pipeline connector. It ingests Tableau Prep flows as pipelines, their flow runs as pipeline status, and their lineage.
+In this section, we provide guides and references to use the Tableau Pipeline connector. It ingests Tableau Prep flows as pipelines, their flow runs as pipeline status, and their lineage. It also ingests the extract refreshes of published data sources and workbooks as pipelines, with their refresh jobs as pipeline status.
 
 ## Requirements
 
@@ -9,6 +9,8 @@ The user in the configuration **must** have at least the `Site Role: Viewer` and
 Flows can be run manually on any Tableau site, but scheduled flow runs require <a href="https://help.tableau.com/current/prep/en-us/prep_conductor_overview.htm" target="_blank">Tableau Prep Conductor</a> (Data Management).
 
 To ingest lineage — the tables and published data sources a flow reads and writes, and the flows that consume its output — enable the Tableau Metadata API on Tableau Server. It is always enabled on Tableau Cloud. For more information follow the link <a href="https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html" target="_blank">here</a>.
+
+Extract refresh history is read from Tableau's background jobs, which Tableau only lists to site administrators. With a non-admin account, extract refresh pipelines are ingested without status.
 
 Lineage to published data sources points at the data models created by the Tableau dashboard connector, so run that connector first.
 
@@ -109,11 +111,17 @@ $$
 $$section
 ### Pipeline Filter Pattern $(id="pipelineFilterPattern")
 
-Regex to only include or exclude Prep flows whose name matches the pattern.
+Regex to only include or exclude Prep flows and extract refreshes whose name matches the pattern.
 $$
 
 $$section
 ### Number of Status $(id="numberOfStatus")
 
-Number of past flow runs to ingest per flow. By default, we will pick up the last 10 runs.
+Number of past runs to ingest per flow or extract refresh. By default, we will pick up the last 10 runs.
+$$
+
+$$section
+### Include Extract Refreshes $(id="includeExtractRefreshes")
+
+Ingest the extract refresh tasks of published data sources and workbooks as pipelines, with their refresh jobs as pipeline status. Reading refresh job history requires a site administrator. Enabled by default.
 $$

@@ -84,3 +84,25 @@ TABLEAU_METADATA_API_PROBE_QUERY = """
   }
 }
 """
+
+# Extract refreshes write the extract of a published data source, or the
+# embedded extracts of a workbook. The dashboard Tableau connector names its data
+# models after these Metadata API ids.
+TABLEAU_PUBLISHED_DATASOURCE_ID_QUERY = """
+{{
+  publishedDatasources(filter: {{luid: "{luid}"}}) {{
+    id
+  }}
+}}
+"""
+
+TABLEAU_WORKBOOK_EXTRACTS_QUERY = """
+{{
+  workbooks(filter: {{luid: "{luid}"}}) {{
+    embeddedDatasources {{
+      id
+      hasExtracts
+    }}
+  }}
+}}
+"""

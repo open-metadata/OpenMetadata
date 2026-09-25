@@ -15,6 +15,7 @@ Tableau Pipeline Source Model module
 
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,17 +37,19 @@ class TableauFlowItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
-class TableauFlowRunItem(BaseModel):
-    """Represents a Tableau Prep flow run"""
+class TableauRunItem(BaseModel):
+    """One run of a pipeline: a Prep flow run or an extract refresh job.
+
+    `status` uses Tableau's run vocabulary: Pending, InProgress, Success,
+    Cancelled or Failed."""
 
     model_config = ConfigDict(extra="allow")
 
     id: str
-    flow_id: str | None = None
     status: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
-    progress: str | None = None
+    error: str | None = None
 
 
 class TableauTaskType(str, Enum):
@@ -55,7 +58,8 @@ class TableauTaskType(str, Enum):
 
 
 class TableauPipelineDetails(BaseModel):
-    """Wrapper for a pipeline entity in Tableau (Prep flow)"""
+    """A Tableau Prep flow, or the extract refresh of a published data source
+    or workbook (`target_type` says which)."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -68,6 +72,7 @@ class TableauPipelineDetails(BaseModel):
     webpage_url: str | None = None
     owner_id: str | None = None
     tags: list[str] = Field(default_factory=list)
+    target_type: Literal["datasource", "workbook"] | None = None
 
 
 class TableauReferencedQuery(BaseModel):

@@ -286,7 +286,7 @@ export interface Connection {
      *
      * Number of past flow run statuses to ingest per flow.
      *
-     * Number of recent flow runs to fetch per flow.
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -612,6 +612,12 @@ export interface Connection {
      * HANA database username with access to BW metadata tables.
      */
     username?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Tableau Site Name.
      */

@@ -14,7 +14,7 @@ Tableau Pipeline integration test fixtures.
 
 Builds a full TableaupipelineSource backed by an in-memory fake TableauPipelineClient.
 The fake client returns the same shapes that the real TSC-backed client produces
-— TableauFlowItem / TableauFlowRunItem / TableauFlowLineage — so the source
+— TableauFlowItem / TableauRunItem / TableauFlowLineage — so the source
 sees production-accurate data without any Tableau Server, HTTP mock, or TSC import.
 
 Test data lives in `_fixtures.py` (a regular module) so test files can import
@@ -35,11 +35,15 @@ from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
-    TableauFlowRunItem,
     TableauPipelineDetails,
+    TableauRunItem,
 )
 
 from ._fixtures import (  # noqa: TID252
+    EXTRACT_DATASOURCE_IDS,
+    EXTRACT_EXEC_WORKBOOK,
+    EXTRACT_RUNS_BY_TARGET,
+    EXTRACT_SALES,
     FLOW_MARKETING,
     FLOW_RUNS_BY_FLOW,
     FLOW_SALES,
@@ -55,15 +59,25 @@ class FakeTableauPipelineClient:
     def __init__(self):
         self.sign_out_called = False
         self.cleanup_called = False
+        self.lineage_requests: list[str] = []
 
     def get_pipelines(self) -> Iterable[TableauPipelineDetails]:
         yield FLOW_SALES
         yield FLOW_MARKETING
+        yield EXTRACT_SALES
+        yield EXTRACT_EXEC_WORKBOOK
 
-    def get_flow_runs(self, flow_id: str) -> list[TableauFlowRunItem]:
+    def get_extract_refresh_runs(self, target_id: str) -> list[TableauRunItem]:
+        return EXTRACT_RUNS_BY_TARGET.get(target_id, [])
+
+    def get_extract_datasource_ids(self, target_type: str, target_luid: str) -> list[str]:
+        return EXTRACT_DATASOURCE_IDS.get(target_luid, [])
+
+    def get_flow_runs(self, flow_id: str) -> list[TableauRunItem]:
         return FLOW_RUNS_BY_FLOW.get(flow_id, [])
 
     def get_flow_lineage(self, flow_id: str) -> TableauFlowLineage | None:
+        self.lineage_requests.append(flow_id)
         return LINEAGE_BY_FLOW.get(flow_id)
 
     def get_user_email(self, user_id: str) -> str | None:

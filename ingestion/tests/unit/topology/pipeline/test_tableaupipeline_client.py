@@ -32,8 +32,10 @@ from tableauserverclient.server.endpoint.exceptions import (
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection,
 )
+from metadata.ingestion.source.pipeline.tableaupipeline import client as client_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauPipelineClient,
+    TableauSiteAdminRequiredError,
 )
 
 HOST = "https://tableau.example.com"
@@ -68,7 +70,7 @@ def _flows_page(page: int, total: int, flows: list[str]) -> str:
 def _run_xml(run_id: str, started: str, status: str = "Success") -> str:
     return (
         f'<flowRuns id="{run_id}" flowId="flow-1" status="{status}" startedAt="{started}" '
-        f'completedAt="{started[:-1]}5Z" progress="100" backgroundJobId="job-{run_id}"/>'
+        f'completedAt="{started.replace(":00Z", ":05Z")}" progress="100" backgroundJobId="job-{run_id}"/>'
     )
 
 
@@ -86,6 +88,38 @@ def _error(code: str) -> str:
     )
 
 
+def _task_xml(task_id: str, target_type: str, target_id: str) -> str:
+    return (
+        f'<task><extractRefresh id="{task_id}" priority="50" consecutiveFailedCount="0" type="RefreshExtractTask">'
+        '<schedule frequency="Daily" nextRunAt="2025-03-04T06:00:00Z"><frequencyDetails start="06:00:00"/></schedule>'
+        f'<{target_type} id="{target_id}"/></extractRefresh></task>'
+    )
+
+
+def _content_xml(kind: str, content_id: str, name: str) -> str:
+    return (
+        f'<tsResponse {NS}><{kind} id="{content_id}" name="{name}" '
+        f'webpageUrl="{HOST}/#/site/MarketingTeam/{kind}s/{content_id}">'
+        f'<project id="project-1" name="Finance"/><owner id="owner-9"/><tags/></{kind}></tsResponse>'
+    )
+
+
+def _background_job_xml(job_id: str, created: str, status: str = "Success", started: bool = True) -> str:
+    times = f'startedAt="{created}" endedAt="{created.replace(":00Z", ":09Z")}"' if started else ""
+    return (
+        f'<backgroundJob id="{job_id}" status="{status}" createdAt="{created}" {times} '
+        'priority="50" jobType="refresh_extracts"/>'
+    )
+
+
+def _job_detail_xml(job_id: str, target_type: str, target_id: str, notes: str = "") -> str:
+    return (
+        f'<tsResponse {NS}><job id="{job_id}" mode="Asynchronous" type="RefreshExtract" progress="100" '
+        f'finishCode="0"><extractRefreshJob><notes>{notes}</notes>'
+        f'<{target_type} id="{target_id}" name="n"/></extractRefreshJob></job></tsResponse>'
+    )
+
+
 class FakeTableau:
     """Answers TSC's HTTP calls from canned bodies and records every request."""
 
@@ -99,6 +133,11 @@ class FakeTableau:
         self.unsorted_runs_response: tuple[int, str] | None = None
         self.users: dict[str, str] = {}
         self.graphql_response: dict = {"data": {"flows": []}}
+        self.tasks: list[str] = []
+        self.content: dict[str, str] = {}
+        self.jobs: list[str] = []
+        self.jobs_status = 200
+        self.job_details: dict[str, str] = {}
 
     def send(self, request: requests.PreparedRequest, **_kwargs) -> requests.Response:
         self.requests.append(request)
@@ -121,6 +160,18 @@ class FakeTableau:
             body = self.flow_pages[int(query.get("pageNumber", ["1"])[0]) - 1]
         elif "/users/" in path:
             body = self.users[path.rsplit("/", 1)[-1]]
+        elif path.endswith("/tasks/extractRefreshes"):
+            body = (
+                f'<tsResponse {NS}><pagination pageNumber="1" pageSize="100" totalAvailable="{len(self.tasks)}"/>'
+                f"<tasks>{''.join(self.tasks)}</tasks></tsResponse>"
+            )
+        elif "/datasources/" in path or "/workbooks/" in path:
+            content_id = path.rsplit("/", 1)[-1]
+            status, body = (200, self.content[content_id]) if content_id in self.content else (404, _error("404004"))
+        elif path.endswith("/jobs"):
+            status, body = self.jobs_status, self._jobs_page(query)
+        elif "/jobs/" in path:
+            body = self.job_details[path.rsplit("/", 1)[-1]]
         elif path.endswith("/api/metadata/graphql"):
             body, content_type = json.dumps(self.graphql_response), "application/json"
         else:
@@ -134,6 +185,16 @@ class FakeTableau:
         response.request = request
         return response
 
+    def _jobs_page(self, query: dict) -> str:
+        if self.jobs_status != 200:
+            return _error(f"{self.jobs_status}004")
+        page, size = int(query.get("pageNumber", ["1"])[0]), int(query["pageSize"][0])
+        jobs = self.jobs[(page - 1) * size : page * size]
+        return (
+            f'<tsResponse {NS}><pagination pageNumber="{page}" pageSize="{size}" totalAvailable="{len(self.jobs)}"/>'
+            f"<backgroundJobs>{''.join(jobs)}</backgroundJobs></tsResponse>"
+        )
+
     def calls_to(self, suffix: str) -> list[requests.PreparedRequest]:
         return [r for r in self.requests if urlparse(r.url).path.endswith(suffix)]
 
@@ -145,12 +206,13 @@ def tableau(monkeypatch):
     return fake
 
 
-def _client(number_of_status: int = 2) -> TableauPipelineClient:
+def _client(number_of_status: int = 2, include_extract_refreshes: bool = True) -> TableauPipelineClient:
     config = TableauPipelineConnection(
         hostPort=HOST,
         authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
         siteName="MarketingTeam",
         numberOfStatus=number_of_status,
+        includeExtractRefreshes=include_extract_refreshes,
     )
     return TableauPipelineClient(
         tableau_server_auth=PersonalAccessTokenAuth("pat", "secret", site_id="MarketingTeam"),
@@ -193,8 +255,9 @@ class TestFlowRuns:
         assert query["pageSize"] == ["2"]
         assert [run.id for run in runs] == ["run-new", "run-old"]
         assert runs[0].status == "Success"
-        assert runs[0].flow_id == "flow-1"
+        assert runs[0].error is None
         assert runs[0].started_at.isoformat() == "2025-03-02T10:00:00+00:00"
+        assert runs[0].completed_at.isoformat() == "2025-03-02T10:00:05+00:00"
 
     def test_orders_newest_first_and_caps_even_if_the_server_does_not(self, tableau):
         tableau.runs_response = (
@@ -223,6 +286,14 @@ class TestFlowRuns:
         assert retry["filter"] == ["flowId:eq:flow-1"]
         assert "sort" not in retry
         assert [run.id for run in runs] == ["run-2", "run-1"]
+
+    def test_a_failed_run_carries_the_notes_of_its_job(self, tableau):
+        tableau.runs_response = (200, _runs(_run_xml("run-1", "2025-03-01T10:00:00Z", status="Failed")))
+        tableau.job_details["job-run-1"] = _job_detail_xml("job-run-1", "datasource", "x", notes="Output step failed")
+
+        runs = _client().get_flow_runs("flow-1")
+
+        assert runs[0].error == "Output step failed"
 
     def test_other_errors_propagate(self, tableau):
         tableau.runs_response = (403, _error("403004"))
@@ -353,3 +424,141 @@ class TestLifecycle:
         client.sign_out()
 
         assert len(tableau.calls_to("/auth/signout")) == 1
+
+
+class TestExtractRefreshes:
+    def _two_targets(self, tableau):
+        tableau.tasks = [
+            _task_xml("task-full", "datasource", "ds-1"),
+            _task_xml("task-incremental", "datasource", "ds-1"),
+            _task_xml("task-wb", "workbook", "wb-1"),
+        ]
+        tableau.content = {
+            "ds-1": _content_xml("datasource", "ds-1", "Sales"),
+            "wb-1": _content_xml("workbook", "wb-1", "Exec"),
+        }
+
+    def test_each_refreshed_datasource_or_workbook_is_one_pipeline(self, tableau):
+        self._two_targets(tableau)
+        tableau.tasks.append(_task_xml("task-orphan", "datasource", "ds-deleted"))
+
+        pipelines = list(_client().get_pipelines())
+
+        extracts = [p for p in pipelines if p.pipeline_type.value == "extractRefresh"]
+        assert [(p.name, p.target_type, p.display_name) for p in extracts] == [
+            ("ds-1", "datasource", "Sales extract refresh"),
+            ("wb-1", "workbook", "Exec extract refresh"),
+        ]
+        assert extracts[0].owner_id == "owner-9"
+        assert extracts[0].webpage_url == f"{HOST}/#/site/MarketingTeam/datasources/ds-1"
+        assert "published data source **Sales**" in extracts[0].description
+
+    def test_turned_off_lists_only_flows(self, tableau):
+        self._two_targets(tableau)
+
+        pipelines = list(_client(include_extract_refreshes=False).get_pipelines())
+
+        assert [p.name for p in pipelines] == ["flow-1", "flow-2"]
+        assert tableau.calls_to("/tasks/extractRefreshes") == []
+
+    def test_jobs_are_matched_to_their_target_newest_first(self, tableau):
+        self._two_targets(tableau)
+        tableau.jobs = [
+            _background_job_xml("j5", "2025-03-05T06:00:00Z", status="Pending", started=False),
+            _background_job_xml("j4", "2025-03-04T06:00:00Z"),
+            _background_job_xml("j3", "2025-03-03T06:00:00Z", status="Failed"),
+            _background_job_xml("j2", "2025-03-02T06:00:00Z", status="Failed"),
+            _background_job_xml("j1", "2025-03-01T06:00:00Z"),
+        ]
+        tableau.job_details = {
+            "j4": _job_detail_xml("j4", "datasource", "ds-1"),
+            "j3": _job_detail_xml("j3", "workbook", "wb-1", notes="Unable to connect to the server"),
+            "j2": _job_detail_xml("j2", "datasource", "ds-1", notes="Login failed"),
+            "j1": _job_detail_xml("j1", "datasource", "ds-1"),
+        }
+        client = _client(number_of_status=2)
+        list(client.get_pipelines())
+
+        sales = client.get_extract_refresh_runs("ds-1")
+        exec_runs = client.get_extract_refresh_runs("wb-1")
+
+        query = parse_qs(urlparse(tableau.calls_to("/jobs")[0].url).query)
+        assert query["filter"] == ["jobType:in:[refresh_extracts,increment_extracts]"]
+        assert query["sort"] == ["createdAt:desc"]
+        assert [(run.id, run.status, run.error) for run in sales] == [
+            ("j4", "Success", None),
+            ("j2", "Failed", "Login failed"),
+        ]
+        assert [(run.id, run.error) for run in exec_runs] == [("j3", "Unable to connect to the server")]
+        assert sales[0].completed_at.isoformat() == "2025-03-04T06:00:09+00:00"
+        assert len(tableau.calls_to("/jobs")) == 1
+        assert [r for r in tableau.requests if r.url.endswith("/jobs/j5")] == []
+
+    def test_stops_reading_jobs_once_every_target_is_full(self, tableau):
+        self._two_targets(tableau)
+        tableau.jobs = [
+            _background_job_xml("j3", "2025-03-03T06:00:00Z"),
+            _background_job_xml("j2", "2025-03-02T06:00:00Z"),
+            _background_job_xml("j1", "2025-03-01T06:00:00Z"),
+        ]
+        tableau.job_details = {
+            "j3": _job_detail_xml("j3", "datasource", "ds-1"),
+            "j2": _job_detail_xml("j2", "workbook", "wb-1"),
+            "j1": _job_detail_xml("j1", "datasource", "ds-1"),
+        }
+        client = _client(number_of_status=1)
+        list(client.get_pipelines())
+
+        assert [run.id for run in client.get_extract_refresh_runs("ds-1")] == ["j3"]
+        assert [r for r in tableau.requests if r.url.endswith("/jobs/j1")] == []
+
+    def test_job_lookups_are_capped(self, tableau, monkeypatch, caplog):
+        monkeypatch.setattr(client_module, "MAX_EXTRACT_REFRESH_JOB_LOOKUPS", 2)
+        self._two_targets(tableau)
+        tableau.jobs = [_background_job_xml(f"j{i}", f"2025-03-0{i}T06:00:00Z") for i in range(5, 0, -1)]
+        tableau.job_details = {f"j{i}": _job_detail_xml(f"j{i}", "datasource", "ds-1") for i in range(1, 6)}
+        client = _client(number_of_status=5)
+        list(client.get_pipelines())
+
+        with caplog.at_level(logging.WARNING):
+            runs = client.get_extract_refresh_runs("ds-1")
+
+        assert [run.id for run in runs] == ["j5", "j4"]
+        assert "older refreshes are not ingested" in caplog.text
+
+    def test_a_non_admin_gets_pipelines_without_status(self, tableau, caplog):
+        self._two_targets(tableau)
+        tableau.jobs_status = 403
+        client = _client()
+        list(client.get_pipelines())
+
+        with caplog.at_level(logging.WARNING):
+            assert client.get_extract_refresh_runs("ds-1") == []
+        assert "needs a site administrator" in caplog.text
+
+    def test_probe_names_the_site_admin_requirement(self, tableau):
+        tableau.jobs_status = 403
+
+        with pytest.raises(TableauSiteAdminRequiredError):
+            _client().test_get_extract_refresh_jobs()
+
+    def test_refreshed_datasource_ids(self, tableau):
+        client = _client()
+        tableau.graphql_response = {"data": {"publishedDatasources": [{"id": "gql-ds-1"}]}}
+        assert client.get_extract_datasource_ids("datasource", "ds-1") == ["gql-ds-1"]
+
+        tableau.graphql_response = {
+            "data": {
+                "workbooks": [
+                    {
+                        "embeddedDatasources": [
+                            {"id": "gql-extract", "hasExtracts": True},
+                            {"id": "gql-live", "hasExtracts": False},
+                        ]
+                    }
+                ]
+            }
+        }
+        assert client.get_extract_datasource_ids("workbook", "wb-1") == ["gql-extract"]
+        sent = json.loads(tableau.calls_to("/api/metadata/graphql")[-1].body)["query"]
+        assert 'workbooks(filter: {luid: "wb-1"})' in sent

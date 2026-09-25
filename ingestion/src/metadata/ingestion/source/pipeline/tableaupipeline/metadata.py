@@ -23,6 +23,7 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.pipeline import (
+    ExecutionError,
     Pipeline,
     PipelineStatus,
     StatusType,
@@ -64,12 +65,13 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
     TableauFlowOutputStep,
-    TableauFlowRunItem,
     TableauLineageDatabase,
     TableauLineageTable,
     TableauLinkedFlow,
     TableauPipelineDetails,
     TableauPublishedDatasource,
+    TableauRunItem,
+    TableauTaskType,
 )
 from metadata.utils import fqn
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -79,9 +81,10 @@ from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_l
 
 logger = ingestion_logger()
 
-# Tableau reports Pending, InProgress, Success, Cancelled or Failed.
+# Flow runs and background (extract refresh) jobs share one vocabulary:
+# Pending, InProgress, Success, Cancelled or Failed.
 # ref: https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_ref_flow.htm#get_flow_runs
-FLOW_RUN_STATUS_MAP = {
+RUN_STATUS_MAP = {
     "success": StatusType.Successful,
     "failed": StatusType.Failed,
     "cancelled": StatusType.Failed,
@@ -97,6 +100,7 @@ TABLEAU_TAG_CLASSIFICATION = "TableauTags"
 TASK_TYPE_INPUT = "FlowInput"
 TASK_TYPE_PROCESSING = "FlowProcessing"
 TASK_TYPE_OUTPUT = "FlowOutputStep"
+TASK_TYPE_EXTRACT_REFRESH = "ExtractRefresh"
 
 ENTITY_TYPE_TABLE = "table"
 ENTITY_TYPE_PIPELINE = "pipeline"
@@ -275,9 +279,20 @@ class TableaupipelineSource(PipelineServiceSource):
         still gets a valid pipeline, just without node granularity.
         """
         source_url = self.get_source_url(pipeline_details)
-        flow_lineage = self._get_flow_lineage(pipeline_details.id)
         processing_task_name = pipeline_details.name
         flow_description = Markdown(pipeline_details.description) if pipeline_details.description else None
+        if pipeline_details.pipeline_type == TableauTaskType.EXTRACT_REFRESH:
+            return [
+                Task(
+                    name=processing_task_name,
+                    displayName="Refresh extract",
+                    description=flow_description,
+                    sourceUrl=source_url,
+                    taskType=TASK_TYPE_EXTRACT_REFRESH,
+                )
+            ]
+
+        flow_lineage = self._get_flow_lineage(pipeline_details.id)
 
         if flow_lineage is None or not (
             flow_lineage.upstream_tables or flow_lineage.upstream_datasources or flow_lineage.output_steps
@@ -414,6 +429,9 @@ class TableaupipelineSource(PipelineServiceSource):
         published data sources it produces) and at the flows that consume it.
         Each input/output has its own error boundary so one bad reference does
         not drop the rest of the flow's lineage."""
+        if pipeline_details.pipeline_type == TableauTaskType.EXTRACT_REFRESH:
+            yield from self._extract_refresh_lineage(pipeline_details)
+            return
         flow_lineage = self._get_flow_lineage(pipeline_details.id)
         if flow_lineage is None or not (
             flow_lineage.upstream_tables
@@ -507,7 +525,7 @@ class TableaupipelineSource(PipelineServiceSource):
     def _upstream_datasource_edges(
         self, datasource: TableauPublishedDatasource, pipeline_ref: EntityReference
     ) -> list[AddLineageRequest]:
-        datamodel = self._lookup_datamodel(datasource)
+        datamodel = self._lookup_datamodel(datasource.id, datasource.name)
         if datamodel is None:
             return []
         return [
@@ -519,7 +537,7 @@ class TableaupipelineSource(PipelineServiceSource):
     def _downstream_datasource_edges(
         self, datasource: TableauPublishedDatasource, pipeline_ref: EntityReference
     ) -> list[AddLineageRequest]:
-        datamodel = self._lookup_datamodel(datasource)
+        datamodel = self._lookup_datamodel(datasource.id, datasource.name)
         if datamodel is None:
             return []
         return [
@@ -555,27 +573,46 @@ class TableaupipelineSource(PipelineServiceSource):
             )
         ]
 
-    def _lookup_datamodel(self, datasource: TableauPublishedDatasource) -> DashboardDataModel | None:
+    def _extract_refresh_lineage(self, pipeline_details: TableauPipelineDetails) -> Iterable[Either[AddLineageRequest]]:
+        """An extract refresh points at the data model(s) it refreshes: the
+        published data source, or each embedded extract of the workbook."""
+        if pipeline_details.target_type is None:
+            return
+        datasource_ids = self.connection.get_extract_datasource_ids(pipeline_details.target_type, pipeline_details.id)
+        if not datasource_ids:
+            return
+        pipeline_entity = self._get_pipeline_entity()
+        if pipeline_entity is None:
+            logger.warning("Pipeline entity not found for %s, skipping lineage.", pipeline_details.name)
+            return
+        pipeline_ref = EntityReference(id=pipeline_entity.id, type=ENTITY_TYPE_PIPELINE)
+        for datasource_id in datasource_ids:
+            yield from self._edges_or_error(
+                f"refreshed data source {datasource_id}",
+                partial(self._downstream_datasource_edges, TableauPublishedDatasource(id=datasource_id), pipeline_ref),
+            )
+
+    def _lookup_datamodel(self, datasource_id: str | None, label: str | None) -> DashboardDataModel | None:
         """Find the DashboardDataModel the dashboard Tableau connector created
-        for a published data source, across every dashboard service.
+        for a Tableau data source, across every dashboard service.
 
         That connector names data models after the Metadata API `id` (not the
         REST `luid`), and a data model's FQN is `{service}.model.{name}`, so an
         FQN search for `*.{id}` finds it without knowing the service."""
-        if not datasource.id:
+        if not datasource_id:
             return None
         try:
             entities = self.metadata.es_search_from_fqn(
                 entity_type=DashboardDataModel,
-                fqn_search_string=f"*.{datasource.id}",
+                fqn_search_string=f"*.{datasource_id}",
             )
         except Exception as exc:
-            logger.debug("DashboardDataModel lookup failed for %s: %s", datasource.id, exc)
+            logger.debug("DashboardDataModel lookup failed for %s: %s", datasource_id, exc)
             return None
         if not entities:
             logger.debug(
                 "Data model for Tableau data source %s not found — ensure the dashboard Tableau connector has run.",
-                datasource.name or datasource.id,
+                label or datasource_id,
             )
             return None
         return entities[0]
@@ -694,7 +731,11 @@ class TableaupipelineSource(PipelineServiceSource):
 
     def yield_pipeline_status(self, pipeline_details: TableauPipelineDetails) -> Iterable[Either[OMetaPipelineStatus]]:
         try:
-            runs = self.connection.get_flow_runs(pipeline_details.id)
+            runs = (
+                self.connection.get_extract_refresh_runs(pipeline_details.id)
+                if pipeline_details.pipeline_type == TableauTaskType.EXTRACT_REFRESH
+                else self.connection.get_flow_runs(pipeline_details.id)
+            )
             if not runs:
                 return
             task_names = self._task_names_for_status(pipeline_details)
@@ -730,6 +771,7 @@ class TableaupipelineSource(PipelineServiceSource):
                     timestamp=run_key,
                     endTime=end_time,
                     executionId=run.id,
+                    error=ExecutionError(errorMessage=run.error) if run.error else None,
                 )
                 yield Either(
                     right=OMetaPipelineStatus(
@@ -761,9 +803,9 @@ class TableaupipelineSource(PipelineServiceSource):
         return [task.name for task in tasks] or [pipeline_details.name]
 
     @staticmethod
-    def _get_status(run: TableauFlowRunItem) -> StatusType:
+    def _get_status(run: TableauRunItem) -> StatusType:
         if run.status:
-            return FLOW_RUN_STATUS_MAP.get(run.status.lower(), StatusType.Pending)
+            return RUN_STATUS_MAP.get(run.status.lower(), StatusType.Pending)
         return StatusType.Pending
 
     @staticmethod
