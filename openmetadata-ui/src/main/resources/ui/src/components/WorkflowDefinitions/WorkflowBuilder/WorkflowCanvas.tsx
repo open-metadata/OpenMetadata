@@ -285,7 +285,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
       className={classNames(canvasClassName, 'tw:flex-1 tw:min-h-0')}
       data-testid="workflow-canvas">
       {focusedConnection && (
-        <div className="tw:absolute tw:inset-0 tw:bg-brand-900/20 tw:z-[1] tw:pointer-events-none tw:transition-opacity tw:duration-300" />
+        <div className="tw:absolute tw:inset-0 tw:bg-utility-brand-900/20 tw:z-[1] tw:pointer-events-none tw:transition-opacity tw:duration-300" />
       )}
 
       <ReactFlow
