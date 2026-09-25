@@ -24,15 +24,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  isArray,
-  isEmpty,
-  isNil,
-  isUndefined,
-  noop,
-  omitBy,
-  toNumber,
-} from 'lodash';
+import { isArray, isUndefined, noop, omitBy, toNumber } from 'lodash';
 import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
 import {
@@ -72,6 +64,7 @@ import { Hyperlink } from '../../../generated/type/customProperties/complexTypes
 import { Config } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import {
+  buildUpdatedExtension,
   formatCustomPropertyDateTime,
   getCustomPropertyLuxonFormat,
   parseCustomPropertyDateTime,
@@ -225,44 +218,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   };
 
   const onInputSave = async (updatedValue: PropertyValueType) => {
-    const isEnum = propertyType.name === 'enum';
-
-    const isArrayType = isArray(updatedValue);
-
-    const enumValue = isArrayType ? updatedValue : [updatedValue];
-
-    const propertyValue = isEnum
-      ? (enumValue as string[]).filter(Boolean)
-      : updatedValue;
-
     try {
-      const isNumericType = ['integer', 'number'].includes(
-        propertyType.name ?? ''
-      );
-      const numericValue = updatedValue ? toNumber(updatedValue) : updatedValue;
-      const resolvedValue = isNumericType ? numericValue : propertyValue;
-
-      // Omit undefined and empty values
-      const updatedExtension = omitBy(
-        omitBy(
-          {
-            ...extension,
-            [propertyName]: resolvedValue,
-          },
-          isUndefined
-        ),
-        (value) =>
-          // Check if value is empty array, empty string, null or empty object
-          value === '' ||
-          isNil(value) ||
-          (typeof value === 'object' && isEmpty(value))
-      );
-
       setIsLoading(true);
 
       await onExtensionUpdate(
-        // If updatedExtension is empty, set it to undefined
-        isEmpty(updatedExtension) ? undefined : updatedExtension
+        buildUpdatedExtension(
+          extension,
+          propertyName,
+          propertyType.name ?? '',
+          updatedValue
+        )
       );
     } catch (error) {
       showErrorToast(error as AxiosError);

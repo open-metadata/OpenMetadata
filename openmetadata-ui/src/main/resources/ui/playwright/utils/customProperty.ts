@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+  Response,
+} from '@playwright/test';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -122,6 +128,60 @@ const addTablePropertyRow = async (page: Page) => {
   }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
 };
 
+/**
+ * Picks `isoDate` (yyyy-MM-dd) in the core DatePicker inside `scope`: opens the
+ * calendar, pages to the target month, clicks the day, then Apply.
+ */
+const pickDateInCorePicker = async (
+  page: Page,
+  scope: Locator,
+  isoDate: string
+) => {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  // Cell labels follow the app locale ("Tuesday, 9 July 2024" or
+  // "Tuesday, July 9, 2024"); only the displayed month's days are rendered, so
+  // the day number alone identifies the cell.
+  const dayLabel = new RegExp(`(^|\\D)${day}(\\D|$)`);
+
+  await scope.getByTestId('date-time-picker').getByRole('button').click();
+  const calendar = page
+    .getByRole('dialog')
+    .filter({ has: page.getByRole('grid') });
+  await expect(calendar).toBeVisible();
+
+  const heading = calendar.getByRole('heading');
+  const targetMonth = year * 12 + (month - 1);
+  const MAX_MONTH_STEPS = 240;
+  for (let step = 0; step < MAX_MONTH_STEPS; step++) {
+    const shown = new Date(`1 ${await heading.textContent()}`);
+    const shownMonth = shown.getFullYear() * 12 + shown.getMonth();
+    if (shownMonth === targetMonth) {
+      break;
+    }
+    await calendar
+      .getByRole('button', {
+        name: shownMonth > targetMonth ? 'Previous' : 'Next',
+      })
+      .click();
+  }
+
+  await calendar
+    .getByRole('gridcell')
+    .getByRole('button', { name: dayLabel })
+    .click();
+  await calendar.getByRole('button', { name: 'Apply' }).click();
+};
+
+/** Types `HH:mm:ss` into the core TimePicker's segments inside `scope`. */
+const typeTimeInCorePicker = async (scope: Locator, time: string) => {
+  const hourSegment = scope
+    .getByTestId('time-picker')
+    .getByRole('spinbutton', { name: /hour/i });
+  await hourSegment.click();
+  // Segments auto-advance after two digits.
+  await hourSegment.page().keyboard.type(time.replace(/:/g, ''));
+};
+
 export const setValueForProperty = async (data: {
   page: Page;
   propertyName: string;
@@ -151,6 +211,10 @@ export const setValueForProperty = async (data: {
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
+  // Values are edited in a modal rendered outside the card.
+  const editModal = page.getByTestId('custom-property-edit-modal');
+  await expect(editModal).toBeVisible();
+
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
@@ -158,89 +222,86 @@ export const setValueForProperty = async (data: {
       await expect(getDescriptionBox(page)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
-      await page.locator('[data-testid="save"]').click();
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'email':
       await expect(
-        container.locator('[data-testid="email-input"]')
+        editModal.locator('[data-testid="email-input"]')
       ).toBeVisible();
-      await container.locator('[data-testid="email-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await editModal.locator('[data-testid="email-input"]').fill(value);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'duration':
       await expect(
-        container.locator('[data-testid="duration-input"]')
+        editModal.locator('[data-testid="duration-input"]')
       ).toBeVisible();
-      await container.locator('[data-testid="duration-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await editModal.locator('[data-testid="duration-input"]').fill(value);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
-    case 'enum':
-      await container.locator('#enumValues').click();
-      // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-      await container.locator('#enumValues').fill(value, { force: true });
-      await container.locator('#enumValues').press('Enter');
-      await clickOutside(page);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+    case 'enum': {
+      const enumInput = container
+        .getByTestId('enum-select')
+        .getByRole('combobox');
+      await enumInput.fill(value);
+      await page.getByRole('option', { name: value, exact: true }).click();
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
+    }
 
     case 'sqlQuery':
-      await typeInCodeEditor(page, container, value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await typeInCodeEditor(page, editModal, value);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timestamp':
       await expect(
-        container.locator('[data-testid="timestamp-input"]')
+        editModal.locator('[data-testid="timestamp-input"]')
       ).toBeVisible();
-      await container.locator('[data-testid="timestamp-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await editModal.locator('[data-testid="timestamp-input"]').fill(value);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
+      // Epoch inputs sit behind the editor's "Enter manually" switch.
+      await editModal.getByRole('switch').click();
       await expect(
-        container.locator('[data-testid="start-input"]')
+        editModal.locator('[data-testid="start-input"]')
       ).toBeVisible();
-      await container.locator('[data-testid="start-input"]').fill(startValue);
+      await editModal.locator('[data-testid="start-input"]').fill(startValue);
       await expect(
-        container.locator('[data-testid="end-input"]')
+        editModal.locator('[data-testid="end-input"]')
       ).toBeVisible();
-      await container.locator('[data-testid="end-input"]').fill(endValue);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await editModal.locator('[data-testid="end-input"]').fill(endValue);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
 
     case 'time-cp': {
-      await expect(
-        container.locator('[data-testid="time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="time-picker"]').click();
-      await container.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await typeTimeInCorePicker(editModal, value);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
 
     case 'date-cp':
     case 'dateTime-cp': {
-      await expect(
-        container.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="date-time-picker"]').click();
-      await container.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.keyboard.press('Enter');
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      const [datePart, timePart] = value.split(' ');
+      await pickDateInCorePicker(page, editModal, datePart);
+      if (timePart) {
+        await typeTimeInCorePicker(editModal, timePart);
+      }
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -249,10 +310,10 @@ export const setValueForProperty = async (data: {
     case 'integer':
     case 'number':
       await expect(
-        container.locator('[data-testid="value-input"]')
+        editModal.locator('[data-testid="value-input"]')
       ).toBeVisible();
-      await container.locator('[data-testid="value-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await editModal.locator('[data-testid="value-input"]').fill(value);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
 
@@ -264,30 +325,28 @@ export const setValueForProperty = async (data: {
         const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
           val
         )}*`;
+        const referenceInput = container
+          .getByTestId('asset-select-list')
+          .getByRole('combobox');
         await page.route(searchApi, (route) => route.continue());
-        await container.locator('#entityReference').clear();
+        await referenceInput.clear();
         const searchEntity = page.waitForResponse(searchApi);
-        await container.locator('#entityReference').fill(val);
+        await referenceInput.fill(val);
         await searchEntity;
-        await page.locator(`[data-testid="${val}"]`).click();
+        await page.getByRole('option').getByTestId(val).click();
       }
 
-      await clickOutside(page);
-
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
 
     case 'table-cp': {
       const values = value.split(',');
-      await addTablePropertyRow(page);
-
-      await fillTableColumnInputDetails(page, values[0], 'pw-column1');
-
-      await fillTableColumnInputDetails(page, values[1], 'pw-column2');
-
-      await page.locator('[data-testid="update-table-type-property"]').click();
+      // The inline table editor opens with one empty row.
+      await editModal.getByTestId('pw-column1-0').fill(values[0]);
+      await editModal.getByTestId('pw-column2-0').fill(values[1]);
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -296,15 +355,15 @@ export const setValueForProperty = async (data: {
       // Value format: "url,displayText" or just "url"
       const [url, displayText] = value.split(',');
       await expect(
-        container.locator('[data-testid="hyperlink-url-input"]')
+        editModal.locator('[data-testid="hyperlink-url-input"]')
       ).toBeVisible();
-      await container.locator('[data-testid="hyperlink-url-input"]').fill(url);
+      await editModal.locator('[data-testid="hyperlink-url-input"]').fill(url);
       if (displayText) {
         await container
           .locator('[data-testid="hyperlink-display-text-input"]')
           .fill(displayText);
       }
-      await container.locator('[data-testid="inline-save-btn"]').click();
+      await editModal.locator('[data-testid="inline-save-btn"]').click();
 
       break;
     }
@@ -337,13 +396,11 @@ export const validateValueForProperty = async (data: {
     await expect(container.getByTestId('enum-value')).toContainText(value);
   } else if (propertyType === 'timeInterval') {
     const [startValue, endValue] = value.split(',');
+    const interval = container.getByTestId('time-interval-value');
 
-    await expect(container.getByTestId('time-interval-value')).toContainText(
-      startValue
-    );
-    await expect(container.getByTestId('time-interval-value')).toContainText(
-      endValue
-    );
+    // The timeline shows formatted dates; the raw epoch bounds are attributes.
+    await expect(interval).toHaveAttribute('data-start', startValue);
+    await expect(interval).toHaveAttribute('data-end', endValue);
   } else if (propertyType === 'sqlQuery') {
     await expect(container.locator(CODE_EDITOR_CONTENT)).toContainText(value);
   } else if (propertyType === 'table-cp') {

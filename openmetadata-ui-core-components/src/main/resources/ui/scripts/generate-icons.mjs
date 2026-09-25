@@ -53,6 +53,7 @@ const prettierConfig = await prettier.resolveConfig(join(ROOT, '.prettierrc.yaml
 const eslint = new ESLint({ cwd: ROOT, fix: true });
 
 const ICONS_DIR = join(ROOT, 'icons');
+const UNTITLED_REEXPORTS_PATH = join(__dirname, 'untitled-icon-reexports.json');
 const CUSTOM_DIR = join(ROOT, 'icons-custom');
 const OUT_DIR = join(ROOT, 'src', 'icons');
 
@@ -263,6 +264,10 @@ async function main() {
   const allExports = generatedNames
     .map((name) => `export { ${name} } from './${name}'`)
     .join('\n');
+  const untitledReexports = getUntitledReexports(generatedNames);
+  const untitledExportLine = untitledReexports.length
+    ? `export { ${untitledReexports.join(', ')} } from '@untitledui/icons';`
+    : '';
 
   const indexContent = `/*
  *  Copyright 2025 Collate.
@@ -282,6 +287,7 @@ async function main() {
 
 export type { IconProps } from '../icons-static/types';
 ${allExports}
+${untitledExportLine}
 `;
 
   const indexPath = join(OUT_DIR, 'index.ts');
@@ -296,6 +302,36 @@ ${allExports}
 
   console.log(`\nGenerated ${generatedNames.length} icons → src/icons/`);
   console.log('Updated src/icons/index.ts');
+}
+
+/** UntitledUI icons listed in untitled-icon-reexports.json are re-exported
+ *  as-is so consumers get every icon from one import path. A name that is
+ *  also a generated first-party icon would be an ambiguous export, and a
+ *  name missing from @untitledui/icons would only fail at consumer build
+ *  time, so both are rejected here. */
+function getUntitledReexports(generatedNames) {
+  if (!existsSync(UNTITLED_REEXPORTS_PATH)) {
+    return [];
+  }
+
+  const names = JSON.parse(readFileSync(UNTITLED_REEXPORTS_PATH, 'utf8'));
+  const generated = new Set(generatedNames);
+  const untitledIcons = require('@untitledui/icons');
+
+  for (const name of names) {
+    if (generated.has(name)) {
+      throw new Error(
+        `untitled-icon-reexports.json: "${name}" collides with a generated icon`
+      );
+    }
+    if (!(name in untitledIcons)) {
+      throw new Error(
+        `untitled-icon-reexports.json: "${name}" is not an @untitledui/icons export`
+      );
+    }
+  }
+
+  return [...names].sort();
 }
 
 main().catch((err) => {

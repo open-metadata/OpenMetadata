@@ -66,9 +66,8 @@ import {
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
-import { CODE_EDITOR_SCROLLER, typeInCodeEditor } from '../../utils/codeEditor';
+import { typeInCodeEditor } from '../../utils/codeEditor';
 import {
-  clickOutside,
   createNewPage,
   getApiContext,
   getDescriptionBox,
@@ -82,7 +81,6 @@ import {
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
-  fillTableColumnInputDetails,
   setValueForProperty,
   updateCustomPropertyInRightPanel,
   validateValueForProperty,
@@ -568,12 +566,19 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const value =
             "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
-          await typeInCodeEditor(page, container, value + '\n' + value);
+          await typeInCodeEditor(
+            page,
+            page.getByTestId('custom-property-edit-modal'),
+            value + '\n' + value
+          );
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await container.getByTestId('inline-save-btn').click();
+          await page
+            .getByTestId('custom-property-edit-modal')
+            .getByTestId('inline-save-btn')
+            .click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
@@ -582,9 +587,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const codeMirrorScroll = container.locator(CODE_EDITOR_SCROLLER);
-          await expect(codeMirrorScroll).toBeVisible();
-          const isScrollable = await codeMirrorScroll.evaluate(
+          const sqlValue = container.getByTestId('sql-query-value');
+          await expect(sqlValue).toBeVisible();
+          const isScrollable = await sqlValue.evaluate(
             (el) => el.scrollHeight > el.clientHeight
           );
           expect(isScrollable).toBeTruthy();
@@ -628,42 +633,51 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
               user.getUserName()
             )}*`;
+            const referenceInput = page
+              .getByTestId('custom-property-edit-modal')
+              .getByTestId('asset-select-list')
+              .getByRole('combobox');
             const searchResponse = page.waitForResponse(searchApi);
-            await page.locator('#entityReference').clear();
-            await page.locator('#entityReference').fill(user.getUserName());
+            await referenceInput.clear();
+            await referenceInput.fill(user.getUserName());
             await searchResponse;
             await page
-              .locator(`[data-testid="${user.getUserDisplayName()}"]`)
+              .getByRole('option')
+              .getByTestId(user.getUserDisplayName())
               .click();
           }
-          await clickOutside(page);
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await container.getByTestId('inline-save-btn').click();
+          await page
+            .getByTestId('custom-property-edit-modal')
+            .getByTestId('inline-save-btn')
+            .click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify item count (7) in property name', async () => {
+        await test.step('Verify item count (7) next to the property name', async () => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          await expect(container.getByTestId('property-name')).toContainText(
-            '(7)'
+          await expect(container.getByTestId('property-item-count')).toHaveText(
+            '7'
           );
         });
 
-        await test.step('Verify .entity-list-body is scrollable', async () => {
+        await test.step('Verify the list collapses behind "+N more"', async () => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const listBody = container.locator('.entity-list-body');
-          await expect(listBody).toBeVisible();
-          const isScrollable = await listBody.evaluate(
-            (el) => el.scrollHeight > el.clientHeight
-          );
-          expect(isScrollable).toBeTruthy();
+          const showMore = container.getByTestId('toggle-collapsed-values');
+          await expect(showMore).toBeVisible();
+          await showMore.click();
+          for (const user of users) {
+            await expect(
+              container.getByTestId(user.getUserDisplayName())
+            ).toBeVisible();
+          }
         });
 
         await test.step('Verify expand/collapse toggle is hidden', async () => {
@@ -774,50 +788,54 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(editButton).toBeEnabled();
           await editButton.click();
 
+          const [firstColumn, secondColumn] = entity.tableConfig.columns;
+          // The inline editor opens with one empty row; add the other four.
           for (let i = 0; i < 5; i++) {
-            await page.getByTestId('add-new-row').click();
-            await expect(page.locator('.om-rdg')).toBeVisible();
-            await fillTableColumnInputDetails(
-              page,
-              `row${i + 1}-col1`,
-              entity.tableConfig.columns[0]
-            );
-            await fillTableColumnInputDetails(
-              page,
-              `row${i + 1}-col2`,
-              entity.tableConfig.columns[1]
-            );
+            if (i > 0) {
+              await page
+                .getByTestId('custom-property-edit-modal')
+                .getByTestId('add-new-row')
+                .click();
+            }
+            await page
+              .getByTestId('custom-property-edit-modal')
+              .getByTestId(`${firstColumn}-${i}`)
+              .fill(`row${i + 1}-col1`);
+            await page
+              .getByTestId('custom-property-edit-modal')
+              .getByTestId(`${secondColumn}-${i}`)
+              .fill(`row${i + 1}-col2`);
           }
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await page.getByTestId('update-table-type-property').click();
+          await page
+            .getByTestId('custom-property-edit-modal')
+            .getByTestId('inline-save-btn')
+            .click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify row count (5) in property name', async () => {
+        await test.step('Verify row count (5) next to the property name', async () => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          await expect(container.getByTestId('property-name')).toContainText(
-            '(5)'
+          await expect(container.getByTestId('property-item-count')).toHaveText(
+            '5'
           );
         });
 
-        await test.step('Verify .custom-property-scrollable-container is scrollable', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const scrollContainer = container.locator(
-            '.custom-property-scrollable-container'
-          );
-          await expect(scrollContainer).toBeVisible();
-          const isScrollable = await scrollContainer.evaluate(
-            (el) => el.scrollHeight > el.clientHeight
-          );
-          expect(isScrollable).toBeTruthy();
+        await test.step('Verify every saved row renders in the table', async () => {
+          const tableValue = page
+            .locator(`[data-testid="custom-property-${propertyName}-card"]`)
+            .getByTestId('table-type-property-value');
+          for (let i = 1; i <= 5; i++) {
+            await expect(
+              tableValue.getByRole('row').filter({ hasText: `row${i}-col1` })
+            ).toBeVisible();
+          }
         });
 
         await test.step('Verify expand/collapse toggle is hidden', async () => {
@@ -859,7 +877,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await page.locator('[data-testid="save"]').click();
+          await page
+            .getByTestId('custom-property-edit-modal')
+            .getByTestId('inline-save-btn')
+            .click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
@@ -902,16 +923,17 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         );
         await propertyCard.getByTestId('edit-icon').click();
 
-        const enumSelect = page.locator('[data-testid="enum-select"]');
-        await expect(enumSelect).toBeVisible();
-        await enumSelect.click();
+        const enumInput = page
+          .getByTestId('custom-property-edit-modal')
+          .getByTestId('enum-select')
+          .getByRole('combobox');
+        await expect(enumInput).toBeVisible();
+        await enumInput.fill('medium');
+        await page.getByRole('option', { name: 'medium', exact: true }).click();
 
-        await page
-          .locator('.ant-select-item-option-content')
-          .getByText('medium', { exact: true })
-          .click();
-
-        const saveButton = page.locator('[data-testid="inline-save-btn"]');
+        const saveButton = page
+          .getByTestId('custom-property-edit-modal')
+          .getByTestId('inline-save-btn');
         const patchValue1 = page.waitForResponse(
           (resp) =>
             resp.url().includes('/api/v1/tables/') &&
@@ -925,16 +947,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         );
 
         await propertyCard.locator('[data-testid="edit-icon"]').click();
-        await enumSelect.hover();
-
-        const clearIcon = enumSelect.locator('.ant-select-clear');
-        if (await clearIcon.isVisible()) {
-          await clearIcon.click();
-        } else {
-          const enumInput = page.locator('#enumValues');
-          await enumInput.click();
-          await enumInput.fill('');
-        }
+        // Backspace in the empty combobox removes the last selected tag.
+        await enumInput.click();
+        await enumInput.press('Backspace');
+        await expect(
+          page
+            .getByTestId('custom-property-edit-modal')
+            .getByTestId('enum-select')
+        ).not.toContainText('medium');
 
         const patchValue2 = page.waitForResponse(
           (resp) =>
@@ -1349,7 +1369,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
         await expect(containerLocator.getByTestId('no-data')).toBeVisible();
         await expect(containerLocator.getByTestId('no-data')).toContainText(
-          'Not set'
+          'No value yet'
         );
       });
 
@@ -1370,15 +1390,22 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await editButton.scrollIntoViewIfNeeded();
         await editButton.click();
 
+        const card = page.getByTestId(`custom-property-${propertyName}-card`);
         await page
-          .locator('[data-testid="hyperlink-url-input"]')
+          .getByTestId('custom-property-edit-modal')
+          .getByTestId('hyperlink-url-input')
           .fill('javascript:alert("XSS")');
+        await page
+          .getByTestId('custom-property-edit-modal')
+          .getByTestId('inline-save-btn')
+          .click();
 
-        await expect(
-          page.locator('.ant-form-item-explain-error')
-        ).toContainText('URL must use http or https protocol');
+        await expect(card).toContainText('URL must use http or https protocol');
 
-        await page.locator('[data-testid="inline-cancel-btn"]').click();
+        await page
+          .getByTestId('custom-property-edit-modal')
+          .getByTestId('inline-cancel-btn')
+          .click();
       });
 
       test('should accept valid http and https URLs', async ({ page }) => {

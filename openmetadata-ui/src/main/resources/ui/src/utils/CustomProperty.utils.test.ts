@@ -25,6 +25,7 @@ import {
   EntityReference,
 } from '../generated/entity/type';
 import {
+  buildUpdatedExtension,
   filterPopulatedTableRows,
   formatCustomPropertyDateTime,
   formatTableCellValue,
@@ -662,6 +663,64 @@ describe('CustomProperty.utils', () => {
     expect(
       filterPopulatedTableRows([{ id: 'business-id' }, { id: '' }])
     ).toEqual([{ id: 'business-id' }]);
+  });
+
+  describe('buildUpdatedExtension', () => {
+    it('merges the new value into the existing extension', () => {
+      expect(
+        buildUpdatedExtension({ owner: 'Riya' }, 'team', 'string', 'Data')
+      ).toEqual({ owner: 'Riya', team: 'Data' });
+    });
+
+    it('coerces integer and number values to numbers', () => {
+      expect(buildUpdatedExtension({}, 'days', 'integer', '365')).toEqual({
+        days: 365,
+      });
+      expect(buildUpdatedExtension({}, 'score', 'number', '98.6')).toEqual({
+        score: 98.6,
+      });
+    });
+
+    it('keeps a zero numeric value', () => {
+      expect(buildUpdatedExtension({}, 'days', 'integer', 0)).toEqual({
+        days: 0,
+      });
+    });
+
+    it('wraps a single enum value in an array and drops empty options', () => {
+      expect(buildUpdatedExtension({}, 'tier', 'enum', 'Gold')).toEqual({
+        tier: ['Gold'],
+      });
+      expect(
+        buildUpdatedExtension({}, 'tier', 'enum', ['Gold', '', 'Tier 1'])
+      ).toEqual({ tier: ['Gold', 'Tier 1'] });
+    });
+
+    it('removes the key when the new value is empty', () => {
+      const extension = { owner: 'Riya', team: 'Data' };
+
+      expect(buildUpdatedExtension(extension, 'team', 'string', '')).toEqual({
+        owner: 'Riya',
+      });
+      expect(
+        buildUpdatedExtension(extension, 'team', 'string', undefined)
+      ).toEqual({ owner: 'Riya' });
+      expect(buildUpdatedExtension(extension, 'team', 'enum', [])).toEqual({
+        owner: 'Riya',
+      });
+      expect(
+        buildUpdatedExtension(extension, 'team', 'hyperlink-cp', {})
+      ).toEqual({ owner: 'Riya' });
+    });
+
+    it('returns undefined when no values remain', () => {
+      expect(
+        buildUpdatedExtension({ team: 'Data' }, 'team', 'string', '')
+      ).toBeUndefined();
+      expect(
+        buildUpdatedExtension(undefined, 'team', 'string', null)
+      ).toBeUndefined();
+    });
   });
 
   describe('hasPopulatedTableRows', () => {

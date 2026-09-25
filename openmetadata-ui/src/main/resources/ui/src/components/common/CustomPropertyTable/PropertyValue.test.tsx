@@ -78,6 +78,9 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 }));
 
 jest.mock('../../../utils/CustomProperty.utils', () => ({
+  buildUpdatedExtension: jest.requireActual(
+    '../../../utils/CustomProperty.utils'
+  ).buildUpdatedExtension,
   formatCustomPropertyDateTime: jest
     .fn()
     .mockImplementation((value) => value.toFormat('dd-MM-yyyy')),
