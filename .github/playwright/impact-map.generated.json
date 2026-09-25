@@ -11877,14 +11877,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/TagsUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/utils/TestConnectionModalUtils.tsx"
       ],
       "specs": [
