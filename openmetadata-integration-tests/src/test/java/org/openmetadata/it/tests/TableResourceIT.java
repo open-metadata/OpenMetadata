@@ -128,8 +128,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * columns, constraints, partitions, and complex column types.
  *
  * <p>Total coverage: 130 declared test methods (8 inherited from BaseEntityIT plus table-specific
- * tests for columns, constraints, partitions, profiles and CSV import/export); the executed count is
- * higher because several are parameterized.
+ * tests for columns, constraints, partitions, profiles and CSV import/export); the executed count
+ * is higher because several are parameterized.
  *
  * <p>Migrated from: org.openmetadata.service.resources.databases.TableResourceTest Migration date:
  * 2025-10-11
@@ -2596,11 +2596,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   /**
-   * The mssql synonym-aliases design assumes the connector recomputes the full {@code aliases}
-   * list from {@code sys.synonyms} on every run and ships it inside the {@code CreateTable}
-   * request, so created/dropped/retargeted synonyms reconcile through plain PUT upsert semantics
-   * with no diffing stage. That only holds if PUT replaces {@code aliases} wholesale rather than
-   * merging it (as tags do). This test is the gate on that assumption.
+   * The mssql synonym-aliases design assumes the connector recomputes the full {@code aliases} list
+   * from {@code sys.synonyms} on every run and ships it inside the {@code CreateTable} request, so
+   * created/dropped/retargeted synonyms reconcile through plain PUT upsert semantics with no
+   * diffing stage. That only holds if PUT replaces {@code aliases} wholesale rather than merging it
+   * (as tags do). This test is the gate on that assumption.
    */
   @Test
   void put_tableAliases_replaceNotMerge(TestNamespace ns) {
@@ -5283,22 +5283,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       // Create search request for tables with missing descriptions
       String searchQuery =
-          "{"
-              + "  \"query\": {"
-              + "    \"bool\": {"
-              + "      \"must\": ["
-              + "        { \"term\": { \"entityType\": \"table\" } },"
-              + "        { \"bool\": {"
-              + "            \"should\": ["
-              + "              { \"bool\": { \"must_not\": { \"exists\": { \"field\": \"description\" } } } },"
-              + "              { \"term\": { \"description\": \"\" } }"
-              + "            ]"
-              + "          }"
-              + "        }"
-              + "      ]"
-              + "    }"
-              + "  }"
-              + "}";
+          "{  \"query\": {    \"bool\": {      \"must\": [        { \"term\": { \"entityType\":"
+              + " \"table\" } },        { \"bool\": {            \"should\": [              {"
+              + " \"bool\": { \"must_not\": { \"exists\": { \"field\": \"description\" } } } },    "
+              + "          { \"term\": { \"description\": \"\" } }            ]          }        }"
+              + "      ]    }  }}";
 
       Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
       request.setJsonEntity(searchQuery);
@@ -5924,9 +5913,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   /**
    * Test that re-updating a table with the same foreign key constraint does not create a new
-   * version. This verifies the fix for the bug where foreign key constraints caused spurious version
-   * updates during re-ingestion because the referredColumns list was not being sorted before
-   * comparison.
+   * version. This verifies the fix for the bug where foreign key constraints caused spurious
+   * version updates during re-ingestion because the referredColumns list was not being sorted
+   * before comparison.
    */
   @Test
   void put_foreignKeyConstraintNoSpuriousVersionUpdate(TestNamespace ns) {
@@ -5994,8 +5983,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   /**
    * Test that foreign key constraint comparison is order-independent for referredColumns. This
-   * verifies that even if referredColumns come in a different order during re-ingestion, the version
-   * should not change if the same columns are referenced.
+   * verifies that even if referredColumns come in a different order during re-ingestion, the
+   * version should not change if the same columns are referenced.
    */
   @Test
   void put_foreignKeyConstraintWithMultipleReferredColumnsOrderIndependent(TestNamespace ns) {
@@ -6101,8 +6090,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   /**
-   * Get the full Elasticsearch index name with cluster alias prefix.
-   * In test environment, cluster alias is "openmetadata" so table index is "openmetadata_table_search_index"
+   * Get the full Elasticsearch index name with cluster alias prefix. In test environment, cluster
+   * alias is "openmetadata" so table index is "openmetadata_table_search_index"
    */
   private String getTableSearchIndexName() {
     return "openmetadata_table_search_index";
@@ -7091,7 +7080,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     String tableId = table.getId().toString();
     Awaitility.await(
-            "Table search index should reflect updated service displayName via nested field propagation")
+            "Table search index should reflect updated service displayName via nested field"
+                + " propagation")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
@@ -7540,9 +7530,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
    * Regression test for #33623.
    *
    * <p>Table does not set {@code renameAllowed}, so a PATCH that changes {@code name} must be a
-   * no-op: the table's own name must not change AND every child column's {@code
-   * fullyQualifiedName} must still be prefixed with the <em>original</em> table FQN, not the
-   * rejected name.
+   * no-op: the table's own name must not change AND every child column's {@code fullyQualifiedName}
+   * must still be prefixed with the <em>original</em> table FQN, not the rejected name.
    */
   @Test
   void test_patchTable_rejectedRenameDoesNotCorruptColumnFQNs(TestNamespace ns) {
@@ -7561,15 +7550,19 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = patchEntity(created.getId().toString(), patch);
 
     // The table's own name and FQN must be unchanged
-    assertEquals(originalName, updated.getName(), "Table name must not change when rename is rejected");
+    assertEquals(
+        originalName, updated.getName(), "Table name must not change when rename is rejected");
     assertEquals(originalFqn, updated.getFullyQualifiedName(), "Table FQN must not change");
 
     // Every column's FQN must still start with the original table FQN
     for (Column col : updated.getColumns()) {
       assertTrue(
           col.getFullyQualifiedName().startsWith(originalFqn + "."),
-          "Column FQN '" + col.getFullyQualifiedName()
-              + "' must be prefixed with the original table FQN '" + originalFqn + "'");
+          "Column FQN '"
+              + col.getFullyQualifiedName()
+              + "' must be prefixed with the original table FQN '"
+              + originalFqn
+              + "'");
     }
   }
 }

@@ -1487,13 +1487,13 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   /**
-   * Detect columns that exist in the original table but not in the updated table.
-   * This method accepts both entities as parameters to avoid redundant DB lookups.
+   * Detect columns that exist in the original table but not in the updated table. This method
+   * accepts both entities as parameters to avoid redundant DB lookups.
    *
    * <p>This also handles null entries in the updated column list (e.g. from JSON patch "remove"
-   * operations): null columns are excluded via filter(Objects::nonNull), so original columns
-   * at those positions are correctly identified as removed. Any remaining null entries are
-   * cleaned up as a side effect.
+   * operations): null columns are excluded via filter(Objects::nonNull), so original columns at
+   * those positions are correctly identified as removed. Any remaining null entries are cleaned up
+   * as a side effect.
    */
   private Set<String> detectRemovedColumns(Table origTable, Table updatedTable) {
     Set<String> removedColumnNames = new HashSet<>();
@@ -1583,7 +1583,8 @@ public class TableRepository extends EntityRepository<Table> {
               .filter(col -> removedColumnNamesLower.contains(col.toLowerCase()))
               .collect(Collectors.toList());
       LOG.debug(
-          "Removing {} constraint as it references removed columns: {}. Full constraint columns: {}",
+          "Removing {} constraint as it references removed columns: {}. Full constraint columns:"
+              + " {}",
           constraint.getConstraintType(),
           removedFromConstraint,
           constraint.getColumns());
@@ -1781,13 +1782,13 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   /**
-   * Safety net for the table hard-delete cascade. The normal flow goes
-   * {@code table -> executable test suite -> test cases} via CONTAINS relationships, but if that
-   * chain is broken (legacy data, an earlier partial-failure cascade, or a test case linked only
-   * to a logical suite) test cases keep pointing at the deleted table through {@code entityLink}.
-   * Those orphans then break listing and search indexing. Here we explicitly delete any test case
-   * whose {@code entityFQN} resolves under the table being deleted, going through the standard
-   * delete path so test case results, resolution status, and search docs are also cleaned up.
+   * Safety net for the table hard-delete cascade. The normal flow goes {@code table -> executable
+   * test suite -> test cases} via CONTAINS relationships, but if that chain is broken (legacy data,
+   * an earlier partial-failure cascade, or a test case linked only to a logical suite) test cases
+   * keep pointing at the deleted table through {@code entityLink}. Those orphans then break listing
+   * and search indexing. Here we explicitly delete any test case whose {@code entityFQN} resolves
+   * under the table being deleted, going through the standard delete path so test case results,
+   * resolution status, and search docs are also cleaned up.
    */
   private void deleteResidualTestCases(Table table, String deletedBy) {
     String tableFqn = table.getFullyQualifiedName();
@@ -1891,9 +1892,7 @@ public class TableRepository extends EntityRepository<Table> {
     return new TableCsv(table, user).exportCsv(listOf(table), callback);
   }
 
-  /**
-   * Export columns for a table, handling nested column structure
-   */
+  /** Export columns for a table, handling nested column structure */
   public void exportColumnsRecursively(Table table, CsvFile csvFile) {
     if (table.getColumns() != null && !table.getColumns().isEmpty()) {
       for (Column column : table.getColumns()) {
@@ -2008,14 +2007,15 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   /**
-   * Updates join data in the database for an entity and a relation type. Currently, used pairs of ({@code entityFQN},
-   * {@code entityRelationType}) are ({@link Table#getFullyQualifiedName()}, "table") and ({@link
-   * Column#getFullyQualifiedName()}, "table.columns.column").
+   * Updates join data in the database for an entity and a relation type. Currently, used pairs of
+   * ({@code entityFQN}, {@code entityRelationType}) are ({@link Table#getFullyQualifiedName()},
+   * "table") and ({@link Column#getFullyQualifiedName()}, "table.columns.column").
    *
-   * <p>If for a field relation (any relation between {@code entityFQN} and a FQN from {@code joinedWithList}), after
-   * combining the existing list of {@link DailyCount} with join data from {@code joinedWithList}, there are multiple
-   * {@link DailyCount} with the {@link DailyCount#getDate()}, these will <bold>NOT</bold> be merged - the value of
-   * {@link JoinedWith#getJoinCount()} will override the current value.
+   * <p>If for a field relation (any relation between {@code entityFQN} and a FQN from {@code
+   * joinedWithList}), after combining the existing list of {@link DailyCount} with join data from
+   * {@code joinedWithList}, there are multiple {@link DailyCount} with the {@link
+   * DailyCount#getDate()}, these will <bold>NOT</bold> be merged - the value of {@link
+   * JoinedWith#getJoinCount()} will override the current value.
    */
   private void addJoinedWith(
       String date, String entityFQN, String entityRelationType, List<JoinedWith> joinedWithList) {
@@ -2071,9 +2071,10 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   /**
-   * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
-   * or, if there is already data for the date {@code newDailyCount.getDate()}, replace older count with the new one.
-   * Ensures the following properties: all elements in the list have unique dates, all dates are not older than 30 days
+   * Pure function that creates a new list of {@link DailyCount} by either adding the {@code
+   * newDailyCount} to the list or, if there is already data for the date {@code
+   * newDailyCount.getDate()}, replace older count with the new one. Ensures the following
+   * properties: all elements in the list have unique dates, all dates are not older than 30 days
    * from today, the list is ordered by date.
    */
   private List<DailyCount> aggregateAndFilterDailyCounts(
@@ -3124,7 +3125,8 @@ public class TableRepository extends EntityRepository<Table> {
               }
             } catch (Exception e) {
               LOG.debug(
-                  "Skipping pipeline observability for deleted or inaccessible pipeline {} on table {}: {}",
+                  "Skipping pipeline observability for deleted or inaccessible pipeline {} on table"
+                      + " {}: {}",
                   observability.getPipeline().getFullyQualifiedName(),
                   tableId,
                   e.getMessage());
@@ -3368,9 +3370,9 @@ public class TableRepository extends EntityRepository<Table> {
   /**
    * Prune the column tree to nodes that match the search term and tag filter, keeping every matched
    * node at its real depth together with its ancestor path. Mirrors the UI's getFilteredTagsData so
-   * the server-side filter renders the same nested view, paginated across the whole table instead of
-   * the loaded page. A node is kept when it matches itself or has a kept descendant; a kept node's
-   * children are pruned to the matched paths only.
+   * the server-side filter renders the same nested view, paginated across the whole table instead
+   * of the loaded page. A node is kept when it matches itself or has a kept descendant; a kept
+   * node's children are pruned to the matched paths only.
    */
   private List<Column> pruneColumnsToMatches(
       List<Column> columns,
