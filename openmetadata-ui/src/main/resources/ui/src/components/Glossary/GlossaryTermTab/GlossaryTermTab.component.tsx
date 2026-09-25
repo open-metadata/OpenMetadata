@@ -1925,7 +1925,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           // `tw:flex tw:flex-col` turns this outer container into a flex column so
           // its inner scroll region (`scrollContainerClassName`, below) has an
           // actual box to grow into instead of collapsing to nothing.
-          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:flex tw:flex-col tw:min-h-0 tw:flex-1 tw:!overflow-y-auto"
+          containerClassName="glossary-terms-table drop-over-background tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:min-h-0 tw:flex-1"
           data-testid="glossary-terms-table"
           dataSource={filteredGlossaryTerms}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
@@ -1943,7 +1943,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           // (`tw:flex tw:flex-col tw:flex-1 tw:min-h-0`), so this region takes
           // the remaining height and scrolls both axes itself (overflow-y comes
           // from scroll.y's inline style); the sticky header pins against it.
-          scrollContainerClassName="tw:!flex-1 tw:!min-h-0 tw:!max-h-none"
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
         />
@@ -1989,7 +1989,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         size="sm">
         <Table
           columns={columns}
-          containerClassName="glossary-terms-table tw:!border-0 tw:!rounded-none"
+          containerClassName="glossary-terms-table tw:border-0 tw:rounded-none"
           data-testid="glossary-terms-table"
           dataSource={[]}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
