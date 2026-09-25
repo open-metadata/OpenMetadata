@@ -24,19 +24,24 @@ import Loader from '../../../components/common/Loader/Loader';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useObservabilityAlerts } from '../../../pages/ObservabilityAlertsPage/hooks/useObservabilityAlerts';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
-import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import AlertEditModal from './AlertEditModal.component';
-import { getAlertsObservabilityDetailsPath } from './alertUtils';
+import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
 import { invalidateQueriesWithoutInitialRace } from './queryCacheUtils';
 
-const AlertsPage = () => {
+interface AlertsPageProps {
+  /** Which alerts this page serves; Settings → Notifications passes its kind. */
+  kind?: AlertKind;
+}
+
+const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,10 +65,10 @@ const AlertsPage = () => {
       });
 
       if (savedFqn) {
-        navigate(getAlertsObservabilityDetailsPath(savedFqn));
+        navigate(kind.getDetailsPath(savedFqn));
       }
     },
-    [navigate, queryClient]
+    [kind, navigate, queryClient]
   );
 
   const handleEditAlert = useCallback((alert: EventSubscription) => {
@@ -72,7 +77,9 @@ const AlertsPage = () => {
   }, []);
 
   const alertsState = useObservabilityAlerts({
-    getAlertDetailsPath: getAlertsObservabilityDetailsPath,
+    alertType: kind.alertType,
+    includeSystemAlerts: kind.includeSystemAlerts,
+    getAlertDetailsPath: kind.getDetailsPath,
     onAddAlert: handleAddAlert,
   });
 
@@ -125,7 +132,12 @@ const AlertsPage = () => {
         t('server.entity-deleted-successfully', { entity: alertName })
       );
       hideDeleteModal();
-      await handleAlertDelete();
+      await Promise.all([
+        handleAlertDelete(),
+        invalidateQueriesWithoutInitialRace(queryClient, {
+          queryKey: OBSERVABILITY_ALERT_COUNT_QUERY_KEY,
+        }),
+      ]);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -134,7 +146,7 @@ const AlertsPage = () => {
     } finally {
       setIsDeleting(false);
     }
-  }, [selectedAlert, handleAlertDelete, hideDeleteModal, t]);
+  }, [selectedAlert, handleAlertDelete, hideDeleteModal, queryClient, t]);
 
   const handleEditModalSaved = useCallback(async () => {
     setEditingAlert(undefined);
@@ -164,21 +176,26 @@ const AlertsPage = () => {
         header={
           <PageLayout.PageHeader
             actions={
-              alertResourcePermission?.Create ? (
-                <Button
-                  color="primary"
-                  data-testid="add-alert-button"
-                  iconLeading={Plus}
-                  size="md"
-                  onPress={handleAddAlert}>
-                  {t('label.add-entity', { entity: t('label.alert') })}
-                </Button>
+              // Same rule as the classic alert pages: Create or All, behind
+              // the event-subscription limit.
+              alertResourcePermission?.Create ||
+              alertResourcePermission?.All ? (
+                <LimitWrapper resource="eventsubscription">
+                  <Button
+                    color="primary"
+                    data-testid="add-alert-button"
+                    iconLeading={Plus}
+                    size="md"
+                    onPress={handleAddAlert}>
+                    {t('label.add-entity', { entity: t('label.alert') })}
+                  </Button>
+                </LimitWrapper>
               ) : null
             }
             badge={
               <LearningIcon
                 pageId={LEARNING_PAGE_IDS.ALERTS}
-                title={t('label.observability-alert')}
+                title={t(kind.titleKey)}
               />
             }
             breadcrumb={
@@ -186,7 +203,7 @@ const AlertsPage = () => {
                 noMargin
                 className="tw:text-xs"
                 items={[
-                  getObservabilityRootBreadcrumb(t),
+                  ...kind.getRootBreadcrumbs(t),
                   {
                     label: t('label.alert-plural'),
                     ariaLabel: t('label.alert-plural'),
@@ -196,15 +213,16 @@ const AlertsPage = () => {
               />
             }
             subtitle={t('message.alerts-description')}
-            title={t('label.observability-alert')}
+            title={t(kind.titleKey)}
             variant="gradient"
           />
         }
-        pageTitle={t('label.observability-alert')}>
+        pageTitle={t(kind.titleKey)}>
         <ObservabilityAlertsAiTable
           alertPermissions={alertPermissions}
           alertResourcePermission={alertResourcePermission}
           alerts={alerts}
+          ariaLabel={t(kind.titleKey)}
           columnList={columnList}
           currentPage={currentPage}
           getAlertDetailsPath={getAlertDetailsPath}
@@ -237,6 +255,7 @@ const AlertsPage = () => {
         <AlertEditModal
           fqn={editingAlert?.fullyQualifiedName}
           isOpen={isAlertModalOpen}
+          kind={kind}
           mode={alertModalMode}
           onClose={handleAlertModalClose}
           onSaved={editingAlert ? handleEditModalSaved : handleAddModalSaved}

@@ -187,9 +187,17 @@ export const useLimitStore = create<{
     let rLimit = resourceLimit[resource];
     if (isNil(rLimit) || force) {
       const limit = await getLimitByResource(resource);
+      const status = limit?.featureLimitStatuses?.[0];
 
-      setResourceLimit(resource, limit.featureLimitStatuses[0]);
-      rLimit = limit.featureLimitStatuses[0];
+      // No status means limits are off (OSS returns an empty body). The config
+      // that would say so is only loaded by the classic AppContainer, so AI mode
+      // reaches here with `config === null`.
+      if (isNil(status)) {
+        return buildDisabledResourceLimit(resource);
+      }
+
+      setResourceLimit(resource, status);
+      rLimit = status;
     }
 
     if (rLimit) {

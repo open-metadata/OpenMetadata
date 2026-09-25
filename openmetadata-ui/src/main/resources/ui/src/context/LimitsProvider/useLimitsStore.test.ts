@@ -108,4 +108,20 @@ describe('useLimitStore', () => {
 
     expect(useLimitStore.getState().bannerDetails).toBeNull();
   });
+
+  it('treats an empty limits response as disabled when the config was never loaded', async () => {
+    // AI mode does not load the limits config, and OSS answers the per-feature
+    // call with an empty body; callers must not crash on it.
+    useLimitStore.setState({ config: null });
+    mockGetLimitByResource.mockResolvedValue(
+      '' as unknown as Awaited<ReturnType<typeof getLimitByResource>>
+    );
+
+    const result = await useLimitStore
+      .getState()
+      .getResourceLimit('eventsubscription', true, true);
+
+    expect(result.currentCount).toBe(-1);
+    expect(useLimitStore.getState().bannerDetails).toBeNull();
+  });
 });
