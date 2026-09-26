@@ -122,6 +122,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
   {
     supportsListHistoryByTimestamp = true;
+    supportsCreationAudit = true;
     supportsBulkAPI = true;
   }
 

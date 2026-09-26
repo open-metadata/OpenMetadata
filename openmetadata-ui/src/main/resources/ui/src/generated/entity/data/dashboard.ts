@@ -24,7 +24,16 @@ export interface Dashboard {
     /**
      * All the charts included in this Dashboard.
      */
-    charts?:        EntityReference[];
+    charts?: EntityReference[];
+    /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?:     string;
     dashboardType?: DashboardType;
     /**
      * Reference to the data contract for this entity.

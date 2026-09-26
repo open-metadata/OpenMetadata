@@ -5,7 +5,10 @@
   "description": "This schema defines the Team entity. A `Team` is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.Team",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.CreationAudited"
+  ],
   "definitions": {
     "teamType" : {
       "description" : "Organization is the highest level entity. An Organization has one of more Business Units, Division, Departments, Group, or Users. A Business Unit has one or more Divisions, Departments, Group, or Users. A Division has one or more Divisions, Departments, Group, or Users. A Department has one or more Departments, Group, or Users. A Group has only Users",
@@ -62,6 +65,14 @@
     },
     "updatedBy": {
       "description": "User who made the update.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
       "type": "string"
     },
     "impersonatedBy": {

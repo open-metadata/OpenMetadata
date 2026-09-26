@@ -7,7 +7,8 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Container",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.CreationAudited"
   ],
   "definitions": {
     "containerDataModel": {
@@ -113,6 +114,14 @@
     },
     "updatedBy": {
       "description": "User who made the update.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
       "type": "string"
     },
     "impersonatedBy": {
