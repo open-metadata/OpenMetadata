@@ -38,5 +38,5 @@ export type DomainLabelProps = {
    * Chrome around the chips + picker. `default` is the inline/header layout;
    * `profile-card` is the icon + divider card used on the user profile page.
    */
-  variant?: 'default' | 'profile-card';
+  variant?: 'default' | 'profile-card' | 'widget';
 };

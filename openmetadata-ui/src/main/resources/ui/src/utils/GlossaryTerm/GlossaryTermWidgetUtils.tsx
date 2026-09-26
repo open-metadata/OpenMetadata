@@ -15,6 +15,7 @@ import { Owner } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useGenericDomainLabel } from '../../components/common/DomainLabel/useGenericDomainLabel';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import {
   WidgetEditButton,
@@ -36,10 +37,10 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const DomainLabelV2 = withSuspenseFallback(
+const DomainLabel = withSuspenseFallback(
   lazy(() =>
-    import('../../components/DataAssets/DomainLabelV2/DomainLabelV2').then(
-      (module) => ({ default: module.DomainLabelV2 })
+    import('../../components/common/DomainLabel/DomainLabel.component').then(
+      (module) => ({ default: module.DomainLabel })
     )
   )
 );
@@ -161,11 +162,14 @@ const GlossaryTermOwnerWidget = () => {
 
 const GlossaryTermDomainWidget = () => {
   const { entityRules } = useGenericContext();
+  const domainProps = useGenericDomainLabel();
 
   return (
-    <DomainLabelV2
+    <DomainLabel
+      {...domainProps}
       showDomainHeading
       multiple={entityRules?.canAddMultipleDomains ?? true}
+      variant="widget"
     />
   );
 };

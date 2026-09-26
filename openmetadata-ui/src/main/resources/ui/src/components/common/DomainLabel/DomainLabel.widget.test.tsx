@@ -13,7 +13,8 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
-import { DomainLabelV2 } from './DomainLabelV2';
+import { DomainLabel } from './DomainLabel.component';
+import { useGenericDomainLabel } from './useGenericDomainLabel';
 
 const mockDomains: EntityReference[] = [
   {
@@ -48,22 +49,20 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: () => mockContext,
 }));
 
-jest.mock('../../common/WidgetCard/WidgetCard', () => ({
+jest.mock('../WidgetCard/WidgetCard', () => ({
   __esModule: true,
   default: ({ title }: { title: string }) => (
     <div data-testid="widget-title">{title}</div>
   ),
 }));
 
-jest.mock(
-  '../../common/DomainSelectableList/DomainSelectableList.component',
-  () =>
-    jest.fn().mockImplementation(() => <div data-testid="selectable-list" />)
+jest.mock('../DomainSelectableList/DomainSelectableList.component', () =>
+  jest.fn().mockImplementation(() => <div data-testid="selectable-list" />)
 );
 
 const mockToggle = jest.fn();
 
-jest.mock('../../common/DomainSelect/DomainSelect', () => ({
+jest.mock('../DomainSelect/DomainSelect', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     const renderTrigger = props.renderTrigger as (p: {
@@ -95,35 +94,42 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-describe('DomainLabelV2 heading label', () => {
+// Mirrors how widget surfaces render it: context-derived props + variant.
+const WidgetDomainLabel = (props: Record<string, unknown>) => {
+  const domainProps = useGenericDomainLabel();
+
+  return <DomainLabel {...domainProps} {...props} variant="widget" />;
+};
+
+describe('DomainLabel (widget variant) heading label', () => {
   it('renders singular "Domain" heading when multiple is false', () => {
-    render(<DomainLabelV2 showDomainHeading multiple={false} />);
+    render(<WidgetDomainLabel showDomainHeading multiple={false} />);
 
     expect(screen.getByTestId('widget-title')).toHaveTextContent('Domain');
     expect(screen.getByTestId('widget-title')).not.toHaveTextContent('Domains');
   });
 
   it('renders plural "Domains" heading when multiple is true', () => {
-    render(<DomainLabelV2 multiple showDomainHeading />);
+    render(<WidgetDomainLabel multiple showDomainHeading />);
 
     expect(screen.getByTestId('widget-title')).toHaveTextContent('Domains');
   });
 
   it('defaults to singular "Domain" heading when multiple is not passed', () => {
-    render(<DomainLabelV2 showDomainHeading />);
+    render(<WidgetDomainLabel showDomainHeading />);
 
     expect(screen.getByTestId('widget-title')).toHaveTextContent('Domain');
   });
 });
 
-describe('DomainLabelV2 picker trigger', () => {
+describe('DomainLabel (widget variant) picker trigger', () => {
   beforeEach(() => jest.clearAllMocks());
 
   // The widget re-renders while a PATCH settles; a re-render that replaces the
   // trigger's DOM node between mousedown and mouseup makes the browser drop the
   // click outright, so the press must land on pointerdown instead.
   it('opens the picker on pointerdown', () => {
-    render(<DomainLabelV2 />);
+    render(<WidgetDomainLabel />);
 
     fireEvent.pointerDown(screen.getByTestId('edit-domain'), { button: 0 });
 
@@ -131,7 +137,7 @@ describe('DomainLabelV2 picker trigger', () => {
   });
 
   it('does not toggle again on the click that follows a pointerdown', () => {
-    render(<DomainLabelV2 />);
+    render(<WidgetDomainLabel />);
 
     const trigger = screen.getByTestId('edit-domain');
     fireEvent.pointerDown(trigger, { button: 0 });
@@ -141,7 +147,7 @@ describe('DomainLabelV2 picker trigger', () => {
   });
 
   it('opens the picker on a click with no pointerdown (screen reader, programmatic)', () => {
-    render(<DomainLabelV2 />);
+    render(<WidgetDomainLabel />);
 
     fireEvent.click(screen.getByTestId('edit-domain'), { detail: 0 });
 
@@ -149,7 +155,7 @@ describe('DomainLabelV2 picker trigger', () => {
   });
 
   it('opens the picker on Enter', () => {
-    render(<DomainLabelV2 />);
+    render(<WidgetDomainLabel />);
 
     fireEvent.keyDown(screen.getByTestId('edit-domain'), { key: 'Enter' });
 

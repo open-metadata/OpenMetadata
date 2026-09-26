@@ -13,13 +13,14 @@
 import { lazy } from 'react';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EntityDetailWidgetSkeleton } from '../../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
+import { useGenericDomainLabel } from '../../../common/DomainLabel/useGenericDomainLabel';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { CommonWidgetComponent, GenericEntity } from '../CommonWidgets.types';
 
-const DomainLabelV2 = withSuspenseFallback(
+const DomainLabel = withSuspenseFallback(
   lazy(() =>
-    import('../../DomainLabelV2/DomainLabelV2').then((m) => ({
-      default: m.DomainLabelV2,
+    import('../../../common/DomainLabel/DomainLabel.component').then((m) => ({
+      default: m.DomainLabel,
     }))
   ),
   <EntityDetailWidgetSkeleton />
@@ -27,11 +28,14 @@ const DomainLabelV2 = withSuspenseFallback(
 
 export const DomainWidget: CommonWidgetComponent = () => {
   const { entityRules } = useGenericContext<GenericEntity>();
+  const domainProps = useGenericDomainLabel<GenericEntity>();
 
   return (
-    <DomainLabelV2
+    <DomainLabel
+      {...domainProps}
       showDomainHeading
       multiple={entityRules.canAddMultipleDomains}
+      variant="widget"
     />
   );
 };

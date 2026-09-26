@@ -94,7 +94,8 @@ import {
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
@@ -205,6 +206,7 @@ const ClassificationDetails = forwardRef(
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
+    const domainProps = useGenericDomainLabel();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -784,10 +786,12 @@ const ClassificationDetails = forwardRef(
               {renderTagsPanel()}
             </Card>
             <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-5">
-              <DomainLabelV2
+              <DomainLabel
+                {...domainProps}
                 multiple
                 showDomainHeading
                 hasPermission={editDomainPermission}
+                variant="widget"
               />
               <WidgetCard
                 dataTestId="classification-owner-name"

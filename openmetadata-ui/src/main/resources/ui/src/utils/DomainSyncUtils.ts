@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { get, isEmpty, isUndefined } from 'lodash';
+import { Dispatch, SetStateAction } from 'react';
+import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
+import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { DataAssetWithDomains } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { EntityReference } from '../generated/entity/type';
+import { getAPIfromSource, getEntityAPIfromSource } from './Assets/AssetsUtils';
+import { showErrorToast } from './ToastUtils';
 
 /**
  * Stable content key for a domain list, used to skip no-op `setActiveDomain`
@@ -21,7 +30,7 @@ import { EntityReference } from '../generated/entity/type';
  * changed link — still updates the chip, while unchanged data stays
  * reference-stable. JSON encoding keeps it collision-safe.
  *
- * Shared by DomainLabel and DomainLabelV2 so the two cannot drift apart again.
+ * Shared by every DomainLabel variant so they cannot drift apart again.
  */
 export const getDomainsContentKey = (list: EntityReference[]): string =>
   JSON.stringify(
@@ -34,3 +43,78 @@ export const getDomainsContentKey = (list: EntityReference[]): string =>
       d.href,
     ])
   );
+
+const resolveDomainsForPatch = (
+  selectedDomain: EntityReference | EntityReference[]
+): EntityReference[] => {
+  if (Array.isArray(selectedDomain)) {
+    return selectedDomain;
+  }
+
+  return isEmpty(selectedDomain) ? [] : [selectedDomain];
+};
+
+/** Delegate the save to the consumer's `onUpdate`, then mirror it locally. */
+export const saveDomainViaOnUpdate = async (
+  selectedDomain: EntityReference | EntityReference[],
+  onUpdate: DomainLabelProps['onUpdate'],
+  setActiveDomain: Dispatch<SetStateAction<EntityReference[]>>
+): Promise<void> => {
+  if (!onUpdate) {
+    return;
+  }
+
+  try {
+    await onUpdate(selectedDomain);
+    const updatedDomains = Array.isArray(selectedDomain)
+      ? selectedDomain
+      : [selectedDomain];
+    setActiveDomain(updatedDomains);
+  } catch (err) {
+    showErrorToast(err as AxiosError);
+  }
+};
+
+/** PATCH the entity's `domains` directly when no `onUpdate` is supplied. */
+export const saveDomainViaApi = async (
+  selectedDomain: EntityReference | EntityReference[],
+  entityType: AssetsUnion,
+  entityFqn: string,
+  entityId: string,
+  setActiveDomain: Dispatch<SetStateAction<EntityReference[]>>,
+  afterDomainUpdateAction?: DomainLabelProps['afterDomainUpdateAction']
+): Promise<void> => {
+  try {
+    const entityDetailsResponse = await getEntityAPIfromSource(entityType)(
+      entityFqn,
+      { fields: 'domains' }
+    );
+    if (!entityDetailsResponse) {
+      return;
+    }
+
+    const jsonPatch = compare(entityDetailsResponse, {
+      ...entityDetailsResponse,
+      domains: resolveDomainsForPatch(selectedDomain),
+    });
+
+    const api = getAPIfromSource(entityType);
+    const res = await api(entityId, jsonPatch);
+
+    const entityDomains = get(res, 'domains', {}) as
+      | EntityReference[]
+      | EntityReference
+      | undefined;
+    if (Array.isArray(entityDomains)) {
+      setActiveDomain(entityDomains);
+    } else {
+      setActiveDomain(
+        isEmpty(entityDomains) || !entityDomains ? [] : [entityDomains]
+      );
+    }
+    !isUndefined(afterDomainUpdateAction) &&
+      afterDomainUpdateAction(res as DataAssetWithDomains);
+  } catch (err) {
+    showErrorToast(err as AxiosError);
+  }
+};

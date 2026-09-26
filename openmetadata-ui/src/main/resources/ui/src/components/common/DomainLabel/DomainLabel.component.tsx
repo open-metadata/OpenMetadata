@@ -10,23 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
+import { Card, Divider, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
-import { get, isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import {
+  KeyboardEvent,
+  MouseEvent,
+  PointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  getAPIfromSource,
-  getEntityAPIfromSource,
-} from '../../../utils/Assets/AssetsUtils';
-import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+  getDomainsContentKey,
+  saveDomainViaApi,
+  saveDomainViaOnUpdate,
+} from '../../../utils/DomainSyncUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../WidgetCard/WidgetCard';
+import DomainSelect from '../DomainSelect/DomainSelect';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import DomainTags from '../DomainTags/DomainTags';
 import './domain-label.less';
@@ -47,6 +57,7 @@ export const DomainLabel = ({
   showDomainHeading = false,
   multiple = false,
   headerLayout = false,
+  isClearable,
   variant = 'default',
   onUpdate,
 }: DomainLabelProps) => {
@@ -59,48 +70,29 @@ export const DomainLabel = ({
       : t('label.no-entity', { entity: t('label.domain-plural') });
   }, [showDashPlaceholder]);
 
+  const widgetTitle = useMemo(
+    () => (multiple ? t('label.domain-plural') : t('label.domain')),
+    [multiple, t]
+  );
+
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
-      const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
-        entityFqn,
-        { fields: 'domains' }
-      );
+      if (onUpdate) {
+        await saveDomainViaOnUpdate(selectedDomain, onUpdate, setActiveDomain);
 
-      try {
-        const entityDetailsResponse = await entityDetails;
-        if (entityDetailsResponse) {
-          let domains: EntityReference[];
-          if (Array.isArray(selectedDomain)) {
-            domains = selectedDomain;
-          } else if (isEmpty(selectedDomain)) {
-            domains = [];
-          } else {
-            domains = [selectedDomain];
-          }
-          const jsonPatch = compare(entityDetailsResponse, {
-            ...entityDetailsResponse,
-            domains,
-          });
-
-          const api = getAPIfromSource(entityType as AssetsUnion);
-          const res = await api(entityId, jsonPatch);
-
-          const entityDomains = get(res, 'domains', {});
-          if (Array.isArray(entityDomains)) {
-            setActiveDomain(entityDomains);
-          } else {
-            // update the domain details here
-            setActiveDomain(isEmpty(entityDomains) ? [] : [entityDomains]);
-          }
-          !isUndefined(afterDomainUpdateAction) &&
-            afterDomainUpdateAction(res as DataAssetWithDomains);
-        }
-      } catch (err) {
-        // Handle errors as needed
-        showErrorToast(err as AxiosError);
+        return;
       }
+
+      await saveDomainViaApi(
+        selectedDomain,
+        entityType as AssetsUnion,
+        entityFqn,
+        entityId,
+        setActiveDomain,
+        afterDomainUpdateAction
+      );
     },
-    [entityType, entityId, entityFqn, afterDomainUpdateAction, onUpdate]
+    [entityType, entityId, entityFqn, onUpdate, afterDomainUpdateAction]
   );
 
   useEffect(() => {
@@ -165,13 +157,108 @@ export const DomainLabel = ({
           multiple={multiple}
           selectedDomain={activeDomain}
           wrapInButton={false}
-          onUpdate={onUpdate ?? handleDomainSave}
+          onUpdate={handleDomainSave}
         />
       )
     );
-  }, [hasPermission, activeDomain, handleDomainSave, multiple, onUpdate]);
+  }, [hasPermission, activeDomain, handleDomainSave, multiple]);
+
+  // The widget chrome drives the picker from its own plus/edit button, so it
+  // uses DomainSelect directly rather than DomainSelectableList's wrapper.
+  const widgetEditor = useMemo(() => {
+    if (!hasPermission) {
+      return null;
+    }
+
+    const renderTrigger = ({ toggle }: { toggle: () => void }) => (
+      <span
+        role="presentation"
+        onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
+          e.stopPropagation();
+          // A click with no preceding pointerdown and no keydown — screen-reader
+          // virtual activation, `element.click()` — reports `detail === 0`.
+          if (e.detail === 0) {
+            toggle();
+          }
+        }}
+        onKeyDownCapture={(e: KeyboardEvent<HTMLSpanElement>) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            toggle();
+          }
+        }}
+        onPointerDownCapture={(e: PointerEvent<HTMLSpanElement>) => {
+          if (e.button > 0) {
+            return;
+          }
+          toggle();
+        }}>
+        {isEmpty(activeDomain) ? (
+          <WidgetPlusButton
+            data-testid="add-domain"
+            title={t('label.add-entity', { entity: widgetTitle })}
+          />
+        ) : (
+          <WidgetEditButton
+            data-testid="edit-domain"
+            title={t('label.edit-entity', { entity: widgetTitle })}
+          />
+        )}
+      </span>
+    );
+
+    return (
+      <DomainSelect
+        hasPermission
+        data-testid="domain-selectable-tree"
+        isClearable={isClearable}
+        multiple={multiple}
+        renderTrigger={renderTrigger}
+        selectedDomain={activeDomain}
+        triggerVariant="button"
+        onUpdate={
+          handleDomainSave as (
+            domain: EntityReference | EntityReference[] | undefined
+          ) => Promise<void>
+        }
+      />
+    );
+  }, [
+    hasPermission,
+    activeDomain,
+    handleDomainSave,
+    isClearable,
+    multiple,
+    widgetTitle,
+    t,
+  ]);
 
   const label = useMemo(() => {
+    if (variant === 'widget') {
+      const chips = <DomainTags domains={activeDomain} />;
+
+      if (showDomainHeading) {
+        return (
+          <WidgetCard
+            headerExtra={widgetEditor}
+            isExpandDisabled={isEmpty(activeDomain)}
+            title={widgetTitle}>
+            {!isEmpty(activeDomain) && chips}
+          </WidgetCard>
+        );
+      }
+
+      return (
+        <Card
+          className="d-flex items-center gap-1 flex-wrap"
+          data-testid="header-domain-container">
+          {chips}
+          {widgetEditor}
+        </Card>
+      );
+    }
+
     if (variant === 'profile-card') {
       return (
         <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
@@ -266,6 +353,9 @@ export const DomainLabel = ({
     labelClassName,
     variant,
     domainLink,
+    widgetEditor,
+    widgetTitle,
+    showDomainHeading,
     t,
   ]);
 
