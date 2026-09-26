@@ -15,7 +15,7 @@ Source connection handler
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
@@ -62,6 +62,9 @@ from metadata.utils.ssl_manager import SSLManager
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
+        TableauPipelineConnection,
+    )
 
 logger = ingestion_logger()
 
@@ -172,7 +175,7 @@ def get_connection(connection: TableauConnectionConfig) -> TableauClient:
 
 
 def set_verify_ssl(
-    connection: TableauConnectionConfig,
+    connection: TableauConnectionConfig | TableauPipelineConnection,
 ) -> tuple[bool | str, SSLManager | None]:
     """
     Set verify ssl based on connection configuration
@@ -207,7 +210,9 @@ def set_verify_ssl(
     )
 
 
-def build_server_config(connection: TableauConnectionConfig) -> dict[str, dict[str, Any]]:
+def build_server_config(
+    connection: TableauConnectionConfig | TableauPipelineConnection,
+) -> TSC.TableauAuth | TSC.PersonalAccessTokenAuth:
     """
     Build client configuration
     Args:

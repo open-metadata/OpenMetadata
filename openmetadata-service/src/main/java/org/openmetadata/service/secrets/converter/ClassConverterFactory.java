@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionReque
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -103,6 +104,7 @@ import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
+import org.openmetadata.schema.services.connections.pipeline.TableauPipelineConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
@@ -278,7 +280,14 @@ public final class ClassConverterFactory {
               SsrsConnection.class,
               new NestedConfigClassConverter(
                   SsrsConnection.class,
-                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))));
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              TableauPipelineConnection.class,
+              new NestedConfigClassConverter(
+                  TableauPipelineConnection.class,
+                  Map.of(
+                      "authType", List.of(BasicAuth.class, AccessTokenAuth.class),
+                      "sslConfig", List.of(ValidateSSLClientConfig.class)))));
 
   static {
     Map<Class<?>, ClassConverter> converters =
