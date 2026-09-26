@@ -405,9 +405,15 @@ export const fillRule = async (
         }
       }
 
-        await page
-        .getByText('All conditions must match', { exact: true }).first()
-        .click({ timeout: 10_000 });
+      // Dismiss the popup: re-selecting the current value emits no selection
+      // change, so it can stay open and swallow the next interaction. Tab
+      // (not blur — the click left focus inside the listbox, so the input has
+      // none to lose) moves focus out and react-aria closes it. NEVER Escape:
+      // the modal handles it and would close the whole dialog.
+      await dropdownInput.press('Tab', { timeout: 5_000 });
+      await dropdown
+        .waitFor({ state: 'hidden', timeout: 5_000 })
+        .catch(() => undefined);
     }
   }
 };
