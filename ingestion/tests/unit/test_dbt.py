@@ -5044,3 +5044,178 @@ class TestDbtDataProducts:
         source.metadata.add_assets_to_data_product.assert_called_once()
         assert "Marketing" in caplog.text
         assert "domain" in caplog.text.lower()
+
+
+class TestDbtMetricGovernanceMetadata:
+    """yield_dbt_metrics must propagate node-level meta governance metadata to the metric."""
+
+    def _source(self, metric_custom_properties=None):
+        source = DbtSource.__new__(DbtSource)
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.config = MagicMock()
+        source.config.serviceName = "my_svc"
+        source.source_config = MagicMock()
+        source.source_config.includeTags = False
+        source.omd_metric_custom_properties = metric_custom_properties or {}
+        return source
+
+    def _simple_metric(self, meta=None):
+        metric_node = SimpleNamespace(
+            name="segmented_drivers",
+            type=SimpleNamespace(value="simple"),
+            description="Distinct drivers.",
+            label="Segmented Drivers",
+            type_params=SimpleNamespace(measure=SimpleNamespace(name="driver_count")),
+            time_granularity=SimpleNamespace(value="month"),
+            tags=[],
+            depends_on=SimpleNamespace(nodes=[]),
+            meta=meta,
+        )
+        return {
+            "metric_node": metric_node,
+            "semantic_models": {},
+            "all_metrics": {metric_node.name: metric_node},
+        }
+
+    def test_metric_governance_metadata_is_propagated(self):
+        from metadata.generated.schema.entity.data.metric import MetricType
+
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
+        source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
+        source.get_dbt_domain = MagicMock(
+            return_value=EntityReference(
+                id="0f4e1cd5-6a6e-4f5f-9f0e-0f3a2b1c9d8e",
+                type="domain",
+                name="Customer",
+                fullyQualifiedName="Customer",
+            )
+        )
+        # tags / tag channel is empty for this case
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {
+            "openmetadata": {
+                "owner": "data_analytics",
+                "domain": "Customer",
+                "unit": "count",
+                "customProperties": {"steward": "some.user"},
+            }
+        }
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+
+        assert request.name.root == "segmented_drivers"
+        assert request.metricType == MetricType.SIMPLE
+        assert request.metricExpression.code == "driver_count"
+        assert request.owners == MOCK_OWNER
+        assert request.domains == ["Customer"]
+        assert request.unitOfMeasurement.value == "COUNT"
+        assert request.customUnitOfMeasurement is None
+        assert request.extension.root == {"steward": "some.user"}
+        assert request.relatedMetrics is None
+
+    def test_metric_without_meta_governance_stays_unchanged(self):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        metric_requests = [
+            item for item in DbtSource.yield_dbt_metrics(source, self._simple_metric()) if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+        assert request.owners is None
+        assert request.domains is None
+        assert request.unitOfMeasurement is None
+        assert request.extension is None
+
+    def _request_for_unit(self, unit):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"unit": unit}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        return metric_requests[0].right
+
+    def test_free_form_unit_is_sent_as_other_with_the_custom_unit(self):
+        """
+        MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement unless
+        unitOfMeasurement is OTHER, so a free-form unit sent on its own is dropped server-side.
+        """
+        request = self._request_for_unit("basis points")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "basis points"
+
+    def test_explicit_other_unit_still_carries_a_custom_unit(self):
+        """OTHER without a customUnitOfMeasurement is rejected by the server, losing the metric."""
+        request = self._request_for_unit("other")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "other"
+
+    def test_custom_properties_undefined_for_metrics_are_dropped(self):
+        """
+        EntityRepository.validateExtension rejects the whole create request on an unknown field,
+        so a property defined only for tables must not reach the metric extension.
+        """
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
+        source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {
+            "openmetadata": {
+                "owner": "data_analytics",
+                "customProperties": {"steward": "some.user", "tableOnlyProperty": "value"},
+            }
+        }
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+
+        assert request.extension.root == {"steward": "some.user"}
+        # the metric itself and the rest of its governance metadata survive
+        assert request.owners == MOCK_OWNER
+
+    def test_metric_with_only_unknown_custom_properties_sends_no_extension(self):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"customProperties": {"tableOnlyProperty": "value"}}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        assert metric_requests[0].right.extension is None

@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.data.metric import (
     MetricFilter,
     MetricGranularity,
     MetricMeasure,
+    UnitOfMeasurement,
 )
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -64,6 +65,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     FullyQualifiedEntityName,
     SqlQuery,
     Timestamp,
@@ -166,6 +168,7 @@ class DbtSource(DbtServiceSource):
             self.source_config.dbtClassificationName if self.source_config.dbtClassificationName else "dbtTags"
         )
         self.omd_custom_properties = {}
+        self.omd_metric_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
         self.extracted_data_products = {}
@@ -193,20 +196,23 @@ class DbtSource(DbtServiceSource):
 
     def _load_omd_custom_properties(self):
         """
-        Loads custom properties definitions for tables
+        Loads custom properties definitions for the entity types dbt writes them to
         """
+        self.omd_custom_properties = self._fetch_custom_property_definitions("table")
+        self.omd_metric_custom_properties = self._fetch_custom_property_definitions("metric")
+
+    def _fetch_custom_property_definitions(self, entity_type: str) -> dict[str, Any]:
+        definitions: dict[str, Any] = {}
         try:
-            response = self.metadata.client.get(
-                f"/metadata/types/name/table?fields=customProperties"  # noqa: F541
-            )
+            response = self.metadata.client.get(f"/metadata/types/name/{entity_type}?fields=customProperties")
 
-            if response and "customProperties" in response:
-                for prop in response["customProperties"]:
-                    self.omd_custom_properties[prop["name"]] = prop
+            for prop in (response or {}).get("customProperties") or []:
+                definitions[prop["name"]] = prop
 
-            logger.debug(f"Loaded {len(self.omd_custom_properties)} custom properties for tables")
+            logger.debug("Loaded %d custom properties for %s", len(definitions), entity_type)
         except Exception as exc:
-            logger.warning(f"Error loading custom properties: {exc}")
+            logger.warning("Error loading custom properties for %s: %s", entity_type, exc)
+        return definitions
 
     def get_dbt_domain(self, manifest_node: Any) -> EntityReference | None:
         """
@@ -509,6 +515,21 @@ class DbtSource(DbtServiceSource):
         custom_properties: dict[str, Any],
     ) -> dict[str, Any] | None:
         """
+        Validates and converts a table's custom properties against the table definitions
+        """
+        return self._validate_custom_properties_against(
+            definitions=self.omd_custom_properties,
+            custom_properties=custom_properties,
+            entity_label=f"Table {table_entity.fullyQualifiedName.root}",
+        )
+
+    def _validate_custom_properties_against(
+        self,
+        definitions: dict[str, Any],
+        custom_properties: dict[str, Any],
+        entity_label: str,
+    ) -> dict[str, Any] | None:
+        """
         Validates and converts custom properties with comprehensive type checking.
 
         This method performs three-layer validation:
@@ -517,30 +538,30 @@ class DbtSource(DbtServiceSource):
         3. Format validation - Does the value meet format requirements?
 
         Args:
-            table_entity: The table entity being processed
+            definitions: Custom property definitions registered for the target entity type
             custom_properties: Dictionary of custom property names to values from DBT
+            entity_label: Entity being processed, used in the validation log messages
 
         Returns:
             Dictionary of validated and converted custom properties, or None if no valid properties
         """
         valid_custom_properties = {}
         validation_errors = []
-        table_fqn = table_entity.fullyQualifiedName.root
 
-        logger.debug(f"Validating {len(custom_properties)} custom properties for table {table_fqn}")
+        logger.debug("Validating %d custom properties for %s", len(custom_properties), entity_label)
 
         for field_name, field_value in custom_properties.items():
             # Step 1: Check if property exists in OpenMetadata
-            if field_name not in self.omd_custom_properties:
+            if field_name not in definitions:
                 error_msg = (
                     f"Custom property '{field_name}' not found in OpenMetadata. "
                     f"Please create it in the OpenMetadata UI before ingesting."
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: Property not defined")
                 continue
 
-            custom_property = self.omd_custom_properties[field_name]
+            custom_property = definitions[field_name]
             property_type = custom_property["propertyType"]["name"]
 
             # Extract property configuration (format, enum values, etc.)
@@ -566,7 +587,7 @@ class DbtSource(DbtServiceSource):
                     value=field_value,
                     error_detail=error_detail,
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: {error_detail}")
                 continue
 
@@ -575,38 +596,51 @@ class DbtSource(DbtServiceSource):
                 error_msg = (
                     f"Failed to convert custom property '{field_name}' (type: {property_type}, value: {field_value})"
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: Conversion failed")
                 continue
 
             # Log if enum values were filtered
             if property_type == "enum" and converted_value != field_value:
                 logger.debug(
-                    f"Table {table_fqn}: Filtered enum property '{field_name}' from {field_value} to {converted_value}"
+                    "%s: Filtered enum property '%s' from %s to %s",
+                    entity_label,
+                    field_name,
+                    field_value,
+                    converted_value,
                 )
 
             # Successfully validated and converted
             valid_custom_properties[field_name] = converted_value
             logger.debug(
-                f"✓ Validated custom property '{field_name}' for table {table_fqn}: "
-                f"{field_value} → {converted_value} (type: {property_type})"
+                "✓ Validated custom property '%s' for %s: %s → %s (type: %s)",
+                field_name,
+                entity_label,
+                field_value,
+                converted_value,
+                property_type,
             )
 
         # Log validation summary
         if validation_errors:
             logger.warning(
-                f"Custom property validation errors for table {table_fqn}:\n"
-                + "\n".join(f"  • {err}" for err in validation_errors)
+                "Custom property validation errors for %s:\n%s",
+                entity_label,
+                "\n".join(f"  • {err}" for err in validation_errors),
             )
 
         if valid_custom_properties:
             logger.debug(
-                f"Successfully validated {len(valid_custom_properties)}/{len(custom_properties)} "
-                f"custom properties for table {table_fqn}"
+                "Successfully validated %d/%d custom properties for %s",
+                len(valid_custom_properties),
+                len(custom_properties),
+                entity_label,
             )
         else:
             logger.warning(
-                f"No valid custom properties found for table {table_fqn} (attempted: {len(custom_properties)})"
+                "No valid custom properties found for %s (attempted: %d)",
+                entity_label,
+                len(custom_properties),
             )
 
         return valid_custom_properties if valid_custom_properties else None
@@ -1423,6 +1457,47 @@ class DbtSource(DbtServiceSource):
 
             tags = self._extract_metric_tags(metric_node)
 
+            # Governance metadata lives in the node-level meta (dbt copies config.meta: onto
+            # manifest_node.meta while parsing). Tables already ingest owners/domain/tier/
+            # glossary/custom properties from there; metrics must too.
+            dbt_meta = None
+            raw_meta = getattr(metric_node, "meta", None)
+            if raw_meta:
+                dbt_meta = DbtMeta(**raw_meta)
+                # Tier/glossary/tags flow through the tag channel; owner/domain/custom
+                # properties/unit of measurement are read directly below. process_dbt_meta also
+                # records table-level domain and custom-property side effects, so only feed it
+                # meta that needs the tag channel.
+                om_meta = raw_meta.get("openmetadata") if isinstance(raw_meta, dict) else None
+                if isinstance(om_meta, dict) and any(om_meta.get(k) for k in ("tier", "glossary", "tags")):
+                    tag_meta = {"openmetadata": {k: om_meta[k] for k in ("tier", "glossary", "tags") if om_meta.get(k)}}
+                    tags = (tags or []) + (self.process_dbt_meta(tag_meta, metric_name) or [])
+
+            owners = self.get_dbt_owner(metric_node, None)
+            domain_ref = self.get_dbt_domain(metric_node)
+            unit_of_measurement = None
+            custom_unit = None
+            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.unit:
+                unit_value = dbt_meta.openmetadata.unit.upper()
+                if unit_value in set(UnitOfMeasurement.__members__) and unit_value != UnitOfMeasurement.OTHER.value:
+                    unit_of_measurement = UnitOfMeasurement(unit_value)
+                else:
+                    # MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement
+                    # unless unitOfMeasurement is OTHER, and rejects OTHER without one - so a
+                    # free-form dbt unit only survives when both are sent together.
+                    unit_of_measurement = UnitOfMeasurement.OTHER
+                    custom_unit = dbt_meta.openmetadata.unit
+            extension = None
+            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.customProperties:
+                # EntityRepository.validateExtension rejects the whole create request when a field
+                # is not registered for the metric type, which would cost the metric itself and the
+                # rest of its governance metadata - so drop unknown fields like the table path does.
+                valid_properties = self._validate_custom_properties_against(
+                    definitions=self.omd_metric_custom_properties,
+                    custom_properties=dict(dbt_meta.openmetadata.customProperties),
+                    entity_label=f"Metric {metric_name}",
+                )
+                extension = EntityExtension(root=valid_properties) if valid_properties else None
             create_metric = CreateMetricRequest(
                 name=metric_name,
                 displayName=label or metric_name,
@@ -1435,6 +1510,11 @@ class DbtSource(DbtServiceSource):
                 measures=measures or None,
                 filters=filters or None,
                 tags=tags or None,
+                owners=owners,
+                domains=[domain_ref.fullyQualifiedName] if domain_ref else None,
+                unitOfMeasurement=unit_of_measurement,
+                customUnitOfMeasurement=custom_unit,
+                extension=extension,
             )
 
             yield Either(right=create_metric)
