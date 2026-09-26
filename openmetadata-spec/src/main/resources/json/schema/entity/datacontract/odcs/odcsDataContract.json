@@ -312,6 +312,10 @@
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule",
       "properties": {
+        "id": {
+          "description": "Stable identifier of the rule (ODCS 3.1.0). When the rule is turned into an OpenMetadata test case, the id becomes the test case name, so re-importing the same rule updates that test case instead of creating another one.",
+          "type": "string"
+        },
         "type": {
           "description": "Quality rule type.",
           "type": "string",
@@ -333,6 +337,10 @@
         "metric": {
           "description": "Standard quality metric from library (ODCS 3.1.0).",
           "$ref": "#/definitions/odcsQualityMetric"
+        },
+        "arguments": {
+          "description": "Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an `invalidValues` check.",
+          "$ref": "#/definitions/odcsQualityRuleArguments"
         },
         "column": {
           "description": "Column to apply the rule to.",
@@ -444,6 +452,42 @@
           "items": {
             "type": "string"
           }
+        }
+      },
+      "additionalProperties": true
+    },
+    "odcsQualityRuleArguments": {
+      "description": "Arguments of an ODCS 3.1.0 library metric. Open, because each metric defines its own arguments.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleArguments",
+      "properties": {
+        "validValues": {
+          "description": "Values a property may take (`invalidValues` metric).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "pattern": {
+          "description": "Regex a property must match (`invalidValues` metric).",
+          "type": "string"
+        },
+        "missingValues": {
+          "description": "Values that count as missing on top of null (`missingValues` metric).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "properties": {
+          "description": "Properties a table-level check applies to, e.g. the columns of a composite `duplicateValues` check.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
         }
       },
       "additionalProperties": true
