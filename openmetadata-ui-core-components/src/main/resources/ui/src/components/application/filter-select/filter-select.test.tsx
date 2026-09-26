@@ -271,9 +271,7 @@ describe('FilterSelect', () => {
     // No check glyph any more: these options carry no icons, so the selected
     // row must contain no svg at all (the tick used to render one).
     expect(row.querySelector('svg')).toBeNull();
-    expect(row.querySelector('div')?.className).toContain(
-      'bg-brand-primary'
-    );
+    expect(row.querySelector('div')?.className).toContain('bg-brand-primary');
     expect(
       screen.getByTitle('Snowflake').parentElement?.className ?? ''
     ).toContain('text-brand-secondary');
