@@ -405,14 +405,10 @@ export const fillRule = async (
         }
       }
 
-      // The popup stays open after a selection (MultiSelect by design) and
-      // covers whatever the next step clicks, so it has to go. Only an
-      // outside press closes it — blur leaves it open. Press the modal
-      // heading's LEFT EDGE: the heading is a block, so its box runs the full
-      // modal width and its centre — where a click lands by default — is
-      // under the popup whenever it flips upward. The left edge is not: the
-      // popup is anchored to the value column and is nowhere near that wide.
-      // Not Escape either, the modal handles it and would dismiss.
+      // The popup stays open after a selection and only an outside press
+      // closes it — not blur, and not Escape (the modal would dismiss). Press
+      // the heading's left edge: its box is full-width, so the centre sits
+      // under a popup that flips upward.
       await page
         .getByTestId('advanced-search-modal')
         .getByRole('heading')
