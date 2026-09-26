@@ -21,11 +21,9 @@ package org.openmetadata.service.rdf;
 public class UnsupportedRdfSerializationException extends IllegalArgumentException {
   private static final long serialVersionUID = 1L;
 
-  public UnsupportedRdfSerializationException(
-      final RdfSerializationFormat format, final Throwable cause) {
+  public UnsupportedRdfSerializationException(final RdfSerializationFormat format) {
     super(
         "Result contains RDF 1.2 triple terms, which '%s' cannot represent. Request 'turtle' or 'ntriples' instead."
-            .formatted(format.externalName()),
-        cause);
+            .formatted(format.externalName()));
   }
 }

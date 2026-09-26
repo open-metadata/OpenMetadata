@@ -24,6 +24,7 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.shared.JenaException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -87,10 +88,31 @@ class RdfGraphSerializerTest {
     assertTrue(jsonLd.contains("قطة"));
   }
 
+  /**
+   * RDF/XML cannot name a predicate it cannot split into an XML QName, so this plain RDF 1.1 graph
+   * fails to write. That failure has nothing to do with triple terms and must reach the caller as
+   * itself rather than as a claim that the result holds RDF 1.2 terms.
+   */
+  @Test
+  void leavesWriterFailuresUnrelatedToTripleTermsUntouched() {
+    final Graph graph = GraphMemFactory.createDefaultGraph();
+    graph.add(
+        Triple.create(
+            NodeFactory.createURI("urn:table:orders"),
+            NodeFactory.createURI("urn:p"),
+            NodeFactory.createLiteralString("plain")));
+
+    assertThrows(
+        JenaException.class,
+        () ->
+            RdfGraphSerializer.asString(
+                ModelFactory.createModelForGraph(graph), RdfSerializationFormat.RDF_XML));
+  }
+
   @Test
   void reportsTheRequestedFormatInTheFailureMessage() {
     final UnsupportedRdfSerializationException failure =
-        new UnsupportedRdfSerializationException(RdfSerializationFormat.JSON_LD, null);
+        new UnsupportedRdfSerializationException(RdfSerializationFormat.JSON_LD);
 
     assertEquals(
         "Result contains RDF 1.2 triple terms, which 'jsonld' cannot represent. Request 'turtle' or 'ntriples' instead.",

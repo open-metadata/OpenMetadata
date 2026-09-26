@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -399,7 +401,8 @@ public class RdfResourceIT {
                            \"cat\"@ar--rtl) AS ?statement)
             WHERE {}
             """,
-            "json");
+            "json",
+            SparqlQuery.Inference.NONE);
 
     assertEquals(200, response.statusCode());
     SparqlResponse parsed = JsonUtils.readValue(response.body(), SparqlResponse.class);
@@ -414,10 +417,18 @@ public class RdfResourceIT {
     assertEquals(SparqlRdfDirection.RTL, triple.getObject().getItsDir());
   }
 
-  @Test
-  void testSparqlEndpointRejectsJsonLdForATripleTermGraph() throws Exception {
-    HttpResponse<String> turtle = postSparql(TRIPLE_TERM_CONSTRUCT, "turtle");
-    HttpResponse<String> jsonLd = postSparql(TRIPLE_TERM_CONSTRUCT, "jsonld");
+  /**
+   * Inference runs through a separate repository path that wraps its failures as server errors, so
+   * the rejection is exercised with and without it.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Inference.class,
+      names = {"NONE", "RDFS"})
+  void testSparqlEndpointRejectsJsonLdForATripleTermGraph(SparqlQuery.Inference inference)
+      throws Exception {
+    HttpResponse<String> turtle = postSparql(TRIPLE_TERM_CONSTRUCT, "turtle", inference);
+    HttpResponse<String> jsonLd = postSparql(TRIPLE_TERM_CONSTRUCT, "jsonld", inference);
 
     assertEquals(200, turtle.statusCode());
     assertTrue(turtle.body().contains("<<("), "Turtle must carry the triple term");
@@ -430,13 +441,14 @@ public class RdfResourceIT {
         "The rejection must name a serialization that works: " + jsonLd.body());
   }
 
-  private static HttpResponse<String> postSparql(String query, String format) throws Exception {
+  private static HttpResponse<String> postSparql(
+      String query, String format, SparqlQuery.Inference inference) throws Exception {
     String requestBody =
         JsonUtils.pojoToJson(
             new SparqlQuery()
                 .withQuery(query)
                 .withFormat(SparqlQuery.Format.fromValue(format))
-                .withInference(SparqlQuery.Inference.NONE));
+                .withInference(inference));
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(SdkClients.getServerUrl() + "/v1/rdf/sparql"))

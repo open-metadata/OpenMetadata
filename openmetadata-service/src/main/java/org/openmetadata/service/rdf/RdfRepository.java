@@ -1696,6 +1696,9 @@ public class RdfRepository {
           usesDirectMaterializedQuery(level)
               ? directInferenceResult(query, format)
               : executeLegacyInference(query, format, inferenceLevel, level);
+    } catch (UnsupportedRdfSerializationException exception) {
+      // The caller asked for a format the result cannot be written in: a 400, not a server fault.
+      throw exception;
     } catch (RuntimeException exception) {
       LOG.error("Error executing SPARQL query with inference", exception);
       throw new IllegalStateException("Failed to execute query with inference", exception);

@@ -20,7 +20,6 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 /**
@@ -28,9 +27,10 @@ import org.apache.jena.util.iterator.ExtendedIterator;
  * caller-facing error instead of a 500.
  *
  * <p>Turtle, N-Triples, and RDF/XML all carry RDF 1.2 triple terms; JSON-LD does not, and Jena
- * aborts mid-write with a bare {@code JenaException} when it meets one. Every graph response goes
- * through here so that failure reads as "ask for a different format" rather than an unhandled
- * server error, and so the rule lives in one place instead of at each writer.
+ * aborts mid-write with a bare {@code JenaException} when it meets one. That case is detected before
+ * writing so it reads as "ask for a different format". Any other writer failure is left as it is:
+ * it says nothing about triple terms, and relabelling it would both mislead the caller and hide a
+ * genuine server-side fault behind a 400.
  */
 public final class RdfGraphSerializer {
 
@@ -45,11 +45,7 @@ public final class RdfGraphSerializer {
   public static void write(
       final OutputStream output, final Model model, final RdfSerializationFormat format) {
     requireExpressible(model, format);
-    try {
-      RDFDataMgr.write(output, model, format.rdfFormat());
-    } catch (JenaException exception) {
-      throw new UnsupportedRdfSerializationException(format, exception);
-    }
+    RDFDataMgr.write(output, model, format.rdfFormat());
   }
 
   /** True when the format can represent every term in the graph. */
@@ -59,7 +55,7 @@ public final class RdfGraphSerializer {
 
   private static void requireExpressible(final Model model, final RdfSerializationFormat format) {
     if (!canRepresent(model, format)) {
-      throw new UnsupportedRdfSerializationException(format, null);
+      throw new UnsupportedRdfSerializationException(format);
     }
   }
 
