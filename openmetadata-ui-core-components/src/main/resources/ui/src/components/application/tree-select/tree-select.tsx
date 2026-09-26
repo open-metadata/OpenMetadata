@@ -919,10 +919,7 @@ export const TreeSelect = <T = unknown,>({
             className={cx(
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
-              triggerClassName,
-              hasSelection &&
-                'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
-              hasSelection && bordered && 'tw:after:outline-brand'
+              triggerClassName
             )}
             color={bordered ? 'secondary' : 'tertiary'}
             data-testid={dataTestId}

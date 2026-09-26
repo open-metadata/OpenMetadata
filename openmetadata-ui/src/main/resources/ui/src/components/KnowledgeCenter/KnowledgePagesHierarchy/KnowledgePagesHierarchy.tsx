@@ -27,6 +27,7 @@ import { Articles } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
@@ -51,6 +52,7 @@ import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
+import { PANEL_ICON_BOX_CLASS } from '../../../constants/ContextCenter.constants';
 import {
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
   KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
@@ -1007,9 +1009,9 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:pb-5 tw:shrink-0 tw:px-5"
             justify="between">
             <Box align="center" gap={3}>
-              <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
+              <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
                 <FileIcon
-                  className="tw:text-quaternary"
+                  className="tw:text-fg-quaternary"
                   height={20}
                   width={20}
                 />
