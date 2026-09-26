@@ -15,6 +15,7 @@ import { GlobalSettingOptions } from '../constant/settings';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 /**
  * Opens the user-profile dropdown and clicks the persona with the given
@@ -144,14 +145,14 @@ export const navigateToPersonaWithPagination = async (
     // Check if element is visible on current page
     if (await locator.isVisible()) {
       if (click) {
-        const personaDetailsResponse = page
-          .waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/personas/name/') &&
-              response.status() === 200,
-            { timeout: 30000 }
-          )
-          .catch(() => undefined);
+        const personaDetailsResponse = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.request().method() === 'GET' &&
+            response.url().includes('/api/v1/personas/name/'),
+          200,
+          { timeout: 30000 }
+        );
 
         await locator.click();
         await personaDetailsResponse;

@@ -15,8 +15,8 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
-  withNotFoundRetry,
 } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -63,16 +63,14 @@ export class SearchIndexServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/services/searchServices/${this.entityResponseData?.['id']}`,
-        {
-          data: payload,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/services/searchServices/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     const service = await okJson(
@@ -101,7 +99,8 @@ export class SearchIndexServiceClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/searchServices/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`

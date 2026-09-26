@@ -49,7 +49,8 @@ const initialSetup = async (page: Page) => {
 export const loginAsAdmin = async (page: Page, admin: AdminClass) => {
   await admin.login(page);
   await page.waitForURL(
-    (url) => url.pathname === '/' || url.pathname === '/my-data'
+    (url) => url.pathname === '/' || url.pathname === '/my-data',
+    { waitUntil: 'domcontentloaded' }
   );
 
   // Setup policy and increase the token expiry time

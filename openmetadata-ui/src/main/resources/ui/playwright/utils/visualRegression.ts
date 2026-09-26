@@ -38,6 +38,9 @@ const waitForSkeletonsToResolve = async (page: Page) => {
 };
 
 export const FIXED_DATE = new Date('2026-01-15T10:00:00.000Z');
+export const VISUAL_GLOSSARY_NAME = 'pw_visual_regression_glossary';
+export const VISUAL_GLOSSARY_DISPLAY_NAME = 'Visual regression glossary';
+export const VISUAL_GLOSSARY_TERM_NAME = 'Account number';
 
 /** Shared options for every toHaveScreenshot assertion in the visual suite. */
 export const SCREENSHOT_OPTS = {
@@ -46,11 +49,13 @@ export const SCREENSHOT_OPTS = {
   maxDiffPixelRatio: 0.01,
 };
 
+// Scroll behaviour only. `animation: none` used to live here too, but rc-motion
+// drives every Ant overlay off animationend: suppressing the animation leaves
+// the dropdown stuck with `pointer-events: none`, so a trusted click falls
+// through to whatever is underneath. toHaveScreenshot already pins animations
+// at capture time via SCREENSHOT_OPTS, so freezing them here bought nothing and
+// cost every interactive baseline a dispatchEvent workaround.
 const FREEZE_CSS = `
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-  }
   * { scroll-behavior: auto !important; }
 `;
 
@@ -67,7 +72,7 @@ const FREEZE_CSS = `
  */
 export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.clock.setFixedTime(FIXED_DATE);
-  await page.goto(path);
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
   await waitForPageLoaded(page);
   await waitForSkeletonsToResolve(page);
   await page.addStyleTag({ content: FREEZE_CSS });
@@ -83,4 +88,12 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
         }
       });
   });
+};
+
+export const gotoVisualGlossary = async (page: Page) => {
+  await gotoForScreenshot(page, `/glossary/${VISUAL_GLOSSARY_NAME}`);
+  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+    VISUAL_GLOSSARY_DISPLAY_NAME
+  );
+  await expect(page.getByTestId(VISUAL_GLOSSARY_TERM_NAME)).toBeVisible();
 };

@@ -21,8 +21,8 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
-  withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
@@ -187,16 +187,14 @@ export class WorksheetClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/${EntityTypeEndpoint.Worksheet}/name/${this.entityResponseData.fullyQualifiedName}`,
-        {
-          data: patchData,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const response = await apiContext.patch(
+      `/api/v1/${EntityTypeEndpoint.Worksheet}/name/${this.entityResponseData.fullyQualifiedName}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     this.entityResponseData = await okJson(response, 'WorksheetClass.patch');
@@ -233,7 +231,8 @@ export class WorksheetClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/driveServices/name/${encodeURIComponent(
         this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`

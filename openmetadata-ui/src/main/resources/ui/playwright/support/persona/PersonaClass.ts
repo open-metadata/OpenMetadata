@@ -13,8 +13,8 @@
 import { APIRequestContext } from '@playwright/test';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
-  withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
@@ -59,7 +59,8 @@ export class PersonaClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/personas/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 
@@ -67,13 +68,14 @@ export class PersonaClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(`/api/v1/personas/${this.responseData.id}`, {
+    const response = await apiContext.patch(
+      `/api/v1/personas/${this.responseData.id}`,
+      {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      })
+      }
     );
 
     this.responseData = await okJson(response, 'PersonaClass.patch');

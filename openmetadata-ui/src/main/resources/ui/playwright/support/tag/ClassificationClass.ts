@@ -14,8 +14,8 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
-  withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
@@ -68,13 +68,14 @@ export class ClassificationClass {
     return this.responseData;
   }
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(`/api/v1/classifications/${this.responseData.id}`, {
+    const response = await apiContext.patch(
+      `/api/v1/classifications/${this.responseData.id}`,
+      {
         data: payload,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      })
+      }
     );
 
     this.responseData = await okJson(response, 'ClassificationClass.patch');
@@ -87,7 +88,8 @@ export class ClassificationClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/classifications/${this.responseData.id}?recursive=true&hardDelete=true`
     );
 

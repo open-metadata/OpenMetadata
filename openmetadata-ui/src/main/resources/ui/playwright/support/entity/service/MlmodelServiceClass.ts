@@ -15,8 +15,8 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
-  withNotFoundRetry,
 } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -59,16 +59,14 @@ export class MlmodelServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/services/mlmodelServices/${this.entityResponseData?.['id']}`,
-        {
-          data: payload,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/services/mlmodelServices/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     const service = await okJson(serviceResponse, 'MlmodelServiceClass.patch');
@@ -94,7 +92,8 @@ export class MlmodelServiceClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/mlmodelServices/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
