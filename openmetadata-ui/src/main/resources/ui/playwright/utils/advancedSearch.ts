@@ -405,10 +405,6 @@ export const fillRule = async (
         }
       }
 
-      // The popup stays open after a selection and only an outside press
-      // closes it — not blur, and not Escape (the modal would dismiss). Press
-      // the heading's left edge: its box is full-width, so the centre sits
-      // under a popup that flips upward.
       await page
         .getByTestId('advanced-search-modal')
         .getByRole('heading')
