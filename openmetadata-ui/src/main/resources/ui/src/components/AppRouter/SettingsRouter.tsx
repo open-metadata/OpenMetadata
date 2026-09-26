@@ -952,7 +952,11 @@ const SettingsRouter = () => {
 
       <Route
         element={
-          <AdminProtectedRoute hasPermission={false}>
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            )}>
             <CustomPropertiesPageV1 />
           </AdminProtectedRoute>
         }
