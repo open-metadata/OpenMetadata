@@ -22,6 +22,8 @@ import org.openmetadata.service.fernet.Fernet;
 
 @Slf4j
 public class SessionService implements Managed {
+  public static final String NO_ACTIVE_SESSION = "No active session";
+  public static final String SESSION_REVOKED = "Session revoked";
   private static final int PENDING_SESSION_TIMEOUT_SECONDS = 10 * 60;
   private static final long REFRESH_LEASE_MILLIS = 15_000L;
   private static final long CLEANUP_INTERVAL_MINUTES = 15L;
@@ -255,6 +257,19 @@ public class SessionService implements Managed {
 
   public Optional<UserSession> getSession(jakarta.servlet.http.HttpServletRequest request) {
     return SessionCookieUtil.getSessionId(request).flatMap(this::getSessionById);
+  }
+
+  /**
+   * Why a refresh found no active session behind the request's session cookie. A session revoked on
+   * purpose (the per-user session cap, an administrator, a logout) must not be signed straight back
+   * in: under the cap, the new session would evict another one.
+   */
+  public String describeMissingSession(jakarta.servlet.http.HttpServletRequest request) {
+    boolean isRevoked =
+        getSession(request)
+            .map(session -> session.getStatus() == SessionStatus.REVOKED)
+            .orElse(false);
+    return isRevoked ? SESSION_REVOKED : NO_ACTIVE_SESSION;
   }
 
   public Optional<UserSession> getPendingSession(

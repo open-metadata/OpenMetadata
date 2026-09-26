@@ -221,6 +221,27 @@ describe('GenericAuthenticator', () => {
     await expect(registered()).rejects.toBeInstanceOf(ReauthRequiredError);
   });
 
+  it('registered renewer signs out a session OpenMetadata revoked instead of re-authenticating', async () => {
+    // Evicted by the per-user session cap: signing straight back in would
+    // evict another of the user's sessions.
+    const revoked = {
+      isAxiosError: true,
+      response: { status: 401, data: { error: 'Session revoked' } },
+    };
+    renewToken.mockRejectedValueOnce(revoked);
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    await expect(registered()).rejects.toBe(revoked);
+  });
+
   it('registered renewer rethrows refresh failures a redirect cannot fix', async () => {
     const serverError = { response: { status: 503 } };
     renewToken.mockRejectedValueOnce(serverError);

@@ -210,6 +210,13 @@ provider" (one top-level `prompt=none` redirect, see
 `openmetadata-ui/.../docs/auth-coordinator-flows.md`); an unexpected failure releases the lease and
 answers `500`.
 
+When the lease finds no active session, the confidential OIDC and SAML refreshes say why
+(`SessionService.describeMissingSession`): `401 Session revoked` for a session OpenMetadata revoked
+on purpose (the per-user session cap, an administrator, a logout), `401 No active session` for
+anything else (expired, unknown, no cookie). The browser signs out on the first instead of
+re-authenticating: under `maxActiveSessionsPerUser`, a silently re-established session would evict
+another of the user's sessions, which would do the same in turn.
+
 **Confidential OIDC: following the identity provider.** The provider refresh token captured at the
 callback is kept, encrypted, in the session, together with `providerRenewalDueAt`: when the
 provider's tokens need renewing, taken from the token response's `expires_in`

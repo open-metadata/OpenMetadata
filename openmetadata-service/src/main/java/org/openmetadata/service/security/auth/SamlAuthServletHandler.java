@@ -406,7 +406,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       UserSession session = sessionService.acquireRefreshLease(req, resp).orElse(null);
       leasedSession = session;
       if (session == null) {
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No active session");
+        sendError(
+            resp, HttpServletResponse.SC_UNAUTHORIZED, sessionService.describeMissingSession(req));
         return;
       }
 

@@ -697,7 +697,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (leasedSession == null) {
         httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         writeJsonResponse(
-            httpServletResponse, JsonUtils.pojoToJson(Map.of("error", "No active session")));
+            httpServletResponse,
+            JsonUtils.pojoToJson(
+                Map.of("error", sessionService.describeMissingSession(httpServletRequest))));
         return;
       }
       refreshLeasedSession(httpServletRequest, httpServletResponse, leasedSession);

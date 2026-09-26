@@ -1064,6 +1064,19 @@ class AuthenticationCodeFlowHandlerTest {
         createRefreshHandler().providerTokensAtLogin(credentials, System.currentTimeMillis()));
   }
 
+  @Test
+  void handleRefresh_revokedSession_answersSessionRevoked() throws Exception {
+    // The browser signs out on this answer instead of re-authenticating silently, which would
+    // evict another of the user's sessions under the per-user cap.
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.empty());
+    when(sessionService.describeMissingSession(request)).thenReturn(SessionService.SESSION_REVOKED);
+
+    createRefreshHandler().handleRefresh(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    assertTrue(captureOutputStream.getCapturedOutput().contains(SessionService.SESSION_REVOKED));
+  }
+
   private static final String OM_REFRESH_TOKEN = "om-refresh-token";
   private static final String SESSION_USERNAME = "alice";
 

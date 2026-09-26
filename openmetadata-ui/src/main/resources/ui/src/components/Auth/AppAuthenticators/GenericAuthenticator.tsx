@@ -19,7 +19,10 @@ import {
   useEffect,
   useImperativeHandle,
 } from 'react';
-import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
+import {
+  HTTP_STATUS_CODE,
+  SESSION_REVOKED_ERROR,
+} from '../../../constants/Auth.constants';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
@@ -44,12 +47,19 @@ const buildLoginUrl = (prompt?: string) => {
   return `${getBasePath()}/api/v1/auth/login?${params.toString()}`;
 };
 
-// /auth/refresh answers 401 once the OpenMetadata session is gone (expired,
-// revoked, or ended by the identity provider). The identity provider session
-// may well be alive, so this is a case for re-authenticating, not signing out.
-const isSessionEnded = (error: unknown): boolean =>
-  (error as AxiosError | undefined)?.response?.status ===
-  HTTP_STATUS_CODE.UNAUTHORISED;
+// /auth/refresh answers 401 once the OpenMetadata session is gone (expired, or
+// ended by the identity provider). The identity provider session may well be
+// alive, so this is a case for re-authenticating, not signing out. A session
+// OpenMetadata revoked on purpose is the exception: it signs out.
+const isSessionEnded = (error: unknown): boolean => {
+  const response = (error as AxiosError<{ error?: string }> | undefined)
+    ?.response;
+
+  return (
+    response?.status === HTTP_STATUS_CODE.UNAUTHORISED &&
+    response.data?.error !== SESSION_REVOKED_ERROR
+  );
+};
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {

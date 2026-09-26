@@ -525,6 +525,43 @@ class SessionServiceTest {
   }
 
   @Test
+  void describeMissingSession_revokedSession_saysSoSoTheBrowserSignsOut() {
+    // The per-user session cap revoked this session; signing it straight back in would evict
+    // another one.
+    String sessionId = validSessionId('v');
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId))
+        .thenReturn(
+            Optional.of(UserSession.builder().id(sessionId).status(SessionStatus.REVOKED).build()));
+
+    assertEquals(SessionService.SESSION_REVOKED, sessionService.describeMissingSession(request));
+  }
+
+  @Test
+  void describeMissingSession_endedOrUnknownSession_isNoActiveSession() {
+    String expiredId = validSessionId('x');
+    long now = System.currentTimeMillis();
+    when(repository.findById(expiredId))
+        .thenReturn(
+            Optional.of(
+                UserSession.builder()
+                    .id(expiredId)
+                    .status(SessionStatus.EXPIRED)
+                    .expiresAt(now - 1_000)
+                    .build()));
+
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", expiredId)});
+    assertEquals(SessionService.NO_ACTIVE_SESSION, sessionService.describeMissingSession(request));
+
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie("OM_SESSION", validSessionId('u'))});
+    assertEquals(SessionService.NO_ACTIVE_SESSION, sessionService.describeMissingSession(request));
+
+    when(request.getCookies()).thenReturn(null);
+    assertEquals(SessionService.NO_ACTIVE_SESSION, sessionService.describeMissingSession(request));
+  }
+
+  @Test
   void revokeSession_marksSessionRevokedAndClearsCookie() {
     String sessionId = validSessionId('a');
     UserSession activeSession =
