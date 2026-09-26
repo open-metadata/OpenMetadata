@@ -149,7 +149,7 @@ const TreeItemComponent = <T extends object>({
           state.isFocusVisible &&
             'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
           'tw:data-[dragging]:opacity-50 tw:data-[dragging]:outline-2 tw:data-[dragging]:-outline-offset-2 tw:data-[dragging]:outline-brand-300',
-          'tw:data-[drop-target]:bg-brand-primary_alt tw:data-[drop-target]:outline-2 tw:data-[drop-target]:-outline-offset-2 tw:data-[drop-target]:outline-brand-300',
+          'tw:data-[drop-target]:bg-brand-primary tw:data-[drop-target]:outline-2 tw:data-[drop-target]:-outline-offset-2 tw:data-[drop-target]:outline-brand-300',
           typeof className === 'function' ? className(state) : className
         )
       }>
@@ -268,7 +268,7 @@ const TreeItemContentComponent = ({
               'tw:relative tw:flex tw:items-center tw:gap-3 tw:py-1.5 tw:pr-1.5',
               'tw:rounded-md tw:text-sm tw:font-medium tw:text-secondary',
               'tw:hover:bg-primary_hover',
-              'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
+              'tw:group-selected/tree-item:bg-brand-primary tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
             style={{

@@ -44,12 +44,17 @@ class MigrationWorkflowReprocessingTest {
 
   private MigrationFile createMigrationDir(String version, String schemaChangesSql)
       throws IOException {
+    return createMigrationDir(version, schemaChangesSql, "");
+  }
+
+  private MigrationFile createMigrationDir(
+      String version, String schemaChangesSql, String postDataMigrationSql) throws IOException {
     Path versionDir = tempDir.resolve(version);
     Path mysqlDir = versionDir.resolve("mysql");
     Files.createDirectories(mysqlDir);
 
     Files.writeString(mysqlDir.resolve("schemaChanges.sql"), schemaChangesSql);
-    Files.writeString(mysqlDir.resolve("postDataMigrationSQLScript.sql"), "");
+    Files.writeString(mysqlDir.resolve("postDataMigrationSQLScript.sql"), postDataMigrationSql);
 
     return new MigrationFile(
         versionDir.toFile(), migrationDAO, ConnectionType.MYSQL, config, false);
@@ -371,6 +376,38 @@ class MigrationWorkflowReprocessingTest {
     assertTrue(reprocessed.isReprocessing());
     reprocessed.parseSQLFiles();
     assertTrue(reprocessed.hasNewStatements());
+  }
+
+  @Test
+  void testNewPostDataSqlInThePreviousReleaseTrainReachesADatabaseOnTheNextOne()
+      throws IOException {
+    // PR #33901 added RdfIndexApp config repairs to 2.0.3's post-data script after 2.1.0 existed.
+    // A database already on 2.1.0 still runs them: 2.0.3 is the highest recorded version of the
+    // previous release train, so it is reprocessed, and a statement whose checksum is absent from
+    // SERVER_MIGRATION_SQL_LOGS is new. Only its Java data migration is skipped, so repairs that
+    // must reach such a database are SQL.
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
+    String repair =
+        "UPDATE installed_apps SET json = JSON_SET(json, '$.appConfiguration.producerThreads', 10)"
+            + " WHERE name = 'RdfIndexApp';";
+
+    MigrationFile v202 = createMigrationDir("2.0.2", "");
+    MigrationFile v203 = createMigrationDir("2.0.3", "", repair);
+    MigrationFile v210 = createMigrationDir("2.1.0", "");
+
+    List<MigrationFile> available = List.of(v202, v203, v210);
+    List<String> executed = List.of("2.0.2", "2.0.3", "2.1.0");
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+    List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
+
+    assertEquals(List.of("2.0.3", "2.1.0"), toApply.stream().map(m -> m.version).toList());
+    MigrationFile reprocessed = toApply.getFirst();
+    assertTrue(reprocessed.isReprocessing());
+    reprocessed.parseSQLFiles();
+    assertTrue(reprocessed.hasNewStatements());
+    assertEquals(1, reprocessed.getPostDDLScripts().size());
   }
 
   // --- FlywayMigrationFile tests ---

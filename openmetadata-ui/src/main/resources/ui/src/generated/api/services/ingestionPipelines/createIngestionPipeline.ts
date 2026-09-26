@@ -527,6 +527,16 @@ export interface Pipeline {
      */
     includeDraftDashboard?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML
+     * measures) as first-class Metric entities. Metric names are unique across the whole
+     * OpenMetadata instance, so this is disabled by default. Measures are discovered from the
+     * data models that expose them, so this requires 'Include Data Models' to be enabled as
+     * well.
+     *
+     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
+     */
+    includeMetrics?: boolean;
+    /**
      * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
      * enabled, usage statistics will be collected and ingested.
      */
@@ -874,10 +884,6 @@ export interface Pipeline {
      */
     dbtUpdateOwners?: boolean;
     /**
-     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
-     */
-    includeMetrics?: boolean;
-    /**
      * Optional configuration to search across databases for tables or not
      */
     searchAcrossDatabases?: boolean;
@@ -1159,8 +1165,6 @@ export interface CollateAIAppConfig {
     bulkIndexSettings?: BulkIndexOverrides;
     /**
      * Number of threads to use for reindexing
-     *
-     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
@@ -1203,9 +1207,6 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
-     *
-     * Number of entities per partition for distributed RDF indexing. Smaller values create more
-     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -1215,13 +1216,12 @@ export interface CollateAIAppConfig {
     /**
      * Number of threads to use for reindexing
      *
-     * Number of producer threads to use for non-distributed RDF reindexing
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
@@ -1285,11 +1285,6 @@ export interface CollateAIAppConfig {
      * request retries.
      */
     relationshipIsolationMaxFailures?: number;
-    /**
-     * Enable distributed RDF indexing across multiple servers with partition coordination and
-     * recovery.
-     */
-    useDistributedIndexing?: boolean;
     /**
      * Optional rule name for an on-demand single-rule run.
      */
