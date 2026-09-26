@@ -38,6 +38,7 @@ import {
   getEncodedFqn,
   getPermissionErrorText,
   getQueryWithSlash,
+  getSafeHttpUrl,
   getTrimmedContent,
   jsonToCSV,
   ordinalize,
@@ -680,6 +681,28 @@ describe('StringUtils', () => {
       expect(getBase64EncodedString('Test\u00a7123\u00a3')).not.toBe(
         btoa('Test\u00a7123\u00a3')
       );
+    });
+  });
+
+  describe('getSafeHttpUrl', () => {
+    it.each(['https://example.com/a?b=c', 'http://example.com'])(
+      'should return http(s) URL %s unchanged',
+      (url) => {
+        expect(getSafeHttpUrl(url)).toBe(url);
+      }
+    );
+
+    it.each([
+      undefined,
+      '',
+      'javascript:alert(1)',
+      ' JavaScript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'ftp://example.com',
+      's3://bucket/model',
+      'not a url',
+    ])('should return undefined for unsafe or invalid URL %s', (url) => {
+      expect(getSafeHttpUrl(url)).toBeUndefined();
     });
   });
 });

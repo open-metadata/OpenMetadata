@@ -16,6 +16,7 @@ import {
   findByTestId,
   findByText,
   render,
+  screen,
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -473,6 +474,38 @@ describe('Test MlModel entity detail component', () => {
 
     expect(hyperMetereTable).toBeInTheDocument();
     expect(mlStoreTable).toBeInTheDocument();
+  });
+
+  it('Should link only http(s) ml store URLs', async () => {
+    mockParams.tab = EntityTabs.DETAILS;
+    render(
+      <MlModelDetailComponent
+        {...mockProp}
+        mlModelDetail={{
+          ...mockProp.mlModelDetail,
+          mlStore: {
+            storage: 'javascript:alert(1)',
+            imageRepository: 'https://docker.hub.com/image',
+          },
+        }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const storage = await screen.findByText('javascript:alert(1)');
+    const imageRepository = await screen.findByText(
+      'https://docker.hub.com/image'
+    );
+
+    expect(storage.closest('a')).toBeNull();
+    expect(imageRepository.closest('a')).toHaveAttribute(
+      'href',
+      'https://docker.hub.com/image'
+    );
+    expect(imageRepository.closest('a')).toHaveAttribute(
+      'rel',
+      'noopener noreferrer'
+    );
   });
 
   it('Should render lineage tab', async () => {
