@@ -400,24 +400,46 @@ test.describe('User with different Roles', () => {
       .getByTestId('domain-selectable-tree-search')
       .waitFor({ state: 'visible' });
 
-    // Search the sub-domain directly; the server-side domain search returns
-    // sub-domains too, so no manual parent-tree expansion is needed.
+    const popover = adminPage.getByTestId('domain-selectable-tree-popover');
+    const parentNode = adminPage.getByTestId(
+      `tree-node-${domain.responseData.fullyQualifiedName}`
+    );
+    const childNode = adminPage.getByTestId(
+      `tree-node-${subdomain.responseData.fullyQualifiedName}`
+    );
+
+    // Expand the parent so its sub-domains lazy-load. This is the only test that
+    // exercises node expansion, so it must not be replaced by a search.
+    await parentNode.waitFor({ state: 'visible' });
+    await expect(childNode).toHaveCount(0);
+
+    const childrenPromise = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/domains') &&
+        response.request().method() === 'GET'
+    );
+    await parentNode.getByTestId('tree-expand-btn').click();
+    await childrenPromise;
+
+    await expect(childNode).toBeVisible();
+    await expect(childNode).toContainText(
+      subdomain.responseData.displayName ?? subdomain.responseData.name
+    );
+
+    // The server-side domain search also returns sub-domains directly.
     const searchPromise2 = adminPage.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
-        subdomain.responseData.name
+        subdomain.responseData.displayName
       )}**`
     );
     await adminPage
       .getByTestId('domain-selectable-tree-search')
-      .fill(subdomain.responseData.name);
+      .fill(subdomain.responseData.displayName);
 
     await searchPromise2;
 
-    // Verify that the subdomain is visible in the tree
     await expect(
-      adminPage
-        .getByTestId('domain-selectable-tree-popover')
-        .getByText(subdomain.responseData.displayName)
+      popover.getByText(subdomain.responseData.displayName)
     ).toBeVisible();
 
     // Close the dropdown

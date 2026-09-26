@@ -263,7 +263,11 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         // Verify checkboxes are NOT present (single-select mode)
-        await expect(page.locator('[data-testid^="checkbox-"]')).toHaveCount(0);
+        await expect(
+          page
+            .getByTestId('domain-selectable-tree-popover')
+            .locator('[data-testid^="checkbox-"]')
+        ).toHaveCount(0);
 
         // Close the selector by clicking outside
         await clickOutside(page);

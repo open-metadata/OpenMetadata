@@ -785,7 +785,9 @@ test.describe(
 
         // Verify checkboxes ARE present (multi-select mode)
         await expect(
-          page.locator('[data-testid^="checkbox-"]')
+          page
+            .getByTestId('domain-selectable-tree-popover')
+            .locator('[data-testid^="checkbox-"]')
         ).not.toHaveCount(0);
 
         // Close the selector by clicking cancel btn

@@ -16,8 +16,6 @@ import DomainTags from '../DomainTags/DomainTags';
 
 interface DomainDisplayProps {
   domains: EntityReference[];
-  /** Retained for API compatibility; DomainTag renders its own domain glyph. */
-  showIcon?: boolean;
   className?: string;
 }
 

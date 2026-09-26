@@ -25,12 +25,12 @@ import {
 } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
-import { isDomainFqnAllowed } from '../../../utils/DomainRestrictionUtils';
-import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { isDomainFqnAllowed } from '../../../utils/DomainRestrictionUtils';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { DomainSelectProps } from './DomainSelect.types';
 import {
   buildDomainSearchQuery,
@@ -170,11 +170,23 @@ const DomainSelect: FC<DomainSelectProps> = ({
   // comparison here covers every caller in OSS and Collate, instead of each one
   // needing its own guard.
   const selectedDomainKey = getDomainsContentKey(selectedDomainList);
-  const value = useMemo(
-    () => entityReferencesToTreeNodes(selectedDomainList),
+  const value = useMemo(() => {
+    // Scope switchers sit on "All Domains" when nothing is selected. Without a
+    // value the synthetic root renders unselected, so the user cannot see which
+    // scope is active — the legacy tree bolded that row.
+    if (showAllDomains && selectedDomainList.length === 0) {
+      return [
+        {
+          id: DEFAULT_DOMAIN_VALUE,
+          value: DEFAULT_DOMAIN_VALUE,
+          label: t('label.all-domain-plural'),
+        } as TreeSelectNode<EntityReference>,
+      ];
+    }
+
+    return entityReferencesToTreeNodes(selectedDomainList);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedDomainKey]
-  );
+  }, [selectedDomainKey, showAllDomains, t]);
 
   const handleChange = useCallback(
     (

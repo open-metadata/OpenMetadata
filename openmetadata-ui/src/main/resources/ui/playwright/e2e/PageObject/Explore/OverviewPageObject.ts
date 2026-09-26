@@ -93,6 +93,7 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly listItem: Locator;
   private readonly domainTree: Locator;
   private readonly domainTreeNode: Locator;
+  private readonly domainApplyButton: Locator;
   private readonly clearTierButton: Locator;
   private readonly tagsSection: Locator;
   private readonly tierSection: Locator;
@@ -162,7 +163,12 @@ export class OverviewPageObject extends RightPanelBase {
       'owner-select-teams-search-bar'
     );
     this.listItem = this.page.locator('.selectable-list-item');
-    this.domainTreeNode = this.page.locator('[data-testid^="tree-node-"]');
+    this.domainTreeNode = this.domainTree.locator(
+      '[data-testid^="tree-node-"]'
+    );
+    // `update-btn` is shared with SelectableList, DataProductsSelectList and
+    // AsyncSelectList, so it must be scoped to this picker's popover.
+    this.domainApplyButton = this.domainTree.getByTestId('update-btn');
     this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
     this.tierSection = this.container.locator('.tier-section, [class*="tier"]');
@@ -371,11 +377,10 @@ export class OverviewPageObject extends RightPanelBase {
       const domainPatchPromise = this.waitForPatchResponse();
       await this.domainTreeNode.filter({ hasText: domainName }).click();
 
-      // Multi-select stages behind an Apply button; single-select commits on click.
-      const applyButton = this.page.getByTestId('update-btn');
-      if (await applyButton.isVisible()) {
-        await applyButton.click();
-      }
+      // Multi-select stages behind Apply; single-select commits on click. Wait
+      // for the button rather than sampling visibility at one instant — the
+      // staged footer renders a frame after the node click.
+      await this.applyStagedDomainSelection();
 
       await domainPatchPromise;
     }
@@ -642,14 +647,25 @@ export class OverviewPageObject extends RightPanelBase {
 
     await domainItem.click();
 
-    // Multi-select stages behind an Apply button; single-select commits on click.
-    const applyButton = this.page.getByTestId('update-btn');
-    if (await applyButton.isVisible()) {
-      await applyButton.click();
-    }
+    await this.applyStagedDomainSelection();
 
     await patchPromise;
     return this;
+  }
+
+  /**
+   * Commit a domain selection. Multi-select stages behind Apply; single-select
+   * commits on the node click and closes the popover. Waits for whichever
+   * settles rather than sampling `isVisible()` at one instant, which raced the
+   * staged footer rendering a frame after the click.
+   */
+  private async applyStagedDomainSelection() {
+    await Promise.race([
+      this.domainApplyButton
+        .waitFor({ state: 'visible' })
+        .then(() => this.domainApplyButton.click()),
+      this.domainTree.waitFor({ state: 'detached' }),
+    ]);
   }
 
   // ============ DELETED ENTITY VERIFICATION METHODS ============

@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { EntityReference } from '../../../generated/entity/type';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DomainSelect from '../DomainSelect/DomainSelect';
 import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
@@ -107,11 +106,7 @@ const DomainSelectableList = ({
       showAllDomains={showAllDomains}
       triggerVariant="button"
       onOpenChange={handleOpenChange}
-      onUpdate={
-        onUpdate as (
-          domain: EntityReference | EntityReference[] | undefined
-        ) => Promise<void>
-      }
+      onUpdate={onUpdate}
     />
   );
 };

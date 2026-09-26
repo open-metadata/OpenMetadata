@@ -122,8 +122,11 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   const restrictedDomains = isDomainRestricted ? userDomains : undefined;
 
   const handleUpdate = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      updateActiveDomain(domain as EntityReference);
+    async (domain: EntityReference | EntityReference[] | undefined) => {
+      // `undefined` is the "All Domains" reset row clearing the scope; the
+      // store takes the sentinel rather than a reference in that case.
+      const next = Array.isArray(domain) ? domain[0] : domain;
+      updateActiveDomain(next as EntityReference);
       setIsOpen(false);
       navigate(0);
     },

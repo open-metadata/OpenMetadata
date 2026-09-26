@@ -30,7 +30,13 @@ export interface DomainSelectableListProps {
   hasPermission: boolean;
   multiple?: boolean;
   onCancel?: () => void;
-  onUpdate: (domain: EntityReference | EntityReference[]) => Promise<void>;
+  /**
+   * `undefined` arrives when a single-select value is cleared, so callers must
+   * handle it rather than PATCHing `[undefined]`.
+   */
+  onUpdate: (
+    domain: EntityReference | EntityReference[] | undefined
+  ) => Promise<void>;
   popoverProps?: DomainSelectablePopoverProps;
   restrictedDomains?: EntityReference[];
   selectedDomain?: EntityReference | EntityReference[];

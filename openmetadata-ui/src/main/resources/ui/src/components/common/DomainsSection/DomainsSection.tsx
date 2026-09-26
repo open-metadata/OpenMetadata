@@ -18,12 +18,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
@@ -78,8 +78,18 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   }, [domains]);
 
   const updateActiveDomains = (
-    entityDomains: EntityReference | EntityReference[] | Record<string, never>
+    entityDomains:
+      | EntityReference
+      | EntityReference[]
+      | Record<string, never>
+      | undefined
   ) => {
+    if (!entityDomains) {
+      setActiveDomains([]);
+
+      return;
+    }
+
     if (Array.isArray(entityDomains)) {
       setActiveDomains(entityDomains);
 
@@ -93,7 +103,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   };
 
   const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
+    async (selectedDomain: EntityReference | EntityReference[] | undefined) => {
+      // A cleared single-select arrives as `undefined`.
+      const nextDomains = selectedDomain ?? [];
       if (!entityId || !entityType || !entityFqn) {
         showErrorToast(t('message.entity-details-required'));
 
@@ -117,12 +129,12 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         }
 
         let domainsToSave: EntityReference[];
-        if (Array.isArray(selectedDomain)) {
-          domainsToSave = selectedDomain;
-        } else if (isEmpty(selectedDomain)) {
+        if (Array.isArray(nextDomains)) {
+          domainsToSave = nextDomains;
+        } else if (isEmpty(nextDomains)) {
           domainsToSave = [];
         } else {
-          domainsToSave = [selectedDomain];
+          domainsToSave = [nextDomains];
         }
 
         // Create JSON patch

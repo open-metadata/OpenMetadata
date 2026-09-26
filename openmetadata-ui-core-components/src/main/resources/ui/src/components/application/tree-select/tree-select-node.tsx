@@ -85,6 +85,7 @@ export const TreeSelectTreeItemContent = <T,>({
             'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
             isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
           )}
+          data-selected={isSelected}
           data-testid={`tree-node-${node.id}`}
           role="presentation"
           onClick={(event) => {
@@ -126,6 +127,9 @@ export const TreeSelectTreeItemContent = <T,>({
           <Typography
             className={cx(
               'not-prose tw:grow tw:truncate',
+              // Single-choice rows carry no checkbox, so weight is the only
+              // affordance telling the user which row is active.
+              isSelected && 'tw:font-medium tw:text-primary',
               node.disabled && 'tw:text-disabled'
             )}
             title={node.label}>

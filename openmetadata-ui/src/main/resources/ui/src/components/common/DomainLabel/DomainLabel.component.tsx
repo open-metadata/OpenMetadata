@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -23,17 +24,16 @@ import {
   saveDomainViaOnUpdate,
 } from '../../../utils/DomainSyncUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
+import DomainSelect from '../DomainSelect/DomainSelect';
+import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
+import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
+import DomainTags from '../DomainTags/DomainTags';
 import {
   WidgetEditButton,
   WidgetPlusButton,
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
-import DomainSelect from '../DomainSelect/DomainSelect';
-import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
-import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
-import DomainTags from '../DomainTags/DomainTags';
 import './domain-label.less';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabel = ({
@@ -69,15 +69,18 @@ export const DomainLabel = ({
   );
 
   const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
+    async (selectedDomain: EntityReference | EntityReference[] | undefined) => {
+      // A cleared single-select arrives as `undefined`; normalise so callers
+      // and the PATCH see an empty list rather than `[undefined]`.
+      const next = selectedDomain ?? [];
       if (onUpdate) {
-        await saveDomainViaOnUpdate(selectedDomain, onUpdate, setActiveDomain);
+        await saveDomainViaOnUpdate(next, onUpdate, setActiveDomain);
 
         return;
       }
 
       await saveDomainViaApi(
-        selectedDomain,
+        next,
         entityType as AssetsUnion,
         entityFqn,
         entityId,
