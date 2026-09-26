@@ -651,6 +651,11 @@ export interface TestServiceConnectionRequest {
      */
     serviceType?: ServiceType;
     /**
+     * Reverse Metadata Agent: JSONLogic expression selecting the assets whose changes are
+     * propagated. Empty means all assets of the service.
+     */
+    filter?: string;
+    /**
      * List of operations to be performed on the service
      */
     operations?: Operation[];
@@ -659,9 +664,30 @@ export interface TestServiceConnectionRequest {
      */
     service?: EntityReference;
     /**
+     * Reverse Metadata Agent: name of the security service (e.g. Ranger) the changes are
+     * applied to instead of this service.
+     */
+    sinkService?: string;
+    /**
+     * Reverse Metadata Agent: templated SQL command used instead of the default operations.
+     */
+    SQLTemplate?: string;
+    /**
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Reverse Metadata Agent: propagate description changes to the source.
+     */
+    updateDescriptions?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate owner changes to the source.
+     */
+    updateOwners?: boolean;
+    /**
+     * Reverse Metadata Agent: propagate tag changes to the source.
+     */
+    updateTags?: boolean;
     /**
      * Authentication type configured by admin in QueryRunnerConfig (e.g., Basic, ExternalOAuth,
      * etc.). Used to determine which credential field to use from user config.

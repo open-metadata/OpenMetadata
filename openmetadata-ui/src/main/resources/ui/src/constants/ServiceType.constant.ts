@@ -338,6 +338,7 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.AutoClassification,
   PipelineType.Dbt,
   PipelineType.PolicyAgent,
+  PipelineType.ReverseMetadata,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [
