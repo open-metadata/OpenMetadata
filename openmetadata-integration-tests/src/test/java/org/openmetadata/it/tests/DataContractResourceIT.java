@@ -41,7 +41,11 @@ import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueSeverity;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportReport;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleOutcome;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
@@ -5209,13 +5213,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     String yamlContent =
         "apiVersion: v3.1.0\n" + "kind: DataContract\n" + "id: test\n" + "version: '1.0.0'\n";
 
-    assertThrows(
-        OpenMetadataException.class,
-        () ->
-            SdkClients.adminClient()
-                .dataContracts()
-                .validateODCSYaml(yamlContent, table.getId(), "table"),
-        "Validation should fail for missing required fields");
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertFalse(validation.getValid(), "Validation should fail for missing required fields");
+    ODCSImportIssue blocking = validation.getOdcsImportReport().getIssues().getFirst();
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, blocking.getSeverity());
+    assertEquals("status", blocking.getField());
   }
 
   @Test
@@ -8030,5 +8036,184 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         .create(
             new CreateUser().withName(userName).withEmail(email).withRoles(List.of(role.getId())));
     return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // ODCS import report
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  void testValidateODCSYamlReportsWhatTheImportLeavesOut(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        odcsWithQualityRules(ns.prefix("odcs_report"), table.getName())
+            .replace(
+                "      - name: status\n", "      - name: status\n        businessName: Status\n")
+            .replace(
+                "quality:\n  - name: Steward review",
+                "servers:\n  - server: prod\n    type: snowflake\nquality:\n  - name: Steward review");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+
+    ODCSImportReport report = validation.getOdcsImportReport();
+    assertTrue(validation.getValid());
+    assertTrue(report.getCanImport());
+    assertTrue(report.getCanCreateTestCases());
+    assertEquals("v3.1.0", report.getOdcsVersion());
+    List<String> reportedFields =
+        report.getIssues().stream().map(ODCSImportIssue::getField).toList();
+    assertTrue(reportedFields.contains("businessName"));
+    assertTrue(reportedFields.contains("servers"));
+    ODCSQualityRuleOutcome rowCount =
+        report.getQualityRules().stream()
+            .filter(rule -> "Row count range".equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ODCSQualityRuleOutcome.Outcome.TEST_CASE, rowCount.getOutcome());
+    assertEquals("tableRowCountToBeBetween", rowCount.getTestDefinition());
+    assertEquals(
+        ODCSQualityRuleOutcome.Outcome.SLA,
+        report.getQualityRules().stream()
+            .filter(rule -> "Updated recently".equals(rule.getName()))
+            .findFirst()
+            .orElseThrow()
+            .getOutcome());
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .testCases()
+                .getByName(table.getFullyQualifiedName() + ".odcs_row_count_range"),
+        "Validating must not create test cases");
+  }
+
+  @Test
+  void testValidateODCSYamlBlocksAnUnsupportedVersion(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        odcsWithQualityRules(ns.prefix("odcs_v9"), table.getName())
+            .replace("apiVersion: v3.1.0", "apiVersion: v9.0.0");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+
+    assertFalse(validation.getValid());
+    ODCSImportIssue blocking = validation.getOdcsImportReport().getIssues().getFirst();
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, blocking.getSeverity());
+    assertTrue(blocking.getMessage().contains("v9.0.0"));
+  }
+
+  @Test
+  void testValidateODCSYamlBlocksColumnsTheTableDoesNotHave(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        odcsWithQualityRules(ns.prefix("odcs_missing_col"), table.getName())
+            .replace("      - name: email\n", "      - name: e_mail\n");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+
+    assertFalse(validation.getOdcsImportReport().getCanImport());
+    assertTrue(
+        validation.getOdcsImportReport().getIssues().stream()
+            .anyMatch(
+                issue ->
+                    issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING
+                        && issue.getMessage().contains("e_mail")));
+  }
+
+  @Test
+  void testImportODCSReadsPastValuesItCannotRepresent(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        """
+        apiVersion: v3.2.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            properties:
+              - name: id
+                logicalType: vector
+                physicalType: BIGINT
+        slaProperties:
+          - property: freshness
+            value: 30
+            unit: minutes
+          - property: latency
+            value: 30
+            unit: minutes
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("odcs_v32"), table.getName());
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+    DataContract contract =
+        SdkClients.adminClient().dataContracts().importFromODCSYaml(yaml, table.getId(), "table");
+
+    assertTrue(validation.getOdcsImportReport().getCanImport());
+    List<String> warned =
+        validation.getOdcsImportReport().getIssues().stream()
+            .filter(issue -> issue.getSeverity() == ODCSImportIssueSeverity.WARNING)
+            .map(ODCSImportIssue::getPath)
+            .toList();
+    assertTrue(warned.contains("schema[0].properties[0].logicalType"));
+    assertTrue(warned.contains("slaProperties[0].unit"));
+    assertEquals(ColumnDataType.BIGINT, contract.getSchema().getFirst().getDataType());
+    assertNull(contract.getSla().getRefreshFrequency());
+    assertEquals(30, contract.getSla().getMaxLatency().getValue());
+  }
+
+  @Test
+  void testValidateODCSYamlBlocksWhenTestCasesCannotBeCreated(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    OpenMetadataClient contractAuthor = contractAuthorWithoutTestPermissions(ns);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_report_perm"), table.getName());
+
+    ODCSImportReport withTests =
+        contractAuthor
+            .dataContracts()
+            .validateODCSYaml(yaml, table.getId(), "table")
+            .getOdcsImportReport();
+    ODCSImportReport withoutTests =
+        contractAuthor
+            .dataContracts()
+            .validateODCSYaml(yaml, table.getId(), "table", false)
+            .getOdcsImportReport();
+
+    assertFalse(withTests.getCanCreateTestCases());
+    assertFalse(withTests.getCanImport());
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, withTests.getIssues().getFirst().getSeverity());
+    assertTrue(
+        withTests.getQualityRules().stream()
+            .noneMatch(rule -> rule.getOutcome() == ODCSQualityRuleOutcome.Outcome.TEST_CASE));
+    assertTrue(withoutTests.getCanImport());
+  }
+
+  @Test
+  void testValidateODCSYamlReportsAMissingTable(TestNamespace ns) {
+    UUID missingTable = UUID.randomUUID();
+
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_missing_table"), "missing"),
+                missingTable,
+                "table");
+
+    assertFalse(validation.getValid());
+    assertFalse(validation.getOdcsImportReport().getCanImport());
+    assertTrue(
+        validation.getOdcsImportReport().getIssues().stream()
+            .anyMatch(
+                issue ->
+                    issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING
+                        && issue.getMessage().contains(missingTable.toString())));
   }
 }

@@ -106,6 +106,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public static final String RESULT_SCHEMA = "dataContractResult";
   public static final String RESULT_EXTENSION_KEY = "id";
 
+  /** Prefix of the error raised when a contract's columns do not match its entity. */
+  public static final String SCHEMA_VALIDATION_FAILED = "Schema validation failed.";
+
   // deleteLogicalTestSuite walks the suite's tests and pipelines, so both have to be hydrated
   // before it runs.
   private static final String TEST_SUITE_LIFECYCLE_FIELDS = "tests,pipelines";
@@ -194,7 +197,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!errors.isEmpty()) {
       throw BadRequestException.of(
-          String.format("Schema validation failed. %s", String.join(". ", errors)));
+          String.format("%s %s", SCHEMA_VALIDATION_FAILED, String.join(". ", errors)));
     }
 
     if (!nullOrEmpty(dataContract.getOwners())) {
@@ -447,7 +450,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!errors.isEmpty()) {
       throw BadRequestException.of(
-          String.format("Schema validation failed. %s", String.join(". ", errors)));
+          String.format("%s %s", SCHEMA_VALIDATION_FAILED, String.join(". ", errors)));
     }
 
     // Validate owners and reviewers references exist (without populating)
