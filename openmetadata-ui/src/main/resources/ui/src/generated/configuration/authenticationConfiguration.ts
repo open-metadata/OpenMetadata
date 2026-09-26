@@ -15,6 +15,15 @@
  */
 export interface AuthenticationConfiguration {
     /**
+     * Callback (redirect_uri) values registered with the identity provider for the other
+     * hostnames this deployment answers on — a load-balanced second site, or a
+     * disaster-recovery host. At login the entry whose scheme, host and port match the incoming
+     * request is used as the redirect_uri; entries whose path differs from 'callbackUrl' are
+     * ignored. When nothing matches, 'callbackUrl' is used, so a single-hostname deployment is
+     * unaffected. Every entry must also be registered with the identity provider.
+     */
+    additionalCallbackUrls?: string[];
+    /**
      * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
      * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
      * host, port, path, query). Use this to allow browser-extension login redirects such as
@@ -548,6 +557,14 @@ export interface SP {
      * Assertion Consumer URL.
      */
     acs: string;
+    /**
+     * Additional Assertion Consumer Service URLs this deployment is reachable at, one per
+     * hostname behind a load balancer or DR endpoint. The entry whose origin matches the
+     * incoming request is used as the AssertionConsumerServiceURL of the AuthnRequest; requests
+     * from any other origin fall back to 'acs'. Every entry must also be registered with the
+     * Identity Provider. The Service Provider entityId stays single-valued.
+     */
+    additionalAcsUrls?: string[];
     /**
      * Service Provider Entity ID usually same as the SSO login URL.
      */

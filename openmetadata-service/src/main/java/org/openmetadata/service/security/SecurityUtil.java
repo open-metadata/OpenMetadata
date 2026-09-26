@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation;
@@ -60,6 +61,11 @@ public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
   public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+
+  private static final String FORWARDED_PROTO_HEADER = "X-Forwarded-Proto";
+  private static final String FORWARDED_HOST_HEADER = "X-Forwarded-Host";
+  private static final String HOST_HEADER = "Host";
+  private static final Set<String> WEB_SCHEMES = Set.of("http", "https");
 
   private SecurityUtil() {}
 
@@ -744,6 +750,202 @@ public final class SecurityUtil {
     return redirects;
   }
 
+  /**
+   * The configured callback URL to send the identity provider for a request that arrived on {@code
+   * requestOrigin}, or {@code null} when the caller should keep {@code primaryCallbackUrl}.
+   *
+   * <p>An additional entry qualifies only when it is same-origin with the request <em>and</em> has
+   * the same path as the primary, so the selection changes which host the identity provider returns
+   * to but never which endpoint. The entry is returned exactly as configured: the token request must
+   * repeat the authorization request's {@code redirect_uri} byte for byte (RFC 6749 §4.1.3), and the
+   * identity provider compares it with what the operator registered.
+   *
+   * <p>{@code requestOrigin} is client-influenced (see {@link #requestOrigin}), so a forged host can
+   * only select a URL the operator already registered with the identity provider.
+   */
+  public static String sameOriginCallbackUrl(
+      String requestOrigin, String primaryCallbackUrl, List<String> additionalCallbackUrls) {
+    URI origin = parseOrNull(requestOrigin);
+    URI primary = parseOrNull(primaryCallbackUrl);
+    if (origin == null || primary == null || sameOrigin(origin, primary)) {
+      return null;
+    }
+    String primaryPath = normalizedPath(primary);
+    return listOrEmpty(additionalCallbackUrls).stream()
+        .filter(StringUtils::isNotBlank)
+        .map(String::trim)
+        .filter(candidate -> isCallbackFor(origin, primaryPath, candidate))
+        .findFirst()
+        .orElse(null);
+  }
+
+  /**
+   * Whether {@code candidate} could stand in for {@code primaryCallbackUrl} on another host, i.e.
+   * whether {@link #sameOriginCallbackUrl} could ever select it: an absolute http(s) URL with a host,
+   * no user-info or fragment, and the primary's path.
+   */
+  public static boolean isAlternativeCallbackUrl(String candidate, String primaryCallbackUrl) {
+    URI primary = parseOrNull(primaryCallbackUrl);
+    return primary != null
+        && StringUtils.isNotBlank(candidate)
+        && alternativeCallbackUri(normalizedPath(primary), candidate.trim()) != null;
+  }
+
+  private static boolean isCallbackFor(URI origin, String primaryPath, String candidate) {
+    URI candidateUri = alternativeCallbackUri(primaryPath, candidate);
+    return candidateUri != null && sameOrigin(origin, candidateUri);
+  }
+
+  /**
+   * {@code candidate} parsed when it could stand in for a primary callback URL with {@code
+   * primaryPath}, otherwise {@code null}. One malformed entry must not disable the others, so it is
+   * skipped rather than failing the login it would have been compared against.
+   */
+  private static URI alternativeCallbackUri(String primaryPath, String candidate) {
+    try {
+      URI candidateUri = parseTrustedRedirectUri(candidate);
+      boolean isAlternative =
+          candidateUri.isAbsolute()
+              && isWebScheme(candidateUri.getScheme())
+              && StringUtils.isNotBlank(candidateUri.getHost())
+              && StringUtils.equals(primaryPath, normalizedPath(candidateUri));
+      return isAlternative ? candidateUri : null;
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Unusable additional callback URL [{}]: {}", candidate, e.getMessage());
+      return null;
+    }
+  }
+
+  private static URI parseOrNull(String value) {
+    try {
+      return StringUtils.isBlank(value) ? null : new URI(value.trim());
+    } catch (URISyntaxException e) {
+      LOG.warn("Ignoring unparseable URL [{}]", value);
+      return null;
+    }
+  }
+
+  /**
+   * The scheme-and-authority the client actually reached this deployment on, or {@code null} when it
+   * cannot be determined.
+   *
+   * <p>Jetty's {@code getScheme()} / {@code getServerName()} describe the connector, and only
+   * reflect the external hop when {@code server.applicationConnectors[].useForwardedHeaders} is
+   * enabled — off by default, and not surfaced by the shipped Docker or Helm configs. The standard
+   * proxy headers are therefore read first so a deployment behind an ingress resolves its own origin
+   * with no extra configuration, falling back to the connector's view for a direct deployment.
+   *
+   * <p>Callers must treat the result as client-influenced: it is safe to trust for a fixed,
+   * first-party path on this deployment (where a forged host can only redirect the forger back to
+   * themselves) and not safe as a general-purpose allow-list entry.
+   */
+  public static String requestOrigin(HttpServletRequest request) {
+    if (request == null) {
+      return null;
+    }
+    String scheme = requestScheme(request);
+    String authority = requestAuthority(request, scheme);
+    if (!isWebScheme(scheme) || nullOrEmpty(authority)) {
+      return null;
+    }
+    return validOrigin(scheme.toLowerCase(Locale.ROOT) + "://" + authority);
+  }
+
+  /**
+   * Scheme and authority are resolved independently because load balancers disagree about which
+   * headers they send. AWS ALB, for one, sets {@code X-Forwarded-Proto} but no
+   * {@code X-Forwarded-Host}, passing the client's {@code Host} through untouched — reading the
+   * scheme only alongside a forwarded host would resolve that deployment to the internal {@code
+   * http} hop and reject its own login.
+   */
+  private static String requestScheme(HttpServletRequest request) {
+    String forwardedProto = closestProxyHeaderValue(request, FORWARDED_PROTO_HEADER);
+    return nullOrEmpty(forwardedProto) ? request.getScheme() : forwardedProto;
+  }
+
+  /**
+   * {@code Host} is preferred over the connector's view because {@code getServerPort()} reports the
+   * local listener when the header carries no explicit port, which would graft {@code :8585} onto a
+   * public origin.
+   */
+  private static String requestAuthority(HttpServletRequest request, String scheme) {
+    String forwardedHost = closestProxyHeaderValue(request, FORWARDED_HOST_HEADER);
+    if (!nullOrEmpty(forwardedHost)) {
+      return forwardedHost;
+    }
+    String host = closestProxyHeaderValue(request, HOST_HEADER);
+    return nullOrEmpty(host) ? connectorAuthority(request, scheme) : host;
+  }
+
+  /**
+   * Only {@code http} and {@code https} can carry a browser redirect, so anything else in a proxy
+   * header is a forgery attempt or a misconfiguration and must not reach the allow-list.
+   */
+  private static boolean isWebScheme(String scheme) {
+    return !nullOrEmpty(scheme) && WEB_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT));
+  }
+
+  /**
+   * The default port is dropped because {@link #validateRedirectUri} returns the matched
+   * <em>trusted</em> entry verbatim as the {@code Location} header, so leaving {@code :443} on would
+   * put it in front of users even though the comparison itself normalizes ports.
+   */
+  private static String connectorAuthority(HttpServletRequest request, String scheme) {
+    String serverName = request.getServerName();
+    if (nullOrEmpty(serverName)) {
+      return null;
+    }
+    int port = request.getServerPort();
+    boolean isDefaultPort =
+        port <= 0
+            || ("https".equalsIgnoreCase(scheme) && port == 443)
+            || ("http".equalsIgnoreCase(scheme) && port == 80);
+    return isDefaultPort ? serverName : serverName + ":" + port;
+  }
+
+  /**
+   * Accept an origin only if it parses and carries nothing but scheme and host[:port]. A proxy
+   * header holding user-info or a path would otherwise widen the derived redirect target beyond the
+   * fixed callback path the caller intends to append, and an unparseable one would abort validation
+   * for an otherwise legitimate candidate.
+   */
+  private static String validOrigin(String origin) {
+    try {
+      URI uri = new URI(origin);
+      boolean isBareOrigin =
+          uri.isAbsolute()
+              && !nullOrEmpty(uri.getHost())
+              && nullOrEmpty(uri.getRawUserInfo())
+              && nullOrEmpty(uri.getRawPath())
+              && nullOrEmpty(uri.getRawQuery())
+              && nullOrEmpty(uri.getRawFragment());
+      return isBareOrigin ? uri.toString() : null;
+    } catch (URISyntaxException e) {
+      LOG.debug("Ignoring unparseable request origin {}", origin);
+      return null;
+    }
+  }
+
+  /**
+   * The right-most entry of a proxy header, i.e. the value written by the hop closest to this
+   * server.
+   *
+   * <p>Deliberately not the left-most. These headers are normally replaced rather than appended, but
+   * a proxy that appends leaves the <em>client's</em> own value left-most — so reading from the left
+   * lets a caller sending {@code X-Forwarded-Host: evil.example.com, om.example.org} choose the
+   * origin. Each further hop appends to the right, so the right-most value is the one written by the
+   * most trusted proxy. (This is the opposite of {@code X-Forwarded-For}, where the left-most entry
+   * is the one identifying the original client.)
+   */
+  private static String closestProxyHeaderValue(HttpServletRequest request, String header) {
+    String value = request.getHeader(header);
+    if (nullOrEmpty(value)) {
+      return null;
+    }
+    int comma = value.lastIndexOf(',');
+    return (comma < 0 ? value : value.substring(comma + 1)).trim();
+  }
+
   private static URI parseTrustedRedirectUri(String value) {
     URI trustedUri = parseRedirectUri(value);
     if (trustedUri.getRawUserInfo() != null) {
@@ -764,15 +966,19 @@ public final class SecurityUtil {
   }
 
   private static boolean sameRedirect(URI trustedUri, URI candidate) {
-    if (StringUtils.isBlank(trustedUri.getHost()) || StringUtils.isBlank(candidate.getHost())) {
-      return false;
-    }
-    return StringUtils.equalsIgnoreCase(trustedUri.getScheme(), candidate.getScheme())
-        && StringUtils.equalsIgnoreCase(trustedUri.getHost(), candidate.getHost())
-        && normalizedPort(trustedUri) == normalizedPort(candidate)
+    return sameOrigin(trustedUri, candidate)
         && StringUtils.equals(normalizedPath(trustedUri), normalizedPath(candidate))
         && StringUtils.equals(trustedUri.getRawQuery(), candidate.getRawQuery())
         && StringUtils.equals(trustedUri.getRawFragment(), candidate.getRawFragment());
+  }
+
+  private static boolean sameOrigin(URI left, URI right) {
+    if (StringUtils.isBlank(left.getHost()) || StringUtils.isBlank(right.getHost())) {
+      return false;
+    }
+    return StringUtils.equalsIgnoreCase(left.getScheme(), right.getScheme())
+        && StringUtils.equalsIgnoreCase(left.getHost(), right.getHost())
+        && normalizedPort(left) == normalizedPort(right);
   }
 
   private static String normalizedPath(URI uri) {

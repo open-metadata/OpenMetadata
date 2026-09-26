@@ -1,8 +1,10 @@
 package org.openmetadata.service.security.auth.validator;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -20,14 +22,17 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
 public class SamlValidator {
+  private static final int MAX_ADDITIONAL_ACS_URLS = 20;
 
   /** {@code GeneralName} tags for dNSName (2) and uniformResourceIdentifier (6) — RFC 5280 §4.2.1.6. */
   private static final Set<Integer> DNS_AND_URI_SAN_TYPES = Set.of(2, 6);
@@ -38,6 +43,11 @@ public class SamlValidator {
       FieldError basicValidation = validateBasicSamlConfig(samlConfig);
       if (basicValidation != null) {
         return basicValidation;
+      }
+
+      FieldError additionalAcsValidation = validateAdditionalAcsUrls(samlConfig.getSp());
+      if (additionalAcsValidation != null) {
+        return additionalAcsValidation;
       }
 
       FieldError certValidation = validateCertificates(samlConfig);
@@ -56,6 +66,33 @@ public class SamlValidator {
       return ValidationErrorBuilder.createFieldError(
           "authenticationConfiguration", "SAML validation failed: " + e.getMessage());
     }
+  }
+
+  /**
+   * Login can only select an additional ACS that differs from {@code acs} in host alone, so any other
+   * entry would be silently ignored there and is rejected here instead. The cap bounds the settings
+   * built for each configured ACS.
+   */
+  @VisibleForTesting
+  static FieldError validateAdditionalAcsUrls(ServiceProviderConfig sp) {
+    List<String> additionalAcsUrls = listOrEmpty(sp.getAdditionalAcsUrls());
+    if (additionalAcsUrls.size() > MAX_ADDITIONAL_ACS_URLS) {
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.SAML_SP_ADDITIONAL_ACS_URLS,
+          String.format("At most %d additional ACS URLs are supported", MAX_ADDITIONAL_ACS_URLS));
+    }
+    return additionalAcsUrls.stream()
+        .filter(url -> !SecurityUtil.isAlternativeCallbackUrl(url, sp.getAcs()))
+        .findFirst()
+        .map(
+            url ->
+                ValidationErrorBuilder.createFieldError(
+                    ValidationErrorBuilder.FieldPaths.SAML_SP_ADDITIONAL_ACS_URLS,
+                    String.format(
+                        "Additional ACS URL '%s' must be an absolute http(s) URL with the same path"
+                            + " as the ACS URL '%s'",
+                        url, sp.getAcs())))
+        .orElse(null);
   }
 
   private FieldError validateBasicSamlConfig(SamlSSOClientConfig samlConfig) {

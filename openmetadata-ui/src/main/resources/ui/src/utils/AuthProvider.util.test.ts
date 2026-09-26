@@ -20,9 +20,14 @@ import { AuthProvider } from '../generated/settings/settings';
 import {
   getAuthConfig,
   getCandidateUserManagerConfig,
+  getRedirectUri,
   getUserManagerConfig,
   isRefreshableAuthError,
 } from './AuthProvider.util';
+
+jest.mock('./EnvironmentUtils', () => ({
+  isDev: jest.fn().mockReturnValue(false),
+}));
 
 const baseAuthConfig = (
   overrides: Partial<AuthenticationConfiguration> = {}
@@ -136,6 +141,79 @@ describe('getCandidateUserManagerConfig — SSO test-login popup respects respon
     );
 
     expect(config.response_type).toBe('code');
+  });
+});
+
+describe('getRedirectUri — picks the callback URL registered for the current host (#28870)', () => {
+  const primaryCallbackUrl = 'https://app.example.com/callback';
+  const currentHostCallbackUrl = `${globalThis.location.origin}/callback`;
+
+  it('should return the additional callback URL registered for the current origin', () => {
+    expect(
+      getRedirectUri(primaryCallbackUrl, [
+        'https://other.example.com/callback',
+        currentHostCallbackUrl,
+      ])
+    ).toBe(currentHostCallbackUrl);
+  });
+
+  it('should keep the primary when no additional URL is on the current origin', () => {
+    expect(
+      getRedirectUri(primaryCallbackUrl, ['https://other.example.com/callback'])
+    ).toBe(primaryCallbackUrl);
+  });
+
+  it('should ignore an additional URL whose path differs from the primary', () => {
+    expect(
+      getRedirectUri(primaryCallbackUrl, [
+        `${globalThis.location.origin}/auth/callback`,
+      ])
+    ).toBe(primaryCallbackUrl);
+  });
+
+  it('should keep the primary when the page is served from its own origin', () => {
+    expect(
+      getRedirectUri(currentHostCallbackUrl, [
+        `${globalThis.location.origin}/callback?variant`,
+      ])
+    ).toBe(currentHostCallbackUrl);
+  });
+
+  it('should skip an unparseable additional URL and keep scanning', () => {
+    expect(
+      getRedirectUri(primaryCallbackUrl, ['not a url', currentHostCallbackUrl])
+    ).toBe(currentHostCallbackUrl);
+  });
+
+  it('should keep the primary when no additional URLs are configured', () => {
+    expect(getRedirectUri(primaryCallbackUrl)).toBe(primaryCallbackUrl);
+  });
+
+  it('should forward the current-host callback URL to the OIDC UserManager', () => {
+    const config = getUserManagerConfig(
+      withScope({ additionalCallbackUrls: [currentHostCallbackUrl] })
+    );
+
+    expect(config.redirect_uri).toBe(currentHostCallbackUrl);
+  });
+
+  it('should use the current-host callback URL for the SSO test-login popup', () => {
+    const config = getCandidateUserManagerConfig(
+      withScope({ additionalCallbackUrls: [currentHostCallbackUrl] })
+    );
+
+    expect(config.redirect_uri).toBe(currentHostCallbackUrl);
+  });
+
+  it('should resolve the current-host callback URL once in getAuthConfig', () => {
+    const config = getAuthConfig(
+      baseAuthConfig({
+        provider: AuthProvider.Google,
+        additionalCallbackUrls: [currentHostCallbackUrl],
+      })
+    );
+
+    expect(config.callbackUrl).toBe(currentHostCallbackUrl);
   });
 });
 
