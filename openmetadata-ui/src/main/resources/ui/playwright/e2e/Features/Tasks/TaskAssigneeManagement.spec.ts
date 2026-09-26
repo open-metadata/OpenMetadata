@@ -84,7 +84,9 @@ test.describe('Task Assignee Management', () => {
     await page.getByTestId('activity_feed').click();
     await waitForAllLoadersToDisappear(page);
 
-    const tasksMenuItem = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksMenuItem = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     await expect(tasksMenuItem).toBeVisible();
     await tasksMenuItem.click();
     await waitForAllLoadersToDisappear(page);

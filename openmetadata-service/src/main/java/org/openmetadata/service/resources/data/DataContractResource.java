@@ -835,7 +835,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    return repository.getLatestResult(dataContract);
+    return repository.getResult(dataContract, resultId);
   }
 
   @PUT

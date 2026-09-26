@@ -429,7 +429,9 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
