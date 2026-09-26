@@ -97,18 +97,12 @@ export const useIncidentFilterOptions = ({
   };
 
   const searchTestCases = useCallback(async (searchValue = WILD_CARD_CHAR) => {
-    // Encode the search value to handle special characters like #, %, $, etc.
-    // Preserve wildcard character to maintain default search behavior
-    const encodedSearchValue: string =
-      searchValue === WILD_CARD_CHAR
-        ? searchValue
-        : encodeURIComponent(searchValue);
     try {
       const response = await searchQuery({
         pageNumber: 1,
         pageSize: PAGE_SIZE_BASE,
         searchIndex: SearchIndex.TEST_CASE,
-        query: encodedSearchValue,
+        query: searchValue,
         fetchSource: true,
         includeFields: ['name', 'displayName', 'fullyQualifiedName'],
       });

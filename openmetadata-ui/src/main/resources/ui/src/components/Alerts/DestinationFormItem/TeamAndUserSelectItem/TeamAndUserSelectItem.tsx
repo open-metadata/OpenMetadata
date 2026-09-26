@@ -43,27 +43,41 @@ function TeamAndUserSelectItem({
 }: Readonly<TeamAndUserSelectItemProps>) {
   const { t } = useTranslation();
   const { setValue, control } = useFormContext();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const searchVersion = useRef(0);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [options, setOptions] = useState<SelectOption[]>([]);
+
+  const focusDropdown = useCallback((element: HTMLDivElement | null) => {
+    dropdownRef.current = element;
+    // The portal can mount after the open-state effect. Focus when its content
+    // exists, without an ancestor scroll that would dismiss the popover.
+    element?.querySelector('input')?.focus({ preventScroll: true });
+  }, []);
 
   const fieldPath = `destinations.${fieldName.join('.')}`;
   const selectedOptions: string[] =
     useWatch({ name: fieldPath, control }) ?? [];
 
   const handleSearch = useCallback(
-    async (value: string) => {
+    async (value: string, version: number) => {
       try {
         setIsLoadingOptions(true);
         const results = await onSearch(value);
-        setOptions(results);
+        if (version === searchVersion.current) {
+          setOptions(results);
+        }
       } catch {
-        setOptions([]);
+        if (version === searchVersion.current) {
+          setOptions([]);
+        }
       } finally {
-        setIsLoadingOptions(false);
+        if (version === searchVersion.current) {
+          setIsLoadingOptions(false);
+        }
       }
     },
     [onSearch]
@@ -109,9 +123,15 @@ function TeamAndUserSelectItem({
 
       return;
     }
-    debouncedSearch(searchText);
+    const version = ++searchVersion.current;
+    debouncedSearch(searchText, version);
 
-    return () => debouncedSearch.cancel();
+    return () => {
+      // Invalidate in-flight results as soon as the query or picker changes,
+      // including the debounce interval before the replacement request starts.
+      searchVersion.current = version + 1;
+      debouncedSearch.cancel();
+    };
   }, [searchText, entityType, debouncedSearch, isDisabled]);
 
   useEffect(() => {
@@ -244,10 +264,8 @@ function TeamAndUserSelectItem({
         }}>
         <div
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
-          ref={dropdownRef}>
+          ref={focusDropdown}>
           <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- search box must focus when dropdown opens
-            autoFocus
             data-testid="search-input"
             inputDataTestId="search-input-field"
             placeholder={t('label.search-by-type', { type: entityType })}

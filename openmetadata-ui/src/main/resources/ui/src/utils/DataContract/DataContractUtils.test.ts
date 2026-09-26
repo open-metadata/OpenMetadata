@@ -259,14 +259,20 @@ describe('DataContractUtils', () => {
 
   describe('formatContractExecutionTick', () => {
     it('should extract timestamp and format as month', () => {
-      const result = formatContractExecutionTick('1640995200000_0');
+      const result = formatContractExecutionTick(
+        `${new Date(2022, 0, 1).getTime()}_0`
+      );
 
       expect(result).toBe('Jan');
     });
 
     it('should handle different months', () => {
-      expect(formatContractExecutionTick('1643673600000_0')).toBe('Feb');
-      expect(formatContractExecutionTick('1646092800000_0')).toBe('Mar');
+      expect(
+        formatContractExecutionTick(`${new Date(2022, 1, 1).getTime()}_0`)
+      ).toBe('Feb');
+      expect(
+        formatContractExecutionTick(`${new Date(2022, 2, 1).getTime()}_0`)
+      ).toBe('Mar');
     });
 
     it('should handle invalid timestamp gracefully', () => {

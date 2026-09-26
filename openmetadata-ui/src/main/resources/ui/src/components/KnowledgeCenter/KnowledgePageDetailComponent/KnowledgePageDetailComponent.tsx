@@ -859,8 +859,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    knowledgePageIdRef.current = knowledgePage?.id;
-  }, [knowledgePage?.id]);
+    // A route can change before its page fetch resolves. Saves for the previous
+    // article must stop controlling the new route's badge during that gap.
+    knowledgePageIdRef.current =
+      knowledgePage?.fullyQualifiedName === fqn ? knowledgePage.id : undefined;
+  }, [fqn, knowledgePage?.fullyQualifiedName, knowledgePage?.id]);
 
   useEffect(() => {
     if (tab) {

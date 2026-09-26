@@ -34,6 +34,9 @@ import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
 import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
+const mockFirstDay = new Date(2022, 0, 1).getTime();
+const mockSecondDay = new Date(2022, 0, 2).getTime();
+
 jest.mock('../../../../hooks/useChartColors', () => ({
   useChartColors: jest.fn().mockReturnValue({ axis: '#123456' }),
 }));
@@ -74,9 +77,9 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 
     return date.toLocaleDateString();
   }),
-  getCurrentMillis: jest.fn(() => 1640995200000), // 2022-01-01
+  getCurrentMillis: jest.fn(() => mockFirstDay),
   getEpochMillisForPastDays: jest.fn(
-    (days: number) => 1640995200000 - days * 24 * 60 * 60 * 1000
+    (days: number) => mockFirstDay - days * 24 * 60 * 60 * 1000
   ),
 }));
 
@@ -183,31 +186,31 @@ const mockChartData: DataInsightCustomChartResult = {
   results: [
     {
       count: 150,
-      day: 1640995200000, // 2022-01-01
+      day: mockFirstDay,
       group: 'table',
       term: 'table',
     },
     {
       count: 75,
-      day: 1640995200000,
+      day: mockFirstDay,
       group: 'dashboard',
       term: 'dashboard',
     },
     {
       count: 200,
-      day: 1641081600000, // 2022-01-02
+      day: mockSecondDay,
       group: 'table',
       term: 'table',
     },
     {
       count: 100,
-      day: 1641081600000,
+      day: mockSecondDay,
       group: 'dashboard',
       term: 'dashboard',
     },
     {
       count: 50,
-      day: 1641081600000,
+      day: mockSecondDay,
       group: 'pipeline',
       term: 'pipeline',
     },
@@ -461,7 +464,6 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      // For the latest date (1641081600000), total should be 200 + 100 + 50 = 350
       expect(screen.getByText('350')).toBeInTheDocument();
     });
 
@@ -589,19 +591,19 @@ describe('TotalDataAssetsWidget', () => {
         results: [
           {
             count: 50,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'dashboard',
             term: 'dashboard',
           },
           {
             count: 200,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'table',
             term: 'table',
           },
           {
             count: 100,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'topic',
             term: 'topic',
           },
@@ -679,13 +681,13 @@ describe('TotalDataAssetsWidget', () => {
         results: [
           {
             count: 100,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: 'table',
             term: 'table',
           },
           {
             count: 50,
-            day: 1640995200000,
+            day: mockFirstDay,
             group: '',
             term: '',
           },

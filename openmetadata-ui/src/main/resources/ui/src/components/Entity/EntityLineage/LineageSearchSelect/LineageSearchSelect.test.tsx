@@ -59,8 +59,18 @@ const mockedNodes = [
 
 const mockNodeClick = jest.fn();
 const mockColumnClick = jest.fn();
+// getNodes is what React Flow actually renders from. The nodes reaching this
+// component through the provider are seeded at the origin, so the two disagree
+// on purpose here -- that is the case the centring has to get right.
 const mockReactFlowInstance = {
   setCenter: jest.fn(),
+  getNodes: jest.fn(() => [
+    {
+      id: 'test1',
+      position: { x: 640, y: 480 },
+      data: { node: { fullyQualifiedName: 'test1' } },
+    },
+  ]),
 };
 
 const defaultMockProps = {
@@ -130,7 +140,14 @@ describe('LineageSearchSelect', () => {
     fireEvent.click(option1);
 
     expect(mockNodeClick).toHaveBeenCalled();
-    expect(mockReactFlowInstance.setCenter).toHaveBeenCalled();
+    // The laid-out position from React Flow, not the origin the provider's copy
+    // still carries: centring on (0,0) leaves the picked node off-viewport, and
+    // onlyRenderVisibleElements then never draws it.
+    expect(mockReactFlowInstance.setCenter).toHaveBeenCalledWith(
+      640,
+      480,
+      expect.anything()
+    );
   });
 
   it('should call onColumnClick', async () => {
