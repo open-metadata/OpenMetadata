@@ -13,23 +13,17 @@
 import { Page, Request } from '@playwright/test';
 
 // Keycloak keeps its SSO session in these cookies (the *_LEGACY twins cover
-// browsers without SameSite=None support). Dropping them ends the IdP
-// session for this browser while leaving OpenMetadata's own cookie alone.
-const KEYCLOAK_SESSION_COOKIES = [
-  'KEYCLOAK_IDENTITY',
-  'KEYCLOAK_IDENTITY_LEGACY',
-  'KEYCLOAK_SESSION',
-  'KEYCLOAK_SESSION_LEGACY',
-  'AUTH_SESSION_ID',
-  'AUTH_SESSION_ID_LEGACY',
-];
+// browsers without SameSite=None support; KC_* arrived in Keycloak 25).
+// Dropping them ends the IdP session for this browser while leaving
+// OpenMetadata's own cookie alone.
+const KEYCLOAK_SESSION_COOKIE =
+  /^(KEYCLOAK_IDENTITY|KEYCLOAK_SESSION|AUTH_SESSION_ID|KC_AUTH_SESSION_HASH|KC_RESTART)(_LEGACY)?$/;
 
+// One call on purpose: Playwright clears by name by reading every cookie,
+// clearing them all and adding back the ones that do not match, so
+// concurrent calls add back each other's cookies and the session survives.
 export const endKeycloakSession = async (page: Page): Promise<void> => {
-  await Promise.all(
-    KEYCLOAK_SESSION_COOKIES.map((name) =>
-      page.context().clearCookies({ name })
-    )
-  );
+  await page.context().clearCookies({ name: KEYCLOAK_SESSION_COOKIE });
 };
 
 // Counts page-level navigations to `urlPattern` that carry prompt=none. The
