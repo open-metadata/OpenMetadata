@@ -5461,14 +5461,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DomainLabelV2/DomainLabelV2.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/ReviewerLabelV2/ReviewerLabelV2.tsx"
       ],
       "specs": [
@@ -7242,15 +7234,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/CustomiseLandingPageHeader/LandingPageDomainSelector.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
-        "playwright/e2e/Features/RTL.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/CustomiseLandingPageHeader/RecentlyViewedCarousel.tsx"
       ],
       "specs": [
@@ -8552,7 +8535,18 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/DomainLabel/DomainLabel.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/BulkImport.spec.ts"
+        "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Pages/UserDetails.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainScopeControl/DomainScopeControl.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
+        "playwright/e2e/Features/RTL.spec.ts"
       ]
     },
     {
