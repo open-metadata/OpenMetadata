@@ -53,6 +53,7 @@ export const mockTablePermission = {
   Create: true,
   Delete: true,
   ViewAll: true,
+  ViewDataProfile: true,
   EditAll: true,
 };
 
