@@ -15,18 +15,22 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.pool import StaticPool
 
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import (
+    MAX_TARGETS,
     DatabaseStep,
     list_schemas,
     list_tables,
     list_views,
     ping,
     run_sql,
+    targets_in_scope,
 )
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
+from metadata.generated.schema.type.filterPattern import FilterPattern
 
 _MODULE = "metadata.core.connections.test_connection.checks.database"
 
@@ -91,7 +95,7 @@ def test_list_views_names_the_explicit_schema(engine):
 
 def test_list_tables_auto_selects_and_flags_when_schema_unset(engine):
     # sqlite exposes a single 'main' schema; with no databaseSchema it is picked.
-    assert list_tables(engine, None).summary == (
+    assert list_tables(engine).summary == (
         "3 tables in schema 'main', auto-selected because no databaseSchema was configured"
     )
 
@@ -147,3 +151,87 @@ def test_run_sql_failure_carries_the_attempted_command(engine):
         run_sql(engine, "SELECT * FROM does_not_exist", lambda rows: "n")
     assert exc.value.evidence.command == "SELECT * FROM does_not_exist"
     assert isinstance(exc.value.cause, Exception)
+
+
+def test_list_tables_skips_the_schemas_filtered_out():
+    """The probe must not reflect a schema the ingestion is configured to skip"""
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    with eng.connect() as conn:
+        conn.exec_driver_sql("ATTACH DATABASE ':memory:' AS userschema")
+        conn.exec_driver_sql("CREATE TABLE userschema.t1 (id INTEGER)")
+
+    filtered = FilterPattern(excludes=["main"])
+    assert "userschema" in list_tables(eng, None, frozenset(), filtered).summary
+
+
+def test_list_tables_tries_the_next_schema_when_one_refuses_the_read():
+    """An external authorizer raises instead of returning an empty list, and the
+    schema it refuses is often one the ingestion never reads"""
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    refused = []
+    real_get_table_names = Inspector.get_table_names
+
+    def get_table_names(self, schema=None, **kwargs):
+        if schema == "main":
+            refused.append(schema)
+            raise PermissionError("not authorized on main")
+        return real_get_table_names(self, schema, **kwargs)
+
+    with eng.connect() as conn:
+        conn.exec_driver_sql("ATTACH DATABASE ':memory:' AS userschema")
+        conn.exec_driver_sql("CREATE TABLE userschema.t1 (id INTEGER)")
+
+    with patch.object(Inspector, "get_table_names", get_table_names):
+        evidence = list_tables(eng)
+
+    assert refused == ["main"]
+    assert "userschema" in evidence.summary
+
+
+def test_list_tables_fails_when_every_schema_refuses_the_read():
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+
+    def get_table_names(self, schema=None, **kwargs):
+        raise PermissionError(f"not authorized on {schema}")
+
+    with patch.object(Inspector, "get_table_names", get_table_names), pytest.raises(CheckError):
+        list_tables(eng)
+
+
+def test_list_tables_with_nothing_in_scope_reports_no_schema():
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    evidence = list_tables(eng, None, frozenset(), FilterPattern(excludes=[".*"]))
+    assert evidence.summary == "no tables enumerated"
+    assert evidence.caveat is not None
+
+
+def test_only_system_schemas_falls_back_to_the_default_schema():
+    """As before the scope existed: nothing non-system to pick means reflect the
+    connection's default schema, not nothing at all"""
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    with eng.connect() as conn:
+        conn.exec_driver_sql("CREATE TABLE t1 (id INTEGER)")
+
+    evidence = list_tables(eng, None, frozenset({"main"}))
+
+    assert evidence.summary == "1 table enumerated"
+
+
+def test_targets_in_scope_prefers_a_pin_over_any_listing():
+    assert targets_in_scope(["sales", "marketing"], pinned="finance") == ["finance"]
+    assert targets_in_scope([], pinned="finance") == ["finance"]
+
+
+def test_targets_in_scope_drops_what_the_filter_excludes():
+    names = ["system", "sales", "marketing"]
+    assert targets_in_scope(names, excluded=FilterPattern(excludes=["system"])) == ["sales", "marketing"]
+    assert targets_in_scope(names, excluded=FilterPattern(includes=["sales"])) == ["sales"]
+
+
+def test_targets_in_scope_is_capped():
+    """Each target costs a round-trip, so a wide catalog cannot exhaust the timeout"""
+    assert len(targets_in_scope(f"schema_{index}" for index in range(50))) == MAX_TARGETS
+
+
+def test_targets_in_scope_can_resolve_to_nothing():
+    assert targets_in_scope(["sales"], excluded=FilterPattern(excludes=[".*"])) == []
