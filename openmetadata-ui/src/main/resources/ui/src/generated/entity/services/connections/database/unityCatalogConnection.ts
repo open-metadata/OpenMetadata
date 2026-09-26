@@ -51,6 +51,11 @@ export interface UnityCatalogConnection {
      */
     httpPath?: string;
     /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
+    /**
      * Policy agent configuration for access control extraction.
      */
     policyAgentConfig?:       PolicyAgentConfig;

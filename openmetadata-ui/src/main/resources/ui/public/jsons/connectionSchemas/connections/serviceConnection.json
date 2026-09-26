@@ -8759,6 +8759,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -23910,6 +23916,12 @@
                       "title": "Database Schema",
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
+                    },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
                     },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
@@ -51285,6 +51297,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -66436,6 +66454,12 @@
                       "title": "Database Schema",
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
+                    },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
                     },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
