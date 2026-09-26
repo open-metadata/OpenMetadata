@@ -128,26 +128,26 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Check the quick filters', async () => {
-      await expect(
-        page.getByTestId('search-dropdown-Domains').locator('span')
-      ).toContainText('Domains');
+      await expect(page.getByTestId('search-dropdown-Domains')).toContainText(
+        'Domains'
+      );
       await expect(page.getByTestId('search-dropdown-Owners')).toContainText(
         'Owners'
       );
-      await expect(
-        page.getByTestId('search-dropdown-Tag').locator('span')
-      ).toContainText('Tag');
+      await expect(page.getByTestId('search-dropdown-Tag')).toContainText(
+        'Tag'
+      );
 
       await page.getByTestId('search-dropdown-tier.tagFQN').click();
 
+      await expect(page.getByTestId('search-dropdown-Tier')).toContainText(
+        'Tier'
+      );
+      await expect(page.getByTestId('search-dropdown-Service')).toContainText(
+        'Service'
+      );
       await expect(
-        page.getByTestId('search-dropdown-Tier').locator('span')
-      ).toContainText('Tier');
-      await expect(
-        page.getByTestId('search-dropdown-Service').locator('span')
-      ).toContainText('Service');
-      await expect(
-        page.getByTestId('search-dropdown-Service Type').locator('span')
+        page.getByTestId('search-dropdown-Service Type')
       ).toContainText('Service Type');
     });
 

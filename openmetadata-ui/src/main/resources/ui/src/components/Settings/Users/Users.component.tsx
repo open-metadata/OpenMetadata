@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Tooltip } from 'antd';
+import { Box, Tabs, Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +25,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { restoreUser } from '../../../rest/userAPI';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   EXTENSION_POINTS,
   TabContribution,
@@ -139,12 +140,8 @@ const Users = ({
       type: AssetsOfEntity;
       noDataPlaceholder: AssetNoDataPlaceholderProps;
     }) => (
-      <Row
-        className="user-page-layout"
-        gutter={[20, 0]}
-        key={currentTab}
-        wrap={false}>
-        <Col flex="auto">
+      <Box className="user-page-layout" gap={5} key={currentTab} wrap="nowrap">
+        <div className="tw:min-w-0 tw:flex-auto">
           <div className="user-layout-scroll">
             <AssetsTabs
               isSummaryPanelOpen={Boolean(previewAsset)}
@@ -154,17 +151,17 @@ const Users = ({
               {...props}
             />
           </div>
-        </Col>
+        </div>
 
         {previewAsset && (
-          <Col className="user-page-layout-right-panel" flex="400px">
+          <div className="user-page-layout-right-panel tw:flex-[0_0_400px]">
             <EntitySummaryPanel
               entityDetails={previewAsset}
               handleClosePanel={() => setPreviewAsset(undefined)}
             />
-          </Col>
+          </div>
         )}
-      </Row>
+      </Box>
     ),
     [previewAsset, handleAssetClick, setPreviewAsset, currentTab]
   );
@@ -279,7 +276,11 @@ const Users = ({
         ? [
             {
               label: (
-                <Tooltip title="You have reached the limit">
+                <Tooltip
+                  excludeTriggerFromTabOrder
+                  isDisabled={!disableFields.includes('personalAccessToken')}
+                  title="You have reached the limit"
+                  triggerClassName="tw:inline-flex">
                   <TabsLabel
                     id={UserPageTabs.ACCESS_TOKEN}
                     isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
@@ -381,8 +382,8 @@ const Users = ({
 
   return (
     <div data-testid="user-profile">
-      <Row gutter={[20, 0]} wrap={false}>
-        <Col flex="250px">
+      <Box gap={5} wrap="nowrap">
+        <div className="tw:flex-[0_0_250px]">
           <div className="profile-section">
             <ProfileSectionUserDetailsCard
               afterDeleteAction={afterDeleteAction}
@@ -417,29 +418,31 @@ const Users = ({
               userRoles={userData.roles}
             />
           </div>
-        </Col>
-        <Col flex="auto">
+        </div>
+        <div className="tw:min-w-0 tw:flex-auto">
           <Tabs
-            activeKey={currentTab}
-            className="tabs-new m-b-xs"
+            className="tw:gap-3"
             data-testid="tabs"
-            items={allTabs.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              disabled: 'disabled' in tab ? (tab.disabled as boolean) : false,
-            }))}
-            renderTabBar={(props, DefaultTabBar) => (
-              <DefaultTabBar {...props} />
-            )}
-            onChange={activeTabHandler}
-          />
-          <Row className="users-tabs-container" gutter={[16, 16]}>
-            <Col span={24}>
-              {allTabs.find((tab) => tab.key === currentTab)?.children}
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+            selectedKey={getRenderedActiveTab(allTabs, currentTab)}
+            onSelectionChange={(key) => activeTabHandler(String(key))}>
+            <Tabs.List size="sm" type="underline" variant="card">
+              {allTabs.map((tab) => (
+                <Tabs.Item id={tab.key} isDisabled={tab.disabled} key={tab.key}>
+                  {tab.label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {allTabs.map((tab) => (
+              <Tabs.Panel
+                className="users-tabs-container"
+                id={tab.key}
+                key={tab.key}>
+                {tab.children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </div>
+      </Box>
     </div>
   );
 };

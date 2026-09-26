@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/ingestionPipelines/runIngestionPipelineForEntity.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RunIngestionPipelineForEntityRequest",
+  "description": "Run the ingestion pipeline of the given type that owns an entity, scoped to that entity alone: a test suite pipeline for a test case, or a profiler, metadata or auto classification pipeline for a table.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.services.ingestionPipelines.RunIngestionPipelineForEntity",
+  "properties": {
+    "entityLink": {
+      "description": "Link to the entity to run the pipeline for, such as `<#E::testCase::{fqn}>` or `<#E::table::{fqn}>`.",
+      "$ref": "../../../type/basic.json#/definitions/entityLink"
+    },
+    "pipelineType": {
+      "description": "Type of the pipeline to run for the entity.",
+      "$ref": "../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"
+    }
+  },
+  "required": ["entityLink", "pipelineType"],
+  "additionalProperties": false
+}

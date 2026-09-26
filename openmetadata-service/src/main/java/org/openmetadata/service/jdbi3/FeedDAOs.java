@@ -395,6 +395,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs)))",
@@ -405,6 +406,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs)))",
@@ -413,6 +415,7 @@ public interface FeedDAOs {
         @Define("condition") String condition,
         @Bind("entityLink") String entityLink,
         @Bind("status") String status,
+        @Bind("announcementType") String announcementType,
         @Bind("active") Boolean active,
         @Bind("currentTs") long currentTs);
 
@@ -422,6 +425,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
@@ -433,6 +437,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
@@ -442,6 +447,7 @@ public interface FeedDAOs {
         @Define("condition") String condition,
         @Bind("entityLink") String entityLink,
         @Bind("status") String status,
+        @Bind("announcementType") String announcementType,
         @Bind("active") Boolean active,
         @Bind("currentTs") long currentTs,
         @Bind("limit") int limit,
@@ -455,6 +461,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
@@ -472,6 +479,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
@@ -485,6 +493,7 @@ public interface FeedDAOs {
         @Define("condition") String condition,
         @Bind("entityLink") String entityLink,
         @Bind("status") String status,
+        @Bind("announcementType") String announcementType,
         @Bind("active") Boolean active,
         @Bind("currentTs") long currentTs,
         @Bind("limit") int limit,
@@ -497,6 +506,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
@@ -511,6 +521,7 @@ public interface FeedDAOs {
                 + "WHERE <condition> "
                 + "AND (:entityLink IS NULL OR entityLink = :entityLink) "
                 + "AND (:status IS NULL OR status = :status) "
+                + "AND (:announcementType IS NULL OR type = :announcementType) "
                 + "AND ((:active IS NULL) "
                 + "OR (:active = TRUE AND startTime <= :currentTs AND endTime >= :currentTs) "
                 + "OR (:active = FALSE AND (startTime > :currentTs OR endTime < :currentTs))) "
@@ -523,6 +534,7 @@ public interface FeedDAOs {
         @Define("condition") String condition,
         @Bind("entityLink") String entityLink,
         @Bind("status") String status,
+        @Bind("announcementType") String announcementType,
         @Bind("active") Boolean active,
         @Bind("currentTs") long currentTs,
         @Bind("limit") int limit,
@@ -543,6 +555,10 @@ public interface FeedDAOs {
       return filter.getQueryParam("status");
     }
 
+    private String getAnnouncementType(ListFilter filter) {
+      return filter.getQueryParam("announcementType");
+    }
+
     private String getAnnouncementEntityLink(ListFilter filter) {
       return filter.getQueryParam("entityLink");
     }
@@ -557,6 +573,7 @@ public interface FeedDAOs {
           getAnnouncementBaseCondition(filter),
           getAnnouncementEntityLink(filter),
           getAnnouncementStatus(filter),
+          getAnnouncementType(filter),
           getActiveFlag(filter),
           System.currentTimeMillis());
     }
@@ -572,6 +589,7 @@ public interface FeedDAOs {
           getAnnouncementBaseCondition(filter),
           getAnnouncementEntityLink(filter),
           getAnnouncementStatus(filter),
+          getAnnouncementType(filter),
           getActiveFlag(filter),
           System.currentTimeMillis(),
           limit,
@@ -589,6 +607,7 @@ public interface FeedDAOs {
           getAnnouncementBaseCondition(filter),
           getAnnouncementEntityLink(filter),
           getAnnouncementStatus(filter),
+          getAnnouncementType(filter),
           getActiveFlag(filter),
           System.currentTimeMillis(),
           limit,
@@ -606,6 +625,7 @@ public interface FeedDAOs {
           getAnnouncementBaseCondition(filter),
           getAnnouncementEntityLink(filter),
           getAnnouncementStatus(filter),
+          getAnnouncementType(filter),
           getActiveFlag(filter),
           System.currentTimeMillis(),
           limit,

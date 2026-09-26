@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Activity,
   Copy01,
   File02,
   RefreshCcw01,
@@ -31,6 +32,7 @@ import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
@@ -46,6 +48,7 @@ import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
+import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -107,7 +110,6 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
@@ -167,7 +169,6 @@ export const DataAssetsHeader = ({
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
   extraDropdownContent,
-  onMetricUpdate,
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
@@ -616,7 +617,8 @@ export const DataAssetsHeader = ({
         <Button
           className={classNames(
             'data-contract-latest-result-button',
-            toLower(dataContract?.latestResult?.status)
+            toLower(dataContract?.latestResult?.status),
+            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status]
           )}
           color="secondary"
           data-testid="data-contract-latest-result-btn"
@@ -825,7 +827,14 @@ export const DataAssetsHeader = ({
   };
 
   const renderServiceLogo = () => {
-    if (!serviceLogoUrl) {
+    // Metrics have no owning service, so fall back to the metric entity icon so
+    // the header still shows a leading glyph next to the title.
+    const entityIcon =
+      !serviceLogoUrl && entityType === EntityType.METRIC ? (
+        <Activity aria-hidden="true" className="tw:size-5" />
+      ) : null;
+
+    if (!serviceLogoUrl && !entityIcon) {
       return null;
     }
 
@@ -835,13 +844,19 @@ export const DataAssetsHeader = ({
           className={classNames(
             'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
             'tw:justify-center tw:overflow-hidden tw:rounded-full',
-            'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+            'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
           )}>
-          <img
-            alt={get(dataAsset, 'service.displayName', '')}
-            className="tw:size-5 tw:object-contain"
-            src={serviceLogoUrl}
-          />
+          {serviceLogoUrl ? (
+            <img
+              alt={get(dataAsset, 'service.displayName', '')}
+              className="tw:size-5 tw:object-contain"
+              src={serviceLogoUrl}
+            />
+          ) : (
+            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-utility-blue-700">
+              {entityIcon}
+            </span>
+          )}
         </div>
         {editStylePermission && (
           <EditIconButton
@@ -971,8 +986,9 @@ export const DataAssetsHeader = ({
           entityId={dataAsset.id ?? ''}
           entityType={entityType}
           hasPermission={editDomainPermission}
+          labelClassName="tw:text-secondary!"
           multiple={entityRules.canAddMultipleDomains}
-          textClassName="render-domain-lebel-style"
+          textClassName="render-domain-lebel-style tw:text-secondary!"
         />
       )}
 
@@ -981,7 +997,6 @@ export const DataAssetsHeader = ({
       <Owner
         showDashPlaceholder
         avatarSize={24}
-        className="header-owner-heading"
         hasPermission={editOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
@@ -1019,28 +1034,35 @@ export const DataAssetsHeader = ({
                 currentTier={tier?.tagFQN}
                 footerActionButtonsClassName="p-x-md"
                 updateTier={onTierUpdate}>
-                <EditIconButton
-                  newLook
-                  data-testid="edit-tier"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.tier'),
-                  })}
-                />
+                <Pressable>
+                  <EditIconButton
+                    newLook
+                    data-testid="edit-tier"
+                    size="small"
+                    title={t('label.edit-entity', {
+                      entity: t('label.tier'),
+                    })}
+                  />
+                </Pressable>
               </TierCard>
             )}
           </div>
           {(() => {
-            const tierValue = tier ? (
-              <ClassificationTag
-                color={tier.style?.color}
-                data-testid="Tier"
-                href={getTagRedirectLink(tier)}
-                icon={tier.style?.iconURL}
-                label={getTagName(tier)}
-                size="sm"
-              />
-            ) : (
+            if (tier) {
+              // The chip is a link to the tag, so it is not also a tier trigger.
+              return (
+                <ClassificationTag
+                  color={tier.style?.color}
+                  data-testid="Tier"
+                  href={getTagRedirectLink(tier)}
+                  icon={tier.style?.iconURL}
+                  label={getTagName(tier)}
+                  size="sm"
+                />
+              );
+            }
+
+            const placeholder = (
               <Typography
                 as="span"
                 className="tw:cursor-pointer tw:text-primary"
@@ -1053,15 +1075,22 @@ export const DataAssetsHeader = ({
 
             return editTierPermission ? (
               <TierCard
-                currentTier={tier?.tagFQN}
                 footerActionButtonsClassName="p-x-md"
                 updateTier={onTierUpdate}>
-                <span className="tw:inline-flex tw:cursor-pointer">
-                  {tierValue}
-                </span>
+                <Pressable>
+                  <span
+                    aria-label={t('label.edit-entity', {
+                      entity: t('label.tier'),
+                    })}
+                    className="tw:inline-flex tw:cursor-pointer"
+                    role="button"
+                    tabIndex={0}>
+                    {placeholder}
+                  </span>
+                </Pressable>
               </TierCard>
             ) : (
-              tierValue
+              placeholder
             );
           })()}
         </div>
@@ -1159,14 +1188,6 @@ export const DataAssetsHeader = ({
           />
         </>
       )}
-
-      {entityType === EntityType.METRIC && onMetricUpdate && (
-        <MetricHeaderInfo
-          metricDetails={dataAsset}
-          metricPermissions={permissions}
-          onUpdateMetricDetails={onMetricUpdate}
-        />
-      )}
     </>
   );
 
@@ -1207,7 +1228,7 @@ export const DataAssetsHeader = ({
     <>
       <div
         className={classNames(
-          'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5',
+          'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface tw:p-5',
           'data-assets-header-container',
           { 'has-editable-metadata': hasEditableMetadata }
         )}

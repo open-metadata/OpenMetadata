@@ -50,10 +50,16 @@ def main() -> None:
         line_count = 0
         flush()
 
+    def terminate(_signal: int, _frame: object | None) -> None:
+        raise SystemExit(0)
+
     signal.signal(signal.SIGUSR1, flush)
     signal.signal(signal.SIGUSR2, reset)
+    signal.signal(signal.SIGTERM, terminate)
     line_count = 0
     try:
+        # Startup can stall before the first periodic flush or before the FIFO opens.
+        flush()
         with args.input.open(encoding="utf-8", errors="replace") as server_output:
             for line in server_output:
                 tail.append(line)

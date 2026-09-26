@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/sinkTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SinkTaskDefinition",
   "description": "Pushes entity data to an external sink destination such as Git repositories, webhooks, or HTTP endpoints.",
   "javaInterfaces": [
@@ -144,7 +144,6 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["relatedEntity", "updatedBy"],
-      "additionalItems": false,
       "minItems": 1
     },
     "inputNamespaceMap": {
@@ -167,14 +166,12 @@
       "description": "Variables this node outputs for use in subsequent nodes",
       "type": "array",
       "items": { "type": "string" },
-      "default": ["syncResult", "syncedCount", "failedCount", "result"],
-      "additionalItems": false
+      "default": ["syncResult", "syncedCount", "failedCount", "result"]
     },
     "branches": {
       "type": "array",
       "items": { "type": "string" },
       "default": ["success", "failure"],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

@@ -75,6 +75,13 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         type=Path,
         required=True,
     )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        required=False,
+        default=None,
+    )
 
 
 def create_dbt_parser_args(parser: argparse.ArgumentParser):
@@ -88,6 +95,12 @@ def create_dbt_parser_args(parser: argparse.ArgumentParser):
         type=Path,
         default=Path("."),  # noqa: PTH201
         required=False,
+    )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        default=None,
     )
 
 
@@ -218,6 +231,7 @@ def metadata(args: list[str] | None = None):
     metadata_workflow = contains_args.get("command")
     config_file: Path | None = contains_args.get("config")
     dbt_project_path: Path | None = contains_args.get("dbt_project_path")
+    status_file: Path | None = contains_args.get("status_file")
 
     path = None
     if config_file:
@@ -232,7 +246,7 @@ def metadata(args: list[str] | None = None):
         set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
-        RUN_PATH_METHODS[metadata_workflow](path)
+        RUN_PATH_METHODS[metadata_workflow](path, status_file)
 
     if metadata_workflow == MetadataCommands.SCAFFOLD_CONNECTOR.value:
         has_name = contains_args.get("name")

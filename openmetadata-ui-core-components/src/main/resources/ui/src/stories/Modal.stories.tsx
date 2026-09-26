@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { AlertTriangle, Building07, Mail01, User01 } from '@untitledui/icons';
 import { Button } from '../components/base/buttons/button';
@@ -408,4 +408,51 @@ export const ContentOnly: Story = {
       </ModalOverlay>
     </DialogTrigger>
   ),
+};
+
+// ─── Dark overlay & surface ──────────────────────────────────────────────────
+// React Aria portals the modal to document.body, so a `theme: 'both'` decorator
+// (which only wraps the story root) cannot theme it. Toggle `.dark-mode` on
+// <body> so the portalled overlay/surface pick up the dark tokens.
+
+export const DarkOverlay: Story = {
+  name: 'Dark overlay & surface',
+  render: () => {
+    const [isOpen, setIsOpen] = useState(true);
+
+    useEffect(() => {
+      document.body.classList.add('dark-mode');
+
+      return () => document.body.classList.remove('dark-mode');
+    }, []);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button color="primary" onPress={() => setIsOpen(true)}>
+          Open Modal
+        </Button>
+        <ModalOverlay>
+          <Modal>
+            <Dialog
+              showCloseButton
+              title="Delete workspace"
+              onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <p className="tw:text-sm tw:text-secondary">
+                  Panel sits on Raised (gray-700); the scrim is a 60% near-black
+                  veil in dark mode.
+                </p>
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button color="secondary" onPress={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button color="primary-destructive">Delete</Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
 };

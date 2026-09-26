@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 import { ChevronDown } from '@untitledui/icons';
-import classNames from 'classnames';
+import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 import DqSearchFilterChip from './DqSearchFilterChip';
 
@@ -30,7 +35,24 @@ const DqFilterChip = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  if (filter.type === 'owner') {
+  if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
+    return (
+      <GlossaryTermPicker
+        bordered
+        commitMode="staged"
+        data-testid={`search-dropdown-${filter.label}`}
+        // The bar owns which chip is open, so it can close this one.
+        isOpen={isOpen}
+        label={filter.label}
+        triggerVariant="button"
+        value={fqnsToGlossaryTags(filter.selectedFqns)}
+        onChange={(terms) => filter.onChange(glossaryTagsToFqns(terms))}
+        onOpenChange={onOpenChange}
+      />
+    );
+  }
+
+  if (filter.type === DQ_FILTER_TYPES.OWNER) {
     return (
       <UserTeamSelectableList
         hasPermission
@@ -47,9 +69,7 @@ const DqFilterChip = ({
           onOpenChange(false);
         }}>
         <button
-          className={classNames(chipTriggerClassName, {
-            [chipTriggerSelectedClassName]: filter.selectedOwnerKeys.length > 0,
-          })}
+          className={chipTriggerClassName}
           data-testid={`search-dropdown-${filter.key}`}
           type="button">
           {filter.label}
@@ -60,10 +80,7 @@ const DqFilterChip = ({
               {filter.selectedOwnerKeys.length}
             </span>
           )}
-          <ChevronDown
-            className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-            data-icon="true"
-          />
+          <ChevronDown className={chipChevronClassName} />
         </button>
       </UserTeamSelectableList>
     );

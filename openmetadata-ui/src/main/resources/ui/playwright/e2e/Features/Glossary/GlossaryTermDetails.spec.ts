@@ -133,11 +133,9 @@ test.describe('Glossary Term Details Operations', () => {
           .getByText('References')
       ).toBeVisible();
 
-      // Remove first reference using the delete button in the row
-      // The delete button is the only button with IconDelete in the modal rows
       await page
         .getByTestId('glossary-term-references-modal')
-        .locator('.reference-edit-form button[type="button"]')
+        .getByTestId('delete-ref-btn')
         .first()
         .click();
 

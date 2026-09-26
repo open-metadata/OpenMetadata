@@ -36,6 +36,14 @@ export interface DashboardServiceMetadataPipeline {
      */
     includeDraftDashboard?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML
+     * measures) as first-class Metric entities. Metric names are unique across the whole
+     * OpenMetadata instance, so this is disabled by default. Measures are discovered from the
+     * data models that expose them, so this requires 'Include Data Models' to be enabled as
+     * well.
+     */
+    includeMetrics?: boolean;
+    /**
      * Enabling a flag will replace the current owner with a new owner from the source during
      * metadata ingestion, if the current owner is null. It is recommended to keep the flag
      * enabled to obtain the owner information during the first metadata ingestion.

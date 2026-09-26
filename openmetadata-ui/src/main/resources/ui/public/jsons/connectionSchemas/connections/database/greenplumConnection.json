@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GreenplumConnection",
   "description": "Greenplum Database Connection Config",
   "type": "object",
@@ -51,7 +50,6 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Basic Auth",
           "description": "Common Database Connection Config",
           "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -67,7 +65,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "IAM Auth Configuration Source",
           "description": "IAM Auth Database Connection Config",
           "type": "object",
@@ -75,7 +72,6 @@
           "properties": {
             "awsConfig": {
               "title": "AWS Credentials Configuration",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -105,7 +101,8 @@
                 "awsSessionToken": {
                   "title": "AWS Session Token",
                   "description": "AWS Session Token.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "endPointURL": {
                   "title": "Endpoint URL",
@@ -176,7 +173,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
@@ -393,7 +389,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -423,7 +418,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",

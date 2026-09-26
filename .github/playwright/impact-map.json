@@ -722,6 +722,20 @@
       ]
     },
     {
+      "_comment": "The bulk-edit grid renders tier and other popover cell editors from CSVUtilsClassBase, and the tier editor is TierCard. TierCard alone mapped only to TierWidget, so a TierCard-only change skipped the bulk-edit tier step in DataAssetRulesDisabled, which first failed in the merge queue (#33987).",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/TierCard/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CSV/**"
+      ],
+      "projects": ["chromium", "ImportExport", "DataAssetRulesDisabled"],
+      "specs": [
+        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
+        "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts"
+      ]
+    },
+    {
       "_comment": "Column bulk operations and column sorting exercise the ColumnBulkOperations page and columnAPI; keeps ColumnBulkOperationsTagsGlossary tied to both this and the Tag mapping above.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/ColumnBulkOperations/**",

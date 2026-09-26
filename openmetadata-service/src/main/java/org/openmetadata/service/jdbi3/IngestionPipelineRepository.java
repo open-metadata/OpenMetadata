@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
@@ -825,6 +826,25 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   protected boolean deleteDeployedPipeline(
       IngestionPipeline entity, boolean allowUnavailableRunner) {
+    // Always ATTEMPT runner cleanup when the client is configured: a failed
+    // first-deploy can leave DAG/config files on the runner even though
+    // `deployed=false` (the deployer writes the files before the readiness
+    // check runs; a timeout there returns 500 but does not roll back the
+    // filesystem write). Skipping the runner call entirely would silently
+    // orphan those files.
+    //
+    // Exception handling splits by caller intent (allowUnavailableRunner):
+    //   * cascade / force delete: opt in to skipping unavailable runners
+    //   * direct hard delete of a DEPLOYED pipeline: surface the unavailable
+    //     runner (caller needs to know cleanup didn't happen)
+    //   * direct hard delete of an UNDEPLOYED pipeline: return false rather
+    //     than throwing — the pipeline may never have touched Airflow at all
+    //     (metadata-only intent), and requiring a live runner just to hard-
+    //     delete a metadata-only entity would leave it stuck. This is a
+    //     documented residual risk: a partially-deployed pipeline (files on
+    //     disk, deployed=false) can still be orphaned on this path when the
+    //     runner happens to be unreachable. The proper fix is a compensating
+    //     cleanup at deploy-readiness-timeout time, tracked separately.
     boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
       try {
@@ -832,6 +852,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       } catch (IngestionRunnerUnavailableException exception) {
         if (allowUnavailableRunner) {
           wasRunnerCleanupSkipped = true;
+        } else if (Boolean.FALSE.equals(entity.getDeployed())) {
+          return false;
         } else {
           throw exception;
         }
@@ -1651,6 +1673,40 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     validateSourceConfigHasType(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, RunOptions.NONE);
+  }
+
+  /**
+   * For callers running the pipeline against its own service. The explicit-service overload stays
+   * for the callers that run a pipeline against something else - a data contract's test suite, or
+   * an app whose ingestion runner was set on the service first.
+   */
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, RunOptions options) {
+    ServiceEntityInterface service =
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, options);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo,
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      RunOptions options) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.runPipelineWithOptions(ingestionPipeline, service, options);
+    recordQueuedPipelineStatus(
+        uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+    return response;
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.

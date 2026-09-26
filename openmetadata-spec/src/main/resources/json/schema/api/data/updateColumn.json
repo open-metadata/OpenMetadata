@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/updateColumn.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UpdateColumn",
   "description": "Update Column API request to update individual column metadata such as display name, description, tags, and glossary terms. This API works for columns in both tables and dashboard data models using the column's fully qualified name. The constraint field is only applicable to table columns.",
   "type": "object",

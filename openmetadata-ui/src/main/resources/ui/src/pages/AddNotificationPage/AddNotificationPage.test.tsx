@@ -12,9 +12,11 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import AddNotificationPage from './AddNotificationPage';
 
 const mockNavigate = jest.fn();
+const mockGetResourcePermission = jest.fn();
 const mockHandleAlertSave = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
 
@@ -27,6 +29,16 @@ jest.mock('../../utils/AlertsClassBase', () => ({
     getAddAlertFormExtraWidgets: jest.fn().mockReturnValue({}),
     getAddAlertFormExtraButtons: jest.fn().mockReturnValue({}),
   },
+}));
+
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn(() => ({
+    getResourcePermission: mockGetResourcePermission,
+  })),
+}));
+
+jest.mock('../../rest/notificationtemplateAPI', () => ({
+  getAllNotificationTemplates: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../rest/alertsAPI', () => ({
@@ -225,6 +237,39 @@ describe('AddNotificationPage', () => {
     expect(
       screen.getByTestId('destination-category-select')
     ).toBeInTheDocument();
+  });
+
+  describe('notification template permissions', () => {
+    const renderWithExtraWidgets = async () => {
+      const { default: alertsClassBase } = await import(
+        '../../utils/AlertsClassBase'
+      );
+      (
+        alertsClassBase.getAddAlertFormExtraWidgets as jest.Mock
+      ).mockReturnValueOnce({ template: jest.fn() });
+
+      await act(async () => {
+        render(<AddNotificationPage {...mockProps} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+    };
+
+    it('should fetch templates when ViewAll is granted on the template resource', async () => {
+      mockGetResourcePermission.mockResolvedValue({ ViewAll: true });
+
+      await renderWithExtraWidgets();
+
+      expect(getAllNotificationTemplates).toHaveBeenCalled();
+    });
+
+    it('should not fetch templates when ViewAll is denied on the template resource', async () => {
+      mockGetResourcePermission.mockResolvedValue({ ViewBasic: true });
+
+      await renderWithExtraWidgets();
+
+      expect(getAllNotificationTemplates).not.toHaveBeenCalled();
+    });
   });
 
   it('should call getAddAlertFormExtraWidgets from alertsClassBase', async () => {

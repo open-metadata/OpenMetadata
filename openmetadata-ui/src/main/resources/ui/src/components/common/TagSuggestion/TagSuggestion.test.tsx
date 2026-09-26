@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TagSource } from '../../../generated/entity/data/container';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import TagSuggestion from './TagSuggestion';
 import { MOCK_GLOSSARY_OPTIONS, MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
 
@@ -30,6 +31,16 @@ jest.mock('../../../utils/formPureUtils', () => ({
   ...jest.requireActual('../../../utils/formPureUtils'),
   ensureComboboxMenuOpen: (...args: unknown[]) =>
     mockEnsureComboboxMenuOpen(...args),
+}));
+
+const mockGlossaryTermPicker = jest.fn();
+jest.mock('../GlossaryTermPicker/GlossaryTermPicker', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    mockGlossaryTermPicker(props, {});
+
+    return <div data-testid="glossary-term-picker" />;
+  },
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
@@ -375,67 +386,34 @@ describe('TagSuggestion', () => {
   });
 
   describe('when tagType is Glossary', () => {
-    it('should query fetchGlossaryList and never getTags', async () => {
+    it('should render the glossary term picker, not the flat autocomplete', () => {
       render(
         <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
       );
 
-      const input = screen.getByRole('combobox');
-
-      fireEvent.change(input, { target: { value: 'Revenue' } });
-
-      await waitFor(() => {
-        expect(mockFetchGlossaryList).toHaveBeenCalledWith('Revenue', 1);
-      });
-
+      expect(screen.getByTestId('glossary-term-picker')).toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+      expect(mockFetchGlossaryList).not.toHaveBeenCalled();
       expect(mockGetTags).not.toHaveBeenCalled();
     });
 
-    it('should display glossary terms returned from the search', async () => {
+    it('should hand the picker the current terms and the change handler', () => {
+      const value = [
+        { tagFQN: 'Business.Revenue', source: TagSource.Glossary },
+      ] as TagLabel[];
+
       render(
-        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
+        <TagSuggestion
+          tagType={TagSource.Glossary}
+          value={value}
+          onChange={mockOnChange}
+        />
       );
 
-      const input = screen.getByRole('combobox');
-
-      fireEvent.mouseDown(input);
-
-      await waitFor(() => {
-        expect(screen.getByRole('listbox')).toBeInTheDocument();
-      });
-
-      expect(
-        screen.getByTestId('tag-option-Business.Revenue')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('tag-option-Business.Customer')
-      ).toBeInTheDocument();
-    });
-
-    it('should stamp source Glossary on an inserted glossary term', async () => {
-      render(
-        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
+      expect(mockGlossaryTermPicker).toHaveBeenCalledWith(
+        expect.objectContaining({ value, onChange: mockOnChange }),
+        {}
       );
-
-      const input = screen.getByRole('combobox');
-
-      fireEvent.mouseDown(input);
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('tag-option-Business.Revenue')
-        ).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByTestId('tag-option-Business.Revenue'));
-
-      expect(mockOnChange).toHaveBeenCalled();
-
-      const insertedTag = mockOnChange.mock.calls[0][0][0];
-
-      expect(insertedTag.tagFQN).toBe('Business.Revenue');
-      expect(insertedTag.source).toBe(TagSource.Glossary);
-      expect(insertedTag.name).toBe('Revenue');
     });
   });
 });

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/createAndRunAIAutomationTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateAndRunAIAutomationTask",
   "description": "Creates (or updates) a service-scoped AI Automation from a seed template and runs it.",
   "javaInterfaces": [
@@ -71,7 +71,6 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["relatedEntity"],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -90,7 +89,6 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["success", "failure"],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

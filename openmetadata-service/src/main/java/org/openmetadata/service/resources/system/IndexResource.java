@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.system;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -15,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
@@ -34,11 +35,14 @@ public class IndexResource {
   // ETag is computed from the body BEFORE the per-request cspNonce substitution and cached
   // per-basePath (the basePath rarely changes within a process). The map keeps the ETag and
   // the corresponding stable HTML together so a hit can answer 304 without re-rendering.
-  // Bounded to a handful of entries in practice — there's typically one configured basePath.
-  private static final ConcurrentHashMap<String, EtagCacheEntry> ETAG_CACHE =
-      new ConcurrentHashMap<>();
-  private static final ConcurrentHashMap<String, EtagCacheEntry> SILENT_CALLBACK_ETAG_CACHE =
-      new ConcurrentHashMap<>();
+  // Explicitly capped to satisfy the repo-wide "every cache carries a bound" rule
+  // (CLAUDE.md): in practice one basePath serves the whole deployment, but a proxy
+  // reflecting attacker-controlled path prefixes could otherwise grow the map unbounded.
+  private static final int ETAG_CACHE_MAX_ENTRIES = 32;
+  private static final Cache<String, EtagCacheEntry> ETAG_CACHE =
+      Caffeine.newBuilder().maximumSize(ETAG_CACHE_MAX_ENTRIES).build();
+  private static final Cache<String, EtagCacheEntry> SILENT_CALLBACK_ETAG_CACHE =
+      Caffeine.newBuilder().maximumSize(ETAG_CACHE_MAX_ENTRIES).build();
 
   private record EtagCacheEntry(String etag, String stableHtml) {}
 
@@ -74,7 +78,7 @@ public class IndexResource {
                 "${appVersion}", escapeJs(new VersionResource().getCatalogVersion().getVersion()));
     // Re-init may bake new values into the template — drop any cached ETags so the next
     // request computes a fresh hash against the new body.
-    ETAG_CACHE.clear();
+    ETAG_CACHE.invalidateAll();
 
     // Vite's multi-entry build emits `silent-callback.html` alongside `index.html`. The file
     // is a bare shell (no Sentry, no cluster name, no version — its only job is to load the
@@ -99,7 +103,7 @@ public class IndexResource {
     } catch (IOException e) {
       throw new IllegalStateException("Failed to load /assets/silent-callback.html", e);
     }
-    SILENT_CALLBACK_ETAG_CACHE.clear();
+    SILENT_CALLBACK_ETAG_CACHE.invalidateAll();
   }
 
   private static String escapeJs(String value) {
@@ -141,7 +145,7 @@ public class IndexResource {
    */
   public static String getIndexEtag(String basePath) {
     String key = basePath == null ? "/" : basePath;
-    EtagCacheEntry cached = ETAG_CACHE.get(key);
+    EtagCacheEntry cached = ETAG_CACHE.getIfPresent(key);
     String stableHtml = getIndexFile(basePath);
     if (cached != null && cached.stableHtml.equals(stableHtml)) {
       return cached.etag;
@@ -190,7 +194,7 @@ public class IndexResource {
       return null;
     }
     String key = basePath == null ? "/" : basePath;
-    EtagCacheEntry cached = SILENT_CALLBACK_ETAG_CACHE.get(key);
+    EtagCacheEntry cached = SILENT_CALLBACK_ETAG_CACHE.getIfPresent(key);
     String stableHtml = getSilentCallbackFile(basePath);
     if (cached != null && cached.stableHtml.equals(stableHtml)) {
       return cached.etag;
@@ -218,7 +222,7 @@ public class IndexResource {
    * the same process picks up the fresh template hash.
    */
   static void clearEtagCacheForTesting() {
-    ETAG_CACHE.clear();
+    ETAG_CACHE.invalidateAll();
   }
 
   @GET

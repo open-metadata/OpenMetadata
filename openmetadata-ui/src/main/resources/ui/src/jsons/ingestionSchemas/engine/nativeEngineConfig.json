@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Native Engine Configuration",
   "description": "Configuration for the native metadata ingestion engine",
   "type": "object",

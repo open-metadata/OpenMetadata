@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
-import { ForwardRefExoticComponent, RefAttributes } from 'react';
-import { SortingField } from '../../components/Explore/SortingDropDown';
-import { SORT_ORDER } from '../../enums/common.enum';
+import type { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
+import type { ForwardRefExoticComponent, RefAttributes } from 'react';
+import type { SortingField } from '../../components/Explore/SortingDropDown';
+import type { SORT_ORDER } from '../../enums/common.enum';
 
 export type TabsInfoData = {
   label: string;

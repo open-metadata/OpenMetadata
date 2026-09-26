@@ -29,7 +29,12 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 // lazy routes ship without a churn PR; a big regression still fails the gate.
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
-const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
+// Bumped 8 → 9 because sharing `oidcTokenStorage` between `silentCallbackEntry.ts`
+// and the main app graph (see the silent-callback iframe fix on this PR) splits
+// its subtree — plus `swTokenStorage` and `SwTokenStorageUtils` — into a shared
+// chunk that both HTML entries reference via `<link modulepreload>`. That new
+// chunk is <1 KB and byte-neutral; only the count went up by one.
+const MAX_HTML_BOOTSTRAP_JS_FILES = 9;
 // Taking the owner hover card off the entry graph (see ownerRenderUtils) puts
 // main at 1045275 bootstrap bytes, against 1141354 before it. This branch adds
 // the AuthCoordinator subgraph (CrossTabLock + RefreshQueue + ProactiveTimer +

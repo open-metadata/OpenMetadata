@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SinkTaskDefinition",
   "description": "Pushes entity data to an external sink destination such as Git repositories, webhooks, or HTTP endpoints.",
   "javaInterfaces": [
@@ -171,7 +170,6 @@
         "relatedEntity",
         "updatedBy"
       ],
-      "additionalItems": false,
       "minItems": 1
     },
     "inputNamespaceMap": {
@@ -203,8 +201,7 @@
         "syncedCount",
         "failedCount",
         "result"
-      ],
-      "additionalItems": false
+      ]
     },
     "branches": {
       "type": "array",
@@ -215,7 +212,6 @@
         "success",
         "failure"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

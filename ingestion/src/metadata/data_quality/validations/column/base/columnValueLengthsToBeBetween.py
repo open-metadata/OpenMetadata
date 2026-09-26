@@ -18,6 +18,7 @@ from abc import abstractmethod
 
 from sqlalchemy import Column
 
+from metadata.data_quality.validations import result_messages
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
@@ -29,6 +30,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.checkers.between_bounds_checker import (
     BetweenBoundsChecker,
 )
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -46,6 +48,8 @@ MAX_LENGTH_METRIC_NAME = "maxValueLength"
 
 class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
     """Validator for column value length to be between test case"""
+
+    SAMPLING_STABILITY = SamplingStability.BIASED_INWARD
 
     MIN_BOUND = "minLength"
     MAX_BOUND = "maxLength"
@@ -117,11 +121,12 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         """Get test parameters for this validator
 
         Returns:
-            dict: Test parameters including min and max bounds
+            dict: Test parameters including min and max bounds, widened by the failure threshold
         """
+        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         return {
-            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
-            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
+            self.MIN_BOUND: min_bound,
+            self.MAX_BOUND: max_bound,
         }
 
     def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:
@@ -204,13 +209,17 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found minLength={min_length_value}, maxLength={max_length_value} vs. the expected minLength={min_bound}, maxLength={max_bound}"
-            )
-        else:  # noqa: RET505
-            return f"Found minLength={min_length_value}, maxLength={max_length_value} vs. the expected minLength={min_bound}, maxLength={max_bound}."
+        column = self.column_label()
+
+        # Both extremes are checked against the same window, so the message reports both and
+        # states the verdict once, on the pair.
+        return self.format_statistic_message(
+            f"Shortest value in {column} is {result_messages.format_value(min_length_value)} characters and the longest",
+            max_length_value,
+            (min_bound, max_bound),
+            self._matched(metric_values, test_params),
+            dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for max-to-be-between test

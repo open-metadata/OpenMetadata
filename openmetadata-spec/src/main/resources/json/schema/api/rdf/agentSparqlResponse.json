@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/rdf/agentSparqlResponse.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AgentSparqlResponse",
   "description": "Typed SPARQL SELECT result for agent tools, with completeness relative to the submitted query. Results come from the server-configured RDF dataset and default graph, without persona filtering or asset-level authorization.",
   "type": "object",

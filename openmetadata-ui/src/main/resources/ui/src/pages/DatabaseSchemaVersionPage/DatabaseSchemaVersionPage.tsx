@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -24,6 +25,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -49,6 +51,7 @@ import {
   getDatabaseSchemaVersions,
 } from '../../rest/databaseAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
@@ -244,7 +247,7 @@ function DatabaseSchemaVersionPage() {
     );
   };
 
-  const tabs: TabsProps['items'] = useMemo(
+  const tabs: TabProps[] = useMemo(
     () => [
       {
         label: (
@@ -252,27 +255,26 @@ function DatabaseSchemaVersionPage() {
         ),
         key: EntityTabs.TABLE,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div data-testid="description-container">
                   <Description
                     description={description}
                     entityType={EntityType.DATABASE_SCHEMA}
                     isDescriptionExpanded={isEmpty(tableData)}
                     showActions={false}
                   />
-                </Col>
-                <Col className="p-t-sm" flex="auto">
+                </div>
+                <div className="p-t-sm tw:min-w-0 tw:flex-auto">
                   <SchemaTablesTab isVersionView />
-                </Col>
-              </Row>
-            </Col>
+                </div>
+              </Box>
+            </div>
 
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -293,8 +295,8 @@ function DatabaseSchemaVersionPage() {
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
 
@@ -350,8 +352,8 @@ function DatabaseSchemaVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
@@ -365,7 +367,7 @@ function DatabaseSchemaVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -373,17 +375,28 @@ function DatabaseSchemaVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
-                    className="tabs-new"
+                    className="tw:gap-3"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
-                </Col>
+                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Tabs.List size="sm" type="underline" variant="card">
+                      {tabs.map(({ key, label }) => (
+                        <Tabs.Item id={key} key={key}>
+                          {label}
+                        </Tabs.Item>
+                      ))}
+                    </Tabs.List>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 

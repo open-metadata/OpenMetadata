@@ -315,6 +315,79 @@ describe('TableV2 — ellipsis columns', () => {
     expect(valueDiv().className).toContain('tw:flex-1');
     expect(valueDiv().className).toContain('tw:min-w-0');
   });
+
+  const LONG_TITLE = 'A_VERY_LONG_COLUMN_HEADER_THAT_SHOULD_CLIP';
+
+  it('truncates the plain-text header of an ellipsis column', () => {
+    render(
+      <TableV2
+        columns={[
+          { dataIndex: 'name', ellipsis: true, key: 'name', title: LONG_TITLE },
+        ]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const header = screen.getByTestId('column-header-content');
+    const titleSpan = header.querySelector('span.tw\\:truncate') as HTMLElement;
+
+    expect(titleSpan).toBeInTheDocument();
+    expect(titleSpan).toHaveTextContent(LONG_TITLE);
+    // AntD exposed the clipped header text on hover through a native title.
+    expect(titleSpan).toHaveAttribute('title', LONG_TITLE);
+    // Both the flex container and the truncating span need min-w-0, or the span
+    // (a flex item, min-width:auto by default) refuses to shrink and the header
+    // overflows anyway.
+    expect(header.className).toContain('tw:min-w-0');
+    expect(titleSpan.className).toContain('tw:min-w-0');
+    // The core Table.Head flex wrapper (`& > div`) also has to shrink, or the
+    // chain from the fixed-width `th` down to the span is never constrained.
+    expect(header.closest('th')?.className).toContain('tw:[&>div>div]:min-w-0');
+  });
+
+  it('leaves a non-ellipsis header free to wrap, as before', () => {
+    render(
+      <TableV2
+        columns={[{ dataIndex: 'name', key: 'name', title: LONG_TITLE }]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const header = screen.getByTestId('column-header-content');
+
+    expect(header.querySelector('span.tw\\:truncate')).not.toBeInTheDocument();
+    expect(header).toHaveTextContent(LONG_TITLE);
+    expect(header.className).not.toContain('tw:min-w-0');
+    expect(header.closest('th')?.className).not.toContain('min-w-0');
+  });
+
+  it('leaves a custom (non-string) header node untouched', () => {
+    render(
+      <TableV2
+        columns={[
+          {
+            dataIndex: 'name',
+            ellipsis: true,
+            key: 'name',
+            title: <span data-testid="custom-header-node">Custom</span>,
+          },
+        ]}
+        dataSource={[longRow]}
+        pagination={false}
+        rowKey="name"
+      />
+    );
+
+    const header = screen.getByTestId('column-header-content');
+
+    expect(header.querySelector('span.tw\\:truncate')).not.toBeInTheDocument();
+    expect(screen.getByTestId('custom-header-node')).toBeInTheDocument();
+    expect(header.className).not.toContain('tw:min-w-0');
+  });
 });
 
 /**

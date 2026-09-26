@@ -46,6 +46,7 @@ export const DomainLabel = ({
   entityFqn,
   entityId,
   textClassName,
+  labelClassName,
   showDomainHeading = false,
   multiple = false,
   headerLayout = false,
@@ -243,7 +244,11 @@ export const DomainLabel = ({
                 {t('label.domain-plural')}
               </Typography.Text>
             ) : (
-              <Typography.Text className="domain-link right-panel-label m-r-xss">
+              <Typography.Text
+                className={classNames(
+                  'domain-link right-panel-label m-r-xss',
+                  labelClassName
+                )}>
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
@@ -265,7 +270,11 @@ export const DomainLabel = ({
           <div
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
-            <Typography.Text className="domain-link right-panel-label m-r-xss">
+            <Typography.Text
+              className={classNames(
+                'domain-link right-panel-label m-r-xss',
+                labelClassName
+              )}>
               {t('label.domain-plural')}
             </Typography.Text>
             {selectableList}
@@ -280,7 +289,7 @@ export const DomainLabel = ({
         </div>
       </div>
     );
-  }, [activeDomain, hasPermission, selectableList]);
+  }, [activeDomain, hasPermission, selectableList, labelClassName]);
 
   return label;
 };

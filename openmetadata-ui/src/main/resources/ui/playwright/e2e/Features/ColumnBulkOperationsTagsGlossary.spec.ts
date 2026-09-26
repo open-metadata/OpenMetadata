@@ -17,6 +17,10 @@ import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  openGlossaryPicker,
+  searchGlossaryPicker,
+} from '../../utils/glossaryPicker';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -238,32 +242,24 @@ test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () =>
     const glossaryField = drawer.getByTestId('glossary-terms-field');
     const termFqn = glossaryTerm.responseData.fullyQualifiedName;
 
-    await test.step('Open the glossary tree dropdown and search', async () => {
-      const glossaryInput = glossaryField
-        .getByTestId('tag-selector')
-        .locator('input')
-        .first();
-      await glossaryInput.click();
-
-      const searchRes = page.waitForResponse(
-        (r) =>
-          r.url().includes('/api/v1/search/query') &&
-          r.url().includes('index=glossaryTerm')
+    await test.step('Open the glossary picker and search', async () => {
+      await openGlossaryPicker(
+        page,
+        glossaryField.getByTestId('glossary-terms-picker')
       );
-      await glossaryInput.fill(glossaryTerm.randomName);
-      await searchRes;
+      await searchGlossaryPicker(page, glossaryTerm.randomName);
     });
 
-    await test.step('Term option renders inside the drawer top layer', async () => {
-      await expect(drawer.getByTestId(`tag-${termFqn}`)).toBeVisible();
+    await test.step('Term row renders in the picker', async () => {
+      await expect(page.getByTestId(`tree-node-${termFqn}`)).toBeVisible();
     });
 
     await test.step('Clicking the term selects it', async () => {
-      await drawer.getByTestId(`tag-${termFqn}`).click();
+      await page.getByTestId(`tree-node-${termFqn}`).click();
 
       await expect(
-        glossaryField.locator('[data-testid^="selected-tag-"]')
-      ).toHaveCount(1);
+        glossaryField.getByTestId('glossary-terms-picker')
+      ).toContainText(glossaryTerm.responseData.displayName);
     });
 
     await test.step('Close drawer', async () => {

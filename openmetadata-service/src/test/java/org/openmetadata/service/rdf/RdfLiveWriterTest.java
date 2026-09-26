@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -32,6 +33,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.RequestEntityCache;
 
 class RdfLiveWriterTest {
   private final Queue<String> persisted = new ArrayDeque<>();
@@ -101,6 +105,41 @@ class RdfLiveWriterTest {
     assertEquals(
         8192,
         RdfLiveWriteStore.failureReason(new IllegalStateException("x".repeat(9000))).length());
+  }
+
+  @Test
+  void eachQueuedWriteStartsFromAFreshRequestContext() {
+    final UUID tableId = UUID.randomUUID();
+    final List<Table> cachedAtStart = new ArrayList<>();
+    final RdfLiveWriter cachingWriter =
+        new RdfLiveWriter(
+            store(),
+            command -> {
+              cachedAtStart.add(cachedTable(tableId));
+              RequestEntityCache.putById(
+                  Entity.TABLE,
+                  tableId,
+                  null,
+                  null,
+                  false,
+                  new Table().withId(tableId).withName("stale"),
+                  Table.class);
+            },
+            task -> assertTrue(pendingTask.compareAndSet(null, task)));
+    try {
+      cachingWriter.enqueue(new RdfLiveWrite.EntityUpdate(Entity.TABLE, tableId));
+      cachingWriter.enqueue(new RdfLiveWrite.EntityUpdate(Entity.TABLE, tableId));
+      runPending();
+      assertEquals(2, cachedAtStart.size());
+      assertNull(cachedAtStart.get(1), "second write in the drain saw the first write's read");
+      assertNull(cachedTable(tableId), "the drain left request-scoped state on its thread");
+    } finally {
+      RequestEntityCache.clear();
+    }
+  }
+
+  private static Table cachedTable(final UUID tableId) {
+    return RequestEntityCache.getById(Entity.TABLE, tableId, null, null, false, Table.class);
   }
 
   private void runPending() {

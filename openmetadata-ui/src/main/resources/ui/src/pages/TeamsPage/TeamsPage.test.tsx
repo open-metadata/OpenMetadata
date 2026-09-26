@@ -42,11 +42,20 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
 const mockOnShowDeletedTeamChange = jest.fn();
 
 jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
-  return jest.fn().mockImplementation(({ onShowDeletedTeamChange }) => {
-    mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
+  return jest
+    .fn()
+    .mockImplementation(({ onShowDeletedTeamChange, currentTeam }) => {
+      mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
 
-    return <p>TeamDetailsV1</p>;
-  });
+      return (
+        <>
+          <p>TeamDetailsV1</p>
+          {currentTeam?.users?.map((user: { id: string; name: string }) => (
+            <span key={user.id}>{user.name}</span>
+          ))}
+        </>
+      );
+    });
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -213,6 +222,33 @@ describe('Test Teams Page', () => {
         include: 'all',
       },
     ]);
+  });
+
+  it('should keep the team users when the basic-details response is slower than the advanced one', async () => {
+    setMockPermissions({ ViewBasic: true });
+    const users = [{ id: 'user-id', name: 'team-member', type: 'user' }];
+    let resolveBasic: (team: unknown) => void = jest.fn();
+    (getTeamByName as jest.Mock).mockImplementation(
+      (_name: string, { fields }: { fields: string[] }) =>
+        fields.includes('users')
+          ? Promise.resolve({ ...MOCK_CURRENT_TEAM, users })
+          : new Promise((resolve) => {
+              resolveBasic = resolve;
+            })
+    );
+
+    await act(async () => {
+      render(<TeamsPage />);
+    });
+    await act(async () => {
+      resolveBasic({ ...MOCK_CURRENT_TEAM, users: undefined });
+    });
+
+    expect(screen.getByText('team-member')).toBeInTheDocument();
+
+    (getTeamByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve(MOCK_CURRENT_TEAM)
+    );
   });
 
   it('should render component data', async () => {
