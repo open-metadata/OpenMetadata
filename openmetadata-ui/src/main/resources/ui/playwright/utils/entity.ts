@@ -905,17 +905,17 @@ export const openClassificationTagPicker = async (
 
   const searchInput = page.getByTestId('classification-tag-picker-search');
 
-  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
-    await trigger.click(clickOptions);
-    await searchInput.waitFor({ state: 'visible', timeout: 5_000 });
-  };
-
-  try {
-    await clickAndAwaitOpen();
-  } catch {
-    // First click raced with the outside-click handler on slow CI shards.
-    await clickAndAwaitOpen({ force: true });
-  }
+  // On CI the first click routinely lands without opening the popover, and
+  // one force-click retry was the only margin left. Keep clicking until the
+  // input shows, but only while it is hidden, so a retry can never toggle an
+  // already-open popover shut.
+  let attempt = 0;
+  await expect(async () => {
+    if (!(await searchInput.isVisible())) {
+      await trigger.click({ force: attempt++ > 0, timeout: 5_000 });
+    }
+    await expect(searchInput).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
 };
 
 export const assignTag = async (
