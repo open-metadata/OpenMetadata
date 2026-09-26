@@ -14,9 +14,10 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 import validators
+from cachetools import LRUCache
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
@@ -27,6 +28,7 @@ from tableauserverclient import (
     ViewItem,
 )
 
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.dashboard.tableau.models import (
     CustomSQLTablesResponse,
     DataSource,
@@ -41,10 +43,17 @@ from metadata.ingestion.source.dashboard.tableau.queries import (
     TABLEAU_DATASOURCES_QUERY,
     TALEAU_GET_CUSTOM_SQL_QUERY,
 )
+from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ometa_logger
 from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
+
+# Safety cap on the number of projects cached to resolve project hierarchies.
+# A ProjectItem is small, so this is set high enough to never truncate real
+# hierarchies even on very large sites, while still bounding memory against
+# a pathological/corrupted response.
+MAX_CACHED_PROJECTS = 200_000
 
 # GetSourceTables samples a few workbooks rather than reading the whole site. Every test
 # connection step shares one timeout, so the sample is capped. Breadth matters more than
@@ -110,7 +119,7 @@ class TableauClient:
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: dict[str, list[str]] = {}
         self.owner_cache: dict[str, TableauOwner] = {}
-        self.all_projects: list[ProjectItem] = []
+        self.all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
         self.ssl_manager = ssl_manager
 
     def server_info(self):
@@ -179,14 +188,20 @@ class TableauClient:
         """
         try:
             logger.debug("Getting all projects from the tableau server")
-            all_projects: list[ProjectItem] = []
+            all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
             for project in Pager(self.tableau_server.projects):
-                all_projects.append(project)  # noqa: PERF402
+                all_projects[project.id] = project
+            if len(all_projects) >= MAX_CACHED_PROJECTS:
+                logger.warning(
+                    "Tableau site has at least %s projects; the project cache is full and "
+                    "project hierarchy names may be incomplete for some workbooks.",
+                    MAX_CACHED_PROJECTS,
+                )
             self.all_projects = all_projects
         except Exception as e:
             logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
 
-    def get_project_parents_by_id(self, project_id: str) -> str | None:
+    def get_project_parents_by_id(self, project_id: str | None) -> str | None:
         """
         Get the parents of a project by id
         """
@@ -196,10 +211,7 @@ class TableauClient:
 
             while current_project_id:
                 # Find project with current ID
-                project = next(
-                    (proj for proj in self.all_projects if str(proj.id) == str(current_project_id)),
-                    None,
-                )
+                project = self.all_projects.get(current_project_id)
 
                 if not project:
                     break
@@ -223,14 +235,37 @@ class TableauClient:
         _, pagination_item = self.tableau_server.workbooks.get(RequestOptions(pagesize=1))
         return pagination_item.total_available
 
-    def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
+    def get_workbooks(
+        self,
+        include_owners: bool = True,
+        dashboard_filter_pattern: FilterPattern | None = None,
+        project_filter_pattern: FilterPattern | None = None,
+        on_filtered: Callable[[str, str], None] | None = None,
+    ) -> Iterable[TableauDashboard]:
         """
-        Fetch all tableau workbooks
+        Fetch all tableau workbooks.
+
+        Applies the dashboard/project filter patterns against the data already present
+        on the workbook listing *before* calling populate_views/get_datasources, so a
+        workbook that will be filtered out never pays for those expensive per-workbook
+        API calls.
         """
         self.get_all_projects()
         self.cache_custom_sql_tables()
         for workbook in Pager(self.tableau_server.workbooks):
             try:
+                workbook_name = workbook.name or ""
+                if filter_by_dashboard(dashboard_filter_pattern, workbook_name):
+                    if on_filtered:
+                        on_filtered(workbook_name, "Dashboard Filtered Out")
+                    continue
+
+                project_name = self.get_project_parents_by_id(workbook.project_id) or workbook.project_name or ""
+                if filter_by_project(project_filter_pattern, project_name):
+                    if on_filtered:
+                        on_filtered(project_name, "Project / Workspace Filtered Out")
+                    continue
+
                 self.tableau_server.workbooks.populate_views(workbook, usage=True)
                 charts, user_views = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
                 workbook = TableauDashboard(  # noqa: PLW2901
