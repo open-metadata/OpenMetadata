@@ -23,11 +23,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
-    SERVICE_PREFIX_MAX_LEN,
     build_metric_name,
     build_metric_request,
     infer_metric_type,
 )
+from metadata.utils.metric_naming import SERVICE_PREFIX_MAX_LEN
 
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
 TOTAL_REVENUE = ("orders", "total_revenue", "NUMBER", "SUM(orders.line_amount)", "Total revenue", None)

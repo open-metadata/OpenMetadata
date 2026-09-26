@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -224,74 +225,86 @@ const QueryCard: FC<QueryCardProp> = ({
   return (
     <Row gutter={[0, 8]}>
       <Col span={isExpanded && QueryExtras ? 12 : 24}>
+        {/* Light values reproduce the antd Card head this replaced. */}
         <Card
-          bordered={false}
           className={classNames(
-            'query-card-container',
+            'query-card-container tw:overflow-visible tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums',
             { selected: selectedId === query?.id },
             className
           )}
-          extra={
-            <QueryCardExtraOption
-              afterDeleteAction={afterDeleteAction}
-              permission={permission}
-              query={query}
-              onEditClick={setIsEditMode}
-              onUpdateVote={onUpdateVote}
-            />
-          }
-          title={renderCardTitle()}
           onClick={handleCardClick}>
-          <Space className="query-entity-button" size={8}>
-            <Button
-              className="flex-center bg-white"
-              data-testid="query-entity-expand-button"
-              icon={renderExpandIcon()}
-              onClick={handleExpandClick}
-            />
-            <Tooltip title={t('message.copy-to-clipboard')}>
-              <Button
-                className="flex-center bg-white"
-                data-testid="query-entity-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
-                onClick={onCopyToClipBoard}
-              />
-            </Tooltip>
-          </Space>
-
           <div
             className={classNames(
-              'sql-editor-container',
-              !isExpanded && {
-                'h-max-24': !isAllowExpand,
-                'h-24': !isEditMode,
-                'h-max-56': isEditMode && isAllowExpand,
-              }
+              'tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:border-b',
+              'tw:border-black/6 tw:px-6 tw:text-base tw:leading-[1.5715]',
+              'tw:font-medium tw:text-black/85 tw:dark:border-secondary',
+              'tw:dark:text-primary'
             )}>
-            <SchemaEditor
-              editorClass={classNames('custom-code-mirror-theme', {
-                'full-screen-editor-height': isExpanded,
-              })}
-              mode={{ name: CSMode.SQL }}
-              options={{
-                styleActiveLine: isEditMode,
-                readOnly: isEditMode ? false : 'nocursor',
-              }}
-              showCopyButton={false}
-              value={query.query ?? ''}
-              onChange={handleQueryChange}
-            />
-          </div>
-          <Row align="middle" className="p-y-md border-top">
-            <Col className="p-l-md" span={20}>
-              <QueryUsedByOtherTable
-                isEditMode={isEditMode}
+            <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
+              {renderCardTitle()}
+            </div>
+            <div className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary">
+              <QueryCardExtraOption
+                afterDeleteAction={afterDeleteAction}
+                permission={permission}
                 query={query}
-                onChange={(value) => setSelectedTables(value)}
+                onEditClick={setIsEditMode}
+                onUpdateVote={onUpdateVote}
               />
-            </Col>
-            <Col span={4}>{renderEditActions()}</Col>
-          </Row>
+            </div>
+          </div>
+          <div className="tw:pt-px">
+            <Space className="query-entity-button" size={8}>
+              <Button
+                className="flex-center bg-white"
+                data-testid="query-entity-expand-button"
+                icon={renderExpandIcon()}
+                onClick={handleExpandClick}
+              />
+              <Tooltip title={t('message.copy-to-clipboard')}>
+                <Button
+                  className="flex-center bg-white"
+                  data-testid="query-entity-copy-button"
+                  icon={<CopyIcon height={16} width={16} />}
+                  onClick={onCopyToClipBoard}
+                />
+              </Tooltip>
+            </Space>
+
+            <div
+              className={classNames(
+                'sql-editor-container',
+                !isExpanded && {
+                  'h-max-24': !isAllowExpand,
+                  'h-24': !isEditMode,
+                  'h-max-56': isEditMode && isAllowExpand,
+                }
+              )}>
+              <SchemaEditor
+                editorClass={classNames('custom-code-mirror-theme', {
+                  'full-screen-editor-height': isExpanded,
+                })}
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  styleActiveLine: isEditMode,
+                  readOnly: isEditMode ? false : 'nocursor',
+                }}
+                showCopyButton={false}
+                value={query.query ?? ''}
+                onChange={handleQueryChange}
+              />
+            </div>
+            <Row align="middle" className="p-y-md border-top">
+              <Col className="p-l-md" span={20}>
+                <QueryUsedByOtherTable
+                  isEditMode={isEditMode}
+                  query={query}
+                  onChange={(value) => setSelectedTables(value)}
+                />
+              </Col>
+              <Col span={4}>{renderEditActions()}</Col>
+            </Row>
+          </div>
         </Card>
       </Col>
       {isExpanded && QueryExtras && <QueryExtras />}

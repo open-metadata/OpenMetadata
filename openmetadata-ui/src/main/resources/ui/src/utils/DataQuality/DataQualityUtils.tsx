@@ -40,8 +40,8 @@ export const getPieChartLabel = (label: string, value = 0) => {
   return (
     <>
       <text
+        className="tw:fill-text-primary"
         dy={8}
-        fill="#1D2939"
         fontSize={20}
         fontWeight={600}
         textAnchor="middle"

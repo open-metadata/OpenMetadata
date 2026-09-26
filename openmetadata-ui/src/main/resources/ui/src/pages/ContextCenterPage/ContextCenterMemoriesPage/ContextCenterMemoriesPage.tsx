@@ -34,7 +34,6 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
@@ -78,7 +77,10 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import {
+  getFilterTabClassName,
+  getSortConfig,
+} from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -89,15 +91,6 @@ import {
   MemoryFilterOption,
   SearchOptionSource,
 } from './ContextCenterMemoriesPage.interface';
-
-const FILTER_BUTTON_BASE_CLS =
-  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
-  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:outline-1 tw:-outline-offset-1' +
-  ' tw:cursor-pointer tw:transition tw:duration-100' +
-  ' tw:ease-linear hover:tw:outline-brand tw:whitespace-nowrap';
-
-const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:outline-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:outline-utility-brand-100`;
 
 const getSortLabel = (
   options: Array<{ id: string; label: string }>,
@@ -750,7 +743,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
                         'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
                         {
-                          'tw:bg-utility-blue-50 tw:border-utility-blue-200':
+                          'tw:bg-brand-primary tw:border-utility-brand-200':
                             isActive,
                         }
                       )}
@@ -759,7 +752,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       onClick={() => handleFilterChange(filterKey)}>
                       <ChevronRight
                         className={classNames(
-                          'tw:absolute tw:top-3 tw:right-3 tw:text-brand-600 tw:transition-opacity tw:duration-150',
+                          'tw:absolute tw:top-3 tw:right-3 tw:text-fg-brand-secondary tw:transition-opacity tw:duration-150',
                           {
                             'tw:opacity-100': isActive,
                             'tw:opacity-0 tw:group-hover:opacity-100':
@@ -800,20 +793,7 @@ const ContextCenterMemoriesPage: FC = () => {
                     }))}
                     type="button-brand">
                     {(tab) => (
-                      <Tabs.Item
-                        {...tab}
-                        className={({ isSelected }) =>
-                          classNames(
-                            'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
-                            {
-                              'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
-                                isSelected,
-                              'tw:border-primary tw:bg-primary tw:text-secondary':
-                                !isSelected,
-                            }
-                          )
-                        }
-                      />
+                      <Tabs.Item {...tab} className={getFilterTabClassName} />
                     )}
                   </Tabs.List>
                 </Tabs>
@@ -824,40 +804,17 @@ const ContextCenterMemoriesPage: FC = () => {
                     placeholder={t('label.search-assets-by-name-or-path')}
                     popoverPlacement="bottom start"
                     renderTrigger={({ open }) => (
-                      <AriaButton
-                        className={classNames(
-                          selectedAsset
-                            ? FILTER_BUTTON_ACTIVE_CLS
-                            : FILTER_BUTTON_CLS
-                        )}
+                      <Button
+                        ellipsis
+                        className="tw:max-w-64"
+                        color="secondary"
                         data-testid="asset-filter-button"
+                        iconLeading={DatabaseIcon}
+                        iconTrailing={ChevronDown}
+                        size="md"
                         onPress={open}>
-                        <DatabaseIcon
-                          className={classNames('tw:shrink-0', {
-                            'tw:text-brand-secondary': selectedAsset,
-                            'tw:text-secondary': !selectedAsset,
-                          })}
-                          height={14}
-                          width={14}
-                        />
-                        <div className="tw:max-w-50">
-                          <Typography
-                            ellipsis
-                            className={
-                              selectedAsset
-                                ? 'tw:text-utility-brand-700'
-                                : 'tw:text-secondary'
-                            }
-                            weight="medium">
-                            {selectedAsset?.label ?? allAssetsLabel}
-                          </Typography>
-                        </div>
-                        <ChevronDown
-                          className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                          size={16}
-                          strokeWidth={2.5}
-                        />
-                      </AriaButton>
+                        {selectedAsset?.label ?? allAssetsLabel}
+                      </Button>
                     )}
                     selectionMode="single"
                     value={selectedAsset}
@@ -877,38 +834,15 @@ const ContextCenterMemoriesPage: FC = () => {
                         fetchAuthorOptions('');
                       }
                     }}>
-                    <AriaButton
-                      className={
-                        selectedAuthor
-                          ? FILTER_BUTTON_ACTIVE_CLS
-                          : FILTER_BUTTON_CLS
-                      }>
-                      <UserIcon
-                        className={classNames('tw:shrink-0', {
-                          'tw:text-brand-secondary': selectedAuthor,
-                          'tw:text-secondary': !selectedAuthor,
-                        })}
-                        height={14}
-                        width={14}
-                      />
-                      <div className="tw:max-w-50">
-                        <Typography
-                          ellipsis
-                          className={
-                            selectedAuthor
-                              ? 'tw:text-brand-secondary'
-                              : 'tw:text-secondary'
-                          }
-                          weight="medium">
-                          {selectedAuthor?.label ?? allAuthorsLabel}
-                        </Typography>
-                      </div>
-                      <ChevronDown
-                        className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                        size={16}
-                        strokeWidth={2.5}
-                      />
-                    </AriaButton>
+                    <Button
+                      ellipsis
+                      className="tw:max-w-64"
+                      color="secondary"
+                      iconLeading={UserIcon}
+                      iconTrailing={ChevronDown}
+                      size="md">
+                      {selectedAuthor?.label ?? allAuthorsLabel}
+                    </Button>
                     <Dropdown.Popover>
                       <div className="tw:p-2 tw:border-b tw:border-secondary">
                         <Input
@@ -971,7 +905,7 @@ const ContextCenterMemoriesPage: FC = () => {
                               <span className="tw:flex-1">{opt.label}</span>
                               {selectedAuthor?.id === opt.id && (
                                 <Check
-                                  className="tw:shrink-0 tw:text-brand-600"
+                                  className="tw:shrink-0 tw:text-fg-brand-secondary"
                                   size={14}
                                   strokeWidth={2.5}
                                 />
@@ -1006,24 +940,13 @@ const ContextCenterMemoriesPage: FC = () => {
                     </Button>
                   )}
                   <Dropdown.Root>
-                    <AriaButton className={FILTER_BUTTON_CLS}>
-                      <FunnelIcon
-                        className="tw:text-quaternary"
-                        height={14}
-                        width={14}
-                      />
-                      <Typography className="tw:text-secondary" weight="medium">
-                        {t('label.sort')}:
-                      </Typography>
-                      <Typography className="tw:text-secondary" weight="medium">
-                        {getSortLabel(SORT_OPTIONS, sortBy)}
-                      </Typography>
-                      <ChevronDown
-                        className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                        size={16}
-                        strokeWidth={2.5}
-                      />
-                    </AriaButton>
+                    <Button
+                      color="secondary"
+                      iconLeading={FunnelIcon}
+                      iconTrailing={ChevronDown}
+                      size="md">
+                      {t('label.sort')}: {getSortLabel(SORT_OPTIONS, sortBy)}
+                    </Button>
                     <Dropdown.Popover className="tw:w-56">
                       <Dropdown.Menu
                         selectedKeys={[sortBy]}

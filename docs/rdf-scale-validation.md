@@ -4,6 +4,13 @@
 shipped Apache Jena Fuseki image. It measures the acceptance criteria in
 [#32057](https://github.com/open-metadata/OpenMetadata/issues/32057).
 
+RDF indexing now always runs on one server. The measurements below compared a single-server
+rebuild with a distributed one on the same 200,000-table catalog: 1,796.651 s against 1,794.809 s
+for 200,555 records, because both feed Fuseki's single writer. The distributed mode was removed on
+that evidence, so the harness now runs two single-server rebuilds, and the results and findings
+below that mention distributed recovery, partitions, coordinator or participant workers describe
+the revision that was measured.
+
 ## Validated result (2026-09-08)
 
 The complete scenario passed on revision
@@ -185,10 +192,10 @@ The scenario executes these steps:
 1. Rebuild all entity types through the local RDF indexing application with blue/green promotion.
 2. Measure entity lookup, one-hop lineage, three-hop lineage, and Lucene text-search latency through
    the authenticated OpenMetadata SPARQL API.
-3. Start a distributed rebuild, wait for at least 100 successfully processed records, and cancel it
+3. Start a second rebuild, wait for at least 100 successfully processed records, and cancel it
    through the application API. Assert `stopped`, an unchanged serving pointer, and unchanged graph
    counts. Wait for the cancelled workers to finish releasing their rebuild lease before retrying.
-4. Run a complete distributed recovery rebuild while querying the serving dataset every five
+4. Run a complete recovery rebuild while querying the serving dataset every five
    seconds. Verify promotion, zero failed records, exact counts, and successful query responses.
 5. Restart Fuseki and verify the serving pointer, counts, and all four query types again.
 
@@ -284,12 +291,13 @@ The migration runner deduplicates statements by text, so only the first addition
 column now uses a distinct prepared statement name. This correction remains in the unreleased
 2.0.2 migration; the equivalent PostgreSQL columns already migrate correctly.
 
-`DistributedRdfIndexExecutorTest` reproduces the initialization and shutdown races.
-`RdfPartitionHeartbeatTest` exercises the real scheduler with the database boundary stubbed.
-`RdfPartitionLeaseIT` checks stale writes and active heartbeats against a real database, including
-the coordinator and worker paths. The scale harness now records platform worker counts in each
-resource sample and fails distributed recovery if it observes local participant workers, exceeds
-three coordinator workers, or finds a partition retry.
+At the time, `DistributedRdfIndexExecutorTest` reproduced the initialization and shutdown races,
+`RdfPartitionHeartbeatTest` exercised the real scheduler with the database boundary stubbed, and
+`RdfPartitionLeaseIT` checked stale writes and active heartbeats against a real database. The scale
+harness recorded platform worker counts in each resource sample and failed distributed recovery if
+it observed local participant workers, more than three coordinator workers, or a partition retry.
+All of these went with the distributed mode; the harness now records the peak number of reader
+threads and fails a rebuild that exceeds the configured count.
 
 ## Runtime configuration and scope
 
@@ -299,8 +307,8 @@ not tmpfs. PostgreSQL durability is enabled (`fsync`, `synchronous_commit`, `ful
 The integration bootstrap retains its other PostgreSQL settings, including 128 MiB shared
 buffers, 32 MiB work memory, minimal WAL, and a 30-second checkpoint timeout.
 
-Indexing uses batch size 1,000, two producer threads, three consumer threads, queue size 5,000, and
-10,000-record distributed partitions. All entity types are requested, including the system
+Indexing uses batch size 1,000 and four reader threads. All entity types are requested, including
+the system
 entities created at startup. Scheduled RDF indexing and inference jobs are paused during the
 scenario so their independent writes do not alter the workload. On-demand rebuilds remain enabled.
 The report records image identity, source revision, settings, job statistics, timestamps, and
@@ -321,8 +329,7 @@ exhausting the host disk. That attempt is not a completed scale result. See
 storage model and the extra disk space required during compaction.
 
 This is a synthetic table-heavy catalog on one application process, one metadata database, and
-one Fuseki instance. Distributed mode exercises the partition coordinator and workers within that
-application process; it does not establish multi-node scaling. Restart persistence and rebuild
+one Fuseki instance. Restart persistence and rebuild
 isolation do not provide Fuseki high availability. Live ingestion throughput, long-running
 inference, mixed-asset production distributions, and a controlled comparison against `main`
 require separate measurements. Run the same harness on the intended storage and network before
