@@ -25,6 +25,7 @@ export interface TreeSelectTreeItemContentProps<T> {
   isLoading: boolean;
   showCheckbox: boolean;
   showIcon: boolean;
+  showExpandIcon?: boolean;
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
@@ -57,6 +58,7 @@ export const TreeSelectTreeItemContent = <T,>({
   isLoading,
   showCheckbox,
   showIcon,
+  showExpandIcon,
   multiple,
   disabled,
   hasChildItems,
@@ -64,13 +66,17 @@ export const TreeSelectTreeItemContent = <T,>({
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
   const isRowDisabled = disabled || node.disabled || !isSelectable;
+  // One choice at a time reads as a radio: a single-select tree otherwise shows
+  // no control at all, leaving the rows looking inert.
+  const isSingleChoice = !multiple || Boolean(node.isParentMutuallyExclusive);
 
   return (
     <Tree.ItemContent
       className="tw:text-sm tw:font-normal tw:text-primary"
       hasChildItems={hasChildItems}
       indentPerLevel={28}
-      maxIndentLevel={2}>
+      maxIndentLevel={2}
+      showExpandIcon={showExpandIcon}>
       {() => (
         <div
           className={cx(
@@ -85,13 +91,13 @@ export const TreeSelectTreeItemContent = <T,>({
               onNodeClick();
             }
           }}>
-          {showCheckbox && multiple && isSelectable && (
+          {showCheckbox && isSelectable && (
             <span
               data-selected={isSelected}
-              data-testid={`${
-                node.isParentMutuallyExclusive ? 'radio' : 'checkbox'
-              }-${node.id}`}>
-              {node.isParentMutuallyExclusive ? (
+              data-testid={`${isSingleChoice ? 'radio' : 'checkbox'}-${
+                node.id
+              }`}>
+              {isSingleChoice ? (
                 <RadioButtonBase
                   isDisabled={isRowDisabled}
                   isSelected={isSelected}

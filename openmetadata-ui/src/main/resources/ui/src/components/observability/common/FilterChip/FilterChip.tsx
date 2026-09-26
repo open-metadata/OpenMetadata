@@ -27,7 +27,6 @@ import {
   chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from '../../DataQuality/Dashboard/dqFilterChip.utils';
 
 const TEXT_SECONDARY_CLASS = 'tw:text-secondary';
@@ -187,7 +186,7 @@ const UserChipInputTrigger = ({
   testId: string;
 }) => (
   <button
-    className="tw:flex tw:w-44 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs tw:outline-brand"
+    className="tw:flex tw:w-44 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-3 tw:py-2 tw:shadow-xs tw:outline-brand"
     data-testid={testId}
     type="button">
     <span
@@ -197,7 +196,7 @@ const UserChipInputTrigger = ({
       )}>
       {hasSelection ? displayText : label}
     </span>
-    <ChevronDown className={chipChevronClassName(hasSelection)} />
+    <ChevronDown className={chipChevronClassName} />
   </button>
 );
 
@@ -210,12 +209,7 @@ const UserChipPillTrigger = ({
   label: string;
   testId: string;
 }) => (
-  <button
-    className={classNames(chipTriggerClassName, {
-      [chipTriggerSelectedClassName]: hasSelection,
-    })}
-    data-testid={testId}
-    type="button">
+  <button className={chipTriggerClassName} data-testid={testId} type="button">
     {label}
     {hasSelection && (
       <span

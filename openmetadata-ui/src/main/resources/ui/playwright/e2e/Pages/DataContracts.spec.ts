@@ -432,15 +432,20 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.value
           );
 
-          await page.click('[data-testid="tags-selector"] input');
-          await page.fill(
-            '[data-testid="tags-selector"] input',
-            testTag.data.name
-          );
-          await page
-            .getByTestId(
-              `tag-option-${testTag.responseData.fullyQualifiedName}`
+          await expect
+            .poll(
+              async () => {
+                await page.getByTestId('tags-input').click();
+
+                return page.getByTestId('search-input').isVisible();
+              },
+              { timeout: 10_000 }
             )
+            .toBe(true);
+          await page.getByTestId('search-input').fill(testTag.data.name);
+          await page
+            .getByTestId('drop-down-menu')
+            .getByTestId(testTag.responseData.fullyQualifiedName ?? '')
             .click();
 
           await page.keyboard.press('Escape');

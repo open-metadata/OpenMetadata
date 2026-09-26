@@ -27,7 +27,7 @@ const ConnectionsPageSkeleton: React.FC<ConnectionsPageSkeletonProps> = ({
   if (variant === 'list') {
     return (
       <div
-        className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary"
+        className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
         data-testid="connections-list-skeleton">
         <div className="tw:border-b tw:border-secondary tw:p-4">
           <Skeleton height={20} variant="rounded" width="100%" />
@@ -46,7 +46,7 @@ const ConnectionsPageSkeleton: React.FC<ConnectionsPageSkeletonProps> = ({
 
   return (
     <div
-      className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary"
+      className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
       data-testid="connections-grid-skeleton">
       <div className="tw:grid tw:grid-cols-[repeat(auto-fill,minmax(268px,1fr))] tw:gap-4 tw:p-5">
         {Array.from({ length: SKELETON_GRID_CARDS }).map((_, index) => (

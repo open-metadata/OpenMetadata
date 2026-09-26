@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -27,6 +28,7 @@ import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
 import { TagSource } from '../../generated/type/tagLabel';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
@@ -39,6 +41,7 @@ import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Loader from '../common/Loader/Loader';
 import TabsLabel from '../common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import VersionTable from '../Entity/VersionTable/VersionTable.component';
@@ -128,7 +131,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
     [entityPermissions]
   );
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: TabProps[] = useMemo(
     () => [
       {
         key: EntityTabs.FIELDS,
@@ -136,17 +139,17 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
           <TabsLabel id={EntityTabs.FIELDS} name={t('label.field-plural')} />
         ),
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div>
                   <Description
                     description={description}
                     entityType={EntityType.SEARCH_INDEX}
                     showActions={false}
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   <VersionTable
                     columnName={getPartialNameFromTableFQN(
                       entityFqn,
@@ -156,13 +159,12 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                     columns={fields}
                     joins={[]}
                   />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -181,8 +183,8 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
       {
@@ -218,8 +220,8 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
-          <Row gutter={[0, 12]}>
-            <Col span={24}>
+          <Box direction="col" gap={3}>
+            <div>
               <DataAssetsVersionHeader
                 breadcrumbLinks={breadCrumbList}
                 currentVersionData={currentVersionData}
@@ -234,7 +236,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 version={version}
                 onVersionClick={backHandler}
               />
-            </Col>
+            </div>
             <GenericProvider
               isVersionView
               currentVersionData={currentVersionData}
@@ -242,16 +244,27 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               permissions={entityPermissions}
               type={EntityType.SEARCH_INDEX}
               onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
+              <div className="entity-version-page-tabs">
                 <Tabs
-                  className="tabs-new"
-                  defaultActiveKey={tab}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
+                  className="tw:gap-3"
+                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  onSelectionChange={(key) => handleTabChange(String(key))}>
+                  <Tabs.List size="sm" type="underline" variant="card">
+                    {tabItems.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {tabItems.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </div>
             </GenericProvider>
-          </Row>
+          </Box>
         </div>
       )}
 

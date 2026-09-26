@@ -124,7 +124,7 @@ const TestLibraryPage = () => {
           />
         }
         pageTitle={t('label.test-library')}>
-        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary">
+        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
           <div className="tw:p-4">
             <TestDefinitionFilterBar
               filterValues={urlFilters}

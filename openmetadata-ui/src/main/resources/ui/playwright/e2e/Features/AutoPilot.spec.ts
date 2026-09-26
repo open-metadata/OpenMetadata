@@ -130,7 +130,7 @@ services.forEach((ServiceClass) => {
           if (agentsPage) {
             await agentsPage.goto(page.url());
             await waitForAllLoadersToDisappear(agentsPage);
-            await agentsPage.click('[role="tab"] [data-testid="agents"]');
+            await agentsPage.getByRole('tab', { name: /^Agents/ }).click();
 
             const metadataSubTab = agentsPage.locator(
               '[data-testid="metadata-sub-tab"]'

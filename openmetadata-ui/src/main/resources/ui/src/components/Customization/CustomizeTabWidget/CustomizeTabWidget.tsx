@@ -42,7 +42,10 @@ import {
   getDefaultWidgetForTab,
 } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getAddWidgetHandler } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
+import {
+  getAddWidgetHandler,
+  mergeGridLayout,
+} from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
@@ -234,7 +237,10 @@ export const CustomizeTabWidget = () => {
           layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
         );
         if (sidePanelLayout) {
-          sidePanelLayout.children = updatedLayout;
+          sidePanelLayout.children = mergeGridLayout(
+            updatedLayout,
+            sidePanelLayout.children
+          );
         }
 
         updateCurrentPage({
@@ -326,14 +332,9 @@ export const CustomizeTabWidget = () => {
             item.id === activeKey
               ? {
                   ...item,
-                  layout: getUniqueFilteredLayout(updatedLayout).map(
-                    (widget) => ({
-                      ...widget,
-                      ...(widget.i === DetailPageWidgetKeys.LEFT_PANEL
-                        ? // left panel widget will be updated separately
-                          { children: leftPanelWidget?.children }
-                        : {}),
-                    })
+                  layout: mergeGridLayout(
+                    getUniqueFilteredLayout(updatedLayout),
+                    tabLayouts
                   ),
                 }
               : item
@@ -341,7 +342,7 @@ export const CustomizeTabWidget = () => {
         } as Page);
       }
     },
-    [tabLayouts, leftPanelWidget]
+    [tabLayouts]
   );
 
   const handleMainPanelAddWidget = useCallback(

@@ -179,7 +179,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
       <div>
         <Box align="center" className="tw:mb-3.5" gap={3}>
           <FeaturedIcon
-            className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
+            className="tw:size-9 tw:rounded-lg tw:bg-brand-primary"
             color="brand"
             icon={<Icon className="tw:size-5" />}
             size="sm"

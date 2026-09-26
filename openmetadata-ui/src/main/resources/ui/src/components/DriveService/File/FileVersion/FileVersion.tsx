@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -22,6 +23,7 @@ import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ChangeDescription } from '../../../../generated/entity/data/file';
 import { TagSource } from '../../../../generated/type/tagLabel';
+import { getRenderedActiveTab } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getConstraintChanges,
@@ -35,6 +37,7 @@ import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomP
 import Description from '../../../common/EntityDescription/Description';
 import Loader from '../../../common/Loader/Loader';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../../common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -124,28 +127,27 @@ const FileVersion = ({
     return getDerivedPermissionFlags(entityPermissions).canViewCustomFields;
   }, [entityPermissions]);
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: TabProps[] = useMemo(
     () => [
       {
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div>
                   <Description
                     description={description}
                     entityType={EntityType.FILE}
                     showActions={false}
                   />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -165,8 +167,8 @@ const FileVersion = ({
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
       {
@@ -203,8 +205,8 @@ const FileVersion = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')}>
-          <Row gutter={[0, 12]}>
-            <Col span={24}>
+          <Box direction="col" gap={3}>
+            <div>
               <DataAssetsVersionHeader
                 breadcrumbLinks={breadCrumbList}
                 currentVersionData={currentVersionData}
@@ -219,7 +221,7 @@ const FileVersion = ({
                 version={version}
                 onVersionClick={backHandler}
               />
-            </Col>
+            </div>
             <GenericProvider
               isVersionView
               currentVersionData={currentVersionData}
@@ -227,16 +229,27 @@ const FileVersion = ({
               permissions={entityPermissions}
               type={EntityType.FILE as CustomizeEntityType}
               onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
+              <div className="entity-version-page-tabs">
                 <Tabs
-                  className="tabs-new"
-                  defaultActiveKey={tab}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
+                  className="tw:gap-3"
+                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  onSelectionChange={(key) => handleTabChange(String(key))}>
+                  <Tabs.List size="sm" type="underline" variant="card">
+                    {tabItems.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {tabItems.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </div>
             </GenericProvider>
-          </Row>
+          </Box>
         </div>
       )}
 

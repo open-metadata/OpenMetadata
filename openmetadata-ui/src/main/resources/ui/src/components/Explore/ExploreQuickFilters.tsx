@@ -120,6 +120,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   immediateApply = false,
   helperText,
   untitledDropdown = false,
+  bordered = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -542,6 +543,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
         return (
           <FilterSelect
+            bordered={bordered}
             commitMode={immediateApply ? 'immediate' : 'staged'}
             data-testid={`search-dropdown-${field.key}`}
             // Keep the legacy empty-state copy: specs and users know this

@@ -189,15 +189,13 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        not_match_count = metric_values[Metrics.notRegexCount.name]
-
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found {not_match_count} value(s) matching the forbidden regex pattern."
-            )
-        else:  # noqa: RET505
-            return f"Found {not_match_count} value(s) matching the forbidden regex pattern."
+        return self.format_violation_message(
+            violations=metric_values[Metrics.notRegexCount.name],
+            population=metric_values.get(Metrics.rowCount.name),
+            violation_noun="values matching the forbidden regex",
+            matched=self._matched(metric_values, test_params),
+            dimension_info=dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for not regex match test

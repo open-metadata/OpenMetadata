@@ -17,9 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -43,6 +45,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -95,6 +99,7 @@ class EntityRepositoryRestoreTest {
     final Set<UUID> bulkRestoreInvokedWith = new HashSet<>();
     final Set<UUID> bulkSoftDeleteInvokedWith = new HashSet<>();
     final Set<UUID> bulkHardDeleteInvokedWith = new HashSet<>();
+    final List<String> restoreFromSearchSteps = new ArrayList<>();
 
     CountingPipelineRepo(CollectionDAO.PipelineDAO dao) {
       super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
@@ -143,6 +148,15 @@ class EntityRepositoryRestoreTest {
       bulkEntitySpecificCleanupCalls++;
       super.bulkEntitySpecificCleanup(entities, deletedBy);
     }
+
+    @Override
+    protected void postRestoreFromSearch(Pipeline entity) {
+      restoreFromSearchSteps.add("postRestoreFromSearch");
+    }
+
+    void postCreateMany(List<Pipeline> pipelines) {
+      postCreate(pipelines);
+    }
   }
 
   @BeforeEach
@@ -170,6 +184,35 @@ class EntityRepositoryRestoreTest {
 
     verify(relationshipDAO).findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
+  }
+
+  @Test
+  void restoreFromSearchRunsTheRepositoryHookAfterSearchDispatch() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline")
+            .withDeleted(false);
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+    doAnswer(
+            ignored -> {
+              repo.restoreFromSearchSteps.add("searchDispatch");
+              return null;
+            })
+        .when(dispatcher)
+        .onEntitySoftDeletedOrRestored(pipeline, false, null);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+        mockStatic(EntityLifecycleEventDispatcher.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+
+      repo.restoreFromSearch(pipeline);
+    }
+
+    assertEquals(List.of("searchDispatch", "postRestoreFromSearch"), repo.restoreFromSearchSteps);
+    verify(dispatcher).onEntitySoftDeletedOrRestored(pipeline, false, null);
   }
 
   @Test
@@ -262,6 +305,95 @@ class EntityRepositoryRestoreTest {
           () ->
               CacheBundle.invalidateEntity(
                   Entity.PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName()));
+    }
+  }
+
+  /**
+   * The writer must not evict the Redis L2 while its own transaction is still open. A {@code DEL}
+   * sent pre-commit is undone by any concurrent reader: that reader takes the miss, loads the
+   * not-yet-committed row, and re-populates the key with the pre-write value, which then outlives
+   * the commit. Issue #33860 — a restored table kept answering {@code deleted=true} and 404ing
+   * because the restore cascade's eviction ran inside {@code executeInTransaction}.
+   */
+  @Test
+  void invalidateCache_insideDeferralScope_holdsRedisEvictionUntilDrain() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline");
+    CachedEntityDao redis = mock(CachedEntityDao.class);
+
+    try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
+      cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(redis);
+      boolean owns = EntityRepository.beginCacheInvalidationDeferral();
+      try {
+        repo.invalidateCache(pipeline);
+        verify(redis, never()).invalidateBase(any(), any());
+      } finally {
+        if (owns) {
+          EntityRepository.drainCacheInvalidations();
+        }
+      }
+      verify(redis).invalidateBase(Entity.PIPELINE, pipeline.getId());
+      verify(redis).invalidateByName(Entity.PIPELINE, pipeline.getFullyQualifiedName());
+    }
+  }
+
+  /** Without an open scope there is no commit to wait for, so the eviction still runs inline. */
+  @Test
+  void invalidateCache_withoutDeferralScope_evictsRedisImmediately() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline");
+    CachedEntityDao redis = mock(CachedEntityDao.class);
+
+    try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
+      cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(redis);
+      EntityRepository.clearCacheInvalidations();
+
+      repo.invalidateCache(pipeline);
+
+      verify(redis).invalidateBase(Entity.PIPELINE, pipeline.getId());
+    }
+  }
+
+  @Test
+  void postCreateManyClearsNegativeCacheMarkersForEachCreatedEntity() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline first =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("first")
+            .withFullyQualifiedName("service.first");
+    Pipeline duplicate =
+        new Pipeline()
+            .withId(first.getId())
+            .withName(first.getName())
+            .withFullyQualifiedName(first.getFullyQualifiedName());
+    Pipeline second =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("second")
+            .withFullyQualifiedName("service.second");
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+
+      repo.postCreateMany(List.of(first, duplicate, second));
+
+      cacheBundle.verify(
+          () -> CacheBundle.invalidateEntity(Entity.PIPELINE, first.getId(), "service.first"));
+      cacheBundle.verify(
+          () -> CacheBundle.invalidateEntity(Entity.PIPELINE, second.getId(), "service.second"));
+      verify(dispatcher).onEntitiesCreated(argThat(created -> created.size() == 2), eq(null));
     }
   }
 

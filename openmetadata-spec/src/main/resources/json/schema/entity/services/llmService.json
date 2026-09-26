@@ -127,6 +127,10 @@
       },
       "default": []
     },
+    "serviceAttributes": {
+      "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+      "$ref": "./serviceAttributes.json"
+    },
     "owners": {
       "description": "Owners of this LLM service",
       "$ref": "../../type/entityReferenceList.json"

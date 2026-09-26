@@ -25,9 +25,16 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
-import type { MlFeature } from '../generated/entity/data/mlmodel';
-import type { Task } from '../generated/entity/data/pipeline';
-import type { SearchIndexField } from '../generated/entity/data/searchIndex';
+import type {
+  Column as DataModelColumn,
+  DashboardDataModel,
+} from '../generated/entity/data/dashboardDataModel';
+import type { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import type { Pipeline, Task } from '../generated/entity/data/pipeline';
+import type {
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
 import type {
   Column,
   ConstraintType,
@@ -46,16 +53,12 @@ import {
 } from '../generated/type/tagLabel';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointFieldUtils';
 import { extractContainerColumns } from './ContainerDetailPureUtils';
-import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
-import { extractMlModelFeatures } from './MlModelDetailsUtils';
-import { extractPipelineTasks } from './PipelineDetailsUtils';
-import { extractSearchIndexFields } from './SearchIndexUtils';
 import { ordinalize } from './StringUtils';
 import type { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
@@ -746,6 +749,52 @@ export const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
 
   return (table.columns ?? []).map(
     (column) => ({ ...column, tags: column.tags ?? [] } as Column)
+  );
+};
+
+export const extractDataModelColumns = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): DataModelColumn[] => {
+  const dataModel = data as Partial<DashboardDataModel>;
+
+  return (dataModel.columns ?? []).map(
+    (column) =>
+      ({
+        ...column,
+        tags: column.tags ?? [],
+      } as DataModelColumn)
+  );
+};
+
+export const extractMlModelFeatures = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): MlFeature[] => {
+  const mlModel = data as Partial<Mlmodel>;
+
+  return mlModel.mlFeatures ?? [];
+};
+
+export const extractPipelineTasks = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Task[] => {
+  const pipeline = data as Partial<Pipeline>;
+
+  return (pipeline.tasks ?? []).map(
+    (task) => ({ ...task, tags: task.tags ?? [] } as Task)
+  );
+};
+
+export const extractSearchIndexFields = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): SearchIndexField[] => {
+  const searchIndex = data as Partial<SearchIndexEntity>;
+
+  return (searchIndex.fields ?? []).map(
+    (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
   );
 };
 

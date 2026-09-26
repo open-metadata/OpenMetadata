@@ -40,7 +40,10 @@ import {
   isStartNode,
 } from '../../../utils/NodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { validateWorkflowConfig } from '../../../utils/WorkflowConfigUtils';
+import {
+  validateWorkflowConfig,
+  withExtensionPrefix,
+} from '../../../utils/WorkflowConfigUtils';
 import {
   reconcileDataAssetFilters,
   serializeDataAssetFilters,
@@ -155,7 +158,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     Promise.all(assets.map((asset) => getCustomPropertiesByEntityType(asset)))
       .then((results) => {
         const names = [
-          ...new Set(results.flat().map((p) => `extension.${p.name}`)),
+          ...new Set(results.flat().map((p) => withExtensionPrefix(p.name))),
         ];
         setCustomPropertyFields(names);
       })

@@ -20,10 +20,13 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Cube02,
+  CubeOutline,
+  LayoutGrid01,
   NoFilterFunnel,
   NoSearch,
+  Search,
 } from '@openmetadata/ui-core-components/icons';
-import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -87,7 +90,7 @@ import {
 } from './utils/graphBuilders';
 
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchMd aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 const DEFAULT_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
@@ -399,22 +402,24 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   // pass; kept as a single IIFE so the branch count is scoped here rather than
   // inflating the surrounding component's cyclomatic complexity.
   const { showConceptInspector, showEntityPanel } = (() => {
-    const isTermConcept = Boolean(
-      selectedNode && !isDataAssetLikeNode(selectedNode)
+    const isDataAssetSelected = Boolean(
+      selectedNode && isDataAssetLikeNode(selectedNode)
     );
-    const isEntitySurface = surface !== 'term' && !isAuthoringMode;
+    const isTermConcept = Boolean(selectedNode) && !isDataAssetSelected;
+    // Edit mode authors concepts in the inspector; a metric or asset has no
+    // concept to author, so it keeps its details panel and entity-page link.
+    const showsAnyNodeDetails = scope !== 'global' && !isAuthoringMode;
 
     return {
-      showConceptInspector: Boolean(
+      showConceptInspector:
         scope === 'global' &&
-          surface === 'graph' &&
-          isTermConcept &&
-          !selectedEdge
-      ),
+        surface === 'graph' &&
+        isTermConcept &&
+        !selectedEdge,
       showEntityPanel: Boolean(
-        isEntitySurface &&
+        surface !== 'term' &&
           selectedNode &&
-          (scope !== 'global' || isDataAssetLikeNode(selectedNode))
+          (isDataAssetSelected || showsAnyNodeDetails)
       ),
     };
   })();
@@ -956,8 +961,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       >;
       const graphView = computeGraphViewProps();
 
+      // Every drag on the graph pans it or moves a node, so it must not also
+      // start a text selection.
       return (
-        <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0">
+        <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0 tw:select-none">
           <ErrorBoundary
             fallback={
               <GraphEmptyState
@@ -1098,12 +1105,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           {t('label.semantic-edge-inferred')}
         </Typography>
       </span>
-      <span className="tw:flex tw:items-center tw:gap-2">
-        <span className="tw:w-7 tw:border-t-2 tw:border-tertiary" />
-        <Typography size="text-xs" weight="medium">
-          {t('label.observed-lineage')}
-        </Typography>
-      </span>
     </Card>
   );
 
@@ -1122,44 +1123,46 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           onChange={setSearchInput}
         />
       ) : null}
-      <Tabs
-        className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"
-        data-testid="ontology-layer-switch"
-        selectedKey={explorationMode}
-        onSelectionChange={handleExplorationModeSelection}>
-        <Tabs.List
-          className="tw:gap-0! tw:rounded-[9px]! tw:bg-primary! tw:p-[3px]! tw:shadow-xs tw:outline-1 tw:outline-secondary!"
-          size="sm"
-          type="button-border">
-          <Tabs.Item
-            className={(state) =>
-              classNames(
-                'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
-                state.isSelected
-                  ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
-                  : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
-              )
-            }
-            id="model"
-            label={t('label.model')}
-          />
-          <Tabs.Item
-            className={(state) =>
-              classNames(
-                'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
-                state.isSelected
-                  ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
-                  : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
-              )
-            }
-            id="data"
-            isDisabled={loading || isLoadingMore || isAuthoringMode}
-            label={t('label.data')}
-          />
-        </Tabs.List>
-        <Tabs.Panel className="tw:hidden" id="model" />
-        <Tabs.Panel className="tw:hidden" id="data" />
-      </Tabs>
+      {isAuthoringMode ? null : (
+        <Tabs
+          className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"
+          data-testid="ontology-layer-switch"
+          selectedKey={explorationMode}
+          onSelectionChange={handleExplorationModeSelection}>
+          <Tabs.List
+            className="tw:gap-0! tw:rounded-[9px]! tw:bg-primary! tw:p-[3px]! tw:shadow-xs tw:outline-1 tw:outline-secondary!"
+            size="sm"
+            type="button-border">
+            <Tabs.Item
+              className={(state) =>
+                classNames(
+                  'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
+                  state.isSelected
+                    ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
+                    : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
+                )
+              }
+              id="model"
+              label={t('label.model')}
+            />
+            <Tabs.Item
+              className={(state) =>
+                classNames(
+                  'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
+                  state.isSelected
+                    ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
+                    : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
+                )
+              }
+              id="data"
+              isDisabled={loading || isLoadingMore}
+              label={t('label.data')}
+            />
+          </Tabs.List>
+          <Tabs.Panel className="tw:hidden" id="model" />
+          <Tabs.Panel className="tw:hidden" id="data" />
+        </Tabs>
+      )}
     </>
   );
 
@@ -1173,26 +1176,28 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
             ONTOLOGY_TOOLBAR_CARD_CLASS
           )}>
-          <Tabs
-            className="tw:w-fit!"
-            selectedKey={explorationMode}
-            onSelectionChange={handleExplorationModeSelection}>
-            <Tabs.List size="sm" type="button-border">
-              <Tabs.Item id="model" label={t('label.model')} />
-              <Tabs.Item
-                className={(state) =>
-                  state.isDisabled ? 'tw:cursor-not-allowed!' : ''
-                }
-                id="data"
-                isDisabled={loading || isLoadingMore || isAuthoringMode}
-                label={t('label.data')}
-              />
-            </Tabs.List>
-            <Tabs.Panel className="tw:hidden" id="model" />
-            <Tabs.Panel className="tw:hidden" id="data" />
-          </Tabs>
+          {isAuthoringMode ? null : (
+            <Tabs
+              className="tw:w-fit!"
+              selectedKey={explorationMode}
+              onSelectionChange={handleExplorationModeSelection}>
+              <Tabs.List size="sm" type="button-border">
+                <Tabs.Item id="model" label={t('label.model')} />
+                <Tabs.Item
+                  className={(state) =>
+                    state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                  }
+                  id="data"
+                  isDisabled={loading || isLoadingMore}
+                  label={t('label.data')}
+                />
+              </Tabs.List>
+              <Tabs.Panel className="tw:hidden" id="model" />
+              <Tabs.Panel className="tw:hidden" id="data" />
+            </Tabs>
+          )}
           <div className="tw:relative">
-            <SearchMd
+            <Search
               aria-hidden="true"
               className="tw:pointer-events-none tw:absolute tw:left-3 tw:top-1/2 tw:z-1 tw:size-5 tw:-translate-y-1/2 tw:text-fg-quaternary"
             />
@@ -1392,9 +1397,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         node={selectedNode}
         nodes={filteredGraphData?.nodes ?? []}
         relationTypes={relationTypes}
+        onAssetsChange={handleRefresh}
         onCreateRelation={handleCreateRelation}
         onRequestEdit={isEditMode ? undefined : onRequestEdit}
-        onShowDataAssets={() => handleModeChange('data')}
         onShowFullDetails={() => {
           if (selectedNode) {
             handleGraphNodeDoubleClick(selectedNode);

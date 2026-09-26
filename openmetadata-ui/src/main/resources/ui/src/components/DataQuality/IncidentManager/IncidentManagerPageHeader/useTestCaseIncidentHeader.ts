@@ -13,7 +13,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isEmpty, isUndefined, last } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   ChangeDescription,
@@ -30,10 +30,13 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import {
   getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
+  IncidentTransitionId,
+  INCIDENT_TRANSITION_ID,
   Task,
   transitionIncident,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
+import type { ResolveTask } from '../../../../rest/tasksAPI';
 import { updateTestCaseById } from '../../../../rest/testAPI';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
@@ -78,11 +81,30 @@ export interface UseTestCaseIncidentHeaderResult {
   canAddMultipleTeamOwner: boolean;
   handleSeverityUpdate: (severity?: Severities) => Promise<void>;
   handleAssigneeUpdate: (assignee?: EntityReference[]) => Promise<void>;
+  handleAcknowledgeIncident: () => Promise<void>;
   handleDomainUpdate: (
     selectedDomain: EntityReference | EntityReference[]
   ) => Promise<void>;
   onIncidentStatusUpdate: (data: TestCaseResolutionStatus) => void;
 }
+
+/**
+ * Status a transition leaves the incident in, for reflecting a transition the
+ * server applied when reading the new status back fails. Only transitions whose
+ * every displayed field is derivable belong here: `ack` changes nothing but the
+ * type, whereas `assign` also sets an assignee that lives on the status the
+ * read-back would have returned.
+ */
+/** A transition this hook drives always names its edge. */
+type IncidentTransitionRequest = Omit<ResolveTask, 'transitionId'> & {
+  transitionId: IncidentTransitionId;
+};
+
+const TRANSITION_RESULT_STATUS: Partial<
+  Record<IncidentTransitionId, TestCaseResolutionStatusTypes>
+> = {
+  [INCIDENT_TRANSITION_ID.Ack]: TestCaseResolutionStatusTypes.ACK,
+};
 
 /**
  * Incident-context data + handlers for the test-case details strip
@@ -163,30 +185,70 @@ export const useTestCaseIncidentHeader = ({
     }
   };
 
-  const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
-    setTestCaseStatusData(data);
-    updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
-  };
+  const onIncidentStatusUpdate = useCallback(
+    (data: TestCaseResolutionStatus) => {
+      setTestCaseStatusData(data);
+      updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
+    },
+    [testCaseResolutionStatus, updateTestCaseIncidentStatus]
+  );
 
-  const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (isDeleted || isUndefined(testCaseStatusData)) {
-      return;
-    }
+  // The task transition returns the task, not the resolution status the header
+  // renders, so the new status is read back before it is published.
+  const applyIncidentTransition = useCallback(
+    async (request: IncidentTransitionRequest) => {
+      if (isDeleted || isUndefined(testCaseStatusData)) {
+        return;
+      }
 
-    const taskId = testCaseStatusData.stateId;
-    if (!taskId) {
-      return;
-    }
+      const taskId = testCaseStatusData.stateId;
+      if (!taskId) {
+        return;
+      }
 
-    const assigneeData = assignee?.[0];
-    const transitionId =
-      testCaseStatusData.testCaseResolutionStatusType ===
-      TestCaseResolutionStatusTypes.Assigned
-        ? 'reassign'
-        : 'assign';
+      try {
+        await transitionIncident(taskId, request);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
 
-    try {
-      await transitionIncident(taskId, {
+        return;
+      }
+
+      // The transition already landed, so the header must move off the old
+      // status even when the read-back fails - leaving it on the previous one
+      // would invite the user to repeat a transition the server has applied.
+      let latest: TestCaseResolutionStatus | undefined;
+      try {
+        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        latest = refreshed?.data?.[0];
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+
+      const transitionResult = TRANSITION_RESULT_STATUS[request.transitionId];
+
+      if (latest) {
+        onIncidentStatusUpdate(latest);
+      } else if (transitionResult) {
+        onIncidentStatusUpdate({
+          ...testCaseStatusData,
+          testCaseResolutionStatusType: transitionResult,
+        });
+      }
+    },
+    [isDeleted, testCaseStatusData, onIncidentStatusUpdate]
+  );
+
+  const handleAssigneeUpdate = useCallback(
+    async (assignee?: EntityReference[]) => {
+      const assigneeData = assignee?.[0];
+      const transitionId =
+        testCaseStatusData?.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Assigned
+          ? INCIDENT_TRANSITION_ID.Reassign
+          : INCIDENT_TRANSITION_ID.Assign;
+
+      await applyIncidentTransition({
         transitionId,
         payload: assigneeData
           ? {
@@ -203,15 +265,14 @@ export const useTestCaseIncidentHeader = ({
             }
           : undefined,
       });
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        onIncidentStatusUpdate(latest);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [testCaseStatusData?.testCaseResolutionStatusType, applyIncidentTransition]
+  );
+
+  const handleAcknowledgeIncident = useCallback(
+    () => applyIncidentTransition({ transitionId: INCIDENT_TRANSITION_ID.Ack }),
+    [applyIncidentTransition]
+  );
 
   const fetchTestCaseResolution = async (id: string) => {
     try {
@@ -376,6 +437,7 @@ export const useTestCaseIncidentHeader = ({
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,
     handleAssigneeUpdate,
+    handleAcknowledgeIncident,
     handleDomainUpdate,
     onIncidentStatusUpdate,
   };

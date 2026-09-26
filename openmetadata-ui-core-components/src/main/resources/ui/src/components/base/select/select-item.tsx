@@ -69,9 +69,11 @@ export const SelectItem = ({
             // `outline-hidden` removed: the outline now draws the focus indicator (it
             // replaced a ring, which WebKit does not pixel-snap).
             'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:select-none',
-            state.isSelected && 'tw:bg-active',
+            // Selected matches the sidebar's selected nav item; it also wins
+            // over the focus tint so the selection stays visible under hover.
+            state.isSelected && 'tw:bg-brand-primary',
             state.isDisabled && 'tw:cursor-not-allowed',
-            state.isFocused && 'tw:bg-primary_hover',
+            state.isFocused && !state.isSelected && 'tw:bg-primary_hover',
             state.isFocusVisible &&
               'tw:outline-2 tw:-outline-offset-2 tw:outline-focus-ring',
 
@@ -92,7 +94,10 @@ export const SelectItem = ({
           <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
             <AriaText
               className={cx(
-                'tw:truncate tw:whitespace-nowrap tw:text-primary',
+                'tw:truncate tw:whitespace-nowrap',
+                state.isSelected
+                  ? 'tw:text-brand-secondary'
+                  : 'tw:text-primary',
                 fontSizeClass[fontSize],
                 state.isDisabled && 'tw:text-disabled'
               )}
@@ -118,7 +123,7 @@ export const SelectItem = ({
             <Check
               aria-hidden="true"
               className={cx(
-                'tw:ml-auto tw:text-fg-brand-primary',
+                'tw:ml-auto tw:text-fg-brand-secondary_alt',
                 size === 'sm' ? 'tw:size-4 tw:stroke-[2.5px]' : 'tw:size-5',
                 state.isDisabled && 'tw:text-fg-disabled'
               )}

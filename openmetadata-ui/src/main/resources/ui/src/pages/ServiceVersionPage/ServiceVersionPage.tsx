@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
 import { Lock } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Tabs, TabsProps } from 'antd';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -54,6 +54,7 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
+import { DetailsTabItem } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
@@ -460,7 +461,7 @@ function ServiceVersionPage() {
     [paging, getOtherDetails, handlePageChange]
   );
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabs =
       serviceCategory === ServiceCategory.METADATA_SERVICES
         ? []
@@ -542,8 +543,8 @@ function ServiceVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
@@ -557,11 +558,24 @@ function ServiceVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
-              <Col className="entity-version-page-tabs" span={24}>
-                <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
-              </Col>
-            </Row>
+              </div>
+              <div className="entity-version-page-tabs">
+                <Tabs className="tw:gap-3" data-testid="tabs">
+                  <Tabs.List size="sm" type="underline" variant="card">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {tabs.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </div>
+            </Box>
           </div>
         )}
 

@@ -99,7 +99,7 @@ test.describe('Ontology Studio — isolated concepts', () => {
         response,
         json: {
           ...body,
-          data: body.data.map((term) =>
+          data: (body.data ?? []).map((term) =>
             term.id === toggleTermIso.responseData.id
               ? {
                   ...term,
