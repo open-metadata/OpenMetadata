@@ -55,16 +55,11 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
 
         try:
             column: SQALikeColumn | Column = self.get_column()
-            not_match_count = self._run_results(
+            metric_values = self._run_results_with_row_count(
                 Metrics.notRegexCount,
                 column,
                 expression=test_params[self.FORBIDDEN_REGEX],
             )
-
-            metric_values = {Metrics.notRegexCount.name: not_match_count}
-
-            if self._needs_row_count():
-                metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
