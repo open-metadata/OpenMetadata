@@ -42,6 +42,7 @@ const DomainSelectableList = ({
   showAllDomains,
   isClearable,
   className,
+  fullWidthTrigger,
   'data-testid': dataTestId = 'domain-selectable-tree',
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
@@ -96,6 +97,7 @@ const DomainSelectableList = ({
       className={className}
       data-testid={dataTestId}
       disabled={disabled}
+      fullWidthTrigger={fullWidthTrigger}
       hasPermission={hasPermission}
       isClearable={isClearable}
       isOpen={popoverProps?.open}

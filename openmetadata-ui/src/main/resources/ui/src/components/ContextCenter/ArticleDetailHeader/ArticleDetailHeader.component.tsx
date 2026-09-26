@@ -237,7 +237,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
+    async (selectedDomain: EntityReference | EntityReference[] | undefined) => {
       if (!knowledgePage || !onUpdate) {
         return;
       }

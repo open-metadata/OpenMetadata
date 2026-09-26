@@ -255,6 +255,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     <DomainSelectableList
       hasPermission
       className={variant === 'rail' ? undefined : 'tw:w-full'}
+      fullWidthTrigger={variant !== 'rail'}
       popoverProps={{
         open: isOpen,
         onOpenChange: setIsOpen,

@@ -53,6 +53,8 @@ export interface DomainSelectProps {
   triggerSize?: TreeSelectProps<EntityReference>['triggerSize'];
   /** Extra classes for the built-in button trigger — e.g. a max width. */
   triggerClassName?: string;
+  /** Let a custom trigger stretch to its container. @see TreeSelectProps */
+  fullWidthTrigger?: boolean;
   bordered?: boolean;
   /**
    * Buffer selection until Apply (`staged`) or report every toggle

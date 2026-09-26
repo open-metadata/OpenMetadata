@@ -55,6 +55,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
   triggerVariant = 'input',
   triggerSize,
   triggerClassName,
+  fullWidthTrigger,
   bordered,
   commitMode,
   renderTrigger,
@@ -257,6 +258,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       disabled={disabled || !hasPermission}
       fetchData={fetchData}
       filterNode={skipClientFilter}
+      fullWidthTrigger={fullWidthTrigger}
       isOpen={isOpen}
       label={label}
       maxIndentLevel={showAllDomains ? 3 : undefined}

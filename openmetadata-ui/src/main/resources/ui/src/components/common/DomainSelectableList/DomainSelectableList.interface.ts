@@ -45,5 +45,7 @@ export interface DomainSelectableListProps {
   /** Applied to the ui-core TreeSelect trigger wrapper — e.g. `tw:w-full` to
    * let a full-width custom trigger fill its container. */
   className?: string;
+  /** Let the custom trigger stretch to its container (full-width cards). */
+  fullWidthTrigger?: boolean;
   'data-testid'?: string;
 }

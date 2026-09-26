@@ -142,6 +142,12 @@ export interface TreeSelectProps<T = unknown> {
    */
   triggerClassName?: string;
   /**
+   * Let a custom `renderTrigger` stretch to its container. Opt-in: the wrapper
+   * is content-sized by default, which is what inline triggers (tag and
+   * glossary pickers, TeamsSelectable) expect.
+   */
+  fullWidthTrigger?: boolean;
+  /**
    * Draw a border around the button-variant trigger. Only applies when
    * `triggerVariant` is `'button'`. Defaults to `false` (borderless text
    * button — the quick-filter look).

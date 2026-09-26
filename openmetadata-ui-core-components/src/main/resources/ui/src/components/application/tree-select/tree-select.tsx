@@ -230,6 +230,7 @@ export const TreeSelect = <T = unknown,>({
   triggerVariant = 'input',
   triggerSize,
   triggerClassName,
+  fullWidthTrigger = false,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
@@ -890,7 +891,9 @@ export const TreeSelect = <T = unknown,>({
   if (renderTrigger) {
     return (
       <div className={cx('tw:relative tw:inline-flex', className)}>
-        <div className="tw:flex tw:w-full tw:min-w-0" ref={triggerRef}>
+        <div
+          className={cx('tw:flex tw:min-w-0', fullWidthTrigger && 'tw:w-full')}
+          ref={triggerRef}>
           {renderTrigger({
             isOpen,
             toggle: toggleOpen,
