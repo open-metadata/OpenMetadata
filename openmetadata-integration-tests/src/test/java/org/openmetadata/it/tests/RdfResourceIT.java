@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -28,11 +30,18 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.schema.api.rdf.SparqlRdfDirection;
+import org.openmetadata.schema.api.rdf.SparqlRdfTerm;
+import org.openmetadata.schema.api.rdf.SparqlRdfTermType;
+import org.openmetadata.schema.api.rdf.SparqlResponse;
+import org.openmetadata.schema.api.rdf.SparqlTripleTerm;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 
@@ -55,6 +64,12 @@ public class RdfResourceIT {
   private static final String BASE_URI = "https://open-metadata.org/";
   private static final String OM_NS = BASE_URI + "ontology/";
   private static final String SPARQL_JSON = "application/sparql-results+json";
+  private static final String TRIPLE_TERM_CONSTRUCT =
+      """
+      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      CONSTRUCT { <urn:rdf12:reifier> rdf:reifies <<( <urn:rdf12:s> <urn:rdf12:p> "cat"@ar--rtl )>> }
+      WHERE {}
+      """;
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
 
@@ -374,6 +389,74 @@ public class RdfResourceIT {
     assertEquals(200, response.statusCode());
     assertTrue(response.headers().firstValue("Content-Type").orElse("").startsWith(SPARQL_JSON));
     assertTrue(response.body().contains("\"head\""));
+  }
+
+  @Test
+  void testSparqlEndpointReturnsRdf12TripleTermsAsTypedTerms() throws Exception {
+    HttpResponse<String> response =
+        postSparql(
+            """
+            VERSION \"1.2\"
+            SELECT (TRIPLE(<https://example.com/subject>, <https://example.com/predicate>,
+                           \"cat\"@ar--rtl) AS ?statement)
+            WHERE {}
+            """,
+            "json",
+            SparqlQuery.Inference.NONE);
+
+    assertEquals(200, response.statusCode());
+    SparqlResponse parsed = JsonUtils.readValue(response.body(), SparqlResponse.class);
+    SparqlRdfTerm statement =
+        parsed.getResults().getBindings().getFirst().getAdditionalProperties().get("statement");
+    SparqlTripleTerm triple =
+        JsonUtils.getObjectMapper().convertValue(statement.getValue(), SparqlTripleTerm.class);
+
+    assertEquals(SparqlRdfTermType.TRIPLE, statement.getType());
+    assertEquals("https://example.com/subject", triple.getSubject().getValue());
+    assertEquals("ar", triple.getObject().getXmlLang());
+    assertEquals(SparqlRdfDirection.RTL, triple.getObject().getItsDir());
+  }
+
+  /**
+   * Inference runs through a separate repository path that wraps its failures as server errors, so
+   * the rejection is exercised with and without it.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Inference.class,
+      names = {"NONE", "RDFS"})
+  void testSparqlEndpointRejectsJsonLdForATripleTermGraph(SparqlQuery.Inference inference)
+      throws Exception {
+    HttpResponse<String> turtle = postSparql(TRIPLE_TERM_CONSTRUCT, "turtle", inference);
+    HttpResponse<String> jsonLd = postSparql(TRIPLE_TERM_CONSTRUCT, "jsonld", inference);
+
+    assertEquals(200, turtle.statusCode());
+    assertTrue(turtle.body().contains("<<("), "Turtle must carry the triple term");
+    assertEquals(
+        400,
+        jsonLd.statusCode(),
+        "JSON-LD cannot carry a triple term and must not 500: " + jsonLd.body());
+    assertTrue(
+        jsonLd.body().contains("turtle"),
+        "The rejection must name a serialization that works: " + jsonLd.body());
+  }
+
+  private static HttpResponse<String> postSparql(
+      String query, String format, SparqlQuery.Inference inference) throws Exception {
+    String requestBody =
+        JsonUtils.pojoToJson(
+            new SparqlQuery()
+                .withQuery(query)
+                .withFormat(SparqlQuery.Format.fromValue(format))
+                .withInference(inference));
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/rdf/sparql"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   @Test

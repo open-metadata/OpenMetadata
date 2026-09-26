@@ -1,5 +1,6 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix om: <https://open-metadata.org/ontology/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
@@ -34,11 +35,19 @@ om:EntityShape a sh:NodeShape ;
         sh:maxCount 1 ;
         sh:message "Entity must have exactly one fully qualified name"@en ;
     ] ;
+    # Free text, unlike om:name/om:fullyQualifiedName, so it accepts the language-tagged and
+    # RDF 1.2 directional forms an imported ontology may carry. Pinning it to xsd:string alone
+    # rejected every "..."@ar and "..."@ar--rtl description, which is how a conforming RDF 1.2
+    # graph failed validation against these shapes.
     sh:property [
         sh:path om:description ;
-        sh:datatype xsd:string ;
+        sh:or (
+            [ sh:datatype xsd:string ]
+            [ sh:datatype rdf:langString ]
+            [ sh:datatype rdf:dirLangString ]
+        ) ;
         sh:maxCount 1 ;
-        sh:message "Entity can have at most one description"@en ;
+        sh:message "Entity can have at most one description, as a plain, language-tagged, or directional string"@en ;
     ] ;
     sh:property [
         sh:path om:version ;

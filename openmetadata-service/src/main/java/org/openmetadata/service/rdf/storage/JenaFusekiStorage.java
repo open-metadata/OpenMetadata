@@ -65,10 +65,12 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfGraphSerializer;
 import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
+import org.openmetadata.service.rdf.UnsupportedRdfSerializationException;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -1517,6 +1519,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           runWithTimeout(() -> doExecuteSparqlQuery(sparqlQuery, format), "executeSparqlQuery");
       recordSuccess();
       return result;
+    } catch (UnsupportedRdfSerializationException exception) {
+      // The query ran; only the requested serialization cannot carry the result. Rethrowing keeps
+      // the caller-facing 400 instead of the blanket 500 below, and leaves the breaker closed
+      // because the backend is healthy.
+      recordSuccess();
+      throw exception;
     } catch (Exception e) {
       LOG.error("Failed to execute SPARQL query on Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
@@ -1573,9 +1581,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   private String formatModel(Model model, String format) {
-    StringWriter writer = new StringWriter();
-    RDFDataMgr.write(writer, model, resolveGraphFormat(format));
-    return writer.toString();
+    return RdfGraphSerializer.asString(model, resolveGraphFormat(format));
   }
 
   /**
@@ -1589,13 +1595,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * value still falls back to RDF/XML rather than throwing, but it is logged instead of passing
    * silently.
    */
-  private static RDFFormat resolveGraphFormat(String format) {
+  private static RdfSerializationFormat resolveGraphFormat(String format) {
     try {
-      return RdfSerializationFormat.parseOrDefault(format, RdfSerializationFormat.RDF_XML)
-          .rdfFormat();
+      return RdfSerializationFormat.parseOrDefault(format, RdfSerializationFormat.RDF_XML);
     } catch (IllegalArgumentException exception) {
       LOG.warn("Unrecognised RDF serialization '{}'; falling back to RDF/XML", format);
-      return RDFFormat.RDFXML;
+      return RdfSerializationFormat.RDF_XML;
     }
   }
 

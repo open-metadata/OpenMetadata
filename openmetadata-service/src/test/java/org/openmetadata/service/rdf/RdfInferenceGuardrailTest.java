@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.startsWith;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfRepository.InferenceQueryResult;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -37,6 +40,10 @@ class RdfInferenceGuardrailTest {
       "ASK { <http://example.com/a> <http://example.com/p> <http://example.com/b> }";
   private static final String DATA =
       "<http://example.com/a> <http://example.com/p> <http://example.com/b> .";
+  private static final String JSON_LD = "application/ld+json";
+  private static final String TRIPLE_TERM_CONSTRUCT =
+      "CONSTRUCT { <http://example.com/r> <http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies> "
+          + "<<( <http://example.com/a> <http://example.com/p> <http://example.com/b> )>> } WHERE {}";
 
   @Test
   void fallsBackToDirectQueryWhenStoreExceedsLimit() {
@@ -108,6 +115,55 @@ class RdfInferenceGuardrailTest {
     assertNull(result.warning());
     verify(storage, never()).getTripleCount();
     verify(storage, never()).executeSparqlQuery(ALL_DATA_QUERY, "text/turtle");
+  }
+
+  /**
+   * A result that JSON-LD cannot carry is the caller's format choice, not a server failure, so it
+   * must reach the resource as the 400 it was raised as. The inference wrapper turns every other
+   * failure into a 500, and used to swallow this one with them.
+   */
+  @Test
+  void keepsInMemoryInferenceJsonLdRejectionACallerError() {
+    RdfConfiguration config =
+        new RdfConfiguration().withEnabled(true).withMaxInMemoryInferenceTriples(2);
+    RdfRepository repository = new RdfRepository(config, inferenceStorage(), null);
+
+    assertThrows(
+        UnsupportedRdfSerializationException.class,
+        () ->
+            repository.executeSparqlQueryWithInferenceResult(
+                TRIPLE_TERM_CONSTRUCT, JSON_LD, "rdfs"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"none", "rdfs"})
+  void passesTheStorageJsonLdRejectionThroughTheInferenceWrapper(final String inferenceLevel) {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    RdfConfiguration config =
+        new RdfConfiguration().withEnabled(true).withMaxInMemoryInferenceTriples(2);
+    RdfRepository repository = new RdfRepository(config, storage, null);
+    when(storage.getTripleCount()).thenReturn(3L);
+    when(storage.executeSparqlQuery(TRIPLE_TERM_CONSTRUCT, JSON_LD))
+        .thenThrow(new UnsupportedRdfSerializationException(RdfSerializationFormat.JSON_LD));
+
+    assertThrows(
+        UnsupportedRdfSerializationException.class,
+        () ->
+            repository.executeSparqlQueryWithInferenceResult(
+                TRIPLE_TERM_CONSTRUCT, JSON_LD, inferenceLevel));
+  }
+
+  @Test
+  void stillReportsOtherInferenceFailuresAsServerErrors() {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    RdfConfiguration config = new RdfConfiguration().withEnabled(true);
+    RdfRepository repository = new RdfRepository(config, storage, null);
+    when(storage.executeSparqlQuery(ASK_QUERY, "json"))
+        .thenThrow(new RuntimeException("Fuseki unavailable"));
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "none"));
   }
 
   @Test

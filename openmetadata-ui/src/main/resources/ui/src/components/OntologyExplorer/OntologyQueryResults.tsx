@@ -15,9 +15,10 @@ import { Tabs } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
 import { Key, ReactElement, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Binding } from '../../generated/api/rdf/sparqlResponse';
+import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { SparqlPlaygroundResult } from '../../rest/rdfAPI';
+import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import { LayoutType } from './OntologyExplorer.constants';
 import { OntologyGraphData } from './OntologyExplorer.interface';
@@ -49,11 +50,7 @@ function toResultView(key: Key): ResultView {
   return resultView;
 }
 
-function getResultValue(binding: Binding | undefined): string {
-  return binding?.value ?? '';
-}
-
-type ResultRow = { [key: string]: Binding };
+type ResultRow = { [key: string]: RDFTerm };
 
 interface ResultTable {
   keyedRows: Array<{ key: string; row: ResultRow }>;
@@ -146,7 +143,7 @@ function renderResultBody({
                   <td
                     className="tw:border-b tw:border-secondary tw:px-3 tw:py-2 tw:font-mono tw:text-xs tw:text-secondary"
                     key={variable}>
-                    {getResultValue(row[variable])}
+                    {getTermDisplayText(row[variable])}
                   </td>
                 ))}
               </tr>
@@ -197,7 +194,7 @@ const OntologyQueryResults = ({
     if (resultTable.variables.length === 1) {
       values = resultTable.keyedRows.map(({ key, row }) => ({
         key,
-        value: getResultValue(row[variable]),
+        value: getTermDisplayText(row[variable]),
       }));
     }
 

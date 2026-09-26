@@ -38,9 +38,11 @@ import org.openmetadata.schema.api.rdf.AgentSparqlCompletenessStatus;
 import org.openmetadata.schema.api.rdf.AgentSparqlError;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
 import org.openmetadata.schema.api.rdf.AgentSparqlQuery;
+import org.openmetadata.schema.api.rdf.AgentSparqlRdfDirection;
 import org.openmetadata.schema.api.rdf.AgentSparqlRdfTerm;
 import org.openmetadata.schema.api.rdf.AgentSparqlRdfTermType;
 import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
+import org.openmetadata.schema.api.rdf.AgentSparqlTripleTerm;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -152,6 +154,30 @@ public class AgentSparqlResourceIT {
     assertEquals(
         AgentSparqlCompletenessStatus.COMPLETE,
         response.getMetadata().getCompleteness().getStatus());
+  }
+
+  @Test
+  void returnsRdf12TripleTermsAndDirectionalLanguageLiterals() throws Exception {
+    AgentSparqlResponse response =
+        success(
+            grantedToken,
+            """
+            VERSION "1.2"
+            SELECT (TRIPLE(<https://example.com/subject>,
+                           <https://example.com/predicate>,
+                           "قطة"@ar--rtl) AS ?statement)
+            WHERE {}
+            """);
+
+    AgentSparqlRdfTerm statement =
+        response.getResults().getBindings().getFirst().getAdditionalProperties().get("statement");
+    AgentSparqlTripleTerm triple =
+        JsonUtils.getObjectMapper().convertValue(statement.getValue(), AgentSparqlTripleTerm.class);
+
+    assertEquals(AgentSparqlRdfTermType.TRIPLE, statement.getType());
+    assertEquals("https://example.com/subject", triple.getSubject().getValue());
+    assertEquals("ar", triple.getObject().getXmlLang());
+    assertEquals(AgentSparqlRdfDirection.RTL, triple.getObject().getItsDir());
   }
 
   @Test
