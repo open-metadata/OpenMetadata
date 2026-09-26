@@ -32,6 +32,17 @@ class BetweenBoundsChecker(BaseValidationChecker):
         self.min_bound = min_bound
         self.max_bound = max_bound
 
+    def _is_unbounded(self, bound: Any) -> bool:
+        """Whether that side of the window lets everything through
+
+        An unset bound resolves to ∓inf, and to None for a validator that resolves its bounds
+        dynamically and found none on that side. Neither excludes a value, so neither needs a
+        condition -- and None cannot be compared against at all. Only a float can be infinite:
+        a datetime window -- what a between test on a date column resolves to -- compares fine
+        and must not be handed to `math.isinf`, which only takes a number.
+        """
+        return bound is None or (isinstance(bound, float) and math.isinf(bound))
+
     def _check_violations(self, values):
         """Core violation check logic - works for both scalar and Series.
 
@@ -46,7 +57,19 @@ class BetweenBoundsChecker(BaseValidationChecker):
         """
         import pandas as pd
 
-        return ~pd.isna(values) & ((values < self.min_bound) | (values > self.max_bound))
+        # Only the sides the window actually sets are compared against, like the SQL half
+        # builds only those conditions: an unset bound excludes nothing, and a None one cannot
+        # be compared against at all.
+        outside = None
+        if not self._is_unbounded(self.min_bound):
+            outside = values < self.min_bound
+        if not self._is_unbounded(self.max_bound):
+            above = values > self.max_bound
+            outside = above if outside is None else (outside | above)
+
+        # `& False` over a window with neither side set keeps the shape of `values`, so a caller
+        # masking a Series with the result still gets a Series back.
+        return ~pd.isna(values) & (False if outside is None else outside)
 
     def _value_violates(self, value: Any) -> bool:
         """Check violation of one value (scalar).
@@ -85,9 +108,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         for expr in metrics:
             expr_conditions = []
 
-            if not math.isinf(self.min_bound):
+            if not self._is_unbounded(self.min_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr < self.min_bound))
-            if not math.isinf(self.max_bound):
+            if not self._is_unbounded(self.max_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr > self.max_bound))
 
             if expr_conditions:
@@ -115,9 +138,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         # Build condition: value NOT NULL AND (value < min OR value > max)
         conditions = []
 
-        if not math.isinf(self.min_bound):
+        if not self._is_unbounded(self.min_bound):
             conditions.append(and_(column.isnot(None), column < self.min_bound))
-        if not math.isinf(self.max_bound):
+        if not self._is_unbounded(self.max_bound):
             conditions.append(and_(column.isnot(None), column > self.max_bound))
 
         if not conditions:
@@ -125,5 +148,6 @@ class BetweenBoundsChecker(BaseValidationChecker):
 
         violation_condition = or_(*conditions) if len(conditions) > 1 else conditions[0]
 
-        # Return SUM(CASE WHEN violation THEN 1 ELSE 0 END)
-        return func.sum(case((violation_condition, literal(1)), else_=literal(0)))
+        # Return SUM(CASE WHEN violation THEN 1 ELSE 0 END). SUM over no row at all is NULL,
+        # which is not a count: a table with nothing in it has zero violations.
+        return func.coalesce(func.sum(case((violation_condition, literal(1)), else_=literal(0))), literal(0))

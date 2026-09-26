@@ -63,6 +63,27 @@ class ColumnValueLengthsToBeBetweenValidator(
         """
         return self.run_dataframe_results(self.runner, metric, column)
 
+    def _run_violation_count(self, column: SQALikeColumn, test_params: dict) -> tuple[int, int]:
+        """Count the rows read and the values whose length falls outside the window
+
+        The dataframes are walked one at a time rather than concatenated, like every other
+        aggregate this validator computes: a dataset split across many files does not have to
+        fit in memory to be counted.
+
+        Args:
+            column: column under test
+            test_params: test parameters including min and max bounds
+        """
+        checker = self._get_validation_checker(test_params)
+
+        total_rows = 0
+        violating_rows = 0
+        for df in self.runner:
+            total_rows += len(df)
+            violating_rows += int(checker.get_violations_mask(df[column.name].str.len()).sum())
+
+        return total_rows, violating_rows
+
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
         metric_values = self._build_metric_values_from_row(row, metrics_to_compute, test_params)
         metric_values[DIMENSION_TOTAL_COUNT_KEY] = row.get(DIMENSION_TOTAL_COUNT_KEY)
@@ -229,10 +250,11 @@ class ColumnValueLengthsToBeBetweenValidator(
         return row_count, failed_rows
 
     def filter(self):
-        # The verdict is taken against the length window the failure threshold widened into, so the
-        # failed rows are filtered with it too: a value the tolerance accepted is not a failure and
-        # has no business showing up in the sample.
-        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
+        # The window is the one the test case configured: the failure threshold is a row tolerance
+        # here, and a row it tolerates is still a value whose length fell outside the window, so it
+        # belongs in the sample of failing rows.
+        min_bound = self.get_min_bound(self.MIN_BOUND)
+        max_bound = self.get_max_bound(self.MAX_BOUND)
         filters = []
         if min_bound is not None and min_bound > float("-inf"):
             filters.append(f"{self.get_column().name}.astype('str').str.len() < {min_bound}")

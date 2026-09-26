@@ -185,6 +185,31 @@ class SQAValidatorMixin:
 
         return res
 
+    def _compute_row_violations(self, runner: QueryRunner, violations_expr: ClauseElement) -> tuple[Any, Any]:
+        """Count the rows read and the violating ones among them, in a single aggregate query
+
+        Both counts come from the same scan so they are always counted against each other: a
+        violation count read from one query and a population from another can disagree on a
+        table that changed in between.
+
+        Args:
+            runner: runner with the sqlalchemy session
+            violations_expr: aggregate expression counting the violating rows, built by a checker
+
+        Returns:
+            tuple[Any, Any]: rows evaluated, violating rows
+        """
+        try:
+            row = runner.dispatch_query_select_first(
+                Metrics.rowCount().fn().label(DIMENSION_TOTAL_COUNT_KEY),
+                violations_expr.label(DIMENSION_FAILED_COUNT_KEY),
+            )
+            values = dict(row._mapping)
+        except Exception as exc:
+            raise SQLAlchemyError(exc)  # noqa: B904
+
+        return values.get(DIMENSION_TOTAL_COUNT_KEY), values.get(DIMENSION_FAILED_COUNT_KEY)
+
     def _compute_row_count(self, runner: QueryRunner, column: Column, **kwargs):
         """compute row count
 
