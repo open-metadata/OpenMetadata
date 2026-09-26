@@ -405,11 +405,9 @@ export const fillRule = async (
         }
       }
 
-      // Close the value popup by blurring the control, not by clicking the
-      // modal's message: MultiSelect popups stay open after a selection and
-      // repaint with the unfiltered catalogue, which is tall enough to flip
-      // upward over that full-width message and swallow the click forever.
-      // NEVER send Escape here — the modal handles it and would dismiss.
+      // Blur to close the popup: it stays open after a selection and can
+      // cover the element a click would otherwise dismiss it with. Not
+      // Escape — the modal handles it and would dismiss.
       await dropdownInput.blur({ timeout: 1_000 }).catch(() => undefined);
       await dropdown
         .waitFor({ state: 'hidden', timeout: 5_000 })
