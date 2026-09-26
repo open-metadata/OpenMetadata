@@ -18,13 +18,13 @@ import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
+import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarRailFooter,
   useAppModeSidebarRecentRail,
 } from '../appModeExtensions';
 import { IconComponent } from '../AppModule.types';
-import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import MoreNavPopover from './MoreNavPopover';
 import { MainNavItem } from './navConfig';
 import SidebarBrand from './SidebarBrand';

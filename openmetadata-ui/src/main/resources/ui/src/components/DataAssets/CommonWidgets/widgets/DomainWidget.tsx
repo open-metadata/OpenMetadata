@@ -12,8 +12,8 @@
  */
 import { lazy } from 'react';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import { EntityDetailWidgetSkeleton } from '../../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericDomainLabel } from '../../../common/DomainLabel/useGenericDomainLabel';
+import { EntityDetailWidgetSkeleton } from '../../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { CommonWidgetComponent, GenericEntity } from '../CommonWidgets.types';
 

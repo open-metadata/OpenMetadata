@@ -15,8 +15,8 @@ import { Owner } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGenericDomainLabel } from '../../components/common/DomainLabel/useGenericDomainLabel';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import { useGenericDomainLabel } from '../../components/common/DomainLabel/useGenericDomainLabel';
 import {
   WidgetEditButton,
   WidgetPlusButton,

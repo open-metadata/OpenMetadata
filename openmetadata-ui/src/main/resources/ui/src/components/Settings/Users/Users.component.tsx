@@ -397,7 +397,6 @@ const Users = ({
             />
             <DomainLabel
               multiple
-              variant="profile-card"
               domains={userData?.domains ?? []}
               entityFqn={userData.fullyQualifiedName ?? ''}
               entityId={userData.id ?? ''}
@@ -405,6 +404,7 @@ const Users = ({
               hasPermission={Boolean(isAdminUser) && !userData.deleted}
               textClassName="text-sm text-grey-muted"
               userData={userData}
+              variant="profile-card"
             />
             <UserProfileTeams
               isDeletedUser={userData.deleted}

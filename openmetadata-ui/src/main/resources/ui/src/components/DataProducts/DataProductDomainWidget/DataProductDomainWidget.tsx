@@ -20,9 +20,9 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
 export const DataProductDomainWidget = () => {
   const { t } = useTranslation();
