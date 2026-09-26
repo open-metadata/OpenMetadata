@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -30,6 +30,7 @@ import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAsse
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import DomainTags from '../DomainTags/DomainTags';
 import './domain-label.less';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabel = ({
@@ -46,6 +47,7 @@ export const DomainLabel = ({
   showDomainHeading = false,
   multiple = false,
   headerLayout = false,
+  variant = 'default',
   onUpdate,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
@@ -170,6 +172,35 @@ export const DomainLabel = ({
   }, [hasPermission, activeDomain, handleDomainSave, multiple, onUpdate]);
 
   const label = useMemo(() => {
+    if (variant === 'profile-card') {
+      return (
+        <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
+          <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+            <div style={{ width: '16px' }}>
+              <DomainIcon height={16} style={{ marginLeft: '2px' }} />
+            </div>
+
+            <div className="d-flex justify-between w-full">
+              <Typography className="text-sm font-medium p-l-xss">
+                {t('label.domain-plural')}
+              </Typography>
+              {selectableList}
+            </div>
+          </div>
+          <div className="user-profile-card-body d-flex justify-start gap-2">
+            <div className="user-page-icon d-flex-center">
+              <Divider className="tw:h-full" orientation="vertical" />
+            </div>
+            <div
+              className="d-flex flex-col items-start gap-1 flex-wrap justify-center"
+              data-testid="header-domain-container">
+              {domainLink}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (showDomainHeading) {
       return (
         <>
@@ -228,7 +259,15 @@ export const DomainLabel = ({
         </div>
       </div>
     );
-  }, [activeDomain, hasPermission, selectableList, labelClassName]);
+  }, [
+    activeDomain,
+    hasPermission,
+    selectableList,
+    labelClassName,
+    variant,
+    domainLink,
+    t,
+  ]);
 
   return label;
 };

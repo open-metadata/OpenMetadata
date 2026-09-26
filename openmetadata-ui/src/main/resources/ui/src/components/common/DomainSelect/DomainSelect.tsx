@@ -19,7 +19,6 @@ import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import {
   DEFAULT_DOMAIN_VALUE,
   PAGE_SIZE_LARGE,
@@ -36,6 +35,7 @@ import {
   domainsToTreeNodes,
   entityReferencesToTreeNodes,
   treeNodesToEntityReferences,
+  withDomainIcon,
 } from './DomainSelect.utils';
 
 const DomainSelect: FC<DomainSelectProps> = ({
@@ -97,25 +97,6 @@ const DomainSelect: FC<DomainSelectProps> = ({
   // Nested nodes are subdomains of the node above them, so they get the
   // subdomain glyph; `isSubDomain` is threaded through the recursion (and set
   // by the lazy-load path when fetching a parent's children).
-  const withDomainIcon = useCallback(
-    (
-      nodes: TreeSelectNode<EntityReference>[],
-      isSubDomain = false
-    ): TreeSelectNode<EntityReference>[] =>
-      nodes.map((node) => ({
-        ...node,
-        icon: isSubDomain ? (
-          <SubDomainIcon height={16} width={16} />
-        ) : (
-          <DomainIcon height={16} width={16} />
-        ),
-        children: node.children
-          ? withDomainIcon(node.children, true)
-          : node.children,
-      })),
-    []
-  );
-
   const fetchData = useCallback(
     async ({
       searchTerm,
@@ -173,7 +154,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
 
       return { nodes };
     },
-    [filterAllowedNodes, withDomainIcon, showAllDomains, t]
+    [filterAllowedNodes, showAllDomains, t]
   );
 
   const value = useMemo(() => {

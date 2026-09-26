@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import type { TreeSelectNode } from '@openmetadata/ui-core-components';
+import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
+import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
@@ -101,4 +103,25 @@ export function treeNodesToEntityReferences(
  */
 export function buildDomainSearchQuery(searchTerm: string): string {
   return getEncodedFqn(escapeESReservedCharacters(searchTerm));
+}
+
+/**
+ * Tag each node with its glyph: root domains get the Domain icon, nested and
+ * lazily-loaded children get the distinct sub-domain glyph.
+ */
+export function withDomainIcon(
+  nodes: TreeSelectNode<EntityReference>[],
+  isSubDomain = false
+): TreeSelectNode<EntityReference>[] {
+  return nodes.map((node) => ({
+    ...node,
+    icon: isSubDomain ? (
+      <SubDomainIcon height={16} width={16} />
+    ) : (
+      <DomainIcon height={16} width={16} />
+    ),
+    children: node.children
+      ? withDomainIcon(node.children, true)
+      : node.children,
+  }));
 }
