@@ -247,7 +247,7 @@ $$section
 - **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
-- **Note:** This value is not inherited from the Azure token lifetime.
+- **Note:** This value is not inherited from the Azure token lifetime, but for a confidential client that receives an Azure refresh token it is an upper bound: OpenMetadata tokens never outlive Azure's access token, so each refresh can renew the Azure tokens in time.
 $$
 
 $$section

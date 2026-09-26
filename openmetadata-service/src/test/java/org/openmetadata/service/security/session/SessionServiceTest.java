@@ -119,10 +119,16 @@ class SessionServiceTest {
             eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
         .thenReturn(List.of());
 
+    long renewalDueAt = now + 300_000;
     UserSession activated =
         sessionService
             .activatePendingSession(
-                request, response, pendingSession, user, "om-refresh", "provider-refresh")
+                request,
+                response,
+                pendingSession,
+                user,
+                "om-refresh",
+                new SessionService.ProviderTokens("provider-refresh", renewalDueAt))
             .orElseThrow();
 
     assertEquals(SessionStatus.ACTIVE, activated.getStatus());
@@ -132,6 +138,7 @@ class SessionServiceTest {
     assertNotEquals("provider-refresh", activated.getProviderRefreshToken());
     assertEquals("om-refresh", sessionService.decryptOmRefreshToken(activated));
     assertEquals("provider-refresh", sessionService.decryptProviderRefreshToken(activated));
+    assertEquals(renewalDueAt, activated.getProviderRenewalDueAt());
   }
 
   @Test
@@ -160,8 +167,7 @@ class SessionServiceTest {
 
     UserSession activated =
         sessionService
-            .activatePendingSession(
-                request, response, pendingSession, user, "om-refresh", "provider-refresh")
+            .activatePendingSession(request, response, pendingSession, user, "om-refresh", null)
             .orElseThrow();
 
     // Session fixation defense: the activated session MUST have a different ID than the pending one
@@ -394,15 +400,67 @@ class SessionServiceTest {
             .build();
     when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
 
+    long renewalDueAt = now + 300_000;
     UserSession refreshed =
         sessionService
-            .completeRefresh(leasedSession, "rotated-om", "rotated-provider")
+            .completeRefresh(
+                leasedSession,
+                "rotated-om",
+                new SessionService.ProviderTokens("rotated-provider", renewalDueAt))
             .orElseThrow();
 
     assertEquals(SessionStatus.ACTIVE, refreshed.getStatus());
     assertNull(refreshed.getRefreshLeaseUntil());
     assertEquals("rotated-om", sessionService.decryptOmRefreshToken(refreshed));
     assertEquals("rotated-provider", sessionService.decryptProviderRefreshToken(refreshed));
+    assertEquals(renewalDueAt, refreshed.getProviderRenewalDueAt());
+    // A renewed provider grant is no proof the provider's browser session is alive.
+    assertEquals(leasedSession.getExpiresAt(), refreshed.getExpiresAt());
+  }
+
+  @Test
+  void completeRefresh_withoutProviderTokens_keepsTheStoredProviderState() {
+    long now = System.currentTimeMillis();
+    UserSession leasedSession =
+        leasedProviderSession(now).providerRefreshToken("stored-encrypted").build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
+
+    UserSession refreshed =
+        sessionService.completeRefresh(leasedSession, "rotated-om", null).orElseThrow();
+
+    assertEquals("stored-encrypted", refreshed.getProviderRefreshToken());
+    assertEquals(leasedSession.getProviderRenewalDueAt(), refreshed.getProviderRenewalDueAt());
+    assertEquals(leasedSession.getExpiresAt(), refreshed.getExpiresAt());
+  }
+
+  @Test
+  void completeRefresh_retryScheduleOnly_keepsTheStoredProviderRefreshToken() {
+    // An identity provider that gave no verdict leaves its refresh token valid; only the next
+    // attempt is rescheduled.
+    long now = System.currentTimeMillis();
+    UserSession leasedSession =
+        leasedProviderSession(now).providerRefreshToken("stored-encrypted").build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
+
+    UserSession refreshed =
+        sessionService
+            .completeRefresh(
+                leasedSession, "rotated-om", new SessionService.ProviderTokens(null, now + 300_000))
+            .orElseThrow();
+
+    assertEquals("stored-encrypted", refreshed.getProviderRefreshToken());
+    assertEquals(now + 300_000, refreshed.getProviderRenewalDueAt());
+  }
+
+  private static UserSession.UserSessionBuilder leasedProviderSession(long now) {
+    return UserSession.builder()
+        .id("leased-session")
+        .status(SessionStatus.REFRESHING)
+        .version(1L)
+        .refreshLeaseUntil(now + 5_000)
+        .providerRenewalDueAt(now - 1_000)
+        .expiresAt(now + 60_000)
+        .idleExpiresAt(now + 60_000);
   }
 
   @Test

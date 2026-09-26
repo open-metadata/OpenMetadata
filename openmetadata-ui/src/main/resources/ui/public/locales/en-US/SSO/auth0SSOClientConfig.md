@@ -247,7 +247,7 @@ $$section
 - **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
-- **Note:** This value is not inherited from the Auth0 token lifetime.
+- **Note:** This value is not inherited from the Auth0 token lifetime, but for a confidential client that receives an Auth0 refresh token it is an upper bound: OpenMetadata tokens never outlive Auth0's access token, so each refresh can renew the Auth0 tokens in time.
 $$
 
 $$section
