@@ -92,6 +92,7 @@ import {
   waitForSiblingToken,
 } from '../../../utils/Auth/AuthCoordinator/ReauthGuard';
 import { isReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
+import { isRefreshFailedError } from '../../../utils/Auth/AuthCoordinator/RefreshQueue';
 import type { RefreshFailedPayload } from '../../../utils/Auth/AuthCoordinator/types';
 import {
   getAuthConfig,
@@ -593,10 +594,15 @@ export const AuthProvider = ({
       // axios response interceptor instead of being swallowed here — the old
       // unconditional `resetUserDetails()` bounced the user straight to
       // /signin on a cold-load expired token instead of ever attempting a
-      // silent refresh (Bug 1). `resetUserDetails` still runs, but only via
-      // the coordinator's `refresh-failed` event if `ensureFreshToken` itself
-      // rejects (see the mount effect above).
-      if (isRefreshableAuthError(status, url, err.response?.data)) {
+      // silent refresh (Bug 1). When that refresh fails, the queued request
+      // rejects with RefreshFailedError: the coordinator's `refresh-failed`
+      // handler owns the outcome (see the mount effect above), and resetting
+      // here would clear the token and flash /signin under a silent
+      // re-authentication it has already started.
+      if (
+        isRefreshableAuthError(status, url, err.response?.data) ||
+        isRefreshFailedError(error)
+      ) {
         throw error;
       }
 

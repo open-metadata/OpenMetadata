@@ -184,7 +184,12 @@ const installMsalMock = async (
         sessionStorage.getItem(keys.redirectCompleted) !== '1';
 
       const instance = {
-        handleRedirectPromise: async () => mintResponse(),
+        // Real MSAL resolves null unless the page is finishing a redirect.
+        // While silent renewal is broken no redirect is pending, and handing
+        // back a fresh login here would quietly undo the expired token the
+        // test set up.
+        handleRedirectPromise: async () =>
+          isSilentRenewalBroken() ? null : mintResponse(),
         acquireTokenSilent: async () => {
           if (isSilentRenewalBroken()) {
             // A plain object on purpose: the page cannot construct MSAL's
@@ -447,12 +452,23 @@ export const msalMockProviderFixture: SsoProviderFixture = {
     );
   },
 
-  trackSilentReauth: (page: Page) => async () =>
-    page.evaluate((key) => {
-      const requests = JSON.parse(sessionStorage.getItem(key) ?? '[]') as {
-        prompt?: string;
-      }[];
+  // The count lives in the page, so a read that lands mid-navigation keeps the
+  // last value it saw instead of failing the poll that waits on it.
+  trackSilentReauth: (page: Page) => {
+    let lastCount = 0;
 
-      return requests.filter((request) => request.prompt === 'none').length;
-    }, MSAL_MOCK_KEYS.redirectRequests),
+    return async () => {
+      lastCount = await page
+        .evaluate((key) => {
+          const requests = JSON.parse(sessionStorage.getItem(key) ?? '[]') as {
+            prompt?: string;
+          }[];
+
+          return requests.filter((request) => request.prompt === 'none').length;
+        }, MSAL_MOCK_KEYS.redirectRequests)
+        .catch(() => lastCount);
+
+      return lastCount;
+    };
+  },
 };

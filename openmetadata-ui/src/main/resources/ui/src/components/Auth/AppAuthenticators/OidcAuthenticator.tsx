@@ -68,11 +68,21 @@ const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
 const isFrameError = (error: unknown): boolean =>
   error instanceof Error && /frame/i.test(error.message);
 
-// Both a blocked iframe and an IdP answer like login_required can still be
-// recovered by a top-level redirect, which carries the IdP session cookie
-// first-party. Anything else (network, misconfiguration) is rethrown untouched.
+// oidc-client renews with the refresh token whenever it holds one, and rejects
+// a grant the IdP turned down with a plain Error carrying the OAuth error code.
+// A refused refresh token does not mean the IdP session is gone: Keycloak's
+// client session, for one, can idle out before its SSO session does.
+const isRefusedRefreshToken = (error: unknown): boolean =>
+  error instanceof Error && error.message === 'invalid_grant';
+
+// A blocked iframe, a refused refresh token and an IdP answer like
+// login_required can all still be recovered by a top-level redirect, which
+// carries the IdP session cookie first-party. Anything else (network,
+// misconfiguration) is rethrown untouched.
 const isReauthRequired = (error: unknown): boolean =>
-  isFrameError(error) || isInteractionRequiredCode(getAuthErrorCode(error));
+  isFrameError(error) ||
+  isRefusedRefreshToken(error) ||
+  isInteractionRequiredCode(getAuthErrorCode(error));
 
 const OidcCallbackWrapper = ({
   userManager,

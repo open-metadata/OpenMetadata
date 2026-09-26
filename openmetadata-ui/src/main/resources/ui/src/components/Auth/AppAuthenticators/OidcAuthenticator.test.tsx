@@ -168,6 +168,19 @@ describe('OidcAuthenticator', () => {
     }
   );
 
+  it('hands a refused refresh token to a top-level redirect', async () => {
+    // oidc-client renews with Keycloak's refresh token and surfaces a refused
+    // grant as a plain Error; the IdP session behind it may still be alive.
+    mockSigninSilent.mockRejectedValueOnce(new Error('invalid_grant'));
+
+    const ref = createRef<AuthenticatorRef>();
+    renderOidcAuthenticator(ref);
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+    await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+  });
+
   it('rethrows other signinSilent failures untouched', async () => {
     const networkError = new Error('Network Error');
     mockSigninSilent.mockRejectedValueOnce(networkError);

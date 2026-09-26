@@ -24,6 +24,7 @@ import {
   waitForSiblingToken,
 } from '../../../utils/Auth/AuthCoordinator/ReauthGuard';
 import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
+import { RefreshFailedError } from '../../../utils/Auth/AuthCoordinator/RefreshQueue';
 import type { RefreshFailedPayload } from '../../../utils/Auth/AuthCoordinator/types';
 import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
@@ -964,6 +965,25 @@ describe('Test getLoggedInUserDetails catch (auth-coordinator-refactor Task 13 â
     });
 
     expect(mockSetIsAuthenticated).not.toHaveBeenCalledWith(false);
+  });
+
+  it('leaves a refresh that failed under /loggedInUser to the refresh-failed handler', async () => {
+    // The coordinator rejects the queued request with RefreshFailedError while
+    // its refresh-failed handler may already be starting a silent
+    // re-authentication; resetting here would clear the token and flash
+    // /signin under it.
+    mockGetOidcToken.mockResolvedValue('stored-token');
+    (getLoggedInUser as jest.Mock).mockRejectedValue(new RefreshFailedError());
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    expect(getLoggedInUser).toHaveBeenCalled();
+    expect(mockSetIsAuthenticated).not.toHaveBeenCalledWith(false);
+    expect(showErrorToast).not.toHaveBeenCalled();
+
+    mockGetOidcToken.mockResolvedValue('');
   });
 
   // A "still resets the session for a non-refreshable error" case sat here

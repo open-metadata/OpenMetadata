@@ -641,6 +641,11 @@ for (const fixture of FIXTURES) {
 
           await page.reload({ waitUntil: 'domcontentloaded' });
 
+          // The reload itself lands on the deep link, so wait for the round
+          // trip to the IdP before checking where it ended up.
+          await expect
+            .poll(silentReauthCount, { timeout: 60_000 })
+            .toBeGreaterThanOrEqual(1);
           await expect(page).toHaveURL(SILENT_REAUTH_DEEP_LINK_URL, {
             timeout: 60_000,
           });
