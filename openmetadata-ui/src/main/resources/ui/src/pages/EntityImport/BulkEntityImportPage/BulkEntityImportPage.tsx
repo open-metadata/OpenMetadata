@@ -56,7 +56,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
-import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_POLL_INTERVAL_MS,
+  CSV_JOBS_REFRESH_EVENT,
+} from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import CsvWorkflowHeader from '../../../components/common/EntityImport/CsvWorkflowHeader/CsvWorkflowHeader.component';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import {
@@ -84,8 +87,11 @@ import {
   cancelCsvAsyncJob,
   CsvAsyncJob,
   CsvDocumentation,
+  getCsvAsyncImportResult,
+  getCsvAsyncJob,
   getCsvAsyncJobs,
   getCsvDocumentation,
+  isPollableCsvAsyncJobId,
 } from '../../../rest/csvAPI';
 import {
   getCsvHeaderKey,
@@ -812,7 +818,6 @@ const BulkEntityImportPage = () => {
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
     [
-      entityType,
       handleActiveStepChange,
       handleEditCellHeightChange,
       importedEntityType,
@@ -1161,6 +1166,17 @@ const BulkEntityImportPage = () => {
         return;
       }
 
+      // A terminal frame can reach us from both the websocket and the REST poll; drop the
+      // active-job ref up front so a duplicate delivery is ignored by the guards above
+      // instead of repeating the log/refresh/parse side effects. State is left intact so
+      // the UI still reflects the terminal status.
+      if (
+        websocketResponse.status === 'COMPLETED' ||
+        websocketResponse.status === 'FAILED'
+      ) {
+        activeAsyncImportJobRef.current = undefined;
+      }
+
       appendActiveImportLogLine(websocketResponse.message);
       setActiveAsyncImportJob((job) => {
         if (!job) {
@@ -1196,6 +1212,81 @@ const BulkEntityImportPage = () => {
     ]
   );
   handleImportWebsocketResponseRef.current = handleImportWebsocketResponse;
+
+  // Reads the terminal state of the active import job over REST and drives the same completion
+  // handler the websocket would, so a dropped frame no longer strands the validation step.
+  const reconcileImportJobFromPoll = useCallback(
+    async (jobId: string, signal: AbortSignal) => {
+      const job = await getCsvAsyncJob(jobId, signal);
+
+      if (activeAsyncImportJobRef.current?.jobId !== jobId) {
+        return;
+      }
+
+      if (job.status === 'COMPLETED') {
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- gated on COMPLETED status above
+        const result = await getCsvAsyncImportResult(jobId, signal);
+
+        if (activeAsyncImportJobRef.current?.jobId !== jobId) {
+          return;
+        }
+
+        handleImportWebsocketResponseRef.current?.({
+          jobId,
+          result,
+          status: 'COMPLETED',
+        });
+      } else if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+        handleImportWebsocketResponseRef.current?.({
+          error: job.error,
+          jobId,
+          status: 'FAILED',
+        });
+      }
+    },
+    [activeAsyncImportJobRef]
+  );
+
+  // The websocket is the primary completion signal, but WebSocketManager.sendToOne is node-local:
+  // on a multi-pod deployment the pod that ran the job is often not the one holding this browser's
+  // socket, so the frame is lost and validation would hang. Poll the job row as a fallback.
+  useEffect(() => {
+    const jobId = activeAsyncImportJob?.jobId;
+
+    if (!isValidating || !jobId || !isPollableCsvAsyncJobId(jobId)) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    const poll = () => {
+      reconcileImportJobFromPoll(jobId, abortController.signal).catch(
+        (error) => {
+          // A 404 means the job or its result is gone (cleaned up / released) and will never
+          // appear — leave the validating state instead of polling a permanent error.
+          if (
+            (error as AxiosError)?.response?.status === 404 &&
+            activeAsyncImportJobRef.current?.jobId === jobId
+          ) {
+            handleImportWebsocketResponseRef.current?.({
+              error: null,
+              jobId,
+              status: 'FAILED',
+            });
+          }
+
+          // Other errors are transient: the interval retries and the websocket may still resolve.
+        }
+      );
+    };
+
+    poll();
+    const intervalId = setInterval(poll, CSV_JOBS_POLL_INTERVAL_MS);
+
+    return () => {
+      abortController.abort();
+      clearInterval(intervalId);
+    };
+  }, [isValidating, activeAsyncImportJob?.jobId, reconcileImportJobFromPoll]);
 
   useEffect(() => {
     fetchEntityData();
@@ -1253,7 +1344,9 @@ const BulkEntityImportPage = () => {
             importResponse
           ) as CSVImportAsyncWebsocketResponse;
 
-          handleImportWebsocketResponse(importResponseData);
+          // Call through the ref so the socket subscription stays registered
+          // once (the handler identity changes across renders, the ref stays stable).
+          handleImportWebsocketResponseRef.current?.(importResponseData);
         }
       });
     }
@@ -1262,7 +1355,7 @@ const BulkEntityImportPage = () => {
       socket?.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
       handleResetImportJob();
     };
-  }, [socket]);
+  }, [socket, handleResetImportJob]);
 
   /*
     Owner dropdown uses <ProfilePicture /> which uses useUserProfile hook
@@ -1337,7 +1430,7 @@ const BulkEntityImportPage = () => {
       </div>
     );
   }, [
-    columns,
+    filterColumns,
     editableDataSource,
     getEditableRowHeight,
     handleCopy,
