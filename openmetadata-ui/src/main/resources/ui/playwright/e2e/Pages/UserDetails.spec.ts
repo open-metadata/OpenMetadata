@@ -418,7 +418,9 @@ test.describe('User with different Roles', () => {
         response.url().includes('/api/v1/domains') &&
         response.request().method() === 'GET'
     );
-    await parentNode.getByTestId('tree-expand-btn').click();
+    // The expand button is a sibling of the node's content div, not a child —
+    // Tree.ItemContent renders [expand-btn][icon][tree-node-*] in one row.
+    await parentNode.locator('xpath=..').getByTestId('tree-expand-btn').click();
     await childrenPromise;
 
     await expect(childNode).toBeVisible();

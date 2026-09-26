@@ -445,7 +445,8 @@ export const TreeSelect = <T = unknown,>({
       // Rendered state, not membership: a parent checked via descendants deselects.
       const { isFullySelected } = getNodeSelectionState(
         getDescendantSelection(node),
-        isNodeSelected(node.id)
+        isNodeSelected(node.id),
+        multiple
       );
 
       // Both directions: a branch selected while collapsed keeps children out of the tree.
@@ -533,7 +534,8 @@ export const TreeSelect = <T = unknown,>({
         const isExclusiveGroup = hasExclusiveChildren(node);
         const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
           getDescendantSelection(node),
-          isNodeSelected(node.id)
+          isNodeSelected(node.id),
+          multiple
         );
 
         return (
