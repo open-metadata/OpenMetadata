@@ -23,8 +23,8 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import {
-  getCustomUiThemePreference,
-  getSystemConfig,
+    getAppConfiguration, getCustomUiThemePreference,
+    getSystemConfig
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
@@ -34,30 +34,58 @@ import { getThemeConfig } from './utils/ThemeUtils';
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
 
-  const { applicationConfig, setApplicationConfig, setRdfEnabled } =
-    useApplicationStore(
-      useShallow((state) => ({
-        applicationConfig: state.applicationConfig,
-        setApplicationConfig: state.setApplicationConfig,
-        setRdfEnabled: state.setRdfEnabled,
-      }))
-    );
+  const {
+    applicationConfig,
+    setApplicationConfig,
+    setRdfEnabled,
+    setTimeFormat,
+  } = useApplicationStore(
+    useShallow((state) => ({
+      applicationConfig: state.applicationConfig,
+      setApplicationConfig: state.setApplicationConfig,
+      setRdfEnabled: state.setRdfEnabled,
+      setTimeFormat: state.setTimeFormat,
+    }))
+  );
 
   const fetchApplicationConfig = async () => {
     try {
-      const [themeData, systemConfig] = await Promise.all([
-        getCustomUiThemePreference(),
-        getSystemConfig(),
-      ]);
+      const themeDataPromise = getCustomUiThemePreference().catch((err) => {
+        console.error('Failed to fetch theme data:', err);
 
-      setApplicationConfig({
-        ...themeData,
-        customTheme: getThemeConfig(themeData.customTheme),
+        return null;
+      });
+      const systemConfigPromise = getSystemConfig().catch((err) => {
+        console.error('Failed to fetch system config:', err);
+
+        return null;
+      });
+      const appConfigPromise = getAppConfiguration().catch((err) => {
+        console.error('Failed to fetch app configuration:', err);
+
+        return null;
       });
 
-      setRdfEnabled(systemConfig.rdfEnabled || false);
+      const [themeData, systemConfig, appConfig] = await Promise.all([
+        themeDataPromise,
+        systemConfigPromise,
+        appConfigPromise,
+      ]);
+
+      if (themeData) {
+        setApplicationConfig({
+          ...themeData,
+          customTheme: getThemeConfig(themeData.customTheme),
+        });
+      }
+      if (systemConfig) {
+        setRdfEnabled(systemConfig.rdfEnabled || false);
+      }
+
+      if (appConfig) {
+        setTimeFormat((appConfig.defaultTimeFormat as '12h' | '24h') || '12h');
+      }
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   };
