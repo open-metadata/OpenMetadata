@@ -40,6 +40,7 @@ import {
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -667,5 +668,3 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     }
   });
 });
-
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';

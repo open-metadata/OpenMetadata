@@ -29,6 +29,7 @@ import { expect, test } from '../../../support/fixtures/base';
 import { authenticateAdminPage } from '../../../utils/admin';
 import { getApiContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 type TaskFormSchema = {
   id?: string;
@@ -563,5 +564,3 @@ test.describe.serial(
     });
   }
 );
-
-import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

@@ -18,6 +18,7 @@ import { performAdminLogin } from '../../../utils/admin';
 import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -670,5 +671,3 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
     });
   });
 }
-
-import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

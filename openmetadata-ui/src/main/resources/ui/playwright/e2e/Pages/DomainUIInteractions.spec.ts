@@ -33,6 +33,7 @@ import {
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const test = base.extend<{
   page: Page;
@@ -920,5 +921,3 @@ test.describe('Copy FQN Functionality', () => {
     }
   });
 });
-
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';

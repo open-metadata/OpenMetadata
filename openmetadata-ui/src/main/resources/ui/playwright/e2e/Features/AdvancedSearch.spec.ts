@@ -38,6 +38,7 @@ import {
   showAdvancedSearchDialog,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
+import { settleAll } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -1718,5 +1719,3 @@ test.describe(
     });
   }
 );
-
-import { settleAll } from '../../utils/apiResponse';

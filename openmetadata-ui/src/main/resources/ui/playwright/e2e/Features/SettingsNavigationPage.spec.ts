@@ -21,6 +21,7 @@ import { redirectToHomePage } from '../../utils/common';
 import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -561,5 +562,3 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await resetResponseAfterMove;
   });
 });
-
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';

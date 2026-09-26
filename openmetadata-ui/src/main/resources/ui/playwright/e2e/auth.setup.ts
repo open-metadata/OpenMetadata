@@ -20,6 +20,7 @@ import {
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
+import { settleAll } from '../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   getApiContext,
@@ -318,5 +319,3 @@ setup('authenticate all users', async ({ browser }) => {
     }
   }
 });
-
-import { settleAll } from '../utils/apiResponse';
