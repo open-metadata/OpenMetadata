@@ -112,6 +112,17 @@ class QliksenseSource(DashboardServiceSource):
         """Get Dashboard Name"""
         return dashboard.qDocName
 
+    def get_project_name(self, dashboard_details: QlikDashboard) -> str | None:
+        """Return the Qlik stream name, which maps to OpenMetadata's project concept."""
+        try:
+            return (
+                dashboard_details.qMeta.stream.name
+                if dashboard_details.qMeta and dashboard_details.qMeta.stream
+                else None
+            )
+        except Exception:
+            return None
+
     def get_dashboard_details(self, dashboard: QlikDashboard) -> QlikDashboard:
         """Get Dashboard Details"""
         return dashboard
