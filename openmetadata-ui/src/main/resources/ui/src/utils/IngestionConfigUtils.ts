@@ -306,7 +306,12 @@ export const getTypeAndStatusMenuItems = () => {
 export const getIngestionStatusCountData = (summary?: StepSummary) => [
   {
     label: i18n.t('label.success'),
-    value: getReadableCountString(summary?.records ?? 0, 1),
+    // Success = created + updated records (e.g. the Automator reports only
+    // updated_records), matching the ingestion's own record_count + updated_records.
+    value: getReadableCountString(
+      (summary?.records ?? 0) + (summary?.updated_records ?? 0),
+      1
+    ),
     type: 'success',
   },
   {
