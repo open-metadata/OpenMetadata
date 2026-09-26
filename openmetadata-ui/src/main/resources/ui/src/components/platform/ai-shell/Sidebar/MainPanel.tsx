@@ -16,12 +16,12 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
+import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarMainFooter,
   useAppModeSidebarRecent,
 } from '../appModeExtensions';
-import DomainScopeControl from './DomainScopeControl';
 import MoreNavPopover from './MoreNavPopover';
 import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import NavItem from './NavItem';

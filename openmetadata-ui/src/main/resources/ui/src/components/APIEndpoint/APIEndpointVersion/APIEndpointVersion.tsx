@@ -62,17 +62,22 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   useEffect(() => {
     setChangeDescription(
@@ -196,6 +201,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                 deleted={Boolean(currentVersionData?.deleted)}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.API_ENDPOINT}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

@@ -10,29 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover } from 'antd';
-import { lazy, useCallback, useMemo, useState } from 'react';
+import { TreeSelectTriggerRenderProps } from '@openmetadata/ui-core-components';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { EntityReference } from '../../../generated/entity/type';
-import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
+import DomainSelect from '../DomainSelect/DomainSelect';
+import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
 import { EditIconButton } from '../IconButtons/EditIconButton';
-import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
-const DomainSelectablTree = withSuspenseFallback(
-  lazy(() => import('../DomainSelectableTree/DomainSelectableTree'))
-);
-
+/**
+ * Thin adapter kept for API compatibility with existing call sites: it renders
+ * the go-forward {@link DomainSelect} (ui-core TreeSelect) behind the same
+ * popover-trigger contract the legacy Ant Design version exposed — a custom
+ * `children` trigger (or a default edit button), optional controlled open via
+ * `popoverProps.open`/`onOpenChange`, and the single/multiple `onUpdate` shape.
+ */
 const DomainSelectableList = ({
   children,
   disabled,
-  getPopupContainer: getPopupContainerProp,
   hasPermission,
   multiple = false,
   onCancel,
@@ -40,142 +39,78 @@ const DomainSelectableList = ({
   popoverProps,
   restrictedDomains,
   selectedDomain,
-  showAllDomains = false,
-  wrapInButton = true,
-  overlayClassName,
+  showAllDomains,
   isClearable,
+  className,
+  fullWidthTrigger,
+  'data-testid': dataTestId = 'domain-selectable-tree',
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
-  const [popupVisible, setPopupVisible] = useState(false);
   const { isVersionView } = useGenericContext<Domain>();
 
-  const selectedDomainsList = useMemo(() => {
-    if (selectedDomain) {
-      return Array.isArray(selectedDomain)
-        ? selectedDomain.map((item) => item.fullyQualifiedName)
-        : [selectedDomain.fullyQualifiedName];
-    }
-
-    return [];
-  }, [selectedDomain]);
-
-  const initialDomains = useMemo(() => {
-    if (selectedDomain) {
-      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
-    }
-
-    return [];
-  }, [selectedDomain]);
-
-  const handleUpdate = useCallback(
-    async (domains: EntityReference[]) => {
-      if (multiple) {
-        await onUpdate(domains);
-        setPopupVisible(false);
-
-        return;
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      popoverProps?.onOpenChange?.(open);
+      if (!open) {
+        onCancel?.();
       }
-
-      // Handle single domain mode
-      if (domains.length > 0) {
-        await onUpdate(domains[0]);
-      } else {
-        // Pass undefined for empty selection in single domain mode
-        await onUpdate(
-          undefined as unknown as EntityReference | EntityReference[]
-        );
-      }
-
-      setPopupVisible(false);
     },
-    [onUpdate, multiple]
+    [popoverProps, onCancel]
   );
 
-  const handleCancel = useCallback(() => {
-    setPopupVisible(false);
-    onCancel?.();
-  }, [onCancel]);
+  const renderTrigger = useCallback(
+    ({ toggle }: TreeSelectTriggerRenderProps) => {
+      if (!children && isVersionView) {
+        return null;
+      }
 
-  const popoverContent = useMemo(() => {
-    return (
-      <Popover
-        destroyTooltipOnHide
-        content={
-          !disabled && (
-            <div data-react-aria-top-layer>
-              <FocusTrapWithContainer active={popoverProps?.open || false}>
-                <DomainSelectablTree
-                  initialDomains={initialDomains}
-                  isClearable={isClearable}
-                  isMultiple={multiple}
-                  restrictedDomains={restrictedDomains}
-                  showAllDomains={showAllDomains}
-                  value={selectedDomainsList as string[]}
-                  visible={popupVisible || Boolean(popoverProps?.open)}
-                  onCancel={handleCancel}
-                  onSubmit={handleUpdate}
-                />
-              </FocusTrapWithContainer>
-            </div>
-          )
-        }
-        open={popupVisible}
-        overlayClassName={`domain-select-popover w-400 ${overlayClassName}`}
-        placement="bottomRight"
-        showArrow={false}
-        trigger="click"
-        onOpenChange={(visible) => {
-          if (!disabled) {
-            setPopupVisible(visible);
-          }
-        }}
-        {...popoverProps}
-        getPopupContainer={getPopupContainerProp ?? getVisiblePopupContainer}>
-        {children ??
-          (!isVersionView && (
-            <EditIconButton
-              newLook
-              data-testid="add-domain"
-              disabled={!hasPermission || disabled}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.domain-plural'),
-              })}
-              onClick={(e) => e.stopPropagation()}
-            />
-          ))}
-      </Popover>
-    );
-  }, [
-    children,
-    getPopupContainerProp,
-    hasPermission,
-    handleCancel,
-    handleUpdate,
-    initialDomains,
-    multiple,
-    popoverProps,
-    popupVisible,
-    restrictedDomains,
-    selectedDomainsList,
-    selectedDomain,
-    isVersionView,
-    isClearable,
-  ]);
+      const trigger = children ?? (
+        <EditIconButton
+          newLook
+          data-testid="add-domain"
+          disabled={!hasPermission || disabled}
+          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+          size="small"
+          title={t('label.edit-entity', { entity: t('label.domain-plural') })}
+        />
+      );
 
-  if (wrapInButton) {
-    return (
-      <Button
-        className="remove-button-default-styling flex-center"
-        disabled={disabled}
-        onClick={(e) => e.stopPropagation()}>
-        {popoverContent}
-      </Button>
-    );
-  }
+      // Toggle on pointerdown, not click: the entity header re-renders while a
+      // PATCH settles, and a re-render that replaces the trigger's DOM node
+      // between mousedown and mouseup makes the browser drop the `click`
+      // entirely — the press then does nothing at all. pointerdown lands before
+      // any of that. The click is still captured (before a child's own
+      // `stopPropagation` can swallow it) so it stays off ancestor handlers, and
+      // a keyboard-synthesized click (`detail === 0`, no preceding pointerdown)
+      // still opens the picker.
+      return (
+        <DomainSelectTrigger disabled={disabled} toggle={toggle}>
+          {trigger}
+        </DomainSelectTrigger>
+      );
+    },
+    [children, isVersionView, hasPermission, disabled, t]
+  );
 
-  return popoverContent;
+  return (
+    <DomainSelect
+      className={className}
+      data-testid={dataTestId}
+      disabled={disabled}
+      fullWidthTrigger={fullWidthTrigger}
+      hasPermission={hasPermission}
+      isClearable={isClearable}
+      isOpen={popoverProps?.open}
+      multiple={multiple}
+      renderTrigger={renderTrigger}
+      restrictedDomains={restrictedDomains}
+      selectedDomain={selectedDomain}
+      showAllDomains={showAllDomains}
+      triggerVariant="button"
+      onOpenChange={handleOpenChange}
+      onUpdate={onUpdate}
+    />
+  );
 };
 
 export default DomainSelectableList;

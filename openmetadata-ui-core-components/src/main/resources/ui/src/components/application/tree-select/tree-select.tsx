@@ -228,6 +228,9 @@ export const TreeSelect = <T = unknown,>({
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
+  triggerClassName,
+  fullWidthTrigger = false,
+  onFetchError,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
@@ -235,15 +238,20 @@ export const TreeSelect = <T = unknown,>({
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
+  triggerIcon,
   onNodeExpand,
   onNodeCollapse,
+  defaultExpandedKeys,
+  maxIndentLevel,
   onSearch,
   filterNode,
 }: TreeSelectProps<T>): ReactElement => {
   const { t } = useCoreTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledIsOpen ?? internalOpen;
-  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set());
+  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
+    () => new Set(defaultExpandedKeys ?? [])
+  );
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -256,6 +264,9 @@ export const TreeSelect = <T = unknown,>({
   // Parents already opened for this search, so a later result never reopens one.
   const autoExpandedRef = useRef<Set<Key>>(new Set());
   const lastSearchRef = useRef('');
+  // defaultExpandedKeys is applied once the referenced nodes exist; afterwards
+  // the user is free to collapse them.
+  const appliedDefaultExpandRef = useRef(false);
   // Stable root IDs captured before any search replaces treeData, so
   // displayedSelectedCount is not zeroed out while the user is searching.
   const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
@@ -283,7 +294,7 @@ export const TreeSelect = <T = unknown,>({
     useTreeSelectSearch({ debounceMs, onSearch });
 
   const { treeData, loading, loadingNodes, loadChildren } =
-    useTreeSelectData<T>({ fetchData, searchTerm, pageSize });
+    useTreeSelectData<T>({ fetchData, searchTerm, pageSize, onFetchError });
 
   const visibleNodeIds = useMemo(
     () =>
@@ -331,6 +342,27 @@ export const TreeSelect = <T = unknown,>({
       setStableRootIds(new Set(treeData.map((n) => n.id)));
     }
   }, [treeData, searchTerm]);
+
+  // Expand the defaultExpandedKeys nodes once they first appear in the tree.
+  // Async data can arrive after mount, so seeding the initial expanded set is
+  // not enough on its own. Runs once, so a later user collapse is respected.
+  useEffect(() => {
+    if (appliedDefaultExpandRef.current || !defaultExpandedKeys?.length) {
+      return;
+    }
+    const present = defaultExpandedKeys.filter((key) =>
+      findNode(treeData, key)
+    );
+    if (present.length > 0) {
+      appliedDefaultExpandRef.current = true;
+      setExpandedKeys((prev) => {
+        const next = new Set(prev);
+        present.forEach((key) => next.add(key));
+
+        return next;
+      });
+    }
+  }, [treeData, defaultExpandedKeys]);
 
   // Each parent opens once as it appears; clearing the search restores the old set.
   useEffect(() => {
@@ -413,7 +445,8 @@ export const TreeSelect = <T = unknown,>({
       // Rendered state, not membership: a parent checked via descendants deselects.
       const { isFullySelected } = getNodeSelectionState(
         getDescendantSelection(node),
-        isNodeSelected(node.id)
+        isNodeSelected(node.id),
+        multiple
       );
 
       // Both directions: a branch selected while collapsed keeps children out of the tree.
@@ -501,7 +534,8 @@ export const TreeSelect = <T = unknown,>({
         const isExclusiveGroup = hasExclusiveChildren(node);
         const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
           getDescendantSelection(node),
-          isNodeSelected(node.id)
+          isNodeSelected(node.id),
+          multiple
         );
 
         return (
@@ -514,6 +548,7 @@ export const TreeSelect = <T = unknown,>({
               isIndeterminate={isPartiallySelected}
               isLoading={loadingNodes.has(node.id)}
               isSelected={isFullySelected}
+              maxIndentLevel={maxIndentLevel}
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
@@ -555,6 +590,7 @@ export const TreeSelect = <T = unknown,>({
       showCheckbox,
       showExpandIcon,
       showIcon,
+      maxIndentLevel,
       handleNodeAction,
     ]
   );
@@ -837,15 +873,29 @@ export const TreeSelect = <T = unknown,>({
           : { width: triggerWidth }
       }
       triggerRef={triggerRef}
-      onOpenChange={setOpen}>
+      // `isNonModal` makes react-aria close the popover on any ancestor scroll
+      // (`usePopover` passes `onClose: state.close` to `useOverlayPosition`).
+      // Opening the dropdown scrolls the trigger into view, and a page still
+      // settling after an unrelated save scrolls too, so the picker closed
+      // itself ~100ms after it opened and the next press only reopened it. This
+      // component owns dismissal — Escape and outside-pointerdown listeners
+      // above, plus the explicit apply/select/cancel paths — so a close request
+      // from react-aria is dropped and only its open request is honoured.
+      onOpenChange={(open: boolean) => {
+        if (open) {
+          setOpen(true);
+        }
+      }}>
       {treeDropdownContent}
     </Dropdown.Popover>
   );
 
   if (renderTrigger) {
     return (
-      <div className={cx('tw:relative tw:inline-block', className)}>
-        <div ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-flex', className)}>
+        <div
+          className={cx('tw:flex tw:min-w-0', fullWidthTrigger && 'tw:w-full')}
+          ref={triggerRef}>
           {renderTrigger({
             isOpen,
             toggle: toggleOpen,
@@ -864,16 +914,19 @@ export const TreeSelect = <T = unknown,>({
     const triggerText = label ?? placeholder ?? '';
 
     return (
-      <div className={cx('tw:relative tw:inline-block', className)}>
-        <div ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-flex', className)}>
+        <div className="tw:flex" ref={triggerRef}>
           <Button
             className={cx(
               'tw:whitespace-nowrap',
-              !bordered && 'tw:p-1 tw:*:data-icon:size-3.5'
+              !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              triggerClassName
             )}
             color={bordered ? 'secondary' : 'tertiary'}
             data-testid={dataTestId}
-            iconTrailing={ChevronDown}
+            iconLeading={triggerIcon}
+            // A disabled trigger opens nothing, so the affordance would lie.
+            iconTrailing={disabled ? undefined : ChevronDown}
             isDisabled={disabled}
             size={bordered ? 'md' : 'sm'}
             onPress={toggleOpen}>

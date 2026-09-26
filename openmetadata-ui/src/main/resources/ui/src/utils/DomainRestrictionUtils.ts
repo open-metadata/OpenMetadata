@@ -27,6 +27,30 @@ export const isDomainRestrictedUser = (user?: User): boolean => {
 export const getUserDomainOptions = (user?: User): EntityReference[] =>
   user?.domains ?? [];
 
+/**
+ * A domain is in scope when it *is* an allowed domain or sits beneath one.
+ * Exported so tree-shaped callers (DomainSelect) can apply the same rule to
+ * their own node shape instead of re-implementing the prefix match.
+ */
+export const isDomainFqnAllowed = (
+  fqn: string | undefined,
+  allowedFqns: string[]
+): boolean => {
+  if (!fqn) {
+    return false;
+  }
+
+  return allowedFqns.some(
+    (allowedFqn) => fqn === allowedFqn || fqn.startsWith(`${allowedFqn}.`)
+  );
+};
+
+/** FQNs of the domains a restricted user may use, with blanks dropped. */
+export const toAllowedFqns = (allowed: EntityReference[]): string[] =>
+  allowed
+    .map((domain) => domain.fullyQualifiedName)
+    .filter((fqn): fqn is string => Boolean(fqn));
+
 export const filterDomainsToAllowed = <
   T extends { fullyQualifiedName?: string }
 >(
@@ -37,18 +61,9 @@ export const filterDomainsToAllowed = <
     return [];
   }
 
-  const allowedFqns = allowed
-    .map((domain) => domain.fullyQualifiedName)
-    .filter((fqn): fqn is string => Boolean(fqn));
+  const allowedFqns = toAllowedFqns(allowed);
 
-  return domains.filter((domain) => {
-    const fqn = domain.fullyQualifiedName;
-    if (!fqn) {
-      return false;
-    }
-
-    return allowedFqns.some(
-      (allowedFqn) => fqn === allowedFqn || fqn.startsWith(`${allowedFqn}.`)
-    );
-  });
+  return domains.filter((domain) =>
+    isDomainFqnAllowed(domain.fullyQualifiedName, allowedFqns)
+  );
 };

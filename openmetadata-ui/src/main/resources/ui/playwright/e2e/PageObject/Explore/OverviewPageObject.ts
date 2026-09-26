@@ -93,6 +93,7 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly listItem: Locator;
   private readonly domainTree: Locator;
   private readonly domainTreeNode: Locator;
+  private readonly domainApplyButton: Locator;
   private readonly clearTierButton: Locator;
   private readonly tagsSection: Locator;
   private readonly tierSection: Locator;
@@ -127,8 +128,10 @@ export class OverviewPageObject extends RightPanelBase {
     );
     this.searchBar = this.page.getByTestId('search-bar-container');
     this.tagSearchBar = this.searchBar.getByTestId('tag-select-search-bar');
-    this.domainTree = this.page.getByTestId('domain-selectable-tree');
-    this.domainSearchBar = this.domainTree.getByTestId('searchbar');
+    this.domainTree = this.page.getByTestId('domain-selectable-tree-popover');
+    this.domainSearchBar = this.page.getByTestId(
+      'domain-selectable-tree-search'
+    );
     this.domainList = this.page.locator('.domains-content');
     this.tagListContainer = this.page.locator('.tags-section');
     this.tierListContainer = this.page.getByTestId('cards');
@@ -160,7 +163,12 @@ export class OverviewPageObject extends RightPanelBase {
       'owner-select-teams-search-bar'
     );
     this.listItem = this.page.locator('.selectable-list-item');
-    this.domainTreeNode = this.domainTree.locator('.ant-tree-treenode');
+    this.domainTreeNode = this.domainTree.locator(
+      '[data-testid^="tree-node-"]'
+    );
+    // `update-btn` is shared with SelectableList, DataProductsSelectList and
+    // AsyncSelectList, so it must be scoped to this picker's popover.
+    this.domainApplyButton = this.domainTree.getByTestId('update-btn');
     this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
     this.tierSection = this.container.locator('.tier-section, [class*="tier"]');
@@ -351,9 +359,12 @@ export class OverviewPageObject extends RightPanelBase {
       .isVisible();
 
     if (!alreadyAssigned) {
+      // Settle any page loader and bring the trigger into view before clicking,
+      // so the open click is not swallowed by a re-render on slower panels.
+      await this.loader.waitFor({ state: 'detached' });
+      await this.addDomainIcon.scrollIntoViewIfNeeded();
       await this.addDomainIcon.click();
 
-      await this.loader.waitFor({ state: 'detached' });
       await this.domainSearchBar.waitFor({ state: 'visible' });
       await this.domainSearchBar.scrollIntoViewIfNeeded();
       await this.domainSearchBar.fill(domainName);
@@ -365,6 +376,12 @@ export class OverviewPageObject extends RightPanelBase {
         .waitFor({ state: 'visible' });
       const domainPatchPromise = this.waitForPatchResponse();
       await this.domainTreeNode.filter({ hasText: domainName }).click();
+
+      // Multi-select stages behind Apply; single-select commits on click. Wait
+      // for the button rather than sampling visibility at one instant — the
+      // staged footer renders a frame after the node click.
+      await this.applyStagedDomainSelection();
+
       await domainPatchPromise;
     }
 
@@ -610,10 +627,11 @@ export class OverviewPageObject extends RightPanelBase {
    */
   async removeDomain(domainName: string): Promise<OverviewPageObject> {
     await this.addDomainIcon.waitFor({ state: 'visible' });
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.addDomainIcon.click({ force: true });
+    await this.addDomainIcon.scrollIntoViewIfNeeded();
+    await this.addDomainIcon.click();
 
-    await this.domainTree.waitFor({ state: 'visible' });
+    await this.loader.waitFor({ state: 'detached' });
+    await this.domainSearchBar.waitFor({ state: 'visible' });
 
     const searchDomainPromise = this.page.waitForResponse(
       (response) =>
@@ -629,8 +647,28 @@ export class OverviewPageObject extends RightPanelBase {
 
     await domainItem.click();
 
+    await this.applyStagedDomainSelection();
+
     await patchPromise;
     return this;
+  }
+
+  /**
+   * Commit a domain selection. Multi-select stages behind an Apply button;
+   * single-select commits on the node click and closes the popover, leaving no
+   * Apply to press.
+   *
+   * `update-btn` is shared with SelectableList, DataProductsSelectList and
+   * AsyncSelectList, so it is scoped to this picker's popover — an unscoped
+   * lookup can match another widget's button. Racing the two outcomes instead
+   * of sampling visibility was tried and reverted: it let the Apply branch win
+   * against an already-committed single-select, which swallowed the PATCH the
+   * caller is waiting on.
+   */
+  private async applyStagedDomainSelection() {
+    if (await this.domainApplyButton.isVisible()) {
+      await this.domainApplyButton.click();
+    }
   }
 
   // ============ DELETED ENTITY VERIFICATION METHODS ============

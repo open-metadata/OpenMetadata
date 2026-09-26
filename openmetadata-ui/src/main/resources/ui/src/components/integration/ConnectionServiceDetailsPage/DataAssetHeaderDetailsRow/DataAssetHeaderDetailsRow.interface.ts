@@ -24,8 +24,9 @@ export interface DataAssetHeaderDetailsRowProps {
   /** Optional inline control rendered in the meta row (e.g. the dashboard visibility control) */
   visibilitySlot?: ReactNode;
   hasEditPermission?: boolean;
+  /** `undefined` arrives when a single-select domain is cleared. */
   onUpdateDomain?: (
-    domain: EntityReference | EntityReference[]
+    domain: EntityReference | EntityReference[] | undefined
   ) => Promise<void>;
   onUpdateOwners?: (owners?: EntityReference[]) => Promise<void>;
   onUpdateTier?: (tier?: Tag) => Promise<void>;

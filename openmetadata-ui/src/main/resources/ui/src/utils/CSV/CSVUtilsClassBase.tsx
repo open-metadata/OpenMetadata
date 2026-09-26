@@ -2501,7 +2501,6 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
         getPopupContainer={() => document.body}
         popoverProps={{ open: true }}
         selectedDomain={domains}
-        wrapInButton={false}
         onUpdate={(domain) => handleChange(domain as EntityReference[])}>
         <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
       </DomainSelectableList>

@@ -41,7 +41,7 @@ import {
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -395,7 +395,7 @@ const Users = ({
               updateUserDetails={updateUserDetails}
               userData={userData}
             />
-            <DomainLabelNew
+            <DomainLabel
               multiple
               domains={userData?.domains ?? []}
               entityFqn={userData.fullyQualifiedName ?? ''}
@@ -404,6 +404,7 @@ const Users = ({
               hasPermission={Boolean(isAdminUser) && !userData.deleted}
               textClassName="text-sm text-grey-muted"
               userData={userData}
+              variant="profile-card"
             />
             <UserProfileTeams
               isDeletedUser={userData.deleted}

@@ -65,6 +65,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import DomainTags from '../../../components/common/DomainTags/DomainTags';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -853,13 +854,10 @@ const MetricListPage = () => {
       )}
       {visibleColumns.includes('domains') && (
         <Table.Cell>
-          {renderTagBadges(
-            (metric.domains ?? []).map((domain) => ({
-              tagFQN: domain.fullyQualifiedName ?? domain.id,
-              name:
-                domain.displayName ?? domain.name ?? domain.fullyQualifiedName,
-              source: TagSource.Classification,
-            }))
+          {metric.domains?.length ? (
+            <DomainTags domains={metric.domains} maxVisible={2} />
+          ) : (
+            <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
           )}
         </Table.Cell>
       )}

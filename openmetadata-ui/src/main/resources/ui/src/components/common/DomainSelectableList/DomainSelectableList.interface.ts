@@ -10,9 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
+
+/**
+ * Minimal controlled-open contract for the picker popover. Replaces the antd
+ * `PopoverProps` the legacy Ant Design version accepted; the ui-core TreeSelect
+ * auto-places its own dropdown, so only open state is configurable.
+ */
+export interface DomainSelectablePopoverProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
 
 export interface DomainSelectableListProps {
   children?: ReactNode;
@@ -21,12 +30,22 @@ export interface DomainSelectableListProps {
   hasPermission: boolean;
   multiple?: boolean;
   onCancel?: () => void;
-  onUpdate: (domain: EntityReference | EntityReference[]) => Promise<void>;
-  popoverProps?: PopoverProps;
+  /**
+   * `undefined` arrives when a single-select value is cleared, so callers must
+   * handle it rather than PATCHing `[undefined]`.
+   */
+  onUpdate: (
+    domain: EntityReference | EntityReference[] | undefined
+  ) => Promise<void>;
+  popoverProps?: DomainSelectablePopoverProps;
   restrictedDomains?: EntityReference[];
   selectedDomain?: EntityReference | EntityReference[];
   showAllDomains?: boolean;
-  wrapInButton?: boolean;
-  overlayClassName?: string;
   isClearable?: boolean;
+  /** Applied to the ui-core TreeSelect trigger wrapper — e.g. `tw:w-full` to
+   * let a full-width custom trigger fill its container. */
+  className?: string;
+  /** Let the custom trigger stretch to its container (full-width cards). */
+  fullWidthTrigger?: boolean;
+  'data-testid'?: string;
 }

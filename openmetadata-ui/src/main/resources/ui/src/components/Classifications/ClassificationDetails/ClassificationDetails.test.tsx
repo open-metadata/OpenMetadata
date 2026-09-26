@@ -264,8 +264,8 @@ jest.mock('../../common/WidgetCard/WidgetCard', () =>
     )
 );
 
-jest.mock('../../DataAssets/DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: jest
+jest.mock('../../common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label">Domain</div>),
 }));

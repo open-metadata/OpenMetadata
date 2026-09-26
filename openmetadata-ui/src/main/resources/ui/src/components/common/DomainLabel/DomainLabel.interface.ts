@@ -34,4 +34,9 @@ export type DomainLabelProps = {
   onUpdate?: (domain: EntityReference | EntityReference[]) => Promise<void>;
   userData?: User;
   headerLayout?: boolean;
+  /**
+   * Chrome around the chips + picker. `default` is the inline/header layout;
+   * `profile-card` is the icon + divider card used on the user profile page.
+   */
+  variant?: 'default' | 'profile-card' | 'widget';
 };

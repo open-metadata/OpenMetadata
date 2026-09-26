@@ -20,28 +20,26 @@ import classNames from 'classnames';
 import React, { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
-import { EntityReference } from '../../../../generated/entity/type';
-import { useDomainStore } from '../../../../hooks/useDomainStore';
-import { getDomainDisplayName } from '../../../../utils/EntityNameUtils';
-import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/type';
+import { useDomainStore } from '../../../hooks/useDomainStore';
+import { getDomainDisplayName } from '../../../utils/EntityNameUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
 const DomainSelectableList = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../../../common/DomainSelectableList/DomainSelectableList.component'
-      )
-  )
+  lazy(() => import('../DomainSelectableList/DomainSelectableList.component'))
 );
 
 export interface DomainScopeControlProps {
   /**
-   * `panel` is the expanded sidebar card (globe + caption + domain name);
-   * `rail` is the collapsed icon-only trigger with a tooltip. Both open the
-   * same menu as the classic navbar domain selector.
+   * `panel` is the expanded AI-sidebar card (globe + caption + domain name);
+   * `rail` is the collapsed icon-only trigger with a tooltip; `landing` is the
+   * pill on the customisable landing-page header. All three open the same menu
+   * and write the same global scope.
    */
-  variant?: 'panel' | 'rail';
+  variant?: 'panel' | 'rail' | 'landing';
+  /** `landing` only — the header renders it inert while not on the home page. */
+  disabled?: boolean;
 }
 
 /**
@@ -50,8 +48,57 @@ export interface DomainScopeControlProps {
  * here changes the app-wide active domain — and, like the navbar, reloads via
  * `navigate(0)` so every domain-scoped view refetches.
  */
+/**
+ * Restricted (single-domain) users cannot switch scope, so there is no menu to
+ * open. Renders a disabled, non-interactive affordance that still explains the
+ * restriction — mirroring the navbar's disabled selector.
+ */
+const RestrictedScopeAffordance = ({
+  isRail,
+  cardClassName,
+  children,
+}: {
+  isRail: boolean;
+  cardClassName: string;
+  children: React.ReactNode;
+}) => {
+  const { t } = useTranslation();
+  const restrictedMessage = t('message.domain-access-restricted');
+
+  if (isRail) {
+    return (
+      <ButtonUtility
+        isDisabled
+        aria-label={t('label.domain-scope')}
+        className="ask-domain-scope__rail-btn"
+        color="tertiary"
+        data-testid="ask-domain-scope-rail"
+        icon={DomainIcon}
+        size="sm"
+        tooltip={restrictedMessage}
+        tooltipPlacement="right"
+      />
+    );
+  }
+
+  return (
+    <Tooltip placement="top" title={restrictedMessage}>
+      <span
+        aria-disabled
+        className={classNames(
+          cardClassName,
+          'tw:cursor-not-allowed tw:opacity-60'
+        )}
+        data-testid="ask-domain-scope-card">
+        {children}
+      </span>
+    </Tooltip>
+  );
+};
+
 const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   variant = 'panel',
+  disabled,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -75,8 +122,11 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   const restrictedDomains = isDomainRestricted ? userDomains : undefined;
 
   const handleUpdate = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      updateActiveDomain(domain as EntityReference);
+    async (domain: EntityReference | EntityReference[] | undefined) => {
+      // `undefined` is the "All Domains" reset row clearing the scope; the
+      // store takes the sentinel rather than a reference in that case.
+      const next = Array.isArray(domain) ? domain[0] : domain;
+      updateActiveDomain(next as EntityReference);
       setIsOpen(false);
       navigate(0);
     },
@@ -121,36 +171,54 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     </>
   );
 
-  // Restricted (single-domain) users cannot switch scope, so there is no menu
-  // to open. Render a disabled, non-interactive affordance that still explains
-  // the restriction — mirroring the navbar's disabled selector.
   if (isSingleDomainUser) {
-    const restrictedMessage = t('message.domain-access-restricted');
+    return (
+      <RestrictedScopeAffordance
+        cardClassName={cardClassName}
+        isRail={variant === 'rail'}>
+        {cardInner}
+      </RestrictedScopeAffordance>
+    );
+  }
 
-    return variant === 'rail' ? (
-      <ButtonUtility
-        isDisabled
-        aria-label={t('label.domain-scope')}
-        className="ask-domain-scope__rail-btn"
-        color="tertiary"
-        data-testid="ask-domain-scope-rail"
-        icon={DomainIcon}
-        size="sm"
-        tooltip={restrictedMessage}
-        tooltipPlacement="right"
-      />
-    ) : (
-      <Tooltip placement="top" title={restrictedMessage}>
-        <span
-          aria-disabled
-          className={classNames(
-            cardClassName,
-            'tw:cursor-not-allowed tw:opacity-60'
-          )}
-          data-testid="ask-domain-scope-card">
-          {cardInner}
+  if (variant === 'landing') {
+    const landingTrigger = (
+      <div
+        className={classNames(
+          'd-flex items-center gap-2 border-radius-sm p-x-md bg-white domain-selector',
+          { 'domain-active': isActiveScope, disabled }
+        )}
+        data-testid="domain-selector"
+        role="button"
+        tabIndex={0}>
+        <DomainIcon
+          className="domain-icon"
+          data-testid="domain-icon"
+          height={22}
+          width={22}
+        />
+        <span className="text-sm font-medium domain-title">
+          {domainDisplayName}
         </span>
-      </Tooltip>
+        <ChevronDown
+          aria-hidden
+          className="dropdown-icon"
+          data-testid="dropdown-icon"
+          height={14}
+          width={14}
+        />
+      </div>
+    );
+
+    return (
+      <DomainSelectableList
+        hasPermission
+        disabled={disabled}
+        selectedDomain={activeDomainEntityRef}
+        showAllDomains={showAllDomains}
+        onUpdate={handleUpdate}>
+        {landingTrigger}
+      </DomainSelectableList>
     );
   }
 
@@ -186,15 +254,15 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   return (
     <DomainSelectableList
       hasPermission
+      className={variant === 'rail' ? undefined : 'tw:w-full'}
+      fullWidthTrigger={variant !== 'rail'}
       popoverProps={{
         open: isOpen,
-        placement: variant === 'rail' ? 'topLeft' : 'topRight',
         onOpenChange: setIsOpen,
       }}
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
       showAllDomains={showAllDomains}
-      wrapInButton={false}
       onCancel={() => setIsOpen(false)}
       onUpdate={handleUpdate}>
       {trigger}
