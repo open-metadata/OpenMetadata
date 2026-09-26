@@ -73,7 +73,6 @@ import {
 import { getEntityMissingMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
-import { getGlossaryCatalogState } from '../../../utils/GlossaryPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -359,16 +358,6 @@ const GlossaryPage = () => {
     }
   }, [isGlossaryActive, glossaryFqn, glossaries, navigate, setActiveGlossary]);
 
-  // Only the empty-catalog signal still comes from here. main now derives
-  // isGlossaryNotFound and isRightPanelLoading from the 404 responses below,
-  // which also keeps a confirmed 404 from sitting in a loading state while the
-  // sidebar paginates -- destructuring them here as well would shadow that.
-  const { isCatalogEmpty } = getGlossaryCatalogState(
-    glossaries,
-    glossaryFqn,
-    isGlossaryActive
-  );
-
   const isTermNotFound = useMemo(
     () =>
       isTermView &&
@@ -611,7 +600,7 @@ const GlossaryPage = () => {
     );
   };
 
-  if (isCatalogEmpty) {
+  if (glossaries.length === 0 && !isLoading) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         <EmptyPlaceholder
