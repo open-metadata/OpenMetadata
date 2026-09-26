@@ -178,7 +178,12 @@ test.describe('Bulk Edit Entity', () => {
   test('Database service', async ({ page }) => {
     test.slow(true);
 
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -317,7 +322,12 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database', async ({ page }) => {
     test.slow(true);
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -474,7 +484,12 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database Schema', async ({ page }) => {
     test.slow(true);
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -641,7 +656,9 @@ test.describe('Bulk Edit Entity', () => {
   test('Table', async ({ page }) => {
     test.slow(true);
 
-    const tableEntity = new TableClass();
+    const tableEntity = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await tableEntity.create(apiContext);
