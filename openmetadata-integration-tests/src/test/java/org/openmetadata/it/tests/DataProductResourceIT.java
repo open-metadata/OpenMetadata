@@ -43,6 +43,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.domains.odps.Details;
+import org.openmetadata.schema.entity.domains.odps.ODPSDataProduct;
+import org.openmetadata.schema.entity.domains.odps.ODPSProduct;
+import org.openmetadata.schema.entity.domains.odps.ODPSProductDetails;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -3953,5 +3957,67 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
                       + "' on table search doc but found "
                       + dpFqns);
             });
+  }
+
+  @Test
+  void importFromODPS_resolvesGlossaryAndClassificationTags(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+    String glossaryTermFqn = shared.GLOSSARY1_TERM1.getFullyQualifiedName();
+    String classificationTagFqn = shared.PERSONAL_DATA_TAG.getFullyQualifiedName();
+
+    String productId = ns.prefix("odps_dp");
+    String odpsBody =
+        JsonUtils.pojoToJson(
+            buildOdpsDoc(productId, "[DEV] " + productId, glossaryTermFqn, classificationTagFqn));
+
+    DataProduct imported =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/dataProducts/odps?domain=" + domain.getFullyQualifiedName(),
+                odpsBody,
+                DataProduct.class,
+                RequestOptions.builder().header("Content-Type", "application/json").build());
+
+    DataProduct fetched = getEntityWithFields(imported.getId().toString(), "tags");
+    assertNotNull(fetched.getTags(), "ODPS tags should be attached");
+    assertEquals(2, fetched.getTags().size(), "both ODPS tags should be attached");
+    assertEquals(
+        TagLabel.TagSource.GLOSSARY,
+        sourceOf(fetched, glossaryTermFqn),
+        "a glossary-term FQN must attach as a GLOSSARY label, not fail as a missing classification tag");
+    assertEquals(
+        TagLabel.TagSource.CLASSIFICATION,
+        sourceOf(fetched, classificationTagFqn),
+        "a classification-tag FQN must stay a CLASSIFICATION label");
+  }
+
+  private TagLabel.TagSource sourceOf(DataProduct dataProduct, String tagFqn) {
+    return dataProduct.getTags().stream()
+        .filter(tag -> tagFqn.equals(tag.getTagFQN()))
+        .map(TagLabel::getSource)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Tag not found on data product: " + tagFqn));
+  }
+
+  private ODPSDataProduct buildOdpsDoc(String productId, String name, String... tagFqns) {
+    ODPSProductDetails details = new ODPSProductDetails();
+    details.setName(name);
+    details.setProductID(productId);
+    details.setDescription("Imported from ODPS");
+    details.setTags(List.of(tagFqns));
+
+    Details detailsByLang = new Details();
+    detailsByLang.setAdditionalProperty("en", details);
+
+    ODPSProduct product = new ODPSProduct();
+    product.setDetails(detailsByLang);
+
+    ODPSDataProduct odps = new ODPSDataProduct();
+    odps.setVersion(ODPSDataProduct.OdpsApiVersion._4_1);
+    odps.setProduct(product);
+    return odps;
   }
 }
