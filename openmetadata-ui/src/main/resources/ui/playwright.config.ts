@@ -295,16 +295,12 @@ export default defineConfig({
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
-        // Every SSO/login/auth-config spec runs under the `sso-auth`
-        // project (fullyParallel:false, workers:1) so their backend
-        // `authenticationConfiguration` mutations via
-        // applyProviderConfig can't race feature specs in this
-        // project. Every entry below must have a matching row on
-        // `sso-auth.testMatch`.
+        // Every SSO/login/auth-config spec lives under /Auth/** and
+        // runs under the `sso-auth` project (fullyParallel:false,
+        // workers:1) so its backend `authenticationConfiguration`
+        // mutations via applyProviderConfig can't race feature
+        // specs here.
         '**/Auth/**',
-        '**/Features/SSOTestLogin.spec.ts',
-        '**/Pages/Login.spec.ts',
-        '**/Pages/LoginConfiguration.spec.ts',
         '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
@@ -351,19 +347,20 @@ export default defineConfig({
       // specs listed here plus the new parametrized SsoScenarios file
       // that runs 9 flows against every SsoProviderFixture in the matrix.
       name: 'sso-auth',
-      // Every auth/login-related spec runs here, not on main lane.
-      // The `chromium` and `Basic` projects testIgnore these paths so
-      // the mid-run backend `authenticationConfiguration` mutations
-      // this suite performs can't race feature specs.
-      testMatch: [
-        '**/SsoScenarios.spec.ts',
-        '**/OktaSelfSignupClaims.spec.ts',
-        '**/SSOSelfSignup.spec.ts',
-        '**/SSOSessionLimit.spec.ts',
-        '**/Features/SSOTestLogin.spec.ts',
-        '**/Pages/Login.spec.ts',
-        '**/Pages/LoginConfiguration.spec.ts',
-      ],
+      // Every auth/login-related spec lives under /Auth/**. The
+      // `chromium` and `Basic` projects testIgnore that same tree,
+      // so the mid-run backend `authenticationConfiguration`
+      // mutations this suite performs can't race feature specs.
+      testMatch: ['**/Auth/**/*.spec.ts'],
+      // Login.spec.ts and LoginConfiguration.spec.ts read
+      // `playwright/.auth/admin.json` (written by auth.setup.ts) via
+      // test.use({storageState}), so the setup project must run
+      // before this one. Per-provider SsoScenarios legs that mutate
+      // the backend still work — auth.setup.ts runs BEFORE the
+      // scenario's beforeAll swaps the provider, and the Basic-only
+      // moved specs run only on the Basic leg where the setup's
+      // admin session stays valid.
+      dependencies: authDependencies,
       use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
@@ -456,16 +453,7 @@ export default defineConfig({
       // (fullyParallel:false, workers:1) own auth-config mutations
       // exclusively, mirroring the same guard the primary `chromium`
       // project already has on its testIgnore.
-      testIgnore: [
-        ...dedicatedStateTestIgnore,
-        '**/Auth/**',
-        // Same rationale as chromium.testIgnore: SSO/login/auth-config
-        // specs own backend authenticationConfiguration mutations and
-        // must run only under the `sso-auth` project.
-        '**/Features/SSOTestLogin.spec.ts',
-        '**/Pages/Login.spec.ts',
-        '**/Pages/LoginConfiguration.spec.ts',
-      ],
+      testIgnore: [...dedicatedStateTestIgnore, '**/Auth/**'],
       use: { ...devices['Desktop Chrome'] },
       dependencies: entityDependencies,
       fullyParallel: true,
