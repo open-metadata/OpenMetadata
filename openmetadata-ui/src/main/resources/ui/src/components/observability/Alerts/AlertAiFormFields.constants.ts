@@ -49,11 +49,13 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
     'tw:overflow-hidden tw:rounded-lg tw:bg-primary tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
   customTemplateFields: 'tw:flex tw:flex-col tw:gap-3',
   customTemplateInfoBanner:
-    'tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3',
+    'tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-3',
   customTemplateFieldError: 'tw:mt-1 tw:text-sm tw:text-error-primary',
-  customTemplateSubjectFooter: 'tw:mt-1 tw:text-sm tw:text-gray-500',
+  customTemplateSubjectFooter: 'tw:mt-1 tw:text-sm tw:text-quaternary',
   descriptionTextArea: 'tw:min-h-[140px]',
   destinationAlert: 'tw:px-4',
+  // Stays bg-primary: on bg-surface the core Toggle off-track (bg-tertiary) is the
+  // same colour in dark and the Notify Downstream toggle vanishes (core fix: collate issue 6549).
   destinationCard:
     'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-4 tw:py-3',
   downstreamDepthField: 'tw:w-1/2 tw:pr-1.5',
@@ -73,7 +75,7 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   sectionRoot: 'tw:gap-1.5',
   teamUserHint: 'tw:mt-1 tw:text-sm tw:text-fg-error-secondary',
   teamUserSelectDropdown:
-    'tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-2 tw:shadow-lg',
+    'tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:p-2 tw:shadow-lg',
   teamUserSelectEmptyText: 'tw:p-2 tw:text-center tw:text-tertiary',
   teamUserSelectOptionButton:
     'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-start tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:text-left tw:hover:bg-secondary',

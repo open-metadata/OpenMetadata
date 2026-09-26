@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -81,7 +82,8 @@ export class Domain extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/domains/name/${encodeURIComponent(
         this.responseData?.fullyQualifiedName ?? this.data.name
       )}?recursive=true&hardDelete=true`
@@ -105,7 +107,6 @@ export class Domain extends EntityClass {
         },
       })
     );
-
     this.responseData = await okJson(response, 'Domain.patch');
 
     return {

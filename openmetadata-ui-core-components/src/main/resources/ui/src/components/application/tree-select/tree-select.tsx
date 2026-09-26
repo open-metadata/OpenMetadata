@@ -237,6 +237,7 @@ export const TreeSelect = <T = unknown,>({
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
+  offset,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
@@ -261,6 +262,8 @@ export const TreeSelect = <T = unknown,>({
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef<typeof value>(undefined);
+  // Armed until a focus event consumes it; a timed reset loses the race and reopens.
+  const skipNextFocusOpen = useRef(false);
   // What was expanded before a search took over, restored when it clears.
   const preSearchExpandedRef = useRef<Set<Key> | null>(null);
   // Parents already opened for this search, so a later result never reopens one.
@@ -444,13 +447,14 @@ export const TreeSelect = <T = unknown,>({
       }
 
       let nodeForSelection = node;
+      // Rendered state, not membership: a parent checked via descendants deselects.
+      const { isFullySelected } = getNodeSelectionState(
+        getDescendantSelection(node),
+        isNodeSelected(node.id)
+      );
 
-      if (
-        cascadeSelection &&
-        multiple &&
-        !isNodeSelected(node.id) &&
-        node.isLeaf !== true
-      ) {
+      // Both directions: a branch selected while collapsed keeps children out of the tree.
+      if (cascadeSelection && multiple && node.isLeaf !== true) {
         try {
           nodeForSelection = await loadAllDescendants(node);
         } catch {
@@ -459,10 +463,12 @@ export const TreeSelect = <T = unknown,>({
         }
       }
 
-      toggleNodeSelection(nodeForSelection, parentNode);
+      toggleNodeSelection(nodeForSelection, parentNode, isFullySelected);
       // Staged single-select waits for Apply, so the dropdown stays open.
       if (!multiple && !isStaged) {
         clearSearch();
+        // The pick returns focus to the trigger; reopening would hide the value.
+        skipNextFocusOpen.current = true;
         setOpen(false);
       }
     },
@@ -473,6 +479,7 @@ export const TreeSelect = <T = unknown,>({
       clearSearch,
       cascadeSelection,
       isNodeSelected,
+      getDescendantSelection,
       loadAllDescendants,
       isStaged,
       setOpen,
@@ -612,11 +619,6 @@ export const TreeSelect = <T = unknown,>({
       setOpen(true);
     }
   };
-
-  // Dismissing hands focus back to the trigger, whose onFocus would reopen it.
-  // The restore arrives a frame or more later, so the flag has to stay armed
-  // until a focus event consumes it — a timed reset loses the race and reopens.
-  const skipNextFocusOpen = useRef(false);
 
   const openOnFocus = () => {
     if (skipNextFocusOpen.current) {
@@ -890,6 +892,7 @@ export const TreeSelect = <T = unknown,>({
       // Stops a dismissable ancestor reading clicks here as outside ones.
       data-react-aria-top-layer="true"
       isOpen={isOpen}
+      offset={offset}
       placement={placement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}

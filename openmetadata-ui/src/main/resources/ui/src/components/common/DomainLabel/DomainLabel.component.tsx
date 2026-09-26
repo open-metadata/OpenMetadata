@@ -42,6 +42,7 @@ export const DomainLabel = ({
   entityFqn,
   entityId,
   textClassName,
+  labelClassName,
   showDomainHeading = false,
   multiple = false,
   headerLayout = false,
@@ -182,9 +183,10 @@ export const DomainLabel = ({
             ) : (
               <Typography
                 as="span"
-                className="domain-link m-r-xss tw:text-secondary"
-                size="text-sm"
-                weight="medium">
+                className={classNames(
+                  'domain-link right-panel-label m-r-xss',
+                  labelClassName
+                )}>
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
@@ -208,9 +210,10 @@ export const DomainLabel = ({
             data-testid="header-domain-container">
             <Typography
               as="span"
-              className="domain-link m-r-xss tw:text-secondary"
-              size="text-sm"
-              weight="medium">
+              className={classNames(
+                'domain-link right-panel-label m-r-xss',
+                labelClassName
+              )}>
               {t('label.domain-plural')}
             </Typography>
             {selectableList}
@@ -225,7 +228,7 @@ export const DomainLabel = ({
         </div>
       </div>
     );
-  }, [activeDomain, hasPermission, selectableList]);
+  }, [activeDomain, hasPermission, selectableList, labelClassName]);
 
   return label;
 };

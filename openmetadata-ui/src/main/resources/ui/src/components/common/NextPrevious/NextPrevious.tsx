@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Button as CoreButton } from '@openmetadata/ui-core-components';
 import { Button, Dropdown } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
@@ -27,6 +28,18 @@ import {
 import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
+
+// Reproduces the legacy antd text-button metrics (40px tall, 15px inline
+// padding, 1px transparent border that antd drops when disabled, 25%-black
+// disabled text); dark mode falls back to core's disabled token. The icon
+// negative margins keep the arrows on the same pixel row as the antd icons.
+const PAGINATION_BUTTON_CLASS = [
+  'tw:h-10 tw:gap-2 tw:border tw:border-transparent tw:px-[15px] tw:py-2',
+  'tw:font-semibold tw:text-utility-gray-500',
+  'tw:hover:bg-black/2 tw:hover:text-utility-gray-500',
+  'tw:disabled:border-0 tw:disabled:bg-transparent tw:disabled:text-black/25',
+  'tw:dark:disabled:text-fg-disabled',
+].join(' ');
 
 const NextPrevious: FC<NextPreviousProps> = ({
   className,
@@ -98,32 +111,33 @@ const NextPrevious: FC<NextPreviousProps> = ({
       )}
       data-testid="pagination"
       role="navigation">
-      <Button
-        className="pagination-button hover-button"
+      <CoreButton
+        noTextPadding
+        className={PAGINATION_BUTTON_CLASS}
+        color="tertiary"
         data-testid="previous"
-        disabled={computePrevDisableState() || isLoading}
-        icon={
-          <Icon
-            className="pagination-prev-icon"
-            component={ArrowRightOutlined}
-          />
+        iconLeading={
+          <ArrowRightOutlined className="tw:-mt-px tw:size-3 tw:shrink-0 tw:rotate-180" />
         }
-        type="text"
-        onClick={onPreviousHandler}>
-        <span>{t('label.previous')}</span>
-      </Button>
+        isDisabled={computePrevDisableState() || isLoading}
+        onPress={onPreviousHandler}>
+        {t('label.previous')}
+      </CoreButton>
       <span className="pagination-indicator" data-testid="page-indicator">{`${t(
         'label.page'
       )} ${currentPage} ${t('label.of')} ${displayTotalPages} `}</span>
-      <Button
-        className="pagination-button hover-button"
+      <CoreButton
+        noTextPadding
+        className={PAGINATION_BUTTON_CLASS}
+        color="tertiary"
         data-testid="next"
-        disabled={computeNextDisableState() || isLoading}
-        type="text"
-        onClick={onNextHandler}>
-        <span> {t('label.next')}</span>
-        <Icon className="pagination-next-icon" component={ArrowRightOutlined} />
-      </Button>
+        iconTrailing={
+          <ArrowRightOutlined className="tw:-mt-0.5 tw:size-3 tw:shrink-0" />
+        }
+        isDisabled={computeNextDisableState() || isLoading}
+        onPress={onNextHandler}>
+        {t('label.next')}
+      </CoreButton>
       {onShowSizeChange && (
         <Dropdown
           disabled={isLoading}

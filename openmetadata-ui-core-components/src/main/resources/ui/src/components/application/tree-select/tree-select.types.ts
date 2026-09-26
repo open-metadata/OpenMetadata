@@ -143,6 +143,8 @@ export interface TreeSelectProps<T = unknown> {
   showSelectAll?: boolean;
   /** @default 'immediate' */
   commitMode?: TreeSelectCommitMode;
+  /** Gap between trigger and dropdown, in px. @default 8 */
+  offset?: number;
   /** Controls the dropdown; omit to let the component own its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
