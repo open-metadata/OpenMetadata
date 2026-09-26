@@ -11,26 +11,9 @@
  *  limitations under the License.
  */
 /**
- * EndEvent.
+ * Catalog column realizing an ontology property. Contains identities, never sample values.
  */
-export interface EndEvent {
-    /**
-     * Description of the Node.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this Node.
-     */
-    displayName?: string;
-    /**
-     * Name that identifies this Node.
-     */
-    name?:    string;
-    subType?: string;
-    /**
-     * Whether reaching this event cancels every other active execution in the workflow instance.
-     */
-    terminateAll?: boolean;
-    type?:         string;
-    [property: string]: any;
+export interface OntologySourceColumn {
+    columnFqn: string;
+    tableFqn:  string;
 }

@@ -82,9 +82,14 @@ const baseAgent: Agent = {
   finishedAt: '1m ago',
 };
 
-const renderCard = (agent: Agent, permissions?: AgentActionPermissions) =>
+const renderCard = (
+  agent: Agent,
+  permissions?: AgentActionPermissions,
+  additionalAction?: React.ReactNode
+) =>
   render(
     <AgentCard
+      additionalAction={additionalAction}
       agent={agent}
       permissions={permissions}
       onAction={mockOnAction}
@@ -205,6 +210,17 @@ describe('AgentCard', () => {
     expect(mockAgentOverflowMenu).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: false })
     );
+  });
+
+  it('should render a caller-provided action with the standard card actions', () => {
+    renderCard(
+      baseAgent,
+      undefined,
+      <button data-testid="additional-action">Review</button>
+    );
+
+    expect(screen.getByTestId('additional-action')).toBeInTheDocument();
+    expect(screen.getByTestId('logs-button')).toBeInTheDocument();
   });
 
   it('should show the paused badge instead of the status zone for a paused agent', () => {

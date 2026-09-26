@@ -160,6 +160,7 @@ export const AGENT_TYPE_ICON: Record<string, SvgComponent> = {
   Tier: LayersThree01,
   Documentation: BookClosed,
   'Data Quality': Shield01,
+  Ontology: LayersThree01,
 };
 
 export const AGENT_TYPE_LABEL_KEY: Record<string, string> = {
@@ -172,6 +173,7 @@ export const AGENT_TYPE_LABEL_KEY: Record<string, string> = {
   Tier: 'label.tier',
   Documentation: 'label.documentation',
   'Data Quality': 'label.data-quality',
+  Ontology: 'label.ontology',
 };
 
 export const getAgentTypeLabelKey = (type: string): string =>

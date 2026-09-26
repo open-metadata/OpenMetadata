@@ -58,6 +58,7 @@ import ProgressBar from './shared/ProgressBar.component';
 import StatusPill from './shared/StatusPill.component';
 
 interface AgentCardProps {
+  additionalAction?: ReactNode;
   agent: Agent;
   allowedActions?: string[];
   permissions?: AgentActionPermissions;
@@ -335,6 +336,7 @@ const AgentAlerts: FC<AgentAlertsProps> = ({ agent, t }) => {
 };
 
 interface AgentActionsBlockProps {
+  additionalAction?: ReactNode;
   agent: Agent;
   allowedActions?: string[];
   isFailed: boolean;
@@ -352,6 +354,7 @@ interface AgentActionsBlockProps {
  * tables, so it stays available while the pipeline service does not answer.
  */
 const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
+  additionalAction,
   agent,
   allowedActions,
   isFailed,
@@ -391,6 +394,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
         </span>
       ) : (
         <>
+          {additionalAction}
           {!isFailed && (
             <Button
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
@@ -430,6 +434,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
 };
 
 const AgentCard: FC<AgentCardProps> = ({
+  additionalAction,
   agent,
   allowedActions,
   permissions = NO_AGENT_PERMISSIONS,
@@ -472,6 +477,7 @@ const AgentCard: FC<AgentCardProps> = ({
         />
         <AgentAlerts agent={agent} t={t} />
         <AgentActionsBlock
+          additionalAction={additionalAction}
           agent={agent}
           allowedActions={allowedActions}
           isFailed={isFailed}

@@ -44,6 +44,10 @@
     },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "discoveryContext": {
+      "description": "Immutable source evidence and run attribution for an automatically discovered draft.",
+      "$ref": "../../type/ontologyDiscoveryContext.json"
     }
   },
   "required": ["name", "displayName", "description", "glossaries"],

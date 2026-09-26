@@ -54,6 +54,10 @@ export interface OntologyAttribute {
      */
     name: string;
     /**
+     * Reviewed column-to-property mappings from ontology discovery.
+     */
+    sourceColumns?: OntologySourceColumn[];
+    /**
      * Optional unit IRI or display symbol.
      */
     unit?: string;
@@ -120,4 +124,12 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Catalog column realizing an ontology property. Contains identities, never sample values.
+ */
+export interface OntologySourceColumn {
+    columnFqn: string;
+    tableFqn:  string;
 }

@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
@@ -41,10 +42,13 @@ import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateOntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyChangeOperation;
+import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.utils.ResultList;
@@ -53,6 +57,7 @@ import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy;
@@ -60,6 +65,7 @@ import org.openmetadata.service.ontology.OntologyEditLockService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -87,6 +93,7 @@ public class OntologyChangeSetResource
             repository,
             (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM),
             (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM),
+            (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE),
             clock);
     lockService =
         new OntologyEditLockService(Entity.getJdbi(), clock, new OntologyEditLeasePolicy());
@@ -203,11 +210,61 @@ public class OntologyChangeSetResource
       @Valid final ApplyOntologyChangeSet request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
     authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_ALL);
+    authorizeRelationshipTypeCreations(securityContext, changeSet);
+    authorizeAssetBindings(securityContext, changeSet);
     requireLease(id, request.getLease(), securityContext);
     final PutResponse<OntologyChangeSet> response =
         applicationService.apply(uriInfo, id, user(securityContext));
     releaseAppliedLease(response.getEntity(), request.getLease(), securityContext);
     return response.toResponse();
+  }
+
+  private void authorizeRelationshipTypeCreations(
+      final SecurityContext securityContext, final OntologyChangeSet changeSet) {
+    activeOperations(changeSet).stream()
+        .filter(
+            operation ->
+                operation.getOperationType()
+                    == OntologyChangeOperationType.CREATE_RELATIONSHIP_TYPE)
+        .map(operation -> operation.getRelationshipType())
+        .forEach(
+            relationshipType ->
+                authorizer.authorize(
+                    securityContext,
+                    new OperationContext(Entity.RELATIONSHIP_TYPE, MetadataOperation.CREATE),
+                    new CreateResourceContext<RelationshipType>(
+                        Entity.RELATIONSHIP_TYPE, relationshipType)));
+  }
+
+  private void authorizeAssetBindings(
+      final SecurityContext securityContext, final OntologyChangeSet changeSet) {
+    final List<EntityReference> assets = permissionAssetsForBindings(changeSet);
+    if (!assets.isEmpty()) {
+      authorizeBulkAssetsPermission(securityContext, assets, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    }
+  }
+
+  static List<EntityReference> permissionAssetsForBindings(final OntologyChangeSet changeSet) {
+    return activeOperations(changeSet).stream()
+        .filter(
+            operation ->
+                operation.getOperationType() == OntologyChangeOperationType.BIND_ASSET
+                    || operation.getOperationType() == OntologyChangeOperationType.UNBIND_ASSET)
+        .map(operation -> operation.getAssetBinding().getAsset())
+        .map(OntologyChangeSetResource::permissionAsset)
+        .toList();
+  }
+
+  private static EntityReference permissionAsset(final EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? new EntityReference()
+            .withType(Entity.TABLE)
+            .withFullyQualifiedName(asset.getFullyQualifiedName())
+        : asset;
+  }
+
+  private static List<OntologyChangeOperation> activeOperations(final OntologyChangeSet changeSet) {
+    return changeSet.getOperations().subList(0, changeSet.getUndoCursor());
   }
 
   @POST
