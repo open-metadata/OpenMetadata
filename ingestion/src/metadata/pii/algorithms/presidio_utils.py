@@ -49,11 +49,11 @@ from metadata.generated.schema.type.classificationLanguages import (
 )
 from metadata.pii.algorithms import patterns, presidio_constants
 from metadata.pii.constants import (
-    LANGUAGE_MODEL_MAPPING,
     PRESIDIO_LOGGER,
     SPACY_EN_MODEL,
     SUPPORTED_LANG,
 )
+from metadata.pii.model_registry import example_language_for_model, get_model_for_language
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
 
@@ -103,16 +103,12 @@ def load_nlp_engine(
         model_name = model_name or SPACY_EN_MODEL
         supported_language = supported_language or SUPPORTED_LANG
 
-    _load_spacy_model(model_name)
+    _load_spacy_model(model_name, classification_language)
     model = {
         "lang_code": supported_language,
         "model_name": model_name,
     }
     return SpacyNlpEngine(models=[model])
-
-
-def get_model_for_language(language: ClassificationLanguage) -> str:
-    return LANGUAGE_MODEL_MAPPING[language]
 
 
 def build_analyzer_engine(
@@ -126,7 +122,11 @@ def build_analyzer_engine(
     model_name = get_model_for_language(language)
     supported_language = language.value
 
-    nlp_engine = load_nlp_engine(model_name=model_name, supported_language=supported_language)
+    nlp_engine = load_nlp_engine(
+        model_name=model_name,
+        supported_language=supported_language,
+        classification_language=language,
+    )
     recognizer_registry = RecognizerRegistry(
         recognizers=list(_get_all_pattern_recognizers()),
         supported_languages=[supported_language],
@@ -145,7 +145,10 @@ def set_presidio_logger_level(log_level: int | str = logging.ERROR) -> None:
     logging.getLogger(PRESIDIO_LOGGER).setLevel(log_level)
 
 
-def _load_spacy_model(model_name: str) -> None:
+def _load_spacy_model(
+    model_name: str,
+    classification_language: ClassificationLanguage | None = None,
+) -> None:
     """
     Load the spaCy model for the given language.
     If the model is not found locally, it will be downloaded.
@@ -154,7 +157,20 @@ def _load_spacy_model(model_name: str) -> None:
     try:
         _ = spacy.load(model_name)
     except OSError:
-        logger.warning(f"Downloading {model_name} language model for the spaCy")
+        language = classification_language.value if classification_language else example_language_for_model(model_name)
+        guidance = f"metadata install-classification-models --languages {language}" if language else None
+        if guidance:
+            logger.warning(
+                "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
+                model_name,
+                guidance,
+            )
+        else:
+            logger.warning(
+                "Downloading %s language model for spaCy. Install this model manually before an offline run; "
+                "run `metadata install-classification-models --help` for supported mapped models.",
+                model_name,
+            )
         download(model_name)
         _ = spacy.load(model_name)
 

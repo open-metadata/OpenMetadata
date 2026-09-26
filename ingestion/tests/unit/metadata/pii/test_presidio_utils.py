@@ -21,6 +21,7 @@ from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
 from metadata.pii.algorithms.presidio_utils import (
+    _load_spacy_model,
     build_analyzer_engine,
     load_nlp_engine,
 )
@@ -39,11 +40,40 @@ class TestSpacyModelLoading:
 
         result = load_nlp_engine(SPACY_EN_MODEL, SUPPORTED_LANG)
 
-        mock_load_spacy.assert_called_once_with(SPACY_EN_MODEL)
+        mock_load_spacy.assert_called_once_with(SPACY_EN_MODEL, None)
         mock_nlp_engine_cls.assert_called_once_with(
             models=[{"lang_code": SUPPORTED_LANG, "model_name": SPACY_EN_MODEL}]
         )
         assert result == mock_engine
+
+    @patch("metadata.pii.algorithms.presidio_utils.download")
+    @patch("metadata.pii.algorithms.presidio_utils.spacy.load")
+    def test_missing_model_warns_with_language_provisioning_command(self, mock_spacy_load, mock_download, caplog):
+        mock_spacy_load.side_effect = [OSError("not installed"), Mock()]
+
+        _load_spacy_model("es_core_news_md", ClassificationLanguage.es)
+
+        mock_download.assert_called_once_with("es_core_news_md")
+        assert "metadata install-classification-models --languages es" in caplog.text
+
+    @patch("metadata.pii.algorithms.presidio_utils.download")
+    @patch("metadata.pii.algorithms.presidio_utils.spacy.load")
+    def test_available_model_does_not_download_or_warn(self, mock_spacy_load, mock_download, caplog):
+        _load_spacy_model("en_core_web_md", ClassificationLanguage.en)
+
+        mock_download.assert_not_called()
+        assert "install-classification-models" not in caplog.text
+
+    @patch("metadata.pii.algorithms.presidio_utils.download")
+    @patch("metadata.pii.algorithms.presidio_utils.spacy.load")
+    def test_unknown_model_warns_with_manual_install_guidance(self, mock_spacy_load, mock_download, caplog):
+        mock_spacy_load.side_effect = [OSError("not installed"), Mock()]
+
+        _load_spacy_model("en_core_web_sm")
+
+        mock_download.assert_called_once_with("en_core_web_sm")
+        assert "Install this model manually" in caplog.text
+        assert "--languages <language>" not in caplog.text
 
 
 class TestAnalyzerEngine:
@@ -74,7 +104,11 @@ class TestAnalyzerEngine:
         result = build_analyzer_engine(ClassificationLanguage.en)
 
         # Verify NLP engine was loaded
-        mock_load_nlp.assert_called_once_with(model_name="en_core_web_md", supported_language=SUPPORTED_LANG)
+        mock_load_nlp.assert_called_once_with(
+            model_name="en_core_web_md",
+            supported_language=SUPPORTED_LANG,
+            classification_language=ClassificationLanguage.en,
+        )
 
         # Verify analyzer engine was created
         mock_engine_cls.assert_called_once_with(
@@ -100,4 +134,8 @@ class TestAnalyzerEngine:
 
             result = build_analyzer_engine()  # noqa: F841
 
-            mock_load_nlp.assert_called_once_with(model_name=SPACY_EN_MODEL, supported_language=SUPPORTED_LANG)
+            mock_load_nlp.assert_called_once_with(
+                model_name=SPACY_EN_MODEL,
+                supported_language=SUPPORTED_LANG,
+                classification_language=ClassificationLanguage.en,
+            )
