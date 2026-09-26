@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { ChevronDown } from '@untitledui/icons';
-import classNames from 'classnames';
 import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 import {
   fqnsToGlossaryTags,
@@ -24,7 +23,6 @@ import {
   chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 import DqSearchFilterChip from './DqSearchFilterChip';
 
@@ -71,9 +69,7 @@ const DqFilterChip = ({
           onOpenChange(false);
         }}>
         <button
-          className={classNames(chipTriggerClassName, {
-            [chipTriggerSelectedClassName]: filter.selectedOwnerKeys.length > 0,
-          })}
+          className={chipTriggerClassName}
           data-testid={`search-dropdown-${filter.key}`}
           type="button">
           {filter.label}
@@ -84,11 +80,7 @@ const DqFilterChip = ({
               {filter.selectedOwnerKeys.length}
             </span>
           )}
-          <ChevronDown
-            className={chipChevronClassName(
-              filter.selectedOwnerKeys.length > 0
-            )}
-          />
+          <ChevronDown className={chipChevronClassName} />
         </button>
       </UserTeamSelectableList>
     );
