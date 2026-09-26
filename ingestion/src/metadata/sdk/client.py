@@ -27,11 +27,14 @@ class OpenMetadata:
 
         # Convert boolean verify_ssl to enum
         if not config.verify_ssl:
-            verify_ssl = VerifySSL.no_ssl
+            # User opted out of verification → pass verify=False to requests
+            verify_ssl = VerifySSL.ignore
         elif config.ca_bundle:
+            # User wants verification against a specific CA bundle
             verify_ssl = VerifySSL.validate
         else:
-            verify_ssl = VerifySSL.ignore
+            # User wants verification using the system CA store (requests default)
+            verify_ssl = VerifySSL.no_ssl
 
         # Create OpenMetadataConnection from config
         ssl_config = config.to_ssl_config()
