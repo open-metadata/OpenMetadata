@@ -137,7 +137,9 @@ export class LineagePageObject extends RightPanelBase {
   async navigateToFullLineage(): Promise<LineagePageObject> {
     await this.upstreamLineageLink.waitFor({ state: 'visible' });
     await this.upstreamLineageLink.click();
-    await this.page.waitForURL(/.*\/lineage$/);
+    await this.page.waitForURL(/.*\/lineage$/, {
+      waitUntil: 'domcontentloaded',
+    });
     return this;
   }
 

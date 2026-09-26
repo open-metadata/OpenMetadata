@@ -103,7 +103,9 @@ test.describe('Profiler Configuration Page', () => {
       ).toHaveText(/Data Type is required/);
 
       await adminPage.click('[data-testid="cancel-button"]');
-      await adminPage.waitForURL('**/settings/preferences');
+      await adminPage.waitForURL('**/settings/preferences', {
+        waitUntil: 'domcontentloaded',
+      });
     });
 
     /**

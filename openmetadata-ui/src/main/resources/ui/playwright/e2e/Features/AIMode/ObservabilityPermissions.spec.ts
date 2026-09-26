@@ -17,6 +17,7 @@ import { RolesClass } from '../../../support/access-control/RolesClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { setupUserWithPolicy } from '../../../utils/permission';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import {
   expandAiSubPanel,
   redirectToAiModeHomePage,
@@ -61,10 +62,11 @@ const test = base.extend<{ viewOnlyPage: Page }>({
       //
       // Hoisted above `login()`, which is the navigation that boots the app and
       // issues the fetch; a listener registered afterwards would miss it.
-      const permissionsResolved = page.waitForResponse(
+      const permissionsResolved = waitForResponseWithStatus(
+        page,
         (response) =>
-          new URL(response.url()).pathname.endsWith('/api/v1/permissions') &&
-          response.ok()
+          new URL(response.url()).pathname.endsWith('/api/v1/permissions'),
+        'ok'
       );
 
       // Log in BEFORE seeding AI mode — enableAiAppMode installs an init

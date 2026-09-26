@@ -42,6 +42,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 let adminUser: UserClass;
 
@@ -170,9 +171,12 @@ test.describe('Entity Version pages', () => {
       const setupVersionText = `v${Number.parseFloat(
         String(setupPatchVersion)
       ).toFixed(1)}`;
-      const versionDetailResponse = page.waitForResponse(
+      const versionDetailResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
@@ -240,10 +244,12 @@ test.describe('Entity Version pages', () => {
         const ownerVersionText = `v${Number.parseFloat(
           String(ownerPatchVersion)
         ).toFixed(1)}`;
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/versions/${ownerPatchVersion}`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/versions/${ownerPatchVersion}`),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -324,10 +330,12 @@ test.describe('Entity Version pages', () => {
         const tierVersionText = `v${Number.parseFloat(
           String(tierPatchVersion)
         ).toFixed(1)}`;
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/versions/${tierPatchVersion}`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/versions/${tierPatchVersion}`),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -377,10 +385,12 @@ test.describe('Entity Version pages', () => {
 
         // Soft-delete is UI-only — no patch response to read the version from,
         // so match any version URL and select the first (latest) panel entry.
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            /\/versions\/\d+\.\d+/.test(response.url()) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            /\/versions\/\d+\.\d+/.test(response.url()),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -488,9 +498,12 @@ test.describe('Entity Version pages', () => {
 
       await freshTable.visitEntityPage(page);
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;
@@ -499,9 +512,12 @@ test.describe('Entity Version pages', () => {
         .locator('[data-testid="version-selector-v0.1"]')
         .waitFor({ state: 'visible' });
 
-      const versionDetailResponse = page.waitForResponse(
+      const versionDetailResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions/0.1') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions/0.1'),
+        200
       );
       await page.locator('[data-testid="version-selector-v0.1"]').click();
       await versionDetailResponse;
@@ -567,9 +583,12 @@ test.describe('Entity Version pages', () => {
         '\\$&'
       );
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;
@@ -591,9 +610,12 @@ test.describe('Entity Version pages', () => {
         '\\$&'
       );
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;
@@ -615,9 +637,12 @@ test.describe('Entity Version pages', () => {
         '\\$&'
       );
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;

@@ -145,7 +145,9 @@ const openIncidentManager = async (
     })
   );
 
-  await page.goto(`/incident-manager?lng=${locale}`);
+  await page.goto(`/incident-manager?lng=${locale}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
   await expect(page.getByTestId(INCIDENT_TABLE_TEST_ID)).toBeVisible();
   await expect(

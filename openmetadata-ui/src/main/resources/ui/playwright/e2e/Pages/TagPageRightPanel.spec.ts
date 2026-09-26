@@ -170,7 +170,8 @@ test.describe('Tag Page Assets - Right Panel', () => {
   }) => {
     test.slow();
     await adminPage.goto(
-      `/tag/${encodeURIComponent(testTag.responseData.fullyQualifiedName)}`
+      `/tag/${encodeURIComponent(testTag.responseData.fullyQualifiedName)}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     const panelLocator = adminPage.locator('.entity-summary-panel-container');

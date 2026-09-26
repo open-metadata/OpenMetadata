@@ -244,7 +244,7 @@ test.describe('Glossary Term Details Operations', () => {
           glossaryTerm1.data.name
         )}*`
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadRes;
 
       await expect(page.getByTestId(relatedTermName)).toHaveCount(2);

@@ -92,7 +92,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -116,7 +117,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -140,7 +142,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -163,7 +166,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -187,7 +191,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -211,7 +216,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -248,7 +254,7 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('confirm-button').click();
     await softDelete;
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 

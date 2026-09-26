@@ -69,7 +69,9 @@ const waitForGlossaryTerms = async (
         );
 
         if (!response.ok()) {
-          return [];
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const data = (await response.json()) as GlossaryTermsResponse;

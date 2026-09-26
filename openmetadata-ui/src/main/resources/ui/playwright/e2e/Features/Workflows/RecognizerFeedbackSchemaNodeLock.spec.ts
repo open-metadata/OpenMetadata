@@ -50,7 +50,8 @@ async function navigateToSeededWorkflowDetailPage(page: Page) {
   );
 
   await page.goto(
-    `/workflows/${encodeURIComponent(SEEDED_WORKFLOW_NAME)}/workflow`
+    `/workflows/${encodeURIComponent(SEEDED_WORKFLOW_NAME)}/workflow`,
+    { waitUntil: 'domcontentloaded' }
   );
   await detailResponse;
   await waitForAllLoadersToDisappear(page);

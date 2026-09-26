@@ -30,6 +30,7 @@ import {
   createAdminApiContext,
 } from '../../utils/admin';
 import { toastNotification, uuid } from '../../utils/common';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const TASK_FORM_SETTINGS_ROUTE = '/settings/governance/task-forms';
 
@@ -47,7 +48,9 @@ test.describe.serial('Task Form Settings', () => {
     page,
   }) => {
     await authenticateAdminPage(page);
-    await page.goto(TASK_FORM_SETTINGS_ROUTE);
+    await page.goto(TASK_FORM_SETTINGS_ROUTE, {
+      waitUntil: 'domcontentloaded',
+    });
 
     await expect(page.getByTestId('task-form-settings-page')).toBeVisible();
     await page.getByTestId('task-form-list-item-TagSuggestion').click();
@@ -76,7 +79,9 @@ test.describe.serial('Task Form Settings', () => {
           response.request().method() === 'GET'
       );
 
-      await page.goto(TASK_FORM_SETTINGS_ROUTE);
+      await page.goto(TASK_FORM_SETTINGS_ROUTE, {
+        waitUntil: 'domcontentloaded',
+      });
       await listResponse;
 
       await expect(page.getByTestId('task-form-settings-page')).toBeVisible();
@@ -113,11 +118,12 @@ test.describe.serial('Task Form Settings', () => {
       await page.getByTestId('task-form-stage-id-0').fill('open');
       await selectAntOption(page, 'task-form-stage-status-0', 'Open');
 
-      const createResponse = page.waitForResponse(
+      const createResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/taskFormSchemas') &&
-          response.request().method() === 'POST' &&
-          response.ok()
+          response.request().method() === 'POST',
+        'ok'
       );
 
       await page.getByTestId('task-form-save-button').click();
@@ -145,11 +151,12 @@ test.describe.serial('Task Form Settings', () => {
         schemaName
       );
 
-      const updateResponse = page.waitForResponse(
+      const updateResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/taskFormSchemas') &&
-          response.request().method() === 'PUT' &&
-          response.ok()
+          response.request().method() === 'PUT',
+        'ok'
       );
 
       await page
@@ -169,7 +176,7 @@ test.describe.serial('Task Form Settings', () => {
           response.request().method() === 'GET'
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadResponse;
 
       await page.getByTestId(`task-form-list-item-${schemaName}`).click();

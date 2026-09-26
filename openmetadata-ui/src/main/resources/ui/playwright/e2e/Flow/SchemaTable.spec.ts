@@ -211,7 +211,7 @@ test('Copy column link should have valid URL format', async ({ page }) => {
       url.searchParams.get('fields') === 'tags,customMetrics,extension,profile'
     );
   });
-  await page.goto(clipboardText);
+  await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
   const columnGetResponse = await columnGetResponsePromise;
 
   expect(columnGetResponse.status()).toBe(200);
@@ -274,7 +274,7 @@ test('Copy nested column link should include full hierarchical path', async ({
             response.url().includes('/api/v1/columns/name/') &&
             response.request().method() === 'GET'
         ),
-        page.goto(clipboardText),
+        page.goto(clipboardText, { waitUntil: 'domcontentloaded' }),
       ]);
       await waitForAllLoadersToDisappear(page);
 

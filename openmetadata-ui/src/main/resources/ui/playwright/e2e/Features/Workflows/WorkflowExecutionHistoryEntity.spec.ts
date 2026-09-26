@@ -118,7 +118,9 @@ async function openExecutionHistory(page: Page, workflowName: string) {
     }
   );
 
-  await page.goto(`/workflows/${encodeURIComponent(workflowName)}/workflow`);
+  await page.goto(`/workflows/${encodeURIComponent(workflowName)}/workflow`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId('workflow-execution-history').click();

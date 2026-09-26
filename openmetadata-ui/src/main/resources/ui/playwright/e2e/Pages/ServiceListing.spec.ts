@@ -25,6 +25,7 @@ import { SearchIndexServiceClass } from '../../support/entity/service/SearchInde
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -118,22 +119,59 @@ test.describe('Service Listing', () => {
   });
 
   test('should render the service listing page', async ({ page }) => {
-    const searchService1Response = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=databaseService&*'
-    );
+    const serviceTypes = [
+      databaseService1.entity.serviceType,
+      databaseService2.entity.serviceType,
+    ];
+    const waitForFilteredServices = (
+      selectedTypes: string[],
+      searchTerm = ''
+    ) =>
+      waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          const filter = url.searchParams.get('query_filter') ?? '';
+
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('index') === 'databaseService' &&
+            serviceTypes.every(
+              (type) =>
+                filter.includes(JSON.stringify({ serviceType: type })) ===
+                selectedTypes.includes(type)
+            ) &&
+            (searchTerm
+              ? filter.includes(
+                  JSON.stringify({ 'name.keyword': `*${searchTerm}*` })
+                )
+              : !filter.includes('"wildcard":'))
+          );
+        },
+        200
+      );
+
+    const searchService1Response = waitForFilteredServices([
+      databaseService1.entity.serviceType,
+    ]);
     await toggleServiceTypeFilter(page, databaseService1.entity.serviceType);
     await searchService1Response;
 
+    const bothServicesResponse = waitForFilteredServices(serviceTypes);
     await toggleServiceTypeFilter(page, databaseService2.entity.serviceType);
-    const searchService2Response = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=databaseService&*'
+    await bothServicesResponse;
+    const searchService2Response = waitForFilteredServices(
+      serviceTypes,
+      databaseService2.entity.name
     );
 
     await page.getByTestId('searchbar').fill(databaseService2.entity.name);
     await searchService2Response;
 
-    const searchService2Response2 = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=databaseService&*'
+    const searchService2Response2 = waitForFilteredServices(
+      [databaseService2.entity.serviceType],
+      databaseService2.entity.name
     );
     await toggleServiceTypeFilter(page, databaseService1.entity.serviceType);
     await searchService2Response2;

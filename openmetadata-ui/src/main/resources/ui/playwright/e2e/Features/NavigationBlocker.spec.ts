@@ -89,7 +89,9 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Navigation blocker modal should appear
-    await expect(adminPage.locator('.ant-modal')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).toBeVisible();
     await expect(
       adminPage.locator(
         '.unsaved-changes-modal-title:has-text("Unsaved changes")'
@@ -103,7 +105,9 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(
       adminPage.locator('button:has-text("Save changes")')
     ).toBeVisible();
-    await expect(adminPage.locator('button:has-text("Discard")')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal-discard')
+    ).toBeVisible();
   });
 
   test('should confirm navigation when "Save changes" is clicked', async ({
@@ -127,7 +131,9 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Modal should appear
-    await expect(adminPage.locator('.ant-modal')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).toBeVisible();
 
     // Click "Save changes" button (should save changes and then navigate)
     const saveResponse = adminPage.waitForResponse('api/v1/docStore*');
@@ -137,10 +143,12 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await saveResponse;
 
     // Modal should disappear and navigate to settings
-    await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).not.toBeVisible();
 
     // Should navigate to the settings page
-    expect(adminPage.url()).toContain('settings');
+    await expect(adminPage).toHaveURL(/settings/);
 
     // Verify changes were saved by going back to customize page
     await navigateToCustomizeLandingPage(adminPage, {
@@ -181,18 +189,22 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Modal should appear
-    await expect(adminPage.locator('.ant-modal')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).toBeVisible();
 
     // Click "Discard" button (acts as "Leave")
-    await adminPage.locator('button:has-text("Discard")').click();
+    await adminPage.getByTestId('unsaved-changes-modal-discard').click();
 
     // Modal should disappear
-    await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).not.toBeVisible();
 
     // Should navigate to the settings page
 
     // Verify URL changed from customize page
-    expect(adminPage.url()).not.toBe(originalUrl);
+    await expect(adminPage).not.toHaveURL(originalUrl);
     expect(adminPage.url()).toContain('settings');
   });
 
@@ -247,7 +259,9 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     expect(adminPage.url()).toContain('settings');
 
     // Modal should not appear
-    await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).not.toBeVisible();
   });
 
   test('should stay on current page and keep changes when X button is clicked', async ({
@@ -273,13 +287,17 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .click();
 
     // Modal should appear
-    await expect(adminPage.locator('.ant-modal')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).toBeVisible();
 
     // Click X button to close modal
     await adminPage.locator('.ant-modal-close-x').click();
 
     // Modal should disappear
-    await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal').getByRole('dialog')
+    ).not.toBeVisible();
 
     // Should remain on the same page with unsaved changes
     expect(adminPage.url()).toBe(originalUrl);

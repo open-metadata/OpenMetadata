@@ -103,7 +103,7 @@ const reloadAndAwaitUser = async (page: Page) => {
   const loggedInUserResponse = page.waitForResponse(
     '/api/v1/users/loggedInUser*'
   );
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await loggedInUserResponse;
   await waitForAllLoadersToDisappear(page);
 };

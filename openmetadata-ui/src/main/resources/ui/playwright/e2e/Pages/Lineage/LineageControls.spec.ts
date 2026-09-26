@@ -96,7 +96,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ page }) => {
-  await page.goto('about:blank');
+  await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
 });
 
 // ====================

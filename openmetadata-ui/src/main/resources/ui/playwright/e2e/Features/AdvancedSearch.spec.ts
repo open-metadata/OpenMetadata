@@ -38,6 +38,7 @@ import {
   showAdvancedSearchDialog,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
+import { settleAll } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -70,7 +71,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    await Promise.allSettled([
+    await settleAll([
       table1.create(apiContext),
       table2.create(apiContext),
       topic1.create(apiContext),
