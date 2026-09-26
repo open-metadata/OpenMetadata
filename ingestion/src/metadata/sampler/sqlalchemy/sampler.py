@@ -25,6 +25,7 @@ from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     TableData,
 )
@@ -203,19 +204,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             with self.session_factory() as client:
                 query = client.query(self.raw_dataset)
                 query = self.get_partitioned_query(query)
-                row_count = query.count()
-            if row_count == 0:
-                logger.warning(
-                    "Partition filter on table '%s' returned 0 rows. "
-                    "The partition window (interval=%s %s) may not cover the table's most-recent data. "
-                    "Override the profiler partition config for this table to widen the window. "
-                    "See https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/"
-                    "profiler/workflow#4.-updating-profiler-setting-at-the-table-level",
-                    getattr(self.raw_dataset, "__tablename__", "unknown"),
-                    getattr(self.partition_details, "partitionInterval", "?"),
-                    getattr(self.partition_details, "partitionIntervalUnit", "?"),
-                )
-            return row_count
+                return query.count()
 
         with self.session_factory() as session:
             runner = QueryRunner(
@@ -357,10 +346,44 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     value = self._process_array_value(value)
                 processed_row.append(self._truncate_cell(value))
             processed_rows.append(processed_row)
+        if self.partition_details and not sqa_sample:
+            self._warn_empty_partition()
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=processed_rows,
         )
+
+    def _warn_empty_partition(self) -> None:
+        """Warn when a partition filter yields an empty sample, so a silently
+        unexamined table is not reported the same as one examined and found clean
+        (issue #33084). Wording is tailored to the partition type."""
+        table_name = getattr(self.raw_dataset, "__tablename__", "unknown")
+        interval_type = getattr(self.partition_details, "partitionIntervalType", None)
+        if interval_type in (
+            PartitionIntervalTypes.TIME_UNIT,
+            PartitionIntervalTypes.INGESTION_TIME,
+        ):
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "The partition window (interval=%s %s) may not cover the table's most-recent data. "
+                "Override the profiler partition config for this table to widen the window. "
+                "See https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/"
+                "profiler/workflow#4.-updating-profiler-setting-at-the-table-level",
+                table_name,
+                self.partition_details.partitionInterval,
+                getattr(
+                    self.partition_details.partitionIntervalUnit,
+                    "value",
+                    self.partition_details.partitionIntervalUnit,
+                ),
+            )
+        else:
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "Verify the partition config (type=%s) matches the table's data.",
+                table_name,
+                interval_type,
+            )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
