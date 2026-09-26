@@ -346,13 +346,7 @@ test.describe('Bulk Edit Entity', () => {
       const databaseResponse = page.waitForResponse(
         `/api/v1/databases/name/*${table.database.name}?**`
       );
-      // Scope to the databases table cell — the shared-DB header link
-      // also carries this testid, so a bare getByTestId matches both
-      // and fails strict mode under SharedInfra.
-      await page
-        .getByTestId('column-display-name')
-        .getByTestId(table.database.name)
-        .click();
+      await page.getByTestId(table.database.name).click();
       await databaseResponse;
 
       await page.click('[data-testid="bulk-edit-table"]');
@@ -508,20 +502,12 @@ test.describe('Bulk Edit Entity', () => {
       const databaseResponse = page.waitForResponse(
         `/api/v1/databases/name/*${table.database.name}?**`
       );
-      // Scope to the databases table cell — same reason as the Database
-      // test's fix above.
-      await page
-        .getByTestId('column-display-name')
-        .getByTestId(table.database.name)
-        .click();
+      await page.getByTestId(table.database.name).click();
       await databaseResponse;
       const databaseSchemaResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*${table.schema.name}?*`
       );
-      await page
-        .getByTestId('column-display-name')
-        .getByTestId(table.schema.name)
-        .click();
+      await page.getByTestId(table.schema.name).click();
       await databaseSchemaResponse;
 
       await page.click('[data-testid="bulk-edit-table"]');
@@ -590,15 +576,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId('column-name').filter({ hasText: table.entity.name })
       ).toHaveText(`${table.entity.name}${tableDetails1.displayName}`);
 
-      // Under SharedInfra the schema lists other workers' tables too, so the
-      // bare `td .om-block-editor` locator hits multiple cells. Scope by the
-      // just-edited table's row.
-      await expect(
-        page
-          .locator('tr')
-          .filter({ hasText: table.entity.name })
-          .locator(descriptionBoxReadOnly)
-      ).toContainText('Playwright Table description');
+      await expect(page.locator(`td ${descriptionBoxReadOnly}`)).toContainText(
+        'Playwright Table description'
+      );
 
       // Go to Table Page
       await page

@@ -925,17 +925,26 @@ test.describe('Lineage Filters', () => {
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
     await searchSelect.click();
-    await page
-      .getByTestId('lineage-search')
-      .getByRole('combobox')
-      .fill(topicName);
 
-    // LineageSearchSelect filters a pre-loaded options list client-side
-    // (no /search/query fired on keystroke — see
-    // LineageSearchSelect.tsx:177 filterOptions). Wait for the specific
-    // option to appear rather than a network response.
+    // LineageSearchSelect resets its allOptions state whenever the
+    // lineage `nodes` prop changes (LineageSearchSelect.tsx:133 useEffect).
+    // Under SharedInfra load the graph re-renders a few times after
+    // initial mount as async data settles, so a single fill can filter
+    // a stale allOptions and drop our target. Poll: refill, wait for
+    // option to appear, retry if the state was reset.
+    const combobox = page.getByTestId('lineage-search').getByRole('combobox');
     const option = page.getByTestId(`option-${topicFqn}`);
-    await option.waitFor({ state: 'visible' });
+    await expect
+      .poll(
+        async () => {
+          await combobox.fill('');
+          await combobox.fill(topicName);
+
+          return option.isVisible();
+        },
+        { timeout: 45_000, intervals: [1_500, 2_500, 5_000] }
+      )
+      .toBe(true);
     await option.click();
 
     await page.locator('.lineage-entity-panel').waitFor();
