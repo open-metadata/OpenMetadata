@@ -19,6 +19,7 @@ import {
   Button,
   ButtonUtility,
   Card,
+  Checkbox,
   Dialog,
   FileUploadDropZone,
   Modal,
@@ -60,6 +61,10 @@ import {
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
+import ODCSImportReport from '../../data-contract/ODCSImportReport/ODCSImportReport';
+import { ImportStatus } from '../../data-contract/ODCSImportReport/ODCSImportReport.types';
+import { getImportStatus } from '../../data-contract/ODCSImportReport/ODCSImportReport.utils';
+import ODCSImportSummary from '../../data-contract/ODCSImportSummary/ODCSImportSummary';
 import {
   ContractImportModalProps,
   ImportMode,
@@ -87,6 +92,18 @@ const getIsImportDisabled = (
     hasValidationErrors ||
     (hasMultipleObjects && !selectedObjectName)
   );
+};
+
+// The import report needs room for rule names and messages next to the status card.
+const getDialogWidth = (
+  yamlContent: string | null,
+  hasImportReport: boolean
+): number => {
+  if (!yamlContent) {
+    return 680;
+  }
+
+  return hasImportReport ? 1040 : 900;
 };
 
 const getModalTitle = (isODCSFormat: boolean, t: TFunction): string =>
@@ -199,6 +216,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
   const [schemaObjects, setSchemaObjects] = useState<string[]>([]);
   const [selectedObjectName, setSelectedObjectName] = useState<string>('');
   const [hasMultipleObjects, setHasMultipleObjects] = useState(false);
+  const [createTestCases, setCreateTestCases] = useState(true);
 
   const isODCSFormat = format === 'odcs';
 
@@ -218,6 +236,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       return;
     }
 
+    let isLatestRun = true;
+
     const runValidation = async () => {
       setIsValidating(true);
       setServerValidationError(null);
@@ -228,25 +248,38 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             yamlContent,
             entityId,
             entityType,
-            selectedObjectName || undefined
+            selectedObjectName || undefined,
+            createTestCases
           );
         } else {
           // OM format validation
           validation = await validateContractYaml(yamlContent);
         }
-        setServerValidation(validation);
+        if (isLatestRun) {
+          setServerValidation(validation);
+        }
       } catch (err) {
-        const error = err as AxiosError<{ message?: string }>;
-        const message =
-          error.response?.data?.message ?? error.message ?? String(err);
-        setServerValidationError(message);
-        setServerValidation(null);
+        if (isLatestRun) {
+          const error = err as AxiosError<{ message?: string }>;
+          const message =
+            error.response?.data?.message ?? error.message ?? String(err);
+          setServerValidationError(message);
+          setServerValidation(null);
+        }
       } finally {
-        setIsValidating(false);
+        if (isLatestRun) {
+          setIsValidating(false);
+        }
       }
     };
 
     runValidation();
+
+    // A slower answer to an earlier run must not replace the report for what is selected now.
+    return () => {
+      isLatestRun = false;
+      setIsValidating(false);
+    };
   }, [
     yamlContent,
     isODCSFormat,
@@ -255,7 +288,12 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     parseError,
     hasMultipleObjects,
     selectedObjectName,
+    createTestCases,
   ]);
+
+  const odcsReport = isODCSFormat
+    ? serverValidation?.odcsImportReport
+    : undefined;
 
   const hasValidationErrors = useMemo(() => {
     if (serverValidationError) {
@@ -448,7 +486,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         entityId,
         entityType,
         importMode,
-        selectedObjectName || undefined
+        selectedObjectName || undefined,
+        createTestCases
       );
     }
 
@@ -456,7 +495,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       yamlContent,
       entityId,
       entityType,
-      selectedObjectName || undefined
+      selectedObjectName || undefined,
+      createTestCases
     );
   }, [
     yamlContent,
@@ -465,6 +505,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     entityId,
     entityType,
     selectedObjectName,
+    createTestCases,
   ]);
 
   const handleOpenMetadataImport =
@@ -511,6 +552,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     setSchemaObjects([]);
     setSelectedObjectName('');
     setHasMultipleObjects(false);
+    setCreateTestCases(true);
     onClose();
   }, [onClose]);
 
@@ -558,6 +600,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     setSchemaObjects([]);
     setSelectedObjectName('');
     setHasMultipleObjects(false);
+    setCreateTestCases(true);
   }, []);
 
   const handleImportModeChange = useCallback((value: string) => {
@@ -1083,6 +1126,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       return renderServerValidationErrorPanel();
     }
 
+    if (odcsReport) {
+      return <ODCSImportSummary report={odcsReport} />;
+    }
+
     if (hasFailedSchemaValidation(serverValidation)) {
       return renderSchemaValidationFailedPanel();
     }
@@ -1103,6 +1150,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     renderSchemaValidationFailedPanel,
     renderEntityValidationErrorPanel,
     renderValidationSuccessPanel,
+    odcsReport,
   ]);
 
   const renderImportOptions = useCallback(() => {
@@ -1183,6 +1231,38 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     );
   }, [hasExistingContract, importMode, handleImportModeChange, t]);
 
+  const renderOdcsImportReport = useCallback(() => {
+    if (!odcsReport) {
+      return null;
+    }
+
+    // The server reports canCreateTestCases=false both for a caller without permission and when
+    // createTestCases was off, so it only means "no permission" while the box is ticked. The box
+    // stays enabled so the user can clear it, as the blocking issue asks.
+    const lacksTestCasePermission =
+      createTestCases && odcsReport.canCreateTestCases === false;
+
+    return (
+      <div className="tw:mt-4" data-testid="odcs-import-report-section">
+        {(odcsReport.qualityRules ?? []).length > 0 && (
+          <Checkbox
+            data-testid="create-test-cases-checkbox"
+            hint={
+              lacksTestCasePermission
+                ? t('message.no-permission-to-create-test-cases')
+                : t('message.create-test-cases-from-quality-rules-hint')
+            }
+            isDisabled={isValidating}
+            isSelected={createTestCases}
+            label={t('label.create-test-cases-from-quality-rules')}
+            onChange={setCreateTestCases}
+          />
+        )}
+        <ODCSImportReport report={odcsReport} />
+      </div>
+    );
+  }, [odcsReport, createTestCases, isValidating, t]);
+
   const renderObjectSelector = useCallback(() => {
     if (!isODCSFormat || schemaObjects.length <= 1) {
       return null;
@@ -1250,7 +1330,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <Dialog
           data-testid="import-contract-modal"
           showCloseButton={!isLoading}
-          width={yamlContent ? 900 : 680}
+          width={getDialogWidth(yamlContent, Boolean(odcsReport))}
           onClose={handleReset}>
           <Dialog.Header>
             <Typography
@@ -1308,6 +1388,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                     {renderObjectSelector()}
                     {renderContractPreview()}
                     {renderImportOptions()}
+                    {renderOdcsImportReport()}
                   </>
                 ) : (
                   <FileUploadDropZone
@@ -1346,7 +1427,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 isDisabled={isImportDisabled || isLoading}
                 isLoading={isLoading || isValidating}
                 onClick={handleImport}>
-                {t('label.import')}
+                {getImportStatus(odcsReport) ===
+                  ImportStatus.ReadyWithWarnings && odcsReport
+                  ? t('label.import-with-warnings')
+                  : t('label.import')}
               </Button>
             </Box>
           </Dialog.Footer>
