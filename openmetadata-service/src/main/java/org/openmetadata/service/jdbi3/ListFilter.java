@@ -790,7 +790,13 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
+    // A selected domain's fqnHash widens the id set to its sub-domains (fqnHash = self OR
+    // "self.%"), so a parent pick includes descendants; without a hash, exact ids only.
+    String domainFqnHash = getQueryParam("domainFqnHash");
+    String domainInClause =
+        nullOrEmpty(domainFqnHash)
+            ? buildIndexedBindParams("domainId", domainId.replace("'", ""))
+            : buildDomainSubtreeIdSubquery(domainFqnHash);
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
       return String.format(
@@ -803,6 +809,13 @@ public class ListFilter extends Filter<ListFilter> {
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainInClause);
+  }
+
+  /** Ids of the domain with {@code fqnHash} plus every domain nested under it. */
+  private String buildDomainSubtreeIdSubquery(String fqnHash) {
+    queryParams.put("domainFqnHash", fqnHash);
+    queryParams.put("domainFqnHashPrefix", fqnHash + Entity.SEPARATOR + "%");
+    return "SELECT id FROM domain_entity WHERE fqnHash = :domainFqnHash OR fqnHash LIKE :domainFqnHashPrefix";
   }
 
   private String getDomainSelfCondition(String tableName) {

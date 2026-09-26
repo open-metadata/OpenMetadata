@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,5 +38,13 @@ class DomainNavFilterTest {
   void shouldNotApply_whenNoDomainSelected() {
     assertFalse(DomainNavFilter.shouldApply(Entity.TABLE, true, false, null));
     assertFalse(DomainNavFilter.shouldApply(Entity.TABLE, true, false, ""));
+  }
+
+  @Test
+  void apply_stampsSelectedDomainHashForDescendantMatching() {
+    ListFilter filter = new ListFilter();
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha");
+    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+    assertEquals("hAlpha", filter.getQueryParams().get("domainFqnHash"));
   }
 }

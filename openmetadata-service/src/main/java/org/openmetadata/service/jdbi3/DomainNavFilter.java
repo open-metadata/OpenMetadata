@@ -45,12 +45,23 @@ public final class DomainNavFilter {
         && !DomainFilterExclusions.isExcluded(entityType);
   }
 
-  /** Stamps {@code selectedDomainIds} onto {@code filter} when {@link #shouldApply} allows it. */
+  /**
+   * Stamps the selection onto {@code filter} when {@link #shouldApply} allows it. {@code
+   * selectedDomainFqnHash} lets the list also match assets in the selected domain's sub-domains
+   * (a parent pick includes its descendants); pass null to match the exact domain only.
+   */
   public static void apply(
-      ListFilter filter, String entityType, boolean supportsDomains, String selectedDomainIds) {
+      ListFilter filter,
+      String entityType,
+      boolean supportsDomains,
+      String selectedDomainIds,
+      String selectedDomainFqnHash) {
     boolean hasExplicitDomain = filter.getQueryParams().get("domainId") != null;
     if (shouldApply(entityType, supportsDomains, hasExplicitDomain, selectedDomainIds)) {
       filter.addQueryParam("domainId", selectedDomainIds);
+      if (!nullOrEmpty(selectedDomainFqnHash)) {
+        filter.addQueryParam("domainFqnHash", selectedDomainFqnHash);
+      }
       if (filter.getQueryParams().get("entityType") == null) {
         filter.addQueryParam("entityType", entityType);
       }

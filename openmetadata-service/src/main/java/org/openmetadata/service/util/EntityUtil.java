@@ -1118,7 +1118,10 @@ public final class EntityUtil {
         filter,
         entityType,
         supportsDomains(entityType),
-        selected == null ? null : selected.getId().toString());
+        selected == null ? null : selected.getId().toString(),
+        selected == null || nullOrEmpty(selected.getFullyQualifiedName())
+            ? null
+            : FullyQualifiedName.buildHash(selected.getFullyQualifiedName()));
   }
 
   private static boolean supportsDomains(String entityType) {
