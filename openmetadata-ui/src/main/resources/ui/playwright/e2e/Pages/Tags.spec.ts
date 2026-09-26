@@ -538,16 +538,16 @@ test('Search tag using classification display name should work', async ({
 
   await table.visitEntityPage(page);
 
-  const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
-
   const displayNameTrigger = page
     .getByTestId('KnowledgePanel.Tags')
     .getByTestId('tags-container')
     .getByTestId('add-tag')
     .first();
 
+  // No wait on an "initial" tag query: the picker's TreeSelect fetches on
+  // mount, during page load, and opening it sends nothing. The helper waits
+  // for the search input, which is the picker's ready signal.
   await openClassificationTagPicker(page, displayNameTrigger);
-  await initialQueryResponse;
 
   const tagSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
