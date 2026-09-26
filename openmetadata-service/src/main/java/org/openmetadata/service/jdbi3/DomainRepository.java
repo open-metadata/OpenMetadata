@@ -557,6 +557,8 @@ public class DomainRepository extends EntityRepository<Domain> {
         DomainHardDeleteContext context = domainHardDeleteSubtree.get();
         domainHardDeleteSubtree.remove();
         reindexDetachedDataProducts(context);
+        ((UserRepository) Entity.getEntityRepository(Entity.USER))
+            .clearDefaultDomainReferences(context.deletingDomainIds);
       }
     }
   }

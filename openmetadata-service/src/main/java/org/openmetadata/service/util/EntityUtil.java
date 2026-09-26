@@ -1113,7 +1113,7 @@ public final class EntityUtil {
     }
     // Global (navbar) domain filter: a view preference that narrows lists to the selected domain
     // and never restricts access, so it applies to admins too.
-    EntityReference selected = subjectContext.getDefaultDomain();
+    EntityReference selected = resolveSelectedDomain(subjectContext.getDefaultDomain());
     DomainNavFilter.apply(
         filter,
         entityType,
@@ -1122,6 +1122,22 @@ public final class EntityUtil {
         selected == null || nullOrEmpty(selected.getFullyQualifiedName())
             ? null
             : FullyQualifiedName.buildHash(selected.getFullyQualifiedName()));
+  }
+
+  /**
+   * A persisted selection may outlive its domain (e.g. the domain was deleted after the pick). A
+   * stale reference must fall back to "no selection" rather than scope lists to a domain that no
+   * longer exists, which would return nothing.
+   */
+  private static EntityReference resolveSelectedDomain(EntityReference selected) {
+    if (selected == null) {
+      return null;
+    }
+    try {
+      return Entity.getEntityReferenceById(Entity.DOMAIN, selected.getId(), NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
   }
 
   private static boolean supportsDomains(String entityType) {

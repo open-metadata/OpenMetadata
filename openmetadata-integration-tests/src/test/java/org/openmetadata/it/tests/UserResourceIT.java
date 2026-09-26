@@ -582,6 +582,34 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_deletingSelectedDomainDoesNotEmptyLists(TestNamespace ns) {
+    // A user whose navbar pick is later deleted must fall back to "no selection", not to
+    // lists scoped to a domain that no longer exists (which would come back empty).
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("doomed"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("will be deleted"));
+    User user = createEntity(createMinimalRequest(ns));
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchEntity(user.getId().toString(), user);
+    assertNotNull(getEntity(user.getId().toString()).getDefaultDomain());
+
+    SdkClients.adminClient()
+        .domains()
+        .delete(
+            domain.getId().toString(), java.util.Map.of("hardDelete", "true", "recursive", "true"));
+
+    // The stale selection is cleared on read; listing as this user is unfiltered again.
+    assertNull(
+        getEntity(user.getId().toString()).getDefaultDomain(),
+        "a deleted domain must not linger as the user's selection");
+  }
+
+  @Test
   void test_updateUserProfile(TestNamespace ns) {
 
     // Create user without profile

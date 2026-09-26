@@ -21,6 +21,7 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -38,6 +39,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -253,6 +255,26 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
+  }
+
+  /**
+   * Drops the persisted navbar selection of every user pointing at one of {@code domainIds} — a
+   * deleted domain must not linger as a selection, or that user's lists would scope to nothing.
+   * Evicts the cached subject so the change is visible on the next request.
+   */
+  public void clearDefaultDomainReferences(Collection<UUID> domainIds) {
+    for (UUID domainId : domainIds) {
+      for (String userId :
+          daoCollection.userDAO().listUserIdsByDefaultDomain(domainId.toString())) {
+        User user = get(null, UUID.fromString(userId), getFields("defaultDomain"), ALL, false);
+        if (user.getDefaultDomain() == null) {
+          continue;
+        }
+        User updated = JsonUtils.deepCopy(user, User.class).withDefaultDomain(null);
+        patch(null, user.getId(), ADMIN_USER_NAME, JsonUtils.getJsonPatch(user, updated));
+        SubjectCache.invalidateUserContext(user.getName());
+      }
+    }
   }
 
   /** A navbar selection must resolve to a real domain; anything else is rejected up front. */

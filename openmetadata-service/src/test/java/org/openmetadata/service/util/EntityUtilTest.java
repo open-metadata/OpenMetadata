@@ -3,6 +3,7 @@ package org.openmetadata.service.util;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
@@ -903,6 +904,10 @@ class EntityUtilTest {
       entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
       entity.when(() -> Entity.hasEntityRepository("user")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("user")).thenReturn(domainAwareRepository);
+      // The hook re-resolves the persisted ref (a deleted domain must fall back to no selection).
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
+          .thenReturn(selected);
 
       ListFilter viewFilter = new ListFilter(); // plain user with a selected domain -> narrowed
       ListFilter adminFilter = new ListFilter(); // view preference applies to admins too
@@ -1010,6 +1015,41 @@ class EntityUtilTest {
       assertTrue(fullScope.contains(finance.getId().toString()));
       assertTrue(fullScope.contains(sales.getId().toString()));
       assertEquals("true", full.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_staleSelectionFallsBackToUnfiltered() {
+    // The persisted pick may outlive its domain (deleted after selection). Scoping to a domain
+    // that no longer exists would return nothing, so a stale ref must mean "no selection".
+    EntityReference gone =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Gone");
+    SecurityContext securityContext = mock(SecurityContext.class);
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User().withName("viewer").withDefaultDomain(gone);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", gone.getId(), NON_DELETED))
+          .thenThrow(new EntityNotFoundException("domain not found"));
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(user, null));
+
+      ListFilter filter = new ListFilter();
+      EntityUtil.addDomainQueryParam(securityContext, filter, "table");
+
+      assertTrue(filter.getQueryParams().isEmpty(), "a stale selection must not scope the list");
     }
   }
 
