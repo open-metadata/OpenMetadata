@@ -389,6 +389,7 @@ def build_patch(
 
         # special handler for tableConstraints
         _table_constraints_handler(source, destination)
+        _schema_definition_handler(source, destination)
 
         _merge_entity_tags(
             source=source,
@@ -588,6 +589,22 @@ def _table_constraints_handler(source: T, destination: T):
 
     # Update the destination constraints with the rearranged list
     setattr(destination, "tableConstraints", rearranged_constraints)
+
+
+def _schema_definition_handler(source: T, destination: T):
+    """
+    Keep the stored schemaDefinition when the source did not return one.
+    Connectors only fetch a DDL for views, or for tables when includeDDL is on and the
+    fetch succeeds, so a missing value means "not collected", not "deleted". This matches
+    the server's PUT path. A `remove /schemaDefinition` is also rejected by the server,
+    which fails the whole patch, column changes included.
+    """
+    stored_definition = getattr(source, "schemaDefinition", None)
+    if stored_definition is None or not hasattr(destination, "schemaDefinition"):
+        return
+
+    if getattr(destination, "schemaDefinition", None) is None:
+        setattr(destination, "schemaDefinition", stored_definition)
 
 
 def _tag_key(tag) -> Tuple[str, str]:
