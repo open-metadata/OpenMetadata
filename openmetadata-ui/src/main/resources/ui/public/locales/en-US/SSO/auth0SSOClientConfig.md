@@ -278,7 +278,9 @@ $$section
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
-- **Note:** Leave empty for no specific max age requirement
+- **Note:**
+  - Leave empty (recommended) so users who are still signed in at Auth0 get straight back in.
+  - `0` is treated as empty: it would make Auth0 ask for credentials on every sign-in, including the silent re-authentication OpenMetadata performs when its own session ends. To force a fresh login every time, set **OIDC Prompt** to `login` instead.
 $$
 
 $$section
@@ -289,6 +291,7 @@ $$section
 - **Example:** select_account
 - **Why it matters:** Affects user experience during authentication.
 - **Note:**
+  - Leave empty (recommended): OpenMetadata sends `none` by itself when it re-authenticates a user in the background, so a value set here only changes interactive sign-ins.
   - `login`: Always prompt for credentials
   - `consent`: Prompt for permissions
   - `select_account`: Show account picker

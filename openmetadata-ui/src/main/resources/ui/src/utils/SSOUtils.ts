@@ -419,7 +419,7 @@ export const getDefaultsForProvider = (
       tenant: '',
       serverUrl,
       callbackUrl: DEFAULT_CALLBACK_URL,
-      maxAge: 0,
+      maxAge: '',
       prompt: '',
       sessionExpiry,
     };
