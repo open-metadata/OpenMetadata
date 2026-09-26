@@ -13,12 +13,12 @@
 import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-    DELETE_RESULTS_POLICY,
-    EDIT_RESULTS_POLICY,
-    PARTIAL_DELETE_TABLE_ONLY_POLICY,
-    PARTIAL_DELETE_TC_ONLY_POLICY,
-    TABLE_EDIT_RESULTS_POLICY,
-    VIEW_RESULTS_POLICY
+  DELETE_RESULTS_POLICY,
+  EDIT_RESULTS_POLICY,
+  PARTIAL_DELETE_TABLE_ONLY_POLICY,
+  PARTIAL_DELETE_TC_ONLY_POLICY,
+  TABLE_EDIT_RESULTS_POLICY,
+  VIEW_RESULTS_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -28,8 +28,8 @@ import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    verifyTestCaseLastRunBanner,
-    waitForTestCaseDetailsResponse
+  verifyTestCaseLastRunBanner,
+  waitForTestCaseDetailsResponse,
 } from '../../../utils/testCases';
 
 // --- Objects ---

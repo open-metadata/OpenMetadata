@@ -28,21 +28,21 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    FIELDS,
-    fillRule,
-    fillStaticListRule,
-    OPERATOR,
-    runRuleGroupTests,
-    runRuleGroupTestsWithNonExistingValue,
-    selectOption,
-    showAdvancedSearchDialog,
-    verifyAllConditions
+  FIELDS,
+  fillRule,
+  fillStaticListRule,
+  OPERATOR,
+  runRuleGroupTests,
+  runRuleGroupTestsWithNonExistingValue,
+  selectOption,
+  showAdvancedSearchDialog,
+  verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    clickUpdateButtonIfVisible,
-    searchAndClickOnOption
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';

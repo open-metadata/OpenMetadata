@@ -13,16 +13,16 @@
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import {
-    expectScheduleFrequencySelected,
-    selectScheduleDayOfWeek,
-    selectScheduleFrequency,
-    setScheduleTime
+  expectScheduleFrequencySelected,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
+  setScheduleTime,
 } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 

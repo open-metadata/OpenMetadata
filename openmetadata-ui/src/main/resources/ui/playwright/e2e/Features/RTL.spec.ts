@@ -15,13 +15,13 @@ import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import {
-    clickOutside,
-    redirectToHomePage,
-    waitForAntdPopupToSettle
+  clickOutside,
+  redirectToHomePage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
-    followEntity,
-    validateFollowedEntityToWidget
+  followEntity,
+  validateFollowedEntityToWidget,
 } from '../../utils/entity';
 import { test } from './../../e2e/fixtures/pages';
 

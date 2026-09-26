@@ -19,16 +19,16 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    clickOutside,
-    createNewPage,
-    getApiContext,
-    redirectToHomePage
+  clickOutside,
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    clickUpdateButtonIfVisible,
-    searchAndClickOnOption,
-    selectNullOption
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
+  selectNullOption,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 

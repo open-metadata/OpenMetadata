@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Route } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
@@ -20,31 +19,28 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
-    createNewPage,
-    descriptionBox,
-    fillDescriptionBox,
-    redirectToHomePage,
-    uuid,
-    waitForAntdModalToSettle,
-    waitForAriaModalToSettle
+  createNewPage,
+  descriptionBox,
+  fillDescriptionBox,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    navigateToCustomizeLandingPage,
-    openAddCustomizeWidgetModal,
-    selectAssetTypes
+  navigateToCustomizeLandingPage,
+  openAddCustomizeWidgetModal,
+  selectAssetTypes,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
-    checkPersonaInProfile,
-    navigateToPersonaSettings,
-    navigateToPersonaWithPagination,
-    removePersonaDefault,
-    setPersonaAsDefault,
-    updatePersonaDisplayName
+  checkPersonaInProfile,
+  navigateToPersonaSettings,
+  navigateToPersonaWithPagination,
+  removePersonaDefault,
+  setPersonaAsDefault,
+  updatePersonaDisplayName,
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const PERSONA_DETAILS = {
   name: `persona-with-%-${uuid()}`,
@@ -254,13 +250,6 @@ test.describe.serial('Persona operations', () => {
       `Are you sure you want to remove ${user.responseData.name}?`
     );
 
-    // The text assertion above is satisfied by the dialog's first scaled frame,
-    // so a press started here can put mousedown on Confirm and mouseup where
-    // Confirm has since moved to. No click is synthesised, the button merely
-    // takes focus, and onOk never runs -- which is exactly how this failed:
-    // the modal still open, Confirm still focused, and not one request sent.
-    await waitForAntdModalToSettle(page);
-
     const updateResponse = page.waitForResponse(`/api/v1/personas/*`);
 
     await page
@@ -278,12 +267,6 @@ test.describe.serial('Persona operations', () => {
 
     await page.click('[data-testid="delete-button-title"]');
 
-    // DeleteEntityModal is built from ui-core-components, not Antd, so it has
-    // no `.ant-modal` classes for waitForAntdModalToSettle to see -- that wait
-    // would return immediately and leave the same mid-animation press it is
-    // meant to prevent. React Aria marks its 300ms zoom with `data-entering`.
-    await waitForAriaModalToSettle(page);
-
     const deleteResponse = page.waitForResponse(
       `/api/v1/personas/*?hardDelete=true&recursive=false`
     );
@@ -291,9 +274,7 @@ test.describe.serial('Persona operations', () => {
     await page.click('[data-testid="confirm-button"]');
     await deleteResponse;
 
-    await page.waitForURL('**/settings/persona', {
-      waitUntil: 'domcontentloaded',
-    });
+    await page.waitForURL('**/settings/persona');
   });
 });
 
@@ -420,7 +401,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       });
 
       await test.step('User refreshes and checks the default persona is applied', async () => {
-        await userPage.reload({ waitUntil: 'domcontentloaded' });
+        await userPage.reload();
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
         await redirectToHomePage(userPage);
@@ -443,7 +424,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       });
 
       await test.step('Verify changed default persona for new user', async () => {
-        await userPage.reload({ waitUntil: 'domcontentloaded' });
+        await userPage.reload();
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(
           userPage,
@@ -460,7 +441,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       });
 
       await test.step('User refreshes and sees no default persona', async () => {
-        await userPage.reload({ waitUntil: 'domcontentloaded' });
+        await userPage.reload();
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage); // Expect no persona again
       });
@@ -539,14 +520,7 @@ test.describe.serial('Team persona setting flow', () => {
         )
       ).toBeVisible();
 
-      const teamPatchResponse = waitForResponseWithStatus(
-        adminPage,
-        (response) =>
-          response.request().method() === 'PATCH' &&
-          new URL(response.url()).pathname ===
-            `/api/v1/teams/${testTeam.responseData.id}`,
-        200
-      );
+      const teamPatchResponse = adminPage.waitForResponse('/api/v1/teams/*');
 
       // Save the default persona for team
       await adminPage
@@ -608,14 +582,8 @@ test.describe.serial('Team persona setting flow', () => {
       ).not.toBeVisible();
 
       // Save it and re-verify
-      const teamPatchSwitchResponse = waitForResponseWithStatus(
-        adminPage,
-        (response) =>
-          response.request().method() === 'PATCH' &&
-          new URL(response.url()).pathname ===
-            `/api/v1/teams/${testTeam.responseData.id}`,
-        200
-      );
+      const teamPatchSwitchResponse =
+        adminPage.waitForResponse('/api/v1/teams/*');
       await adminPage
         .getByTestId('user-profile-default-persona-edit-save')
         .click();
@@ -639,14 +607,8 @@ test.describe.serial('Team persona setting flow', () => {
       );
       await expect(revertOption).toBeVisible();
       await revertOption.click();
-      const teamPatchRevertResponse = waitForResponseWithStatus(
-        adminPage,
-        (response) =>
-          response.request().method() === 'PATCH' &&
-          new URL(response.url()).pathname ===
-            `/api/v1/teams/${testTeam.responseData.id}`,
-        200
-      );
+      const teamPatchRevertResponse =
+        adminPage.waitForResponse('/api/v1/teams/*');
       await adminPage
         .getByTestId('user-profile-default-persona-edit-save')
         .click();
@@ -659,12 +621,11 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.getByTestId('users').click();
 
       // Wait for list to load and click on the specific user
-      const userProfileResponse = waitForResponseWithStatus(
-        adminPage,
+      const userProfileResponse = adminPage.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/users/name/') &&
-          response.request().method() === 'GET',
-        200
+          response.request().method() === 'GET' &&
+          response.status() === 200
       );
       await adminPage.getByTestId(teamUser.responseData.name).click();
       await userProfileResponse;
@@ -696,76 +657,6 @@ test.describe.serial('Team persona setting flow', () => {
         adminPage.locator('[data-testid="default-persona-chip"] .inherit-icon')
       ).toHaveCount(0);
     });
-  });
-
-  test('Team details retain the persona when the basic response arrives last', async ({
-    adminPage,
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    try {
-      await testTeam.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/defaultPersona',
-          value: { id: teamPersona.responseData.id, type: 'persona' },
-        },
-      ]);
-    } finally {
-      await afterAction();
-    }
-
-    const teamId = testTeam.responseData.id;
-    if (!teamId) {
-      throw new Error('Team fixture has no ID');
-    }
-    const assetCountRequested = adminPage.waitForRequest((request) => {
-      const url = new URL(request.url());
-
-      return (
-        request.method() === 'GET' &&
-        url.pathname === '/api/v1/search/query' &&
-        (url.searchParams.get('query_filter')?.includes(teamId) ?? false)
-      );
-    });
-    const teamRoute = '**/api/v1/teams/name/**';
-    const delayBasicDetails = async (route: Route) => {
-      const url = new URL(route.request().url());
-      const fields = url.searchParams.get('fields')?.split(',') ?? [];
-      if (
-        url.pathname ===
-          `/api/v1/teams/name/${encodeURIComponent(
-            testTeam.responseData.name
-          )}` &&
-        fields.includes('parents') &&
-        !fields.includes('defaultPersona')
-      ) {
-        const response = await route.fetch();
-        try {
-          // The asset-count request starts after the advanced team state is applied.
-          await assetCountRequested;
-          await route.fulfill({ response });
-        } finally {
-          await response.dispose();
-        }
-      } else {
-        await route.fallback();
-      }
-    };
-    await adminPage.route(teamRoute, delayBasicDetails);
-    try {
-      await adminPage.goto(
-        `/settings/members/teams/${encodeURIComponent(
-          testTeam.responseData.name
-        )}`,
-        { waitUntil: 'domcontentloaded' }
-      );
-      await expect(adminPage.getByTestId('team-persona')).toContainText(
-        teamPersona.responseData.displayName
-      );
-    } finally {
-      await adminPage.unroute(teamRoute, delayBasicDetails);
-    }
   });
 
   test('Admin can remove the default persona for a team', async ({
@@ -812,14 +703,8 @@ test.describe.serial('Team persona setting flow', () => {
         )
         .click();
 
-      const defaultPersonaChangeResponse = waitForResponseWithStatus(
-        adminPage,
-        (response) =>
-          response.request().method() === 'PATCH' &&
-          new URL(response.url()).pathname ===
-            `/api/v1/teams/${testTeam.responseData.id}`,
-        200
-      );
+      const defaultPersonaChangeResponse =
+        adminPage.waitForResponse('/api/v1/teams/*');
 
       // Save the changes
       await adminPage

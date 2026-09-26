@@ -16,9 +16,9 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-    addRelatedTermsByRelationType,
-    selectActiveGlossary,
-    selectActiveGlossaryTerm
+  addRelatedTermsByRelationType,
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';

@@ -15,10 +15,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
-    createNewPage,
-    fullUuid,
-    redirectToHomePage,
-    uuid
+  createNewPage,
+  fullUuid,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';

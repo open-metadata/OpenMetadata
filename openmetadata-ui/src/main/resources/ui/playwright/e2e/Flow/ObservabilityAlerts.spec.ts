@@ -14,14 +14,14 @@
 import { type Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
-    INGESTION_PIPELINE_NAME,
-    TEST_CASE_NAME,
-    TEST_SUITE_NAME,
-    WEBHOOK_DELIVERY_COLUMN_NAME
+  INGESTION_PIPELINE_NAME,
+  TEST_CASE_NAME,
+  TEST_SUITE_NAME,
+  WEBHOOK_DELIVERY_COLUMN_NAME,
 } from '../../constant/alert';
 import {
-    AlertDetails,
-    ObservabilityCreationDetails
+  AlertDetails,
+  ObservabilityCreationDetails,
 } from '../../constant/alert.interface';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
@@ -29,34 +29,34 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    commonCleanup,
-    commonPrerequisites,
-    createAlert,
-    deleteAlert,
-    generateAlertName,
-    inputBasicAlertInformation,
-    saveAlertAndVerifyResponse,
-    verifyAlertDetails,
-    visitAlertDetailsPage
+  commonCleanup,
+  commonPrerequisites,
+  createAlert,
+  deleteAlert,
+  generateAlertName,
+  inputBasicAlertInformation,
+  saveAlertAndVerifyResponse,
+  verifyAlertDetails,
+  visitAlertDetailsPage,
 } from '../../utils/alert';
 import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    addExternalDestination,
-    checkAlertDetailsForWithPermissionUser,
-    checkAlertFlowForWithoutPermissionUser,
-    createCommonObservabilityAlert,
-    editObservabilityAlert,
-    getObservabilityCreationDetails,
-    visitObservabilityAlertPage
+  addExternalDestination,
+  checkAlertDetailsForWithPermissionUser,
+  checkAlertFlowForWithoutPermissionUser,
+  createCommonObservabilityAlert,
+  editObservabilityAlert,
+  getObservabilityCreationDetails,
+  visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
-    clearCapturedWebhookRequests,
-    findWebhookDelivery,
-    getAddedColumnNames,
-    startWebhookReceiver,
-    stopWebhookReceiver
+  clearCapturedWebhookRequests,
+  findWebhookDelivery,
+  getAddedColumnNames,
+  startWebhookReceiver,
+  stopWebhookReceiver,
 } from '../../utils/webhook';
 import { test as base } from '../fixtures/pages';
 
@@ -255,12 +255,11 @@ test('Pipeline Alert', async ({ page }) => {
     });
 
     // Click save
-    const updateAlert = waitForResponseWithStatus(
-      page,
+    const updateAlert = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH',
-      200
+        response.request().method() === 'PATCH' &&
+        response.status() === 200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -442,7 +441,7 @@ test('delivers table schema changes to an external webhook', async ({
         await deleteAlert(page, webhookAlertDetails, false);
       }
     } finally {
-      await settleAll([afterAction(), stopWebhookReceiver()]);
+      await Promise.allSettled([afterAction(), stopWebhookReceiver()]);
     }
   }
 });
@@ -536,169 +535,144 @@ test('Alert operations for a user with and without permissions', async ({
   test.slow();
 
   const ALERT_NAME = generateAlertName();
-  const { apiContext, afterAction } = await getApiContext(page);
-  let createdAlert: AlertDetails | undefined;
+  const { apiContext } = await getApiContext(page);
+  await visitObservabilityAlertPage(userWithPermissionsPage);
 
-  try {
-    const destinationEndpoint = await startWebhookReceiver();
-    clearCapturedWebhookRequests();
-    await visitObservabilityAlertPage(userWithPermissionsPage);
-
-    const permissionAlertDetails =
-      await test.step('Create and trigger alert', async () => {
-        await inputBasicAlertInformation({
-          page: userWithPermissionsPage,
-          name: ALERT_NAME,
-          sourceName: SOURCE_NAME_3,
-          sourceDisplayName: SOURCE_DISPLAY_NAME_3,
-          createButtonId: 'create-observability',
-        });
-        await userWithPermissionsPage.click('[data-testid="add-filters"]');
-
-        // Select filter
-        await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
-        await userWithPermissionsPage.click(
-          '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
-        );
-        await userWithPermissionsPage
-          .locator('.ant-select-dropdown:visible')
-          .waitFor({ state: 'hidden' });
-
-        // The mode="multiple" AsyncSelect renders dropdown options whose `title`
-        // equals the entity FQN, not the bare name. Search and pick by FQN.
-        const table1Fqn = table1.entityResponseData.fullyQualifiedName ?? '';
-
-        // Focus the combobox first so the search input becomes editable
-        // (mode="multiple" keeps the input readonly until focused).
-        await userWithPermissionsPage.click(
-          `[data-testid="fqn-list-select"] [role="combobox"]`
-        );
-
-        // Search and select filter input value
-        const searchOptions = userWithPermissionsPage.waitForResponse(
-          '/api/v1/search/query?q=*'
-        );
-        await userWithPermissionsPage.fill(
-          `[data-testid="fqn-list-select"] [role="combobox"]`,
-          table1Fqn,
-          {
-            force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-          }
-        );
-
-        await searchOptions;
-
-        await userWithPermissionsPage.click(
-          `.ant-select-dropdown:visible [title="${table1Fqn}"]`
-        );
-
-        // Check if option is selected
-        await test
-          .expect(
-            userWithPermissionsPage.locator(
-              `[data-testid="fqn-list-select"] [title="${table1Fqn}"]`
-            )
-          )
-          .toBeAttached();
-
-        // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
-        await userWithPermissionsPage.click('[data-testid="add-trigger"]');
-
-        // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
-        await userWithPermissionsPage
-          .locator('.ant-select-dropdown:visible')
-          .waitFor({ state: 'hidden' });
-
-        // Select action
-        await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
-
-        // Adding the dropdown visibility check to avoid flakiness here
-        await userWithPermissionsPage
-          .locator(`.ant-select-dropdown:visible`)
-          .waitFor({
-            state: 'visible',
-          });
-        await userWithPermissionsPage.click(
-          '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
-        );
-        await userWithPermissionsPage
-          .locator(`.ant-select-dropdown:visible`)
-          .waitFor({
-            state: 'hidden',
-          });
-
-        await userWithPermissionsPage.click(
-          '[data-testid="add-destination-button"]'
-        );
-        await addExternalDestination({
-          page: userWithPermissionsPage,
-          destinationNumber: 0,
-          category: 'Slack',
-          input: destinationEndpoint,
-        });
-
-        // Click save
-        createdAlert = await saveAlertAndVerifyResponse(
-          userWithPermissionsPage
-        );
-
-        // Trigger alert
-        await table1.patch({
-          apiContext,
-          patchData: [
-            {
-              op: 'add',
-              path: '/columns/4',
-              value: {
-                name: 'new_field',
-                dataType: 'VARCHAR',
-                dataLength: 100,
-                dataTypeDisplay: 'varchar(100)',
-              },
-            },
-          ],
-        });
-        return createdAlert;
-      });
-
-    await test.step('Checks for user without permission', async () => {
-      await checkAlertFlowForWithoutPermissionUser({
-        page: userWithoutPermissionsPage,
-        alertDetails: permissionAlertDetails,
-        destinationEndpoint,
-        sourceName: SOURCE_NAME_3,
-        table: table1,
-      });
+  await test.step('Create and trigger alert', async () => {
+    await inputBasicAlertInformation({
+      page: userWithPermissionsPage,
+      name: ALERT_NAME,
+      sourceName: SOURCE_NAME_3,
+      sourceDisplayName: SOURCE_DISPLAY_NAME_3,
+      createButtonId: 'create-observability',
     });
+    await userWithPermissionsPage.click('[data-testid="add-filters"]');
 
-    await test.step('Check alert details page and Recent Events tab', async () => {
-      await checkAlertDetailsForWithPermissionUser({
-        page: userWithPermissionsPage,
-        alertDetails: permissionAlertDetails,
-        destinationEndpoint,
-        sourceName: SOURCE_NAME_3,
-        table: table1,
-        user: user2,
-      });
-    });
+    // Select filter
+    await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
+    await userWithPermissionsPage.click(
+      '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
+    );
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
 
-    await test.step('Delete alert', async () => {
-      await deleteAlert(userWithPermissionsPage, permissionAlertDetails, false);
-      createdAlert = undefined;
-    });
-  } finally {
-    try {
-      if (createdAlert) {
-        await deleteFixtureEntity(
-          apiContext,
-          `/api/v1/events/subscriptions/${createdAlert.id}?hardDelete=true`
-        );
+    // The mode="multiple" AsyncSelect renders dropdown options whose `title`
+    // equals the entity FQN, not the bare name. Search and pick by FQN.
+    const table1Fqn = table1.entityResponseData.fullyQualifiedName ?? '';
+
+    // Focus the combobox first so the search input becomes editable
+    // (mode="multiple" keeps the input readonly until focused).
+    await userWithPermissionsPage.click(
+      `[data-testid="fqn-list-select"] [role="combobox"]`
+    );
+
+    // Search and select filter input value
+    const searchOptions = userWithPermissionsPage.waitForResponse(
+      '/api/v1/search/query?q=*'
+    );
+    await userWithPermissionsPage.fill(
+      `[data-testid="fqn-list-select"] [role="combobox"]`,
+      table1Fqn,
+      {
+        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
       }
-    } finally {
-      await settleAll([afterAction(), stopWebhookReceiver()]);
-    }
-  }
-});
+    );
 
-import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+    await searchOptions;
+
+    await userWithPermissionsPage.click(
+      `.ant-select-dropdown:visible [title="${table1Fqn}"]`
+    );
+
+    // Check if option is selected
+    await test
+      .expect(
+        userWithPermissionsPage.locator(
+          `[data-testid="fqn-list-select"] [title="${table1Fqn}"]`
+        )
+      )
+      .toBeAttached();
+
+    // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
+    await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+
+    // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
+    await userWithPermissionsPage
+      .locator('.ant-select-dropdown:visible')
+      .waitFor({ state: 'hidden' });
+
+    // Select action
+    await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
+
+    // Adding the dropdown visibility check to avoid flakiness here
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
+        state: 'visible',
+      });
+    await userWithPermissionsPage.click(
+      '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
+    );
+    await userWithPermissionsPage
+      .locator(`.ant-select-dropdown:visible`)
+      .waitFor({
+        state: 'hidden',
+      });
+
+    await userWithPermissionsPage.click(
+      '[data-testid="add-destination-button"]'
+    );
+    await addExternalDestination({
+      page: userWithPermissionsPage,
+      destinationNumber: 0,
+      category: 'Slack',
+      input: 'https://slack.com',
+    });
+
+    // Click save
+    data.alertDetails = await saveAlertAndVerifyResponse(
+      userWithPermissionsPage
+    );
+
+    // Trigger alert
+    await table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/columns/4',
+          value: {
+            name: 'new_field',
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar(100)',
+          },
+        },
+      ],
+    });
+  });
+
+  await test.step('Checks for user without permission', async () => {
+    await checkAlertFlowForWithoutPermissionUser({
+      page: userWithoutPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_3,
+      table: table1,
+    });
+  });
+
+  await test.step('Check alert details page and Recent Events tab', async () => {
+    await checkAlertDetailsForWithPermissionUser({
+      page: userWithPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_3,
+      table: table1,
+      user: user2,
+    });
+  });
+
+  await test.step('Delete alert', async () => {
+    await deleteAlert(userWithPermissionsPage, data.alertDetails, false);
+  });
+});

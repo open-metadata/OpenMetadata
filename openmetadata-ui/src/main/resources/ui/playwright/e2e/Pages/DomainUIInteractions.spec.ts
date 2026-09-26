@@ -23,13 +23,13 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
 import {
-    checkAssetsCount,
-    selectDataProduct,
-    selectDomain
+  checkAssetsCount,
+  selectDataProduct,
+  selectDomain,
 } from '../../utils/domain';
 import {
-    fillDeleteConfirmationIfPresent,
-    waitForAllLoadersToDisappear
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';

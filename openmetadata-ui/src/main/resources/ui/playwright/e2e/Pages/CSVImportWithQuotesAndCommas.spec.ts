@@ -15,15 +15,15 @@ import * as fs from 'fs';
 import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import {
-    fetchCompletedCsvAsyncJobResult,
-    getApiContext,
-    redirectToHomePage,
-    uuid
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import {
-    uploadCSVAndWaitForGrid,
-    validateImportStatus,
-    waitForImportGridLoadMaskToDisappear
+  uploadCSVAndWaitForGrid,
+  validateImportStatus,
+  waitForImportGridLoadMaskToDisappear,
 } from '../../utils/importUtils';
 import { setupCsvImportListener } from '../../utils/websocket';
 

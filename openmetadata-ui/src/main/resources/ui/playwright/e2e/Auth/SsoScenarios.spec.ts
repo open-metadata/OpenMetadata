@@ -23,10 +23,10 @@ import { ldapProviderFixture } from '../../utils/sso-providers/ldap';
 import { msalMockProviderFixture } from '../../utils/sso-providers/msal-mock';
 import { oktaProviderFixture } from '../../utils/sso-providers/okta';
 import {
-    fetchSecurityConfig,
-    mintAdminRestoreToken,
-    restoreSecurityConfig,
-    SecurityConfigSnapshot
+  fetchSecurityConfig,
+  mintAdminRestoreToken,
+  restoreSecurityConfig,
+  SecurityConfigSnapshot,
 } from '../../utils/ssoAuth';
 
 // Every fixture the AuthCoordinator scenario matrix runs against. Scenarios 1–6

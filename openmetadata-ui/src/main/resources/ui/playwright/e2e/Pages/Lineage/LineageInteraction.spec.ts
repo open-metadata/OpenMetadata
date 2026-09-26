@@ -19,24 +19,23 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-    getApiContext,
-    getDefaultAdminAPIContext,
-    redirectToHomePage,
-    toastNotification
+  getApiContext,
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    activateColumnLayer,
-    addColumnLineage,
-    addPipelineBetweenNodes,
-    clickEdgeBetweenNodes,
-    connectEdgeBetweenNodesViaAPI,
-    editLineage,
-    editLineageClick,
-    expectLineageNodeVisible,
-    fitToScreen,
-    removeColumnLineage,
-    visitLineageTab
+  activateColumnLayer,
+  addColumnLineage,
+  addPipelineBetweenNodes,
+  clickEdgeBetweenNodes,
+  connectEdgeBetweenNodesViaAPI,
+  editLineage,
+  editLineageClick,
+  fitToScreen,
+  removeColumnLineage,
+  visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
 
@@ -113,7 +112,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.afterEach(async ({ page }) => {
-    await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
+    await page.goto('about:blank');
   });
 
   test.describe('Lineage Layers Toggle', () => {
@@ -244,10 +243,6 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await editLineageClick(page);
         await addColumnLineage(page, sourceColName, targetColName);
 
-        // No reload here. The column edge only exists in the layer that
-        // addColumnLineage just rendered; reloading drops it, and re-activating
-        // the column layer does not bring that specific edge back. The pane
-        // above the marker swallows a trusted click, so dispatch it directly.
         await page
           .locator(
             `[data-testid="column-edge-${sourceColName}-${targetColName}"]`
@@ -921,7 +916,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // Reload to prove the server actually dropped the edge, not just
         // that local state was optimistically updated.
         const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.reload();
         await lineageRes;
 
         await expect(
@@ -1036,8 +1031,8 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await fitToScreen(page);
 
-      await expectLineageNodeVisible(page, tableFqn);
-      await expectLineageNodeVisible(page, topicFqn);
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
       await expect(
         page.getByTestId(`lineage-node-${dashboardFqn}`)
       ).toBeVisible();

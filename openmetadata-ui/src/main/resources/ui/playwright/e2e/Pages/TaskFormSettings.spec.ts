@@ -26,8 +26,8 @@
 
 import test, { expect, Page } from '@playwright/test';
 import {
-    authenticateAdminPage,
-    createAdminApiContext
+  authenticateAdminPage,
+  createAdminApiContext,
 } from '../../utils/admin';
 import { toastNotification, uuid } from '../../utils/common';
 

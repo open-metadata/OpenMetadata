@@ -18,8 +18,8 @@ import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    navigateToPersonaSettings,
-    navigateToPersonaWithPagination
+  navigateToPersonaSettings,
+  navigateToPersonaWithPagination,
 } from '../../utils/persona';
 import { test } from '../fixtures/pages';
 

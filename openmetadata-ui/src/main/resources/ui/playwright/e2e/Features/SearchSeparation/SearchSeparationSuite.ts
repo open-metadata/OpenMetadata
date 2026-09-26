@@ -30,11 +30,11 @@
  */
 
 import {
-    APIRequestContext,
-    expect,
-    Page,
-    Response,
-    test
+  APIRequestContext,
+  expect,
+  Page,
+  Response,
+  test,
 } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../../constant/sidebar';
@@ -47,8 +47,8 @@ import { createAdminApiContext } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    clickUpdateButtonIfVisible,
-    searchAndClickOnOption
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
 } from '../../../utils/explore';
 import { sidebarClick } from '../../../utils/sidebar';
 

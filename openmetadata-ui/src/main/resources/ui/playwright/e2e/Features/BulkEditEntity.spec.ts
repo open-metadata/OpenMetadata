@@ -22,28 +22,28 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    createNewPage,
-    descriptionBoxReadOnly,
-    getApiContext,
-    redirectToHomePage
+  createNewPage,
+  descriptionBoxReadOnly,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
-    createColumnRowDetails,
-    createCustomPropertiesForEntityViaApi,
-    createDatabaseRowDetails,
-    createDatabaseSchemaRowDetails,
-    createGlossaryTermRowDetails,
-    createTableRowDetails,
-    fillDescriptionDetails,
-    fillGlossaryRowDetails,
-    fillGlossaryTermDetails,
-    fillRowDetails,
-    fillTagDetails,
-    pressKeyXTimes,
-    saveBulkImport,
-    validateImportStatus
+  createColumnRowDetails,
+  createCustomPropertiesForEntityViaApi,
+  createDatabaseRowDetails,
+  createDatabaseSchemaRowDetails,
+  createGlossaryTermRowDetails,
+  createTableRowDetails,
+  fillDescriptionDetails,
+  fillGlossaryRowDetails,
+  fillGlossaryTermDetails,
+  fillRowDetails,
+  fillTagDetails,
+  pressKeyXTimes,
+  validateImportStatus,
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { getCellByName } from '../../utils/scopedLocators';
@@ -245,7 +245,19 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await saveBulkImport(page, 'services/databaseServices');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+
+      await page.getByRole('button', { name: 'Update' }).click();
+
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
 
       await page.click('[data-testid="databases"]');
 
@@ -378,7 +390,17 @@ test.describe('Bulk Edit Entity', () => {
       await page.locator('.rdg-header-row').waitFor({
         state: 'visible',
       });
-      await saveBulkImport(page, 'databases');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
 
       await waitForSearchIndexed(
         apiContext,
@@ -512,7 +534,15 @@ test.describe('Bulk Edit Entity', () => {
         processed: '1',
         failed: '0',
       });
-      await saveBulkImport(page, 'databaseSchemas');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+      await page.getByRole('button', { name: 'Update' }).click();
+
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
 
       await waitForSearchIndexed(
         apiContext,
@@ -646,7 +676,20 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await saveBulkImport(page, 'tables');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
+      // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
+      await page.click('[type="button"] >> text="Update"', { force: true });
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await page.locator('.message-banner-wrapper').waitFor({
+        state: 'detached',
+      });
+      await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
       await expect(
@@ -749,9 +792,15 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      await saveBulkImport(
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await waitForAllLoadersToDisappear(page);
+
+      await toastNotification(
         page,
-        'glossaries',
         `Glossary ${glossary.responseData.fullyQualifiedName} details updated successfully`
       );
 
@@ -897,7 +946,20 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      await saveBulkImport(page, 'glossaryTerms');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/glossaryTerms/name/*/importAsync?*dryRun=false*`
+      );
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+
+      await waitForAllLoadersToDisappear(page);
+
+      await toastNotification(page, /details updated successfully/);
 
       // Visit the glossary terms tab
       await page.click('[data-testid="terms"]');

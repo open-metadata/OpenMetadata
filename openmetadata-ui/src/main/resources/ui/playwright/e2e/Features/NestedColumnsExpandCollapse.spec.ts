@@ -16,16 +16,16 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import {
-    createApiEndpointEntity,
-    createContainerEntity,
-    createDataModelEntity,
-    createFileEntity,
-    createSearchIndexEntity,
-    createTableEntity,
-    createTopicEntity,
-    createWorksheetEntity,
-    verifyExpandCollapseForSummaryPanel,
-    verifyExpandCollapseNoDuplication
+  createApiEndpointEntity,
+  createContainerEntity,
+  createDataModelEntity,
+  createFileEntity,
+  createSearchIndexEntity,
+  createTableEntity,
+  createTopicEntity,
+  createWorksheetEntity,
+  verifyExpandCollapseForSummaryPanel,
+  verifyExpandCollapseNoDuplication,
 } from '../../utils/nestedColumnUpdatesUtils';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 

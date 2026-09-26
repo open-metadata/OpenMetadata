@@ -13,10 +13,10 @@
 
 import * as fs from 'fs';
 import { expect, test } from '../../support/fixtures/base';
-import { chooseSelectOption } from '../../utils/common';
+import { selectOptionWithRetry } from '../../utils/common';
 import {
-    dismissLineageMapOnboarding,
-    performZoomOut
+  dismissLineageMapOnboarding,
+  performZoomOut,
 } from '../../utils/lineage';
 
 /**
@@ -46,7 +46,7 @@ test.describe(
       const lineageResponsePromise = page.waitForResponse(
         '**/api/v1/lineage/scene?*'
       );
-      await page.goto(LINEAGE_URL, { waitUntil: 'domcontentloaded' });
+      await page.goto(LINEAGE_URL);
       await lineageResponsePromise;
       await dismissLineageMapOnboarding(page);
 
@@ -87,7 +87,7 @@ test.describe(
         .waitFor({ state: 'visible' });
 
       // Select PNG (the modal defaults to CSV for entity lineage)
-      await chooseSelectOption(
+      await selectOptionWithRetry(
         page.getByTestId('export-type-select'),
         page.getByRole('option', { name: 'PNG' })
       );

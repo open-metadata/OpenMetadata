@@ -14,17 +14,17 @@ import test, { expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-    APPLICATION_LIST,
-    expectApplicationInstalled,
-    expectApplicationNotInstalled,
-    findApplicationCard,
-    openApplicationDetails
+  APPLICATION_LIST,
+  expectApplicationInstalled,
+  expectApplicationNotInstalled,
+  findApplicationCard,
+  openApplicationDetails,
 } from '../../utils/applications';
 import {
-    clickOutside,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification
+  clickOutside,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';

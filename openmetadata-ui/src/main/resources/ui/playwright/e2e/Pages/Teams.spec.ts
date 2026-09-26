@@ -13,8 +13,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
-    EDIT_USER_FOR_TEAM_RULES,
-    OWNER_TEAM_RULES
+  EDIT_USER_FOR_TEAM_RULES,
+  OWNER_TEAM_RULES,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -29,45 +29,43 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    descriptionBox,
-    descriptionBoxReadOnly,
-    fetchCompletedCsvAsyncJobResult,
-    getApiContext,
-    getDefaultAdminAPIContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid,
-    visitOwnProfilePage,
-    waitForAntdPopupToSettle
+  descriptionBox,
+  descriptionBoxReadOnly,
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+  visitOwnProfilePage,
 } from '../../utils/common';
 import {
-    addMultiOwner,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { getCellByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 import {
-    addEmailTeam,
-    addTeamHierarchy,
-    addTeamOwnerToEntity,
-    addUserInTeam,
-    addUserTeam,
-    applyEntityTypeFilterValue,
-    checkTeamTabCount,
-    createTeam,
-    executionOnOwnerGroupTeam,
-    executionOnOwnerTeam,
-    getNewTeamDetails,
-    hardDeleteTeam,
-    openAddTeamModal,
-    searchTeam,
-    selectAssetsFilterFromDropdown,
-    softDeleteTeam,
-    verifyAssetsInTeamsPage,
-    verifyTeamListingAssetCount,
-    waitForTeamAssetsSearchResponse
+  addEmailTeam,
+  addTeamHierarchy,
+  addTeamOwnerToEntity,
+  addUserInTeam,
+  addUserTeam,
+  applyEntityTypeFilterValue,
+  checkTeamTabCount,
+  createTeam,
+  executionOnOwnerGroupTeam,
+  executionOnOwnerTeam,
+  getNewTeamDetails,
+  hardDeleteTeam,
+  openAddTeamModal,
+  searchTeam,
+  selectAssetsFilterFromDropdown,
+  softDeleteTeam,
+  verifyAssetsInTeamsPage,
+  verifyTeamListingAssetCount,
+  waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -238,22 +236,15 @@ test.describe('Teams Page', () => {
       await page.locator('[data-testid="users"]').click();
 
       // Click on add new user
-      const fetchUsersResponse = waitForResponseWithStatus(
-        page,
+      const fetchUsersResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/users') &&
           response.url().includes('limit=25') &&
-          response.request().method() === 'GET',
-        200
+          response.request().method() === 'GET' &&
+          response.status() === 200
       );
       await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
-
-      // UserSelectableList lives in an Ant Popover, which zooms in. Pressing a
-      // row mid-animation puts mousedown on it and mouseup past it, so the
-      // deselect never registers, the update below sends an unchanged member
-      // list, and the row this step is trying to remove is still there.
-      await waitForAntdPopupToSettle(page);
 
       // Select the user to remove
       await page
@@ -880,13 +871,12 @@ test.describe('Teams Page', () => {
     // Navigate to users tab and add new user
     await page.locator('[data-testid="users"]').click();
 
-    const fetchUsersResponse = waitForResponseWithStatus(
-      page,
+    const fetchUsersResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users') &&
         response.url().includes('limit=25') &&
-        response.request().method() === 'GET',
-      200
+        response.request().method() === 'GET' &&
+        response.status() === 200
     );
     await page.locator('[data-testid="add-new-user"]').click();
     await fetchUsersResponse;
@@ -1436,10 +1426,9 @@ test.describe('Teams Page action as Owner of Team', () => {
     await domain.delete(apiContext);
     await teamNoOwner.delete(apiContext);
     await team4.delete(apiContext);
-    // The owner scenarios create child teams under these unique fixture roots.
-    await team3.delete(apiContext, { recursive: true });
-    await team2.delete(apiContext, { recursive: true });
-    await team.delete(apiContext, { recursive: true });
+    await team3.delete(apiContext);
+    await team2.delete(apiContext);
+    await team.delete(apiContext);
     await role.delete(apiContext);
     await policy.delete(apiContext);
     await ownerUser.delete(apiContext);

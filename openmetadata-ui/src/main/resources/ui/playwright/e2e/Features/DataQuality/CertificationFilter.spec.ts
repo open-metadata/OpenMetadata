@@ -15,9 +15,9 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { createNewPage } from '../../../utils/common';
 import {
-    captureReports,
-    goToDataQualityDashboard,
-    isDashboardReportBatchResponse
+  captureReports,
+  goToDataQualityDashboard,
+  isDashboardReportBatchResponse,
 } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 

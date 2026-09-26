@@ -16,17 +16,17 @@ import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    clickOutside,
-    getApiContext,
-    redirectToExplorePage
+  clickOutside,
+  getApiContext,
+  redirectToExplorePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    clickUpdateButtonIfVisible,
-    countCsvResponseRows,
-    getExportCountFromModal,
-    getExportModalContent,
-    openExportScopeModal
+  clickUpdateButtonIfVisible,
+  countCsvResponseRows,
+  getExportCountFromModal,
+  getExportModalContent,
+  openExportScopeModal,
 } from '../../utils/explore';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 

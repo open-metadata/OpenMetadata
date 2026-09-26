@@ -19,21 +19,21 @@ import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-    fillDescriptionBox,
-    getDescriptionBox,
-    redirectToHomePage
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
 } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
-    waitForTaskCreateResponse,
-    waitForTaskListResponse
+  waitForTaskCreateResponse,
+  waitForTaskListResponse,
 } from '../../utils/task';
 import {
-    addTagSuggestion,
-    approveTaskFromDetails,
-    closeTaskFromDetails,
-    openEntityTasksTab,
-    selectAssignee
+  addTagSuggestion,
+  approveTaskFromDetails,
+  closeTaskFromDetails,
+  openEntityTasksTab,
+  selectAssignee,
 } from '../../utils/taskWorkflow';
 
 const adminFile = 'playwright/.auth/admin.json';

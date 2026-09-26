@@ -18,9 +18,9 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
-    navigateToCustomizeLandingPage,
-    removeAndCheckWidget,
-    setUserDefaultPersona
+  navigateToCustomizeLandingPage,
+  removeAndCheckWidget,
+  setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 
 const adminUser = new UserClass();

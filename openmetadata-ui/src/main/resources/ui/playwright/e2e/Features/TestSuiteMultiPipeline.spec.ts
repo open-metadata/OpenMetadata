@@ -15,19 +15,19 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
-    ObservabilityFeature,
-    selectAddObservabilityFeature
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    expectScheduleFrequencySelected,
-    selectScheduleDayOfWeek,
-    selectScheduleFrequency
+  expectScheduleFrequencySelected,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
 } from '../../utils/scheduleInterval';
 import {
-    confirmIngestionPipelineHardDelete,
-    submitTestCaseForm,
-    waitForTestSuiteIngestionPipelinesListResponse
+  confirmIngestionPipelineHardDelete,
+  submitTestCaseForm,
+  waitForTestSuiteIngestionPipelinesListResponse,
 } from '../../utils/testCases';
 
 // use the admin user to login

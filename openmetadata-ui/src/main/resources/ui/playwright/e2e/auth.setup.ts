@@ -13,18 +13,18 @@
 import { test as setup } from '@playwright/test';
 import { mkdir, writeFile } from 'fs/promises';
 import {
-    EDIT_DESCRIPTION_RULE,
-    EDIT_GLOSSARY_TERM_RULE,
-    EDIT_TAGS_RULE,
-    VIEW_ONLY_RULE
+  EDIT_DESCRIPTION_RULE,
+  EDIT_GLOSSARY_TERM_RULE,
+  EDIT_TAGS_RULE,
+  VIEW_ONLY_RULE,
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-    disableEtagConditionalReads,
-    getApiContext,
-    getToken,
-    uuid
+  disableEtagConditionalReads,
+  getApiContext,
+  getToken,
+  uuid,
 } from '../utils/common';
 import { loginAsAdmin } from '../utils/initialSetup';
 

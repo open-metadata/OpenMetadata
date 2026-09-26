@@ -13,9 +13,9 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-    createNewPage,
-    descriptionBox,
-    redirectToHomePage
+  createNewPage,
+  descriptionBox,
+  redirectToHomePage,
 } from '../../utils/common';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';

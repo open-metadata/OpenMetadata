@@ -17,10 +17,10 @@ import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { createArticleViaApi } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    addReviewerToEntity,
-    checkNotificationAndApproveTask,
-    createUserApprovalWorkflow,
-    verifyTaskStatus
+  addReviewerToEntity,
+  checkNotificationAndApproveTask,
+  createUserApprovalWorkflow,
+  verifyTaskStatus,
 } from '../../utils/reviewerWorkflow.utils';
 import { test } from '../fixtures/pages';
 

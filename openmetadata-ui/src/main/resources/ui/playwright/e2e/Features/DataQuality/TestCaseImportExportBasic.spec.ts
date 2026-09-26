@@ -23,22 +23,22 @@ import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    startCsvPreview,
-    validateImportStatus
+  startCsvPreview,
+  validateImportStatus,
 } from '../../../utils/importUtils';
 import {
-    cancelBulkEditAndVerifyRedirect,
-    clickManageButton,
-    navigateToBulkEditPage,
-    navigateToGlobalDataQuality,
-    navigateToImportPage,
-    performTestCaseExport,
-    uploadCSVFile,
-    validateImportGrid,
-    verifyButtonVisibility,
-    verifyPageAccess,
-    visitDataQualityTab,
-    waitForImportAsyncResponse
+  cancelBulkEditAndVerifyRedirect,
+  clickManageButton,
+  navigateToBulkEditPage,
+  navigateToGlobalDataQuality,
+  navigateToImportPage,
+  performTestCaseExport,
+  uploadCSVFile,
+  validateImportGrid,
+  verifyButtonVisibility,
+  verifyPageAccess,
+  visitDataQualityTab,
+  waitForImportAsyncResponse,
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
 

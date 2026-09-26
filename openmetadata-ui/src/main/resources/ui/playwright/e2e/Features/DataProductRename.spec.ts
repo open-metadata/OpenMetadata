@@ -19,16 +19,16 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import {
-    addAssetsToDataProduct,
-    checkAssetsCount,
-    selectDataProduct
+  addAssetsToDataProduct,
+  checkAssetsCount,
+  selectDataProduct,
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 

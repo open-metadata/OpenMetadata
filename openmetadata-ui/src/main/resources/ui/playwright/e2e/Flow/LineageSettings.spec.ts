@@ -27,16 +27,16 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    activateColumnLayer,
-    applyPipelineFromModal,
-    connectEdgeBetweenNodesViaAPI,
-    editLineage,
-    editLineageClick,
-    fillLineageConfigForm,
-    performZoomOut,
-    verifyNodePresent,
-    verifyPipelineDataInDrawer,
-    visitLineageTab
+  activateColumnLayer,
+  applyPipelineFromModal,
+  connectEdgeBetweenNodesViaAPI,
+  editLineage,
+  editLineageClick,
+  fillLineageConfigForm,
+  performZoomOut,
+  verifyNodePresent,
+  verifyPipelineDataInDrawer,
+  visitLineageTab,
 } from '../../utils/lineage';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';

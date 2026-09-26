@@ -18,8 +18,8 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    openGlossaryPicker,
-    searchGlossaryPicker
+  openGlossaryPicker,
+  searchGlossaryPicker,
 } from '../../utils/glossaryPicker';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';

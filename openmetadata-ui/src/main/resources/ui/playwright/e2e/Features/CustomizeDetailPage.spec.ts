@@ -13,9 +13,9 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
-    ECustomizedDataAssets,
-    ECustomizedGovernance,
-    EntityTabs
+  ECustomizedDataAssets,
+  ECustomizedGovernance,
+  EntityTabs,
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -25,42 +25,25 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    clickOutside,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    waitForAntdModalToSettle
+  clickOutside,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import {
-    getCustomizeDetailsDefaultTabs,
-    getCustomizeDetailsEntity
+  getCustomizeDetailsDefaultTabs,
+  getCustomizeDetailsEntity,
 } from '../../utils/customizeDetails';
 import {
-    checkDefaultStateForNavigationTree,
-    validateLeftSidebarWithHiddenItems
+  checkDefaultStateForNavigationTree,
+  validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import {
-    getEncodedFqn,
-    waitForAllLoadersToDisappear
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
-
-const openPlaceholderWidgetPicker = async (page: Page) => {
-  await page.getByRole('dialog').waitFor({ state: 'hidden' });
-  await page.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
-  const addWidgetButton = page
-    .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-    .getByTestId('add-widget-button');
-
-  // Focus can scroll this grid after the pointer position has been measured.
-  // Complete both transitions before dispatching the single click.
-  await addWidgetButton.scrollIntoViewIfNeeded();
-  await addWidgetButton.focus();
-  await addWidgetButton.click();
-  await expect(page.getByTestId('widget-info-tabs')).toBeVisible();
-};
 
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
@@ -456,7 +439,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         // Wait for dialog animation to complete and button to be stable
         await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
-        await waitForAntdModalToSettle(adminPage);
         await expect(addButton).toBeEnabled();
         await addButton.click();
 
@@ -465,7 +447,29 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           adminPage.getByText('Customize Custom Tab Widgets')
         ).toBeVisible();
 
-        await openPlaceholderWidgetPicker(adminPage);
+        // Wait for dialog to close before interacting with grid layout
+        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
+        await adminPage
+          .locator('.ant-modal-wrap')
+          .waitFor({ state: 'detached' });
+
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage
+          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+          .getByTestId('add-widget-button');
+        await expect(addWidgetButton).toBeVisible();
+        await expect(addWidgetButton).toBeEnabled();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -596,7 +600,29 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           adminPage.getByText('Customize Custom Tab Widgets')
         ).toBeVisible();
 
-        await openPlaceholderWidgetPicker(adminPage);
+        // Wait for dialog to close before interacting with grid layout
+        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
+        await adminPage
+          .locator('.ant-modal-wrap')
+          .waitFor({ state: 'detached' });
+
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage
+          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+          .getByTestId('add-widget-button');
+        await expect(addWidgetButton).toBeVisible();
+        await expect(addWidgetButton).toBeEnabled();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -607,7 +633,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
+        await expect(adminPage.getByTestId('add-widget-modal')).toBeHidden();
 
         await adminPage.getByTestId('save-button').click();
 
@@ -903,12 +929,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await test.step('validate applied label change for Domain Documentation tab', async () => {
       await redirectToHomePage(userPage);
 
-      const domainResponse = waitForResponseWithStatus(
-        userPage,
+      const domainResponse = userPage.waitForResponse(
         (response) =>
-          response.request().method() === 'GET' &&
-          response.url().includes('/api/v1/domains/name/'),
-        200
+          response.url().includes('/api/v1/domains/name/') &&
+          response.status() === 200
       );
       await entity?.visitEntityPage(userPage);
       await domainResponse;

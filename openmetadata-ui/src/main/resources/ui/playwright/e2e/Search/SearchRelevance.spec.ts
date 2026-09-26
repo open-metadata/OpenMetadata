@@ -12,10 +12,10 @@
  */
 
 import test, {
-    expect,
-    type APIRequestContext,
-    type Page,
-    type Response
+  expect,
+  type APIRequestContext,
+  type Page,
+  type Response,
 } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { getApiContext, redirectToHomePage } from '../../utils/common';

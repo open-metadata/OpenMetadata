@@ -24,11 +24,6 @@
       "count": 25
     }
   },
-  "playwright/e2e/Features/ActivityStream.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -374,7 +369,7 @@
   },
   "playwright/e2e/Features/SSOConfiguration.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 31
+      "count": 24
     }
   },
   "playwright/e2e/Features/SSOTestLogin.spec.ts": {
@@ -409,7 +404,7 @@
   },
   "playwright/e2e/Features/SettingsNavigationPage.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 8
     }
   },
   "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts": {

@@ -23,19 +23,19 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import { okJson } from '../../utils/apiResponse';
 import {
-    getApiContext,
-    redirectToExplorePage,
-    redirectToHomePage
+  getApiContext,
+  redirectToExplorePage,
+  redirectToHomePage,
 } from '../../utils/common';
 import {
-    assignDomainToEntity,
-    checkAssetsCount,
-    navigateToSubDomain,
-    searchAndExpectEntityNotVisible,
-    searchAndExpectEntityVisible,
-    selectDomain,
-    selectDomainFromNavbar,
-    verifyActiveDomainIsDefault
+  assignDomainToEntity,
+  checkAssetsCount,
+  navigateToSubDomain,
+  searchAndExpectEntityNotVisible,
+  searchAndExpectEntityVisible,
+  selectDomain,
+  selectDomainFromNavbar,
+  verifyActiveDomainIsDefault,
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';

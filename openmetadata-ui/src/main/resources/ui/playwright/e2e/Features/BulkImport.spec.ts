@@ -24,36 +24,35 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
-    createNewPage,
-    getApiContext,
-    redirectToHomePage
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import {
-    mockClipboardApi,
-    waitForAllLoadersToDisappear
+  mockClipboardApi,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
-    addGridRowAndSelectFirstCell,
-    createColumnRowDetails,
-    createCustomPropertiesForEntity,
-    createDatabaseRowDetails,
-    createDatabaseSchemaRowDetails,
-    createStoredProcedureRowDetails,
-    createTableRowDetails,
-    fillColumnDetails,
-    fillRecursiveColumnDetails,
-    fillRecursiveEntityTypeFQNDetails,
-    fillRowDetails,
-    fillStoredProcedureCode,
-    firstTimeGridAddRowAction,
-    performBulkDownload,
-    performColumnSelectAndDeleteOperation,
-    performDeleteOperationOnEntity,
-    pressKeyXTimes,
-    previewBulkImportChanges,
-    saveBulkImport,
-    startCsvPreviewAndWaitForGrid,
-    validateImportStatus
+  addGridRowAndSelectFirstCell,
+  createColumnRowDetails,
+  createCustomPropertiesForEntity,
+  createDatabaseRowDetails,
+  createDatabaseSchemaRowDetails,
+  createStoredProcedureRowDetails,
+  createTableRowDetails,
+  fillColumnDetails,
+  fillRecursiveColumnDetails,
+  fillRecursiveEntityTypeFQNDetails,
+  fillRowDetails,
+  fillStoredProcedureCode,
+  firstTimeGridAddRowAction,
+  performBulkDownload,
+  performColumnSelectAndDeleteOperation,
+  performDeleteOperationOnEntity,
+  pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
+  validateImportStatus,
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
 
@@ -65,16 +64,16 @@ test.use({
   },
 });
 
-let user1: UserClass;
-let user2: UserClass;
-let glossary: Glossary;
-let glossaryTerm: GlossaryTerm;
-let domain1: Domain;
-let domain2: Domain;
+const user1 = new UserClass();
+const user2 = new UserClass();
+const glossary = new Glossary();
+const glossaryTerm = new GlossaryTerm(glossary);
+const domain1 = new Domain();
+const domain2 = new Domain();
 
 const glossaryDetails = {
-  name: '',
-  parent: '',
+  name: glossaryTerm.data.name,
+  parent: glossary.data.name,
 };
 
 const databaseDetails1 = {
@@ -97,11 +96,9 @@ const databaseSchemaDetails2 = {
   glossary: glossaryDetails,
 };
 
-const validateSuccessfulImportStatus = async (
-  page: Page,
-  expectedRowCount: number
-) => {
-  const expectedProcessed = String(expectedRowCount);
+const validateSuccessfulImportStatus = async (page: Page) => {
+  const expectedProcessed =
+    (await page.getByTestId('processed-row').textContent())?.trim() ?? '0';
 
   await validateImportStatus(page, {
     passed: expectedProcessed,
@@ -114,8 +111,11 @@ const expectImportRowStatusesToContain = async (
   page: Page,
   rowStatus: string[]
 ) => {
-  // CSV parsing runs in a worker, so the result grid can still be populating
-  // after the completed validation counters appear.
+  // The result grid populates cells asynchronously after Next-click. Without
+  // first waiting for the row count to match, the toContainText assertion
+  // can run mid-render against 0 or partial cells, fail under retry too,
+  // and never recover. Wait for the expected number of detail cells before
+  // checking text.
   await expect(page.locator('.rdg-cell-details')).toHaveCount(
     rowStatus.length,
     { timeout: 60_000 }
@@ -150,30 +150,15 @@ const storedProcedureDetails = {
 
 test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
-    // A worker can enter this suite again after another file's tests. Give
-    // each hook invocation its own fixtures instead of recreating old names.
-    user1 = new UserClass();
-    user2 = new UserClass();
-    glossary = new Glossary();
-    glossaryTerm = new GlossaryTerm(glossary);
-    domain1 = new Domain();
-    domain2 = new Domain();
-    Object.assign(glossaryDetails, {
-      name: glossaryTerm.data.name,
-      parent: glossary.data.name,
-    });
-
     const { apiContext, afterAction } = await createNewPage(browser);
-    try {
-      await user1.create(apiContext);
-      await user2.create(apiContext);
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-      await domain1.create(apiContext);
-      await domain2.create(apiContext);
-    } finally {
-      await afterAction();
-    }
+
+    await user1.create(apiContext);
+    await user2.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await domain1.create(apiContext);
+    await domain2.create(apiContext);
+    await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
@@ -387,8 +372,15 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page
       );
 
-      await previewBulkImportChanges(page, 'services/databaseServices');
+      await page.getByRole('button', { name: 'Next' }).click();
 
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
+      );
+
+      await loader.waitFor({ state: 'hidden' });
+
+      await validateSuccessfulImportStatus(page);
       const rowStatus = [
         'Entity created',
         'Entity created',
@@ -398,10 +390,21 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         'Entity created',
       ];
 
-      await validateSuccessfulImportStatus(page, rowStatus.length);
       await expectImportRowStatusesToContain(page, rowStatus);
 
-      await saveBulkImport(page, 'services/databaseServices');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
     });
 
     await dbService.delete(apiContext);
@@ -544,7 +547,15 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page
       );
 
-      await previewBulkImportChanges(page, 'databases');
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
+      );
+
+      await loader.waitFor({ state: 'hidden' });
+
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity updated',
@@ -561,10 +572,21 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         'Entity created',
       ];
 
-      await validateSuccessfulImportStatus(page, rowStatus.length);
       await expectImportRowStatusesToContain(page, rowStatus);
 
-      await saveBulkImport(page, 'databases');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
     });
 
     await dbEntity.delete(apiContext);
@@ -688,7 +710,9 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page
       );
 
-      await previewBulkImportChanges(page, 'databaseSchemas');
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity created',
@@ -697,10 +721,21 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         'Entity updated',
       ];
 
-      await validateSuccessfulImportStatus(page, rowStatus.length);
       await expectImportRowStatusesToContain(page, rowStatus);
 
-      await saveBulkImport(page, 'databaseSchemas');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
     });
 
     await dbSchemaEntity.delete(apiContext);
@@ -762,7 +797,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
       await fillColumnDetails(columnDetails2, page);
 
-      await previewBulkImportChanges(page, 'tables');
+      await page.getByRole('button', { name: 'Next' }).click();
       // total column count +2 for newly added columns
       const count = `${tableEntity.entityLinkColumnsName.length + 2}`;
       await validateImportStatus(page, {
@@ -778,7 +813,17 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      await saveBulkImport(page, 'tables');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+
+      // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
+      await page.click('[type="button"] >> text="Update"', { force: true });
+      await updateButtonResponse;
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+      await toastNotification(page, /details updated successfully/);
     });
 
     await afterAction();
@@ -837,7 +882,9 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page
       );
 
-      await previewBulkImportChanges(page, 'databases');
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity created',
@@ -850,10 +897,21 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         'Entity updated',
       ];
 
-      await validateSuccessfulImportStatus(page, rowStatus.length);
       await expectImportRowStatusesToContain(page, rowStatus);
 
-      await saveBulkImport(page, 'databases');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
     });
 
     await test.step('should export data database schema details after edit changes', async () => {
@@ -889,7 +947,9 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
       // Perform Delete Operation on Edit Operation on Entity
       await performDeleteOperationOnEntity(page);
 
-      await previewBulkImportChanges(page, 'databases');
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity updated',
@@ -903,10 +963,21 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         'Entity updated',
       ];
 
-      await validateSuccessfulImportStatus(page, rowStatus.length);
       await expectImportRowStatusesToContain(page, rowStatus);
 
-      await saveBulkImport(page, 'databases');
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+      const navigationPromise = page.waitForEvent('framenavigated');
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await navigationPromise;
+      await toastNotification(page, /details updated successfully/);
     });
 
     await test.step('should verify the removed value from entity', async () => {
@@ -1001,9 +1072,30 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
           await expect(cell).toBeFocused();
         };
 
+        const isFocused = (cell: Locator) =>
+          cell.evaluate((el) => el === document.activeElement);
+
+        // Principle 1: press a bare Arrow key and wait for destination focus.
+        //
+        // RDG drops the press outright while the grid is still settling after a
+        // click or re-render — focus simply stays on the origin cell and the
+        // grid's own keydown handler never runs. Re-press until focus lands,
+        // checking the destination first so a press that did register is never
+        // doubled.
         const move = async (key: string, destination: Locator) => {
-          await page.keyboard.press(key);
-          await expect(destination).toBeFocused();
+          await expect
+            .poll(
+              async () => {
+                if (await isFocused(destination)) {
+                  return true;
+                }
+                await page.keyboard.press(key);
+
+                return isFocused(destination);
+              },
+              { timeout: 15_000, intervals: [200, 400, 800] }
+            )
+            .toBe(true);
         };
 
         // Principle 5 & 9: press Shift+Arrow and assert the expected selection

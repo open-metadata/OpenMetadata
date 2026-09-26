@@ -19,24 +19,23 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-    dismissToasts,
-    fillDescriptionBox,
-    getApiContext,
-    redirectToHomePage
+  fillDescriptionBox,
+  getApiContext,
+  redirectToHomePage,
 } from '../../../utils/common';
 import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
 import {
-    addMultiOwner,
-    waitForAllLoadersToDisappear
+  addMultiOwner,
+  waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {
-    addMultiOwnerInDialog,
-    fillStyleIconUrl,
-    openAddGlossaryTermModal,
-    selectActiveGlossary,
-    selectActiveGlossaryTerm,
-    selectStyleColor,
-    selectStyleIcon
+  addMultiOwnerInDialog,
+  fillStyleIconUrl,
+  openAddGlossaryTermModal,
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
+  selectStyleColor,
+  selectStyleIcon,
 } from '../../../utils/glossary';
 import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
@@ -78,9 +77,6 @@ test.describe('Glossary Advanced Operations', () => {
       await expect(page.getByTestId('form-item-alert')).not.toBeVisible();
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      // Save sits under the fixed bottom-center toast region; an error toast left
-      // over from the Glossary landing page never drains on its own.
-      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
       const response = await glossaryResponse;
       const responseData = await response.json();
@@ -194,9 +190,6 @@ test.describe('Glossary Advanced Operations', () => {
       });
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      // Save sits under the fixed bottom-center toast region; an error toast left
-      // over from the Glossary landing page never drains on its own.
-      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
       const response = await glossaryResponse;
       glossary.responseData = await response.json();
@@ -1394,9 +1387,6 @@ test.describe('Glossary Advanced Operations', () => {
     await fillDescriptionBox(page, 'Test description');
 
     // Try to save
-    // Save sits under the fixed bottom-center toast region; an error toast left
-    // over from the Glossary landing page never drains on its own.
-    await dismissToasts(page);
     await page.click('[data-testid="save-glossary"]');
 
     // Check for error (either validation error or the field truncates)

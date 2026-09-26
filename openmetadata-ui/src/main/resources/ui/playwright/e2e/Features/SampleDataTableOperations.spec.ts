@@ -15,14 +15,14 @@ import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    fillDeleteConfirmationIfPresent,
-    waitForAllLoadersToDisappear
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
-    addSampleDataViaApi,
-    buildReservedNameColumns,
-    navigateToSampleDataTab,
-    RESERVED_SAMPLE_COLUMN_NAMES
+  addSampleDataViaApi,
+  buildReservedNameColumns,
+  navigateToSampleDataTab,
+  RESERVED_SAMPLE_COLUMN_NAMES,
 } from '../../utils/sampleData';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';

@@ -18,10 +18,10 @@ import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { fullUuid, uuid } from '../../utils/common';
 import {
-    navigateToOntologyStudio,
-    readNodePositions,
-    releaseOntologyEditLease,
-    waitForGraphLoaded
+  navigateToOntologyStudio,
+  readNodePositions,
+  releaseOntologyEditLease,
+  waitForGraphLoaded,
 } from '../../utils/ontologyStudio';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 

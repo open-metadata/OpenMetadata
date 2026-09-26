@@ -27,7 +27,7 @@
  */
 
 import { Page } from '@playwright/test';
-import { chooseSelectOption } from '../../../utils/common';
+import { selectOptionWithRetry } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode } from '../../Utils/appMode';
 import { expect, test } from './fixtures';
@@ -78,7 +78,7 @@ test.describe(
           response.url().includes('testPlatform=')
       );
 
-      await chooseSelectOption(
+      await selectOptionWithRetry(
         page.getByRole('button', { name: 'Test Platforms' }),
         page.getByRole('option', { name: 'Deequ', exact: true })
       );

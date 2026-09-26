@@ -14,14 +14,13 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import {
-    dismissToasts,
-    fillDescriptionBox,
-    getApiContext,
-    redirectToHomePage
+  fillDescriptionBox,
+  getApiContext,
+  redirectToHomePage,
 } from '../../utils/common';
 import {
-    openAddGlossaryTermModal,
-    selectActiveGlossary
+  openAddGlossaryTermModal,
+  selectActiveGlossary,
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -44,9 +43,6 @@ test.describe('Glossary Form Validation', () => {
     await fillDescriptionBox(page, 'Test description');
 
     // Try to save
-    // Save sits under the fixed bottom-center toast region; an error toast left
-    // over from the Glossary landing page never drains on its own.
-    await dismissToasts(page);
     await page.click('[data-testid="save-glossary"]');
 
     // Verify error message appears
@@ -65,9 +61,6 @@ test.describe('Glossary Form Validation', () => {
     await page.fill('[data-testid="name"]', 'TestGlossary');
 
     // Try to save
-    // Save sits under the fixed bottom-center toast region; an error toast left
-    // over from the Glossary landing page never drains on its own.
-    await dismissToasts(page);
     await page.click('[data-testid="save-glossary"]');
 
     // Verify error message appears for description
@@ -95,9 +88,6 @@ test.describe('Glossary Form Validation', () => {
       await fillDescriptionBox(page, 'Test description');
 
       // Try to save
-      // Save sits under the fixed bottom-center toast region; an error toast left
-      // over from the Glossary landing page never drains on its own.
-      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
 
       // Verify error toast or inline error appears

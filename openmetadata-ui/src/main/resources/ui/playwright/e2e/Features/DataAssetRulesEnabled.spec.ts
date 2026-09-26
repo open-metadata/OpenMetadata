@@ -46,17 +46,13 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { authenticateAdminPage, performAdminLogin } from '../../utils/admin';
-import {
-    assignDataProduct,
-    clickOutside,
-    searchDataProductOptions
-} from '../../utils/common';
+import { assignDataProduct, clickOutside } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import { assignDomainWidget } from '../../utils/domain';
 import {
-    addOwner,
-    assignGlossaryTerm,
-    waitForAllLoadersToDisappear
+  addOwner,
+  assignGlossaryTerm,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -106,7 +102,6 @@ const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  createdDataProducts.length = 0;
   test.slow(true);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -257,8 +252,7 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             testGlossaryTerm.responseData.fullyQualifiedName
-          )}`,
-          { waitUntil: 'domcontentloaded' }
+          )}`
         );
 
         await page.waitForLoadState('domcontentloaded');
@@ -397,24 +391,37 @@ test.describe(
         .getByTestId('add-data-product')
         .click();
 
+      const selectorInput = page.locator(
+        '[data-testid="data-product-selector"] input'
+      );
       const sameDomainFqn =
         sameDomainDataProduct.responseData.fullyQualifiedName;
       const otherDomainFqn =
         otherDomainDataProduct.responseData.fullyQualifiedName;
 
-      const sameDomainOption = await searchDataProductOptions(page, {
-        displayName: sameDomainDataProduct.data.displayName,
-        fullyQualifiedName: sameDomainFqn,
-      });
-      await expect(sameDomainOption).toBeVisible();
+      // Positive control: a Data Product in the asset's domain is listed.
+      await expect(async () => {
+        const searchResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/query')
+        );
+        await selectorInput.clear();
+        await selectorInput.fill(sameDomainDataProduct.data.displayName);
+        await searchResponse;
+        await expect(page.getByTestId(`tag-${sameDomainFqn}`)).toBeVisible({
+          timeout: 2_000,
+        });
+      }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
       // Scoped to the asset's domain, so a Data Product from another domain is
       // not offered.
-      const otherDomainOption = await searchDataProductOptions(page, {
-        displayName: otherDomainDataProduct.data.displayName,
-        fullyQualifiedName: otherDomainFqn,
-      });
-      await expect(otherDomainOption).toBeHidden();
+      const otherSearchResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
+      );
+      await selectorInput.clear();
+      await selectorInput.fill(otherDomainDataProduct.data.displayName);
+      await otherSearchResponse;
+
+      await expect(page.getByTestId(`tag-${otherDomainFqn}`)).not.toBeVisible();
     });
 
     // With the rule enabled, the "Add Assets" picker on a Data Product stays

@@ -27,18 +27,16 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    assignDataProduct,
-    assignSingleSelectDomain,
-    getApiContext,
-    redirectToHomePage,
-    searchDataProductOptions
+  assignDataProduct,
+  assignSingleSelectDomain,
+  getApiContext,
+  redirectToHomePage,
 } from '../../utils/common';
 import {
-    softDeleteEntity,
-    waitForAllLoadersToDisappear
+  softDeleteEntity,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 // Service management pages render KnowledgePanel.DataProducts only inside the
@@ -92,9 +90,7 @@ const waitForInheritedDomainOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            throw new Error(
-              `HTTP ${response.status()} querying ${response.url()}`
-            );
+            return false;
           }
 
           const body = await response.json();
@@ -119,7 +115,7 @@ const waitForInheritedDomainOnEntityApi = async (
 
 const selectDataProductsFromKnowledgePanel = async (
   page: Page,
-  _domain: {
+  domain: {
     name: string;
     displayName: string;
   },
@@ -136,7 +132,23 @@ const selectDataProductsFromKnowledgePanel = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const tagLocator = await searchDataProductOptions(page, dataProduct);
+    const tagLocator = page.getByTestId(
+      `tag-${dataProduct.fullyQualifiedName}`
+    );
+
+    await expect(async () => {
+      const searchDataProduct = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(domain.name))
+      );
+      await page.locator('[data-testid="data-product-selector"] input').clear();
+      await page
+        .locator('[data-testid="data-product-selector"] input')
+        .fill(dataProduct.displayName);
+      await searchDataProduct;
+      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
     await tagLocator.click();
   }
@@ -187,9 +199,7 @@ const waitForDataProductsOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            throw new Error(
-              `HTTP ${response.status()} querying ${response.url()}`
-            );
+            return false;
           }
 
           const body = await response.json();
@@ -398,14 +408,12 @@ entities.forEach((EntityClass) => {
       await expect
         .poll(
           async () => {
-            const entityResponse = waitForResponseWithStatus(
-              page,
+            const entityResponse = page.waitForResponse(
               (r) =>
-                r.request().method() === 'GET' &&
-                r.url().includes(`/api/v1/${entity.endpoint}/`),
-              200
+                r.url().includes(`/api/v1/${entity.endpoint}/`) &&
+                r.status() === 200
             );
-            await page.reload({ waitUntil: 'domcontentloaded' });
+            await page.reload();
             await entityResponse;
             await waitForAllLoadersToDisappear(page);
 

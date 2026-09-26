@@ -21,18 +21,18 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
-    copyAndGetClipboardText,
-    testCopyLinkButton,
-    updateDisplayNameForEntity,
-    validateCopiedLinkFormat,
-    waitForAllLoadersToDisappear
+  copyAndGetClipboardText,
+  testCopyLinkButton,
+  updateDisplayNameForEntity,
+  validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
-    expandDatabaseInExploreTree,
-    expandServiceInExploreTree,
-    getFlatColumnCountOfTable,
-    validateBucketsForIndex,
-    verifyDatabaseAndSchemaInExploreTree
+  expandDatabaseInExploreTree,
+  expandServiceInExploreTree,
+  getFlatColumnCountOfTable,
+  validateBucketsForIndex,
+  verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';

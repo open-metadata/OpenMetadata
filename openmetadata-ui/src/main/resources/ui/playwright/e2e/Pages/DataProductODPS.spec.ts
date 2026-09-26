@@ -16,10 +16,9 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    chooseSelectOption,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  redirectToHomePage,
+  toastNotification,
+  uuid,
 } from '../../utils/common';
 import { test } from '../fixtures/pages';
 
@@ -99,11 +98,10 @@ const selectOption = async (
   selectTestId: string,
   optionLabel: string
 ) => {
+  await page.getByTestId(selectTestId).click();
   const listbox = page.getByRole('listbox');
-  await chooseSelectOption(
-    page.getByTestId(selectTestId),
-    listbox.getByRole('option', { name: optionLabel, exact: true })
-  );
+  await expect(listbox).toBeVisible();
+  await listbox.getByRole('option', { name: optionLabel, exact: true }).click();
   await expect(listbox).toBeHidden();
 };
 

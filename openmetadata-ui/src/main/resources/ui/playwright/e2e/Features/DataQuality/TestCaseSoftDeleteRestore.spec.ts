@@ -15,15 +15,15 @@ import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-    redirectToHomePage,
-    toastNotification,
-    uuid,
-    waitForAntdPopupToSettle
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    waitForTestCaseDetailsResponse,
-    waitForTestCaseListResponse
+  waitForTestCaseDetailsResponse,
+  waitForTestCaseListResponse,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 

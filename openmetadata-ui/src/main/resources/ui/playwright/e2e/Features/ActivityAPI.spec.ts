@@ -14,19 +14,16 @@ import { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-    createConversationThread,
-    FEED_ITEM_TIMEOUT,
-    getFeedItemByText,
-    getTableLeafName,
-    insertActivityEventForTest,
-    THUMBS_UP_EMOJI,
-    toggleThumbsUpReaction,
-    visitTableActivityFeed
+  createConversationThread,
+  FEED_ITEM_TIMEOUT,
+  getFeedItemByText,
+  getTableLeafName,
+  insertActivityEventForTest,
+  THUMBS_UP_EMOJI,
+  toggleThumbsUpReaction,
+  visitTableActivityFeed,
 } from '../../utils/activityAPI';
-import {
-    clickFeedReaction,
-    postActivityComment
-} from '../../utils/activityFeed';
+import { postActivityComment } from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
@@ -348,7 +345,7 @@ test.describe(
             response.url().endsWith('/reaction/rocket') &&
             response.request().method() === 'PUT'
         );
-        await clickFeedReaction(page, 'rocket');
+        await page.locator('[title="rocket"]:visible').click();
         await reactionResponse;
 
         await editedReplyCard.getByTestId('emoji-button').hover();

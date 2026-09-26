@@ -13,16 +13,16 @@
 import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-    CREATE_TEST_CASE_POLICY,
-    DELETE_TEST_CASE_POLICY,
-    EDIT_TESTS_ON_TEST_CASE_POLICY,
-    EDIT_TEST_CASE_POLICY,
-    TABLE_CREATE_TESTS_POLICY,
-    TABLE_EDIT_TESTS_POLICY,
-    TEST_CASE_VIEW_BASIC_POLICY,
-    TEST_SUITE_EDIT_ONLY_POLICY,
-    TEST_SUITE_POLICY,
-    VIEW_ALL_TEST_CASE_POLICY
+  CREATE_TEST_CASE_POLICY,
+  DELETE_TEST_CASE_POLICY,
+  EDIT_TESTS_ON_TEST_CASE_POLICY,
+  EDIT_TEST_CASE_POLICY,
+  TABLE_CREATE_TESTS_POLICY,
+  TABLE_EDIT_TESTS_POLICY,
+  TEST_CASE_VIEW_BASIC_POLICY,
+  TEST_SUITE_EDIT_ONLY_POLICY,
+  TEST_SUITE_POLICY,
+  VIEW_ALL_TEST_CASE_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -31,13 +31,13 @@ import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    verifyTestCaseLastRunBanner,
-    visitTestSuiteDetailsPage,
-    visitTestSuitesPage,
-    waitForPermissionsResponse,
-    waitForTableEntityPermissionsResponse,
-    waitForTestCaseDetailsResponse,
-    waitForTestCaseListResponse
+  verifyTestCaseLastRunBanner,
+  visitTestSuiteDetailsPage,
+  visitTestSuitesPage,
+  waitForPermissionsResponse,
+  waitForTableEntityPermissionsResponse,
+  waitForTestCaseDetailsResponse,
+  waitForTestCaseListResponse,
 } from '../../../utils/testCases';
 
 let createUser: UserClass;

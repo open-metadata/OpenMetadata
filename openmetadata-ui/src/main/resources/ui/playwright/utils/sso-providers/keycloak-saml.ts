@@ -13,11 +13,11 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
 import {
-    applyProviderConfig,
-    fetchSecurityConfig,
-    ProviderConfigOverride,
-    ProviderCredentials,
-    restoreSecurityConfig
+  applyProviderConfig,
+  fetchSecurityConfig,
+  ProviderConfigOverride,
+  ProviderCredentials,
+  restoreSecurityConfig,
 } from '../ssoAuth';
 import { SsoProviderFixture, SsoProviderSlug } from './fixture';
 import { forceTokenExpiry } from './force-token-expiry';

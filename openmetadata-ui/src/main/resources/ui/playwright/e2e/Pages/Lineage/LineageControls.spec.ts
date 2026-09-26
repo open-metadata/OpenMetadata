@@ -19,17 +19,17 @@ import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import {
-    getApiContext,
-    getDefaultAdminAPIContext,
-    redirectToHomePage
+  getApiContext,
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    connectEdgeBetweenNodesViaAPI,
-    dismissLineageMapOnboarding,
-    editLineageClick,
-    performZoomOut,
-    visitLineageTab
+  connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+  editLineageClick,
+  performZoomOut,
+  visitLineageTab,
 } from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';

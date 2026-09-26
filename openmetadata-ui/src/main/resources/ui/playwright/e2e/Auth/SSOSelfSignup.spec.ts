@@ -31,10 +31,10 @@ import { Page } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 import { getApiContext } from '../../utils/common';
 import {
-    MOCK_OIDC_MAPPED_CLAIM_ACCOUNT,
-    resetMockOidc,
-    setDefaultLoginAccount,
-    waitForMockOidcReady
+  MOCK_OIDC_MAPPED_CLAIM_ACCOUNT,
+  resetMockOidc,
+  setDefaultLoginAccount,
+  waitForMockOidcReady,
 } from '../../utils/mockOidc';
 
 const completeOidcSelfSignup = async (page: Page): Promise<void> => {

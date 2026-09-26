@@ -35,11 +35,11 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    descriptionBoxReadOnly,
-    getApiContext,
-    redirectToHomePage,
-    reloadAndWaitForNetworkIdle,
-    toastNotification
+  descriptionBoxReadOnly,
+  getApiContext,
+  redirectToHomePage,
+  reloadAndWaitForNetworkIdle,
+  toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
