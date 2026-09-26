@@ -21,7 +21,7 @@ import {
   useAppModeSidebarMainFooter,
   useAppModeSidebarRecent,
 } from '../appModeExtensions';
-import DomainScopeControl from './DomainScopeControl';
+import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import MoreNavPopover from './MoreNavPopover';
 import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import NavItem from './NavItem';

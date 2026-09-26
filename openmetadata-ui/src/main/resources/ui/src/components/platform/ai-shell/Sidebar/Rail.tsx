@@ -24,7 +24,7 @@ import {
   useAppModeSidebarRecentRail,
 } from '../appModeExtensions';
 import { IconComponent } from '../AppModule.types';
-import DomainScopeControl from './DomainScopeControl';
+import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import MoreNavPopover from './MoreNavPopover';
 import { MainNavItem } from './navConfig';
 import SidebarBrand from './SidebarBrand';

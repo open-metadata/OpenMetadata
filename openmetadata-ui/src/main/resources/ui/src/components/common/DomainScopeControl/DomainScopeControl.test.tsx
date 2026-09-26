@@ -12,9 +12,9 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
-import { EntityReference } from '../../../../generated/entity/type';
-import { DomainSelectableListProps } from '../../../common/DomainSelectableList/DomainSelectableList.interface';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/type';
+import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainScopeControl from './DomainScopeControl';
 
 const mockNavigate = jest.fn();
@@ -55,11 +55,11 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../../../../hooks/useDomainStore', () => ({
+jest.mock('../../../hooks/useDomainStore', () => ({
   useDomainStore: () => storeState,
 }));
 
-jest.mock('../../../../utils/EntityNameUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getDomainDisplayName: (ref?: EntityReference, active?: string) =>
     ref?.displayName ?? active,
 }));
@@ -99,32 +99,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => <div title={title}>{children}</div>,
 }));
 
-jest.mock('../../../AppRouter/withSuspenseFallback', () => ({
+jest.mock('../../AppRouter/withSuspenseFallback', () => ({
   __esModule: true,
   default: (Component: React.ComponentType<DomainSelectableListProps>) =>
     Component,
 }));
 
-jest.mock(
-  '../../../common/DomainSelectableList/DomainSelectableList.component',
-  () => ({
-    __esModule: true,
-    default: (props: DomainSelectableListProps) => {
-      mockDomainSelectableList(props);
+jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
+  __esModule: true,
+  default: (props: DomainSelectableListProps) => {
+    mockDomainSelectableList(props);
 
-      return (
-        <div data-testid="domain-selectable-list">
-          {props.children}
-          <button
-            data-testid="mock-pick-domain"
-            onClick={() => props.onUpdate(demoDomain)}>
-            pick
-          </button>
-        </div>
-      );
-    },
-  })
-);
+    return (
+      <div data-testid="domain-selectable-list">
+        {props.children}
+        <button
+          data-testid="mock-pick-domain"
+          onClick={() => props.onUpdate(demoDomain)}>
+          pick
+        </button>
+      </div>
+    );
+  },
+}));
 
 // The menu is a `React.lazy` wrapper, so the first render suspends until the
 // (mocked) module resolves — await the list before asserting.
