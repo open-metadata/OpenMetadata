@@ -405,8 +405,8 @@ export const fillRule = async (
         }
       }
 
-      await page
-        .getByText('All conditions must match', { exact: true })
+        await page
+        .getByText('All conditions must match', { exact: true }).first()
         .click({ timeout: 10_000 });
     }
   }
