@@ -28,6 +28,9 @@ import { sidebarClick } from '../../../utils/sidebar';
  * server-side to REST list views: a parent pick also includes its sub-domains, the pick
  * survives a fresh login, and clearing it restores the unfiltered view.
  */
+// use the admin user for all the tests
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 const domainA = new Domain();
 const domainB = new Domain();
 let subDomainA: SubDomain;
@@ -38,24 +41,31 @@ const glossaryInSubA = new Glossary();
 const glossaryPanel = (page: import('@playwright/test').Page) =>
   page.getByTestId('glossary-left-panel');
 
-test.beforeAll('Seed domains, a sub-domain and one glossary in each', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await domainA.create(apiContext);
-  await domainB.create(apiContext);
-  subDomainA = new SubDomain(domainA);
-  await subDomainA.create(apiContext);
-  for (const [glossary, domain] of [
-    [glossaryInA, domainA.responseData],
-    [glossaryInB, domainB.responseData],
-    [glossaryInSubA, subDomainA.responseData],
-  ] as const) {
-    await glossary.create(apiContext);
-    await glossary.patch(apiContext, [
-      { op: 'add', path: '/domains', value: [{ id: domain.id, type: 'domain' }] },
-    ]);
+test.beforeAll(
+  'Seed domains, a sub-domain and one glossary in each',
+  async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domainA.create(apiContext);
+    await domainB.create(apiContext);
+    subDomainA = new SubDomain(domainA);
+    await subDomainA.create(apiContext);
+    for (const [glossary, domain] of [
+      [glossaryInA, domainA.responseData],
+      [glossaryInB, domainB.responseData],
+      [glossaryInSubA, subDomainA.responseData],
+    ] as const) {
+      await glossary.create(apiContext);
+      await glossary.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/domains',
+          value: [{ id: domain.id, type: 'domain' }],
+        },
+      ]);
+    }
+    await afterAction();
   }
-  await afterAction();
-});
+);
 
 test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -78,42 +88,63 @@ test('picking a domain narrows the glossary list and includes its sub-domain', a
   page,
 }) => {
   await redirectToHomePage(page);
+  // The navbar domain dropdown is not shown on the home page; pick it from the glossary page.
+  await sidebarClick(page, SidebarItem.GLOSSARY);
   await selectDomainFromNavbar(page, domainA.responseData);
 
-  await sidebarClick(page, SidebarItem.GLOSSARY);
   const panel = glossaryPanel(page);
   await expect(
-    panel.getByRole('menuitem', { name: glossaryInA.responseData.displayName, exact: true })
+    panel.getByRole('menuitem', {
+      name: glossaryInA.responseData.displayName,
+      exact: true,
+    })
   ).toBeVisible();
   await expect(
-    panel.getByRole('menuitem', { name: glossaryInSubA.responseData.displayName, exact: true })
+    panel.getByRole('menuitem', {
+      name: glossaryInSubA.responseData.displayName,
+      exact: true,
+    })
   ).toBeVisible();
   await expect(
-    panel.getByRole('menuitem', { name: glossaryInB.responseData.displayName, exact: true })
+    panel.getByRole('menuitem', {
+      name: glossaryInB.responseData.displayName,
+      exact: true,
+    })
   ).toBeHidden();
 });
 
-test('the pick is persisted and restored on a fresh login', async ({ page }) => {
+test('the pick is persisted and restored on a fresh login', async ({
+  page,
+}) => {
   await redirectToHomePage(page);
+  await sidebarClick(page, SidebarItem.GLOSSARY);
   await selectDomainFromNavbar(page, domainB.responseData);
 
-  // A new page = a fresh app boot; the navbar must seed from the persisted defaultDomain.
+  // A reload is a fresh app boot; the navbar must seed from the persisted defaultDomain.
   await page.reload();
   await expect(page.getByTestId('domain-dropdown')).toContainText(
     domainB.responseData.displayName
   );
 
-  await sidebarClick(page, SidebarItem.GLOSSARY);
   const panel = glossaryPanel(page);
   await expect(
-    panel.getByRole('menuitem', { name: glossaryInB.responseData.displayName, exact: true })
+    panel.getByRole('menuitem', {
+      name: glossaryInB.responseData.displayName,
+      exact: true,
+    })
   ).toBeVisible();
   await expect(
-    panel.getByRole('menuitem', { name: glossaryInA.responseData.displayName, exact: true })
+    panel.getByRole('menuitem', {
+      name: glossaryInA.responseData.displayName,
+      exact: true,
+    })
   ).toBeHidden();
 });
 
-test('clearing the selection restores the unfiltered list', async ({ page, browser }) => {
+test('clearing the selection restores the unfiltered list', async ({
+  page,
+  browser,
+}) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
   await apiContext.patch(`/api/v1/users/${me.id}`, {
@@ -123,12 +154,15 @@ test('clearing the selection restores the unfiltered list', async ({ page, brows
   await afterAction();
 
   await redirectToHomePage(page);
-  await verifyActiveDomainIsDefault(page);
   await sidebarClick(page, SidebarItem.GLOSSARY);
+  await verifyActiveDomainIsDefault(page);
   const panel = glossaryPanel(page);
   for (const g of [glossaryInA, glossaryInB, glossaryInSubA]) {
     await expect(
-      panel.getByRole('menuitem', { name: g.responseData.displayName, exact: true })
+      panel.getByRole('menuitem', {
+        name: g.responseData.displayName,
+        exact: true,
+      })
     ).toBeVisible();
   }
 });
