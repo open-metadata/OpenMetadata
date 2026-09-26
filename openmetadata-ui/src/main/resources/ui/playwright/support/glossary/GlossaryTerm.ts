@@ -86,11 +86,10 @@ export class GlossaryTerm extends EntityClass {
       const glossaryTermListResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/glossaryTerms?') &&
-          response.url().includes(`glossary=${glossaryId}`) &&
-          response.status() === 200
+          response.url().includes(`glossary=${glossaryId}`)
       );
       await expandCollapseButton.click();
-      await glossaryTermListResponse;
+      expect((await glossaryTermListResponse).status()).toBe(200);
     }
     const glossaryTermResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/name/${encodeURIComponent(
