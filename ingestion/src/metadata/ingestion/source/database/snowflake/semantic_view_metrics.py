@@ -25,13 +25,20 @@ from metadata.generated.schema.entity.data.metric import (
     MetricDimension,
     MetricExpression,
     MetricMeasure,
-    MetricType,
-    Type,
 )
 from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.utils.metric_naming import build_metric_name as build_semantic_metric_name
+from metadata.ingestion.source.database.semantic_metrics import (
+    aggregation_name,
+    describe,
+    dimension_type,
+    infer_metric_type,
+    unquote_name_part,
+)
+from metadata.ingestion.source.database.semantic_metrics import (
+    build_metric_name as build_semantic_metric_name,
+)
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
@@ -44,35 +51,7 @@ SEMANTIC_EXPRESSION_IDX = 3
 SEMANTIC_COMMENT_IDX = 4
 SEMANTIC_SYNONYMS_IDX = 5
 
-# Snowflake data types that make a dimension a TIME dimension rather than CATEGORICAL.
-_TIME_TYPE_MARKERS = ("DATE", "TIME", "TIMESTAMP")
-
 _FALLBACK_SERVICE_PREFIX = "snowflake"
-
-_METRIC_TYPE_BY_PREFIX = {
-    "SUM": MetricType.SUM,
-    "COUNT": MetricType.COUNT,
-    "AVG": MetricType.AVERAGE,
-    "MIN": MetricType.MIN,
-    "MAX": MetricType.MAX,
-}
-
-
-def _unquote_name_part(part: str) -> str:
-    """Normalize one identifier before hashing its canonical identity.
-
-    Every derivation of a metric name starts here, because the two call sites
-    disagree on quoting: the metadata stage passes the topology context value,
-    which may be quoted, while the lineage workflow passes the raw
-    INFORMATION_SCHEMA value, which never is. Normalizing before anything else
-    keeps both paths on the same name for the same metric. Snowflake represents
-    an embedded quote as ``""`` inside a quoted identifier; decode that wrapper
-    representation without removing quotes that belong to the identifier itself.
-    """
-    value = part or ""
-    if len(value) >= 2 and value.startswith('"') and value.endswith('"'):
-        return value[1:-1].replace('""', '"')
-    return value
 
 
 def build_metric_name(service: str, database: str, schema: str, view: str, table: str, metric: str) -> str:
@@ -87,37 +66,9 @@ def build_metric_name(service: str, database: str, schema: str, view: str, table
     ``<table_alias>.<name> AS <expr>`` — so one view may define both ``orders.total``
     and ``returns.total``, and the logical table is part of the metric's identity.
     """
-    identity = tuple(_unquote_name_part(part) for part in (database, schema, view, table, metric))
-    return build_semantic_metric_name(_unquote_name_part(service), identity, _FALLBACK_SERVICE_PREFIX)
-
-
-def infer_metric_type(expression: str | None) -> MetricType:
-    """Infer the MetricType from the aggregation head of the expression."""
-    result = MetricType.OTHER
-    if expression:
-        head = expression.strip().split("(")[0].strip().upper()
-        result = _METRIC_TYPE_BY_PREFIX.get(head, MetricType.OTHER)
-    return result
-
-
-def _semantic_description(row) -> str | None:
-    """Description for a dimension/measure: the Snowflake ``COMMENT``, plus any
-    synonyms, which have nowhere else to land."""
-    parts = []
-    if row[SEMANTIC_COMMENT_IDX]:
-        parts.append(str(row[SEMANTIC_COMMENT_IDX]))
-    if row[SEMANTIC_SYNONYMS_IDX]:
-        parts.append(f"Synonyms: {row[SEMANTIC_SYNONYMS_IDX]}.")
-    return " ".join(parts) or None
-
-
-def _dimension_type(data_type: str | None) -> Type | None:
-    """Classify a dimension as TIME or CATEGORICAL from its Snowflake data type."""
-    result = None
-    if data_type:
-        upper = data_type.upper()
-        result = Type.TIME if any(marker in upper for marker in _TIME_TYPE_MARKERS) else Type.CATEGORICAL
-    return result
+    return build_semantic_metric_name(
+        service, database, schema, view, table, metric, fallback_prefix=_FALLBACK_SERVICE_PREFIX
+    )
 
 
 def _child_name(row) -> str:
@@ -131,27 +82,29 @@ def _child_name(row) -> str:
     in the name. The server quotes dotted child names when building their FQNs, so
     the Snowflake name does not need the Metric name's UI-specific sanitization.
     """
-    return ".".join(_unquote_name_part(part) for part in (row[SEMANTIC_TABLE_IDX], row[SEMANTIC_NAME_IDX]))
+    return ".".join(unquote_name_part(part) for part in (row[SEMANTIC_TABLE_IDX], row[SEMANTIC_NAME_IDX]))
+
+
+def _row_description(row) -> str | None:
+    """A semantic object's description: its Snowflake ``COMMENT`` plus its synonyms."""
+    return describe(row[SEMANTIC_COMMENT_IDX], row[SEMANTIC_SYNONYMS_IDX])
 
 
 def _dimension(row) -> MetricDimension:
     return MetricDimension(  # pyright: ignore[reportCallIssue]
         name=_child_name(row),
-        type=_dimension_type(row[SEMANTIC_DATA_TYPE_IDX]),
-        description=_semantic_description(row),
+        type=dimension_type(row[SEMANTIC_DATA_TYPE_IDX]),
+        description=_row_description(row),
         expression=row[SEMANTIC_EXPRESSION_IDX] or None,
     )
 
 
 def _measure(row) -> MetricMeasure:
     expression = row[SEMANTIC_EXPRESSION_IDX]
-    aggregation = None
-    if infer_metric_type(expression) != MetricType.OTHER:
-        aggregation = expression.strip().split("(")[0].strip().upper()
     return MetricMeasure(  # pyright: ignore[reportCallIssue]
         name=_child_name(row),
-        aggregation=aggregation,
-        description=_semantic_description(row),
+        aggregation=aggregation_name(expression),
+        description=_row_description(row),
         expression=expression or None,
     )
 
