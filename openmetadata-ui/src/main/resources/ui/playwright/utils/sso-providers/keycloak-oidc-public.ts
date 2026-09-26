@@ -167,8 +167,16 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
     // /callback, and the signup completion never ran.
     const sidebarLocator = page.getByTestId('app-bar-item-my-data');
     const createButton = page.getByTestId('create-button');
+    // Match the signup POST specifically. A bare `.includes('/api/v1/users')`
+    // matches the 404 from `GET /api/v1/users/loggedInUser` that fires first
+    // (that's the response that routes the SPA to /signup), so the waiter
+    // would resolve before the actual submission and skip the wait.
     const submissionPending = page
-      .waitForResponse((resp) => resp.url().includes('/api/v1/users'))
+      .waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/users') &&
+          resp.request().method() !== 'GET'
+      )
       .catch(() => undefined);
     const signupAppeared = await Promise.race([
       createButton.waitFor({ state: 'visible', timeout: 30_000 }).then(
