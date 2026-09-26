@@ -281,18 +281,18 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
-      // Verify Tags — scope to the right-panel Tags section (the same
-      // Sensitive tag also renders inline on the entity header, so a
-      // bare getByRole matches both and fails strict mode).
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
-        page.getByTestId('KnowledgePanel.Tags').getByRole('link', {
+        page.getByRole('link', {
           name: 'Sensitive',
         })
       ).toBeVisible();
 
       // Verify Tier
       await expect(
-        page.getByTestId('KnowledgePanel.Tier').getByRole('link', {
+        page.getByRole('link', {
           name: 'Tier1',
         })
       ).toBeVisible();
@@ -438,18 +438,18 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.locator('loader').waitFor({ state: 'hidden' });
 
-      // Verify Tags — scope to the right-panel Tags section (the same
-      // Sensitive tag also renders inline on the entity header, so a
-      // bare getByRole matches both and fails strict mode).
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
-        page.getByTestId('KnowledgePanel.Tags').getByRole('link', {
+        page.getByRole('link', {
           name: 'Sensitive',
         })
       ).toBeVisible();
 
       // Verify Tier
       await expect(
-        page.getByTestId('KnowledgePanel.Tier').getByRole('link', {
+        page.getByRole('link', {
           name: 'Tier1',
         })
       ).toBeVisible();
@@ -606,18 +606,18 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
-      // Verify Tags — scope to the right-panel Tags section (the same
-      // Sensitive tag also renders inline on the entity header, so a
-      // bare getByRole matches both and fails strict mode).
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
-        page.getByTestId('KnowledgePanel.Tags').getByRole('link', {
+        page.getByRole('link', {
           name: 'Sensitive',
         })
       ).toBeVisible();
 
       // Verify Tier
       await expect(
-        page.getByTestId('KnowledgePanel.Tier').getByRole('link', {
+        page.getByRole('link', {
           name: 'Tier1',
         })
       ).toBeVisible();
@@ -722,15 +722,18 @@ test.describe('Bulk Edit Entity', () => {
         getCellByName(page, 'Playwright Table column')
       ).toBeVisible();
 
-      // Verify Tags
+      // Verify Tags — the table page renders the same Sensitive tag
+      // both inline on the entity header AND in the right-panel
+      // KnowledgePanel.Tags, so a bare getByRole matches both and
+      // fails strict mode. Scope to the right panel.
       await expect(
-        page.getByRole('link', {
+        page.getByTestId('KnowledgePanel.Tags').getByRole('link', {
           name: 'Sensitive',
         })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('link', {
+        page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
           name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();

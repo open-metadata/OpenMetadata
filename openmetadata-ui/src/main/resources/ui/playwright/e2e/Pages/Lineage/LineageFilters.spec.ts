@@ -910,6 +910,12 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify LineageSearchSelect in lineage mode', async ({ page }) => {
+    // Under SharedInfra the lineage graph carries more nodes and the
+    // pre-loaded option list takes longer to populate; the 60s budget is
+    // tight for the whole flow (zoom, wait for node, open select, filter,
+    // click option, wait for entity summary panel).
+    test.slow();
+
     const searchSelect = page.getByTestId('lineage-search');
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];
@@ -919,22 +925,18 @@ test.describe('Lineage Filters', () => {
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
     await searchSelect.click();
-    // Wait for the search-select's debounced /search/query response
-    // before looking for the option — under SharedInfra load the
-    // response can arrive well after fill(), and getByTestId(...).click()
-    // times out at 30s instead of waiting for the option to appear.
-    const optionRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(topicName)
-    );
     await page
       .getByTestId('lineage-search')
       .getByRole('combobox')
       .fill(topicName);
-    await optionRes;
 
-    await page.getByTestId(`option-${topicFqn}`).click();
+    // LineageSearchSelect filters a pre-loaded options list client-side
+    // (no /search/query fired on keystroke — see
+    // LineageSearchSelect.tsx:177 filterOptions). Wait for the specific
+    // option to appear rather than a network response.
+    const option = page.getByTestId(`option-${topicFqn}`);
+    await option.waitFor({ state: 'visible' });
+    await option.click();
 
     await page.locator('.lineage-entity-panel').waitFor();
     await page

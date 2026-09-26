@@ -626,6 +626,11 @@ test.describe(
      * 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end.
      */
     test('Table Difference', async ({ page }) => {
+      // Multi-step flow (visit create form, select tableDiff type, wait
+      // for tables listing, edit for additional columns, delete) — 60s
+      // is tight under SharedInfra load where the tables search
+      // response can take 30-60s to return.
+      test.slow();
       await redirectToHomePage(page);
       const { apiContext } = await getApiContext(page);
       table1 = new TableClass(undefined, undefined, service);
