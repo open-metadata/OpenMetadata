@@ -2418,7 +2418,6 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/tag/ClassificationClass.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/ClassificationTagUsage.spec.ts",
@@ -2456,7 +2455,6 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/tag/TagClass.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/CertificationDropdown.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
@@ -2716,8 +2714,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Features/CuratedAssets.spec.ts"
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts"
       ]
     },
     {
@@ -4689,7 +4686,6 @@
         "playwright/e2e/Features/Container.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermInverseRelation.spec.ts",
@@ -7159,6 +7155,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts"
       ]
     },
@@ -7167,6 +7164,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ModalWithQueryEditor/ModalWithQueryEditor.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts"
       ]
     },
@@ -8172,6 +8170,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Tag/TagsContainerV2/TagsContainerV2.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
@@ -8412,7 +8411,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
-        "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
@@ -8508,6 +8506,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
@@ -8541,6 +8540,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
@@ -9143,6 +9143,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/RichTextEditor/RichTextEditor.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
@@ -10609,7 +10610,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts",
