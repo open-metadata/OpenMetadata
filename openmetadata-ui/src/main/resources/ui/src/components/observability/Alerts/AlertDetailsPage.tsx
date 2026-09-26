@@ -39,15 +39,18 @@ import {
 } from '../../../generated/events/eventSubscription';
 import { useFqn } from '../../../hooks/useFqn';
 import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
-import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage';
+import { useAlertDetailsData } from '../../../pages/AlertDetailsPage/hooks/useAlertDetailsData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import AlertAiDiagnosticTab from './AlertAiDiagnosticTab';
+import AlertAiEventCounts from './AlertAiEventCounts';
 import AlertAiForm from './AlertAiForm.component';
 import { getAlertAiResources } from './AlertAiFormFieldsPureUtils';
+import AlertAiRecentEventsTab from './AlertAiRecentEventsTab';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
@@ -93,14 +96,12 @@ const AlertDetailsPage = ({
     [fqn, kind, navigate]
   );
 
-  const detailsState = useAlertDetailsPage({
+  const detailsState = useAlertDetailsData({
     afterDeleteAction: handleAfterDelete,
     isNotificationAlert,
     onEditAlert: handleEditAlert,
     onTabChange: (tab) => handleTabChange(tab),
-  }) as ReturnType<typeof useAlertDetailsPage> & {
-    fetchAlertDetails?: () => Promise<void>;
-  };
+  });
   const alertFormState = useObservabilityAlertForm({
     alertType: kind.alertType,
     fqn,
@@ -108,11 +109,12 @@ const AlertDetailsPage = ({
 
   const {
     alertDetails,
+    alertEventCounts,
+    alertEventCountsLoading,
     deletePermission,
     editDescriptionPermission,
     editOwnersPermission,
     editPermission,
-    extraInfo,
     fetchAlertDetails,
     handleAlertDelete,
     handleAlertEdit,
@@ -126,7 +128,6 @@ const AlertDetailsPage = ({
     setShowDeleteModal,
     showDeleteModal,
     tab,
-    tabItems,
     viewPermission,
   } = detailsState;
 
@@ -177,10 +178,36 @@ const AlertDetailsPage = ({
 
   const handleEditModalSaved = useCallback(async () => {
     setIsEditModalOpen(false);
-    await fetchAlertDetails?.();
+    await fetchAlertDetails();
   }, [fetchAlertDetails]);
 
+  const tabItems = useMemo(
+    () => [
+      {
+        key: AlertDetailTabs.CONFIGURATION,
+        label: t('label.configuration'),
+      },
+      {
+        key: AlertDetailTabs.RECENT_EVENTS,
+        label: t('label.recent-event-plural'),
+      },
+      {
+        key: AlertDetailTabs.DIAGNOSTIC_INFO,
+        label: t('label.diagnostic-info'),
+      },
+    ],
+    [t]
+  );
+
   const activeTabContent = useMemo<ReactNode>(() => {
+    if (tab === AlertDetailTabs.RECENT_EVENTS && alertDetails) {
+      return <AlertAiRecentEventsTab alertDetails={alertDetails} />;
+    }
+
+    if (tab === AlertDetailTabs.DIAGNOSTIC_INFO) {
+      return <AlertAiDiagnosticTab fqn={fqn} />;
+    }
+
     if (tab === AlertDetailTabs.CONFIGURATION && alertConfigValue) {
       return (
         <AlertAiForm
@@ -198,9 +225,11 @@ const AlertDetailsPage = ({
       );
     }
 
-    return tabItems?.find((item) => item.key === tab)?.children;
+    return null;
   }, [
     alertConfigValue,
+    alertDetails,
+    fqn,
     alertFormState.extraFormWidgets,
     alertFormState.filterResources,
     alertFormState.templates,
@@ -208,7 +237,6 @@ const AlertDetailsPage = ({
     selectedAlertResource?.supportedActions,
     selectedAlertResource?.supportedFilters,
     tab,
-    tabItems,
   ]);
 
   const headerTabs = useMemo(
@@ -218,7 +246,7 @@ const AlertDetailsPage = ({
         data-testid="alert-details-tabs"
         size="sm"
         type="underline">
-        {tabItems?.map((item) => (
+        {tabItems.map((item) => (
           <Tabs.Item
             id={String(item.key)}
             key={String(item.key)}
@@ -261,13 +289,17 @@ const AlertDetailsPage = ({
             }
           />
         )}
-        {extraInfo}
+        <AlertAiEventCounts
+          counts={alertEventCounts}
+          loading={alertEventCountsLoading}
+        />
       </Box>
     ),
     [
       alertDetails?.owners,
+      alertEventCounts,
+      alertEventCountsLoading,
       editOwnersPermission,
-      extraInfo,
       onOwnerUpdate,
       ownerLoading,
     ]
