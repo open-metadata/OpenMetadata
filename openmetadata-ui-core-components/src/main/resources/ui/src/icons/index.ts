@@ -204,3 +204,21 @@ export { Bronze } from './Bronze';
 export { Gold } from './Gold';
 export { None } from './None';
 export { Silver } from './Silver';
+export {
+  AlignLeft,
+  Calendar,
+  Check,
+  Clock,
+  Code01,
+  Database01,
+  Edit05,
+  FilterLines,
+  Hash02,
+  Hourglass01,
+  Link01,
+  List,
+  Mail01,
+  SearchLg,
+  Trash01,
+  Type01,
+} from '@untitledui/icons';

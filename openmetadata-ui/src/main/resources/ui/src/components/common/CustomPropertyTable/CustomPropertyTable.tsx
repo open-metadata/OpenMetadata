@@ -31,8 +31,13 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
-import { ChangeDescription, Type } from '../../../generated/entity/type';
+import {
+  ChangeDescription,
+  CustomProperty,
+  Type,
+} from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { buildUpdatedExtension } from '../../../utils/CustomProperty.utils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
@@ -46,6 +51,7 @@ import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './custom-property-table.less';
+import { CustomPropertyCardList } from './CustomPropertyCard/CustomPropertyCardList';
 import {
   CustomPropertyProps,
   ExtentionEntities,
@@ -77,7 +83,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     useState<boolean>(true);
 
   const onExtensionUpdate = useCallback(
-    async (updatedExtension: ExtentionEntities[T]) => {
+    async (updatedExtension?: Record<string, unknown>) => {
       if (!isUndefined(onUpdate) && entityDetails) {
         const updatedData = {
           ...entityDetails,
@@ -89,8 +95,21 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     [entityDetails, onUpdate]
   );
 
+  const onPropertyValueSave = useCallback(
+    (property: CustomProperty, value: unknown) =>
+      onExtensionUpdate(
+        buildUpdatedExtension(
+          entityDetails?.extension,
+          property.name,
+          property.propertyType.name ?? '',
+          value
+        )
+      ),
+    [entityDetails?.extension, onExtensionUpdate]
+  );
+
   const extensionObject: {
-    extensionObject: ExtentionEntities[T];
+    extensionObject?: Record<string, unknown>;
     addedKeysList?: string[];
   } = useMemo(() => {
     if (isVersionView) {
@@ -294,6 +313,17 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (isEmpty(entityTypeDetail.customProperties)) {
     return null;
+  }
+
+  if (!isVersionView) {
+    return (
+      <CustomPropertyCardList
+        extension={extensionObject.extensionObject}
+        hasEditPermissions={hasEditAccess}
+        properties={dataSource}
+        onValueSave={onPropertyValueSave}
+      />
+    );
   }
 
   return (

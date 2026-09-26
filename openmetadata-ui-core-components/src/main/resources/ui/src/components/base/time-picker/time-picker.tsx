@@ -24,6 +24,8 @@ const sizes = {
 export interface TimePickerValue {
   hour: number;
   minute: number;
+  /** Only reported when `granularity` is `"second"`. */
+  second?: number;
 }
 
 export interface TimePickerProps
@@ -60,10 +62,23 @@ export const TimePicker = ({
   hourCycle = 12,
   ...props
 }: TimePickerProps) => {
-  const ariaValue = value ? new Time(value.hour, value.minute) : null;
+  const ariaValue = value
+    ? new Time(value.hour, value.minute, value.second ?? 0)
+    : null;
+  const hasSeconds = props.granularity === 'second';
 
   const handleChange = (time: TimeValue | null) => {
-    onChange?.(time ? { hour: time.hour, minute: time.minute } : null);
+    if (!time) {
+      onChange?.(null);
+
+      return;
+    }
+
+    onChange?.({
+      hour: time.hour,
+      minute: time.minute,
+      ...(hasSeconds ? { second: time.second } : {}),
+    });
   };
 
   return (

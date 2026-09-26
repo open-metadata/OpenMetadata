@@ -95,6 +95,19 @@ Open [http://localhost:6006](http://localhost:6006) and navigate to **Icons → 
 
 ---
 
+## Re-exporting UntitledUI icons
+
+Stock UntitledUI icons need no SVG. Add the export name (for example `Calendar` or `Hash02`)
+to `scripts/untitled-icon-reexports.json` and run `yarn icons:generate`. The generator adds
+them to `src/icons/index.ts` as one `export { … } from '@untitledui/icons'` line, so app
+code imports them from `@openmetadata/ui-core-components/icons` like first-party icons.
+
+The generator fails if a listed name is not an `@untitledui/icons` export, or if it collides
+with a generated first-party icon (for example `Table`, `Plus` or `XClose`). Use the
+first-party icon in that case.
+
+---
+
 ## Viewing the Storybook
 
 ```bash
