@@ -503,8 +503,12 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         # Bound the Snowflake socket so a silently-severed TCP connection
         # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
         # error within 10 minutes instead of hanging the worker indefinitely.
-        # User-supplied connectionArguments win via setdefault.
-        connect_args.setdefault("network_timeout", 600)
+        # This has to be `socket_timeout`, not `network_timeout`: the driver also
+        # arms `network_timeout` as a client-side cancel timer on every statement
+        # it executes, so setting it kills any query that runs longer than the
+        # value with `000604 (57014): SQL execution was cancelled by the client
+        # due to a timeout`. User-supplied connectionArguments win via setdefault.
+        connect_args.setdefault("socket_timeout", 600)
 
         session_parameters = dict(connect_args.get("session_parameters") or {})
         if connection.queryTag:

@@ -21,6 +21,8 @@ from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
+from sqlalchemy.exc import ProgrammingError
+
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
@@ -865,3 +867,168 @@ class TestProcedureBodyUnavailable:
         assert yielded == []
         reported = mixin.status.failed.call_args.args[0]
         assert "usp_broken" in reported.error
+
+
+class _WindowedSource(TestableStoredProcedureMixin):
+    """A source whose query history is read in several statements, the way Snowflake
+    splits its lookback window when the engine cancels a scan."""
+
+    def __init__(self, rows_by_statement, failing_statements=(), narrower_statements=None):
+        super().__init__()
+        self._rows_by_statement = rows_by_statement
+        self._failing = set(failing_statements)
+        self._narrower = narrower_statements or {}
+        self.executed = []
+        self.engine = self._engine()
+
+    def get_stored_procedure_sql_statement(self):
+        return next(iter(self._rows_by_statement))
+
+    def get_stored_procedure_sql_statements(self):
+        return iter([key for key in self._rows_by_statement if key not in set().union(*self._narrower.values())])
+
+    def narrow_stored_procedure_statement(self, statement, exc):
+        yield from self._narrower.get(statement, [])
+
+    def _engine(self):
+        def execute(statement):
+            key = str(statement)
+            self.executed.append(key)
+            if key in self._failing:
+                raise ProgrammingError(
+                    "(snowflake.connector.errors.ProgrammingError) 000604 (57014): SQL execution "
+                    "was cancelled by the client due to a timeout",
+                    {},
+                    None,
+                )
+            result = MagicMock()
+            result.all.return_value = self._rows_by_statement[key]
+            return result
+
+        conn = MagicMock()
+        conn.execute = MagicMock(side_effect=execute)
+        engine = MagicMock()
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        return engine
+
+
+def _history_row(procedure_name):
+    row_data = {
+        "PROCEDURE_NAME": procedure_name,
+        "QUERY_TEXT": "INSERT INTO target SELECT * FROM source",
+        "QUERY_TYPE": "INSERT",
+        "PROCEDURE_TEXT": f"CALL {procedure_name}()",
+        "PROCEDURE_START_TIME": datetime.now(),
+        "PROCEDURE_END_TIME": datetime.now(),
+    }
+    row = Mock()
+    row._asdict.return_value = row_data
+    return row
+
+
+class TestStoredProcedureStatementIsolation:
+    """A stored-procedure history query that fails (Snowflake cancels long scans with
+    000604) must not abort the rest of the lineage run. Before this, the exception
+    escaped the producer and killed the whole workflow, taking query lineage with it."""
+
+    def test_default_statements_wraps_the_single_statement(self):
+        """Connectors that read their history in one statement keep that behaviour."""
+        mixin = TestableStoredProcedureMixin()
+
+        assert list(mixin.get_stored_procedure_sql_statements()) == [mixin.get_stored_procedure_sql_statement()]
+
+    def test_failed_statement_does_not_drop_the_other_windows(self):
+        source = _WindowedSource(
+            rows_by_statement={
+                "window-1": [_history_row("usp_first")],
+                "window-2": [_history_row("usp_second")],
+                "window-3": [_history_row("usp_third")],
+            },
+            failing_statements=["window-2"],
+        )
+
+        yielded = list(source.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == ["usp_first", "usp_third"]
+        assert source.executed == ["window-1", "window-2", "window-3"]
+
+    def test_failed_statement_is_reported_as_a_failure(self):
+        """Swallowing the cancel silently would turn a broken run into a green one that
+        quietly lost lineage, so the window has to be recorded against the pipeline."""
+        source = _WindowedSource(
+            rows_by_statement={"window-1": [_history_row("usp_first")]},
+            failing_statements=["window-1"],
+        )
+
+        list(source.yield_stored_procedure_queries())
+
+        assert source.status.failed.call_count == 1
+        reported = source.status.failed.call_args.args[0]
+        assert "000604" in reported.error
+
+    def test_producer_survives_every_statement_failing(self):
+        """The customer case: the history query is cancelled, so no procedure queries
+        come back. The producer must finish rather than raise, because an exception here
+        aborts the whole lineage workflow before query lineage ever runs."""
+        source = _WindowedSource(
+            rows_by_statement={"window-1": [_history_row("usp_first")]},
+            failing_statements=["window-1"],
+        )
+        source.metadata.paginate_es.return_value = []
+
+        assert list(source.procedure_lineage_producer()) == []
+
+    def test_failed_statement_is_retried_over_the_narrower_ones(self):
+        """A source that can read the same history over a smaller window gets to, instead
+        of losing everything the failed statement covered."""
+        source = _WindowedSource(
+            rows_by_statement={
+                "whole-window": [],
+                "first-half": [_history_row("usp_first")],
+                "second-half": [_history_row("usp_second")],
+            },
+            failing_statements=["whole-window"],
+            narrower_statements={"whole-window": ["first-half", "second-half"]},
+        )
+
+        yielded = list(source.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == ["usp_first", "usp_second"]
+        assert source.executed == ["whole-window", "first-half", "second-half"]
+        assert source.status.failed.call_count == 0
+
+    def test_retry_recurses_until_a_statement_succeeds(self):
+        """Halves that fail are narrowed again, so one bad window does not need to be
+        readable in one step."""
+        source = _WindowedSource(
+            rows_by_statement={
+                "whole-window": [],
+                "first-half": [],
+                "first-quarter": [_history_row("usp_first")],
+                "second-quarter": [_history_row("usp_second")],
+                "second-half": [_history_row("usp_third")],
+            },
+            failing_statements=["whole-window", "first-half"],
+            narrower_statements={
+                "whole-window": ["first-half", "second-half"],
+                "first-half": ["first-quarter", "second-quarter"],
+            },
+        )
+
+        yielded = list(source.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == ["usp_first", "usp_second", "usp_third"]
+        assert source.status.failed.call_count == 0
+
+    def test_failure_is_reported_once_narrowing_is_exhausted(self):
+        """When the halves fail too and the source stops offering narrower statements,
+        the failure is reported rather than silently dropped."""
+        source = _WindowedSource(
+            rows_by_statement={"whole-window": [], "first-half": [], "second-half": []},
+            failing_statements=["whole-window", "first-half", "second-half"],
+            narrower_statements={"whole-window": ["first-half", "second-half"]},
+        )
+
+        assert list(source.yield_stored_procedure_queries()) == []
+        assert source.status.failed.call_count == 2
