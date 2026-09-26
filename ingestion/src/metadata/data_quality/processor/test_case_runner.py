@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
@@ -261,11 +262,38 @@ class TestCaseRunner(Processor):
 
         return om_test_cases
 
+    def _record_if_aborted(self, test_case: TestCase, test_result: TestCaseResultResponse | None) -> None:
+        """Count a test that could not be evaluated as a failure of this step.
+
+        A validation does not raise when it cannot run. It catches the error and
+        returns a result carrying ``TestCaseStatus.Aborted`` - a connection that
+        failed, a metric that could not be computed, an unsupported dialect. That
+        result is still worth sending to the server, so it stays a scanned record
+        and reaches the sink.
+
+        Without this, the step only ever sees successes: a run in which not one
+        test could execute reports ``Errors: 0`` and ``Success %: 100.0``, and the
+        pipeline ends in ``PipelineState.success``. A scheduled suite whose
+        credentials expire then reports success indefinitely.
+        """
+        result = test_result.testCaseResult if test_result else None
+        if result is None or result.testCaseStatus is not TestCaseStatus.Aborted:
+            return
+        error = result.result or f"Test case {test_case.name.root} was aborted"
+        logger.warning(f"Test case {test_case.name.root} was aborted: {error}")
+        self.status.failed(
+            StackTraceError(
+                name=test_case.name.root,
+                error=error,
+            )
+        )
+
     def _run_test_case(self, test_case: TestCase, test_suite_runner: DataTestsRunner) -> TestCaseResultResponse | None:
         """Execute the test case and return the result, if any"""
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
             self.status.scanned(test_case.fullyQualifiedName.root)
+            self._record_if_aborted(test_case, test_result)
             return test_result  # noqa: TRY300
         except Exception as exc:
             error = f"Could not run test case {test_case.name.root}: {exc}"
