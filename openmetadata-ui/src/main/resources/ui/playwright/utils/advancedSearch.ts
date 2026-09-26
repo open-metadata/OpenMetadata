@@ -407,16 +407,16 @@ export const fillRule = async (
 
       // The popup stays open after a selection (MultiSelect by design) and
       // covers whatever the next step clicks, so it has to go. Only an
-      // outside press closes it — blur leaves it open — and the modal's
-      // heading is the safe target: it is short and left-aligned, so a popup
-      // anchored to the value column never covers it, whether it drops down
-      // or flips up. The full-width message below it is not safe for exactly
-      // that reason. Not Escape either: the modal handles it and would
-      // dismiss.
+      // outside press closes it — blur leaves it open. Press the modal
+      // heading's LEFT EDGE: the heading is a block, so its box runs the full
+      // modal width and its centre — where a click lands by default — is
+      // under the popup whenever it flips upward. The left edge is not: the
+      // popup is anchored to the value column and is nowhere near that wide.
+      // Not Escape either, the modal handles it and would dismiss.
       await page
         .getByTestId('advanced-search-modal')
         .getByRole('heading')
-        .click({ timeout: 10_000 });
+        .click({ position: { x: 4, y: 4 }, timeout: 10_000 });
       await expect(dropdown).toBeHidden({ timeout: 5_000 });
     }
   }
