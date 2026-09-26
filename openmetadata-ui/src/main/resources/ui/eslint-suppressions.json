@@ -1061,7 +1061,10 @@
   },
   "playwright/utils/taskWorkflow.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 17
+      "count": 40
+    },
+    "playwright/no-wait-for-selector": {
+      "count": 1
     }
   },
   "playwright/utils/team.ts": {

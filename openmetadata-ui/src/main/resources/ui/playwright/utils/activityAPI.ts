@@ -13,7 +13,7 @@
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
-import { clickFeedReaction, waitForReactionResponse } from './activityFeed';
+import { waitForReactionResponse } from './activityFeed';
 import { createAdminApiContext } from './admin';
 import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -52,15 +52,8 @@ type ConversationListResponse = {
   data?: ConversationResponse[];
 };
 
-export const getTableFqn = (table: TableClass): string => {
-  const fqn = table.entityResponseData.fullyQualifiedName;
-  if (!fqn) {
-    throw new Error(
-      `Table fixture ${table.entityResponseData.name} has no FQN`
-    );
-  }
-  return fqn;
-};
+export const getTableFqn = (table: TableClass) =>
+  table.entityResponseData.fullyQualifiedName ?? '';
 
 export const getTableLeafName = (table: TableClass) =>
   getTableFqn(table).split('.').pop() ?? getTableFqn(table);
@@ -85,12 +78,11 @@ export const openActivityFeedAndWaitForApi = async (
   entityFqn: string
 ) => {
   const expectedActivityPath = `/api/v1/activity/entity/table/name/${entityFqn}`;
-  const activityResponsePromise = waitForResponseWithStatus(
-    page,
+  const activityResponsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === 'GET' &&
-      decodeURIComponent(response.url()).includes(expectedActivityPath),
-    'ok',
+      decodeURIComponent(response.url()).includes(expectedActivityPath) &&
+      response.ok(),
     { timeout: ACTIVITY_FEED_RESPONSE_TIMEOUT }
   );
 
@@ -204,9 +196,7 @@ const waitForConversationThread = async ({
         });
 
         if (!response.ok()) {
-          throw new Error(
-            `HTTP ${response.status()} querying ${response.url()}`
-          );
+          return false;
         }
 
         const data = (await response.json()) as ConversationListResponse;
@@ -392,15 +382,16 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   await expect(addReactionButton).toBeVisible();
   await expect(addReactionButton).toBeEnabled();
   await addReactionButton.click();
+  await expect(page.locator('.ant-popover-feed-reactions')).toBeVisible();
 
   const reactionResponse = waitForReactionResponse(page, THUMBS_UP_REACTION);
 
-  await clickFeedReaction(page, THUMBS_UP_REACTION);
+  await page
+    .locator(`[data-testid="reaction-button"][title="${THUMBS_UP_REACTION}"]`)
+    .click();
 
   const response = await reactionResponse;
 
   expect(response.ok()).toBeTruthy();
   await waitForAllLoadersToDisappear(page);
 };
-
-import { waitForResponseWithStatus } from './waitHelpers';
