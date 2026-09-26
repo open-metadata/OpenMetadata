@@ -142,6 +142,12 @@ export interface TreeSelectProps<T = unknown> {
    */
   fullWidthTrigger?: boolean;
   /**
+   * Handle a failed `fetchData` yourself. Without this the raw error message
+   * is toasted, which for an HTTP transport is an untranslated string like
+   * "Request failed with status code 500".
+   */
+  onFetchError?: (error: unknown) => void;
+  /**
    * Draw a border around the button-variant trigger. Only applies when
    * `triggerVariant` is `'button'`. Defaults to `false` (borderless text
    * button — the quick-filter look).

@@ -230,6 +230,7 @@ export const TreeSelect = <T = unknown,>({
   triggerVariant = 'input',
   triggerClassName,
   fullWidthTrigger = false,
+  onFetchError,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
@@ -293,7 +294,7 @@ export const TreeSelect = <T = unknown,>({
     useTreeSelectSearch({ debounceMs, onSearch });
 
   const { treeData, loading, loadingNodes, loadChildren } =
-    useTreeSelectData<T>({ fetchData, searchTerm, pageSize });
+    useTreeSelectData<T>({ fetchData, searchTerm, pageSize, onFetchError });
 
   const visibleNodeIds = useMemo(
     () =>

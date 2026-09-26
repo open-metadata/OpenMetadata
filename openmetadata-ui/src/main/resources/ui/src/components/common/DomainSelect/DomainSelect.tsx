@@ -16,6 +16,7 @@ import {
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
 import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +32,7 @@ import {
 } from '../../../rest/domainAPI';
 import { isDomainFqnAllowed } from '../../../utils/DomainRestrictionUtils';
 import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainSelectProps } from './DomainSelect.types';
 import {
   buildDomainSearchQuery,
@@ -241,6 +243,18 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [multiple, isClearable, onUpdate, selectedDomainList, isSubmitting]
   );
 
+  // The core toast would show a raw axios string; showErrorToast maps an API
+  // error to its translated server message and falls back sensibly.
+  const handleFetchError = useCallback(
+    (error: unknown) => {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.domain-plural') })
+      );
+    },
+    [t]
+  );
+
   // Server already scoped the results, so skip the client-side label filter
   // (it would hide parents whose matching descendants are nested under them).
   const skipClientFilter = useCallback(() => true, []);
@@ -275,6 +289,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       triggerVariant={triggerVariant}
       value={value}
       onChange={handleChange}
+      onFetchError={handleFetchError}
       onOpenChange={onOpenChange}
     />
   );
