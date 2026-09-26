@@ -134,14 +134,22 @@ class MongoDB(NoSQLAdaptor):
                 "min": 25
             }
         """
-        row = self.execute(
+        rows = self.execute(
             Aggregation(
                 database=table.databaseSchema.name,
                 collection=table.name.root,
                 column=column.name,
                 aggregations=aggregate_functions,
             )
-        )[0]
+        )
+        # A MongoDB ``$group`` with ``_id: null`` over an empty collection emits
+        # zero output documents (unlike a SQL aggregate, which yields one row of
+        # NULLs). Return an empty dict so empty collections are skipped cleanly
+        # instead of raising ``IndexError`` and producing per-column
+        # ``failed_profiler`` noise upstream.
+        if not rows:
+            return {}
+        row = rows[0]
         return {k: v for k, v in row.items() if k != "_id"}
 
     def sum(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
