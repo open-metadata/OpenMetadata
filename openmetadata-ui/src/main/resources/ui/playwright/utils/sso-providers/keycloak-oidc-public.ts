@@ -28,6 +28,10 @@ import {
   KEYCLOAK_SEEDED_CREDS,
   performProviderLogin,
 } from './keycloak-saml';
+import {
+  endKeycloakSession,
+  trackPromptNoneNavigations,
+} from './silent-reauth';
 
 // Public client — no secret. The browser (oidc-client UserManager) drives the
 // whole authorization-code flow, so this is the fixture that exercises
@@ -117,6 +121,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   supportsSilentCallback: true,
   usesBackendRefresh: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: true,
 
   expectedResponseType: 'code',
   signInButtonPattern: /(sign in|log in) with Keycloak/i,
@@ -230,4 +235,16 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   },
 
   forceTokenExpiry,
+
+  // What third-party cookie blocking does to signinSilent: the hidden iframe
+  // never reports back, and oidc-client gives up with "Frame window timed
+  // out". The top-level redirect to Keycloak is unaffected.
+  async breakSilentRenewal(page: Page) {
+    await page.route('**/silent-callback*', (route) => route.abort());
+  },
+
+  killIdpSession: endKeycloakSession,
+
+  trackSilentReauth: (page: Page) =>
+    trackPromptNoneNavigations(page, /\/protocol\/openid-connect\/auth/),
 };

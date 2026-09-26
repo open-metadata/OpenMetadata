@@ -87,6 +87,14 @@ export interface SsoProviderFixture {
    * cleared by the reload before the Renewer runs.
    */
   supportsColdLoadRefresh: boolean;
+  /**
+   * true when a failed silent renewal is recovered by one top-level
+   * prompt=none redirect to the IdP instead of a sign-out. Fixtures that set
+   * it must implement `breakSilentRenewal` and `trackSilentReauth`. SAML is
+   * left out on purpose: it has no prompt=none, so a dead IdP session lands
+   * on the IdP login page rather than /signin.
+   */
+  supportsSilentReauth: boolean;
 
   // ── Env gating ──────────────────────────────────────────────────────────
 
@@ -133,6 +141,26 @@ export interface SsoProviderFixture {
    * next API call should 401 and trigger silent refresh.
    */
   forceTokenExpiry(page: Page): Promise<void>;
+
+  /**
+   * Makes the next silent renewal fail the way a real browser does (blocked
+   * third-party cookies, an ended OpenMetadata session, ...) while the IdP
+   * session itself stays alive, so a top-level prompt=none redirect can
+   * still sign the user back in without interaction.
+   */
+  breakSilentRenewal?: (page: Page) => Promise<void>;
+
+  /**
+   * Ends the user's session at the IdP itself, so a prompt=none redirect
+   * must come back with login_required.
+   */
+  killIdpSession?: (page: Page) => Promise<void>;
+
+  /**
+   * Starts counting the top-level prompt=none re-authentication round trips
+   * this page makes and returns a reader for the running total.
+   */
+  trackSilentReauth?: (page: Page) => () => Promise<number>;
 
   // ── Metadata for scenario assertions ────────────────────────────────────
 

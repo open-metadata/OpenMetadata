@@ -116,6 +116,7 @@ export const ldapProviderFixture: SsoProviderFixture = {
   supportsSilentCallback: false,
   usesBackendRefresh: true,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   // The compose service is expected up when this profile runs; when it is
   // not, the container is unreachable and the configureBackend PUT will

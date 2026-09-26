@@ -50,4 +50,10 @@ export const REFRESHABLE_AUTH_ERRORS = [
   // Unknown JWT signing-key id (IdP key rotation / stale token) — a refresh
   // mints a token signed with a currently-published key.
   'Token signing key not found',
+  // A time-valid JWT whose OpenMetadata session has ended (expired, or
+  // revoked by the per-user session limit). Routing it through the
+  // coordinator lets the session be re-established at the identity provider
+  // instead of landing on /signin; /auth/refresh itself is excluded above, so
+  // this cannot loop.
+  'Invalid session.',
 ];

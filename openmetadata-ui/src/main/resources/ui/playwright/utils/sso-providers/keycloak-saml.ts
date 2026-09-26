@@ -189,6 +189,7 @@ export const keycloakSamlProviderFixture: SsoProviderFixture = {
   supportsSilentCallback: false,
   usesBackendRefresh: true,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   signInButtonPattern: /(sign in|log in) with SAML SSO/i,
 

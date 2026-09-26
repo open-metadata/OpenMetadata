@@ -124,6 +124,7 @@ export const auth0ProviderFixture: SsoProviderFixture = {
   // architecturally out of scope for this fixture. Real Auth0 tenants
   // using `cacheLocation: "localstorage"` would set this true.
   supportsColdLoadRefresh: false,
+  supportsSilentReauth: false,
 
   isAvailable: () => Boolean(process.env.MOCK_OIDC_URL),
   unavailableReason: () =>

@@ -47,6 +47,7 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: (token: string) => setOidcToken(token),
 }));
 
+import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import { GenericAuthenticator } from './GenericAuthenticator';
 
@@ -198,5 +199,76 @@ describe('GenericAuthenticator', () => {
     unmount();
 
     expect(registerRenewer).toHaveBeenCalledWith(null);
+  });
+
+  it('registered renewer asks for re-authentication when /auth/refresh answers 401', async () => {
+    // A 401 means the OpenMetadata session is gone; the identity provider
+    // session may still be alive, so this must not read as "sign out".
+    renewToken.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 401, data: { error: 'No active session' } },
+    });
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    await expect(registered()).rejects.toBeInstanceOf(ReauthRequiredError);
+  });
+
+  it('registered renewer rethrows refresh failures a redirect cannot fix', async () => {
+    const serverError = { response: { status: 503 } };
+    renewToken.mockRejectedValueOnce(serverError);
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={null}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const registered = registerRenewer.mock.calls[0][0];
+
+    await expect(registered()).rejects.toBe(serverError);
+  });
+
+  it('invokeSilentReauth sends the browser to the absolute login URL with prompt=none', async () => {
+    const ref = createRef<AuthenticatorRef>();
+    const locationAssign = jest.fn();
+    // @ts-ignore
+    delete window.location;
+    // @ts-ignore
+    window.location = {
+      assign: locationAssign,
+      origin: 'https://om.example.com',
+    } as unknown as Location;
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={ref}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      await ref.current?.invokeSilentReauth?.();
+    });
+
+    const [url] = locationAssign.mock.calls[0];
+    const params = new URLSearchParams(url.split('?')[1]);
+
+    // Absolute path: a silent re-auth starts from deep links such as
+    // /table/<fqn>, where a relative "api/..." would resolve under /table/.
+    expect(url.startsWith('/api/v1/auth/login?')).toBe(true);
+    expect(params.get('prompt')).toBe('none');
+    expect(params.get('redirectUri')).toBe(
+      'https://om.example.com/auth/callback'
+    );
+    expect(setIsAuthenticated).not.toHaveBeenCalled();
   });
 });

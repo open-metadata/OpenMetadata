@@ -82,6 +82,7 @@ export const basicProviderFixture: SsoProviderFixture = {
   supportsSilentCallback: false,
   usesBackendRefresh: true,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   isAvailable: () => true, // Always available — no external deps
 
