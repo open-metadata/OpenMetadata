@@ -238,21 +238,10 @@ jest.mock('../../../utils/EntityBreadcrumbPureUtils', () => ({
   }),
 }));
 
-jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn(() => ({
-    pipelineStatus: {},
-    nodes: [
-      {
-        mockNodeDataProps,
-      },
-    ],
-    upstreamDownstreamData: {
-      upstreamNodes: [],
-      downstreamNodes: [],
-      upstreamEdges: [],
-      downstreamEdges: [],
-    },
-    fetchPipelineStatus: jest.fn(),
+jest.mock('../../Lineage/Lineage/LineageHandlersContext', () => ({
+  useLineageHandlers: jest.fn(() => ({
+    onNodeCollapse: jest.fn(),
+    removeNodeHandler: jest.fn(),
     loadChildNodesHandler: loadChildNodesHandlerMock,
   })),
 }));
@@ -260,21 +249,26 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
 const mockSetSelectedColumn = jest.fn();
 const mockSetNodeFilterState = jest.fn();
 
+const mockDefaultLineageState = {
+  setLineageConfig: jest.fn(),
+  setColumnsInCurrentPagesMock: setColumnsInCurrentPagesMock,
+  isColumnLevelLineage: false,
+  isDQEnabled: false,
+  tracedNodes: new Set(),
+  tracedColumns: new Set(),
+  columnsHavingLineage: new Map([['id', new Set()]]),
+  isEditMode: false,
+  updateColumnsInCurrentPages: jest.fn(),
+  setSelectedColumn: mockSetSelectedColumn,
+  nodeFilterState: new Map(),
+  setNodeFilterState: mockSetNodeFilterState,
+  dataQualityLineage: undefined,
+};
+
 jest.mock('../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn(() => ({
-    setLineageConfig: jest.fn(),
-    setColumnsInCurrentPagesMock: setColumnsInCurrentPagesMock,
-    isColumnLevelLineage: false,
-    isDQEnabled: false,
-    tracedNodes: new Set(),
-    tracedColumns: new Set(),
-    columnsHavingLineage: new Map([['id', new Set()]]),
-    isEditMode: false,
-    updateColumnsInCurrentPages: jest.fn(),
-    setSelectedColumn: mockSetSelectedColumn,
-    nodeFilterState: new Map(),
-    setNodeFilterState: mockSetNodeFilterState,
-  })),
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockDefaultLineageState) : mockDefaultLineageState
+  ),
 }));
 
 jest.mock('../../../rest/testAPI', () => ({
@@ -302,18 +296,28 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// Mirrors the real selector-aware `useLineageStore` mock: individual test
+// overrides supply a full state object and this makes it respond correctly
+// whether the component calls the hook with a selector or without one.
+const withSelector =
+  (state: Record<string, unknown>) =>
+  (selector?: (state: Record<string, unknown>) => unknown) =>
+    selector ? selector(state) : state;
+
 describe('CustomNodeV1', () => {
   it('renders node correctly', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(() => ({
-      isColumnLevelLineage: true,
-      isDQEnabled: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQEnabled: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     render(
       <ReactFlowProvider>
@@ -512,16 +516,18 @@ describe('CustomNodeV1', () => {
   });
 
   it('should render footer only when there are children', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(() => ({
-      isColumnLevelLineage: true,
-      isDQ: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQ: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     render(
       <ReactFlowProvider>
@@ -535,16 +541,18 @@ describe('CustomNodeV1', () => {
   });
 
   it('should not render footer when there are no children', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(() => ({
-      isColumnLevelLineage: true,
-      isDQ: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQ: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     const mockNodeDataPropsNoChildren = {
       ...mockNodeDataProps,
@@ -568,17 +576,19 @@ describe('CustomNodeV1', () => {
   });
 
   it('should render searchbar when column layer is applied and node has children', async () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      isColumnLevelLineage: true,
-      isDQ: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      updateColumnsInCurrentPages: jest.fn(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQ: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        updateColumnsInCurrentPages: jest.fn(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     render(
       <ReactFlowProvider>
@@ -592,17 +602,19 @@ describe('CustomNodeV1', () => {
   });
 
   it('should not remove searchbar from node when no columns are matched while searching', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      isColumnLevelLineage: true,
-      isDQ: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      updateColumnsInCurrentPages: jest.fn(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQ: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        updateColumnsInCurrentPages: jest.fn(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     render(
       <ReactFlowProvider>
@@ -620,17 +632,19 @@ describe('CustomNodeV1', () => {
   });
 
   it('should render NodeChildren when column layer is applied and there are no columns', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      isColumnLevelLineage: true,
-      isDQ: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      updateColumnsInCurrentPages: jest.fn(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQ: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        updateColumnsInCurrentPages: jest.fn(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     render(
       <ReactFlowProvider>
@@ -642,17 +656,19 @@ describe('CustomNodeV1', () => {
   });
 
   it('should not render NodeChildren when column layer is applied but there are no columns', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      isColumnLevelLineage: true,
-      isDQ: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      updateColumnsInCurrentPages: jest.fn(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQ: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        updateColumnsInCurrentPages: jest.fn(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     const mockNodeDataPropsNoChildren = {
       ...mockNodeDataProps,
@@ -674,18 +690,20 @@ describe('CustomNodeV1', () => {
   });
 
   it('should toggle columns list when children dropdown button is clicked', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      isColumnLevelLineage: false,
-      isDQEnabled: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      columnsHavingLineage: new Map(),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-      updateColumnsInCurrentPages: jest.fn(),
-      setSelectedColumn: mockSetSelectedColumn,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      withSelector({
+        isColumnLevelLineage: false,
+        isDQEnabled: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        columnsHavingLineage: new Map(),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+        updateColumnsInCurrentPages: jest.fn(),
+        setSelectedColumn: mockSetSelectedColumn,
+      })
+    );
     render(
       <ReactFlowProvider>
         <CustomNodeV1Component {...mockNodeDataProps} />
@@ -714,16 +732,18 @@ describe('CustomNodeV1', () => {
   });
 
   it('should have expand and expand all buttons', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(() => ({
-      isColumnLevelLineage: true,
-      isDQEnabled: false,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementationOnce(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQEnabled: false,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     render(
       <ReactFlowProvider>
@@ -771,17 +791,19 @@ describe('CustomNodeV1', () => {
   });
 
   it('should have Test summary widget when observability layer is applied', async () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      isColumnLevelLineage: true,
-      isDQEnabled: true,
-      tracedColumns: new Set(),
-      tracedNodes: new Set(),
-      updateColumnsInCurrentPages: jest.fn(),
-      columnsHavingLineage: new Map([['id', new Set()]]),
-      isEditMode: false,
-      nodeFilterState: new Map(),
-      setNodeFilterState: mockSetNodeFilterState,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      withSelector({
+        isColumnLevelLineage: true,
+        isDQEnabled: true,
+        tracedColumns: new Set(),
+        tracedNodes: new Set(),
+        updateColumnsInCurrentPages: jest.fn(),
+        columnsHavingLineage: new Map([['id', new Set()]]),
+        isEditMode: false,
+        nodeFilterState: new Map(),
+        setNodeFilterState: mockSetNodeFilterState,
+      })
+    );
 
     render(
       <ReactFlowProvider>
@@ -805,19 +827,21 @@ describe('CustomNodeV1', () => {
     };
 
     it('should have pagination in columns', () => {
-      (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-        isColumnLevelLineage: true,
-        isDQEnabled: false,
-        tracedColumns: new Set(),
-        tracedNodes: new Set(),
-        columnsHavingLineage: new Map([
-          ['id', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
-        ]),
-        isEditMode: false,
-        updateColumnsInCurrentPages: jest.fn(),
-        nodeFilterState: new Map(),
-        setNodeFilterState: mockSetNodeFilterState,
-      }));
+      (useLineageStore as unknown as jest.Mock).mockImplementation(
+        withSelector({
+          isColumnLevelLineage: true,
+          isDQEnabled: false,
+          tracedColumns: new Set(),
+          tracedNodes: new Set(),
+          columnsHavingLineage: new Map([
+            ['id', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
+          ]),
+          isEditMode: false,
+          updateColumnsInCurrentPages: jest.fn(),
+          nodeFilterState: new Map(),
+          setNodeFilterState: mockSetNodeFilterState,
+        })
+      );
 
       render(
         <ReactFlowProvider>
@@ -887,20 +911,22 @@ describe('CustomNodeV1', () => {
     });
 
     it('should select a column when it is clicked', () => {
-      (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-        isColumnLevelLineage: true,
-        isDQEnabled: false,
-        tracedColumns: new Set(),
-        tracedNodes: new Set(),
-        columnsHavingLineage: new Map([
-          ['id', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
-        ]),
-        isEditMode: false,
-        updateColumnsInCurrentPages: jest.fn(),
-        setSelectedColumn: mockSetSelectedColumn,
-        nodeFilterState: new Map(),
-        setNodeFilterState: mockSetNodeFilterState,
-      }));
+      (useLineageStore as unknown as jest.Mock).mockImplementation(
+        withSelector({
+          isColumnLevelLineage: true,
+          isDQEnabled: false,
+          tracedColumns: new Set(),
+          tracedNodes: new Set(),
+          columnsHavingLineage: new Map([
+            ['id', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
+          ]),
+          isEditMode: false,
+          updateColumnsInCurrentPages: jest.fn(),
+          setSelectedColumn: mockSetSelectedColumn,
+          nodeFilterState: new Map(),
+          setNodeFilterState: mockSetNodeFilterState,
+        })
+      );
 
       render(
         <ReactFlowProvider>
@@ -919,35 +945,40 @@ describe('CustomNodeV1', () => {
 
     it('should keep the traced column visible when page changes', () => {
       let tracedColumns = new Set<string>();
-      (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-        isColumnLevelLineage: true,
-        isDQEnabled: false,
-        tracedColumns,
-        tracedNodes: new Set(),
-        columnsHavingLineage: new Map([
-          [
-            'id',
-            new Set([
-              'col0',
-              'col1',
-              'col2',
-              'col3',
-              'col4',
-              'col5',
-              'col6',
-              'col7',
-              'col8',
-              'col9',
-              'col10',
-            ]),
-          ],
-        ]),
-        isEditMode: false,
-        updateColumnsInCurrentPages: jest.fn(),
-        setSelectedColumn: mockSetSelectedColumn,
-        nodeFilterState: new Map(),
-        setNodeFilterState: mockSetNodeFilterState,
-      }));
+      // `tracedColumns` is reassigned below and must be read live on every
+      // render, so this reads it inside the mock implementation rather than
+      // capturing a snapshot via `withSelector(state)`.
+      (useLineageStore as unknown as jest.Mock).mockImplementation((selector) =>
+        withSelector({
+          isColumnLevelLineage: true,
+          isDQEnabled: false,
+          tracedColumns,
+          tracedNodes: new Set(),
+          columnsHavingLineage: new Map([
+            [
+              'id',
+              new Set([
+                'col0',
+                'col1',
+                'col2',
+                'col3',
+                'col4',
+                'col5',
+                'col6',
+                'col7',
+                'col8',
+                'col9',
+                'col10',
+              ]),
+            ],
+          ]),
+          isEditMode: false,
+          updateColumnsInCurrentPages: jest.fn(),
+          setSelectedColumn: mockSetSelectedColumn,
+          nodeFilterState: new Map(),
+          setNodeFilterState: mockSetNodeFilterState,
+        })(selector)
+      );
 
       const { rerender } = render(
         <ReactFlowProvider>
@@ -987,20 +1018,22 @@ describe('CustomNodeV1', () => {
     };
 
     it('should expose the filter button tooltip as an accessible label', () => {
-      (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-        isColumnLevelLineage: true,
-        isDQEnabled: false,
-        tracedColumns: new Set(),
-        tracedNodes: new Set(),
-        columnsHavingLineage: new Map([
-          ['id', new Set(['col0', 'col2', 'col5'])],
-        ]),
-        isEditMode: false,
-        updateColumnsInCurrentPages: jest.fn(),
-        setSelectedColumn: mockSetSelectedColumn,
-        nodeFilterState: new Map(),
-        setNodeFilterState: mockSetNodeFilterState,
-      }));
+      (useLineageStore as unknown as jest.Mock).mockImplementation(
+        withSelector({
+          isColumnLevelLineage: true,
+          isDQEnabled: false,
+          tracedColumns: new Set(),
+          tracedNodes: new Set(),
+          columnsHavingLineage: new Map([
+            ['id', new Set(['col0', 'col2', 'col5'])],
+          ]),
+          isEditMode: false,
+          updateColumnsInCurrentPages: jest.fn(),
+          setSelectedColumn: mockSetSelectedColumn,
+          nodeFilterState: new Map(),
+          setNodeFilterState: mockSetNodeFilterState,
+        })
+      );
 
       render(
         <ReactFlowProvider>
@@ -1027,20 +1060,22 @@ describe('CustomNodeV1', () => {
           }
         );
 
-        (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-          isColumnLevelLineage: false,
-          isDQEnabled: false,
-          tracedColumns: new Set(),
-          tracedNodes: new Set(),
-          columnsHavingLineage: new Map([
-            ['khjahjfja', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
-          ]),
-          isEditMode: false,
-          updateColumnsInCurrentPages: jest.fn(),
-          setSelectedColumn: mockSetSelectedColumn,
-          nodeFilterState: nodeFilterStateMap,
-          setNodeFilterState: mockSetNodeFilterStateFunc,
-        }));
+        (useLineageStore as unknown as jest.Mock).mockImplementation(
+          withSelector({
+            isColumnLevelLineage: false,
+            isDQEnabled: false,
+            tracedColumns: new Set(),
+            tracedNodes: new Set(),
+            columnsHavingLineage: new Map([
+              ['khjahjfja', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
+            ]),
+            isEditMode: false,
+            updateColumnsInCurrentPages: jest.fn(),
+            setSelectedColumn: mockSetSelectedColumn,
+            nodeFilterState: nodeFilterStateMap,
+            setNodeFilterState: mockSetNodeFilterStateFunc,
+          })
+        );
 
         render(
           <ReactFlowProvider>
@@ -1085,20 +1120,22 @@ describe('CustomNodeV1', () => {
 
       it('should turn on the filter when column layer is applied', () => {
         const nodeFilterStateMap = new Map([['khjahjfja', true]]);
-        (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-          isColumnLevelLineage: true,
-          isDQEnabled: false,
-          tracedColumns: new Set(),
-          tracedNodes: new Set(),
-          columnsHavingLineage: new Map([
-            ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
-          ]),
-          isEditMode: false,
-          updateColumnsInCurrentPages: jest.fn(),
-          setSelectedColumn: mockSetSelectedColumn,
-          nodeFilterState: nodeFilterStateMap,
-          setNodeFilterState: mockSetNodeFilterState,
-        }));
+        (useLineageStore as unknown as jest.Mock).mockImplementation(
+          withSelector({
+            isColumnLevelLineage: true,
+            isDQEnabled: false,
+            tracedColumns: new Set(),
+            tracedNodes: new Set(),
+            columnsHavingLineage: new Map([
+              ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
+            ]),
+            isEditMode: false,
+            updateColumnsInCurrentPages: jest.fn(),
+            setSelectedColumn: mockSetSelectedColumn,
+            nodeFilterState: nodeFilterStateMap,
+            setNodeFilterState: mockSetNodeFilterState,
+          })
+        );
 
         render(
           <ReactFlowProvider>
@@ -1119,20 +1156,22 @@ describe('CustomNodeV1', () => {
 
       it('should maintain filter state when another layer is applied', () => {
         const nodeFilterStateMap = new Map([['khjahjfja', true]]);
-        (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-          isColumnLevelLineage: true,
-          isDQEnabled: false,
-          tracedColumns: new Set(),
-          tracedNodes: new Set(),
-          columnsHavingLineage: new Map([
-            ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
-          ]),
-          isEditMode: false,
-          updateColumnsInCurrentPages: jest.fn(),
-          setSelectedColumn: mockSetSelectedColumn,
-          nodeFilterState: nodeFilterStateMap,
-          setNodeFilterState: mockSetNodeFilterState,
-        }));
+        (useLineageStore as unknown as jest.Mock).mockImplementation(
+          withSelector({
+            isColumnLevelLineage: true,
+            isDQEnabled: false,
+            tracedColumns: new Set(),
+            tracedNodes: new Set(),
+            columnsHavingLineage: new Map([
+              ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
+            ]),
+            isEditMode: false,
+            updateColumnsInCurrentPages: jest.fn(),
+            setSelectedColumn: mockSetSelectedColumn,
+            nodeFilterState: nodeFilterStateMap,
+            setNodeFilterState: mockSetNodeFilterState,
+          })
+        );
 
         const { rerender } = render(
           <ReactFlowProvider>
@@ -1159,20 +1198,22 @@ describe('CustomNodeV1', () => {
 
       it('should disable turn off and disable the filter in edit mode', () => {
         const nodeFilterStateMap = new Map([['khjahjfja', false]]);
-        (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-          isColumnLevelLineage: false,
-          isDQEnabled: false,
-          tracedColumns: new Set(),
-          tracedNodes: new Set(),
-          columnsHavingLineage: new Map([
-            ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
-          ]),
-          isEditMode: true,
-          updateColumnsInCurrentPages: jest.fn(),
-          setSelectedColumn: mockSetSelectedColumn,
-          nodeFilterState: nodeFilterStateMap,
-          setNodeFilterState: mockSetNodeFilterState,
-        }));
+        (useLineageStore as unknown as jest.Mock).mockImplementation(
+          withSelector({
+            isColumnLevelLineage: false,
+            isDQEnabled: false,
+            tracedColumns: new Set(),
+            tracedNodes: new Set(),
+            columnsHavingLineage: new Map([
+              ['khjahjfja', new Set(['col0', 'col2', 'col5'])],
+            ]),
+            isEditMode: true,
+            updateColumnsInCurrentPages: jest.fn(),
+            setSelectedColumn: mockSetSelectedColumn,
+            nodeFilterState: nodeFilterStateMap,
+            setNodeFilterState: mockSetNodeFilterState,
+          })
+        );
 
         render(
           <ReactFlowProvider>
@@ -1239,18 +1280,20 @@ describe('CustomNodeV1', () => {
           }
         );
 
-        (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-          isColumnLevelLineage: true,
-          isDQEnabled: false,
-          tracedColumns: new Set(),
-          tracedNodes: new Set(),
-          columnsHavingLineage: columnsLineageMap,
-          isEditMode: false,
-          updateColumnsInCurrentPages: jest.fn(),
-          setSelectedColumn: mockSetSelectedColumn,
-          nodeFilterState: nodeFilterStateMap,
-          setNodeFilterState: mockSetNodeFilterStateFunc,
-        }));
+        (useLineageStore as unknown as jest.Mock).mockImplementation(
+          withSelector({
+            isColumnLevelLineage: true,
+            isDQEnabled: false,
+            tracedColumns: new Set(),
+            tracedNodes: new Set(),
+            columnsHavingLineage: columnsLineageMap,
+            isEditMode: false,
+            updateColumnsInCurrentPages: jest.fn(),
+            setSelectedColumn: mockSetSelectedColumn,
+            nodeFilterState: nodeFilterStateMap,
+            setNodeFilterState: mockSetNodeFilterStateFunc,
+          })
+        );
 
         render(
           <ReactFlowProvider>
@@ -1280,20 +1323,22 @@ describe('CustomNodeV1', () => {
     describe('Filter with Search', () => {
       it('should only search among columns with lineage when filter is activated and column is searched', () => {
         const nodeFilterStateMap = new Map([['khjahjfja', true]]);
-        (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-          isColumnLevelLineage: true,
-          isDQEnabled: false,
-          tracedColumns: new Set(),
-          tracedNodes: new Set(),
-          columnsHavingLineage: new Map([
-            ['khjahjfja', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
-          ]),
-          isEditMode: false,
-          updateColumnsInCurrentPages: jest.fn(),
-          setSelectedColumn: mockSetSelectedColumn,
-          nodeFilterState: nodeFilterStateMap,
-          setNodeFilterState: mockSetNodeFilterState,
-        }));
+        (useLineageStore as unknown as jest.Mock).mockImplementation(
+          withSelector({
+            isColumnLevelLineage: true,
+            isDQEnabled: false,
+            tracedColumns: new Set(),
+            tracedNodes: new Set(),
+            columnsHavingLineage: new Map([
+              ['khjahjfja', new Set(['col0', 'col2', 'col5', 'col7', 'col10'])],
+            ]),
+            isEditMode: false,
+            updateColumnsInCurrentPages: jest.fn(),
+            setSelectedColumn: mockSetSelectedColumn,
+            nodeFilterState: nodeFilterStateMap,
+            setNodeFilterState: mockSetNodeFilterState,
+          })
+        );
 
         render(
           <ReactFlowProvider>

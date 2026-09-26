@@ -10,19 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { LineageTimeRange } from '../../../hooks/lineage/types';
 
-export interface LineageTimeFilterProps {
-  startTime?: number;
-  endTime?: number;
-  onChange: (range: LineageTimeRange) => void;
+export enum LineagePlatformView {
+  None = 'None',
+  Service = 'Service',
+  Domain = 'Domain',
+  DataProduct = 'DataProduct',
 }
 
-export enum LineageTimePresetKey {
-  AllTime = 'allTime',
-  Last7Days = 'last7Days',
-  Last14Days = 'last14Days',
-  Last28Days = 'last28Days',
-  CustomRange = 'customRange',
-  PointInTime = 'pointInTime',
+export interface LineageTimeRange {
+  startTime?: number;
+  endTime?: number;
 }

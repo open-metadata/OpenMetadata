@@ -35,7 +35,6 @@ import {
   NODE_HEIGHT,
   NODE_WIDTH,
 } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -44,6 +43,7 @@ import type { SearchIndex } from '../generated/entity/data/searchIndex';
 import type { Table } from '../generated/entity/data/table';
 import type { Topic } from '../generated/entity/data/topic';
 import type { EntityReference } from '../generated/type/entityReference';
+import { LineagePlatformView } from '../hooks/lineage/types';
 import { getEntityName } from './EntityNameUtils';
 import { isDeleted } from './EntityStatusUtils';
 import { t } from './i18next/LocalUtil';

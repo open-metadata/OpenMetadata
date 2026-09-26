@@ -15,7 +15,7 @@ import { SearchIndexField } from '../../../../generated/entity/data/searchIndex'
 import { Column } from '../../../../generated/entity/data/table';
 import { Field } from '../../../../generated/entity/data/topic';
 import { EntityReference } from '../../../../generated/entity/type';
-import { LineageNodeType } from '../../../Lineage/Lineage.interface';
+import type { LineageNodeType } from '../../../Lineage/Lineage.interface';
 
 export interface NodeChildrenProps {
   node: LineageNodeType;

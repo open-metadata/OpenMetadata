@@ -17,25 +17,32 @@ import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
+import { useShallow } from 'zustand/react/shallow';
 import {
   DEBOUNCE_TIMEOUT,
   INITIAL_NODE_ITEMS_LENGTH,
   NODE_ITEMS_PAGE_SIZE,
   ZOOM_TRANSITION_DURATION,
 } from '../../../../constants/Lineage.constants';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
+import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
-  const { nodes, reactFlowInstance, onNodeClick } = useLineageProvider();
+  const { onNodeClick } = useLineageHandlers();
+  const { nodes, reactFlowInstance } = useLineageStore(
+    useShallow((s) => ({
+      nodes: s.nodes,
+      reactFlowInstance: s.reactFlowInstance,
+    }))
+  );
   const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
     useLineageStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

@@ -31,7 +31,6 @@ import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table.svg';
 import { ReactComponent as ServiceView } from '../../../../assets/svg/services.svg';
 import { SERVICE_TYPES } from '../../../../constants/Services.constant';
-import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   LineageBand,
@@ -39,6 +38,7 @@ import {
 } from '../../../../generated/api/lineage/lineageScene';
 import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { LineageLayersProps } from './LineageLayers.interface';

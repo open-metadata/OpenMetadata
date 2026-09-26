@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,19 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { LineageTimeRange } from '../../../hooks/lineage/types';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 
-export interface LineageTimeFilterProps {
-  startTime?: number;
-  endTime?: number;
-  onChange: (range: LineageTimeRange) => void;
-}
+export const onPaneClick = (): void => {
+  const {
+    setTracedNodes,
+    setTracedColumns,
+    setSelectedColumn,
+    setActiveNode,
+    setSelectedNode,
+    closeDrawer,
+  } = useLineageStore.getState();
 
-export enum LineageTimePresetKey {
-  AllTime = 'allTime',
-  Last7Days = 'last7Days',
-  Last14Days = 'last14Days',
-  Last28Days = 'last28Days',
-  CustomRange = 'customRange',
-  PointInTime = 'pointInTime',
-}
+  setTracedNodes(new Set());
+  setTracedColumns(new Set());
+  setSelectedColumn('');
+  setActiveNode(undefined);
+  setSelectedNode(undefined);
+  closeDrawer();
+};
