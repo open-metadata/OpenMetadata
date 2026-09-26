@@ -31,9 +31,6 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/src/AppRoot.tsx'
       - 'openmetadata-ui/src/main/resources/ui/src/index.tsx'
       - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**'
-      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOTestLogin.spec.ts'
-      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Login.spec.ts'
-      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/LoginConfiguration.spec.ts'
       - 'openmetadata-ui/src/main/resources/ui/playwright/utils/sso-providers/**'
       - 'openmetadata-ui/src/main/resources/ui/playwright/utils/ssoLogin.ts'
       # Page-level auth screens. A ui-migration PR touching these can silently
