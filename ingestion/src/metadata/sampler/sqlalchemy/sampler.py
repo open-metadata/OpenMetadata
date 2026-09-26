@@ -347,12 +347,20 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """Warn when a partition filter yields an empty sample, so a silently
         unexamined table is not reported the same as one examined and found clean
         (issue #33084). Wording is tailored to the partition type."""
+        partition_details = self.partition_details
+        if partition_details is None:
+            return
         table_name = getattr(self.raw_dataset, "__tablename__", "unknown")
-        interval_type = getattr(self.partition_details, "partitionIntervalType", None)
+        interval_type = partition_details.partitionIntervalType
         if interval_type in (
             PartitionIntervalTypes.TIME_UNIT,
             PartitionIntervalTypes.INGESTION_TIME,
         ):
+            interval_unit = getattr(
+                partition_details.partitionIntervalUnit,
+                "value",
+                partition_details.partitionIntervalUnit,
+            )
             logger.warning(
                 "Partition filter on table '%s' returned 0 rows. "
                 "The partition window (interval=%s %s) may not cover the table's most-recent data. "
@@ -360,12 +368,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 "See https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/"
                 "profiler/workflow#4.-updating-profiler-setting-at-the-table-level",
                 table_name,
-                self.partition_details.partitionInterval,
-                getattr(
-                    self.partition_details.partitionIntervalUnit,
-                    "value",
-                    self.partition_details.partitionIntervalUnit,
-                ),
+                partition_details.partitionInterval,
+                interval_unit,
             )
         else:
             logger.warning(
