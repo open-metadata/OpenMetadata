@@ -19,6 +19,10 @@ import {
   SchemaType,
 } from '../generated/entity/data/topic';
 import { FieldChange } from '../generated/entity/services/databaseService';
+import {
+  hasVersionDiffStringProperty,
+  parseVersionDiffArray,
+} from './EntityDiffPureUtils';
 import { getVersionedSchema } from './SchemaVersionUtils';
 
 // Mock data for testing
@@ -61,6 +65,19 @@ const createMockChangeDescription = (
 });
 
 describe('SchemaVersionUtils', () => {
+  describe('parseVersionDiffArray', () => {
+    it('returns an empty array for malformed or non-array values', () => {
+      expect(parseVersionDiffArray<Field>('{invalid')).toEqual([]);
+      expect(parseVersionDiffArray<Field>('{}')).toEqual([]);
+      expect(parseVersionDiffArray<Field>('[null]')).toEqual([]);
+      expect(
+        parseVersionDiffArray<Field>('[{}]', (value) =>
+          hasVersionDiffStringProperty(value, 'name')
+        )
+      ).toEqual([]);
+    });
+  });
+
   describe('getVersionedSchema', () => {
     describe('DATA_TYPE_DISPLAY changes', () => {
       it('should update dataTypeDisplay with diff highlighting when field is changed', () => {
@@ -278,6 +295,40 @@ describe('SchemaVersionUtils', () => {
     });
 
     describe('Edge cases', () => {
+      it('keeps rendering when added and deleted field diffs are malformed', () => {
+        const originalSchema = createMockMessageSchema([
+          createMockField('testField', 'VARCHAR(255)'),
+        ]);
+        const changeDescription = createMockChangeDescription(
+          [createMockFieldChange('schemaFields', '', '{invalid')],
+          [createMockFieldChange('schemaFields', '{invalid', '')]
+        );
+
+        expect(() =>
+          getVersionedSchema(originalSchema, changeDescription)
+        ).not.toThrow();
+        expect(getVersionedSchema(originalSchema, changeDescription)).toEqual(
+          originalSchema
+        );
+      });
+
+      it('ignores schema diffs with malformed nested fields', () => {
+        const originalSchema = createMockMessageSchema([
+          createMockField('testField', 'VARCHAR(255)'),
+        ]);
+        const changeDescription = createMockChangeDescription([
+          createMockFieldChange(
+            'schemaFields',
+            '',
+            '[{"name":"testField","children":{}}]'
+          ),
+        ]);
+
+        expect(getVersionedSchema(originalSchema, changeDescription)).toEqual(
+          originalSchema
+        );
+      });
+
       it('should handle empty schema fields', () => {
         const originalSchema = createMockMessageSchema([]);
         const changeDescription = createMockChangeDescription(
