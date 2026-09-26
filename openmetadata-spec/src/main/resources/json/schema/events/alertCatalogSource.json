@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertCatalogSource.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AlertCatalogSource",
+  "description": "One source an alert can watch: its kind, and the filters and triggers it supports, by name.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertCatalogSource",
+  "definitions": {
+    "sourceKind": {
+      "javaType": "org.openmetadata.schema.entity.events.AlertSourceKind",
+      "description": "Source names look alike but mean different things. Entity: the change events of one asset type. Activity: collaboration items. All: the wildcard.",
+      "type": "string",
+      "enum": ["entity", "activity", "all"]
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of the source, as alerts store it.",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/definitions/sourceKind"
+    },
+    "containerEntities": {
+      "description": "Entity types that can contain this source, so a name filter can be scoped to descendants.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "filters": {
+      "description": "Names of the filters this source supports, in the order they are offered.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "triggers": {
+      "description": "Names of the triggers this source supports, in the order they are offered.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "removedFilters": {
+      "description": "Filters this source supported in an earlier release. Never offered; kept so alerts saved then still build.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "removedTriggers": {
+      "description": "Triggers this source supported in an earlier release. Never offered; kept so alerts saved then still build.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recipientCategories": {
+      "description": "Who inside the platform alerts on this source can be sent to, when not the catalog's default. Offered in the form, never enforced on save.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventSubscription.json#/definitions/subscriptionCategory"
+      }
+    },
+    "labels": {
+      "description": "Labels by filter or trigger name, where this source calls one differently from its definition.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, org.openmetadata.schema.entity.events.AlertCatalogLabels>"
+    },
+    "parameters": {
+      "description": "Settings of a filter or trigger for this source, by its name, such as which fields count as the schema of this asset type.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, java.util.Map<String, Object>>"
+    },
+    "removed": {
+      "description": "A source of an earlier release. Never offered; kept so alerts saved then still build.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "kind"],
+  "additionalProperties": false
+}
