@@ -49,8 +49,6 @@ export interface DomainSelectProps {
   ) => Promise<void> | void;
   /** @default 'input' */
   triggerVariant?: TreeSelectTriggerVariant;
-  /** Size of the built-in button trigger. @see TreeSelectProps */
-  triggerSize?: TreeSelectProps<EntityReference>['triggerSize'];
   /** Extra classes for the built-in button trigger — e.g. a max width. */
   triggerClassName?: string;
   /** Let a custom trigger stretch to its container. @see TreeSelectProps */

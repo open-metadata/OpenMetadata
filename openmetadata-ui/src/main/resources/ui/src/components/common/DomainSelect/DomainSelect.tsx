@@ -53,7 +53,6 @@ const DomainSelect: FC<DomainSelectProps> = ({
   showAllDomains = false,
   onUpdate,
   triggerVariant = 'input',
-  triggerSize,
   triggerClassName,
   fullWidthTrigger,
   bordered,
@@ -273,7 +272,6 @@ const DomainSelect: FC<DomainSelectProps> = ({
       })}
       triggerClassName={triggerClassName}
       triggerIcon={DomainIcon}
-      triggerSize={triggerSize}
       triggerVariant={triggerVariant}
       value={value}
       onChange={handleChange}

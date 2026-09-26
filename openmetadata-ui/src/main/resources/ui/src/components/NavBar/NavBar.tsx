@@ -495,8 +495,7 @@ const NavBar = () => {
         label={domainDisplayName}
         restrictedDomains={restrictedDomains}
         selectedDomain={activeDomainEntityRef}
-        triggerClassName="tw:max-w-[15vw] tw:truncate"
-        triggerSize="lg"
+        triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
         triggerVariant="button"
         onUpdate={handleDomainChange}
       />
@@ -512,8 +511,7 @@ const NavBar = () => {
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
       showAllDomains={!isDomainRestricted}
-      triggerClassName="tw:max-w-[15vw] tw:truncate"
-      triggerSize="lg"
+      triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
       triggerVariant="button"
       onOpenChange={setIsDomainDropdownOpen}
       onUpdate={handleDomainChange}

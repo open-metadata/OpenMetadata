@@ -228,7 +228,6 @@ export const TreeSelect = <T = unknown,>({
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
-  triggerSize,
   triggerClassName,
   fullWidthTrigger = false,
   bordered = false,
@@ -931,7 +930,7 @@ export const TreeSelect = <T = unknown,>({
             // A disabled trigger opens nothing, so the affordance would lie.
             iconTrailing={disabled ? undefined : ChevronDown}
             isDisabled={disabled}
-            size={triggerSize ?? (bordered ? 'md' : 'sm')}
+            size={bordered ? 'md' : 'sm'}
             onPress={toggleOpen}>
             {triggerText}
             {multiple && hasSelection && (
