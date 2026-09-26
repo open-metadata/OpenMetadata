@@ -28,6 +28,12 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
+export type MlModelClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export class MlModelClass extends EntityClass {
   private mlModelName: string;
@@ -56,13 +62,15 @@ export class MlModelClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
+  createFullHierarchy: boolean;
 
-  constructor(name?: string) {
+  constructor(name?: string, options?: MlModelClassOptions) {
     super(EntityTypeEndpoint.MlModel);
     this.type = 'MlModel';
     this.childrenTabId = 'features';
     this.serviceCategory = SERVICE_TYPE.MLModels;
     this.serviceType = ServiceTypes.ML_MODEL_SERVICES;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     const serviceName = name ?? `pw-ml-model-service-${uuid()}`;
     this.mlModelName = `pw-mlmodel-${uuid()}`;
@@ -107,12 +115,19 @@ export class MlModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'MlModelClass.create',
-      createPath: '/api/v1/services/mlmodelServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'MlModelClass.create',
+        createPath: '/api/v1/services/mlmodelServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
+    } else {
+      this.serviceResponseData = await SharedInfra.mlmodelService(apiContext);
+      this.service = { ...this.service, name: this.serviceResponseData.name };
+      this.entity.service = this.serviceResponseData.name;
+    }
+
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'MlModelClass.create',
       createPath: '/api/v1/mlmodels',
@@ -172,6 +187,18 @@ export class MlModelClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const mlmodelResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/mlmodels/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: mlmodelResponse.body,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/mlmodelServices/name/${encodeURIComponent(

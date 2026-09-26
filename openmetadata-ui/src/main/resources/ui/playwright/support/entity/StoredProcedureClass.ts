@@ -28,6 +28,13 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
+export type StoredProcedureClassOptions = {
+  createFullHierarchy?: boolean;
+  sharedInfraKey?: string;
+};
 
 export class StoredProcedureClass extends EntityClass {
   service: {
@@ -73,9 +80,13 @@ export class StoredProcedureClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
+  createFullHierarchy: boolean;
+  sharedInfraKey: string | undefined;
 
-  constructor(name?: string) {
+  constructor(name?: string, options?: StoredProcedureClassOptions) {
     super(EntityTypeEndpoint.StoreProcedure);
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.sharedInfraKey = options?.sharedInfraKey;
 
     this.service = {
       name: name ?? `pw-database-service-${uuid()}`,
@@ -122,26 +133,51 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const service = await createOrFetch(apiContext, {
-      label: 'StoredProcedureClass.create service',
-      createPath: '/api/v1/services/databaseServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    let service: ResponseDataType;
+    let database: ResponseDataWithServiceType;
+    let schema: ResponseDataWithServiceType;
 
-    const database = await createOrFetch(apiContext, {
-      label: 'StoredProcedureClass.create database',
-      createPath: '/api/v1/databases',
-      fqnSegments: [this.service.name, this.database.name],
-      data: this.database,
-    });
+    if (this.createFullHierarchy) {
+      service = await createOrFetch(apiContext, {
+        label: 'StoredProcedureClass.create service',
+        createPath: '/api/v1/services/databaseServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
 
-    const schema = await createOrFetch(apiContext, {
-      label: 'StoredProcedureClass.create schema',
-      createPath: '/api/v1/databaseSchemas',
-      fqnSegments: [this.service.name, this.database.name, this.schema.name],
-      data: this.schema,
-    });
+      database = await createOrFetch(apiContext, {
+        label: 'StoredProcedureClass.create database',
+        createPath: '/api/v1/databases',
+        fqnSegments: [this.service.name, this.database.name],
+        data: this.database,
+      });
+
+      schema = await createOrFetch(apiContext, {
+        label: 'StoredProcedureClass.create schema',
+        createPath: '/api/v1/databaseSchemas',
+        fqnSegments: [this.service.name, this.database.name, this.schema.name],
+        data: this.schema,
+      });
+    } else {
+      const hierarchy = await SharedInfra.databaseHierarchy(
+        apiContext,
+        this.sharedInfraKey
+      );
+      service = hierarchy.service;
+      database = {
+        ...hierarchy.database,
+        service,
+      } as ResponseDataWithServiceType;
+      schema = { ...hierarchy.schema, service } as ResponseDataWithServiceType;
+
+      this.service = { ...this.service, name: service.name };
+      this.database = { name: database.name, service: service.name };
+      this.schema = {
+        name: schema.name,
+        database: `${service.name}.${database.name}`,
+      };
+      this.entity.databaseSchema = schema.fullyQualifiedName;
+    }
 
     const entity = await createOrFetch(apiContext, {
       label: 'StoredProcedureClass.create storedProcedure',
@@ -226,6 +262,18 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const entityResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/storedProcedures/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: entityResponse.body,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(

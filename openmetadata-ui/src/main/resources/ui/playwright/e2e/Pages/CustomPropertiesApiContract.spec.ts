@@ -102,31 +102,43 @@ type ValueTarget = {
   setValue: (propertyName: string, value: unknown) => Promise<void>;
 };
 
+// Every fixture below pins its own service name via `namespace.name('…-service')`
+// so custom-property contract assertions can locate the exact service they
+// created. Shared mode would drop those pinned names — opt out uniformly.
 const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'containers',
     createInstance: (namespace) =>
-      new ContainerClass(namespace.name('storage-service')),
+      new ContainerClass(namespace.name('storage-service'), {
+        createFullHierarchy: true,
+      }),
     typeName: 'container',
   },
   {
     apiPath: 'dashboards',
     createInstance: (namespace) =>
-      new DashboardClass(undefined, undefined, {
-        name: namespace.name('dashboard-service'),
-      }),
+      new DashboardClass(
+        undefined,
+        undefined,
+        { name: namespace.name('dashboard-service') },
+        { createFullHierarchy: true }
+      ),
     typeName: 'dashboard',
   },
   {
     apiPath: 'topics',
     createInstance: (namespace) =>
-      new TopicClass(namespace.name('messaging-service')),
+      new TopicClass(namespace.name('messaging-service'), {
+        createFullHierarchy: true,
+      }),
     typeName: 'topic',
   },
   {
     apiPath: 'pipelines',
     createInstance: (namespace) =>
-      new PipelineClass(namespace.name('pipeline-service')),
+      new PipelineClass(namespace.name('pipeline-service'), undefined, {
+        createFullHierarchy: true,
+      }),
     typeName: 'pipeline',
   },
   {
@@ -151,25 +163,33 @@ const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'mlmodels',
     createInstance: (namespace) =>
-      new MlModelClass(namespace.name('mlmodel-service')),
+      new MlModelClass(namespace.name('mlmodel-service'), {
+        createFullHierarchy: true,
+      }),
     typeName: 'mlmodel',
   },
   {
     apiPath: 'searchIndexes',
     createInstance: (namespace) =>
-      new SearchIndexClass(namespace.name('search-service')),
+      new SearchIndexClass(namespace.name('search-service'), {
+        createFullHierarchy: true,
+      }),
     typeName: 'searchIndex',
   },
   {
     apiPath: 'storedProcedures',
     createInstance: (namespace) =>
-      new StoredProcedureClass(namespace.name('stored-procedure-service')),
+      new StoredProcedureClass(namespace.name('stored-procedure-service'), {
+        createFullHierarchy: true,
+      }),
     typeName: 'storedProcedure',
   },
   {
     apiPath: 'dashboard/datamodels',
     createInstance: (namespace) =>
-      new DashboardDataModelClass(namespace.name('data-model-service')),
+      new DashboardDataModelClass(namespace.name('data-model-service'), {
+        createFullHierarchy: true,
+      }),
     typeName: 'dashboardDataModel',
   },
   {
@@ -188,7 +208,8 @@ const ENTITY_CONTRACTS: EntityContract[] = [
     createInstance: (namespace) =>
       new ApiEndpointClass(
         namespace.name('api-endpoint-service'),
-        namespace.name('api-endpoint')
+        namespace.name('api-endpoint'),
+        { createFullHierarchy: true }
       ),
     typeName: 'apiEndpoint',
   },
@@ -749,7 +770,12 @@ const exerciseTableColumnContract = async ({
     adminApiContext,
     testNamespace
   );
-  const table = new TableClass(testNamespace.name('column-contract-table'));
+  const table = new TableClass(
+    testNamespace.name('column-contract-table'),
+    undefined,
+    undefined,
+    { createFullHierarchy: true }
+  );
 
   testNamespace.registerCleanup(async () => {
     await adminApiContext.delete(

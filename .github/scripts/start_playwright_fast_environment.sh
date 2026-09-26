@@ -40,6 +40,8 @@ export PW_REQUEST_METRICS="$runtime_root/logs/request-metrics.json"
 export PW_AIRFLOW_CONTAINER=""
 export PW_AUTH_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/.auth"
 export PW_ENTITY_STATE_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/output/entity-response-data.json"
+export PW_LINEAGE_STATE_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/output/lineage-data.json"
+export PW_SHARED_INFRA_STATE_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/output/shared-infra.json"
 
 startup_complete=false
 cleanup_failed_start() {
@@ -100,7 +102,9 @@ export PW_SEARCH_CLUSTER_ALIAS
 playwright_state="$runtime_root/data/playwright-state"
 if [[ ! -s "$playwright_state/auth/admin.json" ||
       ! -s "$playwright_state/auth/admin-api-token.json" ||
-      ! -s "$playwright_state/entity-response-data.json" ]]; then
+      ! -s "$playwright_state/entity-response-data.json" ||
+      ! -s "$playwright_state/lineage-data.json" ||
+      ! -s "$playwright_state/shared-infra.json" ]]; then
   echo "The Playwright fixture does not contain seeded auth and entity state" >&2
   exit 1
 fi
@@ -118,7 +122,11 @@ if [[ "$(jq -r .playwrightStateHash "$manifest")" != "$playwright_state_hash" ]]
 fi
 
 mkdir -p "$(dirname "$PW_ENTITY_STATE_LINK")"
-for state_link in "$PW_AUTH_LINK" "$PW_ENTITY_STATE_LINK"; do
+for state_link in \
+  "$PW_AUTH_LINK" \
+  "$PW_ENTITY_STATE_LINK" \
+  "$PW_LINEAGE_STATE_LINK" \
+  "$PW_SHARED_INFRA_STATE_LINK"; do
   if [[ -e "$state_link" || -L "$state_link" ]]; then
     echo "Refusing to replace existing Playwright state path: $state_link" >&2
     exit 1
@@ -126,6 +134,8 @@ for state_link in "$PW_AUTH_LINK" "$PW_ENTITY_STATE_LINK"; do
 done
 ln -s "$playwright_state/auth" "$PW_AUTH_LINK"
 ln -s "$playwright_state/entity-response-data.json" "$PW_ENTITY_STATE_LINK"
+ln -s "$playwright_state/lineage-data.json" "$PW_LINEAGE_STATE_LINK"
+ln -s "$playwright_state/shared-infra.json" "$PW_SHARED_INFRA_STATE_LINK"
 
 if [[ "${PW_PROTOCOL:-http}" == "h2" ]]; then
   for storage_state in "$playwright_state/auth"/*.json; do

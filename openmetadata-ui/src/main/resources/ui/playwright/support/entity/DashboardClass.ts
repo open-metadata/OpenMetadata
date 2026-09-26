@@ -28,6 +28,13 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. `sharedInfraKey` names the SharedInfra slot to use; leave undefined (→ 'default') so multiple dashboards share one service, or set a unique key when a filter test must see this entity on its own dashboardService. */
+export type DashboardClassOptions = {
+  createFullHierarchy?: boolean;
+  sharedInfraKey?: string;
+};
 
 export interface DataModelType extends ResponseDataWithServiceType {
   columns?: unknown[];
@@ -68,16 +75,21 @@ export class DashboardClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   dataModelResponseData: DataModelType = {} as DataModelType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
+  createFullHierarchy: boolean;
+  sharedInfraKey: string | undefined;
 
   constructor(
     name?: string,
     dataModelType = 'SupersetDataModel',
-    service?: Partial<DashboardServiceConfig>
+    service?: Partial<DashboardServiceConfig>,
+    options?: DashboardClassOptions
   ) {
     super(EntityTypeEndpoint.Dashboard);
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.sharedInfraKey = options?.sharedInfraKey;
 
     const serviceName = service?.name ?? `pw-dashboard-service-${uuid()}`;
     this.dashboardName = `pw-dashboard-${uuid()}`;
@@ -151,12 +163,26 @@ export class DashboardClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'DashboardClass.create service',
-      createPath: '/api/v1/services/dashboardServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'DashboardClass.create service',
+        createPath: '/api/v1/services/dashboardServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
+    } else {
+      // Shared per-worker Superset DashboardService from SharedInfra.
+      this.serviceResponseData = await SharedInfra.dashboardService(
+        apiContext,
+        this.sharedInfraKey
+      );
+      const sharedName = this.serviceResponseData.name;
+      this.service = { ...this.service, name: sharedName };
+      this.charts = { ...this.charts, service: sharedName };
+      this.entity = { ...this.entity, service: sharedName };
+      this.dataModel = { ...this.dataModel, service: sharedName };
+      this.childrenSelectorId = `${sharedName}.${this.charts.name}`;
+    }
 
     this.chartsResponseData = await createOrFetch(apiContext, {
       label: 'DashboardClass.create chart',
@@ -256,6 +282,26 @@ export class DashboardClass extends EntityClass {
         this.chartsResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
     );
+
+    // Shared-hierarchy dashboards must not cascade to the DashboardService —
+    // other dashboards in the same worker still reference it.
+    if (!this.createFullHierarchy) {
+      const dashboardResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/dashboards/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+      const dataModelResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/dashboard/datamodels/${this.dataModelResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: dashboardResponse.body,
+        chart: chartResponse.body,
+        dataModel: dataModelResponse.body,
+      };
+    }
 
     const serviceResponse = await deleteFixtureEntity(
       apiContext,

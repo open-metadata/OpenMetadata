@@ -33,10 +33,20 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
 // a digit guarantees these services land within that bucket regardless of how
 // many other `pw-*` services have accumulated.
-const table = new TableClass(undefined, undefined, {
-  name: `0-pw-database-service-${uuid()}`,
-});
-const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
+// Opt out of SharedInfra: this suite pins its service names for
+// alphabetical bucket sorting; shared mode would replace them.
+const table = new TableClass(
+  undefined,
+  undefined,
+  { name: `0-pw-database-service-${uuid()}` },
+  { createFullHierarchy: true }
+);
+const dashboard = new DashboardClass(
+  `0-pw-dashboard-service-${uuid()}`,
+  undefined,
+  undefined,
+  { createFullHierarchy: true }
+);
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.

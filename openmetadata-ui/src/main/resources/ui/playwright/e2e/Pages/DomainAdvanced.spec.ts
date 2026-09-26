@@ -582,7 +582,32 @@ test.describe('Bulk Domain Asset Operations', () => {
       await checkAssetsCount(page, assets.length);
 
       for (const asset of assets) {
-        const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+        const name = get(asset, 'entityResponseData.name') as
+          | string
+          | undefined;
+        const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+          | string
+          | undefined;
+
+        if (!name || !fqn) {
+          throw new Error(
+            `Remove multiple assets: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+          );
+        }
+
+        // Narrow before check — same pattern as removeAssetsFromDataProduct.
+        // The asset tab wraps the search value into `*<value>*`, so match
+        // the name anywhere in the URL and let the next iteration's fill
+        // overwrite (no inter-iteration clear needed).
+        const searchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes(name)
+        );
+        await page.getByTestId('searchbar').fill(name);
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+
         await page
           .locator(`[data-testid="table-data-card_${fqn}"] input`)
           .check();
@@ -993,7 +1018,27 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
   };
 
   const selectAssetCardCheckbox = async (page: Page, table: TableClass) => {
+    const name = table.entityResponseData.name ?? '';
     const fqn = table.entityResponseData.fullyQualifiedName ?? '';
+
+    // Narrow the list to this one card first — under SharedInfra the
+    // domain asset tab lists every table on the shard, and toggling a
+    // checkbox reflows enough that a subsequent target scrolls under
+    // the pointer and .check() retries out. The tab wraps the search
+    // into `*<value>*`, so match the name anywhere in the URL. Between
+    // consecutive selectAssetCardCheckbox calls, the next fill overwrites
+    // — no inter-call clear needed.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    // Loader wait before check defeats the reflow race between response
+    // arrival and React swapping the list to a single card.
+    await waitForAllLoadersToDisappear(page);
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   };
 

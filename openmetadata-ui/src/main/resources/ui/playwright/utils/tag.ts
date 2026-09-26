@@ -201,7 +201,34 @@ export const removeAssetsFromTag = async (
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromTag: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow to this card so the tag's asset tab (which under SharedInfra
+    // can list every table/topic/dashboard on the shard) stays stable
+    // while we toggle checkboxes one at a time. The tab wraps the search
+    // value into `*<value>*`, so `q=<name>` alone won't appear — check
+    // the name is anywhere in the URL instead.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    // Response arrives before the list re-renders from N cards to 1;
+    // wait for loaders to settle so .check() doesn't retry through
+    // a repositioning target.
+    await waitForAllLoadersToDisappear(page);
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
@@ -636,13 +663,44 @@ export const verifyEntityTypeFilterInTagAssets = async (
   await page.getByTestId('update-btn').click();
   await filterResponse;
 
-  // Check that items are visible after applying filter
+  // Narrow the list to one specific asset per iteration before checking it —
+  // the picker's search shows every table/topic/dashboard on the shard, and
+  // toggling one checkbox reflows the list enough that the next target
+  // scrolls under the pointer and `.check()` retries until the test times
+  // out. Mirrors `addAssetsToDataProduct` in utils/domain.ts.
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `verifyEntityTypeFilterInTagAssets: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // The asset tab wraps the search value into `*<value>*` (see
+    // AssetsTabs.component.tsx line ~538), so `q=<name>` alone won't
+    // appear in the URL — check the name is anywhere in the URL instead.
+    // Unique per fixture (uuid-based), no false positives.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    // Response arrives before the list re-renders from N to 1 card;
+    // wait for loaders so .check() doesn't retry through a
+    // repositioning target.
+    await waitForAllLoadersToDisappear(page);
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.getByTestId('searchbar').clear();
   await page.getByText('Clear').click();
   await clearResponse;
 };

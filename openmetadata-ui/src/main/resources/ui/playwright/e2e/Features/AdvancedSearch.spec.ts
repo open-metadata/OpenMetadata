@@ -62,11 +62,19 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
     test.slow(true);
 
     user = new UserClass();
-    table = new TableClass(undefined, 'Regular');
-    table1 = new TableClass();
-    table2 = new TableClass();
-    topic1 = new TopicClass();
-    topic2 = new TopicClass();
+    // These fixtures assert on their SERVICE name being uniquely theirs
+    // (advanced search filters by service.name). Opt out of shared mode.
+    table = new TableClass(undefined, 'Regular', undefined, {
+      createFullHierarchy: true,
+    });
+    table1 = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
+    table2 = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
+    topic1 = new TopicClass(undefined, { createFullHierarchy: true });
+    topic2 = new TopicClass(undefined, { createFullHierarchy: true });
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -393,7 +401,9 @@ test.describe(
 
         glossaryForStatus = new Glossary();
         glossaryTermApproved = new GlossaryTerm(glossaryForStatus);
-        mlModelDraft = new MlModelClass();
+        mlModelDraft = new MlModelClass(undefined, {
+          createFullHierarchy: true,
+        });
         dataProductInReview = new DataProduct();
 
         await glossaryForStatus.create(apiContext);
@@ -666,7 +676,9 @@ test.describe(
         DESCRIPTION_TEXT = `This is a table description containing the word ${UNIQUE_WORD} to test the advanced search functionality.`;
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
-        descFilterTable = new TableClass();
+        descFilterTable = new TableClass(undefined, undefined, undefined, {
+          createFullHierarchy: true,
+        });
         await descFilterTable.create(apiContext);
 
         await descFilterTable.patch({
@@ -1150,8 +1162,12 @@ test.describe(
           columnTag2.create(apiContext),
         ]);
 
-        columnTagTable1 = new TableClass();
-        columnTagTable2 = new TableClass();
+        columnTagTable1 = new TableClass(undefined, undefined, undefined, {
+          createFullHierarchy: true,
+        });
+        columnTagTable2 = new TableClass(undefined, undefined, undefined, {
+          createFullHierarchy: true,
+        });
         await Promise.all([
           columnTagTable1.create(apiContext),
           columnTagTable2.create(apiContext),
@@ -1596,7 +1612,9 @@ test.describe(
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          lazyLoadTable = new TableClass();
+          lazyLoadTable = new TableClass(undefined, undefined, undefined, {
+            createFullHierarchy: true,
+          });
           await lazyLoadTable.create(apiContext);
 
           const cpMetadataTypeRes = await apiContext.get(

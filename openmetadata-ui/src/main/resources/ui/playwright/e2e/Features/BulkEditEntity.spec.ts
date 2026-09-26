@@ -178,7 +178,12 @@ test.describe('Bulk Edit Entity', () => {
   test('Database service', async ({ page }) => {
     test.slow(true);
 
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -281,7 +286,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
-      // Verify Tags
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',
@@ -315,7 +322,12 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database', async ({ page }) => {
     test.slow(true);
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -430,7 +442,9 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.locator('loader').waitFor({ state: 'hidden' });
 
-      // Verify Tags
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',
@@ -464,7 +478,12 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database Schema', async ({ page }) => {
     test.slow(true);
-    const table = new TableClass();
+    // Bulk-edit mutates the database/schema (owners, tags, tier) —
+    // must own the parent chain so concurrent tests do not see the
+    // shared-parent ownership propagate into their schema lists.
+    const table = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -582,7 +601,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
-      // Verify Tags
+      // Verify Tags — service/database/schema pages don't render the
+      // right-panel KnowledgePanel.Tags, so a bare getByRole matches
+      // the single inline Sensitive tag on those pages.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',
@@ -615,7 +636,9 @@ test.describe('Bulk Edit Entity', () => {
   test('Table', async ({ page }) => {
     test.slow(true);
 
-    const tableEntity = new TableClass();
+    const tableEntity = new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await tableEntity.create(apiContext);
@@ -696,15 +719,18 @@ test.describe('Bulk Edit Entity', () => {
         getCellByName(page, 'Playwright Table column')
       ).toBeVisible();
 
-      // Verify Tags
+      // Verify Tags — the table page renders the same Sensitive tag
+      // both inline on the entity header AND in the right-panel
+      // KnowledgePanel.Tags, so a bare getByRole matches both and
+      // fails strict mode. Scope to the right panel.
       await expect(
-        page.getByRole('link', {
+        page.getByTestId('KnowledgePanel.Tags').getByRole('link', {
           name: 'Sensitive',
         })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('link', {
+        page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
           name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();

@@ -50,6 +50,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
 import {
@@ -1053,16 +1054,26 @@ export const addAssetsToDataProduct = async (
 
   await checkAssetsCount(page, assets.length);
 
+  // Data-product page URL to return to after visiting each asset's page.
+  const dataProductUrl = page.url();
+
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
 
-    await page
-      .locator(
-        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
-      )
-      .click();
+    if (!fqn) {
+      throw new Error(
+        `addAssetsToDataProduct verification: asset missing entityResponseData.fullyQualifiedName`
+      );
+    }
 
-    await waitForAllLoadersToDisappear(page);
+    // Navigate to the entity page via URL instead of clicking the
+    // entity-link inside the asset card. The card body re-renders
+    // asynchronously as tags / owners / counts stream in, so `.click()`
+    // retries "element is not stable" for the full test timeout under
+    // SharedInfra load. Direct navigation bypasses the stability race.
+    await visitEntityPageByFqn({ page, endpoint: asset.endpoint, fqn });
 
     await expect(
       page
@@ -1070,10 +1081,12 @@ export const addAssetsToDataProduct = async (
         .getByTestId('data-products-list')
         .getByTestId(`data-product-${dataProductFqn}`)
     ).toBeVisible();
-
-    await page.goBack();
-    await waitForAllLoadersToDisappear(page);
   }
+
+  // Return to the data-product page so the caller's next assertions
+  // (asset count, remove-assets, delete) can run against it.
+  await page.goto(dataProductUrl);
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeAssetsFromDataProduct = async (
@@ -1083,14 +1096,40 @@ export const removeAssetsFromDataProduct = async (
 ) => {
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromDataProduct: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow to this card so neighbor cards' streaming metadata
+    // (tags/owners/counts) can't reflow the target during .check().
+    // Tab wraps `q=*<value>*`, so match the name anywhere in the URL.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    await waitForAllLoadersToDisappear(page);
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
-  const assetsRemoveRes = page.waitForResponse(
-    `/api/v1/dataProducts/${encodeURIComponent(
-      dataProduct.fullyQualifiedName ?? ''
-    )}/assets/remove`
+  // Clear the filter before delete-all so the request URL matches the
+  // helper's wait pattern (a filtered list can otherwise defer or drop
+  // the /assets/remove request).
+  await page.getByTestId('searchbar').clear();
+  await waitForAllLoadersToDisappear(page);
+
+  const assetsRemoveRes = page.waitForResponse((response) =>
+    response.url().includes('/assets/remove')
   );
 
   await page.getByTestId('delete-all-button').click();

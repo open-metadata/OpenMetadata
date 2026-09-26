@@ -30,22 +30,60 @@ export const isOwnerRole = new RolesClass();
 export const matchAnyTagRole = new RolesClass();
 export const userWithOwnerPermission = new UserClass();
 export const userWithTagPermission = new UserClass();
+// Every fixture below is used to navigate to a per-asset service page
+// (assetOwnerUrl/assetTagUrl below), so each needs its own service — opt out of
+// the shared-per-worker default with createFullHierarchy: true.
+// ApiCollectionClass creates its own service unconditionally and takes no options.
 export const apiCollectionWithOwner = new ApiCollectionClass();
 export const apiCollectionWithTag = new ApiCollectionClass();
-export const containerWithOwner = new ContainerClass();
-export const containerWithTag = new ContainerClass();
-export const dashboardWithOwner = new DashboardClass();
-export const dashboardWithTag = new DashboardClass();
-export const mlModelWithOwner = new MlModelClass();
-export const mlModelWithTag = new MlModelClass();
-export const pipelineWithOwner = new PipelineClass();
-export const pipelineWithTag = new PipelineClass();
-export const searchIndexWithOwner = new SearchIndexClass();
-export const searchIndexWithTag = new SearchIndexClass();
-export const tableWithOwner = new TableClass();
-export const tableWithTag = new TableClass();
-export const topicWithOwner = new TopicClass();
-export const topicWithTag = new TopicClass();
+export const containerWithOwner = new ContainerClass(undefined, {
+  createFullHierarchy: true,
+});
+export const containerWithTag = new ContainerClass(undefined, {
+  createFullHierarchy: true,
+});
+export const dashboardWithOwner = new DashboardClass(
+  undefined,
+  undefined,
+  undefined,
+  { createFullHierarchy: true }
+);
+export const dashboardWithTag = new DashboardClass(
+  undefined,
+  undefined,
+  undefined,
+  { createFullHierarchy: true }
+);
+export const mlModelWithOwner = new MlModelClass(undefined, {
+  createFullHierarchy: true,
+});
+export const mlModelWithTag = new MlModelClass(undefined, {
+  createFullHierarchy: true,
+});
+export const pipelineWithOwner = new PipelineClass(undefined, undefined, {
+  createFullHierarchy: true,
+});
+export const pipelineWithTag = new PipelineClass(undefined, undefined, {
+  createFullHierarchy: true,
+});
+export const searchIndexWithOwner = new SearchIndexClass(undefined, {
+  createFullHierarchy: true,
+});
+export const searchIndexWithTag = new SearchIndexClass(undefined, {
+  createFullHierarchy: true,
+});
+export const tableWithOwner = new TableClass(undefined, undefined, undefined, {
+  createFullHierarchy: true,
+});
+export const tableWithTag = new TableClass(undefined, undefined, undefined, {
+  createFullHierarchy: true,
+});
+export const topicWithOwner = new TopicClass(undefined, {
+  createFullHierarchy: true,
+});
+export const topicWithTag = new TopicClass(undefined, {
+  createFullHierarchy: true,
+});
 
 const withOwner = {
   apiCollectionWithOwner,

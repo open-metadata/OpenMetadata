@@ -29,10 +29,16 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { SharedInfra } from './SharedInfra';
+
+/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
+export type ApiEndpointClassOptions = {
+  createFullHierarchy?: boolean;
+};
 
 export class ApiEndpointClass extends EntityClass {
-  private readonly serviceName: string;
-  private readonly apiCollectionName: string;
+  private serviceName: string;
+  private apiCollectionName: string;
   service: {
     name: string;
     displayName: string;
@@ -77,9 +83,15 @@ export class ApiEndpointClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   apiCollectionResponseData: APIEndpoint = {} as APIEndpoint;
   entityResponseData: APIEndpoint = {} as APIEndpoint;
+  createFullHierarchy: boolean;
 
-  constructor(name?: string, apiEndpointName?: string) {
+  constructor(
+    name?: string,
+    apiEndpointName?: string,
+    options?: ApiEndpointClassOptions
+  ) {
     super(EntityTypeEndpoint.API_ENDPOINT);
+    this.createFullHierarchy = options?.createFullHierarchy ?? false;
 
     this.serviceName = name ?? `pw-api-service-${uuid()}`;
     this.apiCollectionName = `pw-api-collection-${uuid()}`;
@@ -218,19 +230,36 @@ export class ApiEndpointClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'ApiEndpointClass.create service',
-      createPath: '/api/v1/services/apiServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    if (this.createFullHierarchy) {
+      this.serviceResponseData = await createOrFetch(apiContext, {
+        label: 'ApiEndpointClass.create service',
+        createPath: '/api/v1/services/apiServices',
+        fqnSegments: [this.service.name],
+        data: this.service,
+      });
 
-    this.apiCollectionResponseData = await createOrFetch(apiContext, {
-      label: 'ApiEndpointClass.create apiCollection',
-      createPath: '/api/v1/apiCollections',
-      fqnSegments: [this.service.name, this.apiCollection.name],
-      data: this.apiCollection,
-    });
+      this.apiCollectionResponseData = await createOrFetch(apiContext, {
+        label: 'ApiEndpointClass.create apiCollection',
+        createPath: '/api/v1/apiCollections',
+        fqnSegments: [this.service.name, this.apiCollection.name],
+        data: this.apiCollection,
+      });
+    } else {
+      // Shared apiService + shared apiCollection — only the endpoint is new.
+      const hierarchy = await SharedInfra.apiCollection(apiContext);
+      this.serviceResponseData = hierarchy.service;
+      this.apiCollectionResponseData =
+        hierarchy.collection as unknown as APIEndpoint;
+      this.serviceName = hierarchy.service.name;
+      this.apiCollectionName = hierarchy.collection.name;
+      this.service.name = hierarchy.service.name;
+      this.apiCollection = {
+        ...this.apiCollection,
+        name: hierarchy.collection.name,
+        service: hierarchy.service.name,
+      };
+      this.entity.apiCollection = hierarchy.collection.fullyQualifiedName;
+    }
 
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'ApiEndpointClass.create apiEndpoint',
@@ -307,6 +336,19 @@ export class ApiEndpointClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    if (!this.createFullHierarchy) {
+      const endpointResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/apiEndpoints/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
+      );
+
+      return {
+        service: undefined,
+        entity: endpointResponse.body,
+        apiCollection: undefined,
+      };
+    }
+
     const serviceResponse = await deleteFixtureEntity(
       apiContext,
       `/api/v1/services/apiServices/name/${encodeURIComponent(
