@@ -248,10 +248,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
+    // The same parsing the request filter and Test Login use, so a test cannot resolve a different
+    // principal than this login does.
     this.claimsMapping =
-        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
-            .map(s -> s.split(":"))
-            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+        SecurityUtil.buildPrincipalClaimsMapping(
+            authenticationConfiguration.getJwtPrincipalClaimsMapping());
     validatePrincipalClaimsMapping(claimsMapping);
     this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
     this.principalDomain =
@@ -272,7 +273,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
   }
 
-  private static OidcClient buildOidcClient(OidcClientConfig clientConfig) {
+  static OidcClient buildOidcClient(OidcClientConfig clientConfig) {
     String id = clientConfig.getId();
     String secret = clientConfig.getSecret();
     if (CommonHelper.isNotBlank(id) && CommonHelper.isNotBlank(secret)) {
@@ -420,10 +421,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         }
       }
 
-      Map<String, String> params = buildLoginParams();
+      Map<String, String> params = buildLoginParams(client.getConfiguration());
       params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
 
-      PendingLoginContext pendingLoginContext = addStateAndNonceParameters(params);
+      PendingLoginContext pendingLoginContext =
+          addStateAndNonceParameters(client.getConfiguration(), params);
       if (isMcpFlow) {
         persistMcpPendingState(req, pendingLoginContext);
       }
@@ -450,7 +452,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         params.put(OidcConfiguration.MAX_AGE, maxAge);
       }
 
-      String location = buildLoginAuthenticationRequestUrl(params);
+      String location = buildLoginAuthenticationRequestUrl(client.getConfiguration(), params);
       LOG.debug("Authentication request url: {}", location);
       resp.sendRedirect(location);
     } catch (IllegalArgumentException e) {
@@ -517,11 +519,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.debug("Authentication response successful");
       AuthenticationSuccessResponse successResponse = (AuthenticationSuccessResponse) response;
 
-      OIDCProviderMetadata metadata = resolveProviderMetadata(client.getConfiguration());
-      if (metadata.supportsAuthorizationResponseIssuerParam()
-          && !metadata.getIssuer().equals(successResponse.getIssuer())) {
-        throw new TechnicalException("Issuer mismatch, possible mix-up attack.");
-      }
+      validateResponseIssuer(client.getConfiguration(), successResponse);
 
       // Optional state validation
       validateStateIfRequired(pendingSession, resp, successResponse);
@@ -700,7 +698,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private String buildLoginAuthenticationRequestUrl(final Map<String, String> params) {
+  static String buildLoginAuthenticationRequestUrl(
+      OidcConfiguration configuration, final Map<String, String> params) {
     // Build authentication request query string
     String queryString;
     try {
@@ -714,20 +713,18 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     } catch (Exception e) {
       throw new TechnicalException(e);
     }
-    return resolveProviderMetadata(client.getConfiguration())
-            .getAuthorizationEndpointURI()
-            .toString()
+    return resolveProviderMetadata(configuration).getAuthorizationEndpointURI().toString()
         + '?'
         + queryString;
   }
 
-  private Map<String, String> buildLoginParams() {
+  static Map<String, String> buildLoginParams(OidcConfiguration configuration) {
     Map<String, String> authParams = new HashMap<>();
-    authParams.put(OidcConfiguration.SCOPE, client.getConfiguration().getScope());
-    authParams.put(OidcConfiguration.RESPONSE_TYPE, client.getConfiguration().getResponseType());
+    authParams.put(OidcConfiguration.SCOPE, configuration.getScope());
+    authParams.put(OidcConfiguration.RESPONSE_TYPE, configuration.getResponseType());
     authParams.put(OidcConfiguration.RESPONSE_MODE, "query");
-    authParams.putAll(client.getConfiguration().getCustomParams());
-    authParams.put(OidcConfiguration.CLIENT_ID, client.getConfiguration().getClientId());
+    authParams.putAll(configuration.getCustomParams());
+    authParams.put(OidcConfiguration.CLIENT_ID, configuration.getClientId());
 
     return new HashMap<>(authParams);
   }
@@ -746,6 +743,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
               : new CodeVerifier(session.getPkceVerifier());
       TokenRequest request =
           createTokenRequest(
+              client.getConfiguration(),
+              clientAuthentication,
               new AuthorizationCodeGrant(
                   oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
       executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
@@ -779,12 +778,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   // pac4j 6 replaces provider-metadata accessors with a lazy IOidcOpMetadataResolver. OM does not
   // call client.init(), so ensure the resolver exists before loading its cached discovery document.
-  private static OIDCProviderMetadata resolveProviderMetadata(OidcConfiguration configuration) {
+  static void validateResponseIssuer(
+      OidcConfiguration configuration, AuthenticationSuccessResponse successResponse) {
+    OIDCProviderMetadata metadata = resolveProviderMetadata(configuration);
+    if (metadata.supportsAuthorizationResponseIssuerParam()
+        && !metadata.getIssuer().equals(successResponse.getIssuer())) {
+      throw new TechnicalException("Issuer mismatch, possible mix-up attack.");
+    }
+  }
+
+  static OIDCProviderMetadata resolveProviderMetadata(OidcConfiguration configuration) {
     configuration.ensuresMetadataResolverInitialized();
     return configuration.getOpMetadataResolver().load();
   }
 
-  private OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
+  static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
     // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
@@ -810,8 +818,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private void validateNonceIfRequired(UserSession session, JWTClaimsSet claimsSet)
       throws BadJOSEException {
-    if (client.getConfiguration().isUseNonce()) {
-      String expectedNonce = session.getNonce();
+    validateNonceIfRequired(client.getConfiguration(), session.getNonce(), claimsSet);
+  }
+
+  static void validateNonceIfRequired(
+      OidcConfiguration configuration, String expectedNonce, JWTClaimsSet claimsSet)
+      throws BadJOSEException {
+    if (configuration.isUseNonce()) {
       if (CommonHelper.isNotBlank(expectedNonce)) {
         String tokenNonce;
         try {
@@ -844,7 +857,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return map;
   }
 
-  private ClientAuthentication getClientAuthentication(OidcConfiguration configuration) {
+  static ClientAuthentication getClientAuthentication(OidcConfiguration configuration) {
     ClientID clientID = new ClientID(configuration.getClientId());
     ClientAuthentication clientAuthenticationMechanism = null;
     if (configuration.getSecret() != null) {
@@ -928,7 +941,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return configurationMethod;
   }
 
-  private ClientAuthenticationMethod firstSupportedMethod(
+  private static ClientAuthenticationMethod firstSupportedMethod(
       final List<ClientAuthenticationMethod> metadataMethods) {
     Optional<ClientAuthenticationMethod> firstSupported =
         metadataMethods.stream().filter(SUPPORTED_METHODS::contains).findFirst();
@@ -1093,7 +1106,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   @SneakyThrows
   private void executeAuthorizationCodeTokenRequest(
       UserSession session, TokenRequest request, OidcCredentials credentials) {
-    HTTPResponse httpResponse = executeTokenHttpRequest(request);
+    HTTPResponse httpResponse = executeTokenHttpRequest(client.getConfiguration(), request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
   }
@@ -1107,9 +1120,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     SecurityUtil.validatePrincipalClaimsMapping(mapping);
   }
 
-  private HTTPResponse executeTokenHttpRequest(TokenRequest request) throws IOException {
+  static HTTPResponse executeTokenHttpRequest(OidcConfiguration configuration, TokenRequest request)
+      throws IOException {
     HTTPRequest tokenHttpRequest = request.toHTTPRequest();
-    client.getConfiguration().configureHttpRequest(tokenHttpRequest);
+    configuration.configureHttpRequest(tokenHttpRequest);
 
     HTTPResponse httpResponse = tokenHttpRequest.send();
     LOG.debug("Token response: status={}", httpResponse.getStatusCode());
@@ -1117,37 +1131,41 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return httpResponse;
   }
 
-  private TokenRequest createTokenRequest(final AuthorizationGrant grant) {
+  static TokenRequest createTokenRequest(
+      OidcConfiguration configuration,
+      ClientAuthentication clientAuthentication,
+      final AuthorizationGrant grant) {
     if (clientAuthentication != null) {
       return new TokenRequest(
-          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
-          this.clientAuthentication,
+          resolveProviderMetadata(configuration).getTokenEndpointURI(),
+          clientAuthentication,
           grant);
     } else {
       return new TokenRequest(
-          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
-          new ClientID(client.getConfiguration().getClientId()),
+          resolveProviderMetadata(configuration).getTokenEndpointURI(),
+          new ClientID(configuration.getClientId()),
           grant);
     }
   }
 
-  private PendingLoginContext addStateAndNonceParameters(Map<String, String> params) {
+  static PendingLoginContext addStateAndNonceParameters(
+      OidcConfiguration configuration, Map<String, String> params) {
     String state = null;
     String nonce = null;
     String pkceVerifier = null;
 
-    if (client.getConfiguration().isWithState()) {
+    if (configuration.isWithState()) {
       state = new State(CommonHelper.randomString(32)).getValue();
       params.put(OidcConfiguration.STATE, state);
     }
 
-    if (client.getConfiguration().isUseNonce()) {
+    if (configuration.isUseNonce()) {
       nonce = new Nonce().getValue();
       params.put(OidcConfiguration.NONCE, nonce);
     }
 
-    CodeChallengeMethod pkceMethod = client.getConfiguration().findPkceMethod();
-    if (pkceMethod == null && !client.getConfiguration().isDisablePkce()) {
+    CodeChallengeMethod pkceMethod = configuration.findPkceMethod();
+    if (pkceMethod == null && !configuration.isDisablePkce()) {
       pkceMethod = CodeChallengeMethod.S256;
     }
     if (pkceMethod != null) {
@@ -1161,7 +1179,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new PendingLoginContext(state, nonce, pkceVerifier);
   }
 
-  private void populateCredentialsFromTokenResponse(
+  static void populateCredentialsFromTokenResponse(
       OIDCTokenResponse tokenSuccessResponse, OidcCredentials credentials) {
     OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
     // pac4j 6 exposes Map-based setters plus set*Object() overloads that retain the nimbus types;
@@ -1175,7 +1193,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private OIDCTokenResponse parseTokenResponseFromHttpResponse(HTTPResponse httpResponse)
+  static OIDCTokenResponse parseTokenResponseFromHttpResponse(HTTPResponse httpResponse)
       throws com.nimbusds.oauth2.sdk.ParseException {
     TokenResponse response = OIDCTokenResponseParser.parse(httpResponse);
     if (response instanceof TokenErrorResponse tokenErrorResponse) {
@@ -1300,7 +1318,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private record PendingLoginContext(String state, String nonce, String pkceVerifier) {}
+  record PendingLoginContext(String state, String nonce, String pkceVerifier) {}
 
   public static void validateConfig(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
@@ -1310,9 +1328,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           "CallbackUrl", authConfig.getOidcConfiguration().getCallbackUrl());
       CommonHelper.assertNotBlank("ServerUrl", authConfig.getOidcConfiguration().getServerUrl());
       validatePrincipalClaimsMapping(
-          listOrEmpty(authConfig.getJwtPrincipalClaimsMapping()).stream()
-              .map(s -> s.split(":"))
-              .collect(Collectors.toMap(s -> s[0], s -> s[1])));
+          SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping()));
 
       OidcClient validationClient = buildOidcClient(authConfig.getOidcConfiguration());
       validationClient.setCallbackUrl(authConfig.getOidcConfiguration().getCallbackUrl());

@@ -867,6 +867,7 @@ export interface AuthenticationConfiguration {
   enableSelfSignup: boolean;
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
+  responseType?: string;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;

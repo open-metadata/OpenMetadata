@@ -15,7 +15,11 @@ import type { AuthenticationResult, Configuration } from '@azure/msal-browser';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
-import { WebStorageStateStore } from 'oidc-client';
+import {
+  InMemoryWebStorage,
+  UserManagerSettings,
+  WebStorageStateStore,
+} from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -113,7 +117,7 @@ export const getUserManagerConfig = (
  */
 export const getCandidateUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
-): Record<string, string | boolean | WebStorageStateStore> => {
+): UserManagerSettings => {
   const {
     authority = '',
     clientId = '',
@@ -121,10 +125,6 @@ export const getCandidateUserManagerConfig = (
     scope,
     responseType,
   } = authClient;
-  const testStore = new WebStorageStateStore({
-    store: globalThis.localStorage,
-    prefix: SSO_TEST_LOGIN_STORE_PREFIX,
-  });
 
   return {
     authority,
@@ -133,8 +133,14 @@ export const getCandidateUserManagerConfig = (
     response_type: responseType ?? 'id_token',
     scope: scope || OIDC_SCOPE,
     loadUserInfo: false,
-    userStore: testStore,
-    stateStore: testStore,
+    monitorSession: false,
+    // Only this page reads the tested identity's tokens back, so they are never written to storage.
+    userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
+    // The same-origin popup finds its sign-in state here (see isSsoTestLoginPopup).
+    stateStore: new WebStorageStateStore({
+      store: globalThis.localStorage,
+      prefix: SSO_TEST_LOGIN_STORE_PREFIX,
+    }),
   };
 };
 

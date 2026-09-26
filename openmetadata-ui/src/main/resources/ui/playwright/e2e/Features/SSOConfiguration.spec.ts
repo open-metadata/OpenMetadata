@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
 import path from 'path';
 
 import {
@@ -966,7 +965,8 @@ test.describe('SAML Metadata XML Upload', () => {
           response.request().method() === 'POST'
       );
 
-      await page.getByTestId('save-sso-configuration').click();
+      // A new configuration is held until Test Login passes; this test only needs the submit.
+      await page.getByTestId('save-anyway-sso-configuration').click();
 
       const errors = (await (await validateResponse).json())?.errors ?? [];
       const certificateError = errors.find(
@@ -1085,81 +1085,5 @@ test.describe('SSO Back Navigation', () => {
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 
     expect(page.url()).not.toContain('provider=');
-  });
-});
-
-test.describe('SSO Test Configuration', () => {
-  const VALIDATE_URL = '**/system/security/validate';
-
-  const mockValidate = (page: Page, body: Record<string, unknown>) =>
-    page.route(VALIDATE_URL, async (route) => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(body),
-        });
-      } else {
-        await route.continue();
-      }
-    });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await enableSSOEditMode(page);
-  });
-
-  test('should show the Test Configuration button and lockout warning for a new configuration', async ({
-    page,
-  }) => {
-    await selectSSOProvider(page, 'google');
-
-    await expect(page.getByTestId('test-sso-configuration')).toBeVisible();
-    await expect(page.locator('.sso-save-warning')).toBeVisible();
-  });
-
-  test('should validate the configuration without saving and show a success banner', async ({
-    page,
-  }) => {
-    await mockValidate(page, { status: 'success' });
-    await selectSSOProvider(page, 'google');
-
-    const validateResponse = page.waitForResponse(VALIDATE_URL);
-    await page.getByTestId('test-sso-configuration').click();
-    await validateResponse;
-
-    await expect(page.locator('.sso-test-result.success-alert')).toBeVisible();
-    await expect(page.locator('.sso-test-result')).toContainText(
-      /valid and reachable/i
-    );
-
-    // Testing must never sign the admin out or leave the form
-    await expect(page).toHaveURL(/settings\/sso/);
-    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
-  });
-
-  test('should surface validation errors when the test fails', async ({
-    page,
-  }) => {
-    await mockValidate(page, {
-      status: 'failed',
-      errors: [
-        {
-          field: 'authenticationConfiguration.authority',
-          error: 'Authority is required',
-        },
-      ],
-    });
-    await selectSSOProvider(page, 'google');
-
-    const validateResponse = page.waitForResponse(VALIDATE_URL);
-    await page.getByTestId('test-sso-configuration').click();
-    await validateResponse;
-
-    await expect(page.locator('.sso-test-result.error-alert')).toBeVisible();
-    await expect(page.locator('.sso-test-result')).toContainText(
-      /validation failed/i
-    );
-    await expect(page).toHaveURL(/settings\/sso/);
   });
 });

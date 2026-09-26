@@ -1,11 +1,58 @@
 {
   "$id": "https://open-metadata.org/schema/system/testLoginResult.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestLoginResult",
   "description": "Result of a dry-run SSO Test Login. Resolves the identity, roles, teams and domain outcome a candidate security configuration would produce for a real login, WITHOUT creating a user, issuing any token, or starting a session.",
   "type": "object",
   "javaType": "org.openmetadata.schema.system.TestLoginResult",
   "definitions": {
+    "protocol": {
+      "javaType": "org.openmetadata.schema.system.TestLoginProtocol",
+      "description": "Authentication protocol exercised by the test login.",
+      "type": "string",
+      "enum": ["oidc", "saml", "ldap", "basic"]
+    },
+    "stage": {
+      "javaType": "org.openmetadata.schema.system.TestLoginStage",
+      "description": "A step of the login round-trip. Not every protocol emits every stage: the browser-redirect stages apply to OIDC and SAML, CREDENTIALS_VERIFIED applies to LDAP and Basic, and the stages that do not apply are reported with status 'skipped'.",
+      "type": "string",
+      "enum": [
+        "STARTED",
+        "REDIRECTED",
+        "TOKEN_RECEIVED",
+        "TOKEN_VALIDATED",
+        "CREDENTIALS_VERIFIED",
+        "CLAIMS_EXTRACTED",
+        "IDENTITY_RESOLVED",
+        "ROLES_MAPPED",
+        "DOMAIN_CHECKED"
+      ]
+    },
+    "stageStatus": {
+      "javaType": "org.openmetadata.schema.system.TestLoginStageStatus",
+      "description": "Outcome of an individual stage. SKIPPED means the stage does not apply to this protocol.",
+      "type": "string",
+      "enum": ["pending", "running", "passed", "failed", "skipped"]
+    },
+    "stageResult": {
+      "javaType": "org.openmetadata.schema.system.TestLoginStageResult",
+      "description": "Outcome of one stage of the login round-trip.",
+      "type": "object",
+      "properties": {
+        "stage": {
+          "$ref": "#/definitions/stage"
+        },
+        "status": {
+          "$ref": "#/definitions/stageStatus"
+        },
+        "message": {
+          "description": "Human-readable detail for this stage.",
+          "type": "string"
+        }
+      },
+      "required": ["stage", "status"],
+      "additionalProperties": false
+    },
     "domainCheck": {
       "javaType": "org.openmetadata.schema.system.TestLoginDomainCheck",
       "description": "Outcome of applying the authorizer domain rules to the resolved identity.",
@@ -20,7 +67,7 @@
           "type": "string"
         },
         "resolvedDomain": {
-          "description": "Domain extracted from the resolved email/principal.",
+          "description": "Domain extracted from the resolved email/principal. Absent when the resolved identity carries no domain.",
           "type": "string"
         },
         "passed": {
@@ -35,11 +82,22 @@
     "status": {
       "description": "Overall outcome of the test login.",
       "type": "string",
-      "enum": ["success", "failed"]
+      "enum": ["success", "failed", "pending"]
+    },
+    "protocol": {
+      "$ref": "#/definitions/protocol"
     },
     "stage": {
-      "description": "Furthest stage reached: TOKEN_VALIDATED (token failed validation), CLAIMS_EXTRACTED (identity could not be resolved from claims), or DOMAIN_CHECKED (identity resolved and domain rules applied).",
-      "type": "string"
+      "description": "Furthest stage reached.",
+      "$ref": "#/definitions/stage"
+    },
+    "stages": {
+      "description": "Ordered timeline of every stage of the round-trip, for a staged progress view.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/stageResult"
+      },
+      "default": []
     },
     "resolvedPrincipal": {
       "description": "Username/principal that would be used for the login.",

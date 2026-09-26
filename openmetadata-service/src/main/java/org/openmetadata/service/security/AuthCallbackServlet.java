@@ -4,7 +4,14 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.security.auth.TestLoginRoundTrip;
+import org.openmetadata.service.security.auth.TestLoginSessionCache;
 
 @WebServlet("/callback")
 @Slf4j
@@ -12,6 +19,17 @@ public class AuthCallbackServlet extends HttpServlet {
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+    // A Test Login reuses this registered redirect URI. Route it before any live login handling, so
+    // a test can never provision a user, mint a token, or start a session.
+    Optional<String> testSessionId =
+        TestLoginSessionCache.sessionIdFromMarker(req.getParameter("state"));
+    if (testSessionId.isPresent()) {
+      TestLoginRoundTrip.getInstance()
+          .completeOidcCallback(testSessionId.get(), callbackParameters(req));
+      TestLoginCallbackPage.render(resp);
+      return;
+    }
+
     // Check if this is an MCP OAuth callback (pac4j state matches a pending MCP auth request).
     // MCP uses /mcp/callback with DB-backed state restoration, but SSO providers redirect to
     // /callback (the registered redirect URI). Forward to /mcp/callback so McpCallbackServlet
@@ -43,5 +61,11 @@ public class AuthCallbackServlet extends HttpServlet {
     // SAML uses POST for callback with SAMLResponse
     AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler(req.getServletContext());
     handler.handleCallback(req, resp);
+  }
+
+  private static Map<String, List<String>> callbackParameters(HttpServletRequest req) {
+    Map<String, List<String>> parameters = new HashMap<>();
+    req.getParameterMap().forEach((name, values) -> parameters.put(name, Arrays.asList(values)));
+    return parameters;
   }
 }

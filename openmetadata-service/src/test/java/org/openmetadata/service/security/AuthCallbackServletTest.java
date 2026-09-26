@@ -1,5 +1,6 @@
 package org.openmetadata.service.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -12,6 +13,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -104,6 +108,33 @@ class AuthCallbackServletTest {
           .sendError(
               HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to process MCP callback");
     }
+  }
+
+  @Test
+  void doGet_testLoginState_rendersTheConstantPageAndNeverReachesTheLiveHandler()
+      throws IOException {
+    StringWriter body = new StringWriter();
+    when(request.getParameter("state")).thenReturn("omtest:no-such-test");
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"omtest:no-such-test"},
+                "code", new String[] {"authorization-code"}));
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+    try (MockedStatic<AuthServeletHandlerRegistry> registryMock =
+        mockStatic(AuthServeletHandlerRegistry.class)) {
+      registryMock
+          .when(() -> AuthServeletHandlerRegistry.getHandler(servletContext))
+          .thenReturn(handler);
+
+      servlet.doGet(request, response);
+
+      verify(handler, never()).handleCallback(request, response);
+    }
+    verify(response)
+        .setHeader("Content-Security-Policy", TestLoginCallbackPage.CONTENT_SECURITY_POLICY);
+    assertEquals(TestLoginCallbackPage.HTML, body.toString());
   }
 
   @Test
