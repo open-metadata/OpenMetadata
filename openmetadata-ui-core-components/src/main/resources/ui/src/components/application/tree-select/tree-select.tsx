@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ChevronDown,
-  Plus,
-  RefreshCw01,
-  SearchLg,
-  XClose,
-} from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
 import {
   DropdownSearchField,
   DropdownStagedFooter,
@@ -242,8 +236,6 @@ export const TreeSelect = <T = unknown,>({
   onOpenChange,
   renderTrigger,
   triggerIcon,
-  onCreate,
-  createLabel,
   onNodeExpand,
   onNodeCollapse,
   defaultExpandedKeys,
@@ -758,21 +750,10 @@ export const TreeSelect = <T = unknown,>({
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it shows a quiet footer instead.
   const showStatusFooter = usesDropdownChrome && multiple && !isStaged;
-  const showCreateRow = Boolean(onCreate && createLabel);
 
   const handleClearAll = useCallback(() => {
     replaceSelection([]);
   }, [replaceSelection]);
-
-  // Hand the term to the consumer (to prefill its create form) and close, so
-  // the picker is not left open behind the form the consumer opens. Route
-  // through dismiss (capturing the term first, since dismiss clears the search)
-  // so this non-Apply close discards the draft like every other one.
-  const handleCreate = useCallback(() => {
-    const term = searchTerm;
-    dismiss();
-    onCreate?.(term);
-  }, [onCreate, searchTerm, dismiss]);
 
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
@@ -805,22 +786,6 @@ export const TreeSelect = <T = unknown,>({
             size="xs"
             onChange={handleSelectAll}
           />
-        </div>
-      )}
-      {showCreateRow && (
-        <div
-          className="tw:px-2 tw:pb-1"
-          onMouseDown={(event) => event.preventDefault()}>
-          <Button
-            color="link-color"
-            data-testid={
-              dataTestId ? `${dataTestId}-create` : 'tree-select-create'
-            }
-            iconLeading={Plus}
-            size="sm"
-            onPress={handleCreate}>
-            {createLabel}
-          </Button>
         </div>
       )}
       <div

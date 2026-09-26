@@ -127,7 +127,12 @@ describe('DomainSelect', () => {
 
     const { nodes } = await lastProps().fetchData({});
 
-    expect(mockGetChildren).toHaveBeenCalledWith(undefined, PAGE_SIZE_LARGE);
+    expect(mockGetChildren).toHaveBeenCalledWith(
+      undefined,
+      PAGE_SIZE_LARGE,
+      0,
+      undefined
+    );
     expect(nodes).toHaveLength(1);
     expect(nodes[0].id).toBe('Finance');
     expect(nodes[0].data).toMatchObject({ id: 'd1', type: 'domain' });
@@ -138,7 +143,12 @@ describe('DomainSelect', () => {
 
     await lastProps().fetchData({ parentId: 'Finance' });
 
-    expect(mockGetChildren).toHaveBeenCalledWith('Finance', PAGE_SIZE_LARGE);
+    expect(mockGetChildren).toHaveBeenCalledWith(
+      'Finance',
+      PAGE_SIZE_LARGE,
+      0,
+      undefined
+    );
   });
 
   it('should search domains when a search term is given', async () => {
@@ -193,7 +203,10 @@ describe('DomainSelect', () => {
   });
 
   it('should clear the scope (onUpdate undefined) when "All Domains" is picked', () => {
-    const { onUpdate } = renderSelect({ showAllDomains: true });
+    const { onUpdate } = renderSelect({
+      showAllDomains: true,
+      selectedDomain: financeRef,
+    });
 
     lastProps().onChange({
       id: 'All Domains',
@@ -228,11 +241,33 @@ describe('DomainSelect', () => {
   });
 
   it('should call onUpdate with undefined when cleared and clearing is allowed', () => {
-    const { onUpdate } = renderSelect({ multiple: false, isClearable: true });
+    const { onUpdate } = renderSelect({
+      multiple: false,
+      isClearable: true,
+      selectedDomain: financeRef,
+    });
 
     lastProps().onChange(null);
 
     expect(onUpdate).toHaveBeenCalledWith(undefined);
+  });
+
+  it('should not call onUpdate when the selection is unchanged', async () => {
+    const { onUpdate } = renderSelect({
+      multiple: true,
+      selectedDomain: [financeRef],
+    });
+
+    await lastProps().onChange([
+      {
+        id: financeRef.id,
+        value: financeRef.fullyQualifiedName,
+        label: 'x',
+        data: financeRef,
+      },
+    ]);
+
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('should not call onUpdate when cleared but clearing is disallowed', () => {
@@ -241,13 +276,5 @@ describe('DomainSelect', () => {
     lastProps().onChange(null);
 
     expect(onUpdate).not.toHaveBeenCalled();
-  });
-
-  it('should forward the inline create props', () => {
-    const onCreate = jest.fn();
-    renderSelect({ onCreate, createLabel: 'Add new domain' });
-
-    expect(lastProps().createLabel).toBe('Add new domain');
-    expect(lastProps().onCreate).toBe(onCreate);
   });
 });

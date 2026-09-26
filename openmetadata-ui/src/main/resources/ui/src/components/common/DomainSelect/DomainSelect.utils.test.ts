@@ -19,6 +19,9 @@ import {
   domainToTreeNode,
   entityReferencesToTreeNodes,
   treeNodesToEntityReferences,
+  fetchAllDomainChildren,
+  isSameDomainSelection,
+  MAX_DOMAIN_NODES,
 } from './DomainSelect.utils';
 
 const leafDomain = {
@@ -171,5 +174,63 @@ describe('DomainSelect.utils', () => {
     it('should return an empty string for an empty term', () => {
       expect(buildDomainSearchQuery('')).toBe('');
     });
+  });
+});
+
+describe('fetchAllDomainChildren', () => {
+  const domain = (n: number) =>
+    ({ id: `d${n}`, name: `d${n}`, fullyQualifiedName: `d${n}` } as never);
+
+  it('stops once a short page comes back', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [domain(1), domain(2)] })
+      .mockResolvedValueOnce({ data: [domain(3)] });
+
+    const result = await fetchAllDomainChildren(fetchPage, 2);
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(fetchPage).toHaveBeenNthCalledWith(1, 0, 2);
+    expect(fetchPage).toHaveBeenNthCalledWith(2, 2, 2);
+    expect(result).toHaveLength(3);
+  });
+
+  it('pages past the first page so nothing beyond it is hidden', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [domain(1)], paging: { total: 2 } })
+      .mockResolvedValueOnce({ data: [domain(2)], paging: { total: 2 } });
+
+    const result = await fetchAllDomainChildren(fetchPage, 1);
+
+    expect(result.map((d) => (d as { id: string }).id)).toEqual(['d1', 'd2']);
+  });
+
+  it('stops at the bound so a huge catalogue cannot stall the dropdown', async () => {
+    const page = Array.from({ length: 100 }, (_, i) => domain(i));
+    const fetchPage = jest.fn().mockResolvedValue({ data: page });
+
+    const result = await fetchAllDomainChildren(fetchPage, 100);
+
+    expect(result).toHaveLength(MAX_DOMAIN_NODES);
+  });
+});
+
+describe('isSameDomainSelection', () => {
+  const ref = (fqn: string) => ({ fullyQualifiedName: fqn } as never);
+
+  it('is true for the same FQNs in any order', () => {
+    expect(
+      isSameDomainSelection([ref('a'), ref('b')], [ref('b'), ref('a')])
+    ).toBe(true);
+  });
+
+  it('is false when the contents differ', () => {
+    expect(isSameDomainSelection([ref('a')], [ref('b')])).toBe(false);
+    expect(isSameDomainSelection([ref('a')], [])).toBe(false);
+  });
+
+  it('is true for two empty selections', () => {
+    expect(isSameDomainSelection([], [])).toBe(true);
   });
 });

@@ -65,10 +65,5 @@ export interface DomainSelectProps {
   /** Class applied to the trigger wrapper (e.g. for nav alignment). */
   className?: string;
 
-  /** Inline "create domain" action; receives the current search term. */
-  onCreate?: (searchTerm: string) => void;
-  /** Label for the inline create row (required to render it). */
-  createLabel?: string;
-
   'data-testid'?: string;
 }

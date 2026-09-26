@@ -125,3 +125,62 @@ export function withDomainIcon(
       : node.children,
   }));
 }
+
+/**
+ * Upper bound on how many domains one level of the picker will pull in. The
+ * hierarchy endpoint pages, and a single page silently hid everything past it —
+ * for a domain-restricted user that meant an allowed domain outside the first
+ * page never appeared at all. Paging is bounded rather than unbounded so a very
+ * large catalogue cannot stall the dropdown; past this the user searches.
+ */
+export const MAX_DOMAIN_NODES = 500;
+
+/**
+ * Page through the hierarchy endpoint until the level is exhausted or
+ * MAX_DOMAIN_NODES is reached.
+ */
+export async function fetchAllDomainChildren(
+  fetchPage: (
+    offset: number,
+    pageSize: number
+  ) => Promise<{ data?: Domain[]; paging?: { total?: number } }>,
+  pageSize: number
+): Promise<Domain[]> {
+  const collected: Domain[] = [];
+  let offset = 0;
+
+  for (;;) {
+    const response = await fetchPage(offset, pageSize);
+    const page = response?.data ?? [];
+    collected.push(...page);
+
+    const total = response?.paging?.total;
+    const reachedTotal = total !== undefined && collected.length >= total;
+
+    if (
+      page.length < pageSize ||
+      reachedTotal ||
+      collected.length >= MAX_DOMAIN_NODES
+    ) {
+      break;
+    }
+
+    offset += pageSize;
+  }
+
+  return collected.slice(0, MAX_DOMAIN_NODES);
+}
+
+/** FQN-set equality, so a no-change Apply does not fire a GET + PATCH. */
+export function isSameDomainSelection(
+  current: EntityReference[],
+  next: EntityReference[]
+): boolean {
+  if (current.length !== next.length) {
+    return false;
+  }
+
+  const currentFqns = new Set(current.map((d) => d.fullyQualifiedName));
+
+  return next.every((d) => currentFqns.has(d.fullyQualifiedName));
+}

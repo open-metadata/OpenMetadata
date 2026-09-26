@@ -17,7 +17,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import { FC, useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -36,7 +36,9 @@ import {
   buildDomainSearchQuery,
   domainsToTreeNodes,
   entityReferencesToTreeNodes,
+  isSameDomainSelection,
   treeNodesToEntityReferences,
+  fetchAllDomainChildren,
   withDomainIcon,
 } from './DomainSelect.utils';
 
@@ -58,8 +60,6 @@ const DomainSelect: FC<DomainSelectProps> = ({
   label,
   placeholder,
   className,
-  onCreate,
-  createLabel,
   'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
@@ -120,13 +120,14 @@ const DomainSelect: FC<DomainSelectProps> = ({
         };
       }
 
-      const { data } = await getDomainChildrenPaginated(
-        parentId,
+      const data = await fetchAllDomainChildren(
+        (offset, pageSize) =>
+          getDomainChildrenPaginated(parentId, pageSize, offset, signal),
         PAGE_SIZE_LARGE
       );
 
       const nodes = withDomainIcon(
-        filterAllowedNodes(domainsToTreeNodes(data ?? [])),
+        filterAllowedNodes(domainsToTreeNodes(data)),
         Boolean(parentId)
       );
 
@@ -154,6 +155,8 @@ const DomainSelect: FC<DomainSelectProps> = ({
     },
     [filterAllowedNodes, showAllDomains, t]
   );
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedDomainList = useMemo(() => {
     if (!selectedDomain) {
@@ -189,7 +192,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
   }, [selectedDomainKey, showAllDomains, t]);
 
   const handleChange = useCallback(
-    (
+    async (
       selected:
         | TreeSelectNode<EntityReference>
         | TreeSelectNode<EntityReference>[]
@@ -197,20 +200,30 @@ const DomainSelect: FC<DomainSelectProps> = ({
     ) => {
       const domains = treeNodesToEntityReferences(selected);
 
-      if (multiple) {
-        onUpdate(domains);
-
-        return;
-      }
-
       // Single mode: keep the current value when a clear is not allowed.
-      if (isEmpty(domains) && !isClearable) {
+      if (!multiple && isEmpty(domains) && !isClearable) {
         return;
       }
 
-      onUpdate(domains[0]);
+      // The legacy tree compared FQNs and cancelled when nothing changed. Apply
+      // always firing meant a no-change Apply still sent a GET + PATCH.
+      if (isSameDomainSelection(selectedDomainList, domains)) {
+        return;
+      }
+
+      // Await so a second Apply cannot land while the first PATCH is in flight.
+      if (isSubmitting) {
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        await onUpdate(multiple ? domains : domains[0]);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
-    [multiple, isClearable, onUpdate]
+    [multiple, isClearable, onUpdate, selectedDomainList, isSubmitting]
   );
 
   // Server already scoped the results, so skip the client-side label filter
@@ -224,7 +237,6 @@ const DomainSelect: FC<DomainSelectProps> = ({
       bordered={bordered}
       className={className}
       commitMode={resolvedCommitMode}
-      createLabel={createLabel}
       data-testid={dataTestId}
       defaultExpandedKeys={showAllDomains ? [DEFAULT_DOMAIN_VALUE] : undefined}
       disabled={disabled || !hasPermission}
@@ -246,7 +258,6 @@ const DomainSelect: FC<DomainSelectProps> = ({
       triggerVariant={triggerVariant}
       value={value}
       onChange={handleChange}
-      onCreate={onCreate}
       onOpenChange={onOpenChange}
     />
   );
