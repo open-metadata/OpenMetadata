@@ -13,26 +13,17 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getConversation;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getDataContractUrl;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
-import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
@@ -40,17 +31,10 @@ import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Conversation;
-import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.formatter.util.ActivityMessageFormatter;
-import org.openmetadata.service.formatter.util.FormattedMessage;
-import org.openmetadata.service.jdbi3.TestCaseRepository;
-import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.branding.MessageBrandingResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,10 +64,6 @@ public interface MessageDecorator<T> {
     return String.format(getBold(), text);
   }
 
-  default String boldWithSpace(String text) {
-    return String.format(getBoldWithSpace(), text);
-  }
-
   String getLineBreak();
 
   String getAddMarker();
@@ -103,10 +83,6 @@ public interface MessageDecorator<T> {
   String getRemoveMarkerClose();
 
   String getEntityUrl(String prefix, String fqn, String additionalInput);
-
-  T buildEntityMessage(String publisherName, ChangeEvent event);
-
-  T buildThreadMessage(String publisherName, ChangeEvent event);
 
   T buildTestMessage();
 
@@ -182,17 +158,6 @@ public interface MessageDecorator<T> {
             });
   }
 
-  default T buildOutgoingMessage(String publisherName, ChangeEvent event) {
-    if (event.getEntityType().equals(Entity.CONVERSATION)) {
-      return buildThreadMessage(publisherName, event);
-    } else if (Entity.getEntityList().contains(event.getEntityType())) {
-      return buildEntityMessage(publisherName, event);
-    } else {
-      throw new IllegalArgumentException(
-          "Cannot Build Message, Unsupported Entity Type: " + event.getEntityType());
-    }
-  }
-
   default T buildOutgoingTestMessage() {
     return buildTestMessage();
   }
@@ -241,81 +206,6 @@ public interface MessageDecorator<T> {
     return diff;
   }
 
-  default OutgoingMessage createEntityMessage(String publisherName, ChangeEvent event) {
-    OutgoingMessage message = new OutgoingMessage();
-    message.setUserName(event.getUserName());
-    EntityInterface entityInterface = getEntity(event);
-    if (event.getEntity() != null) {
-      String eventType;
-      if (event.getEntity() instanceof TestCase) {
-        eventType = "testSuite";
-      } else {
-        eventType = event.getEntityType();
-      }
-      String headerTxt;
-      String headerText;
-      if (eventType.equals(Entity.QUERY)) {
-        headerTxt = "[%s] %s posted on " + eventType;
-        headerText = String.format(headerTxt, publisherName, event.getUserName());
-      } else {
-        String entityUrl = this.buildEntityUrl(event.getEntityType(), entityInterface);
-        message.setEntityUrl(entityUrl);
-        headerTxt = "[%s] %s posted on " + eventType + " %s";
-        headerText = String.format(headerTxt, publisherName, event.getUserName(), entityUrl);
-      }
-      message.setHeader(headerText);
-    }
-    List<FormattedMessage> formattedMessages = ActivityMessageFormatter.format(this, event);
-    List<String> messages = new ArrayList<>();
-    formattedMessages.forEach(entry -> messages.add(entry.getMessage()));
-    message.setMessages(messages);
-    return message;
-  }
-
-  default OutgoingMessage createThreadMessage(String publisherName, ChangeEvent event) {
-    Conversation conversation = getConversation(event);
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(conversation.getAbout());
-    EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
-    String entityUrl = buildEntityUrl(entityLink.getEntityType(), entityInterface);
-
-    OutgoingMessage message = new OutgoingMessage();
-    message.setUserName(event.getUserName());
-    message.setEntityUrl(entityUrl);
-
-    List<String> attachments = new ArrayList<>();
-    String actor = event.getUserName();
-    switch (event.getEventType()) {
-      case THREAD_CREATED -> {
-        message.setHeader(
-            String.format(
-                "[%s] @%s started a conversation for asset %s", publisherName, actor, entityUrl));
-        attachments.add(replaceEntityLinks(conversation.getMessage()));
-      }
-      case POST_CREATED, POST_UPDATED -> {
-        message.setHeader(
-            String.format(
-                "[%s] @%s posted a message on asset %s", publisherName, actor, entityUrl));
-        for (ConversationReply reply : listOrEmpty(conversation.getReplies())) {
-          String author = reply.getAuthor() == null ? actor : reply.getAuthor().getName();
-          attachments.add(
-              String.format("@%s : %s", author, replaceEntityLinks(reply.getMessage())));
-        }
-      }
-      case THREAD_UPDATED -> {
-        message.setHeader(
-            String.format(
-                "[%s] @%s updated a conversation for asset %s", publisherName, actor, entityUrl));
-        attachments.add(replaceEntityLinks(conversation.getMessage()));
-      }
-      default -> throw new UnhandledServerException("Unable to build conversation message");
-    }
-    if (attachments.isEmpty()) {
-      throw new UnhandledServerException("Unable to build conversation message");
-    }
-    message.setMessages(attachments);
-    return message;
-  }
-
   static String getDateString(long epochTimestamp) {
     Instant instant = Instant.ofEpochSecond(epochTimestamp);
     return getDateString(instant);
@@ -332,267 +222,5 @@ public interface MessageDecorator<T> {
     // Format LocalDateTime to a specific date and time format
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     return localDateTime.format(formatter);
-  }
-
-  /**
-   * A builder class for constructing a nested map structure that organizes each template data
-   * into sections and corresponding keys, where both the sections and keys are represented as enums.
-   * This class ensures type safety by using EnumMaps for both sections and keys.
-   *
-   * @param <S> The enum type representing the sections of the template.
-   */
-  class TemplateDataBuilder<S extends Enum<S>> {
-
-    // Map to store sections and their corresponding keys and values
-    private final Map<S, Map<Enum<?>, Object>> sectionToKeyDataMap = new HashMap<>();
-
-    /**
-     * Adds a key-value pair to the specified section of the template.
-     * Ensures that the key is stored in a type-safe EnumMap, and the section is only created if it doesn't already exist.
-     *
-     * @param section The section of the template represented as an enum.
-     * @param key     The key within the section, represented as an enum.
-     * @param value   The value associated with the given key.
-     * @param <K>     The enum type representing the keys (must extend Enum).
-     */
-    @SuppressWarnings("unchecked")
-    public <K extends Enum<K>> TemplateDataBuilder<S> add(S section, K key, Object value) {
-      sectionToKeyDataMap
-          .computeIfAbsent(
-              section, k -> (Map<Enum<?>, Object>) new EnumMap<>(key.getDeclaringClass()))
-          .put(key, value);
-      return this;
-    }
-
-    public Map<S, Map<Enum<?>, Object>> build() {
-      return Collections.unmodifiableMap(sectionToKeyDataMap);
-    }
-  }
-
-  enum General_Template_Section {
-    EVENT_DETAILS,
-  }
-
-  enum DQ_Template_Section {
-    EVENT_DETAILS,
-    TEST_CASE_DETAILS,
-    TEST_CASE_RESULT,
-    TEST_DEFINITION,
-    DATA_CONTRACT_DETAILS,
-    DATA_CONTRACT_RESULT
-  }
-
-  enum EventDetailsKeys {
-    EVENT_TYPE,
-    UPDATED_BY,
-    ENTITY_TYPE,
-    ENTITY_FQN,
-    TIME,
-    OUTGOING_MESSAGE
-  }
-
-  enum DQ_TestCaseDetailsKeys {
-    ID,
-    NAME,
-    OWNERS,
-    TAGS,
-    DESCRIPTION,
-    TEST_CASE_FQN,
-    INSPECTION_QUERY,
-    SAMPLE_DATA
-  }
-
-  enum DQ_TestCaseResultKeys {
-    STATUS,
-    PARAMETER_VALUE,
-    RESULT_MESSAGE
-  }
-
-  enum DQ_TestDefinitionKeys {
-    TEST_DEFINITION_NAME,
-    TEST_DEFINITION_DESCRIPTION
-  }
-
-  enum DataContractDetailsKeys {
-    ID,
-    NAME,
-    OWNERS,
-    TAGS,
-    DESCRIPTION,
-    DATA_CONTRACT_FQN,
-    ENTITY_FQN
-  }
-
-  enum DataContractResultKeys {
-    STATUS,
-    MESSAGE,
-    TIMESTAMP
-  }
-
-  static Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
-      ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
-    builder
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.EVENT_TYPE,
-            event.getEventType().value())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.ENTITY_FQN,
-            getFQNForChangeEventEntity(event))
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.TIME,
-            new Date(event.getTimestamp()).toString())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
-
-    // fetch TEST_CASE_DETAILS
-    TestCase testCase = fetchTestCase(getFQNForChangeEventEntity(event));
-
-    // build TEST_CASE_DETAILS
-    builder
-        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.ID, testCase.getId())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.NAME,
-            testCase.getDisplayName() != null ? testCase.getDisplayName() : testCase.getName())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.OWNERS,
-            testCase.getOwners())
-        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.TAGS, testCase.getTags())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.DESCRIPTION,
-            testCase.getTestDefinition().getDescription())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.TEST_CASE_FQN,
-            testCase.getFullyQualifiedName())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.INSPECTION_QUERY,
-            testCase.getInspectionQuery())
-        .add(
-            DQ_Template_Section.TEST_CASE_DETAILS,
-            DQ_TestCaseDetailsKeys.SAMPLE_DATA,
-            testCase.getTestCaseResult().getSampleData());
-
-    // build TEST_CASE_RESULT
-    builder
-        .add(
-            DQ_Template_Section.TEST_CASE_RESULT,
-            DQ_TestCaseResultKeys.STATUS,
-            testCase.getTestCaseStatus())
-        .add(
-            DQ_Template_Section.TEST_CASE_RESULT,
-            DQ_TestCaseResultKeys.PARAMETER_VALUE,
-            testCase.getParameterValues())
-        .add(
-            DQ_Template_Section.TEST_CASE_RESULT,
-            DQ_TestCaseResultKeys.RESULT_MESSAGE,
-            testCase.getTestCaseResult().getResult());
-
-    // build TEST_DEFINITION
-    builder
-        .add(
-            DQ_Template_Section.TEST_DEFINITION,
-            DQ_TestDefinitionKeys.TEST_DEFINITION_NAME,
-            testCase.getTestDefinition().getName())
-        .add(
-            DQ_Template_Section.TEST_DEFINITION,
-            DQ_TestDefinitionKeys.TEST_DEFINITION_DESCRIPTION,
-            testCase.getTestDefinition().getDescription());
-
-    return builder.build();
-  }
-
-  static Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDataContractTemplateData(
-      ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
-    builder
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.EVENT_TYPE,
-            event.getEventType().value())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.ENTITY_FQN,
-            getFQNForChangeEventEntity(event))
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.TIME,
-            new Date(event.getTimestamp()).toString())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
-
-    // Fetch the DataContract entity
-    org.openmetadata.schema.entity.data.DataContract dataContract =
-        (org.openmetadata.schema.entity.data.DataContract) getEntity(event);
-
-    // build DATA_CONTRACT_DETAILS
-    builder
-        .add(
-            DQ_Template_Section.DATA_CONTRACT_DETAILS,
-            DataContractDetailsKeys.ID,
-            dataContract.getId())
-        .add(
-            DQ_Template_Section.DATA_CONTRACT_DETAILS,
-            DataContractDetailsKeys.NAME,
-            dataContract.getName())
-        .add(
-            DQ_Template_Section.DATA_CONTRACT_DETAILS,
-            DataContractDetailsKeys.OWNERS,
-            dataContract.getOwners())
-        .add(
-            DQ_Template_Section.DATA_CONTRACT_DETAILS,
-            DataContractDetailsKeys.TAGS,
-            dataContract.getTags())
-        .add(
-            DQ_Template_Section.DATA_CONTRACT_DETAILS,
-            DataContractDetailsKeys.DESCRIPTION,
-            dataContract.getDescription())
-        .add(
-            DQ_Template_Section.DATA_CONTRACT_DETAILS,
-            DataContractDetailsKeys.DATA_CONTRACT_FQN,
-            dataContract.getFullyQualifiedName())
-        .add(
-            DQ_Template_Section.DATA_CONTRACT_DETAILS,
-            DataContractDetailsKeys.ENTITY_FQN,
-            dataContract.getEntity() != null
-                ? dataContract.getEntity().getFullyQualifiedName()
-                : "-");
-
-    // build DATA_CONTRACT_RESULT
-    if (dataContract.getLatestResult() != null) {
-      builder
-          .add(
-              DQ_Template_Section.DATA_CONTRACT_RESULT,
-              DataContractResultKeys.STATUS,
-              dataContract.getLatestResult().getStatus())
-          .add(
-              DQ_Template_Section.DATA_CONTRACT_RESULT,
-              DataContractResultKeys.MESSAGE,
-              dataContract.getLatestResult().getMessage())
-          .add(
-              DQ_Template_Section.DATA_CONTRACT_RESULT,
-              DataContractResultKeys.TIMESTAMP,
-              new Date(dataContract.getLatestResult().getTimestamp()));
-    }
-
-    return builder.build();
-  }
-
-  static TestCase fetchTestCase(String fqn) {
-    TestCaseRepository testCaseRepository =
-        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    EntityUtil.Fields fields = testCaseRepository.getFields("*");
-    return testCaseRepository.getByName(null, fqn, fields, Include.NON_DELETED, false);
   }
 }
