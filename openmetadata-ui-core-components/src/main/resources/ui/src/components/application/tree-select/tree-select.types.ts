@@ -131,6 +131,17 @@ export interface TreeSelectProps<T = unknown> {
    */
   triggerVariant?: TreeSelectTriggerVariant;
   /**
+   * Size of the built-in `button` trigger. Defaults to `md` when `bordered`,
+   * otherwise `sm`. Set this instead of reaching into the trigger's DOM from a
+   * consumer stylesheet.
+   */
+  triggerSize?: 'sm' | 'md' | 'lg' | 'xl';
+  /**
+   * Extra classes for the built-in `button` trigger — e.g. a max width plus
+   * `tw:truncate` so a long label cannot stretch its container.
+   */
+  triggerClassName?: string;
+  /**
    * Draw a border around the button-variant trigger. Only applies when
    * `triggerVariant` is `'button'`. Defaults to `false` (borderless text
    * button — the quick-filter look).

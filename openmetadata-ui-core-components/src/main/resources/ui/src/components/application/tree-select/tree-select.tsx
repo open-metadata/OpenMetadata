@@ -228,6 +228,8 @@ export const TreeSelect = <T = unknown,>({
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
+  triggerSize,
+  triggerClassName,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
@@ -913,6 +915,7 @@ export const TreeSelect = <T = unknown,>({
             className={cx(
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              triggerClassName,
               hasSelection &&
                 'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
               hasSelection && bordered && 'tw:after:outline-brand'
@@ -920,9 +923,10 @@ export const TreeSelect = <T = unknown,>({
             color={bordered ? 'secondary' : 'tertiary'}
             data-testid={dataTestId}
             iconLeading={triggerIcon}
-            iconTrailing={ChevronDown}
+            // A disabled trigger opens nothing, so the affordance would lie.
+            iconTrailing={disabled ? undefined : ChevronDown}
             isDisabled={disabled}
-            size={bordered ? 'md' : 'sm'}
+            size={triggerSize ?? (bordered ? 'md' : 'sm')}
             onPress={toggleOpen}>
             {triggerText}
             {multiple && hasSelection && (

@@ -13,6 +13,7 @@
 import type { TreeSelectNode } from '@openmetadata/ui-core-components';
 import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
@@ -183,4 +184,28 @@ export function isSameDomainSelection(
   const currentFqns = new Set(current.map((d) => d.fullyQualifiedName));
 
   return next.every((d) => currentFqns.has(d.fullyQualifiedName));
+}
+
+/**
+ * Ancestor FQNs of the selected domains, so the tree opens with a selected
+ * sub-domain already in view. Without this a nested selection sits collapsed
+ * under its parents and reads as unselected until the user expands by hand —
+ * the legacy tree seeded `defaultExpandedKeys` from the value for this reason.
+ */
+export function getSelectedAncestorKeys(selected: EntityReference[]): string[] {
+  const keys = new Set<string>();
+
+  selected.forEach(({ fullyQualifiedName }) => {
+    if (!fullyQualifiedName) {
+      return;
+    }
+
+    const parts = fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
+    // Every prefix except the node itself is an ancestor to open.
+    for (let i = 1; i < parts.length; i++) {
+      keys.add(parts.slice(0, i).join(FQN_SEPARATOR_CHAR));
+    }
+  });
+
+  return [...keys];
 }

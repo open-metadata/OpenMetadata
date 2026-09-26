@@ -490,11 +490,13 @@ const NavBar = () => {
       <DomainSelect
         bordered
         disabled
-        className="tw:self-center tw:[&_button]:h-10"
+        className="tw:self-center"
         data-testid="domain-dropdown"
         label={domainDisplayName}
         restrictedDomains={restrictedDomains}
         selectedDomain={activeDomainEntityRef}
+        triggerClassName="tw:max-w-[15vw] tw:truncate"
+        triggerSize="lg"
         triggerVariant="button"
         onUpdate={handleDomainChange}
       />
@@ -502,13 +504,16 @@ const NavBar = () => {
   ) : (
     <DomainSelect
       bordered
-      className="tw:self-center tw:[&_button]:h-10"
+      className="tw:self-center"
       data-testid="domain-dropdown"
+      isClearable={!isDomainRestricted}
       isOpen={isDomainDropdownOpen}
       label={domainDisplayName}
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
       showAllDomains={!isDomainRestricted}
+      triggerClassName="tw:max-w-[15vw] tw:truncate"
+      triggerSize="lg"
       triggerVariant="button"
       onOpenChange={setIsDomainDropdownOpen}
       onUpdate={handleDomainChange}

@@ -36,9 +36,10 @@ import {
   buildDomainSearchQuery,
   domainsToTreeNodes,
   entityReferencesToTreeNodes,
+  fetchAllDomainChildren,
+  getSelectedAncestorKeys,
   isSameDomainSelection,
   treeNodesToEntityReferences,
-  fetchAllDomainChildren,
   withDomainIcon,
 } from './DomainSelect.utils';
 
@@ -52,6 +53,8 @@ const DomainSelect: FC<DomainSelectProps> = ({
   showAllDomains = false,
   onUpdate,
   triggerVariant = 'input',
+  triggerSize,
+  triggerClassName,
   bordered,
   commitMode,
   renderTrigger,
@@ -191,6 +194,18 @@ const DomainSelect: FC<DomainSelectProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDomainKey, showAllDomains, t]);
 
+  // Open the synthetic root (scope switchers) plus the ancestors of anything
+  // already selected, so a nested selection is visible when the tree opens.
+  const defaultExpandedKeys = useMemo(() => {
+    const keys = [
+      ...(showAllDomains ? [DEFAULT_DOMAIN_VALUE] : []),
+      ...getSelectedAncestorKeys(selectedDomainList),
+    ];
+
+    return keys.length > 0 ? keys : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAllDomains, selectedDomainKey]);
+
   const handleChange = useCallback(
     async (
       selected:
@@ -238,7 +253,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       className={className}
       commitMode={resolvedCommitMode}
       data-testid={dataTestId}
-      defaultExpandedKeys={showAllDomains ? [DEFAULT_DOMAIN_VALUE] : undefined}
+      defaultExpandedKeys={defaultExpandedKeys}
       disabled={disabled || !hasPermission}
       fetchData={fetchData}
       filterNode={skipClientFilter}
@@ -254,7 +269,9 @@ const DomainSelect: FC<DomainSelectProps> = ({
       searchPlaceholder={t('label.search-entity', {
         entity: t('label.domain-plural'),
       })}
+      triggerClassName={triggerClassName}
       triggerIcon={DomainIcon}
+      triggerSize={triggerSize}
       triggerVariant={triggerVariant}
       value={value}
       onChange={handleChange}

@@ -18,10 +18,11 @@ import {
   domainsToTreeNodes,
   domainToTreeNode,
   entityReferencesToTreeNodes,
-  treeNodesToEntityReferences,
   fetchAllDomainChildren,
+  getSelectedAncestorKeys,
   isSameDomainSelection,
   MAX_DOMAIN_NODES,
+  treeNodesToEntityReferences,
 } from './DomainSelect.utils';
 
 const leafDomain = {
@@ -232,5 +233,28 @@ describe('isSameDomainSelection', () => {
 
   it('is true for two empty selections', () => {
     expect(isSameDomainSelection([], [])).toBe(true);
+  });
+});
+
+describe('getSelectedAncestorKeys', () => {
+  const ref = (fqn: string) => ({ fullyQualifiedName: fqn } as never);
+
+  it('returns every ancestor of a nested selection, but not the node itself', () => {
+    expect(getSelectedAncestorKeys([ref('a.b.c')])).toEqual(['a', 'a.b']);
+  });
+
+  it('returns nothing for a root-level selection', () => {
+    expect(getSelectedAncestorKeys([ref('a')])).toEqual([]);
+  });
+
+  it('de-duplicates shared ancestors', () => {
+    expect(getSelectedAncestorKeys([ref('a.b.c'), ref('a.b.d')])).toEqual([
+      'a',
+      'a.b',
+    ]);
+  });
+
+  it('ignores entries with no fqn', () => {
+    expect(getSelectedAncestorKeys([{} as never])).toEqual([]);
   });
 });

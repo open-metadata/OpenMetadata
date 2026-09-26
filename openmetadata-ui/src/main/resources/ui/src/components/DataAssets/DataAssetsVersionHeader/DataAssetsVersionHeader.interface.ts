@@ -37,6 +37,12 @@ export interface DataAssetsVersionHeaderProps {
     | TestCase;
   ownerDisplayName: Map<string, ReactNode>;
   domainDisplayName?: React.ReactNode;
+  /**
+   * Domains for the version, already diffed (added *and* deleted) by
+   * `getCommonExtraInfoForVersionDetails`, so this stays aligned 1:1 with
+   * `domainDisplayName` instead of being recomputed here.
+   */
+  domains?: EntityReference[];
   tierDisplayName: React.ReactNode;
   ownerRef?: EntityReference[];
   onVersionClick: () => void;

@@ -49,6 +49,10 @@ export interface DomainSelectProps {
   ) => Promise<void> | void;
   /** @default 'input' */
   triggerVariant?: TreeSelectTriggerVariant;
+  /** Size of the built-in button trigger. @see TreeSelectProps */
+  triggerSize?: TreeSelectProps<EntityReference>['triggerSize'];
+  /** Extra classes for the built-in button trigger — e.g. a max width. */
+  triggerClassName?: string;
   bordered?: boolean;
   /**
    * Buffer selection until Apply (`staged`) or report every toggle

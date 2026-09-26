@@ -77,17 +77,22 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     [currentVersionData.fullyQualifiedName]
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const columns: DashboardDataModel['columns'] = useMemo(() => {
     const colList = cloneDeep(
@@ -227,6 +232,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.DASHBOARD_DATA_MODEL}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

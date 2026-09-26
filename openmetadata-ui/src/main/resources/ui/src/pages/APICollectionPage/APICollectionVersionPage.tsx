@@ -131,17 +131,22 @@ const APICollectionVersionPage = () => {
       [currentVersionData]
     );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData?.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData?.changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData?.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [currentVersionData?.changeDescription, owners, tier, domains]
+  );
 
   // Permission fetching now lives in useEntityPermissions (above). This keeps the same
   // "only fetch the collection once view access is known" gate the old imperative `init()`
@@ -387,6 +392,7 @@ const APICollectionVersionPage = () => {
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={EntityType.API_COLLECTION}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}

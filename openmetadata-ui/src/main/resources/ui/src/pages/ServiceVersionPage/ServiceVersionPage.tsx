@@ -155,17 +155,22 @@ function ServiceVersionPage() {
   const isLoading =
     isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData.changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [currentVersionData.changeDescription, owners, tier, domains]
+  );
 
   const fetchVersionsList = useCallback(async () => {
     try {
@@ -551,6 +556,7 @@ function ServiceVersionPage() {
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={entityType}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
