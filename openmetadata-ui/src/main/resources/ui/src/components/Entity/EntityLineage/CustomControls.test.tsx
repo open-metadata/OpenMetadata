@@ -230,11 +230,18 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   }));
 });
 
-jest.mock('../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn((selector) =>
+jest.mock('../../../hooks/useLineageStore', () => {
+  const mockStore = jest.fn((selector?: (state: unknown) => unknown) =>
     selector ? selector(mockDefaultStoreState) : mockDefaultStoreState
-  ),
-}));
+  );
+
+  // getState mirrors whatever state the current mock implementation returns.
+  return {
+    useLineageStore: Object.assign(mockStore, {
+      getState: () => mockStore(),
+    }),
+  };
+});
 
 // Mock window.location
 Object.defineProperty(window, 'location', {

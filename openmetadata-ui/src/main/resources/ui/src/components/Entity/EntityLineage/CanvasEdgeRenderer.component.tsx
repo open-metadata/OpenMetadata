@@ -162,6 +162,9 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       tracedNodes,
       tracedColumns
     );
+    // `nodes` is a recompute trigger: getNode is identity-stable, so it is the
+    // only signal that node positions moved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isPlaywright,
     edges,

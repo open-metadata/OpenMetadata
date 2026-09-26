@@ -274,7 +274,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     return () => {
       setNodeFilterState(node.id, false);
     };
-  }, [isColumnLevelLineage]);
+  }, [isColumnLevelLineage, node.id, setNodeFilterState]);
 
   const showDqTracing = useMemo(
     () =>

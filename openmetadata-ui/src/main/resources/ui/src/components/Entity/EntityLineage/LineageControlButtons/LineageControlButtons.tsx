@@ -72,7 +72,7 @@ const LineageControlButtons: FC<{
         ? ''
         : Qs.stringify({ [FULLSCREEN_QUERY_PARAM_KEY]: !isFullscreen }),
     });
-  }, [isFullscreen]);
+  }, [isFullscreen, navigate]);
 
   const handleZoomIn = useCallback(() => {
     reactFlowInstance?.zoomIn();

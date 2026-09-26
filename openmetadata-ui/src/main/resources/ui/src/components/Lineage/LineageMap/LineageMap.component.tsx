@@ -82,7 +82,7 @@ import { useLineageStore } from '../../../hooks/useLineageStore';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
-} from '../../../pages/ExplorePage/ExplorePage.interface';
+} from '../../../interface/queryFilter.interface';
 import type { LineageSceneFocus } from '../../../rest/lineageAPI';
 import {
   getLineageEdgeDetails,

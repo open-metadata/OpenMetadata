@@ -21,17 +21,24 @@ import { MessageSchemaObject } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
 import { APISchema } from '../../generated/type/apiSchema';
-import {
-  ColumnLineage,
-  TempLineageTable,
-} from '../../generated/type/entityLineage';
+import type {
+  EdgeDetails,
+  EdgeFromToData,
+} from '../../interface/lineage.interface';
 import {
   SearchSourceAlias,
   TableSearchSource,
 } from '../../interface/search.interface';
 import { FormattedDatabaseServiceType } from '../../utils/EntityUtils.interface';
-import { EntityChildren } from '../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
+import type { EntityChildren } from '../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
+
+export type {
+  EdgeDetails,
+  EdgeFromToData,
+  LineageData,
+  NodeData,
+} from '../../interface/lineage.interface';
 
 export interface LineageProps {
   entityType: EntityType;
@@ -42,30 +49,6 @@ export interface LineageProps {
   isPlatformLineage?: boolean;
   platformHeader?: React.ReactNode;
   showControls?: boolean;
-}
-
-export interface EdgeFromToData {
-  id: string;
-  type: string;
-  fullyQualifiedName?: string;
-}
-
-export interface EdgeDetails {
-  fromEntity: EdgeFromToData;
-  toEntity: EdgeFromToData;
-  pipeline?: EntityReference;
-  source?: string;
-  sqlQuery?: string;
-  columns?: ColumnLineage[];
-  description?: string;
-  pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
-  docId?: string;
-  extraInfo?: EdgeDetails;
-  tempLineageTables?: TempLineageTable[];
-  createdAt?: number;
-  createdBy?: string;
-  updatedAt?: number;
-  updatedBy?: string;
 }
 
 export interface ColumnLevelLineageNode
@@ -93,21 +76,6 @@ export interface ColumnLevelLineageNode
 export type LineageSourceType = Omit<SourceType, 'service'> & {
   direction: string;
   depth: number;
-};
-
-export type NodeData = {
-  entity: EntityReference;
-  paging: {
-    entityDownstreamCount?: number;
-    entityUpstreamCount?: number;
-  };
-  nodeDepth?: number;
-};
-
-export type LineageData = {
-  nodes: Record<string, NodeData>;
-  downstreamEdges: Record<string, EdgeDetails>;
-  upstreamEdges: Record<string, EdgeDetails>;
 };
 
 export interface LineageEntityReference extends EntityReference {

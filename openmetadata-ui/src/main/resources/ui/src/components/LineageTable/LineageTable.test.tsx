@@ -47,7 +47,16 @@ jest.mock('../../utils/StringUtils', () => ({
   ...jest.requireActual('../../utils/StringUtils'),
   stringToHTML: jest.fn((str: string) => str),
 }));
-jest.mock('../../hooks/useLineageStore');
+jest.mock('../../hooks/useLineageStore', () => {
+  const mockStore = jest.fn();
+
+  // getState mirrors whatever state the current mock implementation returns.
+  return {
+    useLineageStore: Object.assign(mockStore, {
+      getState: () => mockStore(),
+    }),
+  };
+});
 jest.mock('../../utils/Lineage/LineageUtils');
 jest.mock('../../utils/Lineage/LineagePureUtils');
 jest.mock('../../utils/ToastUtils', () => ({

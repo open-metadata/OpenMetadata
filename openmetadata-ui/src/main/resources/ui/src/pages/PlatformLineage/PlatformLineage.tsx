@@ -247,7 +247,7 @@ const PlatformLineage = () => {
       viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
       onExport: async () => '',
     });
-  }, []);
+  }, [showModal, t]);
 
   useEffect(() => {
     init();
@@ -328,12 +328,13 @@ const PlatformLineage = () => {
       </div>
     );
   }, [
-    isFullScreen,
+    isSearchLoading,
     options,
+    t,
     defaultValue,
     debouncedSearch,
-    isSearchLoading,
     handleExport,
+    isFullScreen,
     navigate,
     queryParams,
   ]);
