@@ -54,6 +54,7 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  formatInboxDate,
   formatInboxDateTime,
   getActivityBuckets,
   getActivityEventLabel,
@@ -244,8 +245,19 @@ describe('inbox.utils', () => {
     });
   });
 
+  describe('formatInboxDate', () => {
+    // "expires Oct 8, 2026" reads without a padded day.
+    it('leaves a single-digit day unpadded', () => {
+      expect(
+        formatInboxDate(
+          DateTime.fromObject({ year: 2026, month: 10, day: 8 }).toMillis()
+        )
+      ).toBe('Oct 8, 2026');
+    });
+  });
+
   describe('formatInboxDateTime', () => {
-    it('formats a timestamp as "dd LLL, yyyy hh:mm a"', () => {
+    it('formats a timestamp month first, as the design reads', () => {
       const ts = DateTime.fromObject({
         year: 2026,
         month: 5,
@@ -254,9 +266,7 @@ describe('inbox.utils', () => {
         minute: 45,
       }).toMillis();
 
-      expect(formatInboxDateTime(ts)).toBe(
-        DateTime.fromMillis(ts).toFormat('dd LLL, yyyy hh:mm a')
-      );
+      expect(formatInboxDateTime(ts)).toBe('May 13, 2026, 08:45 PM');
     });
 
     it('returns an empty string for undefined', () => {

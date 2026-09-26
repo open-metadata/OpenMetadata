@@ -21,10 +21,6 @@ const PersonalSpaceGate = withSuspenseFallback(
   React.lazy(() => import('./PersonalSpaceGate/PersonalSpaceGate'))
 );
 
-const InboxPage = withSuspenseFallback(
-  React.lazy(() => import('./InboxPage/InboxPage'))
-);
-
 const MyData = withSuspenseFallback(
   React.lazy(() => import('./MyData/MyData'))
 );
@@ -35,7 +31,16 @@ const InboxContent = withSuspenseFallback(
 
 const gatedInbox = (
   <PersonalSpaceGate>
-    <InboxPage myDataContent={<MyData />} triageContent={<InboxContent />} />
+    <InboxContent />
+  </PersonalSpaceGate>
+);
+
+// My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
+// route stays because `/` redirects here in AI mode, making it the landing
+// page; the user menu also opens it in the personal-space modal.
+const gatedMyData = (
+  <PersonalSpaceGate>
+    <MyData />
   </PersonalSpaceGate>
 );
 
@@ -72,7 +77,7 @@ export const personalSpaceModule: AppModule = {
     },
     {
       path: PERSONAL_SPACE_ROUTES.MY_DATA,
-      element: gatedInbox,
+      element: gatedMyData,
       position: RoutePosition.APP,
     },
   ],

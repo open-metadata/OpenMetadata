@@ -33,12 +33,16 @@ import {
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import { getDefaultTaskFormSchema } from '../../../../utils/TaskFormSchemaUtils';
 import {
+  applyActionLabels,
   buildResolveBody,
   getTaskActionInput,
   getTaskResolveActions,
   LEGACY_APPROVE_ACTION_ID,
   LEGACY_REJECT_ACTION_ID,
   needsTaskActionInput,
+  splitTaskActions,
+  TaskActionKind,
+  TaskResolveAction,
 } from './taskResolve.utils';
 
 const LABELS = { approve: 'Approve', reject: 'Reject' };
@@ -69,7 +73,69 @@ const DAR_REJECT: TaskAvailableTransition = {
   targetTaskStatus: TaskStatus.Rejected,
 };
 
+describe('applyActionLabels', () => {
+  const actions = [
+    {
+      id: 'approve',
+      label: 'Approve',
+      kind: 'approve',
+      requiresComment: false,
+    },
+    { id: 'reject', label: 'Reject', kind: 'reject', requiresComment: true },
+    {
+      id: 'reassign',
+      label: 'Reassign',
+      kind: 'assignee',
+      requiresComment: false,
+    },
+  ] as TaskResolveAction[];
+
+  // Workflow transitions arrive labelled generically; the type knows better.
+  it('renames approve and reject with the type wording, leaving others alone', () => {
+    expect(
+      applyActionLabels(actions, {
+        approve: 'Assign carol',
+        reject: 'Dismiss',
+      }).map((action) => action.label)
+    ).toEqual(['Assign carol', 'Dismiss', 'Reassign']);
+  });
+
+  it('keeps the server labels when the type names nothing', () => {
+    expect(applyActionLabels(actions, { reject: 'Dismiss' })[0].label).toBe(
+      'Approve'
+    );
+    expect(applyActionLabels(actions)).toEqual(actions);
+  });
+});
+
 describe('getTaskResolveActions', () => {
+  // /close leaves the workflow transitions on the task; a cancelled task must
+  // not keep offering them.
+  it('offers no action on a cancelled workflow task', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({
+          status: TaskStatus.Cancelled,
+          availableTransitions: [DAR_APPROVE],
+        }),
+        LABELS
+      )
+    ).toEqual([]);
+  });
+
+  // A granted access request is closed, yet revoking it is a real action.
+  it('keeps the transitions of a closed but still actionable task', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({
+          status: TaskStatus.Granted,
+          availableTransitions: [DAR_APPROVE],
+        }),
+        LABELS
+      )
+    ).toHaveLength(1);
+  });
+
   it('maps the server transitions of a workflow task, classifying each kind', () => {
     const actions = getTaskResolveActions(
       makeTask({
@@ -419,6 +485,67 @@ describe('getTaskActionInput', () => {
       requiresComment: true,
       requiresAssignee: false,
       requiresRootCause: true,
+    });
+  });
+});
+
+describe('splitTaskActions', () => {
+  const action = (
+    id: string,
+    kind: TaskActionKind,
+    label = id
+  ): TaskResolveAction => ({ id, kind, label, requiresComment: false });
+
+  it('puts approve in front and reject beside it', () => {
+    const layout = splitTaskActions([
+      action('approve', 'approve'),
+      action('reject', 'reject'),
+      action('reassign', 'assignee'),
+    ]);
+
+    expect(layout.primary?.id).toBe('approve');
+    expect(layout.secondary?.id).toBe('reject');
+    expect(layout.overflow.map((a) => a.id)).toEqual(['reassign']);
+  });
+
+  // An incident has no approve/reject: its real action is a plain transition,
+  // which must stay a button rather than hiding in the menu.
+  it('promotes the first plain transitions when there is no approve or reject', () => {
+    const layout = splitTaskActions([
+      action('resolve', 'other'),
+      action('acknowledge', 'other'),
+      action('escalate', 'other'),
+    ]);
+
+    expect(layout.primary?.id).toBe('resolve');
+    expect(layout.secondary?.id).toBe('acknowledge');
+    expect(layout.overflow.map((a) => a.id)).toEqual(['escalate']);
+  });
+
+  it('keeps a lone transition visible, with nothing beside it', () => {
+    const layout = splitTaskActions([action('revoke', 'other')]);
+
+    expect(layout.primary?.id).toBe('revoke');
+    expect(layout.secondary).toBeUndefined();
+    expect(layout.overflow).toEqual([]);
+  });
+
+  it('gives a reassign the free slot when only an approve competes for one', () => {
+    const layout = splitTaskActions([
+      action('approve', 'approve'),
+      action('reassign', 'assignee'),
+    ]);
+
+    expect(layout.primary?.id).toBe('approve');
+    expect(layout.secondary?.id).toBe('reassign');
+    expect(layout.overflow).toEqual([]);
+  });
+
+  it('offers nothing for a task with no actions', () => {
+    expect(splitTaskActions([])).toEqual({
+      primary: undefined,
+      secondary: undefined,
+      overflow: [],
     });
   });
 });

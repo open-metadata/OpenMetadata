@@ -13,20 +13,38 @@
 
 import { TFunction } from 'i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
-import { Task } from '../../../../generated/entity/tasks/task';
+import { EntityType } from '../../../../enums/entity.enum';
+import {
+  Task,
+  TaskCategory,
+  TaskType,
+} from '../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Fqn from '../../../../utils/Fqn';
+import { resolveIncidentTestCaseFqn } from './taskDetail.utils';
 
 // `TASK_ENTITY_TYPES` is keyed by the createTask `TaskType` enum while a Task
 // carries the identically-valued entity enum, so index it by the raw value.
 const TASK_TYPE_MESSAGE_KEYS = TASK_ENTITY_TYPES as Record<string, string>;
 
+// The server names incident tasks itself ("Test Case Incident - <test case
+// display name>"), and a test case usually has no display name, so the title
+// reads "… - null". Nobody wrote it: compose one instead, as the entity-page
+// task card does.
+const isSystemTitled = (task: Task) =>
+  task.category === TaskCategory.Incident ||
+  task.type === TaskType.TestCaseResolution ||
+  task.type === TaskType.IncidentResolution;
+
 // An author-supplied title wins; the id-derived default is not a title.
 // Extracted so this lookup doesn't add to the cyclomatic complexity of
 // getTaskTitle that calls it.
 const getAuthoredTaskTitle = (task: Task) =>
-  [task.displayName, task.name]
-    .map((value) => value?.trim())
-    .find((value) => value && value !== task.taskId);
+  isSystemTitled(task)
+    ? undefined
+    : [task.displayName, task.name]
+        .map((value) => value?.trim())
+        .find((value) => value && value !== task.taskId);
 
 // Several task-type message keys are unset upstream and i18next echoes the
 // key back — that must never reach the UI, so treat it as no label.
@@ -37,15 +55,46 @@ const getTaskTypeLabel = (task: Task, t?: TFunction) => {
   return typeLabel && typeLabel !== typeKey ? typeLabel : '';
 };
 
-const getPrefixedEntityTitle = (task: Task, t?: TFunction) => {
-  const prefix = getTaskTypeLabel(task, t);
-  const entityName = task.about ? getEntityName(task.about) : '';
+// What the task is about: its `about` reference, or — for an incident that
+// names none — the failing test case read off its description.
+const getTitleEntity = (task: Task) => {
+  if (task.about) {
+    return { name: getEntityName(task.about), type: task.about.type };
+  }
+  const testCaseFqn = resolveIncidentTestCaseFqn(task);
 
-  return prefix && entityName ? `${prefix} ${entityName}` : '';
+  return testCaseFqn
+    ? { name: Fqn.split(testCaseFqn).pop() ?? '', type: EntityType.TEST_CASE }
+    : undefined;
+};
+
+export interface TaskTitleParts {
+  title: string;
+  /**
+   * The kind of asset a composed title names ("testCase"), shown beside the
+   * title as a badge. Unset for a title someone wrote.
+   */
+  entityType?: string;
+}
+
+// "<type message> <entity>", as the entity-page task card reads it:
+// "Request TestCase Failure Resolution for orders_rows", with the entity type
+// returned apart so it can be drawn as a badge.
+const getPrefixedEntityTitle = (
+  task: Task,
+  t?: TFunction
+): TaskTitleParts | undefined => {
+  const prefix = getTaskTypeLabel(task, t);
+  const entity = getTitleEntity(task);
+
+  return prefix && entity?.name
+    ? { title: `${prefix} ${entity.name}`, entityType: entity.type }
+    : undefined;
 };
 
 /**
- * The title to show for a task.
+ * The title to show for a task, and — when it is composed rather than written
+ * — the type of the asset it names.
  *
  * A Task has no title field, and `name` is defaulted to the taskId server-side
  * (`TaskRepository.prepare`) for anything opened without one — every governance
@@ -57,10 +106,21 @@ const getPrefixedEntityTitle = (task: Task, t?: TFunction) => {
  * falls back to the authored value / description / taskId, so callers that
  * don't have a translator on hand still get a sensible title.
  */
-export const getTaskTitle = (task: Task, t?: TFunction): string => {
+export const getTaskTitleParts = (
+  task: Task,
+  t?: TFunction
+): TaskTitleParts => {
   const authored = getAuthoredTaskTitle(task);
-  const prefixedEntity = getPrefixedEntityTitle(task, t);
-  const preferredTitle = authored || prefixedEntity || task.description?.trim();
+  if (authored) {
+    return { title: authored };
+  }
 
-  return preferredTitle || task.taskId || '';
+  return (
+    getPrefixedEntityTitle(task, t) ?? {
+      title: task.description?.trim() || task.taskId || '',
+    }
+  );
 };
+
+export const getTaskTitle = (task: Task, t?: TFunction): string =>
+  getTaskTitleParts(task, t).title;

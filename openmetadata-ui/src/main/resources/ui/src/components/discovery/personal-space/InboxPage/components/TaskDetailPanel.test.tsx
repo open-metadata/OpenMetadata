@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ComponentProps, ReactNode } from 'react';
 
 const mockGetTaskById = jest.fn();
@@ -24,10 +23,18 @@ const mockShowErrorToast = jest.fn();
 const mockGetEntityPermission = jest.fn();
 const mockGetResolvedTaskFormSchema = jest.fn();
 
-let mockCurrentUser: { name?: string; isAdmin?: boolean } = { name: 'bob' };
+let mockCurrentUser: { id?: string; name?: string; isAdmin?: boolean } = {
+  name: 'bob',
+};
 
 // `TASK_ENTITY_TYPES` is built by indexing the `tasksAPI` enum mocked above, so
 // stub the map directly rather than re-declaring every enum member.
+// Clamping and its tooltip have their own suite; render the text as is.
+jest.mock('./ClampedText', () => ({
+  __esModule: true,
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 jest.mock('constants/Task.constant', () => ({
   TASK_TYPES: {},
   TASK_ENTITY_TYPES: {
@@ -159,9 +166,29 @@ jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: (ref: { name?: string }) => ref?.name ?? '',
 }));
 
-jest.mock('./TaskOverview', () => ({
+const mockGetContributions = jest.fn().mockReturnValue([]);
+
+jest.mock(
+  'components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: { getContributions: mockGetContributions },
+    }),
+  })
+);
+
+jest.mock('./TaskAssetCard', () => ({
   __esModule: true,
-  default: () => <div data-testid="task-overview" />,
+  default: () => <div data-testid="task-asset-card" />,
+}));
+
+jest.mock('./TaskDetailSummary', () => ({
+  __esModule: true,
+  default: () => <div data-testid="task-detail-summary" />,
+}));
+
+jest.mock('../useTaskAboutEntity', () => ({
+  useTaskAboutEntity: () => ({ about: undefined, isLoading: false }),
 }));
 
 jest.mock('./TaskActionCommentModal', () => ({
@@ -234,25 +261,42 @@ jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  // Real <button> so the suite exercises the same accessible affordance the app
-  // ships: present regardless of hover, named from its tooltip, keyboard-operable.
-  ButtonUtility: ({
+  Dot: () => <span />,
+  BadgeWithDot: ({
+    children,
+    color,
     'data-testid': testId,
-    tooltip,
-    onClick,
   }: {
+    children?: ReactNode;
+    color?: string;
     'data-testid'?: string;
-    tooltip?: string;
-    onClick?: () => void;
   }) => (
-    <button
-      aria-label={tooltip}
-      data-testid={testId}
-      type="button"
-      onClick={onClick}>
-      {tooltip}
-    </button>
+    <span data-color={color} data-testid={testId}>
+      {children}
+    </span>
   ),
+  Dropdown: {
+    Root: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Popover: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Menu: ({
+      children,
+      onAction,
+    }: {
+      children?: ReactNode;
+      onAction?: (key: string) => void;
+    }) => (
+      <div data-onaction={Boolean(onAction)} role="menu">
+        {children}
+      </div>
+    ),
+    Item: ({
+      children,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+    }) => <div data-testid={testId}>{children}</div>,
+  },
   Badge: ({
     children,
     color,
@@ -331,12 +375,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
-  CheckCircle: () => <span>check</span>,
-  XCircle: () => <span>x</span>,
-  Edit01: (props: ComponentProps<'span'>) => <span {...props} />,
-  Trash01: (props: ComponentProps<'span'>) => <span {...props} />,
-}));
+jest.mock(
+  '@untitledui/icons',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_target, name: string) =>
+          name === '__esModule'
+            ? false
+            : (props: ComponentProps<'span'>) => <span {...props} />,
+      }
+    )
+);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -358,20 +409,27 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
+// Boundary stub for the routing layer: the panel only cares that a task with an
+// about-entity links to it, and that an incident falls back to its test case.
 jest.mock('utils/TaskNavigationUtils', () => ({
-  getTaskDetailPathFromTask: (task: {
-    about?: { type?: string; fullyQualifiedName?: string };
-  }) =>
-    `/${task.about?.type}/${task.about?.fullyQualifiedName}/activity_feed/tasks`,
+  getTaskAboutPath: (
+    task: { about?: { type?: string; fullyQualifiedName?: string } },
+    incidentTestCaseFqn: string
+  ) => {
+    if (task.about?.fullyQualifiedName) {
+      return `/${task.about?.type}/${task.about?.fullyQualifiedName}/activity_feed/tasks`;
+    }
+
+    return incidentTestCaseFqn.includes('.')
+      ? `/test-case/${incidentTestCaseFqn}/issues`
+      : '';
+  },
 }));
 
-jest.mock('utils/RouterUtils', () => ({
-  getTestCaseDetailPagePath: (fqn: string, tab: string) =>
-    `/test-case/${fqn}/${tab}`,
-}));
-
-// Boundary stub: the real chip renders the OSS user popover.
+// Spread the real enums: the tier lookup behind the asset context reaches
+// `TabSpecificField` at import time, which a bare stub would leave undefined.
 jest.mock('enums/entity.enum', () => ({
+  ...jest.requireActual('enums/entity.enum'),
   EntityType: { TEST_CASE: 'testCase' },
   EntityTabs: { ACTIVITY_FEED: 'activity_feed' },
 }));
@@ -404,15 +462,9 @@ const TASK = {
   comments: [],
 };
 
-const TASK_WITH_COMMENT = {
-  ...TASK,
-  comments: [
-    { id: 'c1', author: { name: 'bob' }, createdAt: 1, message: 'hi' },
-  ],
-};
-
 beforeEach(() => {
   jest.clearAllMocks();
+  mockGetContributions.mockReturnValue([]);
   mockCurrentUser = { name: 'bob' };
   mockGetTaskById.mockResolvedValue({ data: TASK });
   mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
@@ -424,7 +476,25 @@ describe('TaskDetailPanel', () => {
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
     expect(screen.getByText('Access to Sales Table')).toBeInTheDocument();
-    expect(screen.getByText('#42')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+  });
+
+  // A closed task reads as its outcome, led by whoever decided it.
+  it('leads a closed task with its outcome', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        status: 'Rejected',
+        resolution: {
+          resolvedBy: { id: 'u9', name: 'harsh', displayName: 'Harsh' },
+          resolvedAt: 1000,
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    expect(screen.getByText('message.task-outcome-by-on')).toBeInTheDocument();
   });
 
   it('falls back to the description when the name is only the taskId', async () => {
@@ -439,9 +509,8 @@ describe('TaskDetailPanel', () => {
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
-    expect(screen.getByText('#42')).toBeInTheDocument();
-    // The bare id never doubles as the heading.
-    expect(screen.queryByText('42')).not.toBeInTheDocument();
+    // The id appears once, as the header's id chip — never as the heading too.
+    expect(screen.getAllByText('42')).toHaveLength(1);
     expect(
       screen.getAllByText('Approval required for sales_table').length
     ).toBeGreaterThan(0);
@@ -959,7 +1028,12 @@ describe('TaskDetailPanel', () => {
       'href',
       '/test-case/mysql_sample.default.posts_db.Comments.comments_table_column_count_to_equal_scby/issues'
     );
-    expect(link.textContent).toBe('comments_table_column_count_to_equal_scby');
+    // The server-written "Test Case Incident - …" is not used as the title;
+    // the composed one is covered in taskTitle.utils.test.
+    expect(link.textContent).toContain(
+      'comments_table_column_count_to_equal_scby'
+    );
+    expect(link.textContent).not.toContain('Test Case Incident');
   });
 
   it('renders a plain title when the task has no about reference', async () => {
@@ -998,118 +1072,6 @@ describe('TaskDetailPanel', () => {
     );
     expect(link).toHaveTextContent('TASK-19586');
     expect(screen.queryByText('(glossaryTerm)')).not.toBeInTheDocument();
-  });
-
-  it('lets the author edit a task comment', async () => {
-    mockGetTaskById.mockResolvedValue({ data: TASK_WITH_COMMENT });
-    mockEditComment.mockResolvedValue({});
-
-    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    await user.click(screen.getByTestId('edit-task-comment'));
-
-    const editBox = await screen.findByTestId('edit-task-comment-editor');
-    await act(async () => {
-      fireEvent.click(within(editBox).getByTestId('comment-editor'));
-    });
-
-    expect(mockEditComment).toHaveBeenCalledWith('task-1', 'c1', 'edited');
-    // Reload after edit (initial load + reload = 2 calls).
-    expect(mockGetTaskById).toHaveBeenCalledTimes(2);
-  });
-
-  it('cancels a task comment edit without saving', async () => {
-    mockGetTaskById.mockResolvedValue({ data: TASK_WITH_COMMENT });
-
-    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    await user.click(screen.getByTestId('edit-task-comment'));
-
-    expect(
-      await screen.findByTestId('edit-task-comment-editor')
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByTestId('cancel-edit-task-comment'));
-
-    expect(
-      screen.queryByTestId('edit-task-comment-editor')
-    ).not.toBeInTheDocument();
-    expect(mockEditComment).not.toHaveBeenCalled();
-  });
-
-  it('lets the author delete a task comment after confirming', async () => {
-    mockGetTaskById.mockResolvedValue({ data: TASK_WITH_COMMENT });
-    mockDeleteComment.mockResolvedValue({});
-
-    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    await user.click(screen.getByTestId('delete-task-comment'));
-    await user.click(await screen.findByTestId('confirm-delete-task-comment'));
-
-    expect(mockDeleteComment).toHaveBeenCalledWith('task-1', 'c1');
-    expect(mockGetTaskById).toHaveBeenCalledTimes(2);
-  });
-
-  it('shows only delete for an admin who is not the comment author', async () => {
-    mockCurrentUser = { name: 'carol', isAdmin: true };
-    mockGetTaskById.mockResolvedValue({ data: TASK_WITH_COMMENT });
-
-    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    // No hover: the affordance a user is entitled to must be in the DOM (and so
-    // reachable by keyboard) regardless of pointer position.
-    expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
-    expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
-  });
-
-  it('shows no comment actions for a non-author non-admin', async () => {
-    mockCurrentUser = { name: 'carol' };
-    mockGetTaskById.mockResolvedValue({ data: TASK_WITH_COMMENT });
-
-    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('delete-task-comment')).not.toBeInTheDocument();
-  });
-
-  it('shows no comment actions when neither the author nor the current user is named', async () => {
-    mockCurrentUser = {};
-    mockGetTaskById.mockResolvedValue({
-      data: {
-        ...TASK,
-        comments: [{ id: 'c2', author: {}, createdAt: 1, message: 'x' }],
-      },
-    });
-
-    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
-
-    expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('delete-task-comment')).not.toBeInTheDocument();
-  });
-
-  it('renders comments newest-first', async () => {
-    mockGetTaskById.mockResolvedValue({
-      data: {
-        ...TASK,
-        comments: [
-          { id: 'c1', author: { name: 'older' }, createdAt: 100, message: 'a' },
-          { id: 'c2', author: { name: 'newer' }, createdAt: 200, message: 'b' },
-        ],
-      },
-    });
-
-    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    const cards = screen.getAllByTestId('task-comment-card');
-
-    expect(cards).toHaveLength(2);
-    expect(cards[0]).toHaveTextContent('newer');
-    expect(cards[1]).toHaveTextContent('older');
   });
 
   describe('ResolveTask permission gate (self-approval guard)', () => {
@@ -1184,13 +1146,40 @@ describe('TaskDetailPanel', () => {
   });
 
   describe('status badge', () => {
-    it('renders the status beside the task id', async () => {
+    // An open task reads as what it is waiting on, not as the raw status: the
+    // server models "nobody has it" and "it is yours to approve" both as Open.
+    it('reads an unassigned open task as unassigned', async () => {
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
       const badge = screen.getByTestId('task-status-badge');
 
-      expect(badge).toHaveTextContent('label.open');
-      expect(badge).toHaveAttribute('data-color', 'warning');
+      expect(badge).toHaveTextContent('label.unassigned');
+      expect(badge).toHaveAttribute('data-color', 'gray');
+    });
+
+    it('reads an open task assigned to the viewer as pending their approval', async () => {
+      mockCurrentUser = { name: 'bob', id: 'u2' };
+      mockGetTaskById.mockResolvedValue({
+        data: { ...TASK, assignees: [{ id: 'u2', name: 'bob' }] },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
+        'label.pending-your-approval'
+      );
+    });
+
+    it('reads an open task assigned to someone else as assigned', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: { ...TASK, assignees: [{ id: 'u9', name: 'carol' }] },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
+        'label.assigned'
+      );
     });
 
     it('tones a rejected task red', async () => {

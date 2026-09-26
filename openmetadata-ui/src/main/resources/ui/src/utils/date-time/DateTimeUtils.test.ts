@@ -23,6 +23,7 @@ import {
   formatDurationToHHMMSS,
   formatMonth,
   formatTimeDurationFromSeconds,
+  getElapsedTime,
   getScheduleDescriptionTexts,
   isValidDateFormat,
 } from './DateTimeUtils';
@@ -801,5 +802,33 @@ describe('getScheduleDescriptionTexts', () => {
     expect(typeof result1.descriptionSecondPart).toBe('string');
     expect(typeof result2.descriptionFirstPart).toBe('string');
     expect(typeof result2.descriptionSecondPart).toBe('string');
+  });
+});
+
+describe('getElapsedTime', () => {
+  const NOW = Date.UTC(2026, 8, 25, 12);
+  const HOUR = 60 * 60 * 1000;
+
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('reads the largest whole unit in its narrow form', () => {
+    expect(getElapsedTime(NOW - 23 * HOUR)).toBe('23h');
+    expect(getElapsedTime(NOW - 50 * HOUR)).toBe('2d');
+    expect(getElapsedTime(NOW - 90 * 1000)).toBe('1m');
+  });
+
+  // A timestamp slightly ahead of the client clock is "just now", not negative.
+  it('floors a future timestamp at zero seconds', () => {
+    expect(getElapsedTime(NOW + 5000)).toBe('0s');
+  });
+
+  it('returns an empty string without a timestamp', () => {
+    expect(getElapsedTime()).toBe('');
   });
 });

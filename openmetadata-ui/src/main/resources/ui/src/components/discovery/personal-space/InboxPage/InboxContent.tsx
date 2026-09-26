@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,12 +24,13 @@ import {
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-import InboxDateFilter from './components/InboxDateFilter';
+import InboxFilterBar from './components/InboxFilterBar';
 import {
   getDefaultInboxDateRange,
   InboxDateRange,
   InboxScope,
 } from './inbox.utils';
+import InboxPage from './InboxPage';
 import ActivityTab from './tabs/ActivityTab';
 import TasksTab from './tabs/TasksTab';
 import { useInboxCounts } from './useInboxCounts';
@@ -37,10 +39,34 @@ export type InboxTabKey = 'activity' | 'tasks';
 
 const DEFAULT_TAB: InboxTabKey = 'activity';
 
+// A soft pill with no outline, brand-tinted on the selected tab. The tab's own
+// `badge` prop draws an outlined pill, so the count is rendered here instead.
+const renderTabLabel = (label: string, count: number) =>
+  function TabLabel({ isSelected }: { isSelected: boolean }) {
+    return (
+      <>
+        {label}
+        {count > 0 && (
+          <Badge
+            bordered={false}
+            className={classNames(
+              'tw:px-2.5',
+              !isSelected && 'tw:bg-utility-gray-100'
+            )}
+            color={isSelected ? 'brand' : 'gray'}
+            size="sm"
+            type="pill-color">
+            {count}
+          </Badge>
+        )}
+      </>
+    );
+  };
+
 /**
- * The Inbox body: the Activity / Tasks sub-tab switcher (with live counts) plus
- * the active tab's feed/task list and shared date filter. Reused by the routed
- * Inbox page and the Triage tab of the personal-space modal.
+ * The Inbox: the Activity / Triage tabs (with live counts) in the page header,
+ * over the active surface. Activity is a dated feed and carries a date filter;
+ * Triage is a work queue, so an open task never ages out of it.
  */
 const InboxContent: React.FC = () => {
   const { t } = useTranslation();
@@ -107,60 +133,54 @@ const InboxContent: React.FC = () => {
     [navigate]
   );
 
-  return (
-    <Box
-      className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:px-2"
-      data-testid="inbox-content"
-      direction="col">
-      <Box
-        align="center"
-        className="tw:shrink-0 tw:justify-between tw:gap-3"
-        direction="row">
-        <Tabs
-          className="tw:w-fit"
-          selectedKey={selectedTab}
-          onSelectionChange={onTabChange}>
-          <Tabs.List size="sm" type="button-minimal">
-            <Tabs.Item
-              badge={activityCount || undefined}
-              id="activity"
-              label={t('label.activity')}
-            />
-            <Tabs.Item
-              badge={taskCount || undefined}
-              id="tasks"
-              label={t('label.task-plural')}
-            />
-          </Tabs.List>
-        </Tabs>
+  const tabs = (
+    <Tabs
+      className="tw:mt-3"
+      selectedKey={selectedTab}
+      onSelectionChange={onTabChange}>
+      <Tabs.List size="sm" type="underline">
+        <Tabs.Item id="activity">
+          {renderTabLabel(t('label.activity'), activityCount)}
+        </Tabs.Item>
+        <Tabs.Item id="tasks">
+          {renderTabLabel(t('label.triage'), taskCount)}
+        </Tabs.Item>
+      </Tabs.List>
+    </Tabs>
+  );
 
-        {selectedTab === 'activity' && (
-          <InboxDateFilter
-            dateRange={dateRange}
-            defaultDateRange={defaultDateRange}
-            onDateRangeChange={handleDateRangeChange}
-          />
-        )}
-      </Box>
-
+  const content =
+    selectedTab === 'tasks' ? (
+      <TasksTab />
+    ) : (
       <Box
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:px-3"
         direction="col">
-        {selectedTab === 'tasks' ? (
-          <TasksTab
-            dateRange={dateRange}
-            defaultDateRange={defaultDateRange}
-            onDateRangeChange={handleDateRangeChange}
-          />
-        ) : (
-          <ActivityTab
-            dateRange={dateRange}
-            isFiltered={isDateFiltered}
-            scope={effectiveScope}
-          />
-        )}
+        <InboxFilterBar
+          dateRange={dateRange}
+          defaultDateRange={defaultDateRange}
+          onDateRangeChange={handleDateRangeChange}
+        />
+        <ActivityTab
+          dateRange={dateRange}
+          isFiltered={isDateFiltered}
+          scope={effectiveScope}
+        />
       </Box>
-    </Box>
+    );
+
+  return (
+    <InboxPage
+      content={
+        <Box
+          className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+          data-testid="inbox-content"
+          direction="col">
+          {content}
+        </Box>
+      }
+      tabs={tabs}
+    />
   );
 };
 

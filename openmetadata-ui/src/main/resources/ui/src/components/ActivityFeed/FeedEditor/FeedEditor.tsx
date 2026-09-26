@@ -340,17 +340,19 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
         const editorInstance = editorRef.current.getEditor();
         const direction = i18n.dir();
 
-        // get the current direction of the editor
-        const { align } = editorInstance.getFormat();
+        // Explicit ranges throughout: getFormat() and format() without one read
+        // the selection with focus, so a merely mounted editor would pull focus
+        // away from wherever the user is typing.
+        const { align } = editorInstance.getFormat(0, 0);
 
         if (direction === 'rtl' && isNil(align)) {
           container.setAttribute('data-dir', direction);
-          editorInstance.format('align', 'right', 'user');
+          editorInstance.formatLine(0, 1, 'align', 'right', 'user');
         } else if (align === 'right') {
-          editorInstance.format('align', false, 'user');
+          editorInstance.formatLine(0, 1, 'align', false, 'user');
           container.setAttribute('data-dir', 'ltr');
         }
-        editorInstance.format('direction', direction, 'user');
+        editorInstance.formatLine(0, 1, 'direction', direction, 'user');
       }
     }, [i18n, editorRef]);
 

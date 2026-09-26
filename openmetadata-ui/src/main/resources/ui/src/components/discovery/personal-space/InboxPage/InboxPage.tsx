@@ -16,81 +16,41 @@ import {
   EmptyPlaceholder,
   FeaturedIcon,
   PageLayout,
-  Tabs,
 } from '@openmetadata/ui-core-components';
-import React, { ReactNode, useCallback } from 'react';
+import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as InboxIcon } from '../../../../assets/svg/ask-collate-nav-bar/inbox-header.svg';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-
-type InboxPageTab = 'triage' | 'my-data';
-
-const TAB_ROUTE: Record<InboxPageTab, string> = {
-  triage: PERSONAL_SPACE_ROUTES.INBOX,
-  'my-data': PERSONAL_SPACE_ROUTES.MY_DATA,
-};
 
 export interface InboxPageProps {
-  /**
-   * Body for the Triage tab (the Activity / Tasks feed). Optional so the shell
-   * can mount without the feed; a consumer contributes the real surface.
-   */
-  triageContent?: ReactNode;
-  /** Body for the My Data tab (the owned-data dashboard). */
-  myDataContent?: ReactNode;
+  /** The Activity / Triage tab strip, drawn along the header's bottom edge. */
+  tabs?: ReactNode;
+  /** The active tab's surface. */
+  content?: ReactNode;
 }
 
 /**
- * The routed personal-space shell shared by `/inbox` (Triage) and `/my-data`
- * (My Data). Two top-level tabs whose active state is derived from the path so
- * each surface has its own URL. The brand-tinted "gradient" header is app-mode
- * chrome — gated on {@link useIsAiMode} so a classic mount renders the flat
- * header. The tab bodies are provided by the consumer; when absent the shell
- * renders a neutral placeholder.
+ * The routed shell for `/inbox`: a header carrying the Activity / Triage tabs,
+ * over the active surface, edge to edge. My Data is a separate surface, not an
+ * inbox tab.
+ *
+ * The brand-tinted "gradient" header is app-mode chrome — gated on
+ * {@link useIsAiMode} so a classic mount renders the flat header.
  */
-const InboxPage: React.FC<InboxPageProps> = ({
-  triageContent,
-  myDataContent,
-}) => {
+const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
   const isAiMode = useIsAiMode();
-  const tab: InboxPageTab =
-    pathname === PERSONAL_SPACE_ROUTES.MY_DATA ? 'my-data' : 'triage';
-
-  const onTabChange = useCallback(
-    (key: React.Key) => {
-      navigate(TAB_ROUTE[key as InboxPageTab]);
-    },
-    [navigate]
-  );
-
-  const activeContent = tab === 'my-data' ? myDataContent : triageContent;
 
   return (
     <Box
-      className="inbox-page tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:gap-4 tw:overflow-hidden tw:p-2"
+      className="inbox-page tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden"
       data-testid="inbox-page"
       direction="col">
+      {/* Flush with the page card: the header's own card edge would otherwise
+          draw a second frame inside it. Only the rule under the tabs stays. */}
       <PageLayout.PageHeader
-        className="tw:mb-0! tw:pb-0"
-        footer={
-          <Tabs
-            className="tw:w-fit"
-            selectedKey={tab}
-            onSelectionChange={onTabChange}>
-            <Tabs.List
-              className="tw:mt-4 tw:gap-6 tw:before:hidden"
-              size="sm"
-              type="underline">
-              <Tabs.Item id="triage" label={t('label.triage')} />
-              <Tabs.Item id="my-data" label={t('label.my-data')} />
-            </Tabs.List>
-          </Tabs>
-        }
+        className="tw:mb-0! tw:shrink-0 tw:rounded-none tw:border-0! tw:border-b! tw:border-secondary! tw:shadow-none"
+        footer={tabs}
         icon={
           <FeaturedIcon
             color="brand"
@@ -106,9 +66,9 @@ const InboxPage: React.FC<InboxPageProps> = ({
       />
 
       <Box
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-[10px] tw:bg-primary"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:bg-primary"
         direction="col">
-        {activeContent ?? (
+        {content ?? (
           <EmptyPlaceholder
             data-testid="inbox-empty"
             title={t('label.no-data')}

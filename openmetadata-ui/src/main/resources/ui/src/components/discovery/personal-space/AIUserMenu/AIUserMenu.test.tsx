@@ -238,6 +238,14 @@ describe('AIUserMenu', () => {
     expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 
+  it('opens My Data in the personal-space modal', () => {
+    renderMenu();
+
+    fireEvent.click(screen.getByText('label.my-data'));
+
+    expect(mockOpenPanel).toHaveBeenCalledWith('my-data');
+  });
+
   it('navigates to /settings when the settings item is clicked', () => {
     renderMenu();
 
