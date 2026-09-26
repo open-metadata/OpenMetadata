@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertCatalogSource;
+import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -22,6 +23,7 @@ public class EventsSubscriptionRegistry {
   private static final List<FilterResourceDescriptor> BUILDABLE_NOTIFICATION = new ArrayList<>();
   private static final List<FilterResourceDescriptor> BUILDABLE_OBSERVABILITY = new ArrayList<>();
 
+  private static final Map<String, AlertSourceKind> KINDS = new HashMap<>();
   private static final Map<String, List<SubscriptionCategory>> RECIPIENTS = new HashMap<>();
   private static final List<SubscriptionCategory> DEFAULT_RECIPIENTS = new ArrayList<>();
 
@@ -32,9 +34,11 @@ public class EventsSubscriptionRegistry {
     replace(OBSERVABILITY_DESCRIPTORS, catalog.served(AlertType.OBSERVABILITY));
     replace(BUILDABLE_NOTIFICATION, catalog.buildable(AlertType.NOTIFICATION));
     replace(BUILDABLE_OBSERVABILITY, catalog.buildable(AlertType.OBSERVABILITY));
+    KINDS.clear();
     RECIPIENTS.clear();
     for (AlertType alertType : List.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY)) {
       for (AlertCatalogSource source : catalog.sourcesOf(alertType)) {
+        KINDS.put(kindKey(alertType, source.getName()), source.getKind());
         RECIPIENTS.put(kindKey(alertType, source.getName()), catalog.recipientCategoriesOf(source));
       }
     }
@@ -54,6 +58,11 @@ public class EventsSubscriptionRegistry {
 
   public static List<SubscriptionCategory> defaultRecipientCategories() {
     return Collections.unmodifiableList(DEFAULT_RECIPIENTS);
+  }
+
+  /** Source names look alike and mean different things; null for a name the catalog lacks. */
+  public static AlertSourceKind kindOf(AlertType alertType, String source) {
+    return KINDS.get(kindKey(alertType, source));
   }
 
   private static String kindKey(AlertType alertType, String source) {

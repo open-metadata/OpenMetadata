@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 
 import jakarta.ws.rs.BadRequestException;
@@ -11,6 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
@@ -25,9 +25,7 @@ public class EventSubscriptionMapper
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())
         .withBatchSize(create.getBatchSize())
-        .withFilteringRules(
-            validateAndBuildFilteringConditions(
-                create.getResources(), create.getAlertType(), create.getInput()))
+        .withFilteringRules(new FilteringRules().withResources(create.getResources()))
         .withDestinations(encryptWebhookSecretKey(getSubscriptions(create.getDestinations())))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
