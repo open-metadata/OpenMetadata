@@ -914,14 +914,25 @@ test.describe('Lineage Filters', () => {
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];
     const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
+    const topicName = topicEntity.entity.name;
     await performZoomOut(page);
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
     await searchSelect.click();
+    // Wait for the search-select's debounced /search/query response
+    // before looking for the option — under SharedInfra load the
+    // response can arrive well after fill(), and getByTestId(...).click()
+    // times out at 30s instead of waiting for the option to appear.
+    const optionRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(topicName)
+    );
     await page
       .getByTestId('lineage-search')
       .getByRole('combobox')
-      .fill(topicEntity.entity.name);
+      .fill(topicName);
+    await optionRes;
 
     await page.getByTestId(`option-${topicFqn}`).click();
 
