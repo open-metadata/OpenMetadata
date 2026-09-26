@@ -25,7 +25,8 @@ const Loader = lazy(() => import('../components/common/Loader/Loader'));
 export const getCountBadge = (
   count = 0,
   className = '',
-  isActive?: boolean
+  isActive?: boolean,
+  excludeTriggerFromTabOrder?: boolean
 ) => {
   const activeCls = isActive ? 'bg-primary text-white no-border' : 'ant-tag';
   const clsBG = isUndefined(isActive) ? '' : activeCls;
@@ -37,7 +38,9 @@ export const getCountBadge = (
         clsBG,
         className
       )}>
-      <Tooltip title={count.toString()}>
+      <Tooltip
+        excludeTriggerFromTabOrder={excludeTriggerFromTabOrder}
+        title={count.toString()}>
         <span className="text-xs" data-testid="filter-count">
           {count}
         </span>
