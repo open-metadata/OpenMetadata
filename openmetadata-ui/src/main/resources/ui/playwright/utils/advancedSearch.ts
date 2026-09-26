@@ -405,7 +405,15 @@ export const fillRule = async (
         }
       }
 
-      await page.getByTestId('advanced-search-message').click();
+      // Close the value popup by blurring the control, not by clicking the
+      // modal's message: MultiSelect popups stay open after a selection and
+      // repaint with the unfiltered catalogue, which is tall enough to flip
+      // upward over that full-width message and swallow the click forever.
+      // NEVER send Escape here — the modal handles it and would dismiss.
+      await dropdownInput.blur({ timeout: 1_000 }).catch(() => undefined);
+      await dropdown
+        .waitFor({ state: 'hidden', timeout: 5_000 })
+        .catch(() => undefined);
     }
   }
 };
