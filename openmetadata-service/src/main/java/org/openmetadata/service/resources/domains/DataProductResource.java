@@ -73,6 +73,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ODPSConverter;
 
 @Slf4j
@@ -1870,7 +1871,12 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       // owners/domains/experts/reviewers/certification/tags from the existing
       // product; these are lazy fields that come back null unless requested, so
       // a sparse load would wipe them (and drop the required domain) on merge.
-      return repository.getByName(null, name, repository.getFields(EXPORT_FIELDS));
+      // DataProduct FQNs are stored quoted (quoteFqn=false), so a dotted name —
+      // common now that identity comes from productID (e.g. `com.acme.orders`, or
+      // the FQN toODPS writes back into productID) — is persisted as `"a.b"`.
+      // Quote the lookup so it matches; a name with no dots is returned as-is.
+      return repository.getByName(
+          null, FullyQualifiedName.quoteName(name), repository.getFields(EXPORT_FIELDS));
     } catch (EntityNotFoundException ignored) {
       return null;
     }
