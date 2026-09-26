@@ -6471,6 +6471,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityRightPanel/EntityRightPanel.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
