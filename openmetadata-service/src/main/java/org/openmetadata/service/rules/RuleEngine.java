@@ -163,6 +163,10 @@ public class RuleEngine {
     return true; // Default case, apply the rule
   }
 
+  public boolean isRuleEnabled(String ruleName) {
+    return getEnabledEntitySemantics().stream().anyMatch(rule -> ruleName.equals(rule.getName()));
+  }
+
   private List<SemanticsRule> getEnabledEntitySemantics() {
     try {
       if (Entity.getSystemRepository() == null) {
