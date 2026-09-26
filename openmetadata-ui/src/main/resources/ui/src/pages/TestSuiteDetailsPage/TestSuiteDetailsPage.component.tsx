@@ -75,6 +75,7 @@ import {
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
+  AddTestCaseListSubmitPayload,
   addTestCasesToLogicalTestSuiteBulk,
   getListTestCaseBySearch,
   getTestSuiteByName,
@@ -260,11 +261,9 @@ const TestSuiteDetailsPage = () => {
     handlePageChange(INITIAL_PAGING_VALUE);
   };
 
-  const handleAddTestCaseSubmit = async (payload: {
-    selectAll: boolean;
-    includeIds: string[];
-    excludeIds: string[];
-  }) => {
+  const handleAddTestCaseSubmit = async (
+    payload: AddTestCaseListSubmitPayload
+  ) => {
     try {
       await addTestCasesToLogicalTestSuiteBulk(testSuiteId ?? '', payload);
       setIsTestCaseModalOpen(false);
