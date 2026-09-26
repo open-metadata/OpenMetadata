@@ -2259,6 +2259,11 @@ public class TableRepository extends EntityRepository<Table> {
           TABLE_CONSTRAINTS_FIELD,
           () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
+          "tablePartition",
+          () ->
+              recordChange(
+                  "tablePartition", origTable.getTablePartition(), updatedTable.getTablePartition()));
+      compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
       compareAndUpdate("aliases", () -> updateAliases(origTable, updatedTable));
