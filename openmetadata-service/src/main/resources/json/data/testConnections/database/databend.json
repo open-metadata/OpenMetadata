@@ -1,0 +1,38 @@
+{
+  "name": "Databend",
+  "displayName": "Databend Test Connection",
+  "description": "Validate access to Databend and its metadata.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that OpenMetadata can reach and authenticate with Databend.",
+      "errorMessage": "Failed to connect to Databend. Validate the host and credentials.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetDatabases",
+      "description": "List Databend catalogs available to the user or validate the configured catalog.",
+      "errorMessage": "Failed to access Databend catalogs.",
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List Databend databases available to the user.",
+      "errorMessage": "Failed to list Databend databases.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "List tables in a Databend database.",
+      "errorMessage": "Failed to list Databend tables.",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "List views in a Databend database.",
+      "errorMessage": "Failed to list Databend views.",
+      "mandatory": false
+    }
+  ]
+}

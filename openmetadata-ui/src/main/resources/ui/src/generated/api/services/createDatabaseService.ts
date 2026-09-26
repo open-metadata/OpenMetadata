@@ -79,6 +79,8 @@ export interface DatabaseConnection {
  *
  * Databricks Connection Config
  *
+ * Databend Database Connection Config
+ *
  * Db2 Connection Config
  *
  * DeltaLake Database Connection Config
@@ -194,7 +196,12 @@ export interface Connection {
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    /**
+     * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
+     * endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS
+     * endpoint, set sslmode to enable.
+     */
+    connectionOptions?: { [key: string]: string };
     /**
      * Cost per TiB for BigQuery usage
      */
@@ -207,6 +214,8 @@ export interface Connection {
      * Regex to only include/exclude databases that matches the pattern.
      *
      * Regex to only include or exclude matching databases.
+     *
+     * Regex to include or exclude Databend catalogs.
      *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
@@ -222,6 +231,8 @@ export interface Connection {
      * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
+     *
+     * Host and port of the Databend HTTP query service. The default self-hosted port is 8000.
      *
      * Host and port of the DB2 service.
      *
@@ -300,6 +311,8 @@ export interface Connection {
      *
      * Regex to only include or exclude matching schemas.
      *
+     * Regex to include or exclude Databend databases.
+     *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
      *
@@ -346,6 +359,8 @@ export interface Connection {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to only include or exclude matching tables.
+     *
+     * Regex to include or exclude tables and views.
      *
      * Regex to include/exclude FHIR resource types
      *
@@ -426,6 +441,9 @@ export interface Connection {
      * Ingest All Databases is enabled, in which case this database is used as the entry point
      * to discover and scan all databases.
      *
+     * Databend database used to establish the initial connection. This does not control the
+     * OpenMetadata database name.
+     *
      * Database of the data source.
      *
      * Database of the data source. This is optional parameter, if you would like to restrict
@@ -482,6 +500,8 @@ export interface Connection {
      * Password to connect to AzureSQL.
      *
      * Password to connect to Clickhouse.
+     *
+     * Password to connect to Databend.
      *
      * Password to connect to DB2.
      *
@@ -549,6 +569,9 @@ export interface Connection {
      * metadata in Clickhouse.
      *
      * Username to connect to ClickZetta.
+     *
+     * Username to connect to Databend. The user must be able to read system and
+     * information_schema metadata.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -668,6 +691,9 @@ export interface Connection {
      *
      * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
      *
+     * Optional Databend database to ingest. When omitted, all accessible Databend databases are
+     * scanned as OpenMetadata schemas.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -739,6 +765,9 @@ export interface Connection {
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
+     *
+     * Optional Databend catalog to ingest as an OpenMetadata database. When omitted, all
+     * accessible catalogs are scanned.
      *
      * Presto catalog
      *
@@ -1953,6 +1982,12 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  *
  * Regex to only include or exclude matching tables.
  *
+ * Regex to include or exclude Databend catalogs.
+ *
+ * Regex to include or exclude Databend databases.
+ *
+ * Regex to include or exclude tables and views.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -2374,6 +2409,7 @@ export enum ConfigScheme {
     Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
+    Databend = "databend",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
@@ -2451,6 +2487,7 @@ export enum ConfigType {
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
@@ -2622,6 +2659,7 @@ export enum DatabaseServiceType {
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",

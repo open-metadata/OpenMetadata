@@ -80,6 +80,7 @@ export enum FormattedDatabaseServiceType {
   Couchbase = 'Couchbase',
   CustomDatabase = 'Custom Database',
   Databricks = 'Databricks',
+  Databend = 'Databend',
   Datalake = 'Datalake',
   Db2 = 'Db2',
   Dbt = 'dbt',
