@@ -66,6 +66,10 @@ export interface Team {
      */
     email?: string;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * External identifier for the team from an external identity provider (e.g., Azure AD group
      * ID).
      */
