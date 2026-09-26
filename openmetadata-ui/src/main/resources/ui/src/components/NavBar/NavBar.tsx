@@ -54,6 +54,7 @@ import { EntityReference } from '../../generated/entity/type';
 import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { updateUserDetail } from '../../rest/userAPI';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
@@ -132,7 +133,12 @@ const NavBar = () => {
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const { appVersion: version, setAppVersion } = useApplicationStore();
+  const {
+    appVersion: version,
+    setAppVersion,
+    currentUser,
+    updateCurrentUser,
+  } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
     preferences: { isSidebarCollapsed },
@@ -474,11 +480,31 @@ const NavBar = () => {
 
   const handleDomainChange = useCallback(
     async (domain: EntityReference | EntityReference[]) => {
-      updateActiveDomain(domain as EntityReference);
+      const selected = domain as EntityReference | undefined;
+      updateActiveDomain(selected);
       setIsDomainDropdownOpen(false);
+      // Persist the selection so the server applies it from the first list call of the next
+      // session. Best-effort: a failed write must not block switching, the store already updated.
+      if (currentUser?.id) {
+        try {
+          // JSON Patch `add` upserts, so one op covers first-set, change, and clear (null).
+          const updated = await updateUserDetail(currentUser.id, [
+            {
+              op: 'add',
+              path: '/defaultDomain',
+              value: selected
+                ? { id: selected.id, type: EntityType.DOMAIN }
+                : null,
+            },
+          ]);
+          updateCurrentUser(updated);
+        } catch {
+          // keep the optimistic navbar state; the next successful switch will persist
+        }
+      }
       navigate(0);
     },
-    []
+    [currentUser?.id]
   );
 
   const domainDisplayName = useMemo(

@@ -75,6 +75,14 @@ const syncDomainStoreForUser = (user?: User) => {
   const isDefaultDomainActive =
     domainStore.activeDomain === DEFAULT_DOMAIN_VALUE;
 
+  // The navbar selection is persisted on the user (defaultDomain) so the server can scope list
+  // views from the first request; restore it into the navbar when no domain is active yet.
+  if (isDefaultDomainActive && user?.defaultDomain) {
+    domainStore.updateActiveDomain(user.defaultDomain);
+
+    return;
+  }
+
   if (hasSingleDomain && isDefaultDomainActive) {
     domainStore.updateActiveDomain(userDomains[0]);
   }
