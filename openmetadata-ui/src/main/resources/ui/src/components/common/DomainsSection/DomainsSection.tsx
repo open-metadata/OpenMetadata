@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   getAPIfromSource,
@@ -68,16 +69,12 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       }
     }
 
-    setActiveDomains((prev) => {
-      if (
-        prev.length === nextActiveDomains.length &&
-        prev.every((item, index) => item === nextActiveDomains[index])
-      ) {
-        return prev;
-      }
-
-      return nextActiveDomains;
-    });
+    // Shared content key, so this cannot drift from the other domain surfaces.
+    setActiveDomains((prev) =>
+      getDomainsContentKey(prev) === getDomainsContentKey(nextActiveDomains)
+        ? prev
+        : nextActiveDomains
+    );
   }, [domains]);
 
   const updateActiveDomains = (
@@ -193,9 +190,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         <DomainSelectableList
           hasPermission={hasPermission}
           multiple={entityRules.canAddMultipleDomains}
-          overlayClassName="domain-popover"
           selectedDomain={activeDomains}
-          wrapInButton={false}
           onUpdate={handleDomainSave}
         />
       )

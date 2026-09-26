@@ -236,10 +236,4 @@ describe('DomainScopeControl', () => {
       screen.queryByTestId('ask-domain-scope-card')
     ).not.toBeInTheDocument();
   });
-
-  it('opens the menu with an upward placement for the panel card', async () => {
-    await renderControl();
-
-    expect(lastMenuProps().popoverProps?.placement).toBe('topRight');
-  });
 });

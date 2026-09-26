@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { TreeSelectTriggerRenderProps } from '@openmetadata/ui-core-components';
-import { MouseEvent, PointerEvent, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -19,6 +19,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DomainSelect from '../DomainSelect/DomainSelect';
+import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
@@ -83,26 +84,9 @@ const DomainSelectableList = ({
       // a keyboard-synthesized click (`detail === 0`, no preceding pointerdown)
       // still opens the picker.
       return (
-        <span
-          className="tw:contents"
-          role="presentation"
-          onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
-            if (disabled) {
-              return;
-            }
-            e.stopPropagation();
-            if (e.detail === 0) {
-              toggle();
-            }
-          }}
-          onPointerDownCapture={(e: PointerEvent<HTMLSpanElement>) => {
-            if (disabled || e.button > 0) {
-              return;
-            }
-            toggle();
-          }}>
+        <DomainSelectTrigger disabled={disabled} toggle={toggle}>
           {trigger}
-        </span>
+        </DomainSelectTrigger>
       );
     },
     [children, isVersionView, hasPermission, disabled, t]

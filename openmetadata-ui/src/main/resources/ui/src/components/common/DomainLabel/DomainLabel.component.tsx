@@ -13,15 +13,7 @@
 import { Card, Divider, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import {
-  KeyboardEvent,
-  MouseEvent,
-  PointerEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
@@ -37,6 +29,7 @@ import {
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import DomainSelect from '../DomainSelect/DomainSelect';
+import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import DomainTags from '../DomainTags/DomainTags';
 import './domain-label.less';
@@ -156,7 +149,6 @@ export const DomainLabel = ({
           hasPermission={Boolean(hasPermission)}
           multiple={multiple}
           selectedDomain={activeDomain}
-          wrapInButton={false}
           onUpdate={handleDomainSave}
         />
       )
@@ -171,29 +163,7 @@ export const DomainLabel = ({
     }
 
     const renderTrigger = ({ toggle }: { toggle: () => void }) => (
-      <span
-        role="presentation"
-        onClickCapture={(e: MouseEvent<HTMLSpanElement>) => {
-          e.stopPropagation();
-          // A click with no preceding pointerdown and no keydown — screen-reader
-          // virtual activation, `element.click()` — reports `detail === 0`.
-          if (e.detail === 0) {
-            toggle();
-          }
-        }}
-        onKeyDownCapture={(e: KeyboardEvent<HTMLSpanElement>) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            e.stopPropagation();
-            toggle();
-          }
-        }}
-        onPointerDownCapture={(e: PointerEvent<HTMLSpanElement>) => {
-          if (e.button > 0) {
-            return;
-          }
-          toggle();
-        }}>
+      <DomainSelectTrigger toggle={toggle}>
         {isEmpty(activeDomain) ? (
           <WidgetPlusButton
             data-testid="add-domain"
@@ -205,7 +175,7 @@ export const DomainLabel = ({
             title={t('label.edit-entity', { entity: widgetTitle })}
           />
         )}
-      </span>
+      </DomainSelectTrigger>
     );
 
     return (

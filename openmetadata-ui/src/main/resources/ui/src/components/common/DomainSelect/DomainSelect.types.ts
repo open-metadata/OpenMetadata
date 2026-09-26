@@ -29,7 +29,11 @@ export interface DomainSelectProps {
    * `DomainSelectableList` prop. @default true
    */
   isClearable?: boolean;
-  /** Domains that must not be offered for selection (filtered from results). */
+  /**
+   * Allowlist: when non-empty, only these domains and their descendants are
+   * offered. Empty/undefined means no restriction. Named for the caller-side
+   * concept (a domain-*restricted* user), not for what it filters out.
+   */
   restrictedDomains?: EntityReference[];
   /**
    * Prepend an "All Domains" reset row at the top of the picker (scope-switcher
@@ -43,9 +47,6 @@ export interface DomainSelectProps {
   onUpdate: (
     domain: EntityReference | EntityReference[] | undefined
   ) => Promise<void> | void;
-  /** Reserved for parity with the legacy picker; not yet wired to a cancel. */
-  onCancel?: () => void;
-
   /** @default 'input' */
   triggerVariant?: TreeSelectTriggerVariant;
   bordered?: boolean;

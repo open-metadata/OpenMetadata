@@ -213,7 +213,6 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
         disabled={disabled}
         selectedDomain={activeDomainEntityRef}
         showAllDomains={showAllDomains}
-        wrapInButton={false}
         onUpdate={handleUpdate}>
         {landingTrigger}
       </DomainSelectableList>
@@ -255,13 +254,11 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
       className={variant === 'rail' ? undefined : 'tw:w-full'}
       popoverProps={{
         open: isOpen,
-        placement: variant === 'rail' ? 'topLeft' : 'topRight',
         onOpenChange: setIsOpen,
       }}
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
       showAllDomains={showAllDomains}
-      wrapInButton={false}
       onCancel={() => setIsOpen(false)}
       onUpdate={handleUpdate}>
       {trigger}

@@ -25,6 +25,8 @@ import {
 } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
+import { isDomainFqnAllowed } from '../../../utils/DomainRestrictionUtils';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import {
   getDomainChildrenPaginated,
   searchDomains,
@@ -78,18 +80,14 @@ const DomainSelect: FC<DomainSelectProps> = ({
   );
 
   // `restrictedDomains` carries the domains a domain-restricted user is allowed
-  // to use, so keep only those and their descendants (mirrors the shared
-  // `filterDomainsToAllowed`). An empty list means "no restriction" — show all.
+  // to use, so keep only those and their descendants. The prefix rule itself
+  // lives in DomainRestrictionUtils so this cannot drift from the non-tree
+  // callers. An empty list means "no restriction" here — show everything.
   const filterAllowedNodes = useCallback(
     (nodes: TreeSelectNode<EntityReference>[]) =>
       allowedFqns.length === 0
         ? nodes
-        : nodes.filter((node) =>
-            allowedFqns.some(
-              (allowed) =>
-                node.value === allowed || node.value.startsWith(`${allowed}.`)
-            )
-          ),
+        : nodes.filter((node) => isDomainFqnAllowed(node.value, allowedFqns)),
     [allowedFqns]
   );
 
@@ -157,16 +155,26 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [filterAllowedNodes, showAllDomains, t]
   );
 
-  const value = useMemo(() => {
+  const selectedDomainList = useMemo(() => {
     if (!selectedDomain) {
       return [];
     }
-    const domains = Array.isArray(selectedDomain)
-      ? selectedDomain
-      : [selectedDomain];
 
-    return entityReferencesToTreeNodes(domains);
+    return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
   }, [selectedDomain]);
+
+  // Keyed on the *content*, not the array reference. Consumers hand us a fresh
+  // array on every render, and the core TreeSelect re-runs
+  // `setSelection(toArray(value))` whenever `value` changes identity — which in
+  // staged (multi) mode wipes choices the user has not applied yet. Doing the
+  // comparison here covers every caller in OSS and Collate, instead of each one
+  // needing its own guard.
+  const selectedDomainKey = getDomainsContentKey(selectedDomainList);
+  const value = useMemo(
+    () => entityReferencesToTreeNodes(selectedDomainList),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedDomainKey]
+  );
 
   const handleChange = useCallback(
     (
