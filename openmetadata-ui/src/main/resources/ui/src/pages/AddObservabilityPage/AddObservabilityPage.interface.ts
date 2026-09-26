@@ -51,6 +51,12 @@ export interface UseObservabilityAlertFormOptions {
   onCancel?: () => void;
 }
 
+export interface UseAlertFormDataOptions
+  extends Omit<UseObservabilityAlertFormOptions, 'form'> {
+  /** The source catalogue, narrowed to the chosen source (see useAlertResources). */
+  alertResources: UseObservabilityAlertResourcesReturn;
+}
+
 export interface UseObservabilityAlertResourcesReturn {
   containerEntities?: string[];
   filterResources: ObservabilityFilterResourceDescriptor[];
@@ -128,6 +134,11 @@ export interface UseObservabilityAlertFormReturn {
   templateResourcePermission: OperationPermission;
   templates: NotificationTemplate[];
 }
+
+export type UseAlertFormDataReturn = Omit<
+  UseObservabilityAlertFormReturn,
+  'form'
+>;
 
 export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
 

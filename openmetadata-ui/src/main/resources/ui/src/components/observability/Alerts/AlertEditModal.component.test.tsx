@@ -247,6 +247,36 @@ describe('AlertEditModal', () => {
     });
   });
 
+  it('passes the modal values and the mirror form to extra form buttons', async () => {
+    const form = { setFieldValue: jest.fn(), setFieldsValue: jest.fn() };
+    const ExtraButton = jest.fn(
+      ({ values }: { values?: ModifiedCreateEventSubscription }) => (
+        <span data-testid="extra-button">{values?.resources?.[0]}</span>
+      )
+    );
+    mockUseObservabilityAlertForm.mockReturnValue(
+      getHookState({ extraFormButtons: { ExtraButton }, form })
+    );
+
+    render(
+      <AlertEditModal
+        isOpen
+        fqn="service.alert"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('extra-button')).toHaveTextContent('table')
+    );
+
+    expect(ExtraButton).toHaveBeenLastCalledWith(
+      expect.objectContaining({ formRef: form }),
+      expect.anything()
+    );
+  });
+
   it('creates a notification alert when opened for notifications', () => {
     const handleSave = jest.fn();
     mockUseObservabilityAlertForm.mockReturnValue(getHookState({ handleSave }));

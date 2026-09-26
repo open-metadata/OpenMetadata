@@ -43,6 +43,11 @@ import { showSuccessToast } from './ToastUtils';
 
 export interface AddAlertFormWidgetProps {
   formRef: FormInstance<ModifiedCreateEventSubscription>;
+  /**
+   * Current form values from a caller that keeps them in state (the AI alert modal).
+   * When set, read these instead of watching formRef.
+   */
+  values?: ModifiedCreateEventSubscription;
   alertDetails?: ModifiedEventSubscription;
   templates?: NotificationTemplate[];
   loading?: boolean;

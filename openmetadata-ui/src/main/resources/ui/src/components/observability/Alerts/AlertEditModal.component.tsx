@@ -170,6 +170,7 @@ function AlertEditModal({
         loading={saving}
         templateResourcePermission={templateResourcePermission}
         templates={templates}
+        values={formData}
       />
     )
   );

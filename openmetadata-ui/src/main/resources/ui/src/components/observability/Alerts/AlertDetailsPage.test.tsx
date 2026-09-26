@@ -33,7 +33,7 @@ import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockNavigate = jest.fn();
 const mockUseAlertDetailsPage = jest.fn();
-const mockUseObservabilityAlertForm = jest.fn();
+const mockUseAlertFormData = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
 
 jest.mock('./NotificationTemplateUtils', () => ({
@@ -56,13 +56,18 @@ jest.mock('../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage', () => ({
   useAlertDetailsPage: (params: unknown) => mockUseAlertDetailsPage(params),
 }));
 
+const mockUseAlertResources = jest.fn();
+
 jest.mock(
-  '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm',
+  '../../../pages/AddObservabilityPage/hooks/useAlertResources',
   () => ({
-    useObservabilityAlertForm: (params: unknown) =>
-      mockUseObservabilityAlertForm(params),
+    useAlertResources: (alertType: unknown) => mockUseAlertResources(alertType),
   })
 );
+
+jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+  useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
+}));
 
 jest.mock('../../../utils/AlertsClassBase', () => ({
   __esModule: true,
@@ -416,7 +421,7 @@ describe('AlertDetailsPage', () => {
     });
     mockGetModifiedAlertDataForForm.mockReturnValue(modifiedAlert);
     mockUseAlertDetailsPage.mockReturnValue(getDetailsState());
-    mockUseObservabilityAlertForm.mockReturnValue(getFormState());
+    mockUseAlertFormData.mockReturnValue(getFormState());
   });
 
   afterEach(() => queryClient.clear());
@@ -558,8 +563,8 @@ describe('AlertDetailsPage', () => {
     it('loads the alert as a notification alert', () => {
       renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
 
-      expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith(
-        expect.objectContaining({ alertType: AlertType.Notification })
+      expect(mockUseAlertResources).toHaveBeenCalledWith(
+        AlertType.Notification
       );
     });
 
@@ -608,7 +613,7 @@ describe('AlertDetailsPage', () => {
   });
 
   it('shows the template section when a template widget is registered', () => {
-    mockUseObservabilityAlertForm.mockReturnValue({
+    mockUseAlertFormData.mockReturnValue({
       ...getFormState(),
       extraFormWidgets: { NotificationTemplate: () => null },
     });

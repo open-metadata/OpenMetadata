@@ -13,7 +13,7 @@
 
 import { renderHook, waitFor } from '@testing-library/react';
 import { AlertType } from '../../../generated/events/eventSubscription';
-import { useObservabilityAlertResources } from './useObservabilityAlertResources';
+import { useAlertResources } from './useAlertResources';
 
 const mockObservabilityResources = jest.fn();
 const mockNotificationResources = jest.fn();
@@ -26,11 +26,6 @@ jest.mock('../../../rest/alertsAPI', () => ({
   getResourceFunctions: () => mockNotificationResources(),
 }));
 
-// The hook only reads the selected source through Form.useWatch.
-jest.mock('antd', () => ({
-  Form: { useWatch: () => undefined },
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -39,15 +34,10 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-const renderResources = (alertType?: AlertType) =>
-  renderHook(() =>
-    useObservabilityAlertResources(
-      {} as Parameters<typeof useObservabilityAlertResources>[0],
-      alertType
-    )
-  );
+const renderResources = (alertType?: AlertType, selectedResource?: string) =>
+  renderHook(() => useAlertResources(alertType, selectedResource));
 
-describe('useObservabilityAlertResources', () => {
+describe('useAlertResources', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockObservabilityResources.mockResolvedValue({
@@ -81,5 +71,38 @@ describe('useObservabilityAlertResources', () => {
     );
 
     expect(mockObservabilityResources).not.toHaveBeenCalled();
+  });
+
+  it('narrows filters and triggers to the selected source', async () => {
+    mockObservabilityResources.mockResolvedValue({
+      data: [
+        {
+          name: 'table',
+          supportedFilters: [{ name: 'filterByFqn' }],
+          supportedActions: [],
+        },
+        { name: 'testCase', supportedFilters: [], supportedActions: [] },
+      ],
+    });
+
+    const { result } = renderResources(AlertType.Observability, 'table');
+
+    await waitFor(() =>
+      expect(result.current.supportedFilters?.map((f) => f.name)).toEqual([
+        'filterByFqn',
+      ])
+    );
+
+    expect(result.current.shouldShowFiltersSection).toBe(true);
+    expect(result.current.shouldShowActionsSection).toBe(false);
+  });
+
+  it('shows both sections until a source is selected', async () => {
+    const { result } = renderResources();
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.shouldShowFiltersSection).toBe(true);
+    expect(result.current.shouldShowActionsSection).toBe(true);
   });
 });

@@ -1,0 +1,100 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { isEmpty } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AlertType } from '../../../generated/events/eventSubscription';
+import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
+import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  ObservabilityFilterResourceDescriptor,
+  UseObservabilityAlertResourcesReturn,
+} from '../AddObservabilityPage.interface';
+import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
+
+/** Loads the alert source catalogue and narrows it to the selected source, without a form. */
+export function useAlertResources(
+  alertType: AlertType = AlertType.Observability,
+  selectedTrigger?: string
+): UseObservabilityAlertResourcesReturn {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
+  const [filterResources, setFilterResources] = useState<
+    ObservabilityFilterResourceDescriptor[]
+  >([]);
+
+  const fetchFunctions = async () => {
+    try {
+      setLoading(true);
+      const filterResources =
+        alertType === AlertType.Notification
+          ? await getNotificationResourceFunctions()
+          : await getObservabilityResourceFunctions();
+
+      setFilterResources(
+        filterResources.data.map(toObservabilityFilterResourceDescriptor)
+      );
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.config') })
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFunctions();
+  }, [alertType]);
+
+  const selectedResource = useMemo(
+    () => filterResources.find((resource) => resource.name === selectedTrigger),
+    [filterResources, selectedTrigger]
+  );
+
+  const supportedFilters = useMemo(
+    () => selectedResource?.supportedFilters,
+    [selectedResource]
+  );
+
+  const containerEntities = useMemo<
+    UseObservabilityAlertResourcesReturn['containerEntities']
+  >(() => selectedResource?.containerEntities, [selectedResource]);
+
+  const supportedTriggers = useMemo(
+    () => selectedResource?.supportedActions,
+    [selectedResource]
+  );
+
+  const shouldShowFiltersSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
+    [selectedTrigger, supportedFilters]
+  );
+
+  const shouldShowActionsSection = useMemo(
+    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
+    [selectedTrigger, supportedTriggers]
+  );
+
+  return {
+    containerEntities,
+    filterResources,
+    loading,
+    shouldShowActionsSection,
+    shouldShowFiltersSection,
+    supportedFilters,
+    supportedTriggers,
+  };
+}
