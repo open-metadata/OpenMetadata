@@ -118,25 +118,28 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  await settingClick(page, GlobalSettingOptions.USERS);
-
-  const listLoader = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader');
-  const userRow = page.getByTestId(userName);
-
-  await listLoader.waitFor({ state: 'detached' });
-
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=user&from=0&size=*'
+  // Deliberately not routed through the user-list search box. That list is
+  // Elasticsearch-backed and a user created seconds earlier may not be indexed
+  // yet; once the empty result renders nothing re-issues the query, so waiting
+  // on the row cannot recover. The profile page reads the user from the API by
+  // name, which is immediately consistent.
+  const encodedUserName = encodeURIComponent(userName);
+  const userResponse = page.waitForResponse(
+    `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-  await page.getByTestId('searchbar').fill(userName);
-  await searchResponse;
-  await listLoader.waitFor({ state: 'detached' });
+  await page.goto(`/users/${encodedUserName}`);
 
-  await expect(userRow).toBeVisible();
+  // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
+  // its loader and renders an error state. Callers that guard their assertions
+  // on visibility would silently assert nothing, so fail here instead.
+  const response = await userResponse;
 
-  await userRow.click();
+  expect(
+    response.ok(),
+    `Profile for "${userName}" failed to load: HTTP ${response.status()}`
+  ).toBeTruthy();
+
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const softDeleteUserProfilePage = async (
@@ -571,6 +574,12 @@ export const checkDataConsumerPermissions = async (page: Page) => {
     page.locator('[data-testid="announcement-button"]')
   ).not.toBeVisible();
   await expect(page.locator('[data-testid="delete-button"]')).not.toBeVisible();
+
+  // The core manage menu is modal; close it so the tab click is not swallowed.
+  await clickOutside(page);
+  await expect(
+    page.getByTestId('manage-dropdown-list-container')
+  ).not.toBeVisible();
 
   await page.click('[data-testid="lineage"]');
 

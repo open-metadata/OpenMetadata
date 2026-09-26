@@ -15,26 +15,20 @@ import { DefaultOptionType, SelectProps } from 'antd/lib/select';
 
 import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
-import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
+// Classification tags only; glossary terms go through GlossaryTermPicker.
 export interface TagSuggestionProps {
   placeholder?: string;
-  tagType?: TagSource;
   value?: TagLabel[];
   initialOptions?: SelectOption[];
   onChange?: (newTags: TagLabel[]) => void;
   selectProps?: SelectProps;
-  isTreeSelect?: boolean;
-  hasNoActionButtons?: boolean;
-  open?: boolean;
   newLook?: boolean;
   autoFocus?: boolean;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
@@ -45,20 +39,11 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   value,
   placeholder,
   initialOptions,
-  tagType = TagSource.Classification,
   selectProps,
-  isTreeSelect = false,
-  hasNoActionButtons = false,
-  open = true,
   newLook,
   autoFocus = false,
   dropdownContainerRef,
 }) => {
-  const isGlossaryType = useMemo(
-    () => tagType === TagSource.Glossary,
-    [tagType]
-  );
-
   const { t } = useTranslation();
 
   const handleTagSelection = (
@@ -74,9 +59,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
           }
           let tagData: EntityTags = {
             tagFQN: tag.value,
-            source: isGlossaryType
-              ? TagSource.Glossary
-              : TagSource.Classification,
+            source: TagSource.Classification,
           };
 
           if (tag.data) {
@@ -98,7 +81,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   };
 
   const commonProps = {
-    fetchOptions: isGlossaryType ? fetchGlossaryList : tagClassBase.getTags,
+    fetchOptions: tagClassBase.getTags,
     initialOptions,
     ...selectProps,
     mode: 'multiple' as const,
@@ -114,15 +97,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     dropdownContainerRef,
   };
 
-  return isTreeSelect ? (
-    <TreeAsyncSelectList
-      {...commonProps}
-      hasNoActionButtons={hasNoActionButtons}
-      open={open}
-    />
-  ) : (
-    <AsyncSelectList {...commonProps} />
-  );
+  return <AsyncSelectList {...commonProps} />;
 };
 
 export default TagSuggestion;

@@ -21,7 +21,7 @@ import { useTestSummaryCards } from '../../DataQuality/SummaryPannel/useTestSumm
 import { SEGMENT_COLORS } from './DqSummaryPanel.constants';
 
 const CARD_CLASS =
-  'tw:flex-1 tw:rounded-xl tw:bg-primary tw:px-6 tw:py-5 tw:shadow-xs tw:outline-1 tw:outline-secondary';
+  'tw:flex-1 tw:rounded-xl tw:bg-surface tw:px-6 tw:py-5 tw:shadow-xs tw:outline-1 tw:outline-secondary';
 
 /**
  * App-mode Data Quality summary cards. The card figures come from the shared

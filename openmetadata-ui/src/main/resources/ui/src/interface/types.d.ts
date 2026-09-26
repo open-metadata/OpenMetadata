@@ -23,6 +23,7 @@ declare module 'Models' {
   import { CreateSecurityService } from '../generated/api/services/createSecurityService';
   import { CreateStorageService } from '../generated/api/services/createStorageService';
   import { ChangeDescription } from '../generated/entity/data/dashboard';
+  import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
   import { EntityReference } from '../generated/type/entityReference';
   import { TagLabel } from '../generated/type/tagLabel';
   import { SearchEntityHits } from '../utils/APIUtils';
@@ -246,6 +247,9 @@ declare module 'Models' {
   export interface PagingResponse<T> {
     data: T;
     paging: Paging;
+    // Per-entity permissions keyed by entity id, present only when the list
+    // request opts in with includePermissions=true (avoids N per-row permission calls).
+    entityPermissions?: Record<string, ResourcePermission>;
   }
 
   export interface CurrentState {

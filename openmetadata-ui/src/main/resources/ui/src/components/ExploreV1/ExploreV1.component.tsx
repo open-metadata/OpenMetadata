@@ -500,7 +500,9 @@ const ExploreResultsPanel = ({
   selectedQuickFilters,
 }: ExploreResultsPanelProps) => {
   return (
-    <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+    <Box
+      className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
+      colGap={3}>
       <ExploreResultsListPanel
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
@@ -1310,14 +1312,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
-          // Ant Card owns the title padding, so the spacing belongs on its header rather than the inner row.
-          cardClassName: 'tw:[&_.ant-card-head-title]:pb-2',
           className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
           titleClassName: 'tw:capitalize tw:font-medium',
-          titleContainerClassName: 'tw:items-center',
+          titleContainerClassName: 'tw:items-center tw:pb-2',
           titleStrong: false,
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}

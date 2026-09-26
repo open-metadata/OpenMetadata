@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -25,6 +25,11 @@ import {
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import {
+  CODE_EDITOR,
+  CODE_EDITOR_CONTENT,
+  typeInCodeEditor,
+} from './codeEditor';
+import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
@@ -32,6 +37,7 @@ import {
   getDescriptionBox,
   selectOptionWithRetry,
   uuid,
+  waitForToastStackToClear,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
@@ -138,6 +144,10 @@ export const setValueForProperty = async (data: {
 
   const editButton = container.getByTestId('edit-icon');
   await editButton.scrollIntoViewIfNeeded();
+  // Background async-delete notifications stack as toasts at bottom-center and
+  // intercept the click; force skips the actionability check but the event
+  // still lands on the toast, so drain the stack before clicking.
+  await waitForToastStackToClear(page);
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await editButton.click({ force: true });
 
@@ -181,8 +191,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
-      await container.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -336,7 +345,7 @@ export const validateValueForProperty = async (data: {
       endValue
     );
   } else if (propertyType === 'sqlQuery') {
-    await expect(container.locator('.CodeMirror-scroll')).toContainText(value);
+    await expect(container.locator(CODE_EDITOR_CONTENT)).toContainText(value);
   } else if (propertyType === 'table-cp') {
     const values = value.split(',');
 
@@ -813,6 +822,86 @@ export const addCustomPropertiesForEntity = async ({
   ).toBeVisible();
 };
 
+/**
+ * Records every custom-property save PATCH from before the click. The UI
+ * patches a property by name with a `test` guard and retries when a concurrent
+ * edit shifted the list, so a save can be one or more stale-index rejections
+ * (400) followed by the attempt that lands. Call `expectSaved` after asserting
+ * the visible outcome, so a failed save reports on that assertion first.
+ */
+export const recordCustomPropertySaves = (page: Page) => {
+  const saves: Response[] = [];
+  const onResponse = (res: Response) => {
+    if (
+      res.url().includes('/api/v1/metadata/types/') &&
+      res.request().method() === 'PATCH'
+    ) {
+      saves.push(res);
+    }
+  };
+  page.on('response', onResponse);
+
+  return {
+    expectSaved: async () => {
+      await expect.poll(() => saves.at(-1)?.status()).toBe(200);
+      page.off('response', onResponse);
+
+      // Anything before the successful save must be a rejected attempt the UI
+      // retried, not a failure that was silently dropped.
+      expect(saves.slice(0, -1).map((res) => res.status())).toEqual(
+        saves.slice(0, -1).map(() => 400)
+      );
+    },
+  };
+};
+
+/**
+ * Removes one custom property by name without touching the others. Replacing
+ * the whole list from an earlier read would drop properties that concurrently
+ * running specs added in between, so this removes by index guarded by a `test`
+ * on the name, rebuilt from a fresh read if the list shifted.
+ */
+export const removeCustomPropertyViaApi = async (
+  apiContext: APIRequestContext,
+  typeFqn: string,
+  propertyName: string
+) => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const typeRes = await apiContext.get(
+      `/api/v1/metadata/types/name/${typeFqn}?fields=customProperties`
+    );
+    const type = (await typeRes.json()) as {
+      id: string;
+      customProperties?: { name: string }[];
+    };
+    const index = (type.customProperties ?? []).findIndex(
+      (property) => property.name === propertyName
+    );
+
+    if (index === -1) {
+      return;
+    }
+
+    const res = await apiContext.patch(`/api/v1/metadata/types/${type.id}`, {
+      data: [
+        {
+          op: 'test',
+          path: `/customProperties/${index}/name`,
+          value: propertyName,
+        },
+        { op: 'remove', path: `/customProperties/${index}` },
+      ],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    });
+
+    if (res.ok()) {
+      return;
+    }
+  }
+
+  throw new Error(`Could not remove custom property ${propertyName}`);
+};
+
 export const editCreatedProperty = async (
   page: Page,
   propertyName: string,
@@ -868,15 +957,12 @@ export const editCreatedProperty = async (
     await clickOutside(page);
   }
 
-  const patchRequest = page.waitForResponse('/api/v1/metadata/types/*');
+  const saves = recordCustomPropertySaves(page);
 
   await page.locator('button[type="submit"]').click();
 
-  const response = await patchRequest;
-
-  expect(response.status()).toBe(200);
-
   await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+  await saves.expectSaved();
 
   // Fetching for updated descriptions for the created custom property
   await expect(
@@ -922,21 +1008,14 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
-  const patchResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/metadata/types/') &&
-      res.request().method() === 'PATCH',
-    { timeout: 30_000 }
-  );
+  const saves = recordCustomPropertySaves(page);
 
   await page.locator('[data-testid="save-button"]').click();
-  const response = await patchResponse;
-
-  expect(response.status()).toBe(200);
 
   // ConfirmationModal is destroyOnClose: assert the body text unmounts so
   // the modal mask is gone before the next sidebar click in callers' loops.
   await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
+  await saves.expectSaved();
   await expect(
     page.locator(`[data-row-key="${propertyName}"]`)
   ).not.toBeVisible();
@@ -1036,7 +1115,7 @@ export const editColumnCustomProperty = async (
     await page.getByTestId('save').click();
   } else if (propertyType === 'sqlQuery') {
     const codeMirror = page.locator(
-      '.custom-properties-section-container .CodeMirror'
+      `.custom-properties-section-container ${CODE_EDITOR}`
     );
     await expect(codeMirror).toBeVisible();
     await codeMirror.click();
@@ -1485,8 +1564,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
-      await page.locator("pre[role='presentation']").last().click();
-      await page.keyboard.type(value);
+      await typeInCodeEditor(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;

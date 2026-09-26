@@ -112,6 +112,18 @@ jest.mock(
 );
 
 jest.mock(
+  '../../../components/common/GlossaryTermPicker/GlossaryTermPicker',
+  () =>
+    jest.fn().mockImplementation(({ label, onChange }) => (
+      <button
+        data-testid={`search-dropdown-${label}`}
+        onClick={() => onChange([{ tagFQN: 'tag1' }])}>
+        {label}
+      </button>
+    ))
+);
+
+jest.mock(
   '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
     UserTeamSelectableList: jest
@@ -1409,23 +1421,6 @@ describe('DataQualityDashboard', () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       fireEvent.click(screen.getByTestId('search-dropdown-search-label.tag'));
-
-      await waitFor(() => {
-        const wrappedCalls = mockSearchQuery.mock.calls.filter(
-          (args: unknown[]) =>
-            (args[0] as Record<string, unknown>).query === '*pii*'
-        );
-
-        expect(wrappedCalls.length).toBeGreaterThanOrEqual(1);
-      });
-    });
-
-    it('calls searchQuery with *text* when glossary term search text is non-empty', async () => {
-      render(<DataQualityDashboard />, { wrapper: MemoryRouter });
-
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-search-label.glossary-term')
-      );
 
       await waitFor(() => {
         const wrappedCalls = mockSearchQuery.mock.calls.filter(

@@ -11,20 +11,35 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  PageLayout,
+} from '@openmetadata/ui-core-components';
 import { Stars01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
 import DocumentPreviewPanel from '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
@@ -67,6 +82,15 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+
+const FilePreviewModal = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/ContextCenter/DocumentsView/FilePreviewModal/FilePreviewModal'
+      )
+  )
+);
 
 const getSuccessfulIds = (result: BulkOperationResult): Set<string> =>
   new Set(
@@ -227,6 +251,7 @@ const ContextCenterDeleteFileModal: FC<ContextCenterDeleteFileModalProps> = ({
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
+  const pageLayoutClassNames = useContextCenterPageLayout();
   const { getResourcePermission } = usePermissionProvider();
   const [searchParams, setSearchParams] = useSearchParams();
   const { paging, pageSize, handlePagingChange } = usePaging();
@@ -252,6 +277,8 @@ const ContextCenterDocumentsPage: FC = () => {
   const [totalFileCount, setTotalFileCount] = useState(0);
   const [globalFileCount, setGlobalFileCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
+  const [filePreviewModalFile, setFilePreviewModalFile] =
+    useState<ContextFile>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fetchGenerationRef = useRef(0);
   const folderFetchGenerationRef = useRef(0);
@@ -801,6 +828,10 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders, selectedIds, allDocuments, t, fetchFolders]
   );
 
+  const handleCloseFilePreviewModal = useCallback(() => {
+    setFilePreviewModalFile(undefined);
+  }, []);
+
   const handleUploadToFolder = useCallback((folderId: string) => {
     setSelectedFolderId(folderId);
     setIsUploadModalOpen(true);
@@ -846,105 +877,120 @@ const ContextCenterDocumentsPage: FC = () => {
       data-testid="context-center-documents-page"
       direction="col">
       <DocumentTitle title={t('label.document-plural')} />
-      <div className="context-center-header-section tw:px-5">
-        <ContextCenterHeader
-          breadcrumbs={[
-            {
-              label: t('label.document-plural'),
-            },
-          ]}
-          hasPermission={hasCreatePermission}
-          searchPlaceholder={t('label.search-entity', {
-            entity: t('label.document-plural'),
-          })}
-          searchQuery={documentSearchQuery}
-          subtitle={t('message.context-center-documents-subtitle')}
-          title={t('label.document-plural')}
-          onSearch={setDocumentSearchQuery}
-          onUploadFile={() => setIsUploadModalOpen(true)}
-        />
-      </div>
-      <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:px-5 tw:pb-5">
-        {showDocumentsEmptyState ? (
-          <ContextCenterDocumentsEmptyState
-            hasCreatePermission={hasCreatePermission}
+      <PageLayout
+        className={pageLayoutClassNames.root}
+        data-testid="context-center-page-layout">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
+          <ContextCenterHeader
+            breadcrumbs={[
+              {
+                label: t('label.document-plural'),
+              },
+            ]}
+            hasPermission={hasCreatePermission}
+            searchPlaceholder={t('label.search-entity', {
+              entity: t('label.document-plural'),
+            })}
+            searchQuery={documentSearchQuery}
+            subtitle={t('message.context-center-documents-subtitle')}
+            title={t('label.document-plural')}
+            onSearch={setDocumentSearchQuery}
             onUploadFile={() => setIsUploadModalOpen(true)}
           />
-        ) : (
-          <ReflexContainer
-            className="tw:flex-1 tw:overflow-hidden"
-            orientation="vertical">
-            <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
-              <DocumentFolderView
-                canCreate={hasCreatePermission}
-                canDelete={hasDeletePermission}
-                folders={folders}
-                hasMoreFolders={Boolean(foldersAfter)}
-                isLoading={isFoldersLoading}
-                isLoadingMoreFolders={isLoadingMoreFolders}
-                ref={folderViewRef}
-                selectedFolderId={selectedFolderId}
-                totalFileCount={globalFileCount}
-                totalFolderCount={totalFolderCount}
-                onFoldersChanged={fetchFolders}
-                onLoadMoreFolders={fetchMoreFolders}
-                onSelectFolder={setSelectedFolderId}
-                onUploadToFolder={getFolderUploadHandler(
-                  hasCreatePermission,
-                  handleUploadToFolder
-                )}
-              />
-            </ReflexElement>
-
-            <ReflexSplitter
-              className="splitter left-panel-splitter"
-              style={{ zIndex: 0 }}>
-              <div className="panel-grabber-vertical">
-                <div className="handle-icon handle-icon-vertical" />
-              </div>
-            </ReflexSplitter>
-
-            <ReflexElement flex={0.75} minSize={400}>
-              <Box className="tw:h-full tw:overflow-hidden">
-                <DocumentsView
+        </PageLayout.Header>
+        <PageLayout.Content
+          className={classNames(
+            'tw:flex tw:flex-col tw:min-h-0',
+            pageLayoutClassNames.content
+          )}>
+          {showDocumentsEmptyState ? (
+            <ContextCenterDocumentsEmptyState
+              hasCreatePermission={hasCreatePermission}
+              onUploadFile={() => setIsUploadModalOpen(true)}
+            />
+          ) : (
+            <ReflexContainer
+              className="tw:flex-1 tw:overflow-hidden"
+              orientation="vertical">
+              <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
+                <DocumentFolderView
+                  canCreate={hasCreatePermission}
                   canDelete={hasDeletePermission}
-                  canEdit={hasEditPermission}
-                  data={allDocuments}
-                  folders={folderOptions}
+                  folders={folders}
                   hasMoreFolders={Boolean(foldersAfter)}
-                  isLoading={isDocumentsLoading}
-                  isLoadingMore={isLoadingMore}
+                  isLoading={isFoldersLoading}
                   isLoadingMoreFolders={isLoadingMoreFolders}
-                  previewFileId={previewFile?.id}
-                  selectedFolderName={selectedFolderName}
-                  selectedIds={selectedIds}
-                  totalFileCount={totalFileCount}
-                  onBulkDelete={handleBulkDelete}
-                  onBulkDownload={handleBulkDownload}
-                  onBulkMove={handleBulkMove}
-                  onDeleteFile={handleDeleteFile}
-                  onDownload={handleAssetDownload}
-                  onFileMoved={handleFileMoved}
+                  ref={folderViewRef}
+                  selectedFolderId={selectedFolderId}
+                  totalFileCount={globalFileCount}
+                  totalFolderCount={totalFolderCount}
+                  onFoldersChanged={fetchFolders}
                   onLoadMoreFolders={fetchMoreFolders}
-                  onPreview={handlePreview}
-                  onScrollEnd={handleLoadMore}
-                  onSelectFile={handleSelectFile}
-                  onUploadFile={getDocumentsViewUploadHandler(
+                  onSelectFolder={setSelectedFolderId}
+                  onUploadToFolder={getFolderUploadHandler(
                     hasCreatePermission,
-                    selectedFolderId,
                     handleUploadToFolder
                   )}
                 />
-                <ContextCenterDocumentPreview
-                  previewFile={previewFile}
-                  url={previewFileUrl}
-                  onClose={() => handlePreview(undefined)}
-                />
-              </Box>
-            </ReflexElement>
-          </ReflexContainer>
-        )}
-      </div>
+              </ReflexElement>
+
+              <ReflexSplitter
+                className="splitter left-panel-splitter"
+                style={{ zIndex: 0 }}>
+                <div className="panel-grabber-vertical">
+                  <div className="handle-icon handle-icon-vertical" />
+                </div>
+              </ReflexSplitter>
+
+              <ReflexElement flex={0.75} minSize={400}>
+                <Box className="tw:h-full tw:overflow-hidden">
+                  <DocumentsView
+                    canDelete={hasDeletePermission}
+                    canEdit={hasEditPermission}
+                    data={allDocuments}
+                    folders={folderOptions}
+                    hasMoreFolders={Boolean(foldersAfter)}
+                    isLoading={isDocumentsLoading}
+                    isLoadingMore={isLoadingMore}
+                    isLoadingMoreFolders={isLoadingMoreFolders}
+                    previewFileId={previewFile?.id}
+                    selectedFolderName={selectedFolderName}
+                    selectedIds={selectedIds}
+                    totalFileCount={totalFileCount}
+                    onBulkDelete={handleBulkDelete}
+                    onBulkDownload={handleBulkDownload}
+                    onBulkMove={handleBulkMove}
+                    onDeleteFile={handleDeleteFile}
+                    onDownload={handleAssetDownload}
+                    onFileMoved={handleFileMoved}
+                    onLoadMoreFolders={fetchMoreFolders}
+                    onOpenPreview={setFilePreviewModalFile}
+                    onPreview={handlePreview}
+                    onScrollEnd={handleLoadMore}
+                    onSelectFile={handleSelectFile}
+                    onUploadFile={getDocumentsViewUploadHandler(
+                      hasCreatePermission,
+                      selectedFolderId,
+                      handleUploadToFolder
+                    )}
+                  />
+                  <ContextCenterDocumentPreview
+                    previewFile={previewFile}
+                    url={previewFileUrl}
+                    onClose={() => handlePreview(undefined)}
+                  />
+                </Box>
+              </ReflexElement>
+            </ReflexContainer>
+          )}
+        </PageLayout.Content>
+      </PageLayout>
+
+      <FilePreviewModal
+        file={filePreviewModalFile}
+        isOpen={Boolean(filePreviewModalFile)}
+        onClose={handleCloseFilePreviewModal}
+      />
 
       <UploadDocumentModal
         folderFqn={selectedFolderFqn}

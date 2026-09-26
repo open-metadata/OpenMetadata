@@ -19,11 +19,13 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -437,6 +440,28 @@ public abstract class SecretsManager {
     return null;
   }
 
+  /**
+   * Applies {@code action} to each OpenMetadata object held in {@code obj} when it is a collection,
+   * passing the element index. Collections were previously not traversed, so a secret declared
+   * inside a JSON-schema array was never encrypted and was persisted in cleartext.
+   *
+   * <p>Every walker here routes through this so that encrypt and delete derive the same secret id
+   * for the same element - otherwise deleting a service would strand its secrets in the store.
+   */
+  private static void forEachTraversableElement(Object obj, BiConsumer<Object, String> action) {
+    if (!(obj instanceof Collection<?> collection)) {
+      return;
+    }
+    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
+    int index = 0;
+    for (Object element : collection) {
+      if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(element))) {
+        action.accept(element, elementKeys.get(index));
+      }
+      index++;
+    }
+  }
+
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
@@ -462,17 +487,34 @@ public abstract class SecretsManager {
                             fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
-                    // set new value
+                    // set new value. A null means the field was cleared, so there is nothing left
+                    // to encrypt and the entity must not keep a reference to a removed secret.
                     ReflectionUtil.setValueInMethod(
                         toEncryptObject,
-                        Fernet.isTokenized(newFieldValue)
+                        newFieldValue == null || Fernet.isTokenized(newFieldValue)
                             ? newFieldValue
                             : store ? fernet.encrypt(newFieldValue) : newFieldValue,
                         toSet);
+                  } else {
+                    forEachTraversableElement(
+                        obj,
+                        (element, elementKey) ->
+                            encryptPasswordFields(
+                                element,
+                                buildSecretId(
+                                    false,
+                                    secretId,
+                                    fieldName.toLowerCase(Locale.ROOT),
+                                    elementKey),
+                                store));
                   }
                 });
       }
       return toEncryptObject;
+    } catch (WebServiceException e) {
+      // Already classified with its own status and user-facing message — the reserved-value
+      // rejection in storeValue, for one. Re-wrapping would relabel a deliberate 400 as a 500.
+      throw e;
     } catch (Exception e) {
       String msg =
           String.format(
@@ -507,6 +549,9 @@ public abstract class SecretsManager {
                       toDecryptObject,
                       Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
                       toSet);
+                } else {
+                  forEachTraversableElement(
+                      obj, (element, elementKey) -> decryptPasswordFields(element));
                 }
               });
       return toDecryptObject;
@@ -547,6 +592,8 @@ public abstract class SecretsManager {
                           ? getSecretValue(fieldValue)
                           : fieldValue,
                       toSet);
+                } else {
+                  forEachTraversableElement(obj, (element, elementKey) -> getSecretFields(element));
                 }
               });
       return toDecryptObject;
@@ -669,6 +716,17 @@ public abstract class SecretsManager {
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                   deleteSecretInternal(
                       buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                } else {
+                  forEachTraversableElement(
+                      obj,
+                      (element, elementKey) ->
+                          deleteSecrets(
+                              element,
+                              buildSecretId(
+                                  false,
+                                  secretId,
+                                  fieldName.toLowerCase(Locale.ROOT),
+                                  elementKey)));
                 }
               });
     }

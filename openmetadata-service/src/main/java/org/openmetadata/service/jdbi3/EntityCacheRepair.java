@@ -23,12 +23,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.openmetadata.service.cache.CacheBundle;
 
 /**
- * Deferred re-eviction of the in-JVM entity caches ({@link EntityRepository#CACHE_WITH_ID} and
- * {@link EntityRepository#CACHE_WITH_NAME}). Backstops the nanosecond race where a cache loader's
- * put lands after the writer's inline invalidate: a short while after every write, the touched keys
- * are invalidated again so any racing stale put is evicted.
+ * Deferred re-eviction of the entity caches — the in-JVM ones ({@link
+ * EntityRepository#CACHE_WITH_ID} and {@link EntityRepository#CACHE_WITH_NAME}) and, when Redis is
+ * configured, the L2. Backstops the nanosecond race where a cache loader's put lands after the
+ * writer's invalidate: a short while after every write, the touched keys are invalidated again so
+ * any racing stale put is evicted.
  */
 @Slf4j
 public final class EntityCacheRepair {
@@ -91,6 +93,7 @@ public final class EntityCacheRepair {
         EntityRepository.CACHE_WITH_NAME.invalidate(
             EntityRepository.cacheNameKey(request.entityType(), request.originalFqn()));
       }
+      repairRedisL2(request);
     } catch (RuntimeException e) {
       LOG.debug(
           "Deferred entity cache repair failed for type={} id={} fqn={}",
@@ -99,6 +102,19 @@ public final class EntityCacheRepair {
           request.fqn(),
           e);
     }
+  }
+
+  /**
+   * Same backstop for the Redis L2. The writer's own eviction is issued after its transaction
+   * commits, which leaves only the narrow window where a reader that loaded the pre-commit row
+   * writes its key back <em>after</em> that eviction; this second pass evicts it. Skipped entirely
+   * when no Redis cache is configured, so non-cached deployments pay nothing.
+   */
+  private static void repairRedisL2(RepairRequest request) {
+    if (request.id() == null || CacheBundle.getCachedEntityDao() == null) {
+      return;
+    }
+    EntityRepository.invalidateRedisL2ForEntity(request.entityType(), request.id(), request.fqn());
   }
 
   private static ScheduledExecutorService createExecutor() {

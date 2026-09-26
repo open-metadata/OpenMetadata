@@ -234,9 +234,14 @@ export const setOidcTokenStrict = async (token: string): Promise<void> => {
       await swTokenStorage.setItem(APP_STATE_KEY, stateStr);
     } catch (error) {
       // Mark broken so other callers stop paying the controller-wait
-      // timeout, then re-throw — the in-memory fallback doesn't survive
-      // reload, so a strict caller can't treat this as a success.
+      // timeout. Also seed `inMemoryState` with the fresh token so this
+      // tab's own `getOidcToken` still returns it — the throw only signals
+      // to callers (and the CrossTabLock broadcast) that the write is
+      // NOT durable across reload; there is no reason for the current tab
+      // to lose an in-hand valid token because a sibling tab won't be
+      // able to see it after F5. Greptile P1 (r4039793087).
       markSwStorageBroken(error);
+      inMemoryState = { ...state };
 
       throw error;
     }
@@ -245,6 +250,11 @@ export const setOidcTokenStrict = async (token: string): Promise<void> => {
   }
 
   if (swStorageBroken) {
+    // Same rationale as above: keep the token in memory so the current tab
+    // stays authenticated for its lifetime, and let the caller distinguish
+    // "not durably persisted" from "lost".
+    inMemoryState = { ...state };
+
     throw new Error(
       'Token storage service worker is unreachable — token cannot be persisted for cross-tab reload'
     );
@@ -252,7 +262,23 @@ export const setOidcTokenStrict = async (token: string): Promise<void> => {
 
   // Browsers without SW/IndexedDB fall back to localStorage; a quota /
   // security-mode throw here is a real persistence failure — propagate it.
-  localStorage.setItem(APP_STATE_KEY, stateStr);
+  // Also stage the fresh token in memory and flip `swStorageBroken` so
+  // subsequent `getOidcToken()` reads see the token via the in-memory
+  // fallback rather than the same throwing localStorage. Without both
+  // steps the coordinator's "renewer succeeded, publish threw →
+  // applyRefreshed locally" branch returns the token but downstream
+  // reads still miss it, leaving auth state inconsistent. Greptile
+  // (r4053121387). The `swStorageBroken` flag is per-tab-lifetime by
+  // design; a persistent-storage failure on this path is functionally
+  // the same as the SW-unreachable case that flag already gates.
+  try {
+    localStorage.setItem(APP_STATE_KEY, stateStr);
+  } catch (error) {
+    markSwStorageBroken(error);
+    inMemoryState = { ...state };
+
+    throw error;
+  }
 };
 
 export const getRefreshToken = async (): Promise<string> => {

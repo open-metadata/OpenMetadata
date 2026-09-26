@@ -79,6 +79,7 @@ export const getTestCaseManageMenuItems = (
               entity: t('label.test-case-lowercase-plural'),
             }),
             wrapper: withLimit,
+            limitResource: 'testCase',
             onClick: () =>
               navigate(
                 withSource(getEntityImportPath(EntityType.TEST_CASE, fqn))
@@ -114,6 +115,7 @@ export const getTestCaseManageMenuItems = (
               entity: t('label.test-case-lowercase-plural'),
             }),
             wrapper: withLimit,
+            limitResource: 'testCase',
             onClick: () =>
               navigate(
                 withSource(getEntityBulkEditPath(EntityType.TEST_CASE, fqn))
@@ -146,12 +148,13 @@ export const ExtraTestCaseDropdownOptions = (
         icon={item.icon}
         id={item.key}
         name={item.title}
-        onClick={item.onClick}
       />
     );
 
     return {
       key: item.key,
       label: item.wrapper ? item.wrapper(label) : label,
+      limitResource: item.limitResource,
+      onClick: item.onClick,
     };
   });

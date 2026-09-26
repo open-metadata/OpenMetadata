@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/dashboardServiceMetadataPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DashboardServiceMetadataPipeline",
   "type": "object",
   "description": "DashboardService Metadata Pipeline Configuration.",
@@ -95,6 +95,12 @@
       "type": "boolean",
       "default": true,
       "title": "Include Data Models"
+    },
+    "includeMetrics": {
+      "title": "Include Metrics",
+      "description": "Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML measures) as first-class Metric entities. Metric names are unique across the whole OpenMetadata instance, so this is disabled by default. Measures are discovered from the data models that expose them, so this requires 'Include Data Models' to be enabled as well.",
+      "type": "boolean",
+      "default": false
     },
     "includeDraftDashboard": {
       "title": "Include Draft Dashboards",

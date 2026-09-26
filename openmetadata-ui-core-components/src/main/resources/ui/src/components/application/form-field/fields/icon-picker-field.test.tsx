@@ -27,7 +27,7 @@ describe('IconPickerField', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Select icon' })).toHaveStyle({
-      backgroundColor: 'var(--color-entity-palette-amber)',
+      backgroundColor: 'var(--color-entity-palette-amber, #FFB01A)',
     });
   });
 });

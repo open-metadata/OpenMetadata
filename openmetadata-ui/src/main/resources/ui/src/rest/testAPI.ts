@@ -89,6 +89,7 @@ export type ListTestCaseParamsBySearch = Omit<
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  includePermissions?: boolean;
   testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
 
@@ -98,6 +99,11 @@ export type ListTestDefinitionsParams = ListParams & {
   supportedDataType?: string;
   enabled?: boolean;
   supportedService?: string;
+  /** Free-text match against the test definition name and display name. */
+  q?: string;
+  /** One of `displayName`, `entityType`, `testPlatforms`. */
+  sortField?: string;
+  sortOrder?: 'asc' | 'desc';
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -248,10 +254,22 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
+export type AddTestCaseListFilter = {
+  q?: string;
+  testCaseStatus?: string;
+  testCaseType?: string;
+  entityLink?: string;
+  includeAllTests?: boolean;
+  columnName?: string;
+};
+
 export type AddTestCaseListSubmitPayload = {
   selectAll: boolean;
   includeIds: string[];
   excludeIds: string[];
+  // Active search/filter carried with a `selectAll` request so the backend
+  // resolves "all" to the filtered subset shown in the UI, not every test case.
+  filter?: AddTestCaseListFilter;
 };
 
 export const addTestCasesToLogicalTestSuiteBulk = async (
@@ -264,7 +282,7 @@ export const addTestCasesToLogicalTestSuiteBulk = async (
       ? BundleSuiteBulkAddMode.All
       : BundleSuiteBulkAddMode.IDS,
     selection: payload.selectAll
-      ? { filter: { excludeIds: payload.excludeIds } }
+      ? { filter: { excludeIds: payload.excludeIds, ...payload.filter } }
       : { ids: payload.includeIds },
   };
   const response = await APIClient.put<

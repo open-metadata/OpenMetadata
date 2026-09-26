@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -48,8 +49,10 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequest;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkAll;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
+import org.openmetadata.schema.api.tests.BundleSuiteBulkRemoveRequest;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.Filter;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -64,7 +67,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.limits.Limits;
@@ -1000,7 +1002,64 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestSuite testSuite =
         Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "domains,owners", null, false);
 
-    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().id(id).build();
+    authorizeLogicalTestCaseDeletion(securityContext, testSuite, List.of(id));
+
+    DeleteResponse<TestCase> response =
+        repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
+    return response.toResponse();
+  }
+
+  @POST
+  @Path("/logicalTestCases/bulk/remove")
+  @Operation(
+      operationId = "removeManyTestCasesFromBundleTestSuite",
+      summary = "Remove test cases from a logical test suite",
+      description =
+          "Remove a list of test cases from a logical test suite. Ids the suite does not contain "
+              + "are ignored.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully removed the test cases from the logical test suite.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test suite for instance {testSuiteId} is not found")
+      })
+  public Response removeManyTestCasesFromBundleTestSuite(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid BundleSuiteBulkRemoveRequest bundleSuiteBulkRemoveRequest) {
+
+    TestSuite testSuite =
+        Entity.getEntity(
+            Entity.TEST_SUITE,
+            bundleSuiteBulkRemoveRequest.getTestSuiteId(),
+            "domains,owners",
+            null,
+            false);
+
+    // Ids the suite does not contain are ignored rather than rejected, so authorization is scoped
+    // to the memberships that are really going to be removed. Authorizing every requested id would
+    // let one id that is absent, already removed, or simply not readable by the caller fail the
+    // whole request for callers who rely on per test case delete permission.
+    List<UUID> testCaseIds =
+        repository.getLogicalTestSuiteMemberIds(
+            testSuite.getId(), listOrEmpty(bundleSuiteBulkRemoveRequest.getTestCaseIds()));
+    authorizeLogicalTestCaseDeletion(securityContext, testSuite, testCaseIds);
+
+    if (testCaseIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE)
+          .toResponse();
+    }
+    return repository.deleteTestCasesFromLogicalTestSuite(testSuite, testCaseIds).toResponse();
+  }
+
+  private void authorizeLogicalTestCaseDeletion(
+      SecurityContext securityContext, TestSuite testSuite, List<UUID> testCaseIds) {
     OperationContext testCaseDeleteOpContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
 
@@ -1008,16 +1067,25 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         TestCaseResourceContext.builder().entity(testSuite).build();
     OperationContext testSuiteEditAllOpContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+    AuthRequest testSuiteEditAllRequest = new AuthRequest(testSuiteEditAllOpContext, testSuiteRC);
 
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(testCaseDeleteOpContext, testCaseRC),
-            new AuthRequest(testSuiteEditAllOpContext, testSuiteRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    if (testCaseIds.isEmpty()) {
+      authorizer.authorizeRequests(
+          securityContext, List.of(testSuiteEditAllRequest), AuthorizationLogic.ANY);
+      return;
+    }
 
-    DeleteResponse<TestCase> response =
-        repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
-    return response.toResponse();
+    // Each test case is checked on its own: the caller either can delete that test case or can
+    // edit the suite it is being removed from
+    for (UUID testCaseId : testCaseIds) {
+      List<AuthRequest> requests =
+          List.of(
+              testSuiteEditAllRequest,
+              new AuthRequest(
+                  testCaseDeleteOpContext,
+                  TestCaseResourceContext.builder().id(testCaseId).build()));
+      authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+    }
   }
 
   @PUT
@@ -1266,6 +1334,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     BundleSuiteBulkAddRequestBulkAll bulkAll =
         JsonUtils.convertValue(
             bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkAll.class);
+    Filter filter = bulkAll.getFilter();
+    if (hasSearchCriteria(filter)) {
+      return addFilteredTestCasesToBundleSuite(testSuite, filter).toResponse();
+    }
     return repository
         .addAllTestCasesToLogicalTestSuite(testSuite, getExcludedIdsFromSelection(bulkAll))
         .toResponse();
@@ -1425,7 +1497,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   protected static ResourceContextInterface getResourceContext(
-      String entityLink, Filter<?> filter) {
+      String entityLink, org.openmetadata.service.jdbi3.Filter<?> filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);
@@ -1647,8 +1719,68 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       return List.of();
     }
 
-    org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
+    Filter filter = bulkAll.getFilter();
     return filter.getExcludeIds();
+  }
+
+  private static final String TEST_CASE_TYPE_ALL = "all";
+
+  private boolean hasSearchCriteria(Filter filter) {
+    if (filter == null) {
+      return false;
+    }
+    String type = filter.getTestCaseType();
+    return !nullOrEmpty(filter.getQ())
+        || filter.getTestCaseStatus() != null
+        || (!nullOrEmpty(type) && !TEST_CASE_TYPE_ALL.equals(type))
+        || !nullOrEmpty(filter.getEntityLink())
+        || !nullOrEmpty(filter.getColumnName());
+  }
+
+  private PutResponse<TestSuite> addFilteredTestCasesToBundleSuite(
+      TestSuite testSuite, Filter filter) {
+    SearchListFilter searchListFilter = buildBulkSearchListFilter(filter);
+    // Deep-pagination search expects a full query body ({"query": {...}}); getFilterQuery()
+    // returns only the inner bool clause, which listWithDeepPagination silently drops (adds all).
+    String searchFilter = searchListFilter.getCondition(Entity.TEST_CASE);
+    List<UUID> excludeIds =
+        nullOrEmpty(filter.getExcludeIds()) ? List.of() : filter.getExcludeIds();
+    return repository.addMatchingTestCasesToLogicalTestSuite(
+        testSuite, searchFilter, filter.getQ(), excludeIds);
+  }
+
+  private SearchListFilter buildBulkSearchListFilter(Filter filter) {
+    String status = filter.getTestCaseStatus() == null ? null : filter.getTestCaseStatus().value();
+    String type =
+        nullOrEmpty(filter.getTestCaseType()) ? TEST_CASE_TYPE_ALL : filter.getTestCaseType();
+    boolean includeAllTests = Boolean.TRUE.equals(filter.getIncludeAllTests());
+    SearchListFilter searchListFilter =
+        buildSearchListFilter(
+            Include.NON_DELETED,
+            null,
+            includeAllTests,
+            status,
+            type,
+            null,
+            null,
+            filter.getQ(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            filter.getColumnName(),
+            null);
+    if (!nullOrEmpty(filter.getEntityLink())) {
+      searchListFilter.addQueryParam(
+          "entityFQN", EntityLink.parse(filter.getEntityLink()).getFullyQualifiedFieldValue());
+    }
+    return searchListFilter;
   }
 
   @Override

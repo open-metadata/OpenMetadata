@@ -14,6 +14,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import QueryString from 'qs';
 import { act } from 'react';
 import { useParams } from 'react-router-dom';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import {
@@ -23,7 +24,6 @@ import {
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useTestSuitesListPage } from './useTestSuitesListPage';
 
@@ -58,10 +58,6 @@ jest.mock('../../../../pages/DataQuality/DataQualityProvider', () => ({
 
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestSuitesBySearch: jest.fn(),
-}));
-
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -130,7 +126,6 @@ describe('useTestSuitesListPage', () => {
     mockUsePaging.paging = {};
     mockUsePaging.showPagination = false;
     (useParams as jest.Mock).mockReturnValue({});
-    (getPrioritizedViewPermission as jest.Mock).mockReturnValue(true);
     (useDataQualityProvider as jest.Mock).mockReturnValue({
       isTestCaseSummaryLoading: false,
       testCaseSummary: {},
@@ -236,13 +231,21 @@ describe('useTestSuitesListPage', () => {
   });
 
   it('should not fetch and should stop loading when view permission is absent', async () => {
-    (getPrioritizedViewPermission as jest.Mock).mockReturnValue(false);
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      permissions: { testSuite: {} },
+    });
 
-    const { result } = renderHook(() => useTestSuitesListPage());
+    try {
+      const { result } = renderHook(() => useTestSuitesListPage());
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(mockGetListTestSuitesBySearch).not.toHaveBeenCalled();
+      expect(mockGetListTestSuitesBySearch).not.toHaveBeenCalled();
+    } finally {
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        permissions: { testSuite: { ViewAll: true, ViewBasic: true } },
+      });
+    }
   });
 
   it('should ignore a stale out-of-order response and keep only the latest request data', async () => {

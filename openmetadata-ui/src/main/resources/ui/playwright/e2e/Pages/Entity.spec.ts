@@ -57,6 +57,7 @@ import {
   assignTagToChildren,
   closeColumnDetailPanel,
   copyAndGetClipboardText,
+  openClassificationTagPicker,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
@@ -449,12 +450,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         );
 
         // Open Tag Selector
-        await tagRow
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
+        await openClassificationTagPicker(
+          page,
+          tagRow.getByTestId('tags-container').getByTestId('add-tag')
+        );
 
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.getByTestId('classification-tag-picker-popover')
+        ).toBeVisible();
         await expect(
           page.getByTestId('glossary-term-picker-popover')
         ).not.toBeAttached();
@@ -468,16 +471,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         );
 
         await expect(
-          page.locator('.async-select-list-dropdown')
+          page.getByTestId('classification-tag-picker-popover')
         ).not.toBeVisible();
 
         // Re-open Tag Selector — should close Glossary Selector
-        await tagRow
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
+        await openClassificationTagPicker(
+          page,
+          tagRow.getByTestId('tags-container').getByTestId('add-tag')
+        );
 
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.getByTestId('classification-tag-picker-popover')
+        ).toBeVisible();
         await expect(
           page.getByTestId('glossary-term-picker-popover')
         ).not.toBeAttached();

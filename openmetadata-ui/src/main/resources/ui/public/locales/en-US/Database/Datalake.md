@@ -134,7 +134,7 @@ $$section
 This is the ID of the project associated with the service account. To fetch this key, look for the value associated with the `project_id` key in the service account file.
 
 - **Single Project ID**: Fetch Resources from Single Bigquery/GCP Project ID
-- **Mutiple Project IDs**: Fetch Resources from Multiple Bigquery/GCP Project ID
+- **Multiple Project IDs**: Fetch Resources from Multiple Bigquery/GCP Project ID
 
 #### Find your Project ID
 

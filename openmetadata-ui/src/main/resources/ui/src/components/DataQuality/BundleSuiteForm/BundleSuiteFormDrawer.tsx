@@ -154,6 +154,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
         selectAll: values.testCaseSelection?.selectAll,
         includeIds: values.testCaseSelection?.includeIds,
         excludeIds: values.testCaseSelection?.excludeIds,
+        filter: values.testCaseSelection?.filter,
       });
 
       if (values.enableScheduler && ingestionPipeline.Create) {

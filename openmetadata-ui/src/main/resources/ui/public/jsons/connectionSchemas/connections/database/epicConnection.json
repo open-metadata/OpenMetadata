@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EpicConnection",
   "description": "Epic FHIR Connection Config",
   "type": "object",

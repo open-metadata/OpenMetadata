@@ -1097,8 +1097,11 @@ class SnowflakeSource(
         ``threads=True`` and each worker walks a different schema: at the default
         capacity of 2 a shared cache would thrash, every worker evicting the
         others' schema. Bounded because a schema with very many semantic objects
-        would otherwise be retained for the whole database run (``info_cache``
-        only clears between databases).
+        would otherwise be retained for the whole database run.
+
+        Entries are keyed by database *and* schema: the cache outlives a single
+        database (with ``threads=1`` every database runs on the same thread), and
+        the same schema name in two databases holds different semantic views.
         """
         if not hasattr(self._semantic_catalog_local, "cache"):
             self._semantic_catalog_local.cache = LRUCache(SEMANTIC_CATALOG_CACHE_SIZE)
@@ -1112,8 +1115,12 @@ class SnowflakeSource(
         the bulk query with errno 90030, signalling the per-view fallback.
         """
         cache = self._semantic_catalog_cache()
-        if schema in cache:
-            return cache.get(schema)
+        # The bulk query reads the current database's information_schema, so a
+        # schema-only key would hand a later database's same-named schema the
+        # catalog of an earlier one.
+        cache_key = fqn._build(self.context.get().database, schema)  # pyright: ignore[reportAttributeAccessIssue]
+        if cache_key in cache:
+            return cache.get(cache_key)
 
         catalog: SemanticCatalog | None = {}
         try:
@@ -1136,7 +1143,7 @@ class SnowflakeSource(
 
         # The ``None`` 90030 sentinel is cached too, so we do not re-run the bulk
         # query for every view in the schema just to fail again.
-        cache.put(schema, catalog)
+        cache.put(cache_key, catalog)
         return catalog
 
     def _execute_semantic_query(self, query: str) -> list[tuple]:

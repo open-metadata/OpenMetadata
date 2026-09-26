@@ -11,32 +11,33 @@
  *  limitations under the License.
  */
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 
 describe('dqFilterChip utils', () => {
   describe('chipTriggerClassName', () => {
-    it('should carry the borderless quick-filter treatment', () => {
-      expect(chipTriggerClassName).toContain('tw:text-tertiary');
-      expect(chipTriggerClassName).toContain('tw:p-1');
+    it('should carry the bordered pill treatment', () => {
+      // The owner trigger sits beside FilterSelect chips rendered with
+      // `bordered`; a borderless trigger here is the visual drift this guards
+      // against.
+      expect(chipTriggerClassName).toContain('tw:shadow-xs-skeuomorphic');
+      expect(chipTriggerClassName).toContain('tw:after:outline-primary');
+      expect(chipTriggerClassName).toContain('tw:bg-surface');
+      expect(chipTriggerClassName).toContain('tw:px-3.5');
     });
 
-    it('should not carry the bordered chip treatment', () => {
-      // The owner trigger sits beside FilterSelect chips rendered as borderless
-      // buttons; a border or skeuomorphic shadow here is the visual drift this
-      // guards against.
-      expect(chipTriggerClassName).not.toContain('shadow-xs-skeuomorphic');
-      expect(chipTriggerClassName).not.toContain('after:outline-primary');
+    it('should not carry the borderless quick-filter treatment', () => {
+      expect(chipTriggerClassName).not.toContain('tw:text-tertiary');
+      expect(chipTriggerClassName).not.toContain('tw:p-1 ');
     });
   });
 
-  describe('chipTriggerSelectedClassName', () => {
-    it('should brand the trigger the way FilterSelect does', () => {
-      expect(chipTriggerSelectedClassName).toContain(
-        'tw:text-fg-brand-primary'
-      );
+  describe('chipChevronClassName', () => {
+    it('should stay neutral like the FilterSelect trigger chevron', () => {
+      expect(chipChevronClassName).toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName).not.toContain('brand');
     });
   });
 

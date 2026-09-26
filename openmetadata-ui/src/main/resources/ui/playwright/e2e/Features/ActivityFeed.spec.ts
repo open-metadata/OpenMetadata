@@ -671,9 +671,9 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await expect(notificationBox).toBeVisible();
 
-      const mentionsTab = adminPage
-        .locator('.notification-box')
-        .getByText('Mentions');
+      const mentionsTab = notificationBox.getByRole('tab', {
+        name: /Mentions/,
+      });
 
       const mentionsFeedResponse = adminPage.waitForResponse(
         (response) =>
@@ -1178,7 +1178,10 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     // fetch cannot still be in flight when the listener below is attached.
     await waitForBothFeedKinds(feedList);
 
-    await adminPage.getByRole('menuitem', { name: /task/i }).click();
+    await adminPage
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i })
+      .click();
     await waitForAllLoadersToDisappear(adminPage);
     await expect(adminPage).toHaveURL(/activity_feed\/tasks/);
 

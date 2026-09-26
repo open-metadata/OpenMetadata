@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/system/testLoginTokenRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TestLoginTokenRequest",
   "description": "Admin-only request to validate a browser-obtained OIDC id_token against a candidate (unsaved) security configuration. Used to confirm a real login would resolve the expected identity before saving the configuration.",
   "type": "object",

@@ -13,9 +13,11 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
 import GlossaryLeftPanel from './GlossaryLeftPanel.component';
 
 const mockNavigate = jest.fn();
+let mockFqn = '';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
@@ -23,6 +25,27 @@ jest.mock('react-router-dom', () => ({
   }),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({ fqn: mockFqn })),
+}));
+
+const glossaries = [
+  {
+    ...mockedGlossaries[0],
+    id: 'first-glossary-id',
+    name: 'FirstGlossary',
+    displayName: 'First Glossary',
+    fullyQualifiedName: 'FirstGlossary',
+  },
+  {
+    ...mockedGlossaries[0],
+    id: 'second-glossary-id',
+    name: 'SecondGlossary',
+    displayName: 'Second Glossary',
+    fullyQualifiedName: 'SecondGlossary',
+  },
+];
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
@@ -61,23 +84,12 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../components/common/LeftPanelCard/LeftPanelCard', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="glossary-left-panel-container">{children}</div>
-    ));
-});
-
 describe('Test GlossaryLeftPanel component', () => {
   it('GlossaryLeftPanel Page Should render', async () => {
     act(() => {
       render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
     });
 
-    expect(
-      await screen.findByTestId('glossary-left-panel-container')
-    ).toBeInTheDocument();
     expect(await screen.findByTestId('add-glossary')).toBeInTheDocument();
     expect(
       await screen.findByTestId('glossary-left-panel')
@@ -103,19 +115,42 @@ describe('Test GlossaryLeftPanel component', () => {
     expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
-  it('Menu click should work properly', async () => {
-    act(() => {
-      render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
+  it('should render each glossary as a link to its page', async () => {
+    render(<GlossaryLeftPanel glossaries={glossaries} />);
+
+    const link = await screen.findByRole('link', {
+      name: glossaries[1].displayName,
     });
 
-    const menuItem = await screen.findByText(mockedGlossaries[0].displayName);
+    expect(link).toHaveAttribute(
+      'href',
+      getGlossaryPath(glossaries[1].fullyQualifiedName)
+    );
+  });
 
-    expect(menuItem).toBeInTheDocument();
+  it('should mark the first glossary as current when no fqn is in the url', async () => {
+    mockFqn = '';
+    render(<GlossaryLeftPanel glossaries={glossaries} />);
 
-    await act(async () => {
-      fireEvent.click(menuItem);
-    });
+    expect(
+      await screen.findByRole('link', { name: glossaries[0].displayName })
+    ).toHaveAttribute('aria-current', 'page');
+    expect(
+      screen.getByRole('link', { name: glossaries[1].displayName })
+    ).not.toHaveAttribute('aria-current');
+  });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  it('should mark the owning glossary as current for a nested term fqn', async () => {
+    mockFqn = `${glossaries[1].fullyQualifiedName}.Term`;
+    render(<GlossaryLeftPanel glossaries={glossaries} />);
+
+    expect(
+      await screen.findByRole('link', { name: glossaries[1].displayName })
+    ).toHaveAttribute('aria-current', 'page');
+    expect(
+      screen.getByRole('link', { name: glossaries[0].displayName })
+    ).not.toHaveAttribute('aria-current');
+
+    mockFqn = '';
   });
 });

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ClickzettaConnection",
   "description": "ClickZetta Database Connection Config",
   "type": "object",
@@ -57,7 +56,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Basic Auth",
           "description": "Common Database Connection Config",
           "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",

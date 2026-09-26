@@ -281,6 +281,66 @@ describe('buildTestSuitePipelinePayload', () => {
 
     expect(payload.sourceConfig.config?.testCases).toBeUndefined();
   });
+
+  it('sets entityFullyQualifiedName to the table FQN, not the test suite FQN', () => {
+    const payload = buildTestSuitePipelinePayload(
+      {
+        testLevel: TestLevel.TABLE,
+        cron: '0 0 * * *',
+        selectAllTestCases: true,
+      },
+      {
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
+        createdTestCaseName: 'tc1',
+        selectedTable: 'svc.db.sch.t',
+      }
+    );
+
+    expect(payload.sourceConfig.config?.entityFullyQualifiedName).toBe(
+      'svc.db.sch.t'
+    );
+  });
+
+  it('falls back to the table entity FQN when selectedTable is absent', () => {
+    const payload = buildTestSuitePipelinePayload(
+      {
+        testLevel: TestLevel.TABLE,
+        cron: '0 0 * * *',
+        selectAllTestCases: true,
+      },
+      {
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
+        createdTestCaseName: 'tc1',
+        table: makeTable('svc.db.sch.t'),
+      }
+    );
+
+    expect(payload.sourceConfig.config?.entityFullyQualifiedName).toBe(
+      'svc.db.sch.t'
+    );
+  });
+
+  it('keeps special characters in entityFullyQualifiedName while sanitising the display name', () => {
+    const payload = buildTestSuitePipelinePayload(
+      {
+        testLevel: TestLevel.TABLE,
+        cron: '0 0 * * *',
+        selectAllTestCases: true,
+      },
+      {
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
+        createdTestCaseName: 'tc1',
+        selectedTable: 'my svc.db.sch.t',
+      }
+    );
+
+    expect(payload.sourceConfig.config?.entityFullyQualifiedName).toBe(
+      'my svc.db.sch.t'
+    );
+    expect(payload.displayName).toEqual(
+      expect.stringMatching(/^my_svc_db_sch_t_TestSuite_/)
+    );
+  });
 });
 
 describe('buildEditDefaults', () => {

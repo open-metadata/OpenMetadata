@@ -180,6 +180,20 @@ public class FullyQualifiedName {
   }
 
   /**
+   * Encodes a value so that {@link #unquoteName} gives it back unchanged, i.e. {@code
+   * unquoteName(escapeForUnquote(v)).equals(v)} for every {@code v}. {@link #quoteName} is not that
+   * inverse — it unquotes a value like {@code "a"} that does not need quoting, which loses the
+   * quotes a caller meant literally. Needed wherever arbitrary text travels through a field that is
+   * unquoted on the way back, such as the name half of a paging cursor built from a display name.
+   */
+  public static String escapeForUnquote(String value) {
+    if (value == null || !isQuotedName(value)) {
+      return value;
+    }
+    return "\"" + value.replace("\"", "\"\"") + "\"";
+  }
+
+  /**
    * Verifies that a name can be safely encoded into and parsed back out of a fully qualified name.
    * Nested objects (table columns, pipeline tasks, topic/searchIndex/apiEndpoint fields, mlFeatures)
    * carry FQNs derived from their {@code name} but are not hash-validated at insert time, so a name

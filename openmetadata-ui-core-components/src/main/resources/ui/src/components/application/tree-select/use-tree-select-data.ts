@@ -30,6 +30,8 @@ interface UseTreeSelectDataOptions<T> {
   fetchData: TreeSelectDataFetcher<T>;
   searchTerm?: string;
   pageSize?: number;
+  // False holds off every fetch, so a closed picker on each row costs no request.
+  enabled?: boolean;
 }
 
 interface UseTreeSelectDataReturn<T> {
@@ -43,16 +45,28 @@ interface UseTreeSelectDataReturn<T> {
 const insertChildrenIntoTree = <T>(
   nodes: TreeSelectNode<T>[],
   parentId: string,
-  children: TreeSelectNode<T>[]
+  children: TreeSelectNode<T>[],
+  hasMore?: boolean
 ): TreeSelectNode<T>[] =>
   nodes.map((node) => {
     if (node.id === parentId) {
-      return { ...node, children, isLeaf: children.length === 0 };
+      // An empty result must not make it a leaf, or it loses its chevron.
+      return {
+        ...node,
+        children,
+        hasMoreChildren: hasMore === true,
+        isLeaf: children.length > 0 ? false : node.isLeaf,
+      };
     }
     if (node.children) {
       return {
         ...node,
-        children: insertChildrenIntoTree(node.children, parentId, children),
+        children: insertChildrenIntoTree(
+          node.children,
+          parentId,
+          children,
+          hasMore
+        ),
       };
     }
 
@@ -63,6 +77,7 @@ export const useTreeSelectData = <T = unknown>({
   fetchData,
   searchTerm = '',
   pageSize = 50,
+  enabled = true,
 }: UseTreeSelectDataOptions<T>): UseTreeSelectDataReturn<T> => {
   const [state, setState] = useState<TreeSelectDataState<T>>({
     data: [],
@@ -124,7 +139,8 @@ export const useTreeSelectData = <T = unknown>({
             nextData = insertChildrenIntoTree(
               prev.data,
               params.parentId,
-              response.nodes
+              response.nodes,
+              response.hasMore
             );
             nextLoadingNodes.delete(params.parentId);
           } else {
@@ -183,13 +199,15 @@ export const useTreeSelectData = <T = unknown>({
   );
 
   useEffect(() => {
-    fetchTreeData({ searchTerm });
+    if (enabled) {
+      fetchTreeData({ searchTerm });
+    }
 
     return () => {
       abortControllerRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]);
+  }, [searchTerm, enabled]);
 
   const loadChildren = useCallback(
     async (parentId: string) => {

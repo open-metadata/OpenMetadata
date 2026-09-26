@@ -20,6 +20,26 @@ export const TEST_SUMMARY_CHART_MARGIN = {
 
 export const STATUS_DOT_RADIUS = 4;
 export const STATUS_DOT_SIZE = STATUS_DOT_RADIUS * 2;
+export const STATUS_DOT_RING_WIDTH = 2;
+
+// Surface colour rather than white, so the outline follows dark mode.
+export const DOT_OUTLINE = 'var(--om-color-bg-primary)';
+export const PLOT_BACKGROUND = 'var(--om-color-bg-brand)';
+// Lighter than the mock's wash, which read as a solid fill across wide
+// plots; the grid stays visible through it.
+export const PLOT_BACKGROUND_OPACITY = 0.45;
+// Green-3 at this opacity over the surface lands within two points of the
+// mock's range band; the shared translucent token is nearly three times as
+// strong and floods a wide range.
+export const BOUND_AREA_OPACITY = 0.07;
+
+export const SELECTED_DOT_HALO = { spread: 4, opacity: 0.2 } as const;
+
+// A dot plus its halo, so a selected run at either end of the axis is not cut.
+export const SELECTED_DOT_EDGE_PADDING =
+  STATUS_DOT_RADIUS + SELECTED_DOT_HALO.spread + 4;
+
+export const EXPECTATION_LABEL_HALO = 4;
 
 export const TOOLTIP_GAP = STATUS_DOT_RADIUS;
 export const TOOLTIP_CLOSE_DELAY = 250;
