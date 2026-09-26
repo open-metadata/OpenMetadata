@@ -377,11 +377,6 @@
       "count": 31
     }
   },
-  "playwright/e2e/Features/SSOTestLogin.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/SampleDataTableOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 5
