@@ -405,11 +405,11 @@ export const fillRule = async (
         }
       }
 
-      await page
-        .getByTestId('advanced-search-modal')
-        .getByRole('heading')
-        .click({ position: { x: 4, y: 4 }, timeout: 10_000 });
+      // Escape reaches the popup, not the modal: react-aria gives it to the
+      // topmost overlay.
+      await dropdownInput.press('Escape');
       await expect(dropdown).toBeHidden({ timeout: 5_000 });
+      await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
     }
   }
 };
