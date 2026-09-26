@@ -81,8 +81,8 @@ DBTCLOUD_ERRORS = ErrorPack(
     ),
     when(http_status(401, extract=_dbt_status)).diagnose(
         "Authentication failed",
-        fix="dbt Cloud rejected the token. Check the Token is a valid, unexpired service token or "
-        "personal access token.",
+        fix="dbt Cloud rejected the token. Check Token holds a current service token or personal access token, copied "
+        "whole and not expired.",
         doc=TOKENS_DOC,
     ),
     when(http_status(403, extract=_dbt_status)).diagnose(
@@ -97,31 +97,31 @@ DBTCLOUD_ERRORS = ErrorPack(
     ),
     when(http_status(429, extract=_dbt_status)).diagnose(
         "Rate limited",
-        fix="dbt Cloud rate limits the API at 5,000 requests per minute per account and then "
-        "enforces a five-minute cooldown. Retry in five minutes.",
+        fix="dbt Cloud limits the API to 5,000 requests a minute per account, and then makes you wait. Try again in about "
+        "five minutes.",
         doc=RATE_LIMITS_DOC,
     ),
     # A Host that is a valid URL but not the dbt Cloud API (e.g. the marketing site)
     # redirects to an HTML page, which answers 200 and fails to decode.
     when(Matchers.exception(JSONDecodeError)).diagnose(
         "Host is not the dbt Cloud API",
-        fix="Host answered with a response that is not dbt Cloud API JSON. Set it to your dbt "
-        "Cloud access URL, e.g. https://cloud.getdbt.com.",
+        fix="The address in Host returned something that is not the dbt Cloud API. Set it to your dbt Cloud access URL, "
+        "for example https://cloud.getdbt.com.",
     ),
     when(Matchers.exception(SSLError)).diagnose(
         "TLS verification failed",
-        fix="The host's certificate could not be verified. Check Host points at dbt Cloud and that "
-        "any TLS-intercepting proxy is trusted where ingestion runs.",
+        fix="The certificate could not be verified from where ingestion runs. Check Host points at dbt Cloud, and if your "
+        "network inspects TLS traffic, that its certificate is trusted on that machine.",
     ),
     when(Matchers.exception(Timeout)).diagnose(
         "Connection timed out",
-        fix="dbt Cloud did not answer in time. Check that a firewall or network ACL allows egress "
-        "to Host from where ingestion runs.",
+        fix="dbt Cloud did not answer in time. Check that a firewall or network ACL lets the machine ingestion runs on "
+        "reach the address in Host.",
     ),
     when(Matchers.exception(RequestsConnectionError)).diagnose(
         "Cannot reach the host",
-        fix="Check Host for typos and that it resolves from where ingestion runs. dbt Cloud is "
-        "regional - the access URL differs per region.",
+        fix="Could not reach the address in Host. Check it for typos - dbt Cloud is regional, so the access URL is "
+        "different depending on where your account is hosted.",
     ),
 )
 # NETWORK_ERRORS not folded in: the requests-typed rules above already claim every

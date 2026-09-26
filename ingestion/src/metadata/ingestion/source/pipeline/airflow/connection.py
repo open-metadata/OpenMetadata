@@ -313,41 +313,45 @@ def _db_message(*tokens: str) -> Matcher:
 AIRFLOW_ERRORS = ErrorPack(
     when(http_status(401)).diagnose(
         "Authentication failed",
-        fix="Airflow rejected the credentials. Check the username and password (or token) are correct and not expired.",
+        fix="Airflow rejected the credentials. Check the username and password - or the token, if that is how this "
+        "connection authenticates - and that they have not expired.",
     ),
     when(http_status(403)).diagnose(
         "Access denied",
-        fix="The credentials are valid but lack access. Grant this user permission to read the Airflow REST API.",
+        fix="The credentials are valid, but this user is not allowed to use the Airflow API. Give the account a role that "
+        "can read DAGs - Viewer is usually enough.",
     ),
     when(http_status(404)).diagnose(
         "Endpoint not found",
-        fix="Airflow returned 404 for this URL. Check the Host and Port point to the Airflow web "
-        "server, not a UI or console page.",
+        fix="Airflow answered, but there is nothing at that URL. Check Host and Port point at the Airflow web server "
+        "itself rather than a dashboard or console page in front of it.",
     ),
     when(http_status(429)).diagnose(
         "Rate limited",
-        fix="Airflow (or a gateway in front of it) is throttling the request. Retry in a few "
-        "minutes, or raise the rate limit for the account ingestion uses.",
+        fix="Airflow, or something in front of it, is rate limiting these requests. Wait a few minutes and try again, or "
+        "raise the limit for the account ingestion uses.",
     ),
     # A URL that is not the Airflow REST API (an SSO login page, the marketing
     # site) answers with HTML that fails to decode as JSON.
     when(Matchers.exception(JSONDecodeError)).diagnose(
         "Host is not the Airflow REST API",
-        fix="The host replied with a web page, not the Airflow REST API. Point the Host and Port "
-        "at the Airflow web server and make sure its REST API is enabled.",
+        fix="The host returned a web page rather than API data - usually a login screen or a proxy. Point Host and Port "
+        "at the Airflow web server, and check its REST API is turned on.",
     ),
     when(Matchers.exception(SSLError)).diagnose(
         "TLS verification failed",
-        fix="The server's certificate could not be verified. Check the Host, or uncheck "
-        "'Verify SSL' if you use a self-signed certificate.",
+        fix="The server's certificate could not be verified from where ingestion runs. Check Host and Port, or turn off "
+        "Verify SSL if this Airflow uses a self-signed certificate.",
     ),
     when(Matchers.exception(Timeout)).diagnose(
         "Connection timed out",
-        fix="Airflow did not respond in time. Check the Host and Port and that a firewall allows access to it.",
+        fix="Airflow did not answer in time. Check Host and Port, and that a firewall allows the machine ingestion runs "
+        "on to reach it.",
     ),
     when(Matchers.exception(RequestsConnectionError)).diagnose(
         "Cannot reach the host",
-        fix="Could not reach the host. Check the Host and Port for typos and that it is reachable.",
+        fix="Could not reach the host at all. Check Host and Port for typos, and that the machine ingestion runs on can "
+        "reach it.",
     ),
     # Metadata-DB backend path. MySQL answers a bad login with "Access denied"
     # (1045) and PostgreSQL with "password authentication failed" (28P01). Gated
@@ -355,7 +359,8 @@ AIRFLOW_ERRORS = ErrorPack(
     # mislabeled as a database problem.
     when(_db_message("access denied", "password authentication failed")).diagnose(
         "Database authentication failed",
-        fix="The Airflow metadata database rejected the credentials. Check the database username and password.",
+        fix="This connection reads Airflow's metadata database directly, and the database rejected the sign-in. Check the "
+        "username and password on the database connection, not the Airflow ones.",
     ),
 ).including(NETWORK_ERRORS)
 

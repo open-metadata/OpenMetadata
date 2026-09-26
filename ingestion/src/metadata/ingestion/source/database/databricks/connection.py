@@ -105,31 +105,30 @@ UNRESOLVED_TARGET_TOKEN = "Could not resolve a catalog and schema"
 DATABRICKS_ERRORS = ErrorPack(
     when(Matchers.contains(UNRESOLVED_TARGET_TOKEN)).diagnose(
         "Could not resolve a catalog and schema to probe",
-        fix="The earlier steps found no catalog/schema this user can use. Verify the configured "
-        "catalog and schema exist and that the user has USE CATALOG and USE SCHEMA on them.",
+        fix="The earlier steps found no catalog and schema this user can open, so there was nothing to probe. Check "
+        "Catalog and Database Schema exist, and that the token's user has USE CATALOG and USE SCHEMA on them.",
     ),
     when(Matchers.contains("invalid access token")).diagnose(
         "Authentication failed",
-        fix="Check the access token - the workspace rejected it. Verify the token is valid, "
-        "not expired, and belongs to a user with access to this workspace.",
+        fix="The workspace rejected the access token. Check it was copied whole, has not expired, and belongs to a user "
+        "who can reach this workspace.",
     ),
     when(Matchers.contains("token is expired")).diagnose(
         "Access token expired",
-        fix="The access token has expired. Generate a new token and update the connection.",
+        fix="The access token has expired. Generate a new one in Databricks and paste it into the connection.",
     ),
     # No 403 rule: databricks-sql keeps the status in error.context["http-code"] and
     # Error.__str__ returns only self.message (databricks/sql/exc.py), so no status
     # reaches the text; "Forbidden" appears nowhere in the driver (4.2.6).
     when(Matchers.contains("malformed_request")).diagnose(
         "Invalid HTTP path",
-        fix="The HTTP Path is malformed. Copy it from the SQL warehouse (or cluster) Connection "
-        "Details in Databricks - it must look like /sql/1.0/warehouses/<warehouseId> or "
-        "/sql/1.0/endpoints/<endpointId>.",
+        fix="Databricks did not recognise the value in Http Path. Copy it from the Connection Details tab of the SQL "
+        "warehouse or cluster in Databricks - it looks like /sql/1.0/warehouses/<id>.",
     ),
     when(Matchers.contains("no_such_catalog")).diagnose(
         "Catalog not found",
-        fix="The configured catalog does not exist or is not visible to the token's user. Verify "
-        "the catalog name and that the user has USE CATALOG on it.",
+        fix="Databricks has no catalog with the name in Catalog, or the token's user cannot see it. Check the name, and "
+        "that the user has USE CATALOG on it.",
     ),
     when(Matchers.contains("no_such_schema")).diagnose(
         "Schema not found",
@@ -138,13 +137,13 @@ DATABRICKS_ERRORS = ErrorPack(
     ),
     when(Matchers.contains("table_or_view_not_found")).diagnose(
         "Table or view not found",
-        fix="The referenced table or view does not exist or is not visible to the token's user. "
-        "Verify the object exists and the user has SELECT on it.",
+        fix="The table or view this step read does not exist, or the token's user cannot see it. Check it exists and that "
+        "the user has SELECT on it.",
     ),
     when(Matchers.contains("schema_not_found")).diagnose(
         "Schema not found",
-        fix="The referenced schema does not exist or is not visible. Verify the schema name and "
-        "that the user has USAGE on it.",
+        fix="The schema this step read does not exist, or the token's user cannot see it. Check the name and that the "
+        "user has USAGE on it.",
     ),
     when(
         Matchers.any_of(
@@ -153,13 +152,13 @@ DATABRICKS_ERRORS = ErrorPack(
         )
     ).diagnose(
         "Insufficient privileges",
-        fix="Grant the token's user the privileges the failing step needs (USAGE on the catalog / "
-        "schema and SELECT on the system or information_schema tables it reads).",
+        fix="The token's user is not allowed to read what this step needs. Grant it USAGE on the catalog and schema, and "
+        "SELECT on the system or information_schema tables the step reads.",
     ),
     when(Matchers.contains("does not exist")).diagnose(
         "Object not found",
-        fix="Verify the configured catalog, schema, and HTTP path exist and the token's user is "
-        "authorized to use them.",
+        fix="Databricks could not find something this connection names. Check Catalog, Database Schema and Http Path, and "
+        "that the token's user is allowed to use them.",
     ),
 ).including(NETWORK_ERRORS)
 

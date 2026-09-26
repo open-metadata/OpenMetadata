@@ -8,7 +8,8 @@
             "description": "Validate that we can properly reach the SAP SuccessFactors OData API and authenticate with the given credentials by fetching the $metadata endpoint.",
             "errorMessage": "Failed to connect to SAP SuccessFactors. Please validate the base URL, company ID, and credentials.",
             "shortCircuit": true,
-            "mandatory": true
+            "mandatory": true,
+            "category": "ConnectionGate"
         },
         {
             "name": "GetEntities",

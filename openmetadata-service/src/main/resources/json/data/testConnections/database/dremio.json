@@ -8,7 +8,8 @@
       "description": "Validate that we can properly reach Dremio Cloud API and authenticate with the given Personal Access Token (PAT).",
       "errorMessage": "Failed to connect to Dremio Cloud. Please validate that your Project ID and Personal Access Token (PAT) are correct, and that the region/API URL is properly configured.",
       "shortCircuit": true,
-      "mandatory": true
+      "mandatory": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "GetDatabases",

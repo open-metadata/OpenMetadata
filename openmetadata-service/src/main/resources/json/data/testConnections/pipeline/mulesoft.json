@@ -8,7 +8,8 @@
             "description": "Check if we can successfully list environments from MuleSoft Anypoint Platform.",
             "errorMessage": "Failed to retrieve environments from MuleSoft. Please validate the credentials and API access.",
             "shortCircuit": true,
-            "mandatory": true
+            "mandatory": true,
+            "category": "ConnectionGate"
         },
         {
             "name": "GetApplications",

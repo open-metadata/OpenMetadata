@@ -140,17 +140,19 @@ LOOKER_ERRORS = ErrorPack(
     # Before the generic 404: a rejected login is itself a 404, on /login.
     when(_login_rejected).diagnose(
         "Authentication failed",
-        fix="Looker rejected the credentials. Check the Client ID and Client Secret.",
+        fix="Looker rejected the credentials. Check Client ID and Client Secret - these are the API3 credentials from the "
+        "user's Looker profile, not a Looker login.",
         doc=API_SDK_DOC,
     ),
     when(Matchers.contains("Required auth credentials not found")).diagnose(
         "Missing credentials",
-        fix="Provide both the Client ID and the Client Secret.",
+        fix="Both Client ID and Client Secret are required, and one of them is empty. Generate an API3 key pair on the "
+        "user's Looker profile page and paste both in.",
         doc=API_SDK_DOC,
     ),
     when(http_status(404, extract=_looker_status)).diagnose(
         "Resource not found",
-        fix="Looker could not find the requested resource. Check that Host Port is the instance URL.",
+        fix="Looker answered, but there is nothing at that address. Check Host and Port is your Looker instance URL.",
     ),
     when(http_status(429, extract=_looker_status)).diagnose(
         "Rate limited by Looker",
@@ -167,7 +169,8 @@ LOOKER_ERRORS = ErrorPack(
         _transport_text("failed to resolve", "name or service not known", "nodename nor servname", "getaddrinfo failed")
     ).diagnose(
         "Host could not be resolved",
-        fix="Check Host Port and that DNS resolves it from where ingestion runs.",
+        fix="The host name in Host and Port could not be looked up in DNS from the machine ingestion runs on. Check it "
+        "for typos.",
     ),
     when(_transport_text("connection refused")).diagnose(
         "Connection refused",
@@ -175,15 +178,18 @@ LOOKER_ERRORS = ErrorPack(
     ),
     when(_transport_text("timed out", "timeout")).diagnose(
         "Connection timed out",
-        fix="The host did not answer in time. Check that the network allows access to this host and port.",
+        fix="The host never answered. Check that a firewall or network ACL allows the machine ingestion runs on to reach "
+        "it.",
     ),
     when(_transport_text("certificate verify failed", "sslerror", "ssl: ")).diagnose(
         "TLS verification failed",
-        fix="The instance's certificate could not be verified from where ingestion runs.",
+        fix="The Looker certificate could not be verified from where ingestion runs. If your network inspects TLS "
+        "traffic, its certificate has to be trusted on that machine.",
     ),
     when(_transport_text("max retries exceeded", "connection aborted", "connection error")).diagnose(
         "Cannot reach the host",
-        fix="Check Host Port and that the instance is reachable from where ingestion runs.",
+        fix="Could not reach the address in Host and Port. Check it for typos, and that the instance is online and "
+        "reachable from where ingestion runs.",
     ),
     # Looker serves this page, with no error document, both for a rejected sign-in
     # and for a host that is not a live instance; the two cannot be told apart.
@@ -197,7 +203,8 @@ LOOKER_ERRORS = ErrorPack(
     # error document, whether or not this pack diagnoses its status.
     when(_foreign_404).diagnose(
         "The host is not serving the Looker API",
-        fix="A server answered but did not return a Looker error. Check that Host Port points at the Looker instance.",
+        fix="Something answered, but it was not Looker - the reply had none of the details a Looker error carries. Check "
+        "Host and Port points at the Looker instance itself, not a proxy or landing page.",
     ),
 )
 # NETWORK_ERRORS not folded in: it matches by type, but the SDK transport
