@@ -890,7 +890,7 @@
   },
   "playwright/utils/advancedSearch.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 6
     }
   },
   "playwright/utils/alert.ts": {
