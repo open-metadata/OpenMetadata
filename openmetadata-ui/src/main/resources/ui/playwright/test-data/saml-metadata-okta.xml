@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?><EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="http://www.okta.com/exk1a2b3c4d5"><IDPSSODescriptor WantAuthnRequestsSigned="false" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"><KeyDescriptor use="signing"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>MIIDyzCCArOgAwIBAgIUIZV2P9D5F0TyWYkhelWTeh0aQEowDQYJKoZIhvcNAQELBQAwdTELMAkG
+A1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xDTAL
+BgNVBAoMBE9rdGExFDASBgNVBAsMC1NTT1Byb3ZpZGVyMRQwEgYDVQQDDAtleGFtcGxlLW9yZzAe
+Fw0yNjA5MTYyMDQ1MjNaFw0zNjA5MTMyMDQ1MjNaMHUxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApD
+YWxpZm9ybmlhMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMQ0wCwYDVQQKDARPa3RhMRQwEgYDVQQL
+DAtTU09Qcm92aWRlcjEUMBIGA1UEAwwLZXhhbXBsZS1vcmcwggEiMA0GCSqGSIb3DQEBAQUAA4IB
+DwAwggEKAoIBAQDVQvEms8hTsAV8LUUx8uTQhxER/Hf3+yx3LPjMD+KY+4YpRHhQk3IY6r3DOQvT
+/PsUUWuqbRyYmGWiXkDyPsQAGUd3HW63fAcX+0TfBYEz75pt9U/QYhjJQAvmBmxqrak25bImKEZl
+n7/+65zBS8Ohs9TYFBAT1lfaCBifhh0A80FkQXl8/5thnZAaNaFK3YIJfd3PBpMt2uGYOxo6xJbK
+S9NSGZLc3gRPRqcLhNx901n8CxwFrCwqbY3urJ2rejPIaCZ+iVaJhFzuM1i1sB3H7/9+U6Wns1Is
+7a+OZLY8l41nDougHYvwwQaWA9xZ5lHPIiTdE9UWlHS53pfkp2qdAgMBAAGjUzBRMB0GA1UdDgQW
+BBT5mtJZvkkmbFeAdkQt1ka2gyfakTAfBgNVHSMEGDAWgBT5mtJZvkkmbFeAdkQt1ka2gyfakTAP
+BgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCI/vPj2Z3lk9lvlnSsoXCpSxGfkxR3
+XSy/Pkm4CTPLN0XXhVKjyPTb2kdqM8AXjrIDqehxhNunicS3+w3bwK4XZ4gTxpXnOflkXE+B38/1
++rz9QQwiIx8q0B3thspazkm3aawU4aQEwSWygI8sXuxkShru5hHcwXWRA5F5s5kpiFK50FLOqWbO
+ukLMSFoVNu1DY8or/But9KUsAfHy294vbQAOj4kI0SYqBvhhlpJxXq1vMFtBiiwKeNIxE0mW240w
+b0/XIHowzxARt4SAZS+0jpaHqBESyanV8iVNqx8heeW+odH2cBkE0ic6t6/s3SrDV7z+p03MrlFx
+Mur28rIH</X509Certificate></X509Data></KeyInfo></KeyDescriptor><NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat><SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://example-org.okta.invalid/app/openmetadata/exk1a2b3c4d5/sso/saml"/><SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://example-org.okta.invalid/app/openmetadata/exk1a2b3c4d5/sso/saml"/></IDPSSODescriptor></EntityDescriptor>
