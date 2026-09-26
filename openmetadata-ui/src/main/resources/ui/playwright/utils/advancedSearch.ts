@@ -405,13 +405,19 @@ export const fillRule = async (
         }
       }
 
-      // Blur to close the popup: it stays open after a selection and can
-      // cover the element a click would otherwise dismiss it with. Not
-      // Escape — the modal handles it and would dismiss.
-      await dropdownInput.blur({ timeout: 1_000 }).catch(() => undefined);
-      await dropdown
-        .waitFor({ state: 'hidden', timeout: 5_000 })
-        .catch(() => undefined);
+      // The popup stays open after a selection (MultiSelect by design) and
+      // covers whatever the next step clicks, so it has to go. Only an
+      // outside press closes it — blur leaves it open — and the modal's
+      // heading is the safe target: it is short and left-aligned, so a popup
+      // anchored to the value column never covers it, whether it drops down
+      // or flips up. The full-width message below it is not safe for exactly
+      // that reason. Not Escape either: the modal handles it and would
+      // dismiss.
+      await page
+        .getByTestId('advanced-search-modal')
+        .getByRole('heading')
+        .click({ timeout: 10_000 });
+      await expect(dropdown).toBeHidden({ timeout: 5_000 });
     }
   }
 };
