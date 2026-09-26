@@ -1191,3 +1191,43 @@ a[href].link-text-grey,
     width: @size-lg;
   }
 }
+
+// antd Alert paints static light tints per type (and antd heading-colour
+// text); in dark they read as white boxes with unreadable copy. Use the
+// theme-aware utility scale instead. Light keeps antd's values.
+.dark-mode .ant-alert {
+  &.ant-alert-info {
+    background-color: var(--tw-color-utility-blue-50);
+    border-color: var(--tw-color-utility-blue-200);
+  }
+
+  &.ant-alert-success {
+    background-color: var(--tw-color-utility-success-50);
+    border-color: var(--tw-color-utility-success-200);
+  }
+
+  &.ant-alert-warning {
+    background-color: var(--tw-color-utility-warning-50);
+    border-color: var(--tw-color-utility-warning-200);
+  }
+
+  &.ant-alert-error {
+    background-color: var(--tw-color-utility-error-50);
+    border-color: var(--tw-color-utility-error-200);
+  }
+
+  .ant-alert-message {
+    color: var(--om-color-text-primary);
+  }
+
+  .ant-alert-description {
+    color: var(--om-color-text-secondary);
+  }
+}
+
+// antd Card header text uses antd's heading colour (85% black) and a light
+// divider; both vanish or glare on the dark surface.
+.dark-mode .ant-card-head {
+  color: var(--om-color-text-primary);
+  border-bottom-color: var(--om-color-border-secondary);
+}

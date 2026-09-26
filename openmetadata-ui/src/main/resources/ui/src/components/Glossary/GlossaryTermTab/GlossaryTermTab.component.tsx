@@ -2024,7 +2024,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         <Table
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
-          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:min-h-0 tw:flex-1 tw:!overflow-auto"
+          // Flex column so the scroll region below has a bounded box to fill.
+          containerClassName="glossary-terms-table drop-over-background tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:min-h-0 tw:flex-1"
           data-testid="glossary-terms-table"
           dataSource={filteredGlossaryTerms}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
@@ -2036,6 +2037,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={GLOSSARY_TABLE_SCROLL}
+          // Fill the panel rather than the rows' height, so the horizontal
+          // scrollbar sits at the bottom instead of floating above empty space.
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
         />
@@ -2081,7 +2085,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         size="sm">
         <Table
           columns={columns}
-          containerClassName="glossary-terms-table tw:!border-0 tw:!rounded-none"
+          containerClassName="glossary-terms-table tw:border-0 tw:rounded-none"
           data-testid="glossary-terms-table"
           dataSource={[]}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
