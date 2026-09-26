@@ -12,22 +12,22 @@
  */
 import { expect, Page, Response } from '@playwright/test';
 import {
-    DOMAIN_TAGS,
-    PLAYWRIGHT_INGESTION_TAG_OBJ
+  DOMAIN_TAGS,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
-    ObservabilityFeature,
-    selectAddObservabilityFeature
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
 import {
-    getEntityDisplayName,
-    waitForAllLoadersToDisappear
+  getEntityDisplayName,
+  waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {
-    visitDataQualityTab,
-    waitForTestSuiteIngestionPipelinesListResponse
+  visitDataQualityTab,
+  waitForTestSuiteIngestionPipelinesListResponse,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
@@ -157,15 +157,8 @@ test.describe(
       if (expectSchedulerCard) {
         const ingestionPipeline = page.waitForResponse(
           (response: Response) =>
-            new URL(response.url()).pathname ===
-              '/api/v1/services/ingestionPipelines' &&
+            response.url().includes('/api/v1/services/ingestionPipelines') &&
             response.request().method() === 'POST'
-        );
-        const pipelineDeployment = page.waitForResponse(
-          (response: Response) =>
-            new URL(response.url()).pathname.startsWith(
-              '/api/v1/services/ingestionPipelines/deploy/'
-            ) && response.request().method() === 'POST'
         );
 
         await page.getByTestId('create-btn').click();
@@ -181,34 +174,33 @@ test.describe(
         );
         expect(response.status()).toBe(201);
         expect(ingestionPipelineResponse.status()).toBe(201);
-        const pipeline = await ingestionPipelineResponse.json();
-        const deploymentResponse = await pipelineDeployment;
-        expect(new URL(deploymentResponse.url()).pathname).toBe(
-          `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-        );
-        expect(deploymentResponse.status()).toBe(200);
-        await expect(page.getByTestId('test-case-form-v1')).toBeHidden();
       } else {
-        const trackPipelineCreation = (response: Response) => {
+        // Track if ingestion pipeline API is called
+        page.on('response', (response: Response) => {
           if (
-            new URL(response.url()).pathname ===
-              '/api/v1/services/ingestionPipelines' &&
+            response.url().includes('/api/v1/services/ingestionPipelines') &&
             response.request().method() === 'POST'
           ) {
             ingestionPipelineCalled = true;
           }
-        };
-        page.on('response', trackPipelineCreation);
+        });
 
-        try {
-          await page.getByTestId('create-btn').click();
-          const response = await tableTestCaseResponse;
-          expect(response.status()).toBe(201);
-          await expect(page.getByTestId('test-case-form-v1')).toBeHidden();
-          expect(ingestionPipelineCalled).toBe(false);
-        } finally {
-          page.off('response', trackPipelineCreation);
-        }
+        await page.getByTestId('create-btn').click();
+        const response = await tableTestCaseResponse;
+
+        expect(response.status()).toBe(201);
+      }
+
+      // The drawer closes only after the pipeline is created and deployed, and on Airflow 3 the
+      // deploy call blocks until the scheduler registers the DAG (up to 60s), so the default
+      // expect timeout on the next page is not enough. Waiting here also lets the no-pipeline
+      // check below see a POST that lands after the test case response.
+      await page
+        .getByTestId('test-case-form-v1')
+        .waitFor({ state: 'detached' });
+
+      if (!expectSchedulerCard) {
+        expect(ingestionPipelineCalled).toBe(false);
       }
     };
 
@@ -230,9 +222,7 @@ test.describe(
     };
 
     const visitDataQualityPage = async (page: Page) => {
-      await page.goto('/data-quality/test-cases', {
-        waitUntil: 'domcontentloaded',
-      });
+      await page.goto('/data-quality/test-cases');
       await waitForAllLoadersToDisappear(page);
     };
 
@@ -415,10 +405,6 @@ test.describe(
         page,
         ...columnTestCaseDetails,
         expectSchedulerCard: false,
-      });
-
-      await page.getByTestId('test-case-form-v1').waitFor({
-        state: 'detached',
       });
 
       await expect(

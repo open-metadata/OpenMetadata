@@ -331,7 +331,10 @@ class ServiceBaseClass {
 
     await expect(page.getByLabel('Raise on Error')).not.toBeChecked();
 
-    const deployPipelinePromise = page.waitForRequest(
+    // Wait for the response, not the request: the deploy call blocks until
+    // Airflow registers the DAG (up to 60s), and the success line only renders
+    // once it answers.
+    const deployPipelinePromise = page.waitForResponse(
       `/api/v1/services/ingestionPipelines/deploy/**`
     );
 

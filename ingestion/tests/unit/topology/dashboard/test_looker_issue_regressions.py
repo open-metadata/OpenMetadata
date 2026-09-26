@@ -10,21 +10,31 @@
 #  limitations under the License.
 """Regression tests for Looker project filtering and Liquid lineage."""
 
+import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import lkml
 import pytest
 
-from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.metadata import (
     DATAMODEL_LINEAGE_SENTINEL,
     LookerSource,
 )
-from metadata.ingestion.source.dashboard.looker.models import LookMlView
+from metadata.ingestion.source.dashboard.looker.models import LkmlFile, LookMlView
 
 
 def _conditional_table(condition: str) -> str:
@@ -48,6 +58,7 @@ def _view_lineage_source() -> LookerSource:
     source._explores_cache = {}
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_source_refs = {}
     source._lookml_constants_map = {}
     source._view_data_model = SimpleNamespace(name="table_details_view")
     return source
@@ -179,6 +190,7 @@ def test_model_liquid_context_selects_source_table_for_standalone_view_lineage()
     source = object.__new__(LookerSource)
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_source_refs = {}
     source._lookml_constants_map = {}
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
     # `_yield_bulk_datamodel_lineage` resolves this after the Barrier flush; the
@@ -206,6 +218,7 @@ def test_standalone_view_lineage_skips_when_the_data_model_was_never_written() -
     source = object.__new__(LookerSource)
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_source_refs = {}
     source._lookml_constants_map = {}
     source._view_data_model = None
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
@@ -214,3 +227,70 @@ def test_standalone_view_lineage_skips_when_the_data_model_was_never_written() -
         assert list(source._add_standalone_view_lineage(view, "finance_project", "finance_reports")) == []
 
     build_lineage_request.assert_not_called()
+
+
+VIEW_WITH_DIMENSION_GROUP = """
+view: orders {
+  sql_table_name: public.orders ;;
+  dimension: id { type: number  sql: ${TABLE}.id ;; }
+  dimension_group: created {
+    type: time
+    timeframes: [date, month]
+    sql: ${TABLE}.created_at ;;
+  }
+}
+"""
+
+
+def _view_data_model(view: LookMlView) -> DashboardDataModel:
+    """The view's data model as the connector writes it, with the FQNs the server assigns."""
+    return DashboardDataModel(
+        id=uuid.uuid4(),
+        name="orders_view",
+        service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+        dataModelType=DataModelType.LookMlView,
+        columns=[
+            column.model_copy(
+                update={"fullyQualifiedName": FullyQualifiedEntityName(f"looker.orders_view.{model_str(column.name)}")}
+            )
+            for column in get_columns_from_model(view)
+        ],
+    )
+
+
+def test_a_dimension_group_is_a_column_of_the_view_data_model() -> None:
+    """The explore side gets one dimension per timeframe from the API; a parsed view only has
+    the group, so dropping it leaves the view data model with no time dimension at all."""
+    view = LkmlFile.model_validate(lkml.load(VIEW_WITH_DIMENSION_GROUP)).views[0]
+
+    columns = get_columns_from_model(view)
+
+    assert [model_str(column.name) for column in columns] == ["id", "created"]
+    assert columns[1].dataType is DataType.TIME
+
+
+def test_dimension_group_column_lineage_reaches_the_data_model_column() -> None:
+    """`_extract_column_lineage` walks dimension groups, but the edge is only kept if the data
+    model carries a column to point at."""
+    view = LkmlFile.model_validate(lkml.load(VIEW_WITH_DIMENSION_GROUP)).views[0]
+    source = _view_lineage_source()
+    table = Table(
+        id=uuid.uuid4(),
+        name="orders",
+        fullyQualifiedName="trino.db.public.orders",
+        columns=[
+            Column(
+                name="created_at",
+                dataType=DataType.TIMESTAMP,
+                fullyQualifiedName="trino.db.public.orders.created_at",
+            )
+        ],
+    )
+
+    edges = source._process_and_validate_column_lineage(
+        source._extract_column_lineage(view), table, _view_data_model(view)
+    )
+
+    assert [([model_str(column) for column in edge.fromColumns], model_str(edge.toColumn)) for edge in edges] == [
+        (["trino.db.public.orders.created_at"], "looker.orders_view.created")
+    ]
