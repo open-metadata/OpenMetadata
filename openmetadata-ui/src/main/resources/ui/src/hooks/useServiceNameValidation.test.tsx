@@ -12,8 +12,8 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
-import { ServiceCategory } from '../../enums/service.enum';
-import { getServiceByFQN } from '../../rest/serviceAPI';
+import { ServiceCategory } from '../enums/service.enum';
+import { getServiceByFQN } from '../rest/serviceAPI';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
 const mockTranslate = (key: string) => key;
@@ -24,7 +24,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../rest/serviceAPI', () => ({
+jest.mock('../rest/serviceAPI', () => ({
   getServiceByFQN: jest.fn(),
 }));
 
