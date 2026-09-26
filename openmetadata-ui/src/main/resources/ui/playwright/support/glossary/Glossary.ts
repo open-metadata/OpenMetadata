@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+} from '../../utils/apiResponse';
 import {
   getRandomFirstName,
   uuid,
@@ -104,5 +108,3 @@ export class Glossary extends EntityClass {
     return await response.json();
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

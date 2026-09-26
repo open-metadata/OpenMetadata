@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { okJson } from '../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
@@ -159,5 +159,3 @@ export class TeamClass {
     ]);
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

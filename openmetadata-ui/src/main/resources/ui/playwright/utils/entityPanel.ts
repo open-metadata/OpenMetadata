@@ -23,7 +23,9 @@ import {
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { ENTITY_PATH } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForSearchIndexed } from './polling';
 
 export const getEntityFqn = (
   entityInstance: EntityClass
@@ -709,6 +711,3 @@ export const editDisplayNameFromPanel = async (
 
   await modal.waitFor({ state: 'hidden' });
 };
-
-import { getApiContext } from './common';
-import { waitForSearchIndexed } from './polling';

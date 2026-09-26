@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+} from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
 type ClassificationData = {
@@ -92,5 +96,3 @@ export class ClassificationClass {
     return await response.json();
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

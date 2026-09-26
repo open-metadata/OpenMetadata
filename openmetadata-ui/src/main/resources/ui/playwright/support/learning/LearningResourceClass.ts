@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { okJson } from '../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type LearningResourceContext = {
@@ -123,5 +123,3 @@ export class LearningResourceClass {
     return await response.json();
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

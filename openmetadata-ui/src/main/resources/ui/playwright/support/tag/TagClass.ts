@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { okJson } from '../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -124,5 +124,3 @@ export class TagClass {
     return this.responseData.displayName;
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

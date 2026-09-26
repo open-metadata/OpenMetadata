@@ -37,6 +37,7 @@ import {
   getDescriptionBox,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
 } from './common';
 import {
   getEntityDisplayName,
@@ -50,6 +51,7 @@ import {
   visitNotificationAlertPage,
 } from './notificationAlert';
 import { visitObservabilityAlertPage } from './observabilityAlert';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const generateAlertName = () => `0%alert-playwright-${uuid()}`;
 
@@ -1263,6 +1265,3 @@ export const checkRecentEventDetails = async ({
     expect(failedEvents).toHaveLength(0);
   });
 };
-
-import { waitForAntdPopupToSettle } from './common';
-import { waitForResponseWithStatus } from './waitHelpers';

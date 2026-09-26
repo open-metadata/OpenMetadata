@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
-import { okJson } from '../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
@@ -175,5 +175,3 @@ export class GlossaryTerm extends EntityClass {
     this.responseData.fullyQualifiedName = newTermFqn;
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

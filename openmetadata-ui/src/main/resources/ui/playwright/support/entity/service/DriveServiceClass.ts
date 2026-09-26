@@ -13,7 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
-import { createOrFetch, okJson } from '../../../utils/apiResponse';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+} from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -117,5 +121,3 @@ export class DriveServiceClass extends EntityClass {
     return await serviceResponse.json();
   }
 }
-
-import { deleteFixtureEntity } from '../../../utils/apiResponse';

@@ -17,7 +17,7 @@ import {
   DATA_STEWARD_RULES,
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
-import { okJson } from '../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
@@ -365,5 +365,3 @@ export class UserClass {
     await page.unroute('**/analytics/web/events/collect');
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

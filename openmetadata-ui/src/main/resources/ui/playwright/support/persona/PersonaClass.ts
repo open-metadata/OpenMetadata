@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -79,5 +83,3 @@ export class PersonaClass {
     return await okJson(response, 'PersonaClass.patch');
   }
 }
-
-import { deleteFixtureEntity } from '../../utils/apiResponse';

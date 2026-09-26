@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { clickOutside, redirectToHomePage } from './common';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const redirectToUserPage = async (page: Page) => {
   await redirectToHomePage(page);
@@ -76,5 +77,3 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await teamOption.click({ force: true });
 };
-
-import { waitForResponseWithStatus } from './waitHelpers';
