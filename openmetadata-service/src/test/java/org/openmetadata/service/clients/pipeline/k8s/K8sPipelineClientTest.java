@@ -161,7 +161,13 @@ class K8sPipelineClientTest {
     config.setMetadataApiEndpoint("http://localhost:8585/api");
     config.setParameters(params);
 
-    client = new K8sPipelineClient(config);
+    client =
+        new K8sPipelineClient(config) {
+          @Override
+          protected long getRetryBackoffMillis() {
+            return 0L;
+          }
+        };
     client.setBatchApi(batchApi);
     client.setCoreApi(coreApi);
     setField(client, "customObjectsApi", customObjectsApi);
@@ -1053,7 +1059,7 @@ class K8sPipelineClientTest {
     when(listConfigMapRequest.execute()).thenThrow(new ApiException(403, "forbidden configmaps"));
 
     PipelineServiceClientResponse configMapFailure = client.getServiceStatus();
-    assertEquals(500, configMapFailure.getCode());
+    assertEquals(403, configMapFailure.getCode());
     assertTrue(configMapFailure.getReason().contains("missing ConfigMap permissions"));
 
     reset(listConfigMapRequest);
@@ -1066,7 +1072,7 @@ class K8sPipelineClientTest {
     when(listSecretRequest.execute()).thenThrow(new ApiException(403, "forbidden secrets"));
 
     PipelineServiceClientResponse secretFailure = client.getServiceStatus();
-    assertEquals(500, secretFailure.getCode());
+    assertEquals(403, secretFailure.getCode());
     assertTrue(secretFailure.getReason().contains("missing Secret permissions"));
   }
 
@@ -1105,6 +1111,42 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testGetServiceStatusRetriesThrottledPermissionProbe() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute()).thenReturn(new V1PodList());
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(new V1JobList());
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenThrow(new ApiException(429, "too many requests"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    // Throttling clears on its own, unlike the 403 an RBAC gap produces, so it stays retryable.
+    assertEquals(500, response.getCode());
+    verify(listConfigMapRequest, times(3)).execute();
+  }
+
+  @Test
+  void testGetServiceStatusKeepsApiServerOutageRetryable() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute()).thenThrow(new ApiException(503, "api server unavailable"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    // 5xx from the API server is a blip, so it keeps the retryable 500 rather than its own code
+    // and getServiceStatus() gives it the full three attempts.
+    assertEquals(500, response.getCode());
+    assertTrue(response.getReason().contains("api server unavailable"));
+    verify(listPodRequest, times(3)).execute();
+  }
+
+  @Test
   void testGetServiceStatusReportsMalformedStatusAsUnhealthy() throws Exception {
     when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
     when(listPodRequest.limit(1)).thenReturn(listPodRequest);
@@ -1113,7 +1155,7 @@ class K8sPipelineClientTest {
 
     PipelineServiceClientResponse response = client.getServiceStatus();
 
-    assertEquals(500, response.getCode());
+    assertEquals(422, response.getCode());
     assertTrue(response.getReason().contains("Failed to parse Kubernetes pod/job status"));
     verifyNoInteractions(batchApi, listConfigMapRequest, listSecretRequest);
   }
@@ -1138,7 +1180,7 @@ class K8sPipelineClientTest {
 
     PipelineServiceClientResponse response = client.getServiceStatus();
 
-    assertEquals(500, response.getCode());
+    assertEquals(403, response.getCode());
     assertTrue(response.getReason().contains("missing ConfigMap permissions"));
     verify(coreApi).listNamespacedConfigMap(eq(NAMESPACE));
   }

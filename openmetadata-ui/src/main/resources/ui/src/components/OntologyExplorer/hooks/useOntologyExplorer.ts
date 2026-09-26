@@ -49,7 +49,6 @@ import {
   DATA_MODE_ASSET_PREVIEW_SIZE,
   DATA_MODE_CONNECTED_TERM_LIMIT,
   DATA_MODE_EDGE_LIMIT,
-  DATA_MODE_LINEAGE_EDGE_LIMIT,
   DATA_MODE_MAX_RENDER_COUNT,
   DATA_MODE_SEED_PAGE_SIZE,
   DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK,
@@ -786,7 +785,6 @@ export function useOntologyExplorer({
         connectedTermLimit: DATA_MODE_CONNECTED_TERM_LIMIT,
         edgeLimit: DATA_MODE_EDGE_LIMIT,
         limit: DATA_MODE_SEED_PAGE_SIZE,
-        lineageEdgeLimit: DATA_MODE_LINEAGE_EDGE_LIMIT,
         offset,
         parent: selectedGlossary?.fullyQualifiedName,
       });

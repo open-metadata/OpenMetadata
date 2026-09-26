@@ -118,7 +118,7 @@ class LineageParser:
         Returns:
             Truncated MD5 hash of the query
         """
-        return hashlib.md5(query.encode()).hexdigest()[:length]
+        return hashlib.md5(query.encode(), usedforsecurity=False).hexdigest()[:length]
 
     @cached_property
     def involved_tables(self) -> list[Table] | None:

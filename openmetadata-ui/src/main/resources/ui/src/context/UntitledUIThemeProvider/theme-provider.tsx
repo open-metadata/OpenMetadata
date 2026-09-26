@@ -316,10 +316,15 @@ export const ThemeProvider = ({
 
   useEffect(() => {
     const root = globalThis.document.documentElement;
+    const isDark = theme === 'dark';
+    // selected (brand-700) and hover (brand-100) are light-palette shades. Written
+    // inline they beat the .dark-mode remaps, leaving light tints and dark text in
+    // dark mode. ponytail: dark keeps the core dark palette for these; derive
+    // dark shades from the brand colours if custom dark branding is needed.
     const activeBrandColors = {
       primaryColor,
-      hoverColor,
-      selectedColor,
+      hoverColor: isDark ? undefined : hoverColor,
+      selectedColor: isDark ? undefined : selectedColor,
       errorColor,
       successColor,
       warningColor,
@@ -338,6 +343,7 @@ export const ThemeProvider = ({
     successColor,
     warningColor,
     infoColor,
+    theme,
   ]);
 
   const values = useMemo(

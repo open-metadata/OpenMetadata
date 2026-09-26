@@ -436,16 +436,19 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await createMetric(apiContext, childName, rootName);
       await waitForMetricIndexed(apiContext, rootName);
 
+      // Scope the paginated listing to this run's entities so the group is on page 1 and auto-expands.
+      const scopedHierarchyResponse = waitForMetricHierarchySearch(
+        page,
+        suffix
+      );
       const groupMetricsResponse = page.waitForResponse((response) =>
         response
           .url()
           .includes(`/api/v1/metricGroups/${createdGroup.id}/metrics`)
       );
-      const hierarchyResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/metrics/hierarchy')
-      );
       await page.goto('/metrics');
-      await Promise.all([hierarchyResponse, groupMetricsResponse]);
+      await page.getByTestId('metric-search').getByRole('textbox').fill(suffix);
+      await Promise.all([scopedHierarchyResponse, groupMetricsResponse]);
 
       const groupToggle = page.getByTestId(`metric-group-${groupName}`);
       await expect(groupToggle).toBeVisible();
@@ -492,7 +495,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           ).includes('Approved')
         );
       });
-      await page.getByTestId('metric-search').getByRole('textbox').fill('');
+      // Keep the search scoped so the status filter runs on this root, not the whole seeded catalog.
       await page.getByRole('button', { name: 'Status', exact: true }).click();
       await page.getByRole('menuitemradio', { name: 'Approved' }).click();
       await statusResponse;

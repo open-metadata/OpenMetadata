@@ -21,11 +21,7 @@
     "entities": [],
     "recreateIndex": true,
     "batchSize": 100,
-    "producerThreads": 2,
-    "consumerThreads": 3,
-    "queueSize": 5000,
-    "useDistributedIndexing": true,
-    "partitionSize": 10000,
+    "producerThreads": 4,
     "relationshipIsolationMaxFailures": 3,
     "minSuccessRatio": 0.95,
     "blueGreenRebuild": false

@@ -25,6 +25,7 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { TestSuiteListPanel } from '../../../DataQuality/TestSuite/TestSuiteList/TestSuiteListPanel.component';
 import { useTestSuitesListPage } from '../../../DataQuality/TestSuite/TestSuiteList/useTestSuitesListPage';
 import {
+  chipChevronClassName,
   chipTriggerClassName,
   chipTriggerSelectedClassName,
 } from '../Dashboard/dqFilterChip.utils';
@@ -128,8 +129,7 @@ const TestSuites = () => {
             type="button">
             {ownerFilterValue?.label ?? t('label.owner')}
             <ChevronDown
-              className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-              data-icon="true"
+              className={chipChevronClassName(Boolean(ownerFilterValue))}
             />
           </button>
         </UserTeamSelectableList>

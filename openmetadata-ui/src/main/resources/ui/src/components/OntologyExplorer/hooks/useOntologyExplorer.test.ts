@@ -290,7 +290,6 @@ describe('useOntologyExplorer', () => {
         connectedTermLimit: 48,
         edgeLimit: 100,
         limit: 12,
-        lineageEdgeLimit: 100,
         offset: 0,
         parent: undefined,
       })

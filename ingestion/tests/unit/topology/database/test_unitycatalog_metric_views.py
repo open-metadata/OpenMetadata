@@ -26,9 +26,6 @@ from metadata.generated.schema.entity.data.metric import (
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table, TableType
 from metadata.ingestion.models.barrier import Barrier
-from metadata.ingestion.source.database.semantic_metrics import (
-    SERVICE_PREFIX_MAX_LEN,
-)
 from metadata.ingestion.source.database.unitycatalog import metric_view_mixin
 from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
 from metadata.ingestion.source.database.unitycatalog.metric_view_mixin import (
@@ -40,6 +37,7 @@ from metadata.ingestion.source.database.unitycatalog.metric_views import (
     infer_metric_type,
     parse_metric_view,
 )
+from metadata.utils.metric_naming import SERVICE_PREFIX_MAX_LEN
 
 SERVICE = "databricks_svc"
 CATALOG = "samples"

@@ -262,6 +262,35 @@ describe('ThemeProvider', () => {
     ).toBe('#a10000');
   });
 
+  it('drops light-only brand shades in dark so the dark palette applies', () => {
+    const brandColors: BrandColors = {
+      hoverColor: '#d1e9ff',
+      primaryColor: '#1570ef',
+      selectedColor: '#175cd3',
+    };
+    const inlineVar = (name: string) =>
+      document.documentElement.style.getPropertyValue(name);
+
+    render(
+      <ThemeProvider brandColors={brandColors}>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('#d1e9ff');
+    expect(inlineVar('--tw-color-utility-brand-700')).toBe('#175cd3');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('');
+    expect(inlineVar('--tw-color-utility-brand-700')).toBe('');
+    expect(inlineVar('--tw-color-brand-600')).toBe('#1570ef');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('#d1e9ff');
+  });
+
   it('replaces customer branding without retaining stale variables', () => {
     const { rerender } = render(
       <ThemeProvider

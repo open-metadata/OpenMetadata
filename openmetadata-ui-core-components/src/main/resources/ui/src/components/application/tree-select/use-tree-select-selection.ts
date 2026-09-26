@@ -27,7 +27,9 @@ interface UseTreeSelectSelectionReturn<T> {
   getDescendantSelection: (node: TreeSelectNode<T>) => DescendantSelection;
   toggleNodeSelection: (
     node: TreeSelectNode<T>,
-    parentNode?: TreeSelectNode<T>
+    parentNode?: TreeSelectNode<T>,
+    /** Clear the branch rather than select it, per the row's rendered state. */
+    deselect?: boolean
   ) => void;
   setSelection: (nodes: TreeSelectNode<T>[]) => void;
   clearSelection: () => void;
@@ -127,7 +129,11 @@ export const useTreeSelectSelection = <T = unknown>({
   );
 
   const toggleNodeSelection = useCallback(
-    (node: TreeSelectNode<T>, parentNode?: TreeSelectNode<T>) => {
+    (
+      node: TreeSelectNode<T>,
+      parentNode?: TreeSelectNode<T>,
+      deselect?: boolean
+    ) => {
       const next = new Map(selectedNodes);
       const isSelected = selectedNodes.has(node.id);
 
@@ -166,8 +172,15 @@ export const useTreeSelectSelection = <T = unknown>({
           next.set(node.id, node);
         }
       } else if (cascadeSelection) {
-        if (isSelected) {
-          getAllChildrenIds(node).forEach((id) => next.delete(id));
+        // `deselect` is the rendered state; the consumer may drop this node from `value`.
+        if (deselect ?? isSelected) {
+          // Loaded children, plus any selection naming this node as its parent.
+          const ids = Array.from(next.values()).reduce<string[]>(
+            (acc, child) =>
+              child.parentId === node.id ? [...acc, child.id] : acc,
+            getAllChildrenIds(node)
+          );
+          ids.forEach((id) => next.delete(id));
         } else {
           collectNodes(node).forEach((n) => next.set(n.id, n));
         }

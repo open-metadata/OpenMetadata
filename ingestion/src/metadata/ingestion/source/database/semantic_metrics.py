@@ -23,11 +23,8 @@ row or a YAML node onto these primitives. Those differ per source and stay in th
 connector.
 """
 
-import hashlib
-
 from metadata.generated.schema.entity.data.metric import MetricType, Type
-
-SERVICE_PREFIX_MAX_LEN = 64
+from metadata.utils import metric_naming
 
 
 def unquote_name_part(part: str) -> str:
@@ -46,41 +43,18 @@ def unquote_name_part(part: str) -> str:
     return value
 
 
-def service_prefix(service: str, fallback: str) -> str:
-    """FQN-safe prefix derived from the OpenMetadata service name.
-
-    A service name is user-defined and may carry ``.``, spaces, or ``::``, any of
-    which would stop the metric name from being a single FQN segment. Map everything
-    outside ``[alnum]``/``_``/``-`` to ``-``. This is deliberately lossy: the digest
-    is what makes the name unique, so two services that flatten to the same prefix
-    still produce different names.
-    """
-    safe = "".join(char if char.isalnum() or char in "_-" else "-" for char in unquote_name_part(service))
-    return safe[:SERVICE_PREFIX_MAX_LEN].strip("-") or fallback
-
-
 def build_metric_name(service: str, *identity: str, fallback_prefix: str) -> str:
     """Stable ``<service>-<digest>`` name for one semantic-layer metric.
 
-    Hash the complete canonical identity instead of exposing a lossy,
-    separator-joined path, and lead with the service so the global Metric namespace
-    is still browsable. ``displayName`` retains the source name for the UI.
-
     ``identity`` is the connector's ordered identity for the metric (database,
-    schema, view, ... , metric). NUL separates the components because catalog
-    identifiers cannot contain it, keeping part boundaries unambiguous. The full
-    digest avoids introducing a truncation collision and stays well below the
-    entity-name length limit.
+    schema, view, ... , metric). Every part is unquoted first so quoted and raw
+    catalog values hash to the same name; ``metric_naming`` owns the hashing so
+    semantic-layer metrics share one namespace scheme with every other source.
     """
-    parts = tuple(unquote_name_part(part) for part in (service, *identity))
-    digest = hashlib.sha256("\x00".join(parts).encode("utf-8")).hexdigest()
-    return f"{service_prefix(service, fallback_prefix)}-{digest}"
+    service, *parts = (unquote_name_part(part) for part in (service, *identity))
+    return metric_naming.build_metric_name(service, tuple(parts), fallback_prefix)
 
 
-# Aggregation heads OpenMetadata has a MetricType for. Shared across connectors: a
-# semantic layer's SQL is the warehouse's SQL, and every one of these is standard
-# across Snowflake and Spark. An unlisted head is not an error -- it is a composed or
-# derived measure, which is what MetricType.OTHER is for.
 _METRIC_TYPE_BY_HEAD = {
     "SUM": MetricType.SUM,
     "COUNT": MetricType.COUNT,

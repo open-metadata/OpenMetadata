@@ -660,6 +660,12 @@
                   "default": true,
                   "title": "Include Data Models"
                 },
+                "includeMetrics": {
+                  "title": "Include Metrics",
+                  "description": "Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML measures) as first-class Metric entities. Metric names are unique across the whole OpenMetadata instance, so this is disabled by default. Measures are discovered from the data models that expose them, so this requires 'Include Data Models' to be enabled as well.",
+                  "type": "boolean",
+                  "default": false
+                },
                 "includeDraftDashboard": {
                   "title": "Include Draft Dashboards",
                   "description": "Optional Configuration to include/exclude draft dashboards. By default it will include draft dashboards",
@@ -2474,8 +2480,7 @@
                                     "privateKeyId": {
                                       "title": "Private Key ID",
                                       "description": "Google Cloud private key id.",
-                                      "type": "string",
-                                      "format": "password"
+                                      "type": "string"
                                     },
                                     "privateKey": {
                                       "title": "Private Key",
@@ -4531,39 +4536,12 @@
                           "minimum": 1
                         },
                         "producerThreads": {
-                          "title": "Number of Producer Threads",
-                          "description": "Number of producer threads to use for non-distributed RDF reindexing",
+                          "title": "Number of Reader Threads",
+                          "description": "Number of threads loading entities to index. Writes always go through one writer, because Fuseki accepts one write transaction at a time.",
                           "type": "integer",
-                          "default": 2,
-                          "minimum": 1
-                        },
-                        "consumerThreads": {
-                          "title": "Number of Consumer Threads",
-                          "description": "Number of consumer threads to use for non-distributed RDF reindexing",
-                          "type": "integer",
-                          "default": 3,
-                          "minimum": 1
-                        },
-                        "queueSize": {
-                          "title": "Queue Size",
-                          "description": "Queue size to use internally for non-distributed RDF reindexing.",
-                          "type": "integer",
-                          "default": 5000,
-                          "minimum": 1
-                        },
-                        "useDistributedIndexing": {
-                          "title": "Use Distributed Indexing",
-                          "description": "Enable distributed RDF indexing across multiple servers with partition coordination and recovery.",
-                          "type": "boolean",
-                          "default": true
-                        },
-                        "partitionSize": {
-                          "title": "Partition Size",
-                          "description": "Number of entities per partition for distributed RDF indexing. Smaller values create more partitions for better distribution across servers.",
-                          "type": "integer",
-                          "default": 10000,
-                          "minimum": 1000,
-                          "maximum": 50000
+                          "default": 4,
+                          "minimum": 1,
+                          "maximum": 10
                         },
                         "blueGreenRebuild": {
                           "title": "Blue/Green Rebuild",
@@ -19827,7 +19805,6 @@
                           "type": "object",
                           "properties": {
                             "certificates": {
-                              "type": "object",
                               "title": "SSL Certificates",
                               "description": "SSL Certificates",
                               "oneOf": [
@@ -20407,59 +20384,6 @@
                             "Sftp"
                           ],
                           "default": "Sftp"
-                        },
-                        "basicAuth": {
-                          "title": "Username/Password Authentication",
-                          "description": "Username and password authentication for SFTP",
-                          "type": "object",
-                          "properties": {
-                            "username": {
-                              "title": "Username",
-                              "description": "SFTP username",
-                              "type": "string"
-                            },
-                            "password": {
-                              "title": "Password",
-                              "description": "SFTP password",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "password"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "keyAuth": {
-                          "title": "Private Key Authentication",
-                          "description": "SSH private key authentication for SFTP",
-                          "type": "object",
-                          "properties": {
-                            "username": {
-                              "title": "Username",
-                              "description": "SFTP username",
-                              "type": "string"
-                            },
-                            "privateKey": {
-                              "title": "Private Key",
-                              "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                              "type": "string",
-                              "format": "password",
-                              "uiFieldType": "fileOrInput"
-                            },
-                            "privateKeyPassphrase": {
-                              "title": "Private Key Passphrase",
-                              "description": "Passphrase for the private key (if encrypted)",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "privateKey"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -20485,10 +20409,59 @@
                           "description": "Authentication method: username/password or SSH private key",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/10/properties/config/oneOf/2/definitions/basicAuth"
+                              "title": "Username/Password Authentication",
+                              "description": "Username and password authentication for SFTP",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
+                              "properties": {
+                                "username": {
+                                  "title": "Username",
+                                  "description": "SFTP username",
+                                  "type": "string"
+                                },
+                                "password": {
+                                  "title": "Password",
+                                  "description": "SFTP password",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "password"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/10/properties/config/oneOf/2/definitions/keyAuth"
+                              "title": "Private Key Authentication",
+                              "description": "SSH private key authentication for SFTP",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
+                              "properties": {
+                                "username": {
+                                  "title": "Username",
+                                  "description": "SFTP username",
+                                  "type": "string"
+                                },
+                                "privateKey": {
+                                  "title": "Private Key",
+                                  "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
+                                  "type": "string",
+                                  "format": "password",
+                                  "uiFieldType": "fileOrInput"
+                                },
+                                "privateKeyPassphrase": {
+                                  "title": "Private Key Passphrase",
+                                  "description": "Passphrase for the private key (if encrypted)",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "privateKey"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },

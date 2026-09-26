@@ -51,30 +51,20 @@ SEMANTIC_EXPRESSION_IDX = 3
 SEMANTIC_COMMENT_IDX = 4
 SEMANTIC_SYNONYMS_IDX = 5
 
-# A metric name is prefixed with its service so the global Metric namespace stays
-# browsable by service; the digest after it carries the identity. Cap the prefix so a
-# long service name cannot push the name past the 256-character entityName limit.
 _FALLBACK_SERVICE_PREFIX = "snowflake"
 
 
 def build_metric_name(service: str, database: str, schema: str, view: str, table: str, metric: str) -> str:
     """Stable ``<service>-<digest>`` name for a Snowflake semantic-view metric.
 
-    A Metric's FQN is its name, so the name must be globally unique and remain one
-    FQN-safe segment. Hash the complete canonical identity instead of exposing a
-    lossy, separator-joined path, and lead with the service so the global Metric
-    namespace is still browsable. ``displayName`` retains the Snowflake metric name
-    for the UI.
+    The hashing and service-prefix rules are shared with every other semantic-layer
+    connector (see ``metadata.utils.metric_naming``); what is Snowflake-specific is
+    the identity itself and the unquoting each part needs first.
 
     ``table`` is the *logical* table the metric is declared on. Snowflake scopes a
     semantic object's name to its logical table — every object is declared as
     ``<table_alias>.<name> AS <expr>`` — so one view may define both ``orders.total``
     and ``returns.total``, and the logical table is part of the metric's identity.
-
-    NUL separates identity components because Snowflake identifiers cannot contain
-    it, keeping part boundaries unambiguous. The full digest avoids introducing a
-    connector-defined truncation collision and stays well below the entity-name
-    length limit.
     """
     return build_semantic_metric_name(
         service, database, schema, view, table, metric, fallback_prefix=_FALLBACK_SERVICE_PREFIX
