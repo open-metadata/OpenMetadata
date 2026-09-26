@@ -25,6 +25,8 @@
   border: none;
   font-size: var(--om-font-size-32);
   &::placeholder {
-    color: var(--om-legacy-color-f3f3f3);
+    // Deliberately faint: light #f5f5f5 matches the original #f3f3f3, dark is a
+    // translucent white that stays faint on any dark surface.
+    color: var(--om-color-bg-secondary-hover);
   }
 }
