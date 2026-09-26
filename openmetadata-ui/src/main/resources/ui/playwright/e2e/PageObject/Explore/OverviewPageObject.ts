@@ -654,18 +654,21 @@ export class OverviewPageObject extends RightPanelBase {
   }
 
   /**
-   * Commit a domain selection. Multi-select stages behind Apply; single-select
-   * commits on the node click and closes the popover. Waits for whichever
-   * settles rather than sampling `isVisible()` at one instant, which raced the
-   * staged footer rendering a frame after the click.
+   * Commit a domain selection. Multi-select stages behind an Apply button;
+   * single-select commits on the node click and closes the popover, leaving no
+   * Apply to press.
+   *
+   * `update-btn` is shared with SelectableList, DataProductsSelectList and
+   * AsyncSelectList, so it is scoped to this picker's popover — an unscoped
+   * lookup can match another widget's button. Racing the two outcomes instead
+   * of sampling visibility was tried and reverted: it let the Apply branch win
+   * against an already-committed single-select, which swallowed the PATCH the
+   * caller is waiting on.
    */
   private async applyStagedDomainSelection() {
-    await Promise.race([
-      this.domainApplyButton
-        .waitFor({ state: 'visible' })
-        .then(() => this.domainApplyButton.click()),
-      this.domainTree.waitFor({ state: 'detached' }),
-    ]);
+    if (await this.domainApplyButton.isVisible()) {
+      await this.domainApplyButton.click();
+    }
   }
 
   // ============ DELETED ENTITY VERIFICATION METHODS ============
