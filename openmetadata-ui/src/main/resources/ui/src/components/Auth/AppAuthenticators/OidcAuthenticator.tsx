@@ -29,6 +29,11 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import {
+  getAuthErrorCode,
+  isInteractionRequiredCode,
+  ReauthRequiredError,
+} from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -54,15 +59,20 @@ const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
   })(type);
 };
 
-// Safari ITP blocks third-party cookies inside the silent-renew iframe, so the
-// postMessage callback never reaches the parent window and oidc-client's
-// IFrameWindow rejects with a plain Error naming the frame itself (e.g.
-// "Frame window timed out", "Invalid response from frame") rather than an
-// ErrorResponse carrying an IdP authorization decision (login_required,
-// consent_required, ...). Only that class of failure should fall back to a
-// visible signinPopup — any other rejection is rethrown untouched.
+// Safari ITP (and increasingly every browser) blocks third-party cookies
+// inside the silent-renew iframe, so the postMessage callback never reaches
+// the parent window and oidc-client's IFrameWindow rejects with a plain Error
+// naming the frame itself (e.g. "Frame window timed out", "Invalid response
+// from frame") rather than an ErrorResponse carrying an IdP authorization
+// decision.
 const isFrameError = (error: unknown): boolean =>
   error instanceof Error && /frame/i.test(error.message);
+
+// Both a blocked iframe and an IdP answer like login_required can still be
+// recovered by a top-level redirect, which carries the IdP session cookie
+// first-party. Anything else (network, misconfiguration) is rethrown untouched.
+const isReauthRequired = (error: unknown): boolean =>
+  isFrameError(error) || isInteractionRequiredCode(getAuthErrorCode(error));
 
 const OidcCallbackWrapper = ({
   userManager,
@@ -92,6 +102,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ childComponentType, children, userConfig }: Props, ref) => {
     const {
       isAuthenticated,
+      isAuthenticating,
       isSigningUp,
       setIsSigningUp,
       isApplicationLoading,
@@ -201,10 +212,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
         try {
           user = await userManager.signinSilent();
         } catch (error) {
-          if (!isFrameError(error)) {
-            throw error;
+          // A popup opened from a timer or a 401 has no user gesture, so
+          // browsers block it; hand over to a top-level redirect instead.
+          if (isReauthRequired(error)) {
+            throw new ReauthRequiredError(
+              'OIDC silent renewal needs an interactive visit to the identity provider',
+              error
+            );
           }
-          user = await userManager.signinPopup();
+
+          throw error;
         }
 
         if (!user?.id_token) {
@@ -219,10 +236,18 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       [userManager]
     );
 
+    // The /callback route below completes it; a login_required answer lands
+    // in its onError, which signs the user out.
+    const silentReauth = async () => {
+      await userManager.clearStaleState();
+      await userManager.signinRedirect({ prompt: 'none' });
+    };
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: signInSilently,
+      invokeSilentReauth: silentReauth,
     }));
 
     // Register the coordinator renewer directly from this authenticator's
@@ -237,6 +262,11 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       childComponentType,
       userManager
     ) as unknown as ComponentType;
+
+    // While a cold-load refresh or a silent re-authentication is still
+    // settling the children render the loader; bouncing to /signin then would
+    // lose the page the user was on.
+    const isKnownSignedOut = !isAuthenticated && !isAuthenticating;
 
     return (
       <>
@@ -280,13 +310,13 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           <Route
             element={
               !location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
-              // render the children only if user is authenticated
-              (isAuthenticated ? (
+              // render the children only if user is not known to be signed out
+              (isKnownSignedOut ? (
+                <Navigate to={ROUTES.SIGNIN} />
+              ) : (
                 !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
                   <Fragment>{children}</Fragment>
                 )
-              ) : (
-                <Navigate to={ROUTES.SIGNIN} />
               ))
             }
             path="*"

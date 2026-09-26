@@ -13,6 +13,7 @@
 import { act, render } from '@testing-library/react';
 import { createRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import OidcAuthenticator from './OidcAuthenticator';
 
@@ -22,6 +23,7 @@ import OidcAuthenticator from './OidcAuthenticator';
 // must be prefixed with "mock" per babel-plugin-jest-hoist's allow-list.)
 const mockSigninSilent = jest.fn();
 const mockSigninPopup = jest.fn();
+const mockSigninRedirect = jest.fn();
 const mockRemoveUser = jest.fn();
 const mockClearStaleState = jest.fn();
 const mockGetEndSessionEndpoint = jest.fn(() => Promise.resolve(undefined));
@@ -29,6 +31,7 @@ const mockGetEndSessionEndpoint = jest.fn(() => Promise.resolve(undefined));
 const mockUserManager = {
   signinSilent: mockSigninSilent,
   signinPopup: mockSigninPopup,
+  signinRedirect: mockSigninRedirect,
   removeUser: mockRemoveUser,
   clearStaleState: mockClearStaleState,
   metadataService: { getEndSessionEndpoint: mockGetEndSessionEndpoint },
@@ -40,14 +43,20 @@ jest.mock('react-oidc', () => ({
   Callback: () => null,
 }));
 
+const mockAuthState = { isAuthenticated: true, isAuthenticating: false };
+
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
-    isAuthenticated: true,
+    ...mockAuthState,
     isSigningUp: false,
     setIsSigningUp: jest.fn(),
     isApplicationLoading: false,
   }),
 }));
+
+jest.mock('../../../pages/LoginPage/SignInPage', () => () => (
+  <div>SignInPage</div>
+));
 
 jest.mock('../AuthProviders/AuthProvider', () => ({
   useAuthProvider: () => ({
@@ -85,6 +94,8 @@ const renderOidcAuthenticator = (ref: React.RefObject<AuthenticatorRef>) =>
 describe('OidcAuthenticator', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthState.isAuthenticated = true;
+    mockAuthState.isAuthenticating = false;
   });
 
   it('should render children', () => {
@@ -122,45 +133,91 @@ describe('OidcAuthenticator', () => {
     expect(result?.expiresAt).toBeGreaterThan(Date.now());
   });
 
-  it('falls back to signinPopup when signinSilent fails with a frame error (Safari ITP)', async () => {
+  it('hands a blocked renewal iframe (Safari ITP) to a top-level redirect instead of a popup', async () => {
+    // A popup opened from a timer or a 401 has no user gesture, so browsers
+    // block it; the renewer must say "re-authenticate" instead of trying one.
     mockSigninSilent.mockRejectedValueOnce(new Error('Frame window timed out'));
-    const expiresAtSeconds = Math.floor(Date.now() / 1000) + 300;
-    mockSigninPopup.mockResolvedValueOnce({
-      id_token: 'popup-fresh',
-      expires_at: expiresAtSeconds,
-    });
 
     const ref = createRef<AuthenticatorRef>();
     renderOidcAuthenticator(ref);
 
     const renewer = registerRenewer.mock.calls.at(-1)?.[0];
 
-    let result: { idToken: string; expiresAt: number } | undefined;
-    await act(async () => {
-      result = await renewer?.();
-    });
-
-    expect(mockSigninSilent).toHaveBeenCalled();
-    expect(mockSigninPopup).toHaveBeenCalled();
-    expect(result).toEqual({
-      idToken: 'popup-fresh',
-      expiresAt: expiresAtSeconds * 1000,
-    });
-  });
-
-  it('rethrows non-frame signinSilent errors without falling back to popup', async () => {
-    mockSigninSilent.mockRejectedValueOnce(new Error('login_required'));
-
-    const ref = createRef<AuthenticatorRef>();
-    renderOidcAuthenticator(ref);
-
-    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
-
-    await expect(renewer?.()).rejects.toThrow('login_required');
+    await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
     expect(mockSigninPopup).not.toHaveBeenCalled();
   });
 
-  it('throws when neither signinSilent nor the popup fallback produce an id_token', async () => {
+  it.each([
+    'login_required',
+    'interaction_required',
+    'consent_required',
+    'account_selection_required',
+  ])(
+    'classifies an IdP %s answer as recoverable by a top-level redirect',
+    async (code) => {
+      mockSigninSilent.mockRejectedValueOnce(
+        Object.assign(new Error(code), { error: code })
+      );
+
+      const ref = createRef<AuthenticatorRef>();
+      renderOidcAuthenticator(ref);
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+    }
+  );
+
+  it('rethrows other signinSilent failures untouched', async () => {
+    const networkError = new Error('Network Error');
+    mockSigninSilent.mockRejectedValueOnce(networkError);
+
+    const ref = createRef<AuthenticatorRef>();
+    renderOidcAuthenticator(ref);
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+    await expect(renewer?.()).rejects.toBe(networkError);
+    expect(mockSigninPopup).not.toHaveBeenCalled();
+  });
+
+  it('invokeSilentReauth starts a prompt=none redirect after clearing stale state', async () => {
+    const ref = createRef<AuthenticatorRef>();
+    renderOidcAuthenticator(ref);
+
+    await act(async () => {
+      await ref.current?.invokeSilentReauth?.();
+    });
+
+    expect(mockClearStaleState).toHaveBeenCalled();
+    expect(mockSigninRedirect).toHaveBeenCalledWith({ prompt: 'none' });
+  });
+
+  it('keeps the page while authentication is still settling instead of bouncing to /signin', () => {
+    mockAuthState.isAuthenticated = false;
+    mockAuthState.isAuthenticating = true;
+
+    const { getByText, queryByText } = renderOidcAuthenticator(
+      createRef<AuthenticatorRef>()
+    );
+
+    expect(getByText('Child')).toBeInTheDocument();
+    expect(queryByText('SignInPage')).not.toBeInTheDocument();
+  });
+
+  it('redirects to /signin once the user is known to be signed out', () => {
+    mockAuthState.isAuthenticated = false;
+    mockAuthState.isAuthenticating = false;
+
+    const { getByText, queryByText } = renderOidcAuthenticator(
+      createRef<AuthenticatorRef>()
+    );
+
+    expect(getByText('SignInPage')).toBeInTheDocument();
+    expect(queryByText('Child')).not.toBeInTheDocument();
+  });
+
+  it('throws when signinSilent produces no id_token', async () => {
     mockSigninSilent.mockResolvedValueOnce({ id_token: '', expires_at: 0 });
 
     const ref = createRef<AuthenticatorRef>();

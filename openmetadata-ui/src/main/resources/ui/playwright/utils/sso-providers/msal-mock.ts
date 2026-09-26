@@ -71,6 +71,19 @@ const MOCK_CLIENT_ID = 'msal-mock-client';
 // the real "token still valid" branch.
 const TOKEN_LIFETIME_SECONDS = 300;
 
+// sessionStorage keys the page-side mock reads on every call, so a test can
+// switch behaviour after login and the state survives the mock's own
+// "redirect" (a full page load that re-runs the init script).
+const MSAL_MOCK_KEYS = {
+  // acquireTokenSilent fails the way Entra does once its 24h SPA refresh
+  // token has lapsed and the hidden iframe is blocked.
+  failSilentRenewal: '__omTestMsalFailSilentRenewal',
+  // Set by acquireTokenRedirect: the round trip renewed the Entra session.
+  redirectCompleted: '__omTestMsalRedirectCompleted',
+  // Every acquireTokenRedirect request, so the test can count them.
+  redirectRequests: '__omTestMsalRedirectRequests',
+} as const;
+
 const buildValidConfig = () => ({
   authenticationConfiguration: {
     clientType: 'public',
@@ -132,7 +145,7 @@ const installMsalMock = async (
     });
 
   await page.addInitScript(
-    ({ idToken, email, name, sub, lifetimeSeconds, tenantId }) => {
+    ({ idToken, email, name, sub, lifetimeSeconds, tenantId, keys }) => {
       const account = {
         homeAccountId: `${sub}.${tenantId}`,
         environment: 'login.microsoftonline.com',
@@ -166,10 +179,50 @@ const installMsalMock = async (
         scopes: RESPONSE_SCOPES,
       });
 
+      const isSilentRenewalBroken = () =>
+        sessionStorage.getItem(keys.failSilentRenewal) === '1' &&
+        sessionStorage.getItem(keys.redirectCompleted) !== '1';
+
       const instance = {
         handleRedirectPromise: async () => mintResponse(),
-        acquireTokenSilent: async () => mintResponse(),
+        acquireTokenSilent: async () => {
+          if (isSilentRenewalBroken()) {
+            // A plain object on purpose: the page cannot construct MSAL's
+            // InteractionRequiredAuthError, so the authenticator has to
+            // classify it by errorCode.
+            throw {
+              errorCode: 'interaction_required',
+              errorMessage: 'AADSTS50058: A silent sign-in request was sent',
+            };
+          }
+
+          return mintResponse();
+        },
         acquireTokenPopup: async () => mintResponse(),
+        // Stands in for the Entra round trip: record the request, mark the
+        // session renewed, and land back on the page that started it.
+        acquireTokenRedirect: async (request: {
+          prompt?: string;
+          redirectStartPage?: string;
+        }) => {
+          const requests = JSON.parse(
+            sessionStorage.getItem(keys.redirectRequests) ?? '[]'
+          ) as unknown[];
+          requests.push({
+            prompt: request.prompt,
+            redirectStartPage: request.redirectStartPage,
+          });
+          sessionStorage.setItem(
+            keys.redirectRequests,
+            JSON.stringify(requests)
+          );
+          sessionStorage.setItem(keys.redirectCompleted, '1');
+          window.location.assign(
+            request.redirectStartPage ?? window.location.href
+          );
+
+          return new Promise<never>(() => undefined);
+        },
         loginRedirect: async () => {
           // Simulate the return-from-IdP hop — the router picks up `/callback`
           // and the AuthProvider's redirect-completion effect finishes login.
@@ -252,6 +305,7 @@ const installMsalMock = async (
       sub: MOCK_SUB,
       lifetimeSeconds: TOKEN_LIFETIME_SECONDS,
       tenantId: MOCK_TENANT_ID,
+      keys: MSAL_MOCK_KEYS,
     }
   );
 };
@@ -279,6 +333,7 @@ export const msalMockProviderFixture: SsoProviderFixture = {
   // opt out here; the real MSAL nightly leg (if wired) would.
   usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: true,
 
   isAvailable: () => true,
 
@@ -390,4 +445,20 @@ export const msalMockProviderFixture: SsoProviderFixture = {
   },
 
   forceTokenExpiry,
+
+  async breakSilentRenewal(page: Page) {
+    await page.evaluate(
+      (key) => sessionStorage.setItem(key, '1'),
+      MSAL_MOCK_KEYS.failSilentRenewal
+    );
+  },
+
+  trackSilentReauth: (page: Page) => async () =>
+    page.evaluate((key) => {
+      const requests = JSON.parse(sessionStorage.getItem(key) ?? '[]') as {
+        prompt?: string;
+      }[];
+
+      return requests.filter((request) => request.prompt === 'none').length;
+    }, MSAL_MOCK_KEYS.redirectRequests),
 };

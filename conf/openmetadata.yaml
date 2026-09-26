@@ -513,8 +513,8 @@ authenticationConfiguration:
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
-    maxAge: ${OIDC_MAX_AGE:-"0"}
-    prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    maxAge: ${OIDC_MAX_AGE:-""}
+    prompt: ${OIDC_PROMPT_TYPE:-""}
     sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} # Deprecated fallback; use AUTHENTICATION_SESSION_EXPIRY
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}

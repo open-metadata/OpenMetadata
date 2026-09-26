@@ -84,6 +84,7 @@ export const basicProviderFixture: SsoProviderFixture = {
   hasBackendIssuedRefreshCookie: true,
   usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   isAvailable: () => true, // Always available — no external deps
 

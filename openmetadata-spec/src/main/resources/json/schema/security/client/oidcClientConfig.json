@@ -86,11 +86,11 @@
       "type": "string"
     },
     "maxAge": {
-      "description": "Validity for the JWT Token created from SAML Response",
+      "description": "OIDC max_age authentication request parameter: the maximum time in seconds since the user last actively authenticated at the identity provider. Leave empty so the identity provider can reuse its own session; '0' is treated as unset. To force re-authentication on every login, set prompt to 'login' instead.",
       "type": "string"
     },
     "prompt": {
-      "description": "Prompt whether login/consent",
+      "description": "OIDC prompt authentication request parameter (for example 'login', 'consent' or 'select_account'). Leaving it empty is recommended: OpenMetadata sends prompt=none on its own when it re-authenticates a user silently.",
       "type": "string"
     },
     "sessionExpiry": {

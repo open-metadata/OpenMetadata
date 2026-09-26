@@ -47,6 +47,15 @@ public class SessionService implements Managed {
   // do not block the revocation result.
   private final List<Consumer<UserSession>> revocationListeners = new CopyOnWriteArrayList<>();
 
+  /**
+   * The identity provider's side of a confidential OIDC session. A {@code null} component leaves
+   * the stored value in place.
+   *
+   * @param refreshToken the provider refresh token, persisted encrypted
+   * @param renewalDueAt epoch millis by which a refresh has to renew the provider's tokens
+   */
+  public record ProviderTokens(String refreshToken, Long renewalDueAt) {}
+
   public SessionService(AuthenticationConfiguration authConfig) {
     this(authConfig, SessionStoreFactory.create());
   }
@@ -195,7 +204,7 @@ public class SessionService implements Managed {
       UserSession pendingSession,
       User user,
       String omRefreshToken,
-      String providerRefreshToken) {
+      ProviderTokens providerTokens) {
     long now = System.currentTimeMillis();
     long expectedVersion = safeVersion(pendingSession);
 
@@ -218,7 +227,7 @@ public class SessionService implements Managed {
     int sessionExpirySeconds = getSessionExpirySeconds();
     long expiresAt = now + TimeUnit.SECONDS.toMillis(sessionExpirySeconds);
     String newSessionId = SessionIdGenerator.newSessionId();
-    UserSession activated =
+    UserSession.UserSessionBuilder activatedBuilder =
         UserSession.builder()
             .id(newSessionId)
             .type(pendingSession.getType())
@@ -228,15 +237,14 @@ public class SessionService implements Managed {
             .username(user.getName())
             .email(user.getEmail())
             .omRefreshToken(encryptIfPresent(omRefreshToken))
-            .providerRefreshToken(encryptIfPresent(providerRefreshToken))
             .redirectUri(pendingSession.getRedirectUri())
             .lastAccessedAt(now)
             .createdAt(now)
             .updatedAt(now)
             .expiresAt(expiresAt)
             .idleExpiresAt(expiresAt)
-            .version(0L)
-            .build();
+            .version(0L);
+    UserSession activated = withProviderTokens(activatedBuilder, providerTokens).build();
     repository.create(activated);
     cache.put(activated.getId(), activated);
     applySessionLimit(user.getId().toString(), activated.getId());
@@ -374,27 +382,30 @@ public class SessionService implements Managed {
     return Optional.empty();
   }
 
+  /**
+   * Returns a leased session to {@code ACTIVE}. The absolute {@code expiresAt} never moves: only a
+   * new sign-in starts a new session lifetime.
+   *
+   * @param providerTokens what a confidential OIDC refresh learned from the identity provider, or
+   *     {@code null} when it did not contact the provider
+   */
   public Optional<UserSession> completeRefresh(
-      UserSession leasedSession, String omRefreshToken, String providerRefreshToken) {
+      UserSession leasedSession, String omRefreshToken, ProviderTokens providerTokens) {
     long now = System.currentTimeMillis();
     long expectedVersion = safeVersion(leasedSession);
-    UserSession refreshed =
+    UserSession.UserSessionBuilder refreshedBuilder =
         leasedSession.toBuilder()
             .status(SessionStatus.ACTIVE)
             .omRefreshToken(
                 omRefreshToken == null
                     ? leasedSession.getOmRefreshToken()
                     : encryptIfPresent(omRefreshToken))
-            .providerRefreshToken(
-                providerRefreshToken == null
-                    ? leasedSession.getProviderRefreshToken()
-                    : encryptIfPresent(providerRefreshToken))
             .refreshLeaseUntil(null)
             .lastAccessedAt(now)
             .updatedAt(now)
             .idleExpiresAt(refreshedIdleExpiresAt(now, leasedSession))
-            .version(expectedVersion + 1)
-            .build();
+            .version(expectedVersion + 1);
+    UserSession refreshed = withProviderTokens(refreshedBuilder, providerTokens).build();
     if (!repository.updateIfVersion(refreshed, expectedVersion)) {
       return reloadSession(refreshed.getId());
     }
@@ -751,6 +762,20 @@ public class SessionService implements Managed {
     } else {
       repository.findById(session.getId()).ifPresent(value -> cache.put(value.getId(), value));
     }
+  }
+
+  private UserSession.UserSessionBuilder withProviderTokens(
+      UserSession.UserSessionBuilder builder, ProviderTokens providerTokens) {
+    if (providerTokens == null) {
+      return builder;
+    }
+    if (providerTokens.refreshToken() != null) {
+      builder.providerRefreshToken(encryptIfPresent(providerTokens.refreshToken()));
+    }
+    if (providerTokens.renewalDueAt() != null) {
+      builder.providerRenewalDueAt(providerTokens.renewalDueAt());
+    }
+    return builder;
   }
 
   private String encryptIfPresent(String value) {

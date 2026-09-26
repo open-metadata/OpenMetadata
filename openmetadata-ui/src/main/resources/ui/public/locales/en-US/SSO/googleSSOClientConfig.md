@@ -264,7 +264,7 @@ $$section
 - **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
-- **Note:** This value is not inherited from the Google token lifetime.
+- **Note:** This value is not inherited from the Google token lifetime, but for a confidential client that receives a Google refresh token it is an upper bound: OpenMetadata tokens never outlive Google's access token, so each refresh can renew the Google tokens in time.
 $$
 
 $$section
@@ -298,7 +298,9 @@ $$section
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
-- **Note:** Leave empty for no specific max age requirement
+- **Note:**
+  - Leave empty (recommended) so users who are still signed in at Google get straight back in.
+  - `0` is treated as empty: it would make Google ask for credentials on every sign-in, including the silent re-authentication OpenMetadata performs when its own session ends. To force a fresh login every time, set **OIDC Prompt** to `login` instead.
 $$
 
 $$section
@@ -309,6 +311,7 @@ $$section
 - **Example:** select_account
 - **Why it matters:** Affects user experience during authentication.
 - **Note:**
+  - Leave empty (recommended): OpenMetadata sends `none` by itself when it re-authenticates a user in the background, so a value set here only changes interactive sign-ins.
   - `login`: Always prompt for credentials
   - `consent`: Prompt for permissions
   - `select_account`: Show account picker

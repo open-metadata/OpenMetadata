@@ -183,6 +183,19 @@ describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-
     ).toBe(true);
   });
 
+  // A cold load with a time-valid JWT whose OpenMetadata session has ended
+  // (session expiry, per-user session limit) must reach the coordinator so the
+  // session can be re-established at the identity provider, not dropped on
+  // /signin.
+  it('returns true for a /users/loggedInUser 401 whose OpenMetadata session has ended', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        code: 401,
+        message: 'Not Authorized! Invalid session.',
+      })
+    ).toBe(true);
+  });
+
   it('returns true for a normal 401 on any other endpoint', () => {
     expect(isRefreshableAuthError(401, '/tables/name/foo', {})).toBe(true);
   });

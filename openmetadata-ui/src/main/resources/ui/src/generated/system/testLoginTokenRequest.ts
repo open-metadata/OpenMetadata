@@ -385,7 +385,10 @@ export interface OidcClientConfig {
      */
     id: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * OIDC max_age authentication request parameter: the maximum time in seconds since the user
+     * last actively authenticated at the identity provider. Leave empty so the identity
+     * provider can reuse its own session; '0' is treated as unset. To force re-authentication
+     * on every login, set prompt to 'login' instead.
      */
     maxAge?: string;
     /**
@@ -397,7 +400,9 @@ export interface OidcClientConfig {
      */
     preferredJwsAlgorithm?: string;
     /**
-     * Prompt whether login/consent
+     * OIDC prompt authentication request parameter (for example 'login', 'consent' or
+     * 'select_account'). Leaving it empty is recommended: OpenMetadata sends prompt=none on its
+     * own when it re-authenticates a user silently.
      */
     prompt?: string;
     /**
