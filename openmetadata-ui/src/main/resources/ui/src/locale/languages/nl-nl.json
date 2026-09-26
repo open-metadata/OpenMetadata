@@ -3127,6 +3127,7 @@
     "trigger": "Trekker",
     "trigger-entity": "{{entity}} activeren",
     "trigger-type": "Triggertype",
+    "triggered-by": "Getriggerd door",
     "triggered-lowercase": "getriggerd",
     "triggering-lowercase": "triggeren",
     "true": "TRUE",

@@ -1397,6 +1397,9 @@ public class IngestionPipelineResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    // triggeredBy is an audit field recorded from the trigger request itself; whoever reports
+    // run progress must not be able to set it or change it.
+    pipelineStatus.setTriggeredBy(null);
     return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
 

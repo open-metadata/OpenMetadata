@@ -43,6 +43,10 @@
       "description": "This schema defines the type of application Run.",
       "type": "string"
     },
+    "triggeredBy": {
+      "description": "User who triggered the run on demand, when known. Not set for scheduled runs.",
+      "type": "string"
+    },
     "startTime": {
       "description": "Start of the job status.",
       "$ref": "../../type/basic.json#/definitions/timestamp"

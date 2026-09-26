@@ -397,6 +397,10 @@ public class AppsResourceIT {
                       AppRunRecord.class);
               assertNotNull(run);
               assertNotNull(run.getStatus());
+              assertEquals(
+                  "admin",
+                  run.getTriggeredBy(),
+                  "On-demand run must record the principal that triggered it");
             });
   }
 

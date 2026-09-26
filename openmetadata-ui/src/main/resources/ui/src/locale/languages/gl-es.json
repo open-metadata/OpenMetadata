@@ -3127,6 +3127,7 @@
     "trigger": "Desencadear",
     "trigger-entity": "Activar {{entity}}",
     "trigger-type": "Tipo de desencadeamento",
+    "triggered-by": "Desencadeado por",
     "triggered-lowercase": "desencadeado",
     "triggering-lowercase": "desencadeando",
     "true": "TRUE",

@@ -3127,6 +3127,7 @@
     "trigger": "Trigger",
     "trigger-entity": "Trigger {{entity}}",
     "trigger-type": "Trigger type",
+    "triggered-by": "Triggered By",
     "triggered-lowercase": "triggered",
     "triggering-lowercase": "triggering",
     "true": "TRUE",

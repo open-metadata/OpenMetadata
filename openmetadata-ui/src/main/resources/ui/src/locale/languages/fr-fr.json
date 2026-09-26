@@ -3127,6 +3127,7 @@
     "trigger": "Déclencheur",
     "trigger-entity": "Déclencher {{entity}}",
     "trigger-type": "Type de Déclencheur",
+    "triggered-by": "Déclenché par",
     "triggered-lowercase": "déclenché",
     "triggering-lowercase": "déclenchement",
     "true": "TRUE",

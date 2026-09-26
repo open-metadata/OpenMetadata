@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Table as AntdTable } from 'antd';
@@ -169,6 +170,14 @@ jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
   jest.fn().mockReturnValue(<div>AppLogsViewer</div>)
 );
 
+jest.mock('../../../common/PopOverCard/UserPopOverCard', () =>
+  jest
+    .fn()
+    .mockImplementation(({ userName }: { userName: string }) => (
+      <span data-testid="triggered-by-user">{userName}</span>
+    ))
+);
+
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
@@ -246,6 +255,35 @@ describe('AppRunsHistory', () => {
     const stopButton = screen.queryByTestId('stop-button');
 
     expect(stopButton).not.toBeInTheDocument();
+  });
+
+  const getTriggeredByCell = () => {
+    const columnIndex = screen
+      .getAllByRole('columnheader')
+      .findIndex((header) => header.textContent === 'label.triggered-by');
+    const [, firstDataRow] = screen.getAllByRole('row');
+
+    return within(firstDataRow).getAllByRole('cell')[columnIndex];
+  };
+
+  it('should show the user who triggered an on-demand run', async () => {
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [{ ...mockApplicationData, triggeredBy: 'alice' }],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(getTriggeredByCell()).toHaveTextContent('alice');
+  });
+
+  it('should show a placeholder when no user triggered the run', async () => {
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(getTriggeredByCell()).toHaveTextContent('--');
+    expect(screen.queryByTestId('triggered-by-user')).not.toBeInTheDocument();
   });
 
   it('should show the error toast if fail in fetching app history', async () => {
@@ -371,7 +409,8 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory jsonSchema={{}} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    expect(screen.getByText('--')).toBeInTheDocument();
+    // The mock run has neither a start time nor a triggering user.
+    expect(screen.getAllByText('--')).toHaveLength(2);
   });
 
   it('should show current configuration when internal app has no run history yet', async () => {

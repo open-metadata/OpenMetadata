@@ -922,6 +922,10 @@ export interface PipelineStatus {
      * executionDate of the pipeline run for this particular execution.
      */
     timestamp?: number;
+    /**
+     * User who triggered the run on demand, when known. Not set for scheduled runs.
+     */
+    triggeredBy?: string;
 }
 
 /**
