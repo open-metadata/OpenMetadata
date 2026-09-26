@@ -96,16 +96,42 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
  * Admin-only. Writes through the generic `/system/settings` PUT, matching
  * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
  * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ *
+ * The backend has no merge logic for this config type (`SystemResource`'s
+ * `createOrUpdateSetting` only merges a handful of other settings, e.g.
+ * search settings) — the PUT replaces the stored row's JSON wholesale. Since
+ * `AppConfiguration` has multiple independent fields (`defaultAppMode`,
+ * `defaultViewModes`, ...) that different UI sections patch separately, we
+ * read-modify-write here so a partial `patch` from one section can never
+ * wipe another section's already-saved fields.
+ *
+ * That read-modify-write is only safe if calls are serialized: two
+ * concurrent calls could both GET the same stored row before either PUTs,
+ * and whichever PUT lands second would still wipe the other's change (e.g.
+ * clicking the App Mode and View Mode Save buttons in quick succession on
+ * `DefaultAppModePage`). `patchQueue` chains each call after the previous
+ * one settles — success or failure — so a call's GET only ever starts once
+ * the prior call's PUT has finished.
  */
-export const patchAppConfiguration = async (
+let patchQueue: Promise<unknown> = Promise.resolve();
+
+export const patchAppConfiguration = (
   patch: Partial<AppConfiguration>
 ): Promise<AppConfiguration> => {
-  const response = await axiosClient.put<Settings>(`/system/settings`, {
-    config_type: SettingType.AppConfiguration,
-    config_value: patch,
-  });
+  const run = async () => {
+    const current = await getAppConfiguration();
+    const response = await axiosClient.put<Settings>(`/system/settings`, {
+      config_type: SettingType.AppConfiguration,
+      config_value: { ...current, ...patch },
+    });
 
-  return (response.data.config_value as AppConfiguration) ?? {};
+    return (response.data.config_value as AppConfiguration) ?? {};
+  };
+
+  const result = patchQueue.then(run, run);
+  patchQueue = result.catch(() => undefined);
+
+  return result;
 };
 
 export const testEmailConnection = async (data: { email: string }) => {

@@ -55,6 +55,7 @@ import {
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
@@ -64,6 +65,7 @@ import {
 } from './hooks/useLearningResourceFilters';
 import { useLearningResources } from './hooks/useLearningResources';
 import { LearningResourceForm } from './LearningResourceForm.component';
+import { resolveDefaultLearningResourcesView } from './LearningResourcesPage.utils';
 
 const CARD_GRID_STYLE: React.CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
@@ -132,7 +134,10 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const { defaultViewModes } = useApplicationStore();
+  const [view, setView] = useState<ViewMode>(
+    resolveDefaultLearningResourcesView(defaultViewModes.learningResources)
+  );
 
   const [searchInputValue, setSearchInputValue] = useState(searchText);
 

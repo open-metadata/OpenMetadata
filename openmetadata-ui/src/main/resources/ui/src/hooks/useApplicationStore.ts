@@ -12,6 +12,7 @@
  */
 import { create } from 'zustand';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import { DefaultViewMode } from '../generated/api/configuration/appConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -110,6 +111,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   appPreferences: {},
   appVersion: undefined,
   rdfEnabled: false,
+  defaultViewModes: {},
 
   initializeAuthState: async () => {
     try {
@@ -337,5 +339,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setRdfEnabled: (enabled: boolean) => {
     set({ rdfEnabled: enabled });
+  },
+  setDefaultViewModes: (defaultViewModes: Record<string, DefaultViewMode>) => {
+    set({ defaultViewModes });
   },
 }));

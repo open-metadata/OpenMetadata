@@ -11,6 +11,15 @@
       "type": ["string", "null"],
       "enum": ["ai", "classic", null],
       "default": null
+    },
+    "defaultViewModes": {
+      "description": "Tenant-wide default view (list, grid, or tree) per page context that has a view toggle. Keys are page identifiers (dataProducts, domains, subDomains, learningResources); a page with no entry keeps its own hardcoded default (list/table). 'tree' is only meaningful for the domains page context, which is the only one whose toggle offers a Tree view.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["list", "grid", "tree"]
+      },
+      "default": {}
     }
   },
   "additionalProperties": false

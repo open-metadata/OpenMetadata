@@ -21,9 +21,22 @@ export interface AppConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default view (list, grid, or tree) per page context that has a view toggle.
+     * Keys are page identifiers (dataProducts, domains, subDomains, learningResources); a page
+     * with no entry keeps its own hardcoded default (list/table). 'tree' is only meaningful for
+     * the domains page context, which is the only one whose toggle offers a Tree view.
+     */
+    defaultViewModes?: { [key: string]: DefaultViewMode };
 }
 
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultViewMode {
+    Grid = "grid",
+    List = "list",
+    Tree = "tree",
 }
