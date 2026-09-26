@@ -350,8 +350,8 @@ class SqlColumnHandlerMixin:
                     om_column.precision = int(precision[0])
                     om_column.scale = int(precision[1])
             else:
-                col_obj = self._process_complex_col_type(column=column, parsed_string=parsed_string)
-                om_column = col_obj
+                om_column = self._process_complex_col_type(column=column, parsed_string=parsed_string)
+                om_column.constraint = self._get_column_constraints(column, pk_columns, column_level_unique_constraints)
 
                 if column.get("children"):
                     # Prioritize source-provided children for column processing.

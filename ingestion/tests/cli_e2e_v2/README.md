@@ -1,7 +1,12 @@
 # CLI E2E v2
 
 Real source → `metadata` subprocess → real OpenMetadata sink/server → persisted SDK observations.
-MySQL is the reference connector. Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+MySQL is the reference connector; BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+
+| Connector | Source ownership | v1 path it replaces |
+|---|---|---|
+| `mysql` | disposable testcontainers MySQL + restricted account, fresh schema per test | `cli_e2e/test_cli_mysql.py` |
+| `bigquery` | fresh labelled dataset per test in two real GCP projects | `cli_e2e/test_cli_bigquery.py`, `cli_e2e/test_cli_bigquery_multiple_project.py` |
 
 ## Run
 
@@ -44,6 +49,7 @@ cli_e2e_v2/
   features/database/   generated pipeline options, catalog/profile/sample/lineage checks
   contracts/           coverage inventory, collection validation, required-result enforcement
   mysql/               owned source, context, expectations, checks, named feature tests
+  bigquery/            owned datasets in two GCP projects, same layout as mysql/ plus test_data_quality.py
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
@@ -95,3 +101,62 @@ Temporary `config.yaml` and `status.json` files are test input and status-valida
 Use the CI provider's native secret masks for actual configured and generated credentials before any command can print them. Masking is not a detector for unknown secrets. Test product redaction with synthetic values in focused tests; this E2E harness does not scrub output to conceal a product redaction defect.
 
 CI log masking does not sanitize JUnit files. Avoid `--showlocals` with real credentials, and review any report-upload policy separately.
+
+## BigQuery
+
+BigQuery cannot run in a container, so `bigquery/` owns one fresh dataset per test (`e2e_bq_<uuid>`,
+label `owner=cli-e2e-v2`, 24h default table expiration as a leak safety net) and deletes it with its
+contents on success and failure. Every workflow carries an anchored `schemaFilterPattern` for the
+owned datasets, because the projects also hold unowned data; the invocation helper rejects a schema
+filter without explicit includes. Missing credentials are errors, not skips.
+
+```bash
+export E2E_BQ_PROJECT_ID=...        # primary project: owned datasets, ingested as the OM database
+export E2E_BQ_PROJECT_ID2=...       # second project: multi-project scenarios and billingProjectId
+export E2E_BQ_PRIVATE_KEY_ID=... E2E_BQ_PRIVATE_KEY=... E2E_BQ_CLIENT_EMAIL=...
+export E2E_BQ_LOCATION=US           # optional; dataset location and usageLocation
+python -m pytest ingestion/tests/cli_e2e_v2/bigquery --e2e-contract-check -v
+```
+
+Locally, `E2E_BQ_AUTH=adc` uses Application Default Credentials (`gcloud auth application-default login`)
+for both the fixtures and the CLI (`gcpConfig.type: gcp_adc`); the `E2E_BQ_PRIVATE_KEY*` / `E2E_BQ_CLIENT_EMAIL`
+variables are then unused. The default, `service_account`, is what CI uses.
+
+The service account needs BigQuery User (dataset create, jobs) and Data Editor on **both** projects.
+There is no restricted ingestion account: the same identity seeds and ingests.
+`E2E_BQ_PRIVATE_KEY` may use real or `\n`-escaped newlines; the session exports a single-line copy as
+`E2E_BQ_CLI_PRIVATE_KEY` because the CLI expands `${VARS}` before parsing YAML.
+Single-project runs set `billingProjectId` to the second project (as v1 did); the system-metrics
+scenario therefore issues its DML through the billing project, whose `INFORMATION_SCHEMA.JOBS`
+the connector reads, and waits until those jobs are visible before profiling.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ N records | `catalog.metadata` (complete inventory, native types, keys, descriptions, view, procedure) |
+| multi-project credentials (`projectId` list) | `catalog.multi-project`, `filter.database.include-one` |
+| schema include/exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| table include/exclude/mix filters (filtered-count floors) | `filter.table.*` (always combined with the owned-schema filter) |
+| create table + profiler | `profile.metrics` |
+| system profile INSERT/UPDATE rows | `profile.system` (also rejects sibling-table DML) |
+| profiler defaults to the latest partition | `profile.partition.default` |
+| auto-classification, 50 sample rows | `sample.limit`, `classification.tags` |
+| deleted table marked deleted | `deletion.tables` |
+| view lineage, 2 column edges | `lineage.view` |
+| `tableDiff` data-quality test | `dq.table-diff` |
+
+Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`, `sample.values.native`,
+`sample.values.replacement`. v1's lineage run enabled query-log lineage but asserted only view
+lineage; query-log lineage and policy-tag taxonomies stay out of scope, as for MySQL.
+
+Fixed while migrating, each found by a strict assertion here: `NUMERIC`/`BIGNUMERIC` → `NUMERIC` and `JSON` → `JSON`
+types, per-table system metrics, foreign keys to the current database, `ARRAY`/`STRUCT` nullability constraints,
+STRUCT-subfield sampling and unique counts, and a shared-session race between profiler metric threads.
+
+Do not relax these expectations to report a green run. Running with ADC as a user without project-level
+`bigquery.tables.list` on the second project also fails `catalog.multi-project` on the region-scoped
+life-cycle query (403). That is a permission difference in the environment, not a product defect.
+
+Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries only after this suite has
+passed for the agreed stability window.
