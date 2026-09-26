@@ -795,7 +795,33 @@ public class SearchRepository {
     if (!(vectorIndexService instanceof OpenSearchVectorService)) {
       return;
     }
+    double[] weights = resolveHybridWeights();
+    updateHybridSearchPipeline(weights[0], weights[1]);
+  }
 
+  /**
+   * The RRF pipeline body for the effective hybrid weights, ready to inline into a search
+   * request's {@code search_pipeline} field. Empty unless semantic search is on and the backend is
+   * OpenSearch.
+   *
+   * <p>Resolved per call rather than baked into a stored pipeline: the weights live in search
+   * settings, so inlining is what makes an admin's weight change take effect on the next query
+   * instead of waiting for a reindex to re-PUT a cluster-global object that a prefix-scoped search
+   * role is not allowed to write anyway.
+   */
+  public Optional<String> getHybridRrfPipelineDefinition() {
+    if (!isVectorEmbeddingEnabled()
+        || !vectorServiceInitialized
+        || !(vectorIndexService instanceof OpenSearchVectorService)) {
+      return Optional.empty();
+    }
+    double[] weights = resolveHybridWeights();
+    return Optional.of(
+        OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
+  }
+
+  /** Effective {keyword, semantic} weights: search settings when present, else config defaults. */
+  private double[] resolveHybridWeights() {
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
@@ -816,8 +842,7 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
-
-    updateHybridSearchPipeline(keywordWeight, semanticWeight);
+    return new double[] {keywordWeight, semanticWeight};
   }
 
   public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
