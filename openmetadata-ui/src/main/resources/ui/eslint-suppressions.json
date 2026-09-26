@@ -24,6 +24,11 @@
       "count": 25
     }
   },
+  "playwright/e2e/Features/ActivityStream.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 2
+    }
+  },
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -369,7 +374,7 @@
   },
   "playwright/e2e/Features/SSOConfiguration.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 24
+      "count": 31
     }
   },
   "playwright/e2e/Features/SSOTestLogin.spec.ts": {
