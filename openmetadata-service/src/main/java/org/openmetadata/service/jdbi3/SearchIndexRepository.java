@@ -23,7 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -338,7 +338,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     for (SearchIndexField field : listOrEmpty(fields)) {
       validateTags(field.getTags());
       field.setTags(addDerivedTags(field.getTags()));
-      checkMutuallyExclusive(field.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
       }

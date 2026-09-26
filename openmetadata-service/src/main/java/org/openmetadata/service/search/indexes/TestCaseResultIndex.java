@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +13,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -18,6 +21,7 @@ import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.util.EntityUtil;
 
 public record TestCaseResultIndex(TestCaseResult testCaseResult) implements SearchIndex {
   private static final Set<String> excludeFields =
@@ -85,6 +89,8 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
       }
     }
 
+    Table parentTable = resolveParentTable(testCase);
+    projectParentTerms(testCase, parentTable);
     Map<String, Object> testCaseMap = JsonUtils.getMap(testCase);
     esDoc.put("testSuites", testCaseMap.get("testSuites"));
     esDoc.put("testSuite", testCaseMap.get("testSuite"));
@@ -99,8 +105,54 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
     if (!nullOrEmpty(testCase.getDomains())) {
       esDoc.put("domains", getEntitiesWithDisplayName(testCase.getDomains()));
     }
-    setParentRelationships(testCase, esDoc);
+    setParentRelationships(parentTable, esDoc);
     return esDoc;
+  }
+
+  /**
+   * A glossary term on the table is projected onto its children at read time and is never stored, so
+   * nothing on the test case itself can reproduce it here. Without this the embedded copy depends
+   * entirely on the cascade having patched the document: any later rebuild — a reindex, or simply a
+   * result ingested after the table was tagged — writes the term back out of existence. Deriving it
+   * while the document is built makes a rebuild reproduce the same value the cascade would have
+   * written, which leaves the cascade responsible only for documents that already exist.
+   */
+  private void projectParentTerms(TestCase testCase, Table parentTable) {
+    if (parentTable == null) {
+      return;
+    }
+    List<TagLabel> propagated = Entity.propagatedParentTags(parentTable.getTags());
+    if (propagated.isEmpty()) {
+      return;
+    }
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(testCase.getTags()));
+    EntityUtil.mergeTags(merged, propagated);
+    testCase.setTags(merged);
+  }
+
+  private Table resolveParentTable(TestCase testCase) {
+    if (nullOrEmpty(testCase.getEntityLink())) {
+      return null;
+    }
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    if (!Entity.TABLE.equals(entityLink.getEntityType())) {
+      return null;
+    }
+    Table table = null;
+    try {
+      table =
+          Entity.getEntityByName(
+              Entity.TABLE,
+              entityLink.getEntityFQN(),
+              "database,databaseSchema,service,certification,tags",
+              Include.ALL);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Table [{}] not found during search indexing: {}",
+          entityLink.getEntityFQN(),
+          ex.getMessage());
+    }
+    return table;
   }
 
   /**
@@ -133,40 +185,20 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
     return testDefinitionMap;
   }
 
-  private void setParentRelationships(TestCase testCase, Map<String, Object> esDoc) {
-    // denormalize the parent relationships for search
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-    String entityType = entityLink.getEntityType();
-    if (entityType.equals(Entity.TABLE)) {
-      // Can move this to a switch statement if we have more entity types
-      setTableEntityParentRelations(entityLink, esDoc);
+  /** Denormalizes the parent relationships for search. */
+  private void setParentRelationships(Table table, Map<String, Object> esDoc) {
+    if (table == null) {
+      return;
     }
-  }
-
-  private void setTableEntityParentRelations(
-      MessageParser.EntityLink entityLink, Map<String, Object> esDoc) {
-    try {
-      Table table =
-          Entity.getEntityByName(
-              Entity.TABLE,
-              entityLink.getEntityFQN(),
-              "database,databaseSchema,service,certification",
-              Include.ALL);
-      esDoc.put("database", table.getDatabase());
-      esDoc.put("databaseSchema", table.getDatabaseSchema());
-      esDoc.put("service", table.getService());
-      if (table.getServiceType() != null) {
-        esDoc.put("serviceType", table.getServiceType());
-      }
-      esDoc.put("table", table.getEntityReference());
-      if (table.getCertification() != null) {
-        esDoc.put("certification", table.getCertification());
-      }
-    } catch (EntityNotFoundException ex) {
-      LOG.warn(
-          "Table [{}] not found during search indexing: {}",
-          entityLink.getEntityFQN(),
-          ex.getMessage());
+    esDoc.put("database", table.getDatabase());
+    esDoc.put("databaseSchema", table.getDatabaseSchema());
+    esDoc.put("service", table.getService());
+    if (table.getServiceType() != null) {
+      esDoc.put("serviceType", table.getServiceType());
+    }
+    esDoc.put("table", table.getEntityReference());
+    if (table.getCertification() != null) {
+      esDoc.put("certification", table.getCertification());
     }
   }
 

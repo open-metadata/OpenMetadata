@@ -173,7 +173,19 @@ public class CsvUtilTest {
             new TagLabel()
                 .withTagFQN("Ignore.Derived")
                 .withSource(TagLabel.TagSource.CLASSIFICATION)
-                .withLabelType(TagLabel.LabelType.DERIVED));
+                .withLabelType(TagLabel.LabelType.DERIVED),
+            new TagLabel()
+                .withTagFQN("Ignore.Propagated")
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.PROPAGATED),
+            new TagLabel()
+                .withTagFQN("Glossary.IgnoreDerived")
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.DERIVED),
+            new TagLabel()
+                .withTagFQN("Glossary.IgnorePropagated")
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.PROPAGATED));
 
     List<String> csvRecord = new ArrayList<>();
     CsvUtil.addTagLabels(csvRecord, tags);
