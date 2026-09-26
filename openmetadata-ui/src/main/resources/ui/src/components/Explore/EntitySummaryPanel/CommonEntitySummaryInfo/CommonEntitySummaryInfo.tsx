@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
+import { getSafeHttpUrl } from '../../../../utils/StringUtils';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
 import './common-entity-summary.less';
@@ -46,7 +47,8 @@ function CommonEntitySummaryInfo({
             <a
               className="summary-item-link"
               data-testid={`${info.name}-value`}
-              href={info.url}
+              href={getSafeHttpUrl(info.url)}
+              rel="noopener noreferrer"
               target="_blank">
               {info.value}
               <Icon

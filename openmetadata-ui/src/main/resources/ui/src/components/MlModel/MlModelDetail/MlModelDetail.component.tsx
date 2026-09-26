@@ -55,6 +55,7 @@ import {
   updateCertificationTag,
   updateTierTag,
 } from '../../../utils/TagsPureUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -68,6 +69,21 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MlModelDetailProp } from './MlModelDetail.interface';
+
+// Storage/image-repository values come from ingestion; only http(s) URLs are
+// rendered as links, anything else (e.g. `s3://`, `javascript:`) as plain text.
+const renderExternalUrl = (value: string) => {
+  const safeUrl = getSafeHttpUrl(value);
+
+  return safeUrl ? (
+    <a href={safeUrl} rel="noopener noreferrer" target="_blank">
+      {value}
+    </a>
+  ) : (
+    value
+  );
+};
+
 const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelDetailsState,
   mlModelDetail,
@@ -262,25 +278,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         title: t('label.storage'),
         dataIndex: 'storage',
         key: 'storage',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
       {
         title: t('label.image-repository'),
         dataIndex: 'imageRepository',
         key: 'imageRepository',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
     ];
 
