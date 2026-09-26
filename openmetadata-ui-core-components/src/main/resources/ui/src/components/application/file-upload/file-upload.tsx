@@ -354,7 +354,7 @@ export const FileListItemProgressBar = ({
         className
       )}>
       <FileIcon
-        className="tw:size-10 tw:shrink-0 dark:tw:hidden"
+        className="tw:size-10 tw:shrink-0 tw:dark:hidden"
         theme="light"
         type={type ?? 'empty'}
         variant={fileIconVariant ?? 'default'}
@@ -480,7 +480,7 @@ export const FileListItemProgressFill = ({
         )}
       />
       <FileIcon
-        className="tw:relative tw:size-10 tw:shrink-0 dark:tw:hidden"
+        className="tw:relative tw:size-10 tw:shrink-0 tw:dark:hidden"
         theme="light"
         type={type ?? 'empty'}
         variant={fileIconVariant ?? 'solid'}
