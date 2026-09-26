@@ -88,11 +88,14 @@ export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
       autoSize
       useCSSTransforms
       verticalCompact
-      className={classNames('grid-container tw:bg-primary', {
-        'custom-tab': !leftSideWidgetPresent,
-        'height-auto': type === PageType.Glossary,
-        'flat-left-panel': variant === 'flat',
-      })}
+      className={classNames(
+        'grid-container tw:bg-primary tw:dark:bg-transparent',
+        {
+          'custom-tab': !leftSideWidgetPresent,
+          'height-auto': type === PageType.Glossary,
+          'flat-left-panel': variant === 'flat',
+        }
+      )}
       cols={8}
       // react-grid-layout rounds each item's `left` and `width` independently, so
       // although the two exact values sum to the container width, each rounding

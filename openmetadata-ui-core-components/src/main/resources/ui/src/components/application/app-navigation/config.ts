@@ -9,6 +9,8 @@ export type NavItemType = {
   icon?: FC<{ className?: string }>;
   /** Badge to display. */
   badge?: ReactNode;
+  /** `data-testid` forwarded to the rendered link. */
+  dataTestId?: string;
   /** List of sub-items to display. */
   items?: {
     label: string;

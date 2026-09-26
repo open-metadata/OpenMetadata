@@ -36,13 +36,6 @@ ALTER TABLE test_case ADD INDEX idx_test_case_id (id);
 -- index and full-scanned the timeline at scale.
 ALTER TABLE test_case_resolution_status_time_series ADD INDEX idx_test_case_resolution_status_assignee (assignee, timestamp);
 
--- Column extension keys hash every FQN segment separately and join the hashes with dots.
--- A fourth-level nested table column has eight segments and needs 263 characters.
--- VARCHAR(512) supports eleven column levels after the four-part table FQN while keeping
--- extension usable in the composite primary key; MySQL cannot fully index a TEXT value.
-ALTER TABLE entity_extension
-  MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
-
 -- Incident summary table: one row per incident (stateId chain), maintained at write time so
 -- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
 -- Column names deliberately mirror the time-series table so ListFilter conditions apply verbatim.
@@ -467,3 +460,39 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Announcement type: stored generated column so the list API can filter by type. Rows written
+-- before the field existed have no $.type and read back as the Information default.
+SET @announcement_type_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'type'
+    ),
+    'SELECT 1',
+    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Information'')) STORED'
+  )
+);
+PREPARE announcement_type_column_stmt FROM @announcement_type_column_ddl;
+EXECUTE announcement_type_column_stmt;
+DEALLOCATE PREPARE announcement_type_column_stmt;
+
+SET @announcement_type_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND index_name = 'idx_announcement_type'
+    ),
+    'SELECT 1',
+    'ALTER TABLE announcement_entity ADD INDEX idx_announcement_type (type)'
+  )
+);
+PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
+EXECUTE announcement_type_index_stmt;
+DEALLOCATE PREPARE announcement_type_index_stmt;

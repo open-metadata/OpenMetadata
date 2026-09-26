@@ -577,7 +577,7 @@
   },
   "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts": {
@@ -679,7 +679,7 @@
   },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts": {

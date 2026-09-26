@@ -337,7 +337,7 @@ const WorkflowsPage = () => {
             variant="gradient"
           />
         ) : (
-          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary">
+          <div className="tw:px-6 tw:py-4 tw:bg-surface tw:rounded-xl tw:border tw:border-border-secondary">
             <div className="tw:flex tw:items-center tw:justify-between">
               <PageHeader
                 data={{
@@ -359,7 +359,7 @@ const WorkflowsPage = () => {
             className={classNames('tw:flex tw:flex-1 tw:min-h-0 tw:flex-col', {
               'tw:mx-2': isAiMode,
             })}>
-            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:rounded-t-xl tw:border-x tw:border-t tw:border-border-secondary tw:bg-primary tw:px-6 tw:pt-4">
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:rounded-t-xl tw:border-x tw:border-t tw:border-border-secondary tw:bg-surface tw:px-6 tw:pt-4">
               <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pb-4">
                 {workflows.map((workflow) => (
                   <WorkflowCard
@@ -371,7 +371,7 @@ const WorkflowsPage = () => {
               </div>
             </div>
             <div
-              className="tw:rounded-b-xl tw:border-x tw:border-b tw:border-border-secondary tw:bg-primary tw:px-6 tw:py-3"
+              className="tw:rounded-b-xl tw:border-x tw:border-b tw:border-border-secondary tw:bg-surface tw:px-6 tw:py-3"
               data-testid="workflows-pagination">
               <NextPrevious
                 currentPage={currentPage}
