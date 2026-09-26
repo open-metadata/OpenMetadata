@@ -433,12 +433,11 @@ WHERE name = 'AutoClassificationBotPolicy';
 **Location:** `ingestion/src/metadata/pii/types.py`
 
 ```python
-from typing import Union
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic  # Your new entity
 
-ClassifiableEntityType = Union[Table, Container, Topic]
+ClassifiableEntityType = Table | Container | Topic
 ```
 
 #### 3.2 Register Entity Adapter
@@ -504,7 +503,7 @@ class YourEntityFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Settings | None,
         status: Status,
     ) -> None:
         super().__init__(config, metadata, global_profiler_config, status)
