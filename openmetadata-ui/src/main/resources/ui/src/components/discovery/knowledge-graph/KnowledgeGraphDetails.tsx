@@ -24,6 +24,7 @@ import { XClose } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Column } from '../../../generated/entity/data/table';
 import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
@@ -160,7 +161,11 @@ const coverageCell = (
     return { text: t('label.kg-no-glossary-term'), tone: 'warning' };
   }
 
-  return { text: t('label.kg-unknown'), tone: 'muted' };
+  // "unknown" means the node sits outside the current traversal or the response
+  // was truncated — we don't have data, not "we looked and found nothing".
+  // Render the shared no-data placeholder so the cell reads as absence, not
+  // as a literal value that could be mistaken for content.
+  return { text: NO_DATA_PLACEHOLDER, tone: 'muted' };
 };
 
 /** Search narrows every list; the chips then split what is left by family or coverage. */
