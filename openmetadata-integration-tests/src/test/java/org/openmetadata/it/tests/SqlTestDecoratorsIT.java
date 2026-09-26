@@ -94,6 +94,28 @@ class SqlTestDecoratorsIT {
   }
 
   @Test
+  void aCounterAndAProbeComposeOnTheSameJdbi() {
+    // The migration for a call site that both counts and injects, now that no single factory does
+    // both. Asserted on what one real statement does to both decorators rather than on the logger
+    // chain: a chain assertion passes even if delegation stops invoking the inner decorator, which
+    // is precisely the failure this needs to catch.
+    final Jdbi jdbi = Entity.getJdbi();
+    try (var counter = new SqlQueryCounter(jdbi, PROBE_FRAGMENT);
+        var probe =
+            new SqlFailureProbe(
+                jdbi, PROBE_FRAGMENT, () -> new IllegalStateException("injected"))) {
+
+      final var thrown = assertThrows(IllegalStateException.class, () -> runProbeQuery(jdbi));
+      assertEquals("injected", thrown.getMessage(), "the outer probe fired");
+      assertEquals(1, counter.count(), "and the inner counter still saw the same statement");
+
+      // The probe is spent; the counter keeps counting through it.
+      assertEquals(1, runProbeQuery(jdbi));
+      assertEquals(2, counter.count());
+    }
+  }
+
+  @Test
   void transactionCounterSeparatesCommitsFromRollbacks() {
     final Jdbi jdbi = Entity.getJdbi();
     final TransactionHandler original = jdbi.getTransactionHandler();
