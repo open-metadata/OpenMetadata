@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import { FieldProp, FieldTypes } from '@openmetadata/ui-core-components';
-import { FocusEventHandler, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
 import { EntityReferenceOption } from '../AddGlossary/AddGlossary.interface';
 import { hasOwnerRuleViolation } from '../AddGlossary/AddGlossary.utils';
+import { EntityReferencePicker } from './useEntityReferenceOptions';
 
 const NAME_MAX_LENGTH = 128;
 
@@ -25,10 +26,22 @@ interface UseGlossaryFormFieldsParams {
     DataAssetRuleValidation,
     'canAddMultipleUserOwners' | 'canAddMultipleTeamOwner'
   >;
-  userTeamOptions: EntityReferenceOption[];
-  onUserTeamFocus: FocusEventHandler;
-  onUserTeamSearch: (searchText: string) => void;
+  ownersPicker: EntityReferencePicker;
+  reviewersPicker: EntityReferencePicker;
 }
+
+const toPickerProps = ({
+  options,
+  onFocus,
+  onSearchChange,
+}: EntityReferencePicker) => ({
+  // The server already filtered the options by the search text.
+  filterOption: () => true,
+  multiple: true,
+  onFocus,
+  onSearchChange,
+  options,
+});
 
 /**
  * Field configs shared by the glossary and glossary term forms, so both
@@ -36,9 +49,8 @@ interface UseGlossaryFormFieldsParams {
  */
 export const useGlossaryFormFields = ({
   entityRules,
-  userTeamOptions,
-  onUserTeamFocus,
-  onUserTeamSearch,
+  ownersPicker,
+  reviewersPicker,
 }: UseGlossaryFormFieldsParams) => {
   const { t } = useTranslation();
 
@@ -114,14 +126,7 @@ export const useGlossaryFormFields = ({
       label: t('label.owner-plural'),
       name: 'owners',
       placeholder: t('label.select-field', { field: t('label.owner-plural') }),
-      props: {
-        'data-testid': 'owners',
-        filterOption: () => true,
-        multiple: true,
-        onFocus: onUserTeamFocus,
-        onSearchChange: onUserTeamSearch,
-        options: userTeamOptions,
-      },
+      props: { 'data-testid': 'owners', ...toPickerProps(ownersPicker) },
       rules: {
         validate: (owners: EntityReferenceOption[]) =>
           hasOwnerRuleViolation(owners, entityRules)
@@ -130,7 +135,7 @@ export const useGlossaryFormFields = ({
       },
       type: FieldTypes.USER_TEAM_SELECT_INPUT,
     }),
-    [entityRules, onUserTeamFocus, onUserTeamSearch, t, userTeamOptions]
+    [entityRules, ownersPicker, t]
   );
 
   const reviewersField = useMemo<FieldProp>(
@@ -141,17 +146,10 @@ export const useGlossaryFormFields = ({
       placeholder: t('label.select-field', {
         field: t('label.reviewer-plural'),
       }),
-      props: {
-        'data-testid': 'reviewers',
-        filterOption: () => true,
-        multiple: true,
-        onFocus: onUserTeamFocus,
-        onSearchChange: onUserTeamSearch,
-        options: userTeamOptions,
-      },
+      props: { 'data-testid': 'reviewers', ...toPickerProps(reviewersPicker) },
       type: FieldTypes.USER_TEAM_SELECT_INPUT,
     }),
-    [onUserTeamFocus, onUserTeamSearch, t, userTeamOptions]
+    [reviewersPicker, t]
   );
 
   return {

@@ -27,21 +27,22 @@ import { EntityType } from '../../../enums/entity.enum';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
-import { useEntityReferenceOptions } from '../hooks/useEntityReferenceOptions';
+import {
+  useDomainOptions,
+  useUserTeamOptions,
+} from '../hooks/useEntityReferenceOptions';
 import { useGlossaryFormFields } from '../hooks/useGlossaryFormFields';
-import { AddGlossaryProps } from './AddGlossary.interface';
+import {
+  AddGlossaryProps,
+  EntityReferenceOption,
+} from './AddGlossary.interface';
 
 const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.GLOSSARY);
-  const {
-    domainOptions,
-    userTeamOptions,
-    onDomainFocus,
-    onDomainSearch,
-    onUserTeamFocus,
-    onUserTeamSearch,
-  } = useEntityReferenceOptions();
+  const ownersPicker = useUserTeamOptions();
+  const reviewersPicker = useUserTeamOptions();
+  const domainsPicker = useDomainOptions();
   const {
     nameField,
     displayNameField,
@@ -50,9 +51,8 @@ const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
     reviewersField,
   } = useGlossaryFormFields({
     entityRules,
-    userTeamOptions,
-    onUserTeamFocus,
-    onUserTeamSearch,
+    ownersPicker,
+    reviewersPicker,
   });
 
   const isMutuallyExclusive = useWatch({
@@ -69,12 +69,12 @@ const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
       'data-testid': 'domains',
       filterOption: () => true,
       multiple: true,
-      onFocus: onDomainFocus,
-      onSearchChange: onDomainSearch,
-      options: domainOptions,
+      onFocus: domainsPicker.onFocus,
+      onSearchChange: domainsPicker.onSearchChange,
+      options: domainsPicker.options,
     },
     rules: {
-      validate: (value: unknown[] = []) =>
+      validate: (value: EntityReferenceOption[] = []) =>
         entityRules.canAddMultipleDomains || value.length <= 1
           ? true
           : t('message.select-at-most-one-entity', {

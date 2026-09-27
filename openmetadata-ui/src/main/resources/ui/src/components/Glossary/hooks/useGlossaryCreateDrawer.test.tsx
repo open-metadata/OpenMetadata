@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { addGlossaries } from '../../../rest/glossaryAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { useGlossaryCreateDrawer } from './useGlossaryCreateDrawer';
 
 const mockNavigate = jest.fn();
@@ -107,7 +108,7 @@ describe('useGlossaryCreateDrawer', () => {
   });
 
   it('opens a 40vw drawer without the configure-glossary panel', async () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     expect(screen.queryByTestId('add-glossary-form')).not.toBeInTheDocument();
 
@@ -125,7 +126,7 @@ describe('useGlossaryCreateDrawer', () => {
     (addGlossaries as jest.Mock).mockResolvedValue({
       fullyQualifiedName: 'Business',
     });
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     await openAndFill();
 
@@ -151,7 +152,7 @@ describe('useGlossaryCreateDrawer', () => {
     (addGlossaries as jest.Mock).mockRejectedValue({
       response: { data: { message: 'Entity already exists' } },
     });
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     await openAndFill();
 

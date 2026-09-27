@@ -196,10 +196,14 @@ export const buildGlossaryTermSavePayload = ({
     synonyms: synonyms.map((synonym) => String(synonym.id)),
     mutuallyExclusive: Boolean(values.mutuallyExclusive),
     tags,
-    owners: getOwnersOrCurrentUser(
-      toEntityReferences(values.owners),
-      currentUserId
-    ),
+    // Only a new term defaults to its creator; an edit saves exactly the owners
+    // chosen, so clearing them all leaves the term unowned.
+    owners: editMode
+      ? toEntityReferences(values.owners)
+      : getOwnersOrCurrentUser(
+          toEntityReferences(values.owners),
+          currentUserId
+        ),
     style: buildStyle(values),
     ...(Object.keys(extension).length > 0 ? { extension } : {}),
   };

@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { GlossaryTermIntakeFormState } from '../hooks/useGlossaryTermIntakeForm';
 import AddGlossaryTermForm from './AddGlossaryTermForm.component';
 import { GlossaryTermFormValues } from './AddGlossaryTermForm.interface';
@@ -117,7 +118,7 @@ describe('AddGlossaryTermForm', () => {
   });
 
   it('renders the term fields', () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     expect(screen.getByLabelText('label.name')).toBeInTheDocument();
     expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
@@ -132,7 +133,7 @@ describe('AddGlossaryTermForm', () => {
   });
 
   it('seeds the description editor from the form defaults', () => {
-    render(
+    renderWithQueryClient(
       <Harness
         editMode
         defaultValues={{
@@ -150,7 +151,7 @@ describe('AddGlossaryTermForm', () => {
   });
 
   it('adds, validates and removes references', async () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
     fillRequired();
 
     fireEvent.click(screen.getByTestId('add-reference'));
@@ -176,7 +177,7 @@ describe('AddGlossaryTermForm', () => {
   });
 
   it('submits entered references', async () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
     fillRequired();
 
     fireEvent.click(screen.getByTestId('add-reference'));
@@ -200,7 +201,7 @@ describe('AddGlossaryTermForm', () => {
   });
 
   it('enforces native fields the intake form makes required', async () => {
-    render(
+    renderWithQueryClient(
       <Harness
         intake={{
           ...NO_INTAKE,
@@ -227,7 +228,7 @@ describe('AddGlossaryTermForm', () => {
   });
 
   it('renders intake custom properties on create only', () => {
-    const { rerender } = render(<Harness />);
+    const { rerender } = renderWithQueryClient(<Harness />);
 
     expect(screen.getByTestId('extension-fields')).toBeInTheDocument();
 

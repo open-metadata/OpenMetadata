@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import AddGlossary from './AddGlossary.component';
 import { GlossaryFormValues } from './AddGlossary.interface';
 import { GLOSSARY_FORM_DEFAULTS } from './AddGlossary.utils';
@@ -72,7 +73,7 @@ describe('AddGlossary', () => {
   });
 
   it('renders every glossary field and no configure-glossary side panel', () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     expect(screen.getByTestId('add-glossary-form')).toBeInTheDocument();
     expect(screen.getByLabelText('label.name')).toBeInTheDocument();
@@ -87,7 +88,7 @@ describe('AddGlossary', () => {
   });
 
   it('blocks submit until name and description are filled', async () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     fireEvent.click(screen.getByText('submit'));
 
@@ -96,7 +97,7 @@ describe('AddGlossary', () => {
   });
 
   it('rejects names that break the entity name pattern', async () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     fireEvent.change(screen.getByLabelText('label.name'), {
       target: { value: 'bad::name' },
@@ -113,7 +114,7 @@ describe('AddGlossary', () => {
   });
 
   it('submits the entered values', async () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     fireEvent.change(screen.getByLabelText('label.name'), {
       target: { value: 'Business' },
@@ -135,7 +136,7 @@ describe('AddGlossary', () => {
   });
 
   it('warns about mutual exclusivity only once it is switched on', async () => {
-    render(<Harness />);
+    renderWithQueryClient(<Harness />);
 
     expect(screen.queryByTestId('form-item-alert')).not.toBeInTheDocument();
 

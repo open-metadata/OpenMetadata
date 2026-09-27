@@ -12,12 +12,13 @@
  */
 import { Avatar } from '@openmetadata/ui-core-components';
 import { Teams } from '@openmetadata/ui-core-components/icons';
-import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { useDebouncedValue } from '../../../hooks/common/useDebouncedValue';
 import { searchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatTeamsResponse } from '../../../utils/APIUtils';
@@ -28,6 +29,8 @@ import { EntityReferenceOption } from '../AddGlossary/AddGlossary.interface';
 import { toEntityReferenceOption } from '../AddGlossary/AddGlossary.utils';
 
 const SEARCH_DEBOUNCE_MS = 250;
+const OPTIONS_STALE_TIME_MS = 30_000;
+const NO_OPTIONS: EntityReferenceOption[] = [];
 
 const fetchUserOptions = async (
   searchText: string
@@ -91,94 +94,74 @@ const fetchTeamOptions = async (
   }));
 };
 
-/**
- * Server-searched option lists for the owner / reviewer / domain pickers of
- * the glossary and glossary term forms. Options load lazily on first focus
- * and re-query (debounced) as the user types.
- */
-export const useEntityReferenceOptions = () => {
-  const [userOptions, setUserOptions] = useState<EntityReferenceOption[]>([]);
-  const [teamOptions, setTeamOptions] = useState<EntityReferenceOption[]>([]);
-  const [domainOptions, setDomainOptions] = useState<EntityReferenceOption[]>(
-    []
-  );
+export interface EntityReferencePicker {
+  options: EntityReferenceOption[];
+  onFocus: () => void;
+  onSearchChange: (searchText: string) => void;
+}
 
-  const loadUserTeamOptions = useCallback(async (searchText = '') => {
-    try {
-      const [users, teams] = await Promise.all([
-        fetchUserOptions(searchText),
-        fetchTeamOptions(searchText),
-      ]);
-      setUserOptions(users);
-      setTeamOptions(teams);
-    } catch {
-      setUserOptions([]);
-      setTeamOptions([]);
-    }
-  }, []);
+const fetchUserTeamOptions = async (
+  searchText: string
+): Promise<EntityReferenceOption[]> => {
+  const [users, teams] = await Promise.all([
+    fetchUserOptions(searchText),
+    fetchTeamOptions(searchText),
+  ]);
 
-  const loadDomainOptions = useCallback(async (searchText = '') => {
-    try {
-      const domains = await searchDomains(searchText, 1);
-      setDomainOptions(
-        domains.map((domain: Domain) =>
-          toEntityReferenceOption({
-            id: domain.id,
-            type: EntityType.DOMAIN,
-            name: domain.name,
-            displayName: domain.displayName,
-            fullyQualifiedName: domain.fullyQualifiedName,
-          })
-        )
-      );
-    } catch {
-      setDomainOptions([]);
-    }
-  }, []);
-
-  const searchUserTeams = useMemo(
-    () =>
-      debounce(
-        (searchText: string) => void loadUserTeamOptions(searchText),
-        SEARCH_DEBOUNCE_MS
-      ),
-    [loadUserTeamOptions]
-  );
-
-  const searchDomainOptions = useMemo(
-    () =>
-      debounce(
-        (searchText: string) => void loadDomainOptions(searchText),
-        SEARCH_DEBOUNCE_MS
-      ),
-    [loadDomainOptions]
-  );
-
-  useEffect(
-    () => () => {
-      searchUserTeams.cancel();
-      searchDomainOptions.cancel();
-    },
-    [searchUserTeams, searchDomainOptions]
-  );
-
-  const userTeamOptions = useMemo(
-    () => [...userOptions, ...teamOptions],
-    [userOptions, teamOptions]
-  );
-
-  return {
-    userTeamOptions,
-    domainOptions,
-    onUserTeamFocus: useCallback(
-      () => void loadUserTeamOptions(),
-      [loadUserTeamOptions]
-    ),
-    onUserTeamSearch: searchUserTeams,
-    onDomainFocus: useCallback(
-      () => void loadDomainOptions(),
-      [loadDomainOptions]
-    ),
-    onDomainSearch: searchDomainOptions,
-  };
+  return [...users, ...teams];
 };
+
+const fetchDomainOptions = async (
+  searchText: string
+): Promise<EntityReferenceOption[]> => {
+  const domains: Domain[] = await searchDomains(searchText, 1);
+
+  return domains.map((domain) =>
+    toEntityReferenceOption({
+      id: domain.id,
+      type: EntityType.DOMAIN,
+      name: domain.name,
+      displayName: domain.displayName,
+      fullyQualifiedName: domain.fullyQualifiedName,
+    })
+  );
+};
+
+/**
+ * Server-searched options for one picker. Each search text is its own query,
+ * and only the current one renders — so a slow, older response (e.g. the
+ * unfiltered focus search) can never overwrite the results for what the user
+ * typed since. Nothing is fetched until the picker is first focused.
+ */
+const useSearchPicker = (
+  queryKey: string,
+  fetchOptions: (searchText: string) => Promise<EntityReferenceOption[]>
+): EntityReferencePicker => {
+  const [isActive, setIsActive] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const debouncedSearchText = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
+
+  const { data: options = NO_OPTIONS } = useQuery({
+    queryKey: ['glossary-form', queryKey, debouncedSearchText],
+    queryFn: () => fetchOptions(debouncedSearchText),
+    enabled: isActive,
+    staleTime: OPTIONS_STALE_TIME_MS,
+    // Keeps the last list on screen while the next search is in flight.
+    placeholderData: keepPreviousData,
+  });
+
+  const onFocus = useCallback(() => setIsActive(true), []);
+
+  // Stable identity, so field configs memoized on the picker stay memoized.
+  return useMemo(
+    () => ({ options, onFocus, onSearchChange: setSearchText }),
+    [options, onFocus]
+  );
+};
+
+/** Users and teams, for an owners or reviewers picker. */
+export const useUserTeamOptions = () =>
+  useSearchPicker('user-team-options', fetchUserTeamOptions);
+
+export const useDomainOptions = () =>
+  useSearchPicker('domain-options', fetchDomainOptions);

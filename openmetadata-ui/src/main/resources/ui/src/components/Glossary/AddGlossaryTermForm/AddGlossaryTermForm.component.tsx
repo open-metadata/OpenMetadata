@@ -39,7 +39,7 @@ import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
 import AddDomainFormExtensionFields from '../../Domain/AddDomainForm/AddDomainFormExtensionFields';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
-import { useEntityReferenceOptions } from '../hooks/useEntityReferenceOptions';
+import { useUserTeamOptions } from '../hooks/useEntityReferenceOptions';
 import { useGlossaryFormFields } from '../hooks/useGlossaryFormFields';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 import { getGlossaryTermFqn } from './AddGlossaryTermForm.utils';
@@ -60,8 +60,8 @@ const AddGlossaryTermForm = ({
 }: AddGlossaryTermFormProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.GLOSSARY_TERM);
-  const { userTeamOptions, onUserTeamFocus, onUserTeamSearch } =
-    useEntityReferenceOptions();
+  const ownersPicker = useUserTeamOptions();
+  const reviewersPicker = useUserTeamOptions();
   const {
     nameField,
     displayNameField,
@@ -70,9 +70,8 @@ const AddGlossaryTermForm = ({
     reviewersField,
   } = useGlossaryFormFields({
     entityRules,
-    userTeamOptions,
-    onUserTeamFocus,
-    onUserTeamSearch,
+    ownersPicker,
+    reviewersPicker,
   });
   const {
     fields: references,

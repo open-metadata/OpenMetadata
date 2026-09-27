@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import GlossaryTermDrawer from './GlossaryTermDrawer';
 
@@ -124,7 +125,7 @@ describe('GlossaryTermDrawer', () => {
   });
 
   it('creates a term with the current user as the default owner', async () => {
-    render(
+    renderWithQueryClient(
       <GlossaryTermDrawer
         editMode={false}
         onCancel={onCancel}
@@ -156,7 +157,7 @@ describe('GlossaryTermDrawer', () => {
   });
 
   it('loads the term in edit mode and saves related terms as ids', async () => {
-    render(
+    renderWithQueryClient(
       <GlossaryTermDrawer
         editMode
         glossaryTermFQN="Business.Revenue"
@@ -186,7 +187,7 @@ describe('GlossaryTermDrawer', () => {
   it('closes instead of editing a term that failed to load', async () => {
     (getGlossaryTermByFQN as jest.Mock).mockRejectedValue(new Error('boom'));
 
-    render(
+    renderWithQueryClient(
       <GlossaryTermDrawer
         editMode
         glossaryTermFQN="Business.Revenue"
@@ -208,7 +209,7 @@ describe('GlossaryTermDrawer', () => {
       },
     });
 
-    render(
+    renderWithQueryClient(
       <GlossaryTermDrawer
         editMode={false}
         onCancel={onCancel}
@@ -232,7 +233,7 @@ describe('GlossaryTermDrawer', () => {
   });
 
   it('reports cancel to the parent', async () => {
-    render(
+    renderWithQueryClient(
       <GlossaryTermDrawer
         editMode={false}
         onCancel={onCancel}

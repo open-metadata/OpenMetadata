@@ -153,4 +153,29 @@ describe('buildGlossaryTermSavePayload', () => {
     expect(payload.style).toEqual({ color: '#123456', iconURL: 'Book' });
     expect(payload.references).toEqual(glossaryTerm.references);
   });
+
+  it('leaves an edited term unowned when every owner is cleared', () => {
+    const payload = buildGlossaryTermSavePayload({
+      values: { ...getGlossaryTermFormValues(glossaryTerm), owners: [] },
+      editMode: true,
+      glossaryTerm,
+      currentUserId: 'me',
+    });
+
+    expect(payload.owners).toEqual([]);
+  });
+
+  it('makes the creator the owner of a new term with no owners', () => {
+    const payload = buildGlossaryTermSavePayload({
+      values: {
+        ...GLOSSARY_TERM_FORM_DEFAULTS,
+        name: 'Revenue',
+        description: 'Money in',
+      },
+      editMode: false,
+      currentUserId: 'me',
+    });
+
+    expect(payload.owners).toEqual([{ id: 'me', type: 'user' }]);
+  });
 });
