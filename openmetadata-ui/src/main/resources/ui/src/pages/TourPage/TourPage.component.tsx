@@ -15,10 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
-import {
-  ExploreSearchIndex,
-  SearchHitCounts,
-} from '../../components/Explore/ExplorePage.interface';
+import { SearchHitCounts } from '../../components/Explore/ExplorePage.interface';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
   mockDatasetData,
@@ -28,6 +25,7 @@ import {
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { SearchResponse } from '../../interface/search.interface';
 import { preloadTourTableTabs } from '../../utils/TableTabsUtils';
 import { getTourSteps } from '../../utils/TourUtils';
