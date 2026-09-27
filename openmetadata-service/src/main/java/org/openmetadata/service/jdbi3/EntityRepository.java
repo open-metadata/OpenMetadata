@@ -10959,13 +10959,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
         if (previous != null && previous.getVersion().equals(updated.getVersion())) {
-          try (var ignored = phase("storeUpdateCurrent")) {
-            storeNewVersion();
-          }
-          try (var ignored = phase("storeUpdateHistoryCleanup")) {
-            removeEntityHistory(updated.getVersion());
-          }
+          revertToPreviousVersion();
         }
+      }
+    }
+
+    /**
+     * Deletes the history row before rewriting the entity row. A version bump inserts that row and
+     * then rewrites the entity row, so taking the two in the opposite order here deadlocked the same
+     * user's overlapping updates of one entity.
+     */
+    private void revertToPreviousVersion() {
+      try (var ignored = phase("storeUpdateHistoryCleanup")) {
+        removeEntityHistory(updated.getVersion());
+      }
+      try (var ignored = phase("storeUpdateCurrent")) {
+        storeNewVersion();
       }
     }
 
@@ -11016,12 +11025,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
         if (previous != null && previous.getVersion().equals(updated.getVersion())) {
-          try (var ignored = phase("storeUpdateCurrent")) {
-            storeNewVersion(); // Always use regular store for this case
-          }
-          try (var ignored = phase("storeUpdateHistoryCleanup")) {
-            removeEntityHistory(updated.getVersion());
-          }
+          revertToPreviousVersion();
         }
       }
     }
