@@ -50,6 +50,7 @@ describe('DateTimeUtils tests', () => {
     Settings.defaultLocale = 'en-US';
     Settings.defaultZone = 'UTC';
   });
+
   afterAll(() => {
     Settings.defaultLocale = systemLocale;
     Settings.defaultZone = systemZoneName;
@@ -125,6 +126,7 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = 1710831125922;
     const result = calculateInterval(startTime, endTime);
+
     expect(result).toBe('0 Days, 0 Hours');
   });
 
@@ -132,6 +134,7 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = 1710831125924;
     const result = calculateInterval(startTime, endTime);
+
     expect(result).toBe('0 Days, 0 Hours');
   });
 
@@ -139,6 +142,7 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = startTime + 24 * 60 * 60 * 1000; // 24 hours later
     const result = calculateInterval(startTime, endTime);
+
     expect(result).toBe('1 Days, 0 Hours');
   });
 
@@ -146,6 +150,7 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = startTime + 56 * 60 * 60 * 1000; // 56 hours later
     const result = calculateInterval(startTime, endTime);
+
     expect(result).toBe('2 Days, 8 Hours');
   });
 
@@ -153,6 +158,7 @@ describe('calculateInterval', () => {
     const startTime = NaN;
     const endTime = NaN;
     const result = calculateInterval(startTime, endTime);
+
     expect(result).toBe('Invalid interval');
   });
 
@@ -160,6 +166,7 @@ describe('calculateInterval', () => {
     const startTimeInSeconds = 1710831125;
     const endTimeInSeconds = startTimeInSeconds + 56 * 60 * 60; // 56 hours later
     const result = calculateInterval(startTimeInSeconds, endTimeInSeconds);
+
     expect(result).toBe('0 Days, 0 Hours');
   });
 });
@@ -254,6 +261,7 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
   it('should return the correct value for the input value', () => {
     const inputValue = 224813364.39; // input in seconds
     const result = convertMillisecondsToHumanReadableFormat(inputValue * 1000);
+
     expect(result).toContain('7Y');
     expect(result).toContain('M');
     expect(result).toContain('d');
@@ -373,28 +381,38 @@ describe('convertSecondsToHumanReadableFormat', () => {
   describe('Edge cases and boundary conditions', () => {
     it('should handle exactly 1 year (360 days: 12 months × 30 days)', () => {
       const oneYear = 12 * 30 * 24 * 3600; // 31,104,000 seconds
+
       expect(convertSecondsToHumanReadableFormat(oneYear)).toBe('1Y');
     });
+
     it('should handle exactly 1 month (30 days)', () => {
       const oneMonth = 30 * 24 * 3600; // 2,592,000 seconds
+
       expect(convertSecondsToHumanReadableFormat(oneMonth)).toBe('1M');
     });
+
     it('should handle 12 months and show as 1 year', () => {
       const twelveMonths = 12 * 30 * 24 * 3600; // 31,104,000 seconds
       const result = convertSecondsToHumanReadableFormat(twelveMonths);
+
       expect(result).toBe('1Y');
     });
+
     it('should handle 13 months correctly', () => {
       const thirteenMonths = 13 * 30 * 24 * 3600; // 33,696,000 seconds
       const result = convertSecondsToHumanReadableFormat(thirteenMonths);
+
       expect(result).toBe('1Y 1M');
     });
+
     it('should handle very small positive values', () => {
       expect(convertSecondsToHumanReadableFormat(0.5)).toBe('0s');
       expect(convertSecondsToHumanReadableFormat(0.9)).toBe('0s');
     });
+
     it('should handle very large values', () => {
       const tenYears = 10 * 12 * 30 * 24 * 3600; // 311,040,000 seconds (10 years × 360 days)
+
       expect(convertSecondsToHumanReadableFormat(tenYears)).toBe('10Y');
     });
   });
@@ -447,11 +465,14 @@ describe('convertSecondsToHumanReadableFormat', () => {
             undefined,
             'late by '
           );
+
           expect(result).toBe(expectedOutput);
           expect(result).not.toContain('12M');
+
           const dayMatch = result.match(/(\d+)d/);
           if (dayMatch) {
             const days = parseInt(dayMatch[1]);
+
             expect(days).toBeLessThanOrEqual(30);
           }
         });
@@ -479,13 +500,16 @@ describe('convertSecondsToHumanReadableFormat', () => {
         const monthMatch = result.match(/(\d+)M/);
         if (monthMatch) {
           const months = parseInt(monthMatch[1]);
+
           expect(months).toBeLessThan(12);
         }
         const dayMatch = result.match(/(\d+)d/);
         if (dayMatch) {
           const daysValue = parseInt(dayMatch[1]);
+
           expect(daysValue).toBeLessThanOrEqual(30);
         }
+
         expect(result).toContain('1Y');
       });
     });
@@ -499,10 +523,12 @@ describe('convertSecondsToHumanReadableFormat', () => {
         undefined,
         'late by '
       );
+
       expect(result).toContain('1Y');
       expect(result).toContain('2d');
       expect(result).not.toBe('late by 2d 14h');
     });
+
     it('should show consistent years based on 360-day year', () => {
       const seconds = -31502412; // 364.6 days
       const result = convertSecondsToHumanReadableFormat(
@@ -510,6 +536,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
         undefined,
         'late by '
       );
+
       expect(result).toContain('1Y');
       expect(result).toContain('4d');
     });
@@ -545,12 +572,16 @@ describe('convertSecondsToHumanReadableFormat', () => {
   describe('Consistency with fixed time units', () => {
     it('should use 360 days per year (12 months × 30 days)', () => {
       const oneYear = 12 * 30 * 24 * 3600; // 31,104,000 seconds
+
       expect(convertSecondsToHumanReadableFormat(oneYear)).toBe('1Y');
     });
+
     it('should use 30 days per month', () => {
       const oneMonth = 30 * 24 * 3600; // 2,592,000 seconds
+
       expect(convertSecondsToHumanReadableFormat(oneMonth)).toBe('1M');
     });
+
     it('should maintain consistency across different inputs', () => {
       expect(convertSecondsToHumanReadableFormat(86400 * 30)).toBe('1M');
       expect(convertSecondsToHumanReadableFormat(86400 * 60)).toBe('2M');
@@ -589,6 +620,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
       for (let i = 0; i < formattedResults.length - 1; i++) {
         const current = formattedResults[i];
         const next = formattedResults[i + 1];
+
         expect(Math.abs(current.seconds)).toBeLessThan(Math.abs(next.seconds));
         expect(current.formatted).not.toBe(next.formatted);
       }
@@ -598,9 +630,11 @@ describe('convertSecondsToHumanReadableFormat', () => {
       const nov19 = formattedResults.find(
         (r) => r.days === 366.6
       ) as (typeof formattedResults)[number];
+
       expect(Math.abs(nov27.seconds)).toBeLessThan(Math.abs(nov19.seconds));
       expect(formattedResults).toHaveLength(16);
     });
+
     it('should maintain strict monotonic ordering across a range of values', () => {
       const testValues = [
         -31104000, -31190400, -31276800, -31363200, -31449600, -31536000,
@@ -610,7 +644,9 @@ describe('convertSecondsToHumanReadableFormat', () => {
         convertSecondsToHumanReadableFormat(seconds, undefined, 'late by ')
       );
       const uniqueFormatted = new Set(formattedValues);
+
       expect(uniqueFormatted.size).toBe(testValues.length);
+
       for (let i = 0; i < testValues.length - 1; i++) {
         expect(Math.abs(testValues[i])).toBeLessThan(
           Math.abs(testValues[i + 1])
@@ -618,6 +654,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
         expect(formattedValues[i]).not.toBe(formattedValues[i + 1]);
       }
     });
+
     it('should handle edge cases around year boundaries correctly', () => {
       const edgeCases = [
         { seconds: -31017600, description: '359 days (1d before 1 year)' },
@@ -643,6 +680,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
       const day361 = results.find((r) =>
         r.description.includes('361 days')
       ) as (typeof results)[number];
+
       expect(day361.formatted).toContain('1Y');
       expect(day361.formatted).toContain('1d');
     });
@@ -652,6 +690,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
 describe('getScheduleDescriptionTexts', () => {
   it('should parse daily cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 0 * * *');
+
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
     expect(typeof result.descriptionFirstPart).toBe('string');
@@ -660,6 +699,7 @@ describe('getScheduleDescriptionTexts', () => {
 
   it('should parse hourly cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 * * * *');
+
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
     expect(typeof result.descriptionFirstPart).toBe('string');
@@ -668,6 +708,7 @@ describe('getScheduleDescriptionTexts', () => {
 
   it('should parse weekly cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 0 * * 1');
+
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
     expect(typeof result.descriptionFirstPart).toBe('string');
@@ -676,6 +717,7 @@ describe('getScheduleDescriptionTexts', () => {
 
   it('should parse custom interval cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('*/15 * * * *');
+
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
     expect(typeof result.descriptionFirstPart).toBe('string');
@@ -684,12 +726,14 @@ describe('getScheduleDescriptionTexts', () => {
 
   it('should handle invalid cron expression gracefully', () => {
     const result = getScheduleDescriptionTexts('invalid cron');
+
     expect(result.descriptionFirstPart).toBe('');
     expect(result.descriptionSecondPart).toBe('');
   });
 
   it('should handle empty string gracefully', () => {
     const result = getScheduleDescriptionTexts('');
+
     expect(result.descriptionFirstPart).toBe('');
     expect(result.descriptionSecondPart).toBe('');
   });
@@ -697,6 +741,7 @@ describe('getScheduleDescriptionTexts', () => {
   it('should return consistent structure for valid cron expressions', () => {
     const result1 = getScheduleDescriptionTexts('0 12 * * *');
     const result2 = getScheduleDescriptionTexts('30 8 * * 1-5');
+
     expect(result1).toHaveProperty('descriptionFirstPart');
     expect(result1).toHaveProperty('descriptionSecondPart');
     expect(result2).toHaveProperty('descriptionFirstPart');
@@ -809,6 +854,7 @@ describe('DateTimeUtils', () => {
         mockGetAppState.mockReturnValue({
           timeFormat: global,
         });
+
         expect(getActiveTimeFormat()).toBe(expected as '12h' | '24h');
       });
     });

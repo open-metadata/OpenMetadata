@@ -37,9 +37,11 @@ const loadCronstrue = (): Promise<CronstrueModule> => {
   if (!cronstruePromise) {
     cronstruePromise = import('cronstrue').then((m) => {
       cronstrueModule = m;
+
       return m;
     });
   }
+
   return cronstruePromise;
 };
 
@@ -61,6 +63,7 @@ export const DATE_TIME_WITH_OFFSET_SHORT = "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; 
  */
 export const getActiveTimeFormat = (): '12h' | '24h' => {
   const { timeFormat: globalTimeFormat } = useApplicationStore.getState();
+
   return globalTimeFormat ?? '12h';
 };
 
@@ -76,13 +79,14 @@ export const getActiveTimeFormat = (): '12h' | '24h' => {
  */
 export const useActiveTimeFormat = (): '12h' | '24h' => {
   const timeFormat = useApplicationStore((state) => state.timeFormat);
+
   return timeFormat ?? '12h';
 };
 
 /**
  * Maps the time tokens of a luxon format string to the requested
  * 12h/24h representation; date tokens are left untouched.
- * 
+ *
  * NOTE: In 12h mode, we leave the format EXACTLY as the caller provided it.
  * We do NOT rewrite explicit HH:mm formats to hh:mm a, because some components
  * (like agent run times) intentionally use 24h formats regardless of user preference.
@@ -98,7 +102,7 @@ export const getMappedTimeFormat = (
     );
   }
 
-  // In 12h mode, return the format untouched. 
+  // In 12h mode, return the format untouched.
   // Let callers who explicitly want 24h (like agent run times) keep their HH:mm formats.
   return format;
 };
@@ -113,6 +117,7 @@ export const formatDateTime = (date?: number, timeFormat?: '12h' | '24h') => {
   }
   const activeFormat = timeFormat ?? getActiveTimeFormat();
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
+
   return dateTime.toFormat(
     getMappedTimeFormat(DATE_TIME_WITH_OFFSET_SHORT, activeFormat)
   );
@@ -127,6 +132,7 @@ export const formatDate = (date?: number, supportUTC = false) => {
     return '';
   }
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
+
   return supportUTC
     ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
     : dateTime.setLocale(i18next.language).toLocaleString(DateTime.DATE_MED);
@@ -144,6 +150,7 @@ export const formatMonth = (date?: number) => {
   if (!dateTime.isValid) {
     return '';
   }
+
   return dateTime.toFormat('MMM');
 };
 
@@ -160,6 +167,7 @@ export const formatDateTimeLong = (
     return '';
   }
   const activeFormat = timeFormat ?? getActiveTimeFormat();
+
   return DateTime.fromMillis(toNumber(timestamp), {
     locale: i18next.language,
   }).toFormat(
@@ -178,6 +186,7 @@ export const getTimeZone = (): string => {
     })
     .slice(4);
   const abbreviation = timeZoneToString.match(/\b[A-Z]+/g)?.join('') || '';
+
   return abbreviation;
 };
 
@@ -202,6 +211,7 @@ export const formatDateTimeWithTimezone = (
   const dateTime = DateTime.fromMillis(timeStamp, {
     locale: i18next.language,
   });
+
   return dateTime.toLocaleString({
     ...DateTime.DATETIME_FULL,
     hour12: activeFormat === '12h',
@@ -232,6 +242,7 @@ export const customFormatDateTime = (
     return formatDateTime(milliseconds, timeFormat);
   }
   const activeFormat = timeFormat ?? getActiveTimeFormat();
+
   return DateTime.fromMillis(milliseconds, {
     locale: i18next.language,
   }).toFormat(getMappedTimeFormat(format, activeFormat));
@@ -270,6 +281,7 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
         ] || word
     )
     .join(' ');
+
   return shortForm;
 };
 
@@ -311,6 +323,7 @@ export const getDaysRemaining = (timestamp: number) =>
 export const isValidDateFormat = (format: string) => {
   try {
     const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
+
     return dt.isValid;
   } catch {
     return false;
@@ -324,6 +337,7 @@ export const getIntervalInMilliseconds = (
   const startDateTime = DateTime.fromMillis(startTime);
   const endDateTime = DateTime.fromMillis(endTime);
   const interval = endDateTime.diff(startDateTime);
+
   return interval.milliseconds;
 };
 
@@ -339,6 +353,7 @@ export const calculateInterval = (
     const duration = Duration.fromMillis(intervalInMilliseconds);
     const days = Math.floor(duration.as('days'));
     const hours = Math.floor(duration.as('hours')) % 24;
+
     return `${days} Days, ${hours} Hours`;
   } catch {
     return 'Invalid interval';
@@ -361,6 +376,7 @@ const buildHumanReadableResult = (
   const limitedParts =
     length && parts.length > length ? parts.slice(0, length) : parts;
   const formattedResult = limitedParts.join(' ');
+
   return isNegative
     ? `${prependForNegativeValue}${formattedResult}`
     : formattedResult;
@@ -403,6 +419,7 @@ export const convertMillisecondsToHumanReadableFormat = (
   const result = units
     .filter((unit) => unit.value > 0)
     .map((unit) => `${unit.value}${unit.suffix}`);
+
   return buildHumanReadableResult(
     result,
     length,
@@ -449,6 +466,7 @@ export const convertSecondsToHumanReadableFormat = (
   if (secs > 0) {
     result.push(`${secs}s`);
   }
+
   return buildHumanReadableResult(
     result,
     length,
@@ -477,6 +495,7 @@ export const formatIsoDuration = (iso: string): string => {
   if (!d.isValid) {
     return iso;
   }
+
   return d.toHuman() || iso;
 };
 
@@ -484,6 +503,7 @@ export const formatDurationToHHMMSS = (ms: number) => {
   if (ms > 0 && ms < 1000) {
     return `${Math.floor(ms)} ms`;
   }
+
   return Duration.fromMillis(ms).toFormat('hh:mm:ss');
 };
 
@@ -502,12 +522,14 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   for (let i = 6; i >= 0; i--) {
     sevenDaysStartGMTArrayInMillis.push(getDayAgoStartGMTinMillis(i));
   }
+
   return sevenDaysStartGMTArrayInMillis;
 };
 
 export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
   if (!cronstrueModule) {
     loadCronstrue();
+
     return { descriptionFirstPart: '', descriptionSecondPart: '' };
   }
   try {
@@ -526,6 +548,7 @@ export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
     const descriptionSecondPart = capitalize(
       scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
     );
+
     return { descriptionFirstPart, descriptionSecondPart };
   } catch {
     return { descriptionFirstPart: '', descriptionSecondPart: '' };
