@@ -96,7 +96,9 @@ def test_get_partition_details():
     assert partition.enablePartitioning == True  # noqa: E712
     assert partition.partitionColumnName == "_PARTITIONTIME"
     assert partition.partitionIntervalType == PartitionIntervalTypes.INGESTION_TIME
-    assert partition.partitionInterval == 1
+    # Hourly ingestion-time partitions use a 24-hour window so tables updated less
+    # frequently than every hour still produce non-empty samples.
+    assert partition.partitionInterval == 24
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.HOUR
 
     table_entity = MockTable(
@@ -117,7 +119,9 @@ def test_get_partition_details():
     assert partition.enablePartitioning is True
     assert partition.partitionColumnName == "_PARTITIONDATE"
     assert partition.partitionIntervalType == PartitionIntervalTypes.INGESTION_TIME
-    assert partition.partitionInterval == 1
+    # Daily ingestion-time partitions use a 3-day window so tables with common
+    # ingestion delays (e.g. GA4's ~2-day lag) still produce non-empty samples.
+    assert partition.partitionInterval == 3
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY
 
 
@@ -161,3 +165,107 @@ def test_athena_injected_partition():
     assert partition.partitionColumnName == "e"
     assert partition.partitionIntervalType == PartitionIntervalTypes.COLUMN_VALUE
     assert partition.partitionValues == ["red"]
+
+
+def test_bigquery_time_unit_partition_default_intervals():
+    """Auto-detected BigQuery TIME_UNIT partitions use wider default windows.
+
+    Previously the default was 1 (day / hour), which silently produced empty
+    samples for any table whose freshest partition is older than 1 day/hour —
+    a common situation for GA4 exports or any table with an ingestion lag.
+    The new defaults are 3 days (DAY granularity) and 24 hours (HOUR granularity).
+    """
+    # DAY granularity → 3-day window
+    day_entity = MockTable(
+        tablePartition=TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName="event_date",
+                    intervalType=PartitionIntervalTypes.TIME_UNIT,
+                    interval="DAY",
+                )
+            ]
+        ),
+        tableProfilerConfig=None,
+    )
+    partition = get_partition_details(day_entity)
+
+    assert partition.enablePartitioning is True
+    assert partition.partitionColumnName == "event_date"
+    assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
+    assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY
+    assert partition.partitionInterval == 3, (
+        "DAY-granularity TIME_UNIT partitions should default to a 3-day window "
+        "so tables with a ~2-day ingestion lag (e.g. GA4 exports) are still sampled."
+    )
+
+    # HOUR granularity → 24-hour window
+    hour_entity = MockTable(
+        tablePartition=TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName="event_timestamp",
+                    intervalType=PartitionIntervalTypes.TIME_UNIT,
+                    interval="HOUR",
+                )
+            ]
+        ),
+        tableProfilerConfig=None,
+    )
+    partition = get_partition_details(hour_entity)
+
+    assert partition.enablePartitioning is True
+    assert partition.partitionColumnName == "event_timestamp"
+    assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
+    assert partition.partitionIntervalUnit == PartitionIntervalUnit.HOUR
+    assert partition.partitionInterval == 24, (
+        "HOUR-granularity TIME_UNIT partitions should default to a 24-hour window."
+    )
+
+    # MONTH granularity → 35-day window
+    month_entity = MockTable(
+        tablePartition=TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName="report_month",
+                    intervalType=PartitionIntervalTypes.TIME_UNIT,
+                    interval="MONTH",
+                )
+            ]
+        ),
+        tableProfilerConfig=None,
+    )
+    partition = get_partition_details(month_entity)
+
+    assert partition.enablePartitioning is True
+    assert partition.partitionColumnName == "report_month"
+    assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
+    assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY
+    assert partition.partitionInterval == 35, (
+        "MONTH-granularity TIME_UNIT partitions need a 35-day window so the most-recent "
+        "monthly partition (which may be 31+ days old mid-cycle) is still sampled."
+    )
+
+    # YEAR granularity → 370-day window
+    year_entity = MockTable(
+        tablePartition=TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName="report_year",
+                    intervalType=PartitionIntervalTypes.TIME_UNIT,
+                    interval="YEAR",
+                )
+            ]
+        ),
+        tableProfilerConfig=None,
+    )
+    partition = get_partition_details(year_entity)
+
+    assert partition.enablePartitioning is True
+    assert partition.partitionColumnName == "report_year"
+    assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
+    assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY
+    assert partition.partitionInterval == 370, (
+        "YEAR-granularity TIME_UNIT partitions need a 370-day window so the current "
+        "yearly partition (up to ~365 days old at year-end) is still sampled."
+    )

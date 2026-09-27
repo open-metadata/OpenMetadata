@@ -13,7 +13,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Access } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../../generated/entity/policies/policy';
 import { getEntityPermissionByFqn } from '../../rest/permissionAPI';

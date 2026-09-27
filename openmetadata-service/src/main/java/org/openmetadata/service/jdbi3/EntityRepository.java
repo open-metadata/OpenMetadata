@@ -3524,6 +3524,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.fqn = fqn;
     }
 
+    private CachedEntityDao.EntityKey toEntityKey() {
+      return new CachedEntityDao.EntityKey(entityType, id, fqn);
+    }
+
     @Override
     public boolean equals(Object other) {
       boolean result = this == other;
@@ -3560,9 +3564,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<CacheInvalidationKey, CacheInvalidationKey> deferred = DEFERRED_CACHE_INVALIDATIONS.get();
     DEFERRED_CACHE_INVALIDATIONS.remove();
     if (deferred != null) {
-      for (CacheInvalidationKey key : deferred.values()) {
-        invalidateRedisL2ForEntity(key.entityType, key.id, key.fqn);
-      }
+      evictCommittedWrites(List.copyOf(deferred.values()));
+    }
+  }
+
+  /**
+   * Post-commit eviction of everything the transaction wrote. The entity keys leave Redis in one
+   * DEL: evicted one entity at a time, a restored database read fresh while its schemas still served
+   * their soft-deleted copies. The write epochs move before that DEL so a loader holding the
+   * pre-commit row cannot write it back afterwards, and L1 is evicted after it because a reader in
+   * the window re-populated L1 from the stale Redis entry. The repair is re-armed from the commit:
+   * the one armed inside the transaction may already have fired.
+   */
+  private static void evictCommittedWrites(List<CacheInvalidationKey> writes) {
+    writes.forEach(write -> bumpWriteEpoch(write.entityType, write.id, write.fqn));
+    evictRedisEntityKeys(writes.stream().map(CacheInvalidationKey::toEntityKey).toList());
+    for (CacheInvalidationKey write : writes) {
+      evictLocalCopies(write.entityType, write.id, write.fqn);
+      invalidateDerivedRedisL2(write.entityType, write.id);
+      publishRefChange(write.entityType, write.id, write.fqn);
+      EntityCacheRepair.scheduleRepair(write.entityType, write.id, write.fqn, null);
     }
   }
 
@@ -3615,15 +3636,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   static void invalidateRedisL2ForEntity(String entityType, UUID id, String fqn) {
+    evictRedisEntityKeys(List.of(new CachedEntityDao.EntityKey(entityType, id, fqn)));
+    invalidateDerivedRedisL2(entityType, id);
+    publishRefChange(entityType, id, fqn);
+  }
+
+  private static void evictRedisEntityKeys(List<CachedEntityDao.EntityKey> entities) {
     var cachedEntityDao = CacheBundle.getCachedEntityDao();
     if (cachedEntityDao != null) {
-      cachedEntityDao.invalidateBase(entityType, id);
-      cachedEntityDao.invalidateReference(entityType, id);
-      if (fqn != null) {
-        cachedEntityDao.invalidateByName(entityType, fqn);
-        cachedEntityDao.invalidateReferenceByName(entityType, fqn);
-      }
+      cachedEntityDao.invalidateEntities(entities);
     }
+  }
+
+  /** The Redis caches built from the entity: its relationships, read bundle, lineage and tags. */
+  private static void invalidateDerivedRedisL2(String entityType, UUID id) {
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
     if (cachedRelationshipDao != null) {
       cachedRelationshipDao.invalidateOwners(entityType, id);
@@ -3642,6 +3668,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (cachedTagUsageDao != null) {
       cachedTagUsageDao.invalidateTags(entityType, id);
     }
+  }
+
+  private static void publishRefChange(String entityType, UUID id, String fqn) {
     var pubsub = CacheBundle.getCacheInvalidationPubSub();
     if (pubsub != null) {
       pubsub.publish(entityType, id, fqn, "ref-change");
@@ -3840,6 +3869,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // A remote write races local loaders exactly like a local write. Bump the epoch before
     // evicting so a loader that already read stale Redis/DB data cannot repopulate L1 afterward.
     bumpWriteEpoch(entityType, id, fqn);
+    evictLocalCopies(entityType, id, fqn);
+  }
+
+  private static void evictLocalCopies(String entityType, UUID id, String fqn) {
     if (id != null) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
