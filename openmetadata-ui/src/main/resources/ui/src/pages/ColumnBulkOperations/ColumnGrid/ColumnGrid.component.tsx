@@ -2246,19 +2246,18 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     ]
   );
 
-  /**
-   * Only real rows. A synthetic full-width row has to hard-code its `colSpan`
-   * from `tableColumns.length`, and react-aria checks that against the column
-   * count its own collection holds at commit time — the two disagree during a
-   * collection update and the table throws `Cell count must match column
-   * count`, taking the page down. The loader is an overlay and the empty state
-   * a placeholder, so every row here derives its cells from `tableColumns`.
-   */
+  // Real rows only: a full-width row's fixed `colSpan` disagrees with the column
+  // count react-aria holds mid-update and throws `Cell count must match column count`.
   const tableItems = filteredEntities;
 
   const dataTable = useMemo(
     () => (
-      <div className="tw:relative">
+      // `inset-0` overlay: with no rows yet the table is only its header, so the
+      // spinner needs reserved body height or it lands on the column labels.
+      <div
+        className={classNames('tw:relative', {
+          'tw:min-h-40': columnGridListing.loading && isEmpty(tableItems),
+        })}>
         {columnGridListing.loading && (
           <div
             className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60"
@@ -2289,14 +2288,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               />
             )}
           </Table.Header>
-          {/*
-           * No `renderEmptyState`: a genuinely empty result swaps the whole
-           * table for `emptyPlaceholder`, which carries the reason and the
-           * clear-filters action. The only time this body is empty with the
-           * table still mounted is the render where the row list is catching
-           * up with a response, and an empty tbody is the right thing to show
-           * for that frame.
-           */}
+          {/* No `renderEmptyState`: a real empty result swaps the whole table for `emptyPlaceholder`. */}
           <Table.Body items={tableItems as Iterable<ColumnGridRowData>}>
             {(item) => {
               const entity = item as ColumnGridRowData;
@@ -2555,13 +2547,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Single source of truth for the empty state: no columns to show and not
   // mid-load. Drives both the placeholder and hiding the search/filter toolbar.
-  //
-  // `entities` is published two effects behind `gridItems`, so a response that
-  // carries rows still lands one render where loading is already false and the
-  // row list is empty. Reading the source list too keeps the table mounted
-  // across that gap: without it the placeholder replaces the table for a frame
-  // on every load, tearing down and rebuilding its react-aria collection in
-  // the same update that swaps the rows.
+  // `gridItems` too: `entities` lands two effects later, and without it the
+  // placeholder replaces the table for that frame on every load.
   const isColumnDataEmpty =
     !columnGridListing.loading &&
     isEmpty(filteredEntities) &&

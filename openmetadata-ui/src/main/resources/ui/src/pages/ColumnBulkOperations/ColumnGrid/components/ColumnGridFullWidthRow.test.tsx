@@ -13,20 +13,9 @@
 import { Table } from '@openmetadata/ui-core-components';
 import { render } from '@testing-library/react';
 
-/**
- * The column grid used to render its loading and empty states as one
- * full-width row — a single cell with `colSpan={tableColumns.length}`. That
- * count is a snapshot taken while the row renders, and react-aria checks it
- * against the number of columns its own collection holds when the collection
- * commits. The two disagree while the collection is mid-update, and the check
- * throws out of render, which the app's error boundary turns into a blank
- * "Something went wrong" page (observed in CI as
- * `Found 7 cells and 3 columns` on /column-bulk-operations).
- *
- * These tests pin both halves of that: the shape that can desync, and the
- * shape the grid uses now, where every row derives its cells from the same
- * column list the header renders.
- */
+// The grid used to render loading/empty as one full-width row whose fixed
+// `colSpan` could outlive the column count react-aria's collection holds, which
+// threw `Found 7 cells and 3 columns` out of render and blanked the page.
 
 const COLUMNS = [
   { id: 'columnName' },
