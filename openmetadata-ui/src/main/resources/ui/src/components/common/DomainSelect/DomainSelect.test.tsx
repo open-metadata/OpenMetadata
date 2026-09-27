@@ -28,6 +28,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
     return <div data-testid="tree-select-mock" />;
   },
+  DomainTag: ({
+    label,
+    'data-testid': dataTestId,
+  }: {
+    label: string;
+    'data-testid'?: string;
+  }) => <span data-testid={dataTestId}>{label}</span>,
 }));
 
 jest.mock('react-i18next', () => ({
@@ -276,5 +283,37 @@ describe('DomainSelect', () => {
     lastProps().onChange(null);
 
     expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  describe('renderSelectedItem', () => {
+    const node = {
+      id: financeRef.id,
+      value: financeRef.fullyQualifiedName,
+      label: 'Finance',
+      data: financeRef,
+    } as never;
+
+    it('renders the selection as the shared DomainTag, not plain label text', () => {
+      renderSelect({ selectedDomain: financeRef });
+
+      const chip = lastProps().renderSelectedItem(node);
+      const { getByTestId } = render(chip);
+
+      expect(
+        getByTestId(`domain-tag-${financeRef.fullyQualifiedName}`)
+      ).toBeInTheDocument();
+    });
+
+    it('offers a remove affordance only when clearing is allowed', () => {
+      renderSelect({ selectedDomain: financeRef, isClearable: true });
+      const clearable = lastProps().renderSelectedItem(node);
+
+      expect(clearable.props.onDelete).toBeDefined();
+
+      renderSelect({ selectedDomain: financeRef, isClearable: false });
+      const locked = lastProps().renderSelectedItem(node);
+
+      expect(locked.props.onDelete).toBeUndefined();
+    });
   });
 });

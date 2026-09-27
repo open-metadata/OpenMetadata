@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  DomainTag,
   TreeSelect,
   TreeSelectDataResponse,
   TreeSelectNode,
@@ -32,6 +33,8 @@ import {
 } from '../../../rest/domainAPI';
 import { isDomainFqnAllowed } from '../../../utils/DomainRestrictionUtils';
 import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainSelectProps } from './DomainSelect.types';
 import {
@@ -255,6 +258,35 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [t]
   );
 
+  // The `input` trigger showed the selection as plain label text, which is the
+  // one place a selected domain did not read as a DomainTag. Render the shared
+  // chip so every surface shows the same thing.
+  const renderSelectedItem = useCallback(
+    (node: TreeSelectNode<EntityReference>) => {
+      const domain = node.data;
+
+      return (
+        <DomainTag
+          data-testid={`domain-tag-${node.value}`}
+          href={
+            isClearable || !node.value ? undefined : getDomainPath(node.value)
+          }
+          inherited={domain?.inherited}
+          label={domain ? getEntityName(domain) : node.label}
+          size="sm"
+          onDelete={
+            isClearable
+              ? () => {
+                  onUpdate(multiple ? [] : undefined);
+                }
+              : undefined
+          }
+        />
+      );
+    },
+    [isClearable, multiple, onUpdate]
+  );
+
   // Server already scoped the results, so skip the client-side label filter
   // (it would hide parents whose matching descendants are nested under them).
   const skipClientFilter = useCallback(() => true, []);
@@ -280,6 +312,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
         placeholder ??
         t('label.select-field', { field: t('label.domain-plural') })
       }
+      renderSelectedItem={renderSelectedItem}
       renderTrigger={renderTrigger}
       searchPlaceholder={t('label.search-entity', {
         entity: t('label.domain-plural'),

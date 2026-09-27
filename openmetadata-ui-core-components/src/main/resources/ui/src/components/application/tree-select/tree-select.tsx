@@ -25,6 +25,7 @@ import {
   useMemo,
   useRef,
   useState,
+  Fragment,
 } from 'react';
 import { FocusScope } from 'react-aria';
 import type { Key, Selection } from 'react-aria-components';
@@ -231,6 +232,7 @@ export const TreeSelect = <T = unknown,>({
   triggerClassName,
   fullWidthTrigger = false,
   onFetchError,
+  renderSelectedItem,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
@@ -620,7 +622,7 @@ export const TreeSelect = <T = unknown,>({
 
   const displayValue = isOpen
     ? inputValue
-    : !multiple
+    : !multiple && !renderSelectedItem
     ? selectedData[0]?.label ?? ''
     : '';
 
@@ -982,7 +984,14 @@ export const TreeSelect = <T = unknown,>({
           }}>
           <SearchLg className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
 
-          {multiple &&
+          {renderSelectedItem
+            ? selectedData.map((node) => (
+                <Fragment key={node.id}>{renderSelectedItem(node)}</Fragment>
+              ))
+            : null}
+
+          {!renderSelectedItem &&
+            multiple &&
             selectedData.map((node) => (
               <span
                 className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"

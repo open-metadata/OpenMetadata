@@ -142,6 +142,13 @@ export interface TreeSelectProps<T = unknown> {
    */
   fullWidthTrigger?: boolean;
   /**
+   * Render each selected value in the `input` trigger yourself — e.g. as the
+   * domain chip rather than plain label text. Applies to single and multiple
+   * alike; when set, the built-in chip/label rendering steps aside so the two
+   * cannot disagree.
+   */
+  renderSelectedItem?: (node: TreeSelectNode<T>) => ReactNode;
+  /**
    * Handle a failed `fetchData` yourself. Without this the raw error message
    * is toasted, which for an HTTP transport is an untranslated string like
    * "Request failed with status code 500".
