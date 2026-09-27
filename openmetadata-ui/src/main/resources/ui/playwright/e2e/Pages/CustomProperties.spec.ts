@@ -1361,9 +1361,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await page
           .locator('[data-testid="hyperlink-url-input"]')
           .fill('javascript:alert("XSS")');
+        await page.getByTestId('inline-save-btn').click();
 
         await expect(
-          page.locator('.ant-form-item-explain-error')
+          page.getByTestId('hyperlink-url-input-error')
         ).toContainText('URL must use http or https protocol');
 
         await page.locator('[data-testid="inline-cancel-btn"]').click();

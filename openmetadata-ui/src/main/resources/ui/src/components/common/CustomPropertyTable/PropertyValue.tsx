@@ -361,7 +361,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     ) => (
       <Input
         defaultValue={defaultValue}
-        hint={errors[name]}
+        hint={
+          errors[name] && (
+            <span data-testid={`${dataTestId}-error`}>{errors[name]}</span>
+          )
+        }
         inputDataTestId={dataTestId}
         isDisabled={isLoading}
         isInvalid={Boolean(errors[name])}
@@ -670,6 +674,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             )
           ),
         <DataAssetAsyncSelectList
+          id="entityReference"
           initialOptions={initialOptions}
           mode={mode}
           placeholder={

@@ -77,7 +77,7 @@ const DetailItem: React.FC<DetailItemProps> = ({
   showDottedBorder = false,
 }) => (
   <>
-    <div className="tw:flex tw:items-center tw:gap-1">
+    <div className="test-case-detail-item tw:flex tw:items-center tw:gap-1">
       <Typography className="tw:min-w-15" color="secondary" size="text-xs">
         {`${label}:`}
       </Typography>
@@ -228,6 +228,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
       <Card.Header
         extra={
           <StatusBadgeV2
+            className="test-case-status-section"
             label={status || 'Unknown'}
             showIcon={false}
             status={statusBadgeType}
@@ -235,7 +236,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
         }
         title={
           <Link
-            className="tw:line-clamp-2 tw:break-words"
+            className="test-case-name tw:line-clamp-2 tw:break-words"
             data-testid={`test-case-${testCaseName}`}
             to={observabilityRouterClassBase.getTestCaseDetailPagePath(
               testCase.fullyQualifiedName ?? ''
