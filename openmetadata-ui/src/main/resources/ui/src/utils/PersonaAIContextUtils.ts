@@ -13,7 +13,6 @@
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   DEFAULT_PERSONA_CONTEXT_DEFINITION,
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
@@ -28,6 +27,7 @@ import {
   ContextRule,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import type { TreeNode } from './queryBuilder/url';
