@@ -16,9 +16,7 @@ package org.openmetadata.service.rdf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -161,8 +159,7 @@ public final class RdfValidationService {
 
     private static ValidationResult from(
         String entityUri, RdfSerializationFormat format, ValidationReport validationReport) {
-      ByteArrayOutputStream output = new ByteArrayOutputStream();
-      RDFDataMgr.write(output, validationReport.getModel(), format.rdfFormat());
+      String report = RdfGraphSerializer.asString(validationReport.getModel(), format);
       int violationCount =
           nullOrEmpty(validationReport.getEntries()) ? 0 : validationReport.getEntries().size();
       return new ValidationResult(
@@ -172,7 +169,7 @@ public final class RdfValidationService {
           violationCount,
           format.externalName(),
           format.mediaType(),
-          output.toString(StandardCharsets.UTF_8));
+          report);
     }
   }
 }

@@ -62,7 +62,6 @@ import { GenericProvider } from '../../Customization/GenericProvider/GenericProv
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 const PipelineDetails = ({
   updatePipelineDetailsState,

@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useNavigate } from 'react-router-dom';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DataProductsDetailsPage from './DataProductsDetailsPage.component';
@@ -430,5 +433,49 @@ describe('DataProductsDetailsPage — Add Assets picker domain scoping', () => {
     render(<DataProductsDetailsPage {...domainScopedProps} />);
 
     expect(hasDomainTerm(getPickerQueryFilter())).toBe(true);
+  });
+});
+
+describe('DataProductsDetailsPage — contract latest-result button', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions(ENTITY_PERMISSIONS);
+  });
+
+  it('renders the aborted state with its status tint and opens the contract tab', async () => {
+    (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
+      latestResult: { status: ContractExecutionStatus.Aborted },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    const button = await screen.findByTestId('data-contract-latest-result-btn');
+
+    expect(button.tagName).toBe('BUTTON');
+    expect(button).toHaveClass(
+      'tw:bg-(--om-legacy-color-fef6ee)!',
+      'tw:after:outline-(--om-legacy-color-f9dbaf)!'
+    );
+
+    fireEvent.click(button);
+
+    expect((useNavigate as jest.Mock)()).toHaveBeenCalledWith(
+      '/data-product/test.dataproduct/contract',
+      { replace: true }
+    );
+  });
+
+  it('does not render the button for a passing contract', async () => {
+    (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
+      latestResult: { status: ContractExecutionStatus.Success },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    await waitFor(() => expect(getContractByEntityId).toHaveBeenCalled());
+
+    expect(
+      screen.queryByTestId('data-contract-latest-result-btn')
+    ).not.toBeInTheDocument();
   });
 });

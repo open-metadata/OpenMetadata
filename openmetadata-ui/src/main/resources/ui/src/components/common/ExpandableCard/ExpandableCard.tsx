@@ -10,24 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, CardProps } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
 
 interface ExpandableCardProps {
-  children: React.ReactNode;
+  children: ReactNode;
   defaultExpanded?: boolean;
   onExpandStateChange?: (isExpanded: boolean) => void;
   isExpandDisabled?: boolean;
-  cardProps: CardProps;
+  cardProps: { className?: string; title?: ReactNode };
   dataTestId?: string;
 }
 
+// Light values reproduce the antd Card + `.new-header-border-card` look this
+// replaced; the `expandable-card-*` hooks let consumers restyle the parts.
 const ExpandableCard = ({
   children,
-  cardProps: { className, ...restCardProps },
+  cardProps: { className, title },
   onExpandStateChange,
   isExpandDisabled,
   dataTestId,
@@ -50,30 +52,43 @@ const ExpandableCard = ({
 
   return (
     <Card
-      bodyStyle={{
-        // This will prevent the card body from having padding when there is no content
-        padding: children ? undefined : '0px',
-      }}
       className={classNames(
-        'new-header-border-card w-full',
-        {
-          expanded: isExpanded,
-        },
+        'tw:w-full tw:overflow-visible tw:border-utility-gray-blue-100 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle',
+        { expanded: isExpanded },
         className
       )}
-      data-testid={dataTestId}
-      extra={
-        <CardExpandCollapseIconButton
-          className="expand-collapse-icon bordered"
-          data-testid="expand-collapse-icon"
-          disabled={isExpandDisabled}
-          size="small"
-          title={isExpanded ? t('label.collapse') : t('label.expand')}
-          onClick={handleExpandClick}
-        />
-      }
-      {...restCardProps}>
-      {children}
+      data-testid={dataTestId}>
+      <div
+        className={classNames(
+          'expandable-card-header tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-secondary tw:px-6 tw:text-sm tw:font-medium tw:text-black/85 tw:dark:text-primary',
+          {
+            'tw:-mb-px tw:border-b tw:border-black/6 tw:dark:border-secondary':
+              !isExpanded,
+          }
+        )}>
+        <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
+          {title}
+        </div>
+        <div className="expandable-card-extra tw:ml-3 tw:font-normal tw:text-primary">
+          <CardExpandCollapseIconButton
+            className={classNames(
+              'expand-collapse-icon bordered tw:[&_svg]:fill-bg-primary',
+              { 'tw:rotate-180': !isExpanded }
+            )}
+            data-testid="expand-collapse-icon"
+            disabled={isExpandDisabled}
+            size="small"
+            title={isExpanded ? t('label.collapse') : t('label.expand')}
+            onClick={handleExpandClick}
+          />
+        </div>
+      </div>
+      {/* `hidden` (not unmount) keeps collapsed form fields registered. */}
+      <div
+        className={classNames('expandable-card-body', { 'tw:p-5': children })}
+        hidden={!isExpanded}>
+        {children}
+      </div>
     </Card>
   );
 };

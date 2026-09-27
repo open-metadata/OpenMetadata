@@ -1914,14 +1914,20 @@ export const scrollIntoViewAndSettle = async (locator: Locator) => {
   });
 };
 
+/**
+ * Opens a React Aria Select or ComboBox and clicks one of its options, reopening
+ * it if the popover closed first. `open` defaults to a click; a ComboBox that
+ * does not always reopen on click can pass its own.
+ */
 export const selectOptionWithRetry = async (
   trigger: Locator,
-  option: Locator
+  option: Locator,
+  open: () => Promise<void> = () => trigger.click()
 ) => {
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
       await scrollIntoViewAndSettle(trigger);
-      await trigger.click();
+      await open();
     }
 
     await option.click({ timeout: 2000 });
