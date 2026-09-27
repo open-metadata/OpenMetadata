@@ -34,7 +34,8 @@ public class CachedEntityDao {
   }
 
   /**
-   * Write-through cache: Store entity in cache (called after DB write)
+   * Store an entity's JSON. Only readers call this, with the row they loaded from the database;
+   * writers evict instead.
    */
   public void putBase(String entityType, UUID entityId, String entityJson) {
     if (EntityCacheBypass.isSkipped()) {
@@ -62,7 +63,8 @@ public class CachedEntityDao {
   }
 
   /**
-   * Write-through cache: Store entity by name for fast name-based lookups
+   * Store an entity's JSON under its FQN for name-based lookups. Only readers call this, with the
+   * row they loaded from the database; writers evict instead.
    */
   public void putByName(String entityType, String fqn, String entityJson) {
     if (EntityCacheBypass.isSkipped()) {

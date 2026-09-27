@@ -221,7 +221,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
-import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.cache.CachedReadBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.cache.ListCountCache;
@@ -337,8 +336,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
 
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
-
-  private record StoredEntityJson(UUID entityId, String json) {}
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
@@ -601,8 +598,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set by {@link #preloadParentsForBulk(List)} and cleared after use.
    */
   private final ThreadLocal<Map<UUID, EntityInterface>> parentCacheForPrepare = new ThreadLocal<>();
-
-  private final ThreadLocal<StoredEntityJson> storedEntityJson = new ThreadLocal<>();
 
   protected final ChangeSummarizer<T> changeSummarizer;
 
@@ -1282,7 +1277,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Clear the parent cache after bulk prepare. */
   public void clearParentCache() {
     parentCacheForPrepare.remove();
-    storedEntityJson.remove();
   }
 
   /**
@@ -4016,9 +4010,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setInheritedFields(entities, new Fields(allowedFields));
     postCreate(entities);
 
-    // 4. Batch cache writes
-    writeThroughCacheMany(entities, false);
-
     return entities;
   }
 
@@ -4064,15 +4055,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
           clearRelationshipsForUpdateMany(updatedEntities);
           storeRelationshipsInternal(updatedEntities);
           // Drop every cached variant for each updated entity so the next GET rebuilds from the
-          // freshly-stored row + relationships. writeThroughCacheMany only populates Redis base
-          // entries; Guava and bundle caches still serve pre-update tags/owners/etc. until TTL.
+          // freshly-stored row + relationships.
           for (T entity : updatedEntities) {
             invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
           }
         });
-
-    // 3. Batch cache writes
-    writeThroughCacheMany(updatedEntities, true);
 
     return updatedEntities;
   }
@@ -4089,22 +4076,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // prior failed lookup poisoned the negative cache. Iterates the Invalidatable registry
     // so future cache layers also get the create signal automatically.
     deferCacheBundleInvalidation(entityType, entity.getId(), entity.getFullyQualifiedName());
-  }
-
-  /**
-   * Helper method to write entity to cache from static context
-   */
-  @SuppressWarnings("unchecked")
-  void writeThroughCacheForEntity(EntityInterface entity, boolean update) {
-    try {
-      writeThroughCache((T) entity, update);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to write entity to cache from static context: {} {}",
-          entityType,
-          entity.getId(),
-          e);
-    }
   }
 
   /**
@@ -4160,103 +4131,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity != null && entity.getId() != null && entity.getFullyQualifiedName() != null;
   }
 
-  protected void writeThroughCache(T entity, boolean update) {
-    StoredEntityJson storedJson = storedEntityJson.get();
-    try {
-      var cachedEntityDao = CacheBundle.getCachedEntityDao();
-      if (cachedEntityDao == null
-          || !isValidEntityForCache(entity)
-          || !isCacheableEntityType(entityType)) {
-        return;
-      }
-      String json =
-          storedJson != null
-                  && storedJson.json() != null
-                  && entity.getId().equals(storedJson.entityId())
-              ? storedJson.json()
-              : serializeForStorage(entity);
-      writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
-    } catch (Exception e) {
-      LOG.debug("Write-through cache failed: {} {}", entityType, entity.getId(), e);
-    } finally {
-      storedEntityJson.remove();
-    }
-  }
-
-  final void storeEntityAndCaptureJson(T entity, boolean update) {
-    captureStoredEntityJson(entity, () -> storeEntity(entity, update));
-  }
-
-  private void storeEntityWithVersionAndCaptureJson(
-      T entity, boolean update, Double expectedVersion) {
-    captureStoredEntityJson(entity, () -> storeEntityWithVersion(entity, update, expectedVersion));
-  }
-
-  private void captureStoredEntityJson(T entity, Runnable storeOperation) {
-    storedEntityJson.set(new StoredEntityJson(entity.getId(), null));
-    boolean storeCompleted = false;
-    try {
-      storeOperation.run();
-      storeCompleted = true;
-    } finally {
-      StoredEntityJson storedJson = storedEntityJson.get();
-      if (!storeCompleted
-          || storedJson == null
-          || storedJson.json() == null
-          || !Objects.equals(entity.getId(), storedJson.entityId())) {
-        storedEntityJson.remove();
-      }
-    }
-  }
-
-  protected void writeThroughCacheMany(List<T> entities, boolean update) {
-    var cachedEntityDao = CacheBundle.getCachedEntityDao();
-    if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
-      return;
-    }
-    if (!isCacheableEntityType(entityType)) {
-      return;
-    }
-    for (T entity : entities) {
-      if (!isValidEntityForCache(entity)) continue;
-      try {
-        String json = serializeForStorage(entity);
-        writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
-      } catch (Exception e) {
-        LOG.debug("Write-through cache failed (bulk): {} {}", entityType, entity.getId(), e);
-      }
-    }
-  }
-
-  /**
-   * Bulk updates benefit more from cheap invalidation than write-through recaching.
-   * This avoids N background DB reads that can contend with foreground requests.
-   */
+  /** Evicts every entity a bulk write changed; readers repopulate the cache from the database. */
   protected void invalidateMany(List<T> entities) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
     for (T entity : entities) {
       invalidate(entity);
-    }
-  }
-
-  private void writeJsonToRedis(
-      CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
-    PostCommitActionQueue.runOrDefer(
-        () -> writeJsonToRedisAfterCommit(cachedEntityDao, entityId, fqn, entityJson));
-  }
-
-  private void writeJsonToRedisAfterCommit(
-      CachedEntityDao cachedEntityDao, UUID entityId, String fqn, String entityJson) {
-    if (entityJson == null || entityJson.isEmpty()) return;
-    try {
-      cachedEntityDao.putBase(entityType, entityId, entityJson);
-      if (fqn != null) {
-        cachedEntityDao.putByName(entityType, fqn, entityJson);
-      }
-    } catch (Exception e) {
-      LOG.debug("Failed to write to Redis cache: {} {}", entityType, entityId, e);
     }
   }
 
@@ -4319,7 +4200,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities == null || entities.isEmpty()) {
       return;
     }
-    writeThroughCacheMany(entities, true);
+    invalidateMany(entities);
     EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(entities, null, null);
     entities.forEach(RdfUpdater::updateEntity);
   }
@@ -5319,7 +5200,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
    * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
    * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
-   * cheap local Guava-L1 eviction stays inline. Redis cache write-through likewise happens
+   * cheap local Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens
    * post-commit on the request thread (read-your-write safe).
    *
    * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
@@ -5381,21 +5262,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
-    try {
-      createNewEntityFlush(entity);
-      try (var ignored = phase("createPostCreate")) {
-        postCreate(entity);
-      }
-
-      // Write-through cache: store entity in cache after creation
-      try (var ignored = phase("createWriteThroughCache")) {
-        writeThroughCache(entity, false);
-      }
-
-      return entity;
-    } finally {
-      storedEntityJson.remove();
+    createNewEntityFlush(entity);
+    try (var ignored = phase("createPostCreate")) {
+      postCreate(entity);
     }
+    return entity;
   }
 
   private void createNewEntityFlush(T entity) {
@@ -5407,7 +5278,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void createNewEntityFlushBody(T entity) {
     try (var ignored = phase("createStoreEntity")) {
-      storeEntityAndCaptureJson(entity, false);
+      storeEntity(entity, false);
       storeExtension(entity);
       storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
     }
@@ -5436,9 +5307,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       committed = true;
     } finally {
       scope.finish(committed);
-      if (!committed) {
-        storedEntityJson.remove();
-      }
     }
   }
 
@@ -5460,9 +5328,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } finally {
       exitRetryableBoundary(ownsRetry);
       scope.finish(committed);
-      if (!committed) {
-        storedEntityJson.remove();
-      }
     }
   }
 
@@ -5803,12 +5668,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entity.getFullyQualifiedName(),
           json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
-    }
-    StoredEntityJson pendingCapture = storedEntityJson.get();
-    if (pendingCapture != null
-        && pendingCapture.json() == null
-        && Objects.equals(entity.getId(), pendingCapture.entityId())) {
-      storedEntityJson.set(new StoredEntityJson(entity.getId(), json));
     }
   }
 
@@ -9374,20 +9233,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
-      try {
-        flushInOneTransaction(
-            () -> {
-              restoreUpdaterState(snapshot, !firstAttempt[0]);
-              firstAttempt[0] = false;
-              flushUpdateBody(useOptimisticStore, importMode);
-            });
-        if (entityStored) {
-          try (var ignored = phase("entityUpdateCacheWriteThrough")) {
-            invalidateCachesAfterStore();
-          }
+      flushInOneTransaction(
+          () -> {
+            restoreUpdaterState(snapshot, !firstAttempt[0]);
+            firstAttempt[0] = false;
+            flushUpdateBody(useOptimisticStore, importMode);
+          });
+      if (entityStored) {
+        try (var ignored = phase("entityUpdateCacheEvict")) {
+          invalidateCachesAfterStore();
         }
-      } finally {
-        storedEntityJson.remove();
       }
     }
 
@@ -11012,36 +10867,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           updated.getId(),
           updated.getChangeDescription());
-      EntityRepository.this.storeEntityAndCaptureJson(updated, true);
+      EntityRepository.this.storeEntity(updated, true);
       entityStored = true;
     }
 
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
-      EntityRepository.this.storeEntityWithVersionAndCaptureJson(
-          updated, true, original.getVersion());
+      EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
       entityStored = true;
     }
 
     /**
-     * Cache write-through + invalidation. MUST run post-commit on the request thread (not inside the
-     * flush transaction and not async): {@code GET /entity/{id}} and {@code /name/{fqn}} read the
-     * entity cache, so writing the fresh committed value into Redis synchronously before the
-     * response returns is what preserves read-your-write. It is a sub-millisecond-to-low-ms set of
-     * Redis ops and degrades to a near-instant no-op via the circuit breaker when Redis is down. It
-     * is therefore called from {@link #flushUpdate} after the transaction commits, never from inside
-     * {@code storeNewVersion} where a pooled DB connection is still held.
+     * Cache eviction. MUST run post-commit on the request thread (not inside the flush transaction
+     * and not async): {@code GET /entity/{id}} and {@code /name/{fqn}} read the entity cache, so
+     * evicting before the response returns is what preserves read-your-write. The next read misses
+     * and loads the committed row. It is a sub-millisecond-to-low-ms set of Redis ops and degrades to
+     * a near-instant no-op via the circuit breaker when Redis is down. It is therefore called from
+     * {@link #flushUpdate} after the transaction commits, never from inside {@code storeNewVersion}
+     * where a pooled DB connection is still held.
      *
-     * <p><b>Concurrent-writer staleness (pre-existing, out of scope):</b> two concurrent
-     * non-optimistic updates to the same entity can have their write-throughs land in an order
-     * inverted vs DB commit order, pinning L1/L2 to the older committed version until TTL or the next
-     * write. This race predates this change — the baseline already wrote through with no per-entity
-     * serialization (and worse, wrote pre-commit/uncommitted JSON). Moving write-through post-commit
-     * does not widen it (it now writes committed JSON). It is NOT closed here because a
-     * version-guarded write-through requires a read-before-write Redis round trip per write, doubling
-     * write-through latency — the exact cost this change exists to remove. The optimistic-locking
-     * path ({@code storeNewVersionWithOptimisticLocking}) already serializes at the DB version check.
+     * <p>Writers only evict; only readers load entities into the cache, from the database and under
+     * the write-epoch guard. Concurrent writers commit in one order and can finish this post-commit
+     * work in the other, so a writer that also stored its own copy could leave the cache on an older
+     * committed version whenever it finished last. Neither the version nor {@code updatedAt} can
+     * order those copies: a same-session revert moves both back. Evictions commute, so the order in
+     * which writers finish no longer matters.
      */
     private void invalidateCachesAfterStore() {
       UUID id = updated.getId();
@@ -11064,11 +10915,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
       }
 
-      // Critical: drop Redis *base* entries for the entity BEFORE writeThroughCache repopulates.
-      // A concurrent GET arriving between the DB commit and the repopulate would otherwise hit
-      // stale JSON in Redis (base hash field) and serve old values — including old owners /
-      // domains consumed by downstream inheritance. Deleting first means the next read misses,
-      // goes to DB, and populates fresh.
+      // Drop the Redis entries so the next read misses, goes to the DB, and loads the committed
+      // row. A stale base hash field would otherwise serve old values, including old owners and
+      // domains consumed by downstream inheritance.
       var cachedEntityDao = CacheBundle.getCachedEntityDao();
       if (cachedEntityDao != null) {
         cachedEntityDao.invalidateBase(entityType, id);
@@ -11098,9 +10947,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         cachedLineage.invalidate(id);
       }
 
-      // Synchronous repopulate: the write path holds the request thread until Redis is updated,
-      // so the next GET on this instance can't race an in-flight async repopulate.
-      EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
       deferCacheBundleInvalidation(entityType, id, fqn);
 
