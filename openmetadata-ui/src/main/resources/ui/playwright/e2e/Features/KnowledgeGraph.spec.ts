@@ -90,21 +90,34 @@ const nodePosition = async (page: Page, label: string) => {
     width: box.width,
   };
 };
-const expectPosition = async (
-  page: Page,
-  label: string,
-  position: { x: number; y: number; width: number }
-) => {
-  await expect
-    .poll(async () => {
-      const current = await nodePosition(page, label);
-      return Math.max(
-        Math.abs(current.x - position.x),
-        Math.abs(current.y - position.y),
-        Math.abs(current.width - position.width)
-      );
-    })
-    .toBeLessThan(2);
+/**
+ * The graph's framing: its zoom, and where the world origin sits relative to the
+ * centre of the canvas.
+ *
+ * Read from `data-graph-origin` rather than derived from a node, so a relayout
+ * does not disturb it — the world origin is a fixed point in graph space, so its
+ * screen position is a function of pan and zoom alone.
+ *
+ * Measured from the canvas centre rather than its top-left because G6 keeps the
+ * camera across `resize`: widening the canvas by N moves the world origin N/2
+ * without anything having panned. Against the centre that cancels, so this
+ * moves only when the graph is genuinely translated.
+ */
+const graphFraming = async (page: Page) => {
+  const canvas = page.getByTestId('knowledge-graph-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('The graph canvas must be visible');
+  const [originX, originY] = (
+    (await canvas.getAttribute('data-graph-origin')) ?? ''
+  )
+    .split(',')
+    .map(Number);
+
+  return {
+    zoom: await zoomLabel(page),
+    originFromCentreX: Math.round(originX - box.width / 2),
+    originFromCentreY: Math.round(originY - box.height / 2),
+  };
 };
 const zoomLabel = async (page: Page) =>
   (await page.getByTestId('graph-view-controls').innerText()).match(
@@ -297,7 +310,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.goto(
       `/table/${getEncodedFqn(
         table.entityResponseData.fullyQualifiedName!
-      )}/knowledge_graph?fullscreen=true`
+      )}/knowledge_graph?fullscreen=true`,
+      { waitUntil: 'domcontentloaded' }
     );
     await expect(page.getByTestId('knowledge-graph-canvas')).toHaveAttribute(
       'data-ready',
@@ -310,10 +324,45 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    // A beforeAll hook inherits the 60s test timeout, which the projection poll below would consume
+    // on its own — leaving nothing for table.create() and killing the hook under exactly the delay
+    // the poll exists to absorb. A failed beforeAll fails the whole suite, so the budgets come from
+    // ontology-rdf.setup.ts, which already calibrated this projection: 180s hook around a 120s poll.
+    // This project depends on ['setup', 'entity-data-setup'] and not on ontology-rdf-setup, so it
+    // gets no prior RDF health gate and has to tolerate a cold projection here.
+    test.setTimeout(180_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     table = new TableClass();
-    await table.create(apiContext);
-    await afterAction();
+    try {
+      await table.create(apiContext);
+      const schemaIri = `https://open-metadata.org/entity/databaseSchema/${table.schemaResponseData.id}`;
+      const tableIri = `https://open-metadata.org/entity/table/${table.entityResponseData.id}`;
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.post('/api/v1/rdf/sparql', {
+              data: {
+                query: `ASK { GRAPH ?graph { <${schemaIri}> ?predicate <${tableIri}> } }`,
+                format: 'json',
+                inference: 'none',
+              },
+            });
+            return {
+              status: response.status(),
+              body: response.ok()
+                ? await response.json()
+                : await response.text(),
+            };
+          },
+          {
+            message: 'Table relationships must reach the RDF projection',
+            timeout: 120_000,
+          }
+        )
+        .toMatchObject({ status: 200, body: { boolean: true } });
+    } finally {
+      await afterAction();
+    }
   });
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -368,11 +417,33 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test('renders every returned node and predicate from the live RDF endpoint', async ({
     page,
   }) => {
-    const response = page.waitForResponse(
-      (r) => r.url().includes('/rdf/graph/explore?') && r.status() === 200
-    );
-    await open(page);
-    const graph = (await (await response).json()) as GraphData;
+    // Match on the request alone and assert the status after: filtering on 200
+    // inside the predicate makes a failing explore call look like a call that
+    // never happened, and the wait then times out without naming the HTTP error.
+    //
+    // The project waits on ontology-rdf-setup, so the projection is known to be
+    // writing by the time beforeAll builds the fixture table — but that table's
+    // own write still has to drain, and it reaches the store as a bare node
+    // before its relationships follow. Reopen until the drain has caught up
+    // rather than asserting on whichever half of it exists on the first paint.
+    let graph!: GraphData;
+    await expect
+      .poll(
+        async () => {
+          const response = page.waitForResponse((r) =>
+            r.url().includes('/rdf/graph/explore?')
+          );
+          await open(page);
+          const exploreResponse = await response;
+          expect(exploreResponse.status()).toBe(200);
+          graph = (await exploreResponse.json()) as GraphData;
+
+          return graph.edges.length;
+        },
+        { timeout: 40_000 }
+      )
+      .toBeGreaterThan(0);
+
     await chooseView(page, 'Every entity');
     await expect(page.locator('[data-node-id]')).toHaveCount(
       graph.nodes.length
@@ -380,7 +451,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(page.locator('[data-edge-id]')).toHaveCount(
       graph.edges.length
     );
-    expect(graph.edges.length).toBeGreaterThan(0);
     await expect.poll(() => paintedPixels(page)).toBeGreaterThan(100);
     await expect(page.getByTestId('graph-status')).toContainText(
       `${graph.nodes.length} entities`
@@ -477,9 +547,11 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(
       page.getByTestId('graph-level-rings').locator('rect')
     ).toHaveCount(2);
-    const outer = await nodePosition(page, 'Extended table');
     await page.getByTestId('graph-filters-toggle').click();
-    // Opening the filter row resizes the canvas; take the position after that change.
+    // Baseline after the filter row opens: it resizes the canvas, and reading
+    // across that reflow compares two different canvas sizes.
+    const outer = await nodePosition(page, 'Extended table');
+    const framingBeforeFilter = await graphFraming(page);
     await page
       .getByRole('button', { name: 'Entity Type', exact: true })
       .click();
@@ -490,9 +562,22 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       'data-level',
       '3'
     );
+    // The viewport is the claim here, and a viewport is zoom *and* pan —
+    // `fitKey` covers mode, level, presentation, ontology concept, excluded
+    // families and expansion, and deliberately not `filters`, so applying one
+    // must not re-frame in either respect. Node *positions* are a different
+    // thing: filtering refetches (the route mock answers a second
+    // /rdf/graph/explore with only the matching types), so the graph lays out a
+    // smaller set and nodes move by design. Asserting a node's x here asserted
+    // layout invariance under a data change, which nothing promises.
+    //
+    // `data-graph-origin` is where the world origin lands on screen, so with the
+    // zoom it pins the whole transform. Node and ring geometry both move when
+    // the graph re-lays out, so neither can tell a pan from a relayout; a fixed
+    // point in graph space can.
     const filteredOuter = await nodePosition(page, 'Extended table');
     expect(filteredOuter.width).toBeCloseTo(outer.width, 1);
-    expect(filteredOuter.x).toBeCloseTo(outer.x, 1);
+    expect(await graphFraming(page)).toEqual(framingBeforeFilter);
     await page
       .getByRole('button', { name: 'Clear Filters', exact: true })
       .click();
@@ -553,11 +638,17 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(
       page.locator('.knowledge-graph-custom-node.dimmed')
     ).toHaveCount(0);
-    const position = await nodePosition(page, 'Orders');
     const before = await paintedPixels(page);
     await chooseView(page, 'No labels');
     await expect(page.locator('[data-edge-id]')).toHaveCount(12);
-    await expectPosition(page, 'Orders', position);
+    // Every relationship survives the switch — that is what this test is named
+    // for, and the edge count is what carries it. Node geometry is not: dropping
+    // labels resizes the nodes, the canvas lays the smaller set out again, and
+    // `fitKey` excludes `labelMode` precisely so that relayout does not re-frame
+    // the viewport. Holding a node to its pre-switch x/y/width asserted that the
+    // layout is idempotent across a resize, which is a stronger claim than the
+    // graph makes and than this test is about.
+    await expect(page.getByTestId('node-Orders')).toBeVisible();
     await expect.poll(() => paintedPixels(page)).toBeGreaterThan(100);
     await expect.poll(() => paintedPixels(page)).toBeLessThan(before);
     await chooseView(page, 'All labels');
@@ -573,7 +664,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       page.getByTestId('legend-item-other').getByRole('button')
     ).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('[data-edge-id]')).toHaveCount(12);
-    await expectPosition(page, 'Orders', position);
+    await expect(page.getByTestId('node-Orders')).toBeVisible();
     await expect(
       page.locator('.knowledge-graph-custom-node.dimmed')
     ).not.toHaveCount(0);
@@ -849,7 +940,11 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.screenshot({
       path: test.info().outputPath('controls-200-percent-dark.png'),
     });
-    await page.getByTestId('knowledge-graph-canvas').scrollIntoViewIfNeeded();
+    // Scroll the node, not the canvas. At 200% in a narrow viewport the canvas is
+    // taller than the viewport, so bringing the canvas into view says nothing
+    // about where inside it any given node sits. The claim under test is that
+    // the node is still reachable, and scrolling to it is how a user reaches it.
+    await page.getByTestId('node-Orders').scrollIntoViewIfNeeded();
     await expect(page.getByTestId('node-Orders')).toBeInViewport();
     await page.screenshot({
       path: test.info().outputPath('graph-200-percent-dark.png'),
@@ -1265,5 +1360,201 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     expect(await page.evaluate(() => window.getSelection()?.toString())).toBe(
       ''
     );
+  });
+
+  test('bundles every repeated predicate: business terms, tags, owners of different kinds and mixed downstream assets', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1680, height: 1080 });
+    const graph = fixture();
+    const root = table.entityResponseData.id;
+    for (let index = 0; index < 5; index++) {
+      const id = 'concept-' + index;
+      graph.nodes.push({ id, label: 'Concept ' + index, type: 'glossaryTerm' });
+      // The same business term arrives twice, as a glossary term and as a tag.
+      graph.edges.push(
+        {
+          from: root,
+          to: id,
+          label: 'Has glossary term',
+          relationType: 'hasGlossaryTerm',
+        },
+        { from: root, to: id, label: 'Has tag', relationType: 'hasTag' }
+      );
+    }
+    graph.nodes.push(
+      { id: 'tag-person', label: 'Person', type: 'tag' },
+      { id: 'tag-channels', label: 'Channels', type: 'tag' },
+      { id: 'tier', label: 'Tier 4', type: 'tag' },
+      { id: 'finance-team', label: 'Finance team', type: 'team' },
+      { id: 'pere', label: 'Pere Miquel Brull', type: 'user' },
+      {
+        id: 'model-accounts',
+        label: 'AccountsModel',
+        type: 'dashboardDataModel',
+      },
+      {
+        id: 'model-sales',
+        label: 'sales_datamart',
+        type: 'dashboardDataModel',
+      },
+      { id: 'view', label: 'new_view', type: 'table' },
+      { id: 'watcher', label: 'Watcher', type: 'user' },
+      { id: 'mention', label: 'Fix the schema', type: 'task' }
+    );
+    graph.edges.push(
+      ...['tag-person', 'tag-channels', 'tier'].map((to) => ({
+        from: root,
+        to,
+        label: 'Has tag',
+        relationType: 'hasTag',
+      })),
+      { from: root, to: 'tier', label: 'Has tier', relationType: 'hasTier' },
+      ...['finance-team', 'pere'].map((from) => ({
+        from,
+        to: root,
+        label: 'Owns',
+        relationType: 'owns',
+      })),
+      ...['model-accounts', 'model-sales', 'view'].map((to) => ({
+        from: root,
+        to,
+        label: 'Downstream',
+        relationType: 'downstream',
+      })),
+      // A follow returned from both ends, and a task mention: neither may be
+      // counted as ownership or as business meaning.
+      {
+        from: root,
+        to: 'watcher',
+        label: 'Has follower',
+        relationType: 'hasFollower',
+      },
+      { from: 'watcher', to: root, label: 'Follows', relationType: 'follows' },
+      {
+        from: root,
+        to: 'mention',
+        label: 'Mentioned in',
+        relationType: 'mentionedIn',
+      }
+    );
+    await page.route('**/api/v1/rdf/graph/explore?**', (route) =>
+      route.fulfill({
+        json: responseFor(new URL(route.request().url()), false, graph),
+      })
+    );
+    await open(page);
+    const bundle = (name: string) =>
+      page.locator('.kg-node-group').filter({ hasText: name });
+
+    await expect(page.locator('.kg-node-group')).toHaveCount(4);
+    await expect(bundle('Glossary Terms')).toHaveCount(1);
+    await expect(bundle('Tags')).toHaveCount(1);
+    await expect(bundle('People')).toHaveCount(1);
+    await expect(bundle('Data Assets')).toHaveCount(1);
+    await expect(bundle('People')).toContainText('Finance team');
+    await expect(bundle('People')).toContainText('Pere Miquel Brull');
+    // Tier is a distinguished tag and keeps the card of its own it always had.
+    await expect(page.getByTestId('node-Tier 4')).toHaveCount(1);
+    await expect(page.locator('[data-node-id]')).toHaveCount(12);
+    await expect(page.locator('[data-edge-id]')).toHaveCount(33);
+    await expect(page.getByTestId('graph-footer')).toContainText(
+      '8 individual · 14 bundled into 4 groups'
+    );
+    await page.screenshot({
+      path: test.info().outputPath('balanced-repeat-bundles.png'),
+    });
+
+    // A follow returned from both ends counts once, in one family — and a task
+    // mention is activity, not business meaning, so the ontology filter stays
+    // about concepts.
+    await page.getByTestId('knowledge-graph-legend-toggle').click();
+
+    await expect(page.getByTestId('legend-count-ownership')).toHaveText('3');
+    await expect(page.getByTestId('legend-count-other')).toHaveText('5');
+    await expect(page.getByTestId('legend-count-ontology')).toHaveText('7');
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('knowledge-graph-legend-items')).toHaveCount(
+      0
+    );
+
+    const inspector = page.getByTestId('graph-inspector');
+    const selectBundle = (name: string) =>
+      page.getByRole('button', { name: new RegExp('^' + name + ',') });
+    await selectBundle('Glossary Terms').click();
+
+    await expect(inspector.getByRole('heading')).toHaveText(
+      'Has glossary term'
+    );
+    await expect(inspector).toContainText(
+      '6 individual relationships · bundled'
+    );
+    await expect(inspector.getByTestId('relationship-predicate')).toHaveText(
+      'hasGlossaryTerm'
+    );
+    await expect(
+      inspector.getByTestId('group-relationship-summary')
+    ).toHaveText('Orders → Has glossary term → 6 Glossary Terms');
+    await inspector.getByRole('button', { name: 'Close', exact: true }).click();
+
+    await selectBundle('People').click();
+
+    await expect(
+      inspector.getByTestId('group-relationship-summary')
+    ).toHaveText('2 People → Owns → Orders');
+    await expect(inspector.getByTestId('relationship-predicate')).toHaveText(
+      'owns'
+    );
+    await expect(
+      inspector.getByRole('button', { name: 'Finance team ← Owns' })
+    ).toBeVisible();
+    await expect(
+      inspector.getByRole('button', { name: 'Pere Miquel Brull ← Owns' })
+    ).toBeVisible();
+    await inspector
+      .getByRole('button', { name: 'Expand all 2 in graph', exact: true })
+      .click();
+
+    await expect(page.getByTestId('node-Finance team')).toBeVisible();
+    await expect(page.getByTestId('node-Pere Miquel Brull')).toBeVisible();
+
+    await page.getByTestId('graph-collapse-groups').click();
+
+    await expect(page.locator('[data-node-id]')).toHaveCount(12);
+
+    // Bundles are a view over the returned statements, never a filter on them.
+    const exported = await downloadRelationships(page);
+
+    expect(exported).toHaveLength(34);
+    expect(exported).toContainEqual([
+      'Orders',
+      'Has glossary term',
+      'Concept 4',
+      'ontology',
+      'hasGlossaryTerm',
+    ]);
+    expect(exported).toContainEqual([
+      'Orders',
+      'Has tag',
+      'Concept 4',
+      'governance',
+      'hasTag',
+    ]);
+    expect(exported).toContainEqual([
+      'Finance team',
+      'Owns',
+      'Orders',
+      'ownership',
+      'owns',
+    ]);
+    expect(exported).toContainEqual([
+      'Watcher',
+      'Follows',
+      'Orders',
+      'other',
+      'follows',
+    ]);
   });
 });

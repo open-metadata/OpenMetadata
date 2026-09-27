@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createWorksheet.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateWorksheetRequest",
   "description": "Create Worksheet entity request",
   "type": "object",

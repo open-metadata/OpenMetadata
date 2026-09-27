@@ -29,7 +29,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -267,6 +267,17 @@ export const postAggregateFieldOptions = ({
     body
   );
 };
+
+/** Posts the body as given — no `.*` wrapping, which would break an alternation of exact terms. */
+export const postExactAggregateFieldOptions = (
+  body: AggregationRequest,
+  signal?: AbortSignal
+) =>
+  APIClient.post<SearchResponse<ExploreSearchIndex>>(
+    '/search/aggregate',
+    body,
+    { signal }
+  );
 
 export const getEntityCount = async (
   path: string,

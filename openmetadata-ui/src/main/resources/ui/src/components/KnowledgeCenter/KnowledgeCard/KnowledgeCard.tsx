@@ -14,7 +14,9 @@ import {
   Box,
   ButtonUtility,
   Card,
+  ClassificationTag,
   Dot,
+  GlossaryTag,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -58,7 +60,6 @@ import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { ClassificationTag, GlossaryTag } from '../../common/atoms/Tag';
 
 export interface KnowledgeCardProps {
   knowledgeItem: KnowledgePage;

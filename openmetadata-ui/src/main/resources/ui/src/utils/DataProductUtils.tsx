@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
 import { Space, Typography } from 'antd';
 import { noop } from 'lodash';
 import { lazy } from 'react';
@@ -26,7 +27,6 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { Icon as ImageIcon } from '../components/common/Icon/Icon';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';

@@ -89,7 +89,7 @@ export type OwnerKind = 'user' | 'team';
 export type AvatarSize = 16 | 18 | 20 | 24 | 32 | 40 | 48 | 56 | 64;
 
 /** Minimal owner reference used across avatar group and chip components. */
-export interface OwnerRef {
+export interface OwnerEntityReference {
   id: string;
   name?: string;
   displayName?: string;

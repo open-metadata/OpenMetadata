@@ -53,7 +53,6 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
-import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -63,7 +62,10 @@ import {
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
@@ -74,7 +76,6 @@ import {
 } from '../../utils/Lineage/LineagePureUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
@@ -115,7 +116,6 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -712,7 +712,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             record.entityType as EntityType,
             record
           )}>
-          {stringToHTML(
+          {renderHighlightedText(
             highlightSearchText(getEntityName(record), searchValue)
           )}
         </Link>
@@ -766,12 +766,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <Owner
-            isCompactView={false}
-            owners={toOwnersWithHref(owners)}
-            renderOwnerContent={renderOwnerContent}
-            showLabel={false}
-          />
+          <Owner isCompactView={false} owners={owners} showLabel={false} />
         ),
       },
       {
@@ -851,7 +846,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <span>
           {isEmpty(prunedColumnName)
             ? NO_DATA
-            : stringToHTML(highlightSearchText(prunedColumnName, searchValue))}
+            : renderHighlightedText(
+                highlightSearchText(prunedColumnName, searchValue)
+              )}
         </span>
       );
     },
@@ -871,7 +868,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue
@@ -896,7 +893,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue

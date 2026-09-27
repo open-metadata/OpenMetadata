@@ -28,12 +28,14 @@
     "pagination-navigation": "ناوبری صفحه‌بندی",
     "previous-page": "رفتن به صفحه قبل",
     "records": "رکوردها",
+    "remove-entity": "حذف {{entity}}",
     "remove-filter": "حذف فیلتر",
     "search": "جستجو",
     "select-all": "انتخاب همه",
     "select-dates": "انتخاب تاریخ‌ها",
     "select-only-one-row": "یک ردیف را انتخاب کنید",
     "show-hidden-breadcrumbs": "نمایش مسیرهای پنهان",
-    "today": "امروز"
+    "today": "امروز",
+    "tree-select": "انتخاب درختی"
   }
 }

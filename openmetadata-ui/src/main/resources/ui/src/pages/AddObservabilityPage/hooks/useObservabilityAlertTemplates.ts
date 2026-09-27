@@ -17,12 +17,9 @@ import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { getAllNotificationTemplates } from '../../../rest/notificationtemplateAPI';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   UseObservabilityAlertTemplatesOptions,
@@ -56,7 +53,7 @@ export function useObservabilityAlertTemplates({
 
       setTemplateResourcePermission(permission);
 
-      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+      if (getDerivedPermissionFlags(permission).canViewAll) {
         const { data } = await getAllNotificationTemplates({
           limit: PAGE_SIZE_LARGE,
           provider: ProviderType.User,

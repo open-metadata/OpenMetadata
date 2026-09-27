@@ -14,7 +14,7 @@ import { isArray } from 'lodash';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
-import Table from '../../Table/Table';
+import Table from '../../Table/TableV2';
 import './table-type-property-view.less';
 
 interface TableTypePropertyViewProps {

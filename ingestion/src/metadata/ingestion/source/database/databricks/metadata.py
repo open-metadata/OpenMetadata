@@ -74,6 +74,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_TYPES,
     DATABRICKS_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.databricks.tags import TagMappingConfig, map_databricks_tag
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -90,7 +91,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_results,
     get_view_definition_wrapper,
 )
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 if TYPE_CHECKING:
     from metadata.ingestion.source.database.databricks.connection import (
@@ -104,6 +104,12 @@ DATABRICKS_TAG = "DATABRICKS TAG"
 DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
 DATABRICKS_VALUELESS_CLASSIFICATION = "DATABRICKS_TAGS"
 DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION = "Databricks tags ingested as key-only (no associated value)."
+DATABRICKS_TAG_MAPPING = TagMappingConfig(
+    classification_description=DATABRICKS_TAG_CLASSIFICATION,
+    tag_description=DATABRICKS_TAG,
+    valueless_classification=DATABRICKS_VALUELESS_CLASSIFICATION,
+    valueless_description=DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
+)
 
 # Keys for the bounded, per-connection caches stored on ``connection.info``.
 # Scoping to the connection (one per thread, see CommonDbSourceService.connection)
@@ -1018,25 +1024,6 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         else:
             tag_dict[key] = [value]
 
-    @staticmethod
-    def _ometa_tag_call_args(tag_name: str, tag_value: str | None) -> dict:
-        """Map a Databricks (tag_name, tag_value) pair onto OM's
-        classification/tag pair, falling back to DATABRICKS_VALUELESS_CLASSIFICATION
-        when tag_value is empty or whitespace-only."""
-        if tag_value and str(tag_value).strip():
-            return {
-                "tags": [tag_value],
-                "classification_name": tag_name,
-                "tag_description": DATABRICKS_TAG,
-                "classification_description": DATABRICKS_TAG_CLASSIFICATION,
-            }
-        return {
-            "tags": [tag_name],
-            "classification_name": DATABRICKS_VALUELESS_CLASSIFICATION,
-            "tag_description": DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
-            "classification_description": DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
-        }
-
     def populate_tags_cache(self, database_name: str) -> None:
         """
         Method to fetch all the tags and populate the relevant caches
@@ -1168,16 +1155,18 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             for tag_name, tag_value in catalog_tags:
                 if not tag_name:
                     continue
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn.build(
-                        self.metadata,
-                        Database,
-                        service_name=self.context.get().database_service,
-                        database_name=database_name,
+                yield from self.register_tag(
+                    entity_fqn=cast(
+                        "str",
+                        fqn.build(
+                            self.metadata,
+                            Database,
+                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_name=database_name,
+                            skip_es_search=True,
+                        ),
                     ),
-                    **self._ometa_tag_call_args(tag_name, tag_value),
-                    metadata=self.metadata,
-                    system_tags=True,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
         except Exception as exc:
@@ -1194,21 +1183,23 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         Method to yield schema tags
         """
         try:
-            schema_tags = self.schema_tags.get((self.context.get().database, schema_name), [])
+            schema_tags = self.schema_tags.get((self.context.get().database, schema_name), [])  # pyright: ignore[reportAttributeAccessIssue]
             for tag_name, tag_value in schema_tags:
                 if not tag_name:
                     continue
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn.build(
-                        self.metadata,
-                        DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=schema_name,
+                yield from self.register_tag(
+                    entity_fqn=cast(
+                        "str",
+                        fqn.build(
+                            self.metadata,
+                            DatabaseSchema,
+                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                            schema_name=schema_name,
+                            skip_es_search=True,
+                        ),
                     ),
-                    **self._ometa_tag_call_args(tag_name, tag_value),
-                    metadata=self.metadata,
-                    system_tags=True,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
         except Exception as exc:
@@ -1228,8 +1219,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             table_tags = self.table_tags.get(
                 (
-                    self.context.get().database,
-                    self.context.get().database_schema,
+                    self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
                     table_name,
                 ),
                 [],
@@ -1237,24 +1228,26 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             for tag_name, tag_value in table_tags:
                 if not tag_name:
                     continue
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn.build(
-                        self.metadata,
-                        Table,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
-                        table_name=table_name,
+                yield from self.register_tag(
+                    entity_fqn=cast(
+                        "str",
+                        fqn.build(
+                            self.metadata,
+                            Table,
+                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                            schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                            table_name=table_name,
+                            skip_es_search=True,
+                        ),
                     ),
-                    **self._ometa_tag_call_args(tag_name, tag_value),
-                    metadata=self.metadata,
-                    system_tags=True,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
             column_tags = self.column_tags.get(
                 (
-                    self.context.get().database,
-                    self.context.get().database_schema,
+                    self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
                     table_name,
                 ),
                 {},
@@ -1263,19 +1256,20 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 for tag_name, tag_value in tags or []:
                     if not tag_name:
                         continue
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            Column,
-                            service_name=self.context.get().database_service,
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                            table_name=table_name,
-                            column_name=column_name,
+                    yield from self.register_tag(
+                        entity_fqn=cast(
+                            "str",
+                            fqn.build(
+                                self.metadata,
+                                Column,
+                                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                                table_name=table_name,
+                                column_name=column_name,
+                            ),
                         ),
-                        **self._ometa_tag_call_args(tag_name, tag_value),
-                        metadata=self.metadata,
-                        system_tags=True,
+                        definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                     )
 
         except Exception as exc:

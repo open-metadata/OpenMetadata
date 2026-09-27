@@ -43,9 +43,24 @@ const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
   80: '2xl',
 };
 
+const SMALL_LOADER_SIZES: CoreAvatarSize[] = ['xxs', 'xs'];
+
+// Resolve the effective Avatar size: prefer the defined `size`, otherwise map
+// the legacy numeric `width` to the nearest defined size (default `sm`).
+function resolveAvatarSize(
+  size: CoreAvatarSize | undefined,
+  width: string | undefined
+): CoreAvatarSize {
+  if (size) {
+    return size;
+  }
+
+  return WIDTH_TO_SIZE[parseInt(width ?? '') || 36] ?? 'sm';
+}
+
 function getLoaderPlaceholder(
   isLoading: boolean,
-  numericWidth: number,
+  size: CoreAvatarSize,
   isSolid: boolean
 ): ReactNode | undefined {
   if (!isLoading) {
@@ -54,7 +69,7 @@ function getLoaderPlaceholder(
 
   return (
     <Loader
-      size={numericWidth <= 24 ? 'x-small' : 'small'}
+      size={SMALL_LOADER_SIZES.includes(size) ? 'x-small' : 'small'}
       type={isSolid ? 'white' : 'default'}
     />
   );
@@ -72,6 +87,15 @@ function getAvatarStyle(
 }
 
 interface Props extends UserData {
+  /**
+   * Preferred: a defined core Avatar size (`xxs`…`2xl`). Takes precedence over
+   * the legacy numeric `width`.
+   */
+  size?: CoreAvatarSize;
+  /**
+   * @deprecated Pass a defined `size` instead. Numeric pixel width, mapped to
+   * the nearest defined size for backward compatibility.
+   */
   width?: string;
   className?: string;
   height?: string;
@@ -83,14 +107,14 @@ const ProfilePicture = ({
   name,
   displayName,
   className = '',
-  width = '36',
+  size,
+  width,
   isTeam = false,
   avatarType = 'outlined',
 }: Props) => {
   const { permissions } = usePermissionProvider();
   const avatarName = displayName ?? name ?? '';
-  const numericWidth = parseInt(width) || 36;
-  const avatarSize: CoreAvatarSize = WIDTH_TO_SIZE[numericWidth] ?? 'sm';
+  const avatarSize = resolveAvatarSize(size, width);
   const { color, character, backgroundColor } = getRandomColor(avatarName);
   const isSolid = avatarType === 'solid';
 
@@ -128,7 +152,7 @@ const ProfilePicture = ({
       initials={isLoadingWithoutUrl ? undefined : character}
       placeholder={getLoaderPlaceholder(
         isLoadingWithoutUrl,
-        numericWidth,
+        avatarSize,
         isSolid
       )}
       size={avatarSize}

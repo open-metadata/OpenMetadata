@@ -30,7 +30,6 @@ import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBas
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import {
@@ -140,7 +139,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
           showDashPlaceholder
           avatarSize={20}
           maxVisibleOwners={1}
-          owners={toOwnerRefs(service.owners ?? [])}
+          owners={service.owners ?? []}
         />
       </div>
 

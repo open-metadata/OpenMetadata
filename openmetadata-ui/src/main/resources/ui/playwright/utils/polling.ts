@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear, waitForWidgetsToRender } from './entity';
 
 /**
@@ -72,6 +73,41 @@ export const waitForSearchIndexed = async (
   throw new Error(
     `Entity "${entityFqn}" not found${expectedMetadata} in index "${index}" after ${timeout}ms`
   );
+};
+
+/**
+ * Polls the search API until the entity's search document reflects the given
+ * owner state — the document refreshes asynchronously after an owner PATCH,
+ * so gate on this before any UI read. `owners` is a nested field, hence the
+ * `nested` query (a plain term query silently matches nothing).
+ */
+export const waitForOwnerIndexed = async (
+  page: Page,
+  entityFqn: string | undefined,
+  index: string,
+  ownerId: string,
+  present: boolean,
+  options?: { timeout?: number; intervals?: number[] }
+) => {
+  const ownerQuery = {
+    nested: {
+      path: 'owners',
+      query: { term: { 'owners.id': ownerId } },
+    },
+  };
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await waitForSearchIndexed(apiContext, entityFqn, index, {
+      timeout: options?.timeout ?? 60_000,
+      intervals: options?.intervals,
+      queryFilter: JSON.stringify({
+        query: present ? ownerQuery : { bool: { must_not: [ownerQuery] } },
+      }),
+    });
+  } finally {
+    await afterAction();
+  }
 };
 
 /**

@@ -95,7 +95,7 @@ export const selectNullOption = async (
 
   const querySearchURL = `/api/v1/search/query?*index=dataAsset*`;
   await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
-  await page.click(`[data-testid="no-option-checkbox"]`);
+  await page.getByTestId('OM_NULL_FIELD').click();
   if (filter.value) {
     await searchAndClickOnOption(page, filter, true);
   }
@@ -123,18 +123,19 @@ export const selectNullOption = async (
   }
 };
 
+/**
+ * Selection state now lives as aria-checked on the menu row itself (the
+ * FilterSelect rows have no hidden input); callers keep passing the legacy
+ * `<value>-checkbox|-radio` id and it is mapped to the row.
+ */
 export const checkCheckboxStatus = async (
   page: Page,
   boxId: string,
   isChecked: boolean
 ) => {
-  const checkbox = page.getByTestId(boxId);
+  const row = page.getByTestId(boxId.replace(/-(checkbox|radio)$/, ''));
 
-  if (isChecked) {
-    await expect(checkbox).toBeChecked();
-  } else {
-    await expect(checkbox).not.toBeChecked();
-  }
+  await expect(row).toHaveAttribute('aria-checked', String(isChecked));
 };
 
 export const selectDataAssetFilter = async (
@@ -151,7 +152,12 @@ export const selectDataAssetFilter = async (
     .getByTestId('search-input')
     .fill(filterValue.toLowerCase());
   await dataAssetDropdownRequest;
-  await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
+  const filterRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId(filterValue.toLowerCase());
+  if ((await filterRow.getAttribute('aria-checked')) !== 'true') {
+    await filterRow.click();
+  }
 
   // Legacy mode commits + closes on Update; immediate-apply commits on check but
   // leaves the dropdown open, so close it via its trigger to match the helper's

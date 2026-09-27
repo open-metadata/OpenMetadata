@@ -69,7 +69,7 @@ class TokenValiditySqlMigrationTest {
 
   private static Path migrationRoot() {
     Path current = Path.of("").toAbsolutePath();
-    while (current != null && !Files.exists(current.resolve("bootstrap/sql/schema/mysql.sql"))) {
+    while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
       current = current.getParent();
     }
     if (current == null) {

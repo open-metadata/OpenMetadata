@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/configuration/rdf/customOntology.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CustomOntology",
   "description": "A user-authored extension to the canonical OpenMetadata ontology. Custom classes and properties live in the om-extension: namespace and never collide with the read-only canonical om: namespace.",
   "type": "object",

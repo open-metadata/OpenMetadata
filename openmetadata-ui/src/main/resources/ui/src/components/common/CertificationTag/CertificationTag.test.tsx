@@ -27,11 +27,11 @@ jest.mock('../../../assets/svg/ic-certification.svg', () => ({
   ReactComponent: () => <div data-testid="default-certification-icon" />,
 }));
 
-jest.mock('../Icon/Icon', () => ({
+jest.mock('@openmetadata/ui-core-components/icon', () => ({
   Icon: jest.fn(),
 }));
 
-const { Icon } = jest.requireMock('../Icon/Icon');
+const { Icon } = jest.requireMock('@openmetadata/ui-core-components/icon');
 
 const mockCertification: AssetCertification = {
   tagLabel: {
@@ -111,20 +111,20 @@ describe('CertificationTag', () => {
     expect(Icon).toHaveBeenCalledWith(
       expect.objectContaining({
         iconValue: 'https://example.com/gold.png',
-        size: 14,
+        size: 16,
         alt: 'certification: Gold Medal',
       }),
       expect.anything()
     );
   });
 
-  it('should use a smaller icon size when showName is true', () => {
+  it('should keep the same icon size when showName is true', () => {
     renderCertificationTag(mockCertification, true);
 
     expect(Icon).toHaveBeenCalledWith(
       expect.objectContaining({
         iconValue: 'https://example.com/gold.png',
-        size: 14,
+        size: 16,
       }),
       expect.anything()
     );

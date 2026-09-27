@@ -10,7 +10,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -19,6 +20,7 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
+            "asciifolding",
             "om_stemmer",
             "om_plural_stemmer"
           ]
@@ -27,7 +29,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -35,6 +38,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -200,9 +204,6 @@
             "type": "keyword"
           },
           "entityType": {
-            "type": "keyword"
-          },
-          "dataQualityDimension": {
             "type": "keyword"
           },
           "owners": {
@@ -424,6 +425,9 @@
             "type": "text"
           },
           "type": {
+            "type": "keyword"
+          },
+          "dataQualityDimensionName": {
             "type": "keyword"
           }
         }

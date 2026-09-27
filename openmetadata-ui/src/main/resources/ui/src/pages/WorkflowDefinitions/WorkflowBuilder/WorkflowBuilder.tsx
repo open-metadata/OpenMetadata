@@ -32,14 +32,12 @@ import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UnsavedChangesModal } from '../../../components/Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  ConnectionConditionModal,
-  WorkflowCanvas,
-  WorkflowExecutionHistory,
-  WorkflowHeader,
-  WorkflowSidebar,
-} from '../../../components/WorkflowDefinitions/WorkflowBuilder';
+import { ConnectionConditionModal } from '../../../components/WorkflowDefinitions/WorkflowBuilder/ConnectionConditionModal';
 import { NodeFormSidebar } from '../../../components/WorkflowDefinitions/WorkflowBuilder/NodeFormSidebar';
+import { WorkflowCanvas } from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowCanvas';
+import { WorkflowExecutionHistory } from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowExecutionHistory';
+import { WorkflowHeader } from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowHeader';
+import WorkflowSidebar from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowSidebar';
 import type { WorkflowBuilderTab } from '../../../constants/WorkflowBuilder.constants';
 import {
   getWorkflowBuilderTabs,
@@ -451,7 +449,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const sidebarClassName = classNames(
     'tw:absolute tw:top-8.5 tw:left-5 tw:bottom-5 tw:w-72 tw:z-10',
     'tw:flex tw:flex-col tw:min-h-0',
-    'tw:rounded-lg tw:bg-primary tw:border tw:border-border-secondary tw:shadow-sm',
+    'tw:rounded-lg tw:bg-surface tw:border tw:border-border-secondary tw:shadow-sm',
     'tw:overflow-y-auto tw:transition-opacity tw:duration-300',
     {
       'tw:opacity-30': focusedConnection || isConnectionModalOpen,
@@ -595,7 +593,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       <div
         className={classNames(
           'tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden',
-          { 'tw:bg-gray-50': !isAiMode }
+          { 'tw:bg-secondary': !isAiMode }
         )}>
         {renderTitleBreadcrumb()}
         <div className="tw:shrink-0">

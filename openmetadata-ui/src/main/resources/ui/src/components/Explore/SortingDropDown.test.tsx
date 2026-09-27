@@ -13,6 +13,10 @@
 
 import { act, fireEvent, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  columnSortingFields,
+  INITIAL_SORT_FIELD,
+} from '../../constants/explore.constants';
 import SortingDropDown from './SortingDropDown';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -144,5 +148,29 @@ describe('Test Sorting DropDown Component', () => {
     });
 
     expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
+  });
+
+  it('Should not render a blank label for the production Columns tab mismatch', async () => {
+    // Regression for #32645: the Columns tab default sort (INITIAL_SORT_FIELD =
+    // 'totalVotes') is not a member of columnSortingFields, so a naive lookup
+    // rendered a blank trigger label. Assert with the REAL production constants.
+    expect(
+      columnSortingFields.some((field) => field.value === INITIAL_SORT_FIELD)
+    ).toBe(false);
+
+    const { findByTestId } = render(
+      <MemoryRouter>
+        <SortingDropDown
+          fieldList={columnSortingFields}
+          handleFieldDropDown={handleFieldDropDown}
+          sortField={INITIAL_SORT_FIELD}
+        />
+      </MemoryRouter>
+    );
+
+    const label = await findByTestId('sorting-dropdown-label');
+
+    expect(label.textContent).not.toBe('');
+    expect(label.textContent).toContain(columnSortingFields[0].name);
   });
 });

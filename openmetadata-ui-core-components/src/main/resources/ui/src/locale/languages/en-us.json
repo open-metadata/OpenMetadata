@@ -28,12 +28,14 @@
     "pagination-navigation": "Pagination Navigation",
     "previous-page": "Go to previous page",
     "records": "Records",
+    "remove-entity": "Remove {{entity}}",
     "remove-filter": "Remove filter",
     "search": "Search",
     "select-all": "Select all",
     "select-dates": "Select dates",
     "select-only-one-row": "Select one row",
     "show-hidden-breadcrumbs": "Show hidden breadcrumbs",
-    "today": "Today"
+    "today": "Today",
+    "tree-select": "Tree select"
   }
 }

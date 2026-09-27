@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
@@ -49,7 +50,9 @@ import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsights
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
+import ServiceAttributesCard from '../../components/Settings/Services/ServiceAttributes/ServiceAttributesCard';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
+import ServiceSectionCard from '../../components/Settings/Services/ServiceSectionCard/ServiceSectionCard';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -76,13 +79,13 @@ import {
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
+import { ServiceAttributes } from '../../generated/entity/services/serviceAttributes';
 
 import { Tag } from '../../generated/entity/classification/tag';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import {
   DashboardConnection,
   DashboardServiceType,
@@ -105,6 +108,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { useVisitedTabs } from '../../hooks/useVisitedTabs';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import {
@@ -140,6 +144,10 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
+import {
+  DetailsTabItem,
+  getRenderedActiveTab,
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -156,10 +164,7 @@ import {
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceDetailsPath,
@@ -728,10 +733,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const databaseUsagePermission = getPrioritizedViewPermission(
-        permissions.database,
-        PermissionOperation.ViewUsage
-      );
+      const databaseUsagePermission = getDerivedPermissionFlags(
+        permissions.database
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
         databaseUsagePermission
@@ -763,10 +767,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const dashboardUsagePermission = getPrioritizedViewPermission(
-        permissions.dashboard,
-        PermissionOperation.ViewUsage
-      );
+      const dashboardUsagePermission = getDerivedPermissionFlags(
+        permissions.dashboard
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
         dashboardUsagePermission
@@ -805,10 +808,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const pipelineUsagePermission = getPrioritizedViewPermission(
-        permissions.pipeline,
-        PermissionOperation.ViewUsage
-      );
+      const pipelineUsagePermission = getDerivedPermissionFlags(
+        permissions.pipeline
+      ).canViewUsage;
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
         pipelineUsagePermission
@@ -1124,6 +1126,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
         }));
       } catch (error) {
         showErrorToast(error as AxiosError);
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
+  const handleUpdateServiceAttributes = useCallback(
+    async (serviceAttributes: ServiceAttributes) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData: ServicesType = {
+        ...serviceDetails,
+        serviceAttributes,
+      };
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails((pre) => ({
+          ...pre,
+          serviceAttributes: response.serviceAttributes,
+        }));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        // Rethrow so the card stays in edit mode and the user does not lose their input.
+        throw error;
       }
     },
     [serviceDetails, serviceCategory]
@@ -1763,51 +1797,61 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const testConnectionTab = useMemo(() => {
     return (
       <div className="connection-tab-content">
-        <div className="flex items-center justify-between">
-          <AirflowMessageBanner />
+        <AirflowMessageBanner />
 
-          <Space className="w-full justify-end">
-            <Tooltip
-              title={
-                flags.canEditAll
-                  ? t('label.edit-entity', {
-                      entity: t('label.connection'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                ghost
-                data-testid="edit-connection-button"
-                disabled={!flags.canEditAll}
-                type="primary"
-                onClick={goToEditConnection}>
-                {t('label.edit-entity', {
-                  entity: t('label.connection'),
-                })}
-              </Button>
-            </Tooltip>
-            {allowTestConn && (
-              <TestConnection
-                connectionType={serviceDetails?.serviceType ?? ''}
-                extraInfo={extraInfoData?.name}
-                getData={() => connectionDetails}
-                hostIp={hostIp}
-                isTestingDisabled={isTestingDisabled}
-                serviceCategory={serviceCategory as ServiceCategory}
-                serviceName={serviceDetails?.name}
-                // validation is not required as we have all the data available and not in edit mode
-                shouldValidateForm={false}
-                showDetails={false}
-              />
-            )}
-          </Space>
-        </div>
+        <ServiceSectionCard
+          actions={
+            <>
+              <Tooltip
+                title={
+                  flags.canEditAll
+                    ? t('label.edit-entity', {
+                        entity: t('label.connection'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <Button
+                  ghost
+                  data-testid="edit-connection-button"
+                  disabled={!flags.canEditAll}
+                  type="primary"
+                  onClick={goToEditConnection}>
+                  {t('label.edit-entity', {
+                    entity: t('label.connection'),
+                  })}
+                </Button>
+              </Tooltip>
+              {allowTestConn && (
+                <TestConnection
+                  connectionType={serviceDetails?.serviceType ?? ''}
+                  extraInfo={extraInfoData?.name}
+                  getData={() => connectionDetails}
+                  hostIp={hostIp}
+                  isTestingDisabled={isTestingDisabled}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceName={serviceDetails?.name}
+                  // validation is not required as we have all the data available and not in edit mode
+                  shouldValidateForm={false}
+                  showDetails={false}
+                />
+              )}
+            </>
+          }
+          description={t('message.connection-configuration-description')}
+          testId="connection-details-card"
+          title={t('label.connection-details')}>
+          <ServiceConnectionDetails
+            connectionDetails={connectionDetails ?? {}}
+            extraInfo={extraInfoData}
+            serviceCategory={serviceCategory}
+            serviceFQN={serviceDetails?.serviceType || ''}
+          />
+        </ServiceSectionCard>
 
-        <ServiceConnectionDetails
-          connectionDetails={connectionDetails ?? {}}
-          extraInfo={extraInfoData}
-          serviceCategory={serviceCategory}
-          serviceFQN={serviceDetails?.serviceType || ''}
+        <ServiceAttributesCard
+          hasEditPermission={flags.canEditAll}
+          serviceAttributes={serviceDetails?.serviceAttributes}
+          onSave={handleUpdateServiceAttributes}
         />
       </div>
     );
@@ -1816,6 +1860,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     allowTestConn,
     goToEditConnection,
     serviceDetails,
+    handleUpdateServiceAttributes,
     connectionDetails,
     isTestingDisabled,
     serviceCategory,
@@ -1825,7 +1870,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     hostIp,
   ]);
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabs = [];
     const ownerIds = serviceDetails?.owners?.map((owner) => owner.id) ?? [];
     const userOwnsService = ownerIds.includes(currentUser?.id ?? '');
@@ -2059,6 +2104,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails.serviceType]
   );
 
+  const renderedActiveTab = getRenderedActiveTab(tabs, activeTab);
+  // Keeps drafts in visited tabs, e.g. unsaved service attributes on the connection tab.
+  const visitedTabs = useVisitedTabs(renderedActiveTab);
+
   if (isLoading) {
     return <PageLoader />;
   }
@@ -2084,8 +2133,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <Row data-testid="service-page" gutter={[0, 12]}>
-          <Col span={24}>
+        <Box data-testid="service-page" direction="col" gap={3}>
+          <div>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -2109,18 +2158,31 @@ const ServiceDetailsPage: FunctionComponent = () => {
               onTierUpdate={handleUpdateTier}
               onVersionClick={versionHandler}
             />
-          </Col>
+          </div>
 
-          <Col className="entity-details-page-tabs" span={24}>
-            <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
-        </Row>
+          <Tabs
+            className="tw:gap-3"
+            data-testid="tabs"
+            selectedKey={renderedActiveTab}
+            onSelectionChange={(key) => activeTabHandler(String(key))}>
+            <Tabs.List size="sm" type="underline" variant="card">
+              {tabs.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabs.map(({ key, children }) => (
+              <Tabs.Panel
+                className="tw:data-inert:hidden"
+                id={key}
+                key={key}
+                shouldForceMount={visitedTabs.has(key)}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </Box>
       )}
     </PageLayoutV1>
   );

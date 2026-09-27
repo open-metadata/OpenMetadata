@@ -33,7 +33,7 @@ import {
 } from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import { LineageDetails } from '../generated/type/entityLineage';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
   const response = await APIClient.put<AddLineage>(`/lineage`, edge);

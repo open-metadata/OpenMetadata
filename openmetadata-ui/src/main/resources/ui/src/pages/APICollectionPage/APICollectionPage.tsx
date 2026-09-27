@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
+import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -40,7 +41,8 @@ import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { PageType } from '../../generated/system/ui/page';
@@ -62,9 +64,12 @@ import {
   API_COLLECTION_DEFAULT_FIELDS,
 } from '../../rest/queries/apiCollectionQuery';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
+  DetailsTabItem,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
@@ -75,6 +80,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -451,8 +457,15 @@ const APICollectionPage: FunctionComponent = () => {
   }, [currentVersion, decodedAPICollectionFQN, navigate]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.API_SERVICES,
+          getPartialNameFromTableFQN(decodedAPICollectionFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedAPICollectionFQN, navigate]
   );
 
   const afterDomainUpdateAction = useCallback(
@@ -498,7 +511,7 @@ const APICollectionPage: FunctionComponent = () => {
     [apiCollection, saveUpdatedAPICollectionData, setAPICollection]
   );
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabsList = apiCollectionClassBase.getAPICollectionDetailPageTabs({
@@ -620,8 +633,8 @@ const APICollectionPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(apiCollection)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           {isCollectionDataFetching || !apiCollection ? (
             <Skeleton
               active
@@ -649,7 +662,7 @@ const APICollectionPage: FunctionComponent = () => {
               onVersionClick={versionHandler}
             />
           )}
-        </Col>
+        </div>
         {apiCollection && (
           <GenericProvider<APICollection>
             customizedPage={customizedPage}
@@ -659,19 +672,33 @@ const APICollectionPage: FunctionComponent = () => {
             permissions={apiCollectionPermission}
             type={EntityType.API_COLLECTION}
             onUpdate={handleAPICollectionUpdate}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
-                activeKey={tab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={expandButton}
-                onChange={activeTabHandler}
-              />
-            </Col>
+                selectedKey={getRenderedActiveTab(tabs, tab)}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Tabs.List
+                  actions={expandButton}
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
           </GenericProvider>
         )}
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };

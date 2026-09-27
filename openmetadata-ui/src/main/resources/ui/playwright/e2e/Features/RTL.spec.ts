@@ -55,9 +55,8 @@ test.describe('Verify RTL Layout for landing page', () => {
 
     await quickFilterResponse;
 
-    await expect(
-      page.getByRole('button', { name: 'סוג השירות : (1)' })
-    ).toBeAttached();
+    await expect(page.getByTestId('search-dropdown-סוג השירות')).toBeAttached();
+    await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 
     await expect(
       page

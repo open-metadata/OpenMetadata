@@ -12,8 +12,8 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
+import { DataQualityDimensions } from '../../../../src/enums/DataQuality.enum';
 import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
-import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -567,14 +567,20 @@ test.describe(
 
       await test.step('Filter by Glossary Term and verify all API responses succeed', async () => {
         await page.getByRole('button', { name: 'Glossary Term' }).click();
-        await page.getByTestId('search-input').click();
+        // The tree picker owns its search box and keys rows by FQN.
+        const glossarySearch = page.getByTestId(
+          'search-dropdown-Glossary Term-search'
+        );
+        await glossarySearch.click();
         const glossaryTermSearchApi = page.waitForResponse(
           '/api/v1/search/query?*q=*index=glossaryTerm*'
         );
-        await page.getByTestId('search-input').fill(glossaryTerm.data.name);
+        await glossarySearch.fill(glossaryTerm.data.name);
         await glossaryTermSearchApi;
         await page
-          .getByText(glossaryTerm.responseData.fullyQualifiedName)
+          .getByTestId(
+            `tree-node-${glossaryTerm.responseData.fullyQualifiedName}`
+          )
           .click();
         const glossaryTermApiResponse = waitForDashboardApiResponses(
           page,

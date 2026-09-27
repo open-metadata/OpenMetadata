@@ -317,7 +317,7 @@ const FailedTestCaseSampleData = ({
                 <Table.Row
                   className={classNames({
                     'tw:bg-success-primary': diffType === DIFF_TYPE_VALUES.ADD,
-                    'tw:bg-gray-50': diffType === DIFF_TYPE_VALUES.NOT_EQUAL,
+                    'tw:bg-secondary': diffType === DIFF_TYPE_VALUES.NOT_EQUAL,
                     'tw:bg-error-primary': diffType === DIFF_TYPE_VALUES.REMOVE,
                   })}
                   columns={sampleData.columns}
@@ -341,7 +341,7 @@ const FailedTestCaseSampleData = ({
                             className={classNames({
                               'tw:text-success-primary':
                                 diffType === DIFF_TYPE_VALUES.ADD,
-                              'tw:text-gray-500':
+                              'tw:text-tertiary':
                                 diffType === DIFF_TYPE_VALUES.NOT_EQUAL,
                               'tw:text-error-primary':
                                 diffType === DIFF_TYPE_VALUES.REMOVE,

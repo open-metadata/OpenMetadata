@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { OwnerEntityReference } from '@openmetadata/ui-core-components';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
 import { getTeamAndUserDetailsPath, getUserPath } from './RouterUtils';
@@ -25,3 +26,16 @@ export const getOwnerPath = (owner: EntityReference): string => {
     ? getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
     : getUserPath(owner.name ?? '');
 };
+
+/**
+ * In-app profile href for a single owner. Registered once at app startup via
+ * `setOwnerHrefResolver` so every <Owner> links owner names to the profile
+ * route without call sites wrapping the array. Kept distinct from the backend
+ * EntityReference.href (the API self-link that would 401 on click).
+ */
+export const getOwnerHref = (owner: OwnerEntityReference): string =>
+  getOwnerPath({
+    id: owner.id,
+    name: owner.name,
+    type: owner.type,
+  } as EntityReference);

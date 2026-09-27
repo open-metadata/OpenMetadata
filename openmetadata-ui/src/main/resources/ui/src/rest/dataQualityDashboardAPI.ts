@@ -13,6 +13,7 @@
  */
 import { omit } from 'lodash';
 import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
+import { DATA_QUALITY_DIMENSION_INDEX_FIELD } from '../constants/DataQualityDimension.constants';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
@@ -108,8 +109,7 @@ export const fetchTestCaseSummaryByDimension = (
       },
     }),
     index: 'testCase',
-    aggregationQuery:
-      'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+    aggregationQuery: `bucketName=dimension:aggType=terms:field=${DATA_QUALITY_DIMENSION_INDEX_FIELD},bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus`,
     domain: filters?.domainFqn,
   });
 };
@@ -128,7 +128,7 @@ export const fetchTestCaseSummaryByNoDimension = (
       query: {
         bool: {
           must: mustFilter,
-          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+          must_not: [{ exists: { field: DATA_QUALITY_DIMENSION_INDEX_FIELD } }],
         },
       },
     }),

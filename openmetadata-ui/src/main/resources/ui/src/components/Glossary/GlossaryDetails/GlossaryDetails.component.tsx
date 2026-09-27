@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { isEmpty, noop } from 'lodash';
 import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +26,7 @@ import type { FeedCounts } from '../../../interface/feed.interface';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
@@ -215,8 +217,7 @@ const GlossaryDetails = ({
   ]);
 
   useEffect(() => {
-    fetchTaskCounts();
-    fetchActivityCount();
+    Promise.all([fetchTaskCounts(), fetchActivityCount()]);
   }, [glossary.fullyQualifiedName]);
 
   const isExpandViewSupported = useMemo(
@@ -229,36 +230,56 @@ const GlossaryDetails = ({
   }
 
   return (
-    <Row
-      className="glossary-details"
+    <Box
+      className="glossary-details tw:h-full"
       data-testid="glossary-details"
-      gutter={[0, 12]}>
-      <Col span={24}>
+      direction="col"
+      gap={3}>
+      <div className="tw:flex-none">
         <GlossaryHeader
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
         />
-      </Col>
-      <Col className="glossary-page-tabs" span={24}>
+      </div>
+      <div className="glossary-page-tabs tw:min-h-0 tw:flex-auto">
         <Tabs
-          activeKey={activeTab}
-          className="tabs-new"
+          className="tw:gap-3"
           data-testid="tabs"
-          items={tabs}
-          tabBarExtraContent={
-            isExpandViewSupported && (
-              <AlignRightIconButton
-                className={isTabExpanded ? 'rotate-180' : ''}
-                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-                onClick={toggleTabExpanded}
-              />
-            )
-          }
-          onChange={handleTabChange}
-        />
-      </Col>
-    </Row>
+          selectedKey={getRenderedActiveTab(tabs, activeTab, EntityTabs.TERMS)}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List
+            actions={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  title={
+                    isTabExpanded ? t('label.collapse') : t('label.expand')
+                  }
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
+            size="sm"
+            type="underline"
+            variant="card">
+            {tabs.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabs.map(({ key, children }) => (
+            <Tabs.Panel
+              className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:flex tw:flex-col tw:overflow-hidden"
+              id={key}
+              key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </div>
+    </Box>
   );
 };
 

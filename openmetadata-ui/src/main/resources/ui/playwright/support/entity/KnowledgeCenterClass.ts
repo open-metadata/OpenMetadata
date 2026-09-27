@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { navigateToArticle } from '../../utils/KnowledgeCenter';
 import {
   KnowledgeCenterData,
@@ -112,7 +116,6 @@ export class KnowledgeCenterClass {
         },
       })
     );
-
     if (!response.ok()) {
       const errorText = await response.text();
       throw new Error(
@@ -203,7 +206,8 @@ export class KnowledgeCenterClass {
     if (deletePages) {
       for (const page of this.knowledgePages) {
         if (page.id) {
-          await apiContext.delete(
+          await deleteFixtureEntity(
+            apiContext,
             `/api/v1/contextCenter/pages/${page.id}?hardDelete=true&recursive=true`
           );
         }

@@ -158,9 +158,9 @@ describe('renderDomainOwnersCell', () => {
       <>
         {renderDomainOwnersCell(
           { owners: [] },
-          () => [],
-          (_owner, chip) => chip,
-          { showDashPlaceholder: true }
+          {
+            showDashPlaceholder: true,
+          }
         )}
       </>
     );
@@ -172,15 +172,7 @@ describe('renderDomainOwnersCell', () => {
   });
 
   it('defaults showDashPlaceholder to undefined when no options are passed', () => {
-    render(
-      <>
-        {renderDomainOwnersCell(
-          { owners: [] },
-          () => [],
-          (_owner, chip) => chip
-        )}
-      </>
-    );
+    render(<>{renderDomainOwnersCell({ owners: [] })}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -204,11 +196,7 @@ describe('nested control clicks inside a clickable row', () => {
 
   it('keeps an owner link click with the owner', () => {
     const rowClick = renderInRow(
-      renderDomainOwnersCell(
-        { owners: [{ name: 'alice' } as EntityReference] },
-        (refs) => (refs ?? []) as never,
-        (_owner, chip) => chip
-      )
+      renderDomainOwnersCell({ owners: [{ name: 'alice' } as EntityReference] })
     );
     fireEvent.click(screen.getByTestId('owner-link'));
 
@@ -230,8 +218,6 @@ describe('nested control clicks inside a clickable row', () => {
     const rowClick = renderInRow(
       renderDomainOwnersCell(
         { owners: [] },
-        () => [],
-        (_owner, chip) => chip,
         {
           showDashPlaceholder: true,
         }
@@ -249,8 +235,6 @@ describe('renderDomainExpertsCell', () => {
       <>
         {renderDomainExpertsCell(
           { experts: [{ name: 'bob' } as EntityReference] },
-          (refs) => (refs ?? []) as never,
-          (_owner, chip) => chip,
           { showDashPlaceholder: true }
         )}
       </>

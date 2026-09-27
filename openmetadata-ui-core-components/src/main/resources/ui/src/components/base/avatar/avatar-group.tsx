@@ -17,11 +17,11 @@ import {
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
+import { getOwnerRenderer } from '../../application/owner/owner-renderer';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
-import type { RenderOwnerContent } from '../../application/owner/owner.types';
-import type { AvatarSize, OwnerRef } from '../../../types';
+import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { TooltipTrigger } from '../tooltip/tooltip';
-import { getAvatarColorTokens, getFirstAlphanumeric } from './utils';
+import { getFirstAlphanumeric } from './utils';
 import type { AvatarProps } from './avatar';
 import { Avatar } from './avatar';
 
@@ -41,14 +41,13 @@ const groupAvatarSizeMap: Record<number, AvatarProps['size']> = {
 };
 
 export interface AvatarGroupProps {
-  owners: OwnerRef[];
+  owners: OwnerEntityReference[];
   /** Max avatars shown before collapsing to +N. Default 3. */
   maxCount?: number;
   /** Avatar pixel size (16–64). Default 24. */
   avatarSize?: AvatarSize;
   className?: string;
   ownerDisplayName?: Map<string, ReactNode>;
-  renderOwnerContent?: RenderOwnerContent;
   overflowTitleLabel?: string;
   overflowTeamsLabel?: string;
   overflowUsersLabel?: string;
@@ -62,7 +61,6 @@ export const AvatarGroup = ({
   avatarSize = 24,
   className,
   ownerDisplayName,
-  renderOwnerContent,
   overflowTitleLabel,
   overflowTeamsLabel,
   overflowUsersLabel,
@@ -73,7 +71,7 @@ export const AvatarGroup = ({
   const overflowCount = Math.max(0, owners.length - maxCount);
   const overlapPx = Math.round(avatarSize / 4);
 
-  const renderSingleAvatar = (owner: OwnerRef) => {
+  const renderSingleAvatar = (owner: OwnerEntityReference) => {
     const rawDisplayName =
       ownerDisplayName?.get(owner.name ?? '') ??
       owner.displayName ??
@@ -84,30 +82,20 @@ export const AvatarGroup = ({
         ? rawDisplayName
         : owner.name ?? owner.id;
     const isTeam = owner.type === 'team';
-    const colorTokens = !isTeam ? getAvatarColorTokens(nameStr) : undefined;
     const TeamIcon = owner.icon;
 
+    // Users get an auto theme-adapting color from their name (Avatar's default
+    // `colorVariant`); teams keep a neutral gray surface.
     const avatar = (
       <Avatar
         alt={nameStr}
-        className={isTeam ? 'tw:opacity-60' : undefined}
+        className={isTeam ? 'tw:bg-utility-gray-200 tw:opacity-60' : undefined}
         contrastBorder={!isTeam}
         initials={
           !isTeam ? getFirstAlphanumeric(nameStr).toUpperCase() : undefined
         }
         placeholderIcon={isTeam ? TeamIcon ?? TeamsIcon : undefined}
         size={resolvedSize}
-        style={
-          isTeam
-            ? {
-                backgroundColor: 'var(--tw-color-utility-gray-200)',
-              }
-            : {
-                backgroundColor: colorTokens!.background,
-                color: colorTokens!.textColor,
-                outlineColor: colorTokens!.border,
-              }
-        }
       />
     );
 
@@ -120,7 +108,11 @@ export const AvatarGroup = ({
       </span>
     );
 
-    return renderOwnerContent ? renderOwnerContent(owner, chip) : chip;
+    // Wrap with the app-registered owner hover card so stacked avatars behave
+    // like every other owner chip on hover.
+    const render = getOwnerRenderer();
+
+    return render ? render(owner, chip) : chip;
   };
 
   return (
@@ -155,6 +147,7 @@ export const AvatarGroup = ({
             <Avatar
               contrastBorder
               className="tw:bg-secondary tw:text-secondary"
+              colorVariant="neutral"
               initials={`+${overflowCount}`}
               size={resolvedSize}
             />

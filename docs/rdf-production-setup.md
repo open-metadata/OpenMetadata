@@ -184,12 +184,13 @@ write is retried while that process remains alive. This is not a transactional m
 
 ## Write throughput
 
-TDB2 is a single-writer store, and the indexing pipeline is built around that fact: partition
-workers read and translate entities in parallel, but all writes for a dataset funnel through a
+TDB2 is a single-writer store, and the indexing pipeline is built around that fact: reader
+threads load and translate entities in parallel, but all writes for a dataset funnel through a
 single sink writer with **exactly one in-flight request**. Adding client threads does not add
 write throughput by design — reader parallelism keeps the writer fed, and the writer keeps exactly
 one transaction open on Fuseki at a time, so client timeouts measure actual server work instead of
-queue position.
+queue position. For the same reason a reindex runs on one server: spreading it across servers
+would add readers, but every write would still wait for the same Fuseki writer.
 
 Live metadata hooks persist replayable operations in `rdf_live_write_queue` after the metadata
 transaction commits, then execute asynchronously. A database fence permits one live writer across
@@ -223,9 +224,17 @@ Throughput therefore depends on the number and size of write transactions:
 The supplied image includes a Graph Store extension. Its defaults are 50 seconds per upload,
 64 MiB decompressed per request, and 16 simultaneous receivers. Override the first two through
 `JVM_ARGS` properties `openmetadata.fuseki.writeTimeoutMs` and `openmetadata.fuseki.maxUploadBytes`.
-Indexing preflights the dataset's OPTIONS capabilities and fails before clearing data if these
-protections or the assembler settings are missing. Stock Fuseki requires this extension and an
-equivalent assembler. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
+Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
+used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
+read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
+Fuseki: readiness writes one triple into a named graph, asks for it without a `GRAPH` clause, and
+removes it. OpenMetadata writes every entity into a named graph, so without union the SPARQL
+playground, the MCP tools, SHACL validation and inference see none of them. The extension and the
+`arq:*Timeout` settings are optional. On Apache Jena Fuseki without them, indexing proceeds with
+the client's own upload budget and deadline and logs each missing guarantee. Without the extension
+a Graph Store upload holds TDB2's writer while it transfers, so other writes wait behind it: a small
+update issued during a 4.4 MB upload at 200 KB/s waited 20 s on stock Fuseki 6.0.0 and 0.23 s with
+the extension. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
 
 These are cooperative deadlines: checks abort expired parsing and roll back the transaction;
 blocked storage I/O or a TDB2 commit itself cannot be forcibly interrupted safely. Client timeout,
@@ -269,46 +278,47 @@ memory-mapped, so starving page cache is a common cause of slow reads and writes
 ### Reading the run record's stage timings
 
 `readerTimeMs`, `processTimeMs` and `sinkTimeMs` on a run record are **aggregate work summed across
-concurrent workers**, not elapsed time. Reading runs on one worker per partition and translation on
-a pool of up to 50 threads, so those two stages overlap both each other and the writer. The
-consequence is deliberate but easy to misread: **the stage times can add up to more than the run
-actually took.** In the two-partition measurement below, the stages summed to 19.8 s for a run whose
-wall clock was 12.0 s — that gap is the parallelism working, not an error.
+concurrent threads**, not elapsed time. Reading runs on the reader threads and translation on a pool
+of up to 50 threads, so those two stages overlap both each other and the writer. The consequence is
+deliberate but easy to misread: **the stage times can add up to more than the run actually took.**
+In the four-reader measurement below, reading alone summed to 70 s in a run that took 41.5 s —
+that gap is the parallelism working, not an error.
 
 Read them as "where did this run spend its effort", and take elapsed time from the run record's
 `startTime`/`endTime`. The one stage that does approximate wall clock is `sinkTimeMs`: RDF writes are
 serialized to a single in-flight request, so there is nothing for it to overlap with.
 
-### Partition size decides read concurrency
+### Reader threads decide read concurrency
 
-Measured end to end (`RdfIndexAppScaleIT`, 2,000 tables, Fuseki 6.2.0), the **read stage is about
-three quarters of a run** — 11.6 s of a 15.5 s job, against 3.1 s of RDF writes and 0.6 s of
-translation. Reading is not wasteful: the RDF mapper needs an entity's full field set, because a
-search-index-style subset silently drops triples. It is simply the largest stage.
+A reindex pages each entity type by keyset, which fetches stored rows only, and hands each page to
+one of `producerThreads` reader threads, which load the entity's full field set — the expensive
+part of a read, because the RDF mapper needs every field — and pass it to the writer. A type of any
+size is read by every reader thread at once.
 
-A partition is the unit of read concurrency — one worker reads one partition at a time — so the
-number of partitions caps how much of that stage runs in parallel:
+Measured end to end on one catalog of 10,000 tables, every hundredth of them 500 columns wide, with
+Fuseki 6.2.0 on a 4 GiB heap. Each time is the mean of three runs and includes clearing and
+compacting the dataset, about 11.5 s of every run:
 
-| `partitionSize` | Effective size | Partitions | App wall clock |
-| ---: | ---: | ---: | ---: |
-| `10000` (default) | 6,666 after the entity complexity factor | 1 | 15.5 s |
-| `1000` (the floor) | 1,000 | 2 | **12.0 s** |
+| Reindex | App wall clock | Records / s |
+| --- | ---: | ---: |
+| `producerThreads: 4` (default) | 43.3 s | 231 |
+| `producerThreads: 8` | 42.9 s | 233 |
+| The distributed mode this replaced, at its defaults | 77.4 s | 129 |
 
-Going from one reader to two cut wall clock 23%, and the summed stage time (19.8 s) exceeding wall
-clock (12.0 s) is the proof that partitions really did run concurrently.
+Beyond four readers the single writer is busy most of the run, so more readers help only a little.
+Raise `producerThreads` when `readerTimeMs` dominates and `sinkTimeMs` is well below the run's
+duration; otherwise the writer, not reading, is the limit.
 
-The practical consequence: **with the default, any entity type holding fewer than ~6,700 rows gets a
-single partition and reindexes single-threaded**, however many servers or cores are available. If a
-catalog is small or mid-sized and a rebuild looks slower than these numbers suggest, lower
-`partitionSize` (1,000 is the floor) so the type spans several partitions. Large catalogs already
-produce plenty of partitions and need no change — and more partitions are not free, since each
-carries claim and heartbeat traffic.
+Loaded pages wait in memory for the writer, so a run reads ahead at most two pages per reader
+thread and at most about 4,000 loaded entities, never fewer than two pages. A larger `batchSize`
+therefore shortens the read-ahead rather than multiplying memory: at `batchSize: 1000` four pages
+are in flight whatever `producerThreads` is.
 
 ### What not to tune
 
-- **Do not raise `consumerThreads` or `producerThreads` to fix slow indexing.** Writes are
-  single-file by design; extra workers only speed up the read/translate side, which is rarely the
-  bottleneck.
+- **Do not raise `producerThreads` past the point where `sinkTimeMs` approaches the run's
+  duration.** Writes are single-file by design; extra readers only speed up the read/translate
+  side, and once the writer is saturated they add database load without making the run faster.
 - **Do not raise `RDF_WRITE_MAX_RETRIES` when requests are timing out.** The client-side deadline
   does not cancel the server-side update — Fuseki keeps parsing and committing the abandoned
   request, so each same-size retry multiplies server load. (The server-side `arq:updateTimeout` in
@@ -344,6 +354,12 @@ thrashes the database. Two mechanisms keep them apart:
   and defers, re-checking every 60 s for up to 30 minutes. If the search run still hasn't finished,
   the RDF run ends `STOPPED` with an explanatory message and waits for its next scheduled slot.
   **On-demand runs bypass the guard** (operator intent wins) with a warning in the logs.
+- **One run at a time.** Every run takes the `rdf_reindex_lock` row before anything else, including
+  the admission-guard wait, and renews it every 30 s until it has reported its final status. A run
+  that finds the lock held, such as a scheduled run meeting an on-demand run, ends `STOPPED` with a
+  message naming the run that holds it, rather than failing. An on-demand run triggered while a
+  scheduled run waits for the guard is skipped the same way; stop the waiting run to start at once.
+  The lock of a run whose server stopped expires after five minutes.
 
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
@@ -352,7 +368,11 @@ weekly schedule. Custom schedules and applications with scheduling disabled are 
 
 By default a `recreateIndex` run clears the served dataset before it starts repopulating it, so
 every query returns partial results until the run finishes — on a large catalog that window is
-measured in hours. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
+measured in hours. From the clear until a complete rebuild finishes, `GET /v1/rdf/status` reports
+`DEGRADED`. The rebuild runs on the one server that started it and is not resumed elsewhere: if that
+server stops mid-run (a rolling deploy, an OOM kill, a node drain), the graph stays partial, and
+`DEGRADED`, until the next rebuild completes. Use blue/green for catalogs whose rebuild takes long
+enough to overlap a deploy; an interrupted blue/green run leaves the previous graph serving. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
 (alongside *Recreate RDF Store*) changes the shape of a rebuild:
 the run builds into an idle second dataset and switches to it only after the build succeeds, so the
 previous graph keeps serving until cutover, and its dataset is retained until the next rebuild
@@ -363,8 +383,8 @@ configured endpoint. The original `openmetadata` directory remains present too: 
 up to three dataset copies plus compaction headroom until an operator retires the unused original.
 Custom endpoint names need matching base, `_a`, and `_b` assembler declarations.
 
-The coordinator persists the selected dataset, rebuild generation, and payload budget on the job.
-Workers use those immutable values. Live writes commit a mutation journal entry before contacting
+The run records the selected dataset, rebuild generation, and payload budget on the job, and
+every write of the run uses those immutable values. Live writes commit a mutation journal entry before contacting
 Fuseki and route under the shared SQL fence. Promotion replays the journal into the completed
 snapshot, then atomically checks the final watermark and changes the pointer. Each pod consults
 that pointer when routing; there is no polling delay after cutover. Promotion also marks
@@ -372,7 +392,7 @@ materialized inference rules dirty in the same transaction so their output can b
 
 The journal is bounded to 256 MiB or 100,000 mutations. Exhaustion or inability to capture a
 mutation fails the rebuild while allowing the live mutation to proceed against the serving graph.
-A 120-second lease, renewed every 30 seconds, fences abandoned workers. A new run can reclaim an
+A 120-second lease, renewed every 30 seconds, fences an abandoned run. A new run can reclaim an
 expired target; stale generation handles cannot write to it. Catch-up has a five-minute budget.
 An uncertain **build** write quarantines its generation to prevent a delayed request corrupting
 an immediately reused target. After restarting Fuseki to terminate outstanding requests, an
@@ -478,6 +498,9 @@ On the OpenMetadata side:
 - Per-record indexing failures persist in the `rdf_index_failures` table, are wiped at the start of
   each run, and are queryable at `GET /v1/rdf/reindex/failures` (also surfaced by the RDF app's
   "View Reindex Failures" button in the UI).
+- A server that starts while an RDF run is executing on another server leaves that run alone. When
+  the run's own server stopped, its run record is marked failed once its reindex lock expires,
+  within about six minutes, with a message naming the server that stopped renewing the lock.
 
 Monitor indexing records per second, SPARQL update latency, container RSS, page-cache availability,
 persistent-volume usage, and journal growth. OpenMetadata logs `RDF circuit breaker is open` after

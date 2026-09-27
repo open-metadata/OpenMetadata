@@ -126,8 +126,10 @@ policy, and deciding which route dependency should remain eager require runtime 
 ## Import architecture and request warnings
 
 `openmetadata-ui/src/main/resources/ui/eslint-rules/openmetadata-imports.mjs` contains ten
-reporting-only rules. They are enabled at `warn`, do not autofix, and therefore do not fail CI while
-their measured backlog is reduced.
+reporting-only rules. None autofix. `no-hook-ui-imports`, `no-internal-barrel-imports` and
+`no-lodash-default-import` have been cleared to zero and run at `error`; the rest stay at `warn`, so
+they do not fail CI while their measured backlog is reduced. The baselines below are the counts at
+introduction.
 
 | Rule | What it reports | Baseline findings / files |
 |---|---|---:|

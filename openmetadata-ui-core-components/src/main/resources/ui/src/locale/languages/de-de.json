@@ -28,12 +28,14 @@
     "pagination-navigation": "Seitennummerierungsnavigation",
     "previous-page": "Zur vorherigen Seite",
     "records": "Datensätze",
+    "remove-entity": "{{entity}} entfernen",
     "remove-filter": "Filter entfernen",
     "search": "Suchen",
     "select-all": "Alle auswählen",
     "select-dates": "Daten auswählen",
     "select-only-one-row": "Eine Zeile auswählen",
     "show-hidden-breadcrumbs": "Ausgeblendete Breadcrumbs anzeigen",
-    "today": "Heute"
+    "today": "Heute",
+    "tree-select": "Baumauswahl"
   }
 }
