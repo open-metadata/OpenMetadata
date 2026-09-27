@@ -219,6 +219,11 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     defaultColumnOrder: appConfig?.defaultColumnOrder ?? undefined,
   });
 
+  // Hydrate tenant-wide time format after authentication
+  useApplicationStore
+    .getState()
+    .setTimeFormat(appConfig?.defaultTimeFormat === '24h' ? '24h' : '12h');
+
   // Skip the boot-time write when this tab already has a stickier
   // signal:
   //
