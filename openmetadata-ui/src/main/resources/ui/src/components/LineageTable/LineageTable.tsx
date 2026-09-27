@@ -53,6 +53,10 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import {
+  EdgeFromToData,
+  LineageNodeType,
+} from '../../interface/lineage.interface';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -87,11 +91,7 @@ import TableV2 from '../common/Table/TableV2';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import {
-  EdgeFromToData,
-  LineageNode,
-  LineageNodeType,
-} from '../Lineage/Lineage.interface';
+import { LineageNode } from '../Lineage/Lineage.interface';
 import {
   SearchedDataProps,
   SourceType,
