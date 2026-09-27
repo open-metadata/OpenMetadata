@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
-import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
@@ -127,14 +131,13 @@ export class GlossaryTerm extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/glossaryTerms/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/glossaryTerms/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
     if (!response.ok()) {

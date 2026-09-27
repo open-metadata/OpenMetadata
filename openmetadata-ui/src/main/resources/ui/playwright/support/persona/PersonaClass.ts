@@ -15,6 +15,7 @@ import {
   createOrFetch,
   deleteFixtureEntity,
   okJson,
+  withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
@@ -68,14 +69,13 @@ export class PersonaClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/personas/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/personas/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
     this.responseData = await okJson(response, 'PersonaClass.patch');

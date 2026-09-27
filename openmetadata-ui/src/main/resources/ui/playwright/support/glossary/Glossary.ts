@@ -16,6 +16,7 @@ import {
   createOrFetch,
   deleteFixtureEntity,
   okJson,
+  withNotFoundRetry,
 } from '../../utils/apiResponse';
 import {
   getRandomFirstName,
@@ -77,14 +78,13 @@ export class Glossary extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/glossaries/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/glossaries/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
     this.responseData = await okJson(response, 'Glossary.patch');
