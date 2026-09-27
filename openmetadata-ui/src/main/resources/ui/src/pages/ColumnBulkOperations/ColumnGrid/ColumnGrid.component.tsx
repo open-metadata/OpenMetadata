@@ -2246,14 +2246,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     ]
   );
 
-  // Real rows only: a full-width row's fixed `colSpan` disagrees with the column
-  // count react-aria holds mid-update and throws `Cell count must match column count`.
+  // Real rows only: a fixed `colSpan` row throws `Cell count must match column count` mid-update.
   const tableItems = filteredEntities;
 
   const dataTable = useMemo(
     () => (
-      // `inset-0` overlay: with no rows yet the table is only its header, so the
-      // spinner needs reserved body height or it lands on the column labels.
+      // Reserve body height: with no rows the table is just its header and the spinner lands on it.
       <div
         className={classNames('tw:relative', {
           'tw:min-h-40': columnGridListing.loading && isEmpty(tableItems),
@@ -2288,7 +2286,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               />
             )}
           </Table.Header>
-          {/* No `renderEmptyState`: a real empty result swaps the whole table for `emptyPlaceholder`. */}
           <Table.Body items={tableItems as Iterable<ColumnGridRowData>}>
             {(item) => {
               const entity = item as ColumnGridRowData;
@@ -2547,8 +2544,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Single source of truth for the empty state: no columns to show and not
   // mid-load. Drives both the placeholder and hiding the search/filter toolbar.
-  // `gridItems` too: `entities` lands two effects later, and without it the
-  // placeholder replaces the table for that frame on every load.
+  // `gridItems` too: `entities` lands two effects later, so the table would unmount for that frame.
   const isColumnDataEmpty =
     !columnGridListing.loading &&
     isEmpty(filteredEntities) &&

@@ -281,10 +281,7 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     });
 
     await test.step('Verify the grid survived the load', async () => {
-      // A render crash during the loading -> rows swap is replaced by the app's
-      // error boundary, which takes the whole page with it. Asserting the grid
-      // is still mounted names that failure instead of reporting it as a chip
-      // that never appeared.
+      // A render crash swaps the page for the error boundary, so assert the grid is still mounted.
       await expect(page.getByTestId('column-grid-container')).toBeVisible();
     });
 

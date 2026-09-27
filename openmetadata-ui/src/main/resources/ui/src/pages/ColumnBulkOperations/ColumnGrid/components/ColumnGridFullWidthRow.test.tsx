@@ -13,9 +13,7 @@
 import { Table } from '@openmetadata/ui-core-components';
 import { render } from '@testing-library/react';
 
-// The grid used to render loading/empty as one full-width row whose fixed
-// `colSpan` could outlive the column count react-aria's collection holds, which
-// threw `Found 7 cells and 3 columns` out of render and blanked the page.
+// The grid's old full-width loading row threw `Found 7 cells and 3 columns` and blanked the page.
 
 const COLUMNS = [
   { id: 'columnName' },
