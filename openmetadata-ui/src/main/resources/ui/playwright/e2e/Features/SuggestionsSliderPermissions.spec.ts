@@ -23,6 +23,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { setupUserWithPolicy } from '../../utils/permission';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const VIEWER_RULES: PolicyRulesType[] = [
   {
@@ -107,11 +108,12 @@ const createSuggestionTask = async (
 };
 
 const openSuggesterSuggestions = async (page: Page, table: TableClass) => {
-  const suggestionsResponse = page.waitForResponse(
+  const suggestionsResponse = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/tasks') &&
-      response.url().includes('type=Suggestion') &&
-      response.status() === 200
+      response.url().includes('type=Suggestion'),
+    200
   );
   await table.visitEntityPage(page);
   await suggestionsResponse;
