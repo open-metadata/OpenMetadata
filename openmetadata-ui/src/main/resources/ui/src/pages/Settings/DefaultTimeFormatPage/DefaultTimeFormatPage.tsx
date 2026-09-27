@@ -89,7 +89,10 @@ const DefaultTimeFormatPage: React.FC = () => {
   };
 
   return (
-    <Box className="tw:p-6" data-testid="default-time-format-page" direction="col">
+    <Box
+      className="tw:p-6"
+      data-testid="default-time-format-page"
+      direction="col">
       <DocumentTitle title={pageTitle} />
 
       {/* Wrapper for Title - forces spacing below */}
@@ -112,11 +115,10 @@ const DefaultTimeFormatPage: React.FC = () => {
           aria-label={pageTitle}
           data-testid="time-format-radio-group"
           value={currentValue}
-          onChange={setCurrentValue}
-        >
+          onChange={setCurrentValue}>
           {OPTIONS.map((option) => (
             // Wrapper for individual Radio Button - forces spacing between options
-            <div key={option.value} className="tw:mb-4">
+            <div className="tw:mb-4" key={option.value}>
               <RadioButton
                 data-testid={`time-format-option-${option.value}`}
                 label={t(option.labelKey)}
@@ -134,8 +136,7 @@ const DefaultTimeFormatPage: React.FC = () => {
           data-testid="save-time-format-settings"
           isDisabled={!isDirty || isLoading || isSaving}
           isLoading={isSaving}
-          onPress={handleSave}
-        >
+          onPress={handleSave}>
           {t('label.save')}
         </Button>
       </div>
