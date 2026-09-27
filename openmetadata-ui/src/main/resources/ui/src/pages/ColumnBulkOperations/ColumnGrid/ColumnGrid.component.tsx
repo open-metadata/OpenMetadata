@@ -2173,13 +2173,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     [columns]
   );
 
-  const selectedKeys = useMemo(() => {
-    const ids = columnGridListing.selectedEntities.filter(
-      (id) => id !== '__loading' && id !== '__empty'
-    );
-
-    return new Set(ids);
-  }, [columnGridListing.selectedEntities]);
+  const selectedKeys = useMemo(
+    () => new Set(columnGridListing.selectedEntities),
+    [columnGridListing.selectedEntities]
+  );
 
   const handleTableSelectionChange = useCallback(
     (keys: Set<string> | 'all') => {
@@ -2195,9 +2192,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return;
       }
 
-      const validKeys = Array.from(keys).filter(
-        (id) => id !== '__loading' && id !== '__empty'
-      );
+      const validKeys = Array.from(keys);
       const validSet = new Set(validKeys);
       const previousSelected = new Set(columnGridListing.selectedEntities);
       const finalSelection = new Set<string>();
@@ -2251,110 +2246,93 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     ]
   );
 
-  const tableItems = useMemo(() => {
-    if (columnGridListing.loading) {
-      return [{ id: '__loading', __loading: true }];
-    }
-
-    if (isEmpty(filteredEntities) && hasActiveFiltersOrSearch) {
-      return [{ id: '__empty', __empty: true }];
-    }
-
-    return filteredEntities;
-  }, [columnGridListing.loading, filteredEntities, hasActiveFiltersOrSearch]);
-
-  const spanColumn = useMemo(() => [{ id: 'span' as const }], []);
+  /**
+   * Only real rows. A synthetic full-width row has to hard-code its `colSpan`
+   * from `tableColumns.length`, and react-aria checks that against the column
+   * count its own collection holds at commit time — the two disagree during a
+   * collection update and the table throws `Cell count must match column
+   * count`, taking the page down. The loader is an overlay and the empty state
+   * a placeholder, so every row here derives its cells from `tableColumns`.
+   */
+  const tableItems = filteredEntities;
 
   const dataTable = useMemo(
     () => (
-      <Table
-        className={TABLE_LAYOUT_CLASSES}
-        data-testid="table-view-container"
-        selectedKeys={selectedKeys}
-        selectionMode="multiple"
-        onSelectionChange={(keys) => {
-          if (keys === 'all') {
-            handleTableSelectionChange('all');
-          } else {
-            handleTableSelectionChange(keys as Set<string>);
-          }
-        }}>
-        <Table.Header className="tw:bg-transparent" columns={tableColumns}>
-          {(column) => (
-            <Table.Head
-              id={column.id}
-              isRowHeader={column.id === 'columnName'}
-              key={column.id}
-              label={t((column as { labelKey: string }).labelKey)}
-              style={{ width: COLUMN_WIDTH_PERCENT[column.id] }}
-            />
-          )}
-        </Table.Header>
-        <Table.Body items={tableItems as Iterable<ColumnGridRowData>}>
-          {(item) => {
-            const entity = item as ColumnGridRowData & {
-              __loading?: boolean;
-              __empty?: boolean;
-            };
-
-            if (entity.__loading) {
-              return (
-                <Table.Row columns={spanColumn} id="__loading" key="__loading">
-                  {() => (
-                    <Table.Cell colSpan={tableColumns.length}>
-                      <div className="tw:flex tw:justify-center tw:py-4">
-                        <Loader />
-                      </div>
-                    </Table.Cell>
-                  )}
-                </Table.Row>
-              );
+      <div className="tw:relative">
+        {columnGridListing.loading && (
+          <div
+            className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60"
+            data-testid="column-grid-loader">
+            <Loader />
+          </div>
+        )}
+        <Table
+          className={TABLE_LAYOUT_CLASSES}
+          data-testid="table-view-container"
+          selectedKeys={selectedKeys}
+          selectionMode="multiple"
+          onSelectionChange={(keys) => {
+            if (keys === 'all') {
+              handleTableSelectionChange('all');
+            } else {
+              handleTableSelectionChange(keys as Set<string>);
             }
-
-            if (entity.__empty) {
-              return (
-                <Table.Row columns={spanColumn} id="__empty" key="__empty">
-                  {() => (
-                    <Table.Cell colSpan={tableColumns.length}>
-                      <div className="tw:py-4 tw:text-center tw:text-tertiary">
-                        {t('server.no-records-found')}
-                      </div>
-                    </Table.Cell>
-                  )}
-                </Table.Row>
-              );
-            }
-
-            const isChildRow = Boolean(entity.parentId || entity.isStructChild);
-            const isParentExpanded =
-              columnGridListing.expandedRows.has(entity.id) ||
-              columnGridListing.expandedStructRows.has(entity.id);
-
-            return (
-              <ColumnGridRow
-                columnWidthPercent={COLUMN_WIDTH_PERCENT}
-                entity={entity}
-                isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
-                isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
-                isSelected={columnGridListing.isSelected(entity.id)}
-                key={entity.id}
-                renderColumnNameCell={renderColumnNameCellFinal}
-                renderDescriptionCell={renderDescriptionCellAdapter}
-                renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
-                renderPathCell={renderPathCellAdapter}
-                renderTagsCell={renderTagsCellAdapter}
-                showParentChildColors={isChildRow || isParentExpanded}
-                tableColumns={tableColumns}
+          }}>
+          <Table.Header className="tw:bg-transparent" columns={tableColumns}>
+            {(column) => (
+              <Table.Head
+                id={column.id}
+                isRowHeader={column.id === 'columnName'}
+                key={column.id}
+                label={t((column as { labelKey: string }).labelKey)}
+                style={{ width: COLUMN_WIDTH_PERCENT[column.id] }}
               />
-            );
-          }}
-        </Table.Body>
-      </Table>
+            )}
+          </Table.Header>
+          {/*
+           * No `renderEmptyState`: a genuinely empty result swaps the whole
+           * table for `emptyPlaceholder`, which carries the reason and the
+           * clear-filters action. The only time this body is empty with the
+           * table still mounted is the render where the row list is catching
+           * up with a response, and an empty tbody is the right thing to show
+           * for that frame.
+           */}
+          <Table.Body items={tableItems as Iterable<ColumnGridRowData>}>
+            {(item) => {
+              const entity = item as ColumnGridRowData;
+
+              const isChildRow = Boolean(
+                entity.parentId || entity.isStructChild
+              );
+              const isParentExpanded =
+                columnGridListing.expandedRows.has(entity.id) ||
+                columnGridListing.expandedStructRows.has(entity.id);
+
+              return (
+                <ColumnGridRow
+                  columnWidthPercent={COLUMN_WIDTH_PERCENT}
+                  entity={entity}
+                  isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
+                  isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
+                  isSelected={columnGridListing.isSelected(entity.id)}
+                  key={entity.id}
+                  renderColumnNameCell={renderColumnNameCellFinal}
+                  renderDescriptionCell={renderDescriptionCellAdapter}
+                  renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
+                  renderPathCell={renderPathCellAdapter}
+                  renderTagsCell={renderTagsCellAdapter}
+                  showParentChildColors={isChildRow || isParentExpanded}
+                  tableColumns={tableColumns}
+                />
+              );
+            }}
+          </Table.Body>
+        </Table>
+      </div>
     ),
     [
       tableItems,
       tableColumns,
-      spanColumn,
       selectedKeys,
       handleTableSelectionChange,
       columnGridListing.loading,
@@ -2577,8 +2555,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Single source of truth for the empty state: no columns to show and not
   // mid-load. Drives both the placeholder and hiding the search/filter toolbar.
+  //
+  // `entities` is published two effects behind `gridItems`, so a response that
+  // carries rows still lands one render where loading is already false and the
+  // row list is empty. Reading the source list too keeps the table mounted
+  // across that gap: without it the placeholder replaces the table for a frame
+  // on every load, tearing down and rebuilding its react-aria collection in
+  // the same update that swaps the rows.
   const isColumnDataEmpty =
-    !columnGridListing.loading && isEmpty(filteredEntities);
+    !columnGridListing.loading &&
+    isEmpty(filteredEntities) &&
+    isEmpty(columnGridListing.gridItems);
 
   // Pick the empty state that matches why the list is empty: an active search
   // shows the "no matching results" hint, active filters show the filter

@@ -280,6 +280,14 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       await waitForAllLoadersToDisappear(page);
     });
 
+    await test.step('Verify the grid survived the load', async () => {
+      // A render crash during the loading -> rows swap is replaced by the app's
+      // error boundary, which takes the whole page with it. Asserting the grid
+      // is still mounted names that failure instead of reporting it as a chip
+      // that never appeared.
+      await expect(page.getByTestId('column-grid-container')).toBeVisible();
+    });
+
     await test.step('Verify filter chip is restored', async () => {
       const metadataStatusChip = page.getByTestId('filter-chip-metadataStatus');
 
