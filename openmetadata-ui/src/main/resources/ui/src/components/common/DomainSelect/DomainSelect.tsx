@@ -264,10 +264,15 @@ const DomainSelect: FC<DomainSelectProps> = ({
   const renderSelectedItem = useCallback(
     (node: TreeSelectNode<EntityReference>) => {
       const domain = node.data;
+      // The chip stops propagation on its own click, so the trigger's disabled
+      // state never reaches it — it has to be locked explicitly, or a user
+      // without edit permission could clear the domain from the chip.
+      const isLocked = disabled || !hasPermission;
 
       return (
         <DomainTag
           data-testid={`domain-tag-${node.value}`}
+          disabled={isLocked}
           href={
             isClearable || !node.value ? undefined : getDomainPath(node.value)
           }
@@ -275,16 +280,20 @@ const DomainSelect: FC<DomainSelectProps> = ({
           label={domain ? getEntityName(domain) : node.label}
           size="sm"
           onDelete={
-            isClearable
+            isClearable && !isLocked
               ? () => {
-                  onUpdate(multiple ? [] : undefined);
+                  // Drop only the chip that was clicked — the built-in chip used
+                  // `removeSelection(node.id)` — and route it through
+                  // handleChange so the no-op and in-flight guards still apply.
+                  const remaining = value.filter((item) => item.id !== node.id);
+                  void handleChange(multiple ? remaining : null);
                 }
               : undefined
           }
         />
       );
     },
-    [isClearable, multiple, onUpdate]
+    [isClearable, multiple, disabled, hasPermission, value, handleChange]
   );
 
   // Server already scoped the results, so skip the client-side label filter

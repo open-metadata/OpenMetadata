@@ -286,8 +286,9 @@ describe('DomainSelect', () => {
   });
 
   describe('renderSelectedItem', () => {
+    // entityReferencesToTreeNodes keys nodes on the FQN, not the entity id.
     const node = {
-      id: financeRef.id,
+      id: financeRef.fullyQualifiedName,
       value: financeRef.fullyQualifiedName,
       label: 'Finance',
       data: financeRef,
@@ -302,6 +303,51 @@ describe('DomainSelect', () => {
       expect(
         getByTestId(`domain-tag-${financeRef.fullyQualifiedName}`)
       ).toBeInTheDocument();
+    });
+
+    it('removes only the clicked chip in multiple mode', async () => {
+      const second = {
+        ...financeRef,
+        id: 'd2',
+        fullyQualifiedName: 'Marketing',
+      };
+      const { onUpdate } = renderSelect({
+        multiple: true,
+        isClearable: true,
+        selectedDomain: [financeRef, second],
+      });
+
+      const chip = lastProps().renderSelectedItem(node);
+
+      await chip.props.onDelete();
+
+      // The other domain survives; only the clicked one is dropped.
+      expect(onUpdate).toHaveBeenCalledWith([
+        expect.objectContaining({ fullyQualifiedName: 'Marketing' }),
+      ]);
+    });
+
+    it('does not offer delete when the picker is disabled or lacks permission', () => {
+      renderSelect({
+        selectedDomain: financeRef,
+        isClearable: true,
+        disabled: true,
+      });
+
+      expect(
+        lastProps().renderSelectedItem(node).props.onDelete
+      ).toBeUndefined();
+      expect(lastProps().renderSelectedItem(node).props.disabled).toBe(true);
+
+      renderSelect({
+        selectedDomain: financeRef,
+        isClearable: true,
+        hasPermission: false,
+      });
+
+      expect(
+        lastProps().renderSelectedItem(node).props.onDelete
+      ).toBeUndefined();
     });
 
     it('offers a remove affordance only when clearing is allowed', () => {
