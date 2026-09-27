@@ -21,7 +21,7 @@
   position: static;
   top: 48px; // stick below the sticky tabs header
   z-index: var(--om-z-2);
-  background: var(--tw-color-bg-primary);
+  background: var(--om-color-bg-surface);
   .data-quality-stat-card {
     flex: 1;
     display: flex;
@@ -137,29 +137,6 @@
     font-size: var(--om-font-size-xs) !important;
   }
 }
-.tab-header-container {
-  gap: var(--om-space-4);
-  display: flex;
-  align-items: center;
-  color: @grey-700;
-  &.active {
-    color: @primary-6;
-  }
-}
-.data-quality-tab-count {
-  background-color: @grey-9;
-  border: 1px solid @grey-15;
-  padding: 0 var(--om-space-5);
-  border-radius: var(--om-radius-sm);
-  font-size: var(--om-font-size-10);
-  font-weight: var(--om-font-weight-medium);
-  &.active {
-    background-color: @primary-6 !important;
-    border-color: @primary-6 !important;
-    color: @white !important;
-  }
-}
-
 .data-quality-badge {
   border-radius: var(--om-radius-md);
   padding: 0;

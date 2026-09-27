@@ -60,7 +60,9 @@ const ExpandableCard = ({
       data-testid={dataTestId}>
       <div
         className={classNames(
-          'expandable-card-header tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-secondary tw:px-6 tw:text-sm tw:font-medium tw:text-black/85 tw:dark:text-primary',
+          // Dark: bg-secondary is darker than the bg-surface Card body, so the
+          // header read as a black band; let the header share the body surface.
+          'expandable-card-header tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-secondary tw:px-6 tw:text-sm tw:font-medium tw:text-black/85 tw:dark:bg-transparent tw:dark:text-primary',
           {
             'tw:-mb-px tw:border-b tw:border-black/6 tw:dark:border-secondary':
               !isExpanded,

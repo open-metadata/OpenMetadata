@@ -44,7 +44,7 @@
 .show-thread {
   background: @grey-9;
   padding: var(--om-space-20);
-  border: 0.5px solid var(--om-color-gray-blue-100);
+  border: 0.5px solid @grey-15;
   margin-top: var(--om-space-20);
   border-radius: var(--om-radius-lg);
   max-height: 400px;
@@ -69,8 +69,14 @@
   max-height: 200px;
   overflow-y: scroll;
   overflow-x: hidden;
-  border: 0.5px solid var(--om-color-gray-blue-100);
+  border: 0.5px solid @grey-15;
   scrollbar-width: none;
+
+  // Dark: take the card's own tone (surface, or the brand tint when the card is
+  // selected), edged by the border, as light does; a filled well reads black.
+  .dark-mode & {
+    background: transparent;
+  }
 
   &::-webkit-scrollbar {
     display: none;

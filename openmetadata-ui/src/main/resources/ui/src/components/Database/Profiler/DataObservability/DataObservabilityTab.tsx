@@ -178,8 +178,10 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                 {tabOptions.map(({ label, key }) => (
                   <Tabs.Item
                     className={({ isSelected, isHovered }) =>
+                      // Dark follows the AI sidebar's selected surface; no single token is
+                      // solid brand in light and a 14% brand tint in dark.
                       isSelected || isHovered
-                        ? 'tw:bg-brand-solid tw:text-primary_on-brand'
+                        ? 'tw:bg-brand-solid tw:text-primary_on-brand tw:dark:bg-brand-primary tw:dark:text-brand-secondary'
                         : ''
                     }
                     id={key}

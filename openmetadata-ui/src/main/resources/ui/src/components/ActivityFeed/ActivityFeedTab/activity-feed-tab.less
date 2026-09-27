@@ -64,7 +64,7 @@
       border-radius: var(--om-radius-xl);
       padding: var(--om-space-16);
       margin: var(--om-space-20) 0 0 0;
-      border: 0.5px solid var(--om-color-gray-blue-100);
+      border: 0.5px solid @grey-15;
       background: @grey-9;
     }
 
@@ -78,10 +78,17 @@
     .comments-input-field {
       background-color: @grey-16;
       border-radius: var(--om-radius-20);
-      border: 1px solid var(--om-color-gray-blue-100);
+      border: 1px solid @grey-15;
       height: 36px;
       font-size: var(--om-font-size-xs);
       line-height: 14.52px;
+
+      // @grey-16 is a fixed hex (a white pill in dark); lift it to the
+      // surface so it reads as an input inside the bg-secondary comments well.
+      .dark-mode & {
+        background-color: var(--om-color-bg-surface);
+        color: var(--om-color-text-primary);
+      }
 
       &::placeholder {
         color: @grey-400;
@@ -117,7 +124,7 @@
     flex-direction: column;
     flex-wrap: wrap;
     width: inherit;
-    border: 0.5px solid var(--om-color-gray-blue-100);
+    border: 0.5px solid @grey-15;
 
     .ant-card-body {
       width: inherit;
@@ -132,6 +139,12 @@
   .activity-feed-card-new.is-active {
     background: @primary-50;
     border: 1px solid @primary-3;
+
+    // --ant-primary-* are injected theme-agnostic, so they stay light in dark.
+    // Match the AI sidebar's selected nav surface instead.
+    .dark-mode & {
+      border-color: var(--om-color-border-brand-subtle);
+    }
   }
 
   .activity-feed-card-message {
@@ -139,7 +152,12 @@
     background-color: var(--om-color-bg-surface);
     width: inherit;
     margin-top: var(--om-space-2);
-    border: 0.5px solid var(--om-color-gray-blue-100);
+    border: 0.5px solid @grey-15;
+
+    // Same message-well treatment as FeedCardBody's .hide-thread in dark.
+    .dark-mode & {
+      background-color: transparent;
+    }
 
     .ant-card-body {
       padding: 0;
@@ -291,11 +309,11 @@
   font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
   letter-spacing: 0.03em;
-  color: var(--om-color-gray-900);
+  color: var(--om-color-text-primary);
 }
 
 .activity-feed-user-name.ant-typography a {
-  color: var(--om-color-gray-900);
+  color: var(--om-color-text-primary);
   font-weight: var(--om-font-weight-semibold);
 }
 
@@ -312,6 +330,10 @@
 
 .active-card {
   background-color: var(--om-legacy-color-e6f1fe) !important;
+
+  .dark-mode & {
+    background-color: var(--om-color-bg-brand) !important;
+  }
 }
 
 .task-tab-custom-dropdown {
@@ -448,11 +470,11 @@
   font-style: normal;
   font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
-  color: var(--om-color-gray-700);
+  color: var(--om-color-text-secondary);
 }
 
 .card-style-feed-header {
-  color: var(--om-color-gray-600);
+  color: var(--om-color-text-tertiary);
   font-size: var(--om-font-size-sm);
   font-style: normal;
   font-weight: var(--om-font-weight-regular);
@@ -489,6 +511,10 @@
 
 .reply-card-border-bottom {
   border-bottom: 0.5px solid var(--om-legacy-color-e4e4e4);
+
+  .dark-mode & {
+    border-bottom-color: var(--om-color-border-secondary);
+  }
 }
 
 // .feed-actions is absolutely positioned at a fixed top: 24px, which only
@@ -540,7 +566,7 @@
 
 .no-description-suggestion-card {
   padding: var(--om-space-20);
-  border: 0.5px solid var(--om-color-gray-blue-100);
+  border: 0.5px solid @grey-15;
   background: var(--om-color-bg-surface);
   border-radius: var(--om-radius-xl);
   margin-top: var(--om-space-16);

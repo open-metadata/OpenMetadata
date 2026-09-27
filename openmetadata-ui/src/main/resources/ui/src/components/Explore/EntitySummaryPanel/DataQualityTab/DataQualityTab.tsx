@@ -817,43 +817,17 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     );
   };
 
-  // Tab items configuration
   const tabItems = [
     {
       key: DATA_QUALITY_TAB_KEY,
-      label: (
-        <span
-          className={`tab-header-container ${
-            activeTab === DATA_QUALITY_TAB_KEY ? 'active' : ''
-          }`}>
-          {t('label.data-quality')}
-          <span
-            className={`data-quality-tab-count ${
-              activeTab === DATA_QUALITY_TAB_KEY ? 'active' : ''
-            }`}>
-            {statusCounts.total}
-          </span>
-        </span>
-      ),
+      label: t('label.data-quality'),
+      count: statusCounts.total,
       children: renderDataQualityTabContent(),
     },
     {
       key: 'incidents',
-      label: (
-        <span
-          className={`tab-header-container ${
-            activeTab === 'incidents' ? 'active' : ''
-          }`}>
-          {t('label.incident-plural')}
-
-          <span
-            className={`data-quality-tab-count ${
-              activeTab === 'incidents' ? 'active' : ''
-            }`}>
-            {incidentCounts.total}
-          </span>
-        </span>
-      ),
+      label: t('label.incident-plural'),
+      count: incidentCounts.total,
       children: renderIncidentsTabContent(),
     },
   ];
@@ -886,7 +860,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         onSelectionChange={(key) => handleTabChange(String(key))}>
         <Tabs.List
           className={classNames(
-            'tw:sticky tw:z-3 tw:gap-8 tw:bg-primary tw:px-4 tw:pt-2.5',
+            'tw:sticky tw:z-3 tw:gap-8 tw:bg-surface tw:px-4 tw:pt-2.5',
             // Sits below the sticky entity title, which the column panel and the side drawer do not render.
             isColumnDetailPanel
               ? 'tw:top-0'
@@ -894,8 +868,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           )}
           size="sm"
           type="underline">
-          {tabItems.map(({ key, label }) => (
-            <Tabs.Item id={key} key={key}>
+          {tabItems.map(({ key, label, count }) => (
+            <Tabs.Item badge={count} className="tw:text-xs" id={key} key={key}>
               {label}
             </Tabs.Item>
           ))}

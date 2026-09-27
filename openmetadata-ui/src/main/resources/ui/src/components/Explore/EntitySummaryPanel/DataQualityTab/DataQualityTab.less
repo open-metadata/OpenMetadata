@@ -54,7 +54,7 @@
 .data-quality-tab-content {
   padding-left: var(--om-space-16);
   height: 100vh;
-  background-color: var(--tw-color-bg-primary);
+  background-color: var(--om-color-bg-surface);
 }
 .dotted-row {
   border-bottom: 1px dashed @grey-15;
@@ -70,36 +70,10 @@
 .data-quality-tab-container {
   border: 0px !important;
 
-  .tab-header-container {
-    display: flex;
-    align-items: center;
-    gap: var(--om-space-8);
-    font-size: var(--om-font-size-xs);
-    font-weight: var(--om-font-weight-regular);
-    &.active {
-      font-weight: var(--om-font-weight-semibold);
-    }
-    .data-quality-tab-count {
-      border-radius: var(--om-radius-sm);
-      background-color: @grey-9;
-      border: 1px solid @grey-38;
-      color: @grey-600;
-      font-size: var(--om-font-size-11);
-      font-weight: var(--om-font-weight-medium);
-      padding: 0 var(--om-space-4);
-      &.active {
-        font-weight: var(--om-font-weight-semibold);
-        background-color: @primary-6;
-        border-color: @primary-7;
-        color: @primary-6;
-      }
-    }
-  }
-
   .incidents-tab-content {
     padding-left: var(--om-space-16);
     padding-right: var(--om-space-16);
-    background-color: var(--tw-color-bg-primary);
+    background-color: var(--om-color-bg-surface);
     .incidents-stats-container {
       display: flex;
       border: 1px solid @grey-15;
@@ -109,7 +83,7 @@
       position: static;
       top: 48px;
       z-index: var(--om-z-2);
-      background: var(--tw-color-bg-primary);
+      background: var(--om-color-bg-surface);
 
       .incidents-stats-cards-container {
         display: flex;
@@ -261,7 +235,7 @@
       padding-right: var(--om-space-12);
       border-bottom-right-radius: var(--om-radius-lg);
       border-bottom-left-radius: var(--om-radius-lg);
-      background-color: var(--tw-color-bg-primary);
+      background-color: var(--om-color-bg-surface);
       &.active {
         background-color: @green-9;
       }
@@ -320,6 +294,11 @@
         align-items: center;
         gap: var(--om-space-24);
         padding-bottom: var(--om-space-12);
+        // @grey-9 bridges to gray-900 in dark, a black band on the gray-800 card;
+        // the translucent hover tint keeps the light header's "slightly lifted" read.
+        .dark-mode & {
+          background-color: var(--om-color-bg-secondary-hover);
+        }
         .test-case-title-section {
           flex: 1;
           padding-left: var(--om-space-16);

@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, MenuProps, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useMemo, useState } from 'react';
@@ -161,9 +163,18 @@ const QueryCardExtraOption = ({
         <QueryHeaderButton onClickHandler={onExpandClick} />
       )}
 
-      <Tag className="query-lines" data-testid="query-line">
+      {/* Same chip as QueryViewer's line badge; light reproduces the antd Tag. */}
+      <Badge
+        className={classNames(
+          'tw:h-6.5 tw:rounded-xl tw:bg-[var(--om-legacy-color-eeeeee)] tw:px-2',
+          'tw:text-[var(--om-legacy-color-757575)]',
+          'tw:outline-utility-gray-blue-100 tw:dark:bg-quaternary',
+          'tw:dark:text-quaternary tw:dark:outline-secondary'
+        )}
+        data-testid="query-line"
+        size="sm">
         {queryLine}
-      </Tag>
+      </Badge>
 
       <Tooltip title={t('label.up-vote')}>
         <Button
