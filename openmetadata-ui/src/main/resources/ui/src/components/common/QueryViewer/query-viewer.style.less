@@ -10,28 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
-
-.dbt-tab-container {
-  .ant-card-body {
-    padding: var(--om-space-1) 0 0 var(--om-space-8);
-  }
-
-  .query-editor {
-    .cm-editor {
-      height: calc(100vh - 320px);
-    }
-  }
-
-  .query-lines {
-    height: 26px;
-    margin-right: 0;
-    border-radius: var(--om-radius-xl);
-    color: @text-grey-muted;
-    border: @global-border;
-    background-color: var(--om-legacy-color-eeeeee);
-    display: flex;
-    align-items: center;
-    padding: 0 var(--om-space-8);
-  }
+.dbt-tab-container .query-editor .cm-editor {
+  height: calc(100vh - 320px);
 }

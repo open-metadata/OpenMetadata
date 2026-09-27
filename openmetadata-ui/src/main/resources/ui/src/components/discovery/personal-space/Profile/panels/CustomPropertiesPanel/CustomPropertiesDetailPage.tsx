@@ -22,7 +22,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Delete, Edit, Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,8 +34,8 @@ import {
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import {
+  deleteCustomPropertyByName,
   getTypeByFQN,
-  updateType,
 } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -113,20 +112,26 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     getDerivedPermissionFlags(permission);
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!propertyToDelete || !typeDetail) {
+    if (!propertyToDelete || !entityType.fullyQualifiedName) {
       return;
     }
-    const updatedProperties = customProperties.filter(
-      (prop) => prop.name !== propertyToDelete.name
-    );
-    const patch = compare(
-      { ...typeDetail },
-      { ...typeDetail, customProperties: updatedProperties }
-    );
     setIsDeleting(true);
     try {
-      const updated = await updateType(typeDetail.id ?? '', patch);
-      setTypeDetail(updated);
+      const updated = await deleteCustomPropertyByName(
+        entityType.fullyQualifiedName,
+        propertyToDelete.name
+      );
+      // `undefined`: someone else already removed it, so drop it locally.
+      setTypeDetail(
+        (prev) =>
+          updated ??
+          (prev && {
+            ...prev,
+            customProperties: prev.customProperties?.filter(
+              (property) => property.name !== propertyToDelete.name
+            ),
+          })
+      );
       showSuccessToast(
         t('server.delete-entity-success', {
           entity: t('label.custom-property'),
@@ -138,7 +143,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
       setIsDeleting(false);
       setPropertyToDelete(null);
     }
-  }, [customProperties, propertyToDelete, t, typeDetail]);
+  }, [entityType.fullyQualifiedName, propertyToDelete, t]);
 
   const renderRow = useCallback(
     (property: CustomProperty) => {

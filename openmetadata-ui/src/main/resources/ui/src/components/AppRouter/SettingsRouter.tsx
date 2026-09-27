@@ -24,6 +24,7 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { isLoginConfigurationApplicable } from '../../utils/AuthProvider.util';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
@@ -32,6 +33,7 @@ import {
   getSettingPathRelative,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
+import { NOTIFICATION_ALERT_KIND } from '../observability/Alerts/alertKinds';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
@@ -337,6 +339,16 @@ const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
 
+// AI mode renders notification alerts with the same AI alert pages
+// Observability uses; only the alert kind differs.
+const AiAlertsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../observability/Alerts/AlertsPage'))
+);
+
+const AiAlertDetailsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../observability/Alerts/AlertDetailsPage'))
+);
+
 /**
  * The bare `/settings/services` path is served by this generic category route, so the services
  * guard has to live inside it. Matching a literal `services` path instead looks equivalent and is
@@ -359,6 +371,7 @@ const SettingCategoryRoute = () => {
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const authProvider = useApplicationStore(
     (state) => state.authConfig?.provider
   );
@@ -489,7 +502,11 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            <NotificationListPage />
+            {isAiMode ? (
+              <AiAlertsPage kind={NOTIFICATION_ALERT_KIND} />
+            ) : (
+              <NotificationListPage />
+            )}
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
@@ -502,7 +519,11 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            <NotificationAlertDetailsPage />
+            {isAiMode ? (
+              <AiAlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />
+            ) : (
+              <NotificationAlertDetailsPage />
+            )}
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(

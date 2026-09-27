@@ -26,6 +26,7 @@ import {
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
 import ServiceInsightsTab from './ServiceInsightsTab';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
@@ -193,6 +194,31 @@ describe('ServiceInsightsTab', () => {
     jest.useFakeTimers();
 
     expect(unhandledReasons).toHaveLength(0);
+  });
+
+  it('should show the workflow status that arrives after the tab mounts', async () => {
+    const { AgentsStatusWidget } =
+      serviceUtilClassBase.getInsightsTabWidgets('databaseServices');
+    const { rerender } = await renderTab({ workflowStatesData: undefined });
+
+    await act(async () => {
+      rerender(
+        <ServiceInsightsTab
+          {...mockProps}
+          workflowStatesData={{
+            mainInstanceState: { status: WorkflowStatus.Finished },
+            subInstanceStates: [],
+          }}
+        />
+      );
+    });
+
+    expect(AgentsStatusWidget).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        liveAutoPilotStatusData: { status: WorkflowStatus.Finished },
+      }),
+      expect.anything()
+    );
   });
 
   it('should not open or close a stream when the workflow is not running', async () => {

@@ -104,7 +104,7 @@ const COLUMN_LAYOUT: Record<
 // built-in horizontal scroll engages on narrow viewports; long-identifier
 // columns (name/table) are capped with maxWidth. The actions column is pinned to
 // the right; its opaque background (matching the header/row state) is applied via
-// className (bg-secondary header, bg-primary body, group-hover/selected) so it
+// className (bg-secondary header, bg-surface body, group-hover/selected) so it
 // stays consistent with the rest of the row instead of looking detached.
 const getColumnLayoutStyle = (
   id: string,
@@ -836,7 +836,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Box>
         </Table.Cell>
         <Table.Cell
-          className="tw:whitespace-nowrap tw:bg-primary tw:group-hover:bg-secondary tw:group-selected:bg-secondary"
+          className="tw:whitespace-nowrap tw:bg-surface tw:group-hover:bg-secondary tw:group-selected:bg-secondary"
           style={getColumnLayoutStyle('actions', 1)}>
           <Box
             onClick={(e) => e.stopPropagation()}

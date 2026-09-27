@@ -189,6 +189,17 @@ test.describe(
         const response = await tableTestCaseResponse;
 
         expect(response.status()).toBe(201);
+      }
+
+      // The drawer closes only after the pipeline is created and deployed, and on Airflow 3 the
+      // deploy call blocks until the scheduler registers the DAG (up to 60s), so the default
+      // expect timeout on the next page is not enough. Waiting here also lets the no-pipeline
+      // check below see a POST that lands after the test case response.
+      await page
+        .getByTestId('test-case-form-v1')
+        .waitFor({ state: 'detached' });
+
+      if (!expectSchedulerCard) {
         expect(ingestionPipelineCalled).toBe(false);
       }
     };
@@ -394,10 +405,6 @@ test.describe(
         page,
         ...columnTestCaseDetails,
         expectSchedulerCard: false,
-      });
-
-      await page.getByTestId('test-case-form-v1').waitFor({
-        state: 'detached',
       });
 
       await expect(

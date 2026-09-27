@@ -75,9 +75,7 @@ type CsvExportResponse = {
 const selectGlossaryManageItem = async (page: Page, itemTestId: string) => {
   await page.getByTestId('manage-button').click();
 
-  const manageDropdown = page
-    .locator('.glossary-manage-dropdown-list-container')
-    .last();
+  const manageDropdown = page.getByTestId('manage-dropdown-list-container');
 
   await expect(manageDropdown).toBeVisible();
   await manageDropdown.getByTestId(itemTestId).click();

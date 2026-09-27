@@ -35,7 +35,6 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
-import org.openmetadata.service.rdf.RdfUpdater;
 
 /**
  * Integration tests for RDF resource operations.
@@ -59,6 +58,8 @@ public class RdfResourceIT {
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
 
+  private static boolean enabledServerRdf;
+
   @BeforeAll
   static void enableRdf() {
     assumeTrue(
@@ -72,12 +73,12 @@ public class RdfResourceIT {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword("test-admin");
     rdfConfig.setDataset("openmetadata");
-    RdfUpdater.initialize(rdfConfig);
+    enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
   }
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
   }
 
   @Test

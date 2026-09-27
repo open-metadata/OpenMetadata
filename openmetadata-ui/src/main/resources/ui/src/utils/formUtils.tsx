@@ -50,9 +50,6 @@ import { RichTextEditorProp } from '../components/common/RichTextEditor/RichText
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
-import TagSuggestion, {
-  TagSuggestionProps,
-} from '../components/common/TagSuggestion/TagSuggestion';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -263,29 +260,6 @@ const renderUtSelectField = ({
   );
 };
 
-const renderUtTagSuggestionField = ({
-  formProps,
-  props,
-  placeholder,
-  label,
-  fieldRules,
-}: FieldRenderContext) => {
-  const isRequired = (fieldRules ?? []).some(
-    (rule) => (rule as RuleObject).required
-  );
-
-  return (
-    <Form.Item {...formProps}>
-      <TagSuggestion
-        {...(props as unknown as TagSuggestionProps)}
-        label={typeof label === 'string' ? label : undefined}
-        placeholder={placeholder}
-        required={isRequired}
-      />
-    </Form.Item>
-  );
-};
-
 const renderUtSwitchField = ({
   formProps,
   props,
@@ -314,7 +288,6 @@ const CUSTOM_FIELD_RENDERERS: Partial<
 > = {
   [FieldTypes.UT_TEXT]: renderUtTextField,
   [FieldTypes.UT_SELECT]: renderUtSelectField,
-  [FieldTypes.UT_TAG_SUGGESTION]: renderUtTagSuggestionField,
   [FieldTypes.UT_SWITCH]: renderUtSwitchField,
 };
 

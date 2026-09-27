@@ -359,17 +359,6 @@ a[href].link-text-grey,
   background-color: @grey-6;
 }
 
-.activeCategory {
-  border-left: 3px solid @primary-color;
-  background: @primary-1;
-  padding-left: var(--om-space-10);
-  font-weight: var(--om-font-weight-semibold);
-
-  .ant-typography {
-    color: @primary-color;
-  }
-}
-
 .shadow-custom {
   box-shadow: 1px 1px 8px var(--om-legacy-color-0-0-0-0-06);
 }
@@ -805,19 +794,6 @@ a[href].link-text-grey,
   color: @text-grey-muted !important;
 }
 
-/* Description tabs CSS */
-.ant-tabs-description {
-  margin-top: var(--om-space-8);
-}
-
-.ant-tabs-description > .ant-tabs-nav {
-  margin-bottom: 0;
-}
-
-.ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
-  padding: 0 var(--om-space-16);
-}
-
 /* React flow */
 .react-flow {
   height: 110%;
@@ -938,6 +914,13 @@ a[href].link-text-grey,
 .dark-mode a.ant-typography,
 .dark-mode .ant-typography a {
   color: var(--om-color-link);
+}
+
+// Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
+// static near-black that vanishes on dark surfaces. The variable can't take a
+// var() (antd runs shade() on it), so retint the class in dark only.
+.dark-mode .ant-typography.ant-typography-secondary {
+  color: var(--om-color-text-tertiary);
 }
 
 // Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
@@ -1112,6 +1095,15 @@ a[href].link-text-grey,
   align-items: center;
   flex-direction: column;
   height: 100%;
+
+  // antd Result hardcodes rgba(0,0,0,…) text, unreadable on the dark surface.
+  .ant-result-title {
+    color: var(--om-color-text-primary);
+  }
+
+  .ant-result-subtitle {
+    color: var(--om-color-text-tertiary);
+  }
 }
 
 .alert-icon {
@@ -1198,4 +1190,44 @@ a[href].link-text-grey,
     height: @size-lg;
     width: @size-lg;
   }
+}
+
+// antd Alert paints static light tints per type (and antd heading-colour
+// text); in dark they read as white boxes with unreadable copy. Use the
+// theme-aware utility scale instead. Light keeps antd's values.
+.dark-mode .ant-alert {
+  &.ant-alert-info {
+    background-color: var(--tw-color-utility-blue-50);
+    border-color: var(--tw-color-utility-blue-200);
+  }
+
+  &.ant-alert-success {
+    background-color: var(--tw-color-utility-success-50);
+    border-color: var(--tw-color-utility-success-200);
+  }
+
+  &.ant-alert-warning {
+    background-color: var(--tw-color-utility-warning-50);
+    border-color: var(--tw-color-utility-warning-200);
+  }
+
+  &.ant-alert-error {
+    background-color: var(--tw-color-utility-error-50);
+    border-color: var(--tw-color-utility-error-200);
+  }
+
+  .ant-alert-message {
+    color: var(--om-color-text-primary);
+  }
+
+  .ant-alert-description {
+    color: var(--om-color-text-secondary);
+  }
+}
+
+// antd Card header text uses antd's heading colour (85% black) and a light
+// divider; both vanish or glare on the dark surface.
+.dark-mode .ant-card-head {
+  color: var(--om-color-text-primary);
+  border-bottom-color: var(--om-color-border-secondary);
 }

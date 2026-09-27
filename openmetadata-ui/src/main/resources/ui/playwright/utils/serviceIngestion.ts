@@ -112,7 +112,7 @@ export const deleteService = async (
 
   // Clicking on permanent delete radio button and checking the service name
   await page.click('[data-testid="manage-button"]');
-  await page.locator('[data-menu-id*="delete-button"]').waitFor();
+  await page.getByTestId('delete-button-title').waitFor();
   await page.click('[data-testid="delete-button-title"]');
 
   // Clicking on permanent delete radio button
@@ -478,7 +478,7 @@ export const openAgentsTab = async (page: Page, service: EntityClass) => {
   await redirectToHomePage(page);
   await service.visitEntityPage(page);
   await page.getByTestId('data-assets-header').waitFor();
-  await page.click('[role="tab"] [data-testid="agents"]');
+  await page.getByRole('tab', { name: /^Agents/ }).click();
 
   const metadataSubTab = page.getByTestId('metadata-sub-tab');
   if (await metadataSubTab.isVisible()) {

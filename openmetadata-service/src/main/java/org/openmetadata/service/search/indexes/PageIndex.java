@@ -9,7 +9,7 @@ import java.util.Set;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-public class PageIndex implements SearchIndex {
+public class PageIndex implements TaggableIndex {
   final Page page;
 
   public PageIndex(Page page) {
@@ -28,7 +28,7 @@ public class PageIndex implements SearchIndex {
 
   @Override
   public Set<String> getRequiredReindexFields() {
-    Set<String> fields = new HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
     fields.add("parent");
     fields.add("children");
     fields.add("editors");

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Button as CoreButton,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Button, Dropdown, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -30,6 +34,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
+import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -125,6 +130,25 @@ import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interfac
 // file without pulling in i18next's more permissive (and here, overload-
 // ambiguous) TFunction type.
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+// Reproduces the former antd look inside `.ant-btn-group.spaced` (40px tall,
+// 6/12px padding + 1px border, 12px radius, three-layer shadow). px-3.25 =
+// 12px padding + the 1px antd border that the core ::after outline no longer
+// takes; not-last:-mr-px keeps antd's `.ant-btn + .ant-btn` 1px overlap with
+// the next group button.
+const CONTRACT_RESULT_BUTTON_BASE_CLASS = [
+  'tw:h-10 tw:gap-2 tw:rounded-xl tw:px-3.25 tw:py-1.5 tw:text-sm tw:font-semibold tw:not-last:-mr-px',
+  'tw:shadow-[0px_2px_2px_-1px_var(--om-legacy-color-10-13-18-0-04),0px_4px_6px_-2px_var(--om-legacy-color-10-13-18-0-04),0px_12px_16px_-4px_var(--om-legacy-color-10-13-18-0-04)]!',
+].join(' ');
+
+const CONTRACT_RESULT_BUTTON_BORDER_CLASS: Partial<
+  Record<ContractExecutionStatus, string>
+> = {
+  [ContractExecutionStatus.Failed]: 'tw:after:outline-utility-error-200!',
+  [ContractExecutionStatus.Aborted]:
+    'tw:after:outline-(--om-legacy-color-f9dbaf)! tw:dark:after:outline-utility-orange-200!',
+  [ContractExecutionStatus.Running]: 'tw:after:outline-utility-brand-200!',
+};
 
 // Extracted from DataProductsDetailsPage's render to keep the component's
 // complexity down. Builds the "Manage" dropdown menu content from the
@@ -965,23 +989,32 @@ const DataProductsDetailsPage = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract.latestResult.status)
     ) {
-      const icon = getDataContractStatusIcon(dataContract.latestResult.status);
+      const StatusIcon = getDataContractStatusIcon(
+        dataContract.latestResult.status
+      );
 
       return (
-        <Button
+        <CoreButton
+          noTextPadding
           className={classNames(
-            'data-contract-latest-result-button',
-            toLower(dataContract.latestResult.status)
+            CONTRACT_RESULT_BUTTON_BASE_CLASS,
+            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status],
+            CONTRACT_RESULT_BUTTON_BORDER_CLASS[
+              dataContract.latestResult.status
+            ]
           )}
+          color="secondary"
           data-testid="data-contract-latest-result-btn"
-          icon={icon ? <Icon component={icon} /> : null}
-          onClick={() => {
+          iconLeading={
+            StatusIcon ? <StatusIcon className="tw:size-6.5" /> : undefined
+          }
+          onPress={() => {
             handleTabChange(EntityTabs.CONTRACT);
           }}>
           {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
             entity: t('label.contract'),
           })}
-        </Button>
+        </CoreButton>
       );
     }
 

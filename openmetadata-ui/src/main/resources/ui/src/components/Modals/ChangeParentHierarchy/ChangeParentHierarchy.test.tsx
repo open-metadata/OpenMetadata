@@ -96,17 +96,16 @@ describe('Test ChangeParentHierarchy modal component', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it('should render submit button and handle form submission', async () => {
+  it('should keep save disabled until a parent is selected', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const submitButton = await screen.findByText('label.save');
+    const submitButton = await screen.findByTestId('save-button');
 
-    expect(submitButton).toBeInTheDocument();
-
-    // The component now handles API calls internally
-    expect(submitButton).toBeInTheDocument();
+    expect(submitButton).toHaveTextContent('label.save');
+    // No parent picked yet, so there is nothing to move.
+    expect(submitButton).toBeDisabled();
   });
 
   it('should set up websocket listener when move job is created', async () => {
