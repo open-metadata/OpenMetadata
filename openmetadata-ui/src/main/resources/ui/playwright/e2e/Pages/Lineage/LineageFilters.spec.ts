@@ -920,7 +920,11 @@ test.describe('Lineage Filters', () => {
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];
     const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
-    const topicName = topicEntity.entity.name;
+    // LineageSearchSelect filters by `dataLabel = getEntityName(node)`
+    // (displayName || name — see EntityNameUtils.ts:27). Typing entity.name
+    // when displayName is set returns 0 matches and hangs the poll.
+    const topicName =
+      topicEntity.entityResponseData?.displayName ?? topicEntity.entity.name;
     await performZoomOut(page);
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 

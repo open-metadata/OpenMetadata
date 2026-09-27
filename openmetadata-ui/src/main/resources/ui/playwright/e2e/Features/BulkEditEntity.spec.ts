@@ -719,20 +719,19 @@ test.describe('Bulk Edit Entity', () => {
         getCellByName(page, 'Playwright Table column')
       ).toBeVisible();
 
-      // Verify Tags — the table page renders the same Sensitive tag
-      // both inline on the entity header AND in the right-panel
-      // KnowledgePanel.Tags, so a bare getByRole matches both and
-      // fails strict mode. Scope to the right panel.
+      // Bulk-edit sets tag/glossary on the first COLUMN (not the entity).
+      // KnowledgePanel.Tags is the entity-level panel and stays empty —
+      // scope to the column tags cell instead.
       await expect(
-        page.getByTestId('KnowledgePanel.Tags').getByRole('link', {
-          name: 'Sensitive',
-        })
+        page
+          .getByTestId('classification-tags-0')
+          .getByRole('link', { name: 'Sensitive' })
       ).toBeVisible();
 
       await expect(
-        page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
-          name: glossaryTerm.data.displayName,
-        })
+        page
+          .getByTestId('glossary-tags-0')
+          .getByRole('link', { name: glossaryTerm.data.displayName })
       ).toBeVisible();
     });
 
