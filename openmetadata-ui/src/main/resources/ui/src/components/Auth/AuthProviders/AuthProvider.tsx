@@ -172,6 +172,11 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
 
+  // Hydrate tenant-wide time format after authentication
+  useApplicationStore
+    .getState()
+    .setTimeFormat(appConfig?.defaultTimeFormat === '24h' ? '24h' : '12h');
+
   // Skip the boot-time write when this tab already has a stickier
   // signal:
   //
