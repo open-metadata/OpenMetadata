@@ -83,7 +83,7 @@ test(
       await page.getByPlaceholder('Enter a Count').fill('13');
       await submitTestCaseForm(page);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await page.getByRole('tab', { name: 'Data Quality' }).click();

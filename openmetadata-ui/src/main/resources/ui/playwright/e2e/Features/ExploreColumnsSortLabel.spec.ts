@@ -41,7 +41,9 @@ test.describe(
             response.url().includes('sort_field=displayName.keyword')
         );
 
-        await page.goto('/explore/columns?search=id');
+        await page.goto('/explore/columns?search=id', {
+          waitUntil: 'domcontentloaded',
+        });
         await columnSearch;
         await waitForAllLoadersToDisappear(page);
 
@@ -71,7 +73,9 @@ test.describe(
             response.url().includes('sort_field=updatedAt')
         );
 
-        await page.goto('/explore/columns?search=id&sort=updatedAt');
+        await page.goto('/explore/columns?search=id&sort=updatedAt', {
+          waitUntil: 'domcontentloaded',
+        });
         await columnSearch;
         await waitForAllLoadersToDisappear(page);
 
