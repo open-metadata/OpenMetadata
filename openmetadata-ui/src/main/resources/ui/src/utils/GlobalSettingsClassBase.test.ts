@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { AuthProvider } from '../generated/settings/settings';
 import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import globalSettingsClassBase, {

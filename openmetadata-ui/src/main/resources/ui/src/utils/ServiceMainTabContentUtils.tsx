@@ -24,7 +24,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../interface/platform/service.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
