@@ -354,15 +354,21 @@ const serveStaticAsset = async (route: Route) => {
  * test that navigates away or ends while one is in flight would otherwise fail
  * on a request nothing asserts on. Closing the context also disposes the
  * `route.fetch()` response it owns, so a `body()` read racing teardown fails
- * with "Response has been disposed" rather than "has been closed". Anything
- * else still propagates — a cache that is broken for a real reason must not be
+ * with "Response has been disposed" rather than "has been closed". The same
+ * race can also land after Playwright already resolved the route for the closing
+ * page, so `fulfill` reports "Route is already handled!". Anything else still
+ * propagates — a cache that is broken for a real reason must not be
  * silent.
  */
 const ignoreClosedTarget = async (serve: () => Promise<void>) => {
   try {
     await serve();
   } catch (error) {
-    if (!/has been closed|Response has been disposed/.test(String(error))) {
+    if (
+      !/has been closed|Response has been disposed|Route is already handled/.test(
+        String(error)
+      )
+    ) {
       throw error;
     }
   }
