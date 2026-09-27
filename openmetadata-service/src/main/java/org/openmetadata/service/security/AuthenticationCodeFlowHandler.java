@@ -139,6 +139,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
 
+  static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
+
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String SESSION_SSO_CALLBACK_URL = "googleCallbackUrl";
@@ -729,34 +731,30 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     requireUnexpiredRefreshToken(currentRefreshToken);
     // Ask the identity provider before rotating, so a rejected or failed check leaves the
     // session's stored refresh token untouched.
-    SessionService.ProviderTokens providerTokens =
+    SessionService.ProviderTokenUpdate providerTokens =
         renewProviderTokensIfDue(session, currentRefreshToken);
     RefreshRotation rotation =
         new RefreshRotation(
             currentRefreshToken,
             rotateRefreshToken(user.getId(), currentRefreshToken),
             providerTokens);
-    Optional<UserSession> completedSession = completeRefresh(request, response, session, rotation);
-    if (completedSession.isPresent()) {
-      writeRefreshedTokenResponse(response, user, completedSession.get());
-    }
+    writeRefreshedTokenResponse(response, user, completeRefresh(session, rotation));
   }
 
   /**
    * Starts the provider renewal schedule from the login's own token response, so the first access
-   * token already ends before the provider's tokens need renewing.
-   *
-   * @return {@code null} when the provider issued no refresh token: there is nothing to renew
+   * token already ends before the provider's tokens need renewing. A provider that issued no refresh
+   * token leaves nothing to renew.
    */
-  SessionService.ProviderTokens providerTokensAtLogin(OidcCredentials credentials, long now) {
+  SessionService.ProviderTokenUpdate providerTokensAtLogin(OidcCredentials credentials, long now) {
     // pac4j 6 re-parses the stored tokens on every to*Token() call; parse each once.
     var providerRefreshToken = credentials.toRefreshToken();
     if (providerRefreshToken == null) {
-      return null;
+      return SessionService.ProviderTokenUpdate.NONE;
     }
     AccessToken providerAccessToken = credentials.toAccessToken();
     long lifetimeSeconds = providerAccessToken == null ? 0 : providerAccessToken.getLifetime();
-    return new SessionService.ProviderTokens(
+    return new SessionService.ProviderTokenUpdate.Replaced(
         providerRefreshToken.getValue(),
         ProviderTokenSchedule.renewalDueAt(now, lifetimeSeconds, tokenValidity));
   }
@@ -769,16 +767,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
    * provider's browser session, so only a new sign-in, which the browser attempts silently once the
    * session ends, starts a new session lifetime.
    *
-   * @return {@code null} when the provider was not due or the session holds no provider token
+   * @return {@link SessionService.ProviderTokenUpdate#NONE} when the provider was not due or the
+   *     session holds no provider token
    */
-  private SessionService.ProviderTokens renewProviderTokensIfDue(
+  private SessionService.ProviderTokenUpdate renewProviderTokensIfDue(
       UserSession session, String omRefreshToken) {
     String providerRefreshToken = sessionService.decryptProviderRefreshToken(session);
     long now = System.currentTimeMillis();
     if (nullOrEmpty(providerRefreshToken)
         || !ProviderTokenSchedule.isRenewalDue(
             session.getProviderRenewalDueAt(), now, tokenValidity)) {
-      return null;
+      return SessionService.ProviderTokenUpdate.NONE;
     }
     OidcProviderTokenRefresher.Outcome outcome =
         providerTokenRefresher.refresh(providerRefreshToken);
@@ -789,18 +788,30 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return scheduleNextRenewal(session, outcome, now);
   }
 
-  private SessionService.ProviderTokens scheduleNextRenewal(
+  private SessionService.ProviderTokenUpdate scheduleNextRenewal(
       UserSession session, OidcProviderTokenRefresher.Outcome outcome, long now) {
-    if (outcome.isRenewed()) {
-      return new SessionService.ProviderTokens(
-          outcome.rotatedRefreshToken(),
-          ProviderTokenSchedule.renewalDueAt(now, outcome.lifetimeSeconds(), tokenValidity));
-    }
+    return outcome.isRenewed()
+        ? renewedProviderTokens(outcome, now)
+        : retryProviderRenewal(session, now);
+  }
+
+  /** A provider that does not rotate its refresh token on use leaves the session's one valid. */
+  private SessionService.ProviderTokenUpdate renewedProviderTokens(
+      OidcProviderTokenRefresher.Outcome outcome, long now) {
+    long renewalDueAt =
+        ProviderTokenSchedule.renewalDueAt(now, outcome.lifetimeSeconds(), tokenValidity);
+    return outcome.rotatedRefreshToken() == null
+        ? new SessionService.ProviderTokenUpdate.Rescheduled(renewalDueAt)
+        : new SessionService.ProviderTokenUpdate.Replaced(
+            outcome.rotatedRefreshToken(), renewalDueAt);
+  }
+
+  private SessionService.ProviderTokenUpdate retryProviderRenewal(UserSession session, long now) {
     LOG.warn(
         "[Auth Refresh] Identity provider gave no verdict for session {}; asking again in {}s",
         SessionService.truncateId(session.getId()),
         ProviderTokenSchedule.RETRY_AFTER_SECONDS);
-    return new SessionService.ProviderTokens(null, ProviderTokenSchedule.retryAt(now));
+    return new SessionService.ProviderTokenUpdate.Rescheduled(ProviderTokenSchedule.retryAt(now));
   }
 
   private void writeRefreshedTokenResponse(
@@ -1391,25 +1402,23 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return newRefreshToken.getToken().toString();
   }
 
-  private Optional<UserSession> completeRefresh(
-      HttpServletRequest request,
-      HttpServletResponse response,
-      UserSession session,
-      RefreshRotation rotation)
-      throws IOException {
+  /**
+   * Stores the rotation on the leased session.
+   *
+   * @throws AuthenticationException when the session was revoked or expired while this refresh held
+   *     its lease; {@link #handleRefresh} then revokes it and answers 401
+   */
+  private UserSession completeRefresh(UserSession session, RefreshRotation rotation) {
     Optional<UserSession> completedSession =
         sessionService.completeRefresh(
             session, rotation.updatedRefreshToken(), rotation.providerTokens());
     if (completedSession.isEmpty() || completedSession.get().getStatus() != SessionStatus.ACTIVE) {
       deleteOrphanedRefreshToken(rotation.previousRefreshToken(), rotation.updatedRefreshToken());
-      sessionService.revokeSession(request, response);
-      SecurityUtil.writeErrorResponse(
-          response, HttpServletResponse.SC_UNAUTHORIZED, "Session revoked during refresh");
-      return Optional.empty();
+      throw new AuthenticationException(SESSION_REVOKED_DURING_REFRESH);
     }
     cleanupUnusedRefreshToken(
         rotation.previousRefreshToken(), rotation.updatedRefreshToken(), completedSession.get());
-    return completedSession;
+    return completedSession.get();
   }
 
   private void cleanupUnusedRefreshToken(
@@ -1440,7 +1449,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private record RefreshRotation(
       String previousRefreshToken,
       String updatedRefreshToken,
-      SessionService.ProviderTokens providerTokens) {}
+      SessionService.ProviderTokenUpdate providerTokens) {}
 
   public static void validateConfig(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {

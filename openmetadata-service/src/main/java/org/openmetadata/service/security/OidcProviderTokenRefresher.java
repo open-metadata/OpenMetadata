@@ -99,13 +99,18 @@ public class OidcProviderTokenRefresher {
   }
 
   private static Outcome toOutcome(TokenResponse response) {
-    if (response.indicatesSuccess()) {
-      Tokens tokens = response.toSuccessResponse().getTokens();
-      RefreshToken rotated = tokens.getRefreshToken();
-      return Outcome.renewed(
-          rotated == null ? null : rotated.getValue(), tokens.getAccessToken().getLifetime());
-    }
-    ErrorObject error = response.toErrorResponse().getErrorObject();
+    return response.indicatesSuccess()
+        ? renewedOutcome(response.toSuccessResponse().getTokens())
+        : refusedOutcome(response.toErrorResponse().getErrorObject());
+  }
+
+  private static Outcome renewedOutcome(Tokens tokens) {
+    RefreshToken rotated = tokens.getRefreshToken();
+    return Outcome.renewed(
+        rotated == null ? null : rotated.getValue(), tokens.getAccessToken().getLifetime());
+  }
+
+  private static Outcome refusedOutcome(ErrorObject error) {
     // A non-JSON error body (a proxy's 502/503 page) parses with no error code at all.
     String errorCode = error == null ? null : error.getCode();
     boolean isRejected = errorCode != null && REJECTED_GRANT_ERRORS.contains(errorCode);

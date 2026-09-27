@@ -342,7 +342,12 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       UserSession activeSession =
           sessionService
               .activatePendingSession(
-                  req, resp, pendingSession, user, refreshToken.getToken().toString(), null)
+                  req,
+                  resp,
+                  pendingSession,
+                  user,
+                  refreshToken.getToken().toString(),
+                  SessionService.ProviderTokenUpdate.NONE)
               .orElseGet(
                   () -> {
                     Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
@@ -771,7 +776,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       String previousRefreshToken,
       String updatedRefreshToken) {
     Optional<UserSession> completedSession =
-        sessionService.completeRefresh(session, updatedRefreshToken, null);
+        sessionService.completeRefresh(
+            session, updatedRefreshToken, SessionService.ProviderTokenUpdate.NONE);
     if (completedSession.isEmpty() || completedSession.get().getStatus() != SessionStatus.ACTIVE) {
       deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
       sessionService.revokeSession(req, resp);

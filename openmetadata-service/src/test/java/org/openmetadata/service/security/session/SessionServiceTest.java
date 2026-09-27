@@ -128,7 +128,7 @@ class SessionServiceTest {
                 pendingSession,
                 user,
                 "om-refresh",
-                new SessionService.ProviderTokens("provider-refresh", renewalDueAt))
+                new SessionService.ProviderTokenUpdate.Replaced("provider-refresh", renewalDueAt))
             .orElseThrow();
 
     assertEquals(SessionStatus.ACTIVE, activated.getStatus());
@@ -167,7 +167,13 @@ class SessionServiceTest {
 
     UserSession activated =
         sessionService
-            .activatePendingSession(request, response, pendingSession, user, "om-refresh", null)
+            .activatePendingSession(
+                request,
+                response,
+                pendingSession,
+                user,
+                "om-refresh",
+                SessionService.ProviderTokenUpdate.NONE)
             .orElseThrow();
 
     // Session fixation defense: the activated session MUST have a different ID than the pending one
@@ -406,7 +412,7 @@ class SessionServiceTest {
             .completeRefresh(
                 leasedSession,
                 "rotated-om",
-                new SessionService.ProviderTokens("rotated-provider", renewalDueAt))
+                new SessionService.ProviderTokenUpdate.Replaced("rotated-provider", renewalDueAt))
             .orElseThrow();
 
     assertEquals(SessionStatus.ACTIVE, refreshed.getStatus());
@@ -426,7 +432,9 @@ class SessionServiceTest {
     when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
 
     UserSession refreshed =
-        sessionService.completeRefresh(leasedSession, "rotated-om", null).orElseThrow();
+        sessionService
+            .completeRefresh(leasedSession, "rotated-om", SessionService.ProviderTokenUpdate.NONE)
+            .orElseThrow();
 
     assertEquals("stored-encrypted", refreshed.getProviderRefreshToken());
     assertEquals(leasedSession.getProviderRenewalDueAt(), refreshed.getProviderRenewalDueAt());
@@ -445,7 +453,9 @@ class SessionServiceTest {
     UserSession refreshed =
         sessionService
             .completeRefresh(
-                leasedSession, "rotated-om", new SessionService.ProviderTokens(null, now + 300_000))
+                leasedSession,
+                "rotated-om",
+                new SessionService.ProviderTokenUpdate.Rescheduled(now + 300_000))
             .orElseThrow();
 
     assertEquals("stored-encrypted", refreshed.getProviderRefreshToken());

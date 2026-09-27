@@ -359,7 +359,8 @@ class SamlAuthServletHandlerTest {
     when(sessionService.acquireRefreshLease(request, response))
         .thenReturn(Optional.of(leasedSession));
     when(sessionService.decryptOmRefreshToken(leasedSession)).thenReturn("current-refresh-token");
-    when(sessionService.completeRefresh(eq(leasedSession), any(), eq(null)))
+    when(sessionService.completeRefresh(
+            eq(leasedSession), any(), eq(SessionService.ProviderTokenUpdate.NONE)))
         .thenReturn(Optional.of(revokedSession));
     when(tokenRepository.findByToken("current-refresh-token")).thenReturn(currentRefreshToken);
 

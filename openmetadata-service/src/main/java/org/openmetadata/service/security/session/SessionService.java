@@ -8,6 +8,7 @@ import io.dropwizard.lifecycle.Managed;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -50,13 +51,25 @@ public class SessionService implements Managed {
   private final List<Consumer<UserSession>> revocationListeners = new CopyOnWriteArrayList<>();
 
   /**
-   * The identity provider's side of a confidential OIDC session. A {@code null} component leaves
-   * the stored value in place.
-   *
-   * @param refreshToken the provider refresh token, persisted encrypted
-   * @param renewalDueAt epoch millis by which a refresh has to renew the provider's tokens
+   * What a sign-in or a refresh learned about the identity provider's side of a confidential OIDC
+   * session. Renewal times are epoch millis by which a refresh has to renew the provider's tokens.
    */
-  public record ProviderTokens(String refreshToken, Long renewalDueAt) {}
+  public sealed interface ProviderTokenUpdate {
+    ProviderTokenUpdate NONE = new None();
+
+    /** The session keeps the provider refresh token and renewal time it already has. */
+    record None() implements ProviderTokenUpdate {}
+
+    /** The provider refresh token stays; only the next renewal moves. */
+    record Rescheduled(long renewalDueAt) implements ProviderTokenUpdate {}
+
+    /** A provider refresh token to store, persisted encrypted, replacing any the session had. */
+    record Replaced(String refreshToken, long renewalDueAt) implements ProviderTokenUpdate {
+      public Replaced {
+        Objects.requireNonNull(refreshToken, "refreshToken");
+      }
+    }
+  }
 
   public SessionService(AuthenticationConfiguration authConfig) {
     this(authConfig, SessionStoreFactory.create());
@@ -206,7 +219,7 @@ public class SessionService implements Managed {
       UserSession pendingSession,
       User user,
       String omRefreshToken,
-      ProviderTokens providerTokens) {
+      ProviderTokenUpdate providerTokens) {
     long now = System.currentTimeMillis();
     long expectedVersion = safeVersion(pendingSession);
 
@@ -402,10 +415,10 @@ public class SessionService implements Managed {
    * new sign-in starts a new session lifetime.
    *
    * @param providerTokens what a confidential OIDC refresh learned from the identity provider, or
-   *     {@code null} when it did not contact the provider
+   *     {@link ProviderTokenUpdate#NONE} when it did not contact the provider
    */
   public Optional<UserSession> completeRefresh(
-      UserSession leasedSession, String omRefreshToken, ProviderTokens providerTokens) {
+      UserSession leasedSession, String omRefreshToken, ProviderTokenUpdate providerTokens) {
     long now = System.currentTimeMillis();
     long expectedVersion = safeVersion(leasedSession);
     UserSession.UserSessionBuilder refreshedBuilder =
@@ -780,17 +793,15 @@ public class SessionService implements Managed {
   }
 
   private UserSession.UserSessionBuilder withProviderTokens(
-      UserSession.UserSessionBuilder builder, ProviderTokens providerTokens) {
-    if (providerTokens == null) {
-      return builder;
-    }
-    if (providerTokens.refreshToken() != null) {
-      builder.providerRefreshToken(encryptIfPresent(providerTokens.refreshToken()));
-    }
-    if (providerTokens.renewalDueAt() != null) {
-      builder.providerRenewalDueAt(providerTokens.renewalDueAt());
-    }
-    return builder;
+      UserSession.UserSessionBuilder builder, ProviderTokenUpdate providerTokens) {
+    return switch (providerTokens) {
+      case ProviderTokenUpdate.None none -> builder;
+      case ProviderTokenUpdate.Rescheduled rescheduled -> builder.providerRenewalDueAt(
+          rescheduled.renewalDueAt());
+      case ProviderTokenUpdate.Replaced replaced -> builder
+          .providerRefreshToken(encryptIfPresent(replaced.refreshToken()))
+          .providerRenewalDueAt(replaced.renewalDueAt());
+    };
   }
 
   private String encryptIfPresent(String value) {

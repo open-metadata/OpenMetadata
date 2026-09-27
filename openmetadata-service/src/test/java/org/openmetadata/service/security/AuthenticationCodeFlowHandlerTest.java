@@ -3,6 +3,7 @@ package org.openmetadata.service.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -13,7 +14,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.mockingDetails;
@@ -64,6 +65,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -938,7 +940,9 @@ class AuthenticationCodeFlowHandlerTest {
           .handleRefresh(request, response);
 
       assertEquals(1, providerCalls.get());
-      SessionService.ProviderTokens renewed = completedProviderTokens(session);
+      SessionService.ProviderTokenUpdate.Replaced renewed =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Replaced.class, completedProviderTokens(session));
       assertEquals("provider-rotated", renewed.refreshToken());
       assertTrue(renewed.renewalDueAt() >= before + 300_000);
       // The browser comes back before the provider's 5-minute tokens lapse, so a provider session
@@ -988,8 +992,11 @@ class AuthenticationCodeFlowHandlerTest {
       createRefreshHandler(providerAnswering(new AtomicInteger(), outage))
           .handleRefresh(request, response);
 
-      SessionService.ProviderTokens retry = completedProviderTokens(session);
-      assertNull(retry.refreshToken());
+      // The provider's refresh token stays valid; only the next attempt moves.
+      SessionService.ProviderTokenUpdate.Rescheduled retry =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Rescheduled.class,
+              completedProviderTokens(session));
       long retryAfterMillis = TimeUnit.SECONDS.toMillis(ProviderTokenSchedule.RETRY_AFTER_SECONDS);
       assertTrue(retry.renewalDueAt() >= before + retryAfterMillis);
       assertTrue(issuedTokenValidity(generator) <= ProviderTokenSchedule.RETRY_AFTER_SECONDS);
@@ -1014,8 +1021,32 @@ class AuthenticationCodeFlowHandlerTest {
           .handleRefresh(request, response);
 
       assertEquals(0, providerCalls.get());
-      verify(sessionService).completeRefresh(eq(session), anyString(), isNull());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
       assertEquals(3600, issuedTokenValidity(generator));
+    }
+  }
+
+  @Test
+  void handleRefresh_providerRenewsWithoutRotating_keepsTheStoredProviderToken() throws Exception {
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      stubSessionJwt(jwt);
+      long before = System.currentTimeMillis();
+
+      createRefreshHandler(providerAnswering(new AtomicInteger(), renewedResponse(null, 300)))
+          .handleRefresh(request, response);
+
+      SessionService.ProviderTokenUpdate.Rescheduled renewed =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Rescheduled.class,
+              completedProviderTokens(session));
+      assertTrue(renewed.renewalDueAt() >= before + 300_000);
+      verify(response).setStatus(HttpServletResponse.SC_OK);
     }
   }
 
@@ -1035,7 +1066,8 @@ class AuthenticationCodeFlowHandlerTest {
           .handleRefresh(request, response);
 
       assertEquals(0, providerCalls.get());
-      verify(sessionService).completeRefresh(eq(session), anyString(), isNull());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
       assertEquals(3600, issuedTokenValidity(generator));
     }
   }
@@ -1048,8 +1080,10 @@ class AuthenticationCodeFlowHandlerTest {
         new com.nimbusds.oauth2.sdk.token.RefreshToken("idp-refresh"));
     long now = System.currentTimeMillis();
 
-    SessionService.ProviderTokens providerTokens =
-        createRefreshHandler().providerTokensAtLogin(credentials, now);
+    SessionService.ProviderTokenUpdate.Replaced providerTokens =
+        assertInstanceOf(
+            SessionService.ProviderTokenUpdate.Replaced.class,
+            createRefreshHandler().providerTokensAtLogin(credentials, now));
 
     assertEquals("idp-refresh", providerTokens.refreshToken());
     assertEquals(now + 300_000, providerTokens.renewalDueAt());
@@ -1060,8 +1094,34 @@ class AuthenticationCodeFlowHandlerTest {
     OidcCredentials credentials = new OidcCredentials();
     credentials.setAccessTokenObject(new BearerAccessToken("idp-access", 300, null));
 
-    assertNull(
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
         createRefreshHandler().providerTokensAtLogin(credentials, System.currentTimeMillis()));
+  }
+
+  @Test
+  void handleRefresh_sessionEndedWhileRefreshing_dropsTheRotatedTokenAndAnswers401()
+      throws Exception {
+    // The session was revoked or expired while this refresh held its lease, so the rotated refresh
+    // token belongs to no session.
+    stubLeasedRefreshSession();
+    doReturn(Optional.empty()).when(sessionService).completeRefresh(any(), anyString(), any());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      ArgumentCaptor<TokenInterface> rotated = ArgumentCaptor.forClass(TokenInterface.class);
+      verify(tokens).insertToken(rotated.capture());
+      verify(tokens).deleteToken(rotated.getValue().getToken().toString());
+      verify(sessionService).revokeSession(request, response);
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      assertTrue(
+          captureOutputStream
+              .getCapturedOutput()
+              .contains(AuthenticationCodeFlowHandler.SESSION_REVOKED_DURING_REFRESH));
+    }
   }
 
   @Test
@@ -1131,24 +1191,29 @@ class AuthenticationCodeFlowHandlerTest {
         .thenAnswer(
             invocation -> {
               UserSession leased = invocation.getArgument(0, UserSession.class);
-              SessionService.ProviderTokens providerTokens = invocation.getArgument(2);
-              boolean reschedules = providerTokens != null && providerTokens.renewalDueAt() != null;
+              SessionService.ProviderTokenUpdate providerTokens = invocation.getArgument(2);
               return Optional.of(
                   leased.toBuilder()
                       .status(SessionStatus.ACTIVE)
                       .omRefreshToken(invocation.getArgument(1, String.class))
-                      .providerRenewalDueAt(
-                          reschedules
-                              ? providerTokens.renewalDueAt()
-                              : leased.getProviderRenewalDueAt())
+                      .providerRenewalDueAt(renewalDueAtAfter(leased, providerTokens))
                       .build());
             });
     return session;
   }
 
-  private SessionService.ProviderTokens completedProviderTokens(UserSession session) {
-    ArgumentCaptor<SessionService.ProviderTokens> providerTokens =
-        ArgumentCaptor.forClass(SessionService.ProviderTokens.class);
+  private static Long renewalDueAtAfter(
+      UserSession leased, SessionService.ProviderTokenUpdate providerTokens) {
+    return switch (providerTokens) {
+      case SessionService.ProviderTokenUpdate.None none -> leased.getProviderRenewalDueAt();
+      case SessionService.ProviderTokenUpdate.Rescheduled rescheduled -> rescheduled.renewalDueAt();
+      case SessionService.ProviderTokenUpdate.Replaced replaced -> replaced.renewalDueAt();
+    };
+  }
+
+  private SessionService.ProviderTokenUpdate completedProviderTokens(UserSession session) {
+    ArgumentCaptor<SessionService.ProviderTokenUpdate> providerTokens =
+        ArgumentCaptor.forClass(SessionService.ProviderTokenUpdate.class);
     verify(sessionService).completeRefresh(eq(session), anyString(), providerTokens.capture());
     return providerTokens.getValue();
   }
