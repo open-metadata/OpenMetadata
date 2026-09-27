@@ -53,17 +53,20 @@ test('exports every warning-tier import rule', async () => {
 // severities explicitly means neither direction can change by accident: a
 // promotion without a cleanup, or a demotion to get a red build green.
 const EXPECTED_SEVERITY = {
-  'no-api-calls-in-iteration': 1,
-  'no-circular-imports': 1,
-  'no-cross-page-imports': 1,
-  'no-hook-ui-imports': 2,
-  'no-impure-pure-utils': 1,
-  'no-internal-barrel-imports': 2,
-  'no-lodash-default-import': 2,
-  'no-lower-layer-page-imports': 1,
-  'no-rest-ui-imports': 1,
-  'review-sequential-api-calls': 1,
+  'no-api-calls-in-iteration': 'warn',
+  'no-circular-imports': 'warn',
+  'no-cross-page-imports': 'warn',
+  'no-hook-ui-imports': 'error',
+  'no-impure-pure-utils': 'warn',
+  'no-internal-barrel-imports': 'error',
+  'no-lodash-default-import': 'error',
+  'no-lower-layer-page-imports': 'warn',
+  'no-rest-ui-imports': 'error',
+  'review-sequential-api-calls': 'warn',
 };
+
+// calculateConfigForFile normalizes every severity to 0 / 1 / 2.
+const SEVERITY_NAME = ['off', 'warn', 'error'];
 
 test('configures every import rule at its recorded severity', async () => {
   const eslint = new ESLint();
@@ -77,7 +80,7 @@ test('configures every import rule at its recorded severity', async () => {
 
   for (const rule of EXPECTED_RULES) {
     assert.equal(
-      config.rules[`openmetadata-imports/${rule}`]?.[0],
+      SEVERITY_NAME[config.rules[`openmetadata-imports/${rule}`]?.[0]],
       EXPECTED_SEVERITY[rule],
       rule
     );
