@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { DefaultViewMode } from '../../../generated/api/configuration/appConfiguration';
-import { ViewModeRow } from './DefaultAppModePage.types';
+import { ViewModeRow } from './GeneralPreferencesPage.types';
 import {
   buildRowsFromViewModes,
   buildViewModesMap,
   DOMAIN_PAGE_ID,
   getViewOptionsForPage,
   serializeViewModes,
-} from './DefaultAppModePage.utils';
+} from './GeneralPreferencesPage.utils';
 
-describe('DefaultAppModePage.utils', () => {
+describe('GeneralPreferencesPage.utils', () => {
   describe('getViewOptionsForPage', () => {
     it('returns Table and Grid for a non-domains page', () => {
       const ids = getViewOptionsForPage('dataProducts').map(

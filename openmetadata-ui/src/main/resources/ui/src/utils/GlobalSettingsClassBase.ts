@@ -707,6 +707,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
             icon: AppModeIcon,
           },
+          {
+            label: t('label.general-preferences'),
+            description: t('message.general-preferences-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.GENERAL_PREFERENCES}`,
+            icon: AppModeIcon,
+          },
         ],
       },
       {

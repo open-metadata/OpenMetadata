@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DefaultViewMode } from '../../../generated/api/configuration/appConfiguration';
-import { ViewModeRow } from './DefaultAppModePage.types';
+import { ViewModeRow } from './GeneralPreferencesPage.types';
 
 // Domains is the only page context whose toggle also offers a Tree view
 // (DomainListPage's `views={[Table, Card, Tree]}`) — called out by id so the

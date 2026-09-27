@@ -85,6 +85,15 @@ const DefaultAppModePage = withPageSuspenseFallback(
   )
 );
 
+const GeneralPreferencesPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Settings/GeneralPreferencesPage/GeneralPreferencesPage'
+      )
+  )
+);
+
 const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -978,6 +987,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.APP_MODE
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <GeneralPreferencesPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.GENERAL_PREFERENCES
         )}
       />
       <Route

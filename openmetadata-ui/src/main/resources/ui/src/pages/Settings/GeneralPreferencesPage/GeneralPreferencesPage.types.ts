@@ -12,11 +12,6 @@
  */
 import { DefaultViewMode } from '../../../generated/api/configuration/appConfiguration';
 
-export interface AppModeOption {
-  value: string;
-  labelKey: string;
-}
-
 export interface ViewModeRow {
   id: string;
   page: string | null;
