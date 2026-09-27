@@ -606,7 +606,7 @@ test.describe('Explore page', () => {
     expect(validationResult.pathname).toContain('searchIndex');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -648,7 +648,7 @@ test.describe('Explore page', () => {
     expect(validationResult.pathname).toContain('apiEndpoint');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');

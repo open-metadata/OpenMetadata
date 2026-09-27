@@ -298,14 +298,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/constant/logsViewer.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/nestedColumnUpdates.ts"
       ],
       "specs": [
@@ -2203,7 +2195,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/serverLoad.ts"
       ],
       "specs": [
-        "playwright/e2e/Flow/Collect.spec.ts"
+        "playwright/e2e/Flow/Collect.spec.ts",
+        "playwright/e2e/Flow/IngestionBot.spec.ts"
       ]
     },
     {
@@ -2983,6 +2976,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/apiResponse.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts"
       ]
     },
@@ -3994,6 +3988,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/ingestionExecution.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/inputOutputPorts.ts"
       ],
       "specs": [
@@ -4671,8 +4673,37 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/waitHelpers.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
-        "playwright/e2e/Features/IncidentManager.spec.ts"
+        "playwright/e2e/Features/BlockEditorMathEquations.spec.ts",
+        "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
+        "playwright/e2e/Features/Container.spec.ts",
+        "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryTermInverseRelation.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
+        "playwright/e2e/Features/NestedColumnsExpandCollapse.spec.ts",
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Features/SearchExport.spec.ts",
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
+        "playwright/e2e/Flow/NotificationAlerts.spec.ts",
+        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
+        "playwright/e2e/Pages/IntakeForm.spec.ts",
+        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
+        "playwright/e2e/Pages/LogsViewer.spec.ts",
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/ServiceListing.spec.ts",
+        "playwright/e2e/Pages/Tag.spec.ts",
+        "playwright/e2e/Pages/TaskFormSettings.spec.ts",
+        "playwright/e2e/Search/SearchNightly.spec.ts",
+        "playwright/e2e/Search/SearchRelevance.spec.ts",
+        "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
     },
     {
@@ -4680,6 +4711,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/webhook.ts"
       ],
       "specs": [
+        "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
     },
@@ -6471,7 +6503,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityRightPanel/EntityRightPanel.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
@@ -7172,6 +7203,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts"
       ]
@@ -8865,7 +8897,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/GlossaryTermsSection/GlossaryTermsSection.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -9845,6 +9876,7 @@
         "openmetadata-ui/src/main/resources/ui/src/enums/search.enum.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/TableConstraint.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts"
       ]
     },
@@ -10782,8 +10814,17 @@
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
+        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/events/testDestinationStatus.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/NotificationAlerts.spec.ts"
       ]
     },
     {
@@ -10799,6 +10840,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/type/changeEvent.ts"
       ],
       "specs": [
+        "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
     },

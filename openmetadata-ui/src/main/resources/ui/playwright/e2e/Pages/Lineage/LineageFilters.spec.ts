@@ -282,7 +282,7 @@ test.describe('Lineage Filters', () => {
         }
 
         await test.step('Verify filters working for Lineage tab', async () => {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           await setLineageDepthAndVerify(page, 2, 2);
           await waitForAllLoadersToDisappear(page);
@@ -404,10 +404,11 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
-    // 14 iterations, each opens the dropdown and awaits an aggregation + a
-    // lineage-count response; the default 60s budget flakes under CI load
-    // the same way the sibling `lineage service filter selection` did before
-    // it was marked slow.
+    // The last of this file's four service-filter tests to get a longer slot,
+    // and the only reason it stands out is that it was missed: its three
+    // siblings already call slow() and all three landed at 62.5s/71.0s/76.6s
+    // in the same run where this one timed out at 64.5s. Same shape of work,
+    // same band -- the 60s default simply does not fit any of the four.
     test.slow();
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
@@ -598,6 +599,15 @@ test.describe('Lineage Filters', () => {
   test('Verify Impact Analysis service type filter selection', async ({
     page,
   }) => {
+    // Measured from a failing run's trace: the beforeEach costs 17.8s and each
+    // of the 13 service-type selections ~3.2s, so the body alone is 41.8s --
+    // 59.6s against a 60s budget, which is why this times out while its
+    // siblings (57.6s) squeak through. The work is inherent to asserting every
+    // entity type, so give this one test the longer slot rather than trimming
+    // coverage. Scoped to the test, not the hook: a `beforeEach` slow() would
+    // hand every test in the file a budget it has not earned.
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
