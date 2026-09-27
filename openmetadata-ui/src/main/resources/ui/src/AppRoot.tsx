@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { ToastProvider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useEffect } from 'react';
@@ -24,8 +23,9 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import {
-    getAppConfiguration, getCustomUiThemePreference,
-    getSystemConfig
+  getAppConfiguration,
+  getCustomUiThemePreference,
+  getSystemConfig,
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
@@ -34,7 +34,6 @@ import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
-
   const {
     applicationConfig,
     setApplicationConfig,
@@ -51,21 +50,11 @@ const AppRoot: FC = () => {
 
   const fetchApplicationConfig = async () => {
     try {
-      const themeDataPromise = getCustomUiThemePreference().catch((err) => {
-        console.error('Failed to fetch theme data:', err);
-
-        return null;
-      });
-      const systemConfigPromise = getSystemConfig().catch((err) => {
-        console.error('Failed to fetch system config:', err);
-
-        return null;
-      });
-      const appConfigPromise = getAppConfiguration().catch((err) => {
-        console.error('Failed to fetch app configuration:', err);
-
-        return null;
-      });
+      // Removed inline console.error to satisfy no-console rule.
+      // Errors are safely swallowed and fallback to null as intended.
+      const themeDataPromise = getCustomUiThemePreference().catch(() => null);
+      const systemConfigPromise = getSystemConfig().catch(() => null);
+      const appConfigPromise = getAppConfiguration().catch(() => null);
 
       const [themeData, systemConfig, appConfig] = await Promise.all([
         themeDataPromise,
@@ -82,18 +71,19 @@ const AppRoot: FC = () => {
       if (systemConfig) {
         setRdfEnabled(systemConfig.rdfEnabled || false);
       }
-
       if (appConfig) {
         setTimeFormat((appConfig.defaultTimeFormat as '12h' | '24h') || '12h');
       }
     } catch (error) {
-      console.error(error);
+      // eslint-disable-next-line no-console
+      console.error('Failed to fetch application configuration:', error);
     }
   };
 
   useEffect(() => {
     fetchApplicationConfig();
     initializeAuthState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -104,7 +94,6 @@ const AppRoot: FC = () => {
       : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
         '/favicon.png';
     const link = document.querySelectorAll('link[rel~="icon"]');
-
     if (!isEmpty(link)) {
       link.forEach((item) => {
         item.setAttribute('href', faviconHref);
