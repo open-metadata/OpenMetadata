@@ -11,54 +11,20 @@
  *  limitations under the License.
  */
 /**
- * SPARQL 1.2 query response
+ * Value of an RDF 1.2 triple term. Components use the SPARQL Results JSON RDF-term
+ * representation recursively.
  */
-export interface SparqlResponse {
-    /**
-     * Boolean result for ASK queries
-     */
-    boolean?: boolean;
-    /**
-     * Header information about the query results
-     */
-    head?: Head;
-    /**
-     * Query results
-     */
-    results?: Results;
-}
-
-/**
- * Header information about the query results
- */
-export interface Head {
-    /**
-     * Links to additional resources
-     */
-    link?: string[];
-    /**
-     * List of variable names in the results
-     */
-    vars?: string[];
-    [property: string]: any;
-}
-
-/**
- * Query results
- */
-export interface Results {
-    /**
-     * Result bindings
-     */
-    bindings?: { [key: string]: RDFTerm }[];
-    [property: string]: any;
+export interface SparqlTripleTerm {
+    object:    RDFTerm;
+    predicate: RDFTerm;
+    subject:   RDFTerm;
 }
 
 /**
  * Value of an RDF 1.2 triple term. Components use the SPARQL Results JSON RDF-term
  * representation recursively.
  */
-export interface SparqlTripleTerm {
+export interface SparqlTripleTermClass {
     object:    RDFTerm;
     predicate: RDFTerm;
     subject:   RDFTerm;
@@ -82,7 +48,7 @@ export interface RDFTerm {
      * Lexical string for an IRI, literal, or blank node; recursive subject-predicate-object
      * value for a triple term.
      */
-    value: SparqlTripleTerm | string;
+    value: SparqlTripleTermClass | string;
     /**
      * Language tag of a language-tagged literal.
      */
