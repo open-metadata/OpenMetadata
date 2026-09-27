@@ -95,6 +95,7 @@ import {
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
@@ -170,22 +171,23 @@ const TableDetailsPageV1: React.FC = () => {
     ) : undefined;
   }, [dqFailureCount, tableFqn]);
 
-  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity,
-  // not by position convenience: getDerivedPermissionFlags never gates view flags on
-  // `deleted` (only canEdit* is), so this view-tier call is correct to run this early —
-  // before {@code tableDetails} exists — because it has to be: {@code tableFields}/
-  // {@code tableCacheKey}/the entity {@code useQuery}'s {@code enabled} below need these view
-  // flags to even RUN that query, and {@code tableDetails} is that query's result. That's a
-  // real ordering cycle (view flags gate the fetch that would supply `deleted`), not a
-  // shortcut. The edit-tier call (canEditCustomFields, canEditLineage — the only flags that
-  // need `deleted`) lives further down, at the earliest point `deleted` exists; see the
-  // comment there. Both calls share one React Query cache entry (same queryKey), so having
-  // two costs an extra derivation, not an extra fetch — never diverges into two fetches as
-  // long as both pass the identical (resource, identifier) pair.
   const {
     permissions: fetchedTablePermissions,
     isLoading: isPermissionsLoading,
     error: permissionsError,
+  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
+    enabled: !isTourDataset,
+  });
+  // Tour grants stay outside the real permission cache, but every derived flag must use the
+  // selected object so tab-level permission checks remain consistent with child props.
+  const tablePermissions = useMemo(
+    () =>
+      isTourDataset
+        ? (mockTablePermission as OperationPermission)
+        : fetchedTablePermissions,
+    [isTourDataset, fetchedTablePermissions]
+  );
+  const {
     canViewBasic: viewBasicPermission,
     canViewAll: viewAllPermission,
     canViewCustomFields: viewCustomPropertiesPermission,
@@ -194,17 +196,7 @@ const TableDetailsPageV1: React.FC = () => {
     canViewDataProfile: viewProfilerPermission,
     canViewUsage: viewUsagePermission,
     canViewTests: viewTestCasePermission,
-  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
-    enabled: !isTourDataset,
-  });
-  // The tour renders demo metadata; its grants must stay outside the real permission cache.
-  const tablePermissions = useMemo(
-    () =>
-      isTourDataset
-        ? (mockTablePermission as OperationPermission)
-        : fetchedTablePermissions,
-    [isTourDataset, fetchedTablePermissions]
-  );
+  } = getDerivedPermissionFlags(tablePermissions);
   // Same value as viewBasicPermission above, named for what it means at its one call site
   // (the entity useQuery's `enabled` a few lines down) rather than re-destructured.
   const canViewTableInQuery = viewBasicPermission;
@@ -444,23 +436,13 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the top
-  // of this component (see its comment for why this component calls the hook twice). This is
-  // the earliest point `deleted` exists (destructured just above, from {@code tableDetails}
-  // resolved by the entity useQuery): every canEdit* flag is gated on it, so a soft-deleted
-  // entity must read as edit-locked from the first render that knows about it — don't
-  // destructure a canEdit* flag or `can` from the view-tier call above, it was captured
-  // before `deleted` existed and would silently return an ungated edit permission.
   const {
     canEditCustomFields: editCustomAttributePermission,
     canEditLineage: editLineagePermission,
-  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
-    deleted: Boolean(deleted),
-    enabled: !isTourDataset,
-  });
+  } = getDerivedPermissionFlags(tablePermissions, Boolean(deleted));
 
-  // Permission fetching itself now lives in useEntityPermissions (called above, twice). This
-  // effect keeps the one unrelated side effect the old fetch effect's cleanup carried —
+  // Permission fetching itself now lives in useEntityPermissions. This effect keeps the one
+  // unrelated side effect the old fetch effect's cleanup carried —
   // resetting the DQ lineage store when the table FQN changes — decoupled from permissions.
   useEffect(() => {
     return () => {
