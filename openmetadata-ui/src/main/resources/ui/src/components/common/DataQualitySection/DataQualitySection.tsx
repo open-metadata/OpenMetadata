@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../../styles/variables.less';
@@ -19,7 +24,6 @@ import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import { DataQualityLegendItem } from './DataQualityLegendItem';
 import { DataQualityProgressSegment } from './DataQualityProgressSegment';
 import { DataQualitySectionProps } from './DataQualitySection.interface';
-import './DataQualitySection.less';
 import { DataQualityStatCard } from './DataQualityStatCard';
 
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
@@ -65,7 +69,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   }, [tests, totalTests]);
 
   return isDataQualityTab ? (
-    <div className="data-quality-stats-container tw:mr-4 tw:mb-2.5 tw:flex tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface tw:dark:border-subtle">
+    <Card className="data-quality-stats-container tw:mr-4 tw:mb-2.5 tw:flex">
       <DataQualityStatCard
         count={successTests}
         isActive={activeFilter === 'success'}
@@ -73,10 +77,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="success"
         onClick={() => onFilterChange?.('success')}
       />
-      <Divider
-        className="stat-card-vertical-divider tw:my-3 tw:bg-utility-gray-blue-100 tw:dark:bg-[var(--om-color-border-subtle)]"
-        orientation="vertical"
-      />
+      <Divider className="tw:my-3" orientation="vertical" />
       <DataQualityStatCard
         count={abortedTests}
         isActive={activeFilter === 'aborted'}
@@ -84,10 +85,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="aborted"
         onClick={() => onFilterChange?.('aborted')}
       />
-      <Divider
-        className="stat-card-vertical-divider tw:my-3 tw:bg-utility-gray-blue-100 tw:dark:bg-[var(--om-color-border-subtle)]"
-        orientation="vertical"
-      />
+      <Divider className="tw:my-3" orientation="vertical" />
       <DataQualityStatCard
         count={failedTests}
         isActive={activeFilter === 'failed'}
@@ -95,7 +93,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="failed"
         onClick={() => onFilterChange?.('failed')}
       />
-    </div>
+    </Card>
   ) : (
     <SectionWithEdit
       showEditButton={false}
@@ -104,11 +102,9 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
           <Typography className="section-title mr-2">
             {t('label.data-quality-test-plural')}
           </Typography>
-          <div className="data-quality-badge">
-            <Typography className="data-quality-badge-text">
-              {totalTests}
-            </Typography>
-          </div>
+          <Badge color="gray" size="sm">
+            {totalTests}
+          </Badge>
         </div>
       }
       onEdit={onEdit}>
@@ -118,9 +114,8 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         </div>
       ) : (
         <div className="data-quality-content">
-          <div className="data-quality-header tw:flex tw:justify-end" />
           <div className="data-quality-progress tw:mb-3">
-            <div className="data-quality-progress-segments tw:flex tw:h-3 tw:overflow-hidden tw:rounded-xs tw:bg-[var(--om-legacy-color-f0f0f0)]">
+            <div className="tw:flex tw:h-3 tw:overflow-hidden tw:rounded-xs tw:bg-quaternary">
               <DataQualityProgressSegment
                 percent={successPercent}
                 type="success"

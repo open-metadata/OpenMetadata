@@ -76,19 +76,15 @@ const DetailItem: React.FC<DetailItemProps> = ({
   value,
   showDottedBorder = false,
 }) => (
-  <div
-    className={classNames(
-      'test-case-detail-item tw:flex tw:items-center tw:gap-1 tw:px-4',
-      showDottedBorder &&
-        'dotted-row tw:border-b tw:border-dashed tw:border-utility-gray-blue-100 tw:pb-2.5 tw:dark:border-subtle'
-    )}>
-    <Typography className="detail-label tw:min-w-15 tw:text-[13px] tw:font-normal tw:text-utility-gray-700 tw:after:ml-0.5 tw:after:content-[':']">
-      {label}
-    </Typography>
-    <div className="detail-value tw:text-xs tw:font-medium tw:text-utility-gray-900">
-      {value}
+  <>
+    <div className="tw:flex tw:items-center tw:gap-1">
+      <Typography className="tw:min-w-15" color="secondary" size="text-xs">
+        {`${label}:`}
+      </Typography>
+      <div>{value}</div>
     </div>
-  </div>
+    {showDottedBorder && <Divider dashed />}
+  </>
 );
 
 const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
@@ -173,7 +169,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
         {
           label: t('label.assignee'),
           value: (
-            <div className="assignee-info tw:ml-1 tw:flex tw:items-center tw:gap-1.5">
+            <div className="tw:ml-1">
               <Owner
                 owners={assignee ? [assignee] : []}
                 placeHolder={t('label.no-entity', {
@@ -228,57 +224,36 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   }, [isIncidentMode, columnName, testCase.incidentId, severity, incident, t]);
 
   return (
-    <Card
-      className={classNames(
-        'test-case-card tw:mx-4 tw:rounded-[10px] tw:border-[0.6px] tw:pb-2',
-        'tw:border-utility-gray-blue-100 tw:dark:border-subtle',
-        // Reproduces the antd Card text defaults this replaced.
-        'tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums'
-      )}>
-      <div className="test-case-card-content tw:w-full">
-        <div className="test-case-header tw:flex tw:items-center tw:justify-between tw:gap-6 tw:bg-utility-gray-blue-50 tw:py-3 tw:dark:bg-secondary_hover">
-          <div className="test-case-title-section tw:flex-1 tw:pl-4">
-            <Link
-              className={classNames(
-                'test-case-name tw:line-clamp-2 tw:text-xs tw:leading-5 tw:font-medium tw:[word-break:break-word]',
-                // Pinned on hover/active too: the global antd `a:hover` link colour would otherwise win.
-                'tw:text-utility-gray-900 tw:hover:text-utility-gray-900 tw:active:text-utility-gray-900'
-              )}
-              data-testid={`test-case-${testCaseName}`}
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
-                testCase.fullyQualifiedName ?? ''
-              )}>
-              {testCaseName}
-            </Link>
-          </div>
-          <div className="test-case-status-section tw:flex tw:shrink-0 tw:items-start tw:pr-3.5">
-            <StatusBadgeV2
-              className={classNames(
-                'tw:rounded-2xl tw:outline-utility-gray-blue-100',
-                // Aborted pills here use the warning (yellow) tint, not the
-                // default orange Aborted badge colour.
-                statusBadgeType === StatusType.Aborted &&
-                  'tw:bg-utility-warning-50 tw:text-utility-warning-700'
-              )}
-              label={status || 'Unknown'}
-              showIcon={false}
-              status={statusBadgeType}
-            />
-          </div>
-        </div>
-
-        {/* Details Section */}
-        <div className="test-case-details tw:flex tw:flex-col tw:gap-2 tw:pt-2.5">
-          {detailItems.map((item) => (
-            <DetailItem
-              key={item.label}
-              label={item.label}
-              showDottedBorder={item.showDottedBorder}
-              value={item.value}
-            />
-          ))}
-        </div>
-      </div>
+    <Card className="test-case-card tw:mx-4" size="sm">
+      <Card.Header
+        extra={
+          <StatusBadgeV2
+            label={status || 'Unknown'}
+            showIcon={false}
+            status={statusBadgeType}
+          />
+        }
+        title={
+          <Link
+            className="tw:line-clamp-2 tw:break-words"
+            data-testid={`test-case-${testCaseName}`}
+            to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+              testCase.fullyQualifiedName ?? ''
+            )}>
+            {testCaseName}
+          </Link>
+        }
+      />
+      <Card.Content className="tw:flex tw:flex-col tw:gap-2 tw:text-xs">
+        {detailItems.map((item) => (
+          <DetailItem
+            key={item.label}
+            label={item.label}
+            showDottedBorder={item.showDottedBorder}
+            value={item.value}
+          />
+        ))}
+      </Card.Content>
     </Card>
   );
 };
@@ -628,8 +603,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
 
     return (
-      <div className="no-test-cases tw:px-4 tw:py-8 tw:text-center tw:text-[var(--om-legacy-color-8c8c8c)]">
-        <Typography className="no-data-placeholder tw:text-[13px] tw:text-utility-gray-500!">
+      <div className="no-test-cases tw:px-4 tw:py-8 tw:text-center">
+        <Typography
+          className="no-data-placeholder"
+          color="secondary"
+          size="text-xs">
           {t('label.no-entity', {
             entity: t('label.test-case-plural'),
           })}
@@ -663,7 +641,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return (
       <div className="no-incidents tw:p-6 tw:text-center">
-        <Typography className="tw:text-sm tw:text-[var(--om-legacy-color-8c8c8c)]">
+        <Typography color="secondary" size="text-sm">
           {t('message.no-entity-found-for-name', {
             entity: t('label.incident-plural'),
             name: `${t('label.type-filed-name', {
@@ -692,7 +670,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography
             as="div"
-            className="text-center p-x-md no-data-placeholder tw:mb-[1em] tw:text-[13px] tw:text-utility-gray-500!">
+            className="text-center p-x-md no-data-placeholder tw:mb-4"
+            color="secondary"
+            size="text-xs">
             {t('message.no-data-quality-test-message')}
           </Typography>
         </ErrorPlaceHolderNew>
@@ -700,7 +680,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
 
     return (
-      <div className="data-quality-tab-content tw:h-screen tw:bg-surface tw:pl-4">
+      <div className="data-quality-tab-content tw:h-screen tw:pl-4">
         <DataQualitySection
           isDataQualityTab
           activeFilter={activeFilter}
@@ -751,7 +731,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography
               as="div"
-              className="text-center p-x-md no-data-placeholder tw:mb-[1em] tw:text-[13px] tw:text-utility-gray-500!">
+              className="text-center p-x-md no-data-placeholder tw:mb-4"
+              color="secondary"
+              size="text-xs">
               {t('message.no-data-quality-test-message')}
             </Typography>
           </ErrorPlaceHolderNew>
@@ -760,7 +742,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
 
     return (
-      <div className="incidents-tab-content tw:bg-surface tw:px-4">
+      <div className="incidents-tab-content tw:px-4">
         <div className="incidents-stats-container">
           <div className="incidents-stats-cards-container">
             <button
@@ -778,7 +760,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             </button>
             <Divider
               aria-hidden="true"
-              className="stat-card-vertical-divider tw:my-3 tw:bg-utility-gray-blue-100 tw:dark:bg-[var(--om-color-border-subtle)]"
+              className="tw:my-3"
               orientation="vertical"
             />
             <button
@@ -796,7 +778,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             </button>
             <Divider
               aria-hidden="true"
-              className="stat-card-vertical-divider tw:my-3 tw:bg-utility-gray-blue-100 tw:dark:bg-[var(--om-color-border-subtle)]"
+              className="tw:my-3"
               orientation="vertical"
             />
             <button
@@ -901,7 +883,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           size="sm"
           type="underline">
           {tabItems.map(({ key, label, count }) => (
-            <Tabs.Item badge={count} className="tw:text-xs" id={key} key={key}>
+            <Tabs.Item badge={count} id={key} key={key}>
               {label}
             </Tabs.Item>
           ))}

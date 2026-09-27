@@ -15,6 +15,7 @@ import {
   Button,
   SkeletonParagraph,
   Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Card, Space } from 'antd';
 import classNames from 'classnames';
@@ -56,10 +57,6 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-import {
-  COMMENTS_TRIGGER_CLASS_NAME,
-  TIMESTAMP_TOOLTIP_CLASS_NAME,
-} from './ActivityFeedcardNew.utils';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -287,15 +284,14 @@ const ActivityFeedCardNew = ({
   const timestampValue =
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
   const timestamp = timestampValue ? (
-    <Tooltip
-      excludeTriggerFromTabOrder
-      containerClassName={TIMESTAMP_TOOLTIP_CLASS_NAME}
-      title={formatDateTime(timestampValue)}>
-      <span
-        className="feed-card-header-v2-timestamp tw:text-utility-gray-500!"
-        data-testid="timestamp">
+    <Tooltip excludeTriggerFromTabOrder title={formatDateTime(timestampValue)}>
+      <Typography
+        className="feed-card-header-v2-timestamp"
+        color="secondary"
+        data-testid="timestamp"
+        size="text-xs">
         {getRelativeTime(timestampValue)}
-      </span>
+      </Typography>
     </Tooltip>
   ) : null;
 
@@ -550,12 +546,12 @@ const ActivityFeedCardNew = ({
             </UserPopOverCard>
           </div>
 
-          {/* Looks like an input but only opens the editor, so it is a button. */}
+          {/* Only opens the editor, so it is a button rather than an input. */}
           <Button
-            noTextPadding
-            className={COMMENTS_TRIGGER_CLASS_NAME}
-            color="tertiary"
+            className="tw:w-full tw:justify-start"
+            color="secondary"
             data-testid="comments-input-field"
+            size="sm"
             onPress={() => setShowFeedEditor(true)}>
             {t('message.input-placeholder')}
           </Button>

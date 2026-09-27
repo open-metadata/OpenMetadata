@@ -21,116 +21,24 @@ describe('DataQualityLegendItem', () => {
     expect(screen.getByText('Passed')).toBeInTheDocument();
   });
 
-  it('should return null when count is 0', () => {
+  it.each([0, -5])('should return null when count is %s', (count) => {
     const { container } = render(
-      <DataQualityLegendItem count={0} label="Passed" type="success" />
+      <DataQualityLegendItem count={count} label="Passed" type="success" />
     );
 
-    const legendItem = container.querySelector('.legend-item');
-
-    expect(legendItem).not.toBeInTheDocument();
+    expect(container.querySelector('.legend-item')).not.toBeInTheDocument();
   });
 
-  it('should return null when count is negative', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={-5} label="Passed" type="success" />
-    );
+  it.each(['success', 'aborted', 'failed'] as const)(
+    'should tag the legend item with the %s type',
+    (type) => {
+      const { container } = render(
+        <DataQualityLegendItem count={3} label="Label" type={type} />
+      );
 
-    const legendItem = container.querySelector('.legend-item');
-
-    expect(legendItem).not.toBeInTheDocument();
-  });
-
-  it('should apply success class for success type', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={10} label="Passed" type="success" />
-    );
-
-    const legendDot = container.querySelector('.legend-dot');
-
-    expect(legendDot).toHaveClass('success');
-  });
-
-  it('should apply aborted class for aborted type', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={5} label="Aborted" type="aborted" />
-    );
-
-    const legendDot = container.querySelector('.legend-dot');
-
-    expect(legendDot).toHaveClass('aborted');
-  });
-
-  it('should apply failed class for failed type', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={3} label="Failed" type="failed" />
-    );
-
-    const legendDot = container.querySelector('.legend-dot');
-
-    expect(legendDot).toHaveClass('failed');
-  });
-
-  it('should have legend-text structure', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={10} label="Passed" type="success" />
-    );
-
-    const legendText = container.querySelector('.legend-text');
-
-    expect(legendText).toBeInTheDocument();
-  });
-
-  it('should render label as legend-text-label', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={10} label="Test Label" type="success" />
-    );
-
-    const legendLabel = container.querySelector('.legend-text-label');
-
-    expect(legendLabel).toBeInTheDocument();
-    expect(legendLabel).toHaveTextContent('Test Label');
-  });
-
-  it('should render count as legend-text-value', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={42} label="Passed" type="success" />
-    );
-
-    const legendValue = container.querySelector('.legend-text-value');
-
-    expect(legendValue).toBeInTheDocument();
-    expect(legendValue).toHaveTextContent('42');
-  });
-
-  it('should render with correct CSS structure', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={10} label="Passed" type="success" />
-    );
-
-    const legendItem = container.querySelector('.legend-item');
-
-    expect(legendItem).toHaveClass('legend-item');
-
-    const legendDot = legendItem?.querySelector('.legend-dot');
-
-    expect(legendDot).toHaveClass('legend-dot');
-    expect(legendDot).toHaveClass('success');
-
-    const legendText = legendItem?.querySelector('.legend-text');
-
-    expect(legendText).toHaveClass('legend-text');
-  });
-
-  it('should render zero count when explicitly provided', () => {
-    const { container } = render(
-      <DataQualityLegendItem count={0} label="Zero" type="success" />
-    );
-
-    const legendItem = container.querySelector('.legend-item');
-
-    expect(legendItem).not.toBeInTheDocument();
-  });
+      expect(container.querySelector('.legend-item')).toHaveClass(type);
+    }
+  );
 
   it('should render large count values', () => {
     render(

@@ -13,9 +13,6 @@
 
 @import (reference) '../../../styles/variables.less';
 
-.entity-reference-list-item:last-child {
-  border-bottom: none;
-}
 .entity-ref-link {
   display: flex;
   align-items: center;
@@ -47,26 +44,6 @@
 .custom-property-value-toggle-btn.active {
   svg {
     transform: rotate(180deg);
-  }
-}
-
-.sql-query-custom-property {
-  .ant-space-item:first-child {
-    width: 100%;
-  }
-}
-.custom-property-card {
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  .property-name {
-    font-weight: var(--om-font-weight-regular);
-  }
-
-  .property-value {
-    font-weight: var(--om-font-weight-medium);
   }
 }
 

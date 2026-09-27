@@ -73,7 +73,7 @@ describe('DataQualitySection', () => {
       screen.getByText('label.data-quality-test-plural')
     ).toBeInTheDocument();
     // total badge text
-    expect(screen.getByText('6')).toHaveClass('data-quality-badge-text');
+    expect(screen.getByText('6')).toBeInTheDocument();
   });
 
   it('renders progress segments for non-zero categories', () => {

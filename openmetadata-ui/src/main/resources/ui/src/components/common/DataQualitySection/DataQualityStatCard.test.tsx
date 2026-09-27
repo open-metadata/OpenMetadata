@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { DataQualityStatCard } from './DataQualityStatCard';
 
 describe('DataQualityStatCard', () => {
@@ -128,10 +128,7 @@ describe('DataQualityStatCard', () => {
       />
     );
 
-    const button = container.querySelector('button');
-    if (button) {
-      button.click();
-    }
+    fireEvent.click(container.querySelector('button') as HTMLButtonElement);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
   });

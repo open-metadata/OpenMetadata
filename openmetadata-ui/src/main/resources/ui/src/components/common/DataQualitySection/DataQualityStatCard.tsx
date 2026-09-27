@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import {
@@ -18,25 +18,13 @@ import {
   DataQualityType,
 } from './DataQualitySection.interface';
 
-// Count and label inherit the button colour, so hover/active tint both at once.
-const TYPE_ACCENT_CLASS: Record<
+const ACTIVE_BUTTON_COLOR: Record<
   DataQualityType,
-  { hover: string; active: string }
+  'secondary-success' | 'secondary-warning' | 'secondary-destructive'
 > = {
-  success: {
-    hover:
-      'tw:hover:text-[var(--om-legacy-color-027a48)] tw:dark:hover:text-utility-success-700',
-    active:
-      'tw:bg-utility-success-50 tw:text-[var(--om-legacy-color-027a48)] tw:dark:text-utility-success-700',
-  },
-  aborted: {
-    hover: 'tw:hover:text-utility-warning-700',
-    active: 'tw:bg-utility-warning-50 tw:text-utility-warning-700',
-  },
-  failed: {
-    hover: 'tw:hover:text-utility-error-700',
-    active: 'tw:bg-utility-error-50 tw:text-utility-error-700',
-  },
+  success: 'secondary-success',
+  aborted: 'secondary-warning',
+  failed: 'secondary-destructive',
 };
 
 export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
@@ -46,27 +34,30 @@ export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
   isActive,
   onClick,
 }) => (
-  <button
+  <Button
     className={classNames(
       `data-quality-stat-card ${type}-card`,
-      'tw:m-2 tw:flex tw:flex-1 tw:cursor-pointer tw:appearance-none tw:flex-col tw:items-center tw:justify-center',
-      'tw:border tw:border-transparent tw:bg-transparent tw:p-0 tw:text-[13px] tw:text-utility-gray-600 tw:outline-none',
-      'tw:transition-[background-color,border-color,border-radius] tw:duration-200 tw:ease-[ease]',
-      TYPE_ACCENT_CLASS[type].hover,
-      isActive && ['active tw:rounded-md', TYPE_ACCENT_CLASS[type].active]
+      'tw:m-2 tw:flex-1',
+      {
+        active: isActive,
+      }
     )}
+    color={isActive ? ACTIVE_BUTTON_COLOR[type] : 'tertiary'}
     data-testid={`data-quality-stat-card-${type}`}
-    type="button"
-    onClick={onClick}>
-    <Typography
-      className={`stat-count ${type} tw:block tw:font-semibold`}
-      data-testid={`data-quality-stat-card-count-${type}`}>
-      {count}
-    </Typography>
-    <Typography
-      className={`stat-label ${type} tw:block tw:font-normal`}
-      data-testid={`data-quality-stat-card-label-${type}`}>
-      {label}
-    </Typography>
-  </button>
+    onPress={onClick}>
+    <span className="tw:flex tw:flex-col tw:items-center">
+      <Typography
+        className={`stat-count ${type}`}
+        data-testid={`data-quality-stat-card-count-${type}`}
+        weight="semibold">
+        {count}
+      </Typography>
+      <Typography
+        className={`stat-label ${type}`}
+        data-testid={`data-quality-stat-card-label-${type}`}
+        size="text-xs">
+        {label}
+      </Typography>
+    </span>
+  </Button>
 );

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -35,7 +35,6 @@ import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEdito
 import '../ActivityFeedTab/activity-feed-tab.less';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-import { TIMESTAMP_TOOLTIP_CLASS_NAME } from './ActivityFeedcardNew.utils';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
@@ -200,18 +199,23 @@ const CommentCard = ({
                 </Link>
               </UserPopOverCard>
             </span>
-            <span className="m-b-xss tw:pb-0.5 tw:align-middle tw:text-lg tw:font-extrabold tw:text-utility-gray-500">
+            <Typography
+              className="m-b-xss"
+              color="secondary"
+              size="text-lg"
+              weight="bold">
               {seperator}
-            </span>
+            </Typography>
             <Tooltip
               excludeTriggerFromTabOrder
-              containerClassName={TIMESTAMP_TOOLTIP_CLASS_NAME}
               title={formatDateTime(createdAt)}>
-              <span
-                className="feed-card-header-v2-timestamp mr-2 tw:text-utility-gray-500!"
-                data-testid="timestamp">
+              <Typography
+                className="feed-card-header-v2-timestamp mr-2"
+                color="secondary"
+                data-testid="timestamp"
+                size="text-xs">
                 {getRelativeTime(createdAt)}
-              </span>
+              </Typography>
             </Tooltip>
           </div>
           <ActivityFeedActions

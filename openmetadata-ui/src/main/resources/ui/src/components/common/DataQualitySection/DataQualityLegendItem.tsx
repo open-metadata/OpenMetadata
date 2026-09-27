@@ -10,11 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
+import { BadgeWithDot } from '@openmetadata/ui-core-components';
 import React from 'react';
-import { DATA_QUALITY_FILL_CLASS } from './DataQualityProgressSegment';
-import { DataQualityLegendItemProps } from './DataQualitySection.interface';
+import {
+  DataQualityLegendItemProps,
+  DataQualityType,
+} from './DataQualitySection.interface';
+
+const LEGEND_BADGE_COLOR: Record<
+  DataQualityType,
+  'success' | 'warning' | 'error'
+> = {
+  success: 'success',
+  aborted: 'warning',
+  failed: 'error',
+};
 
 export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
   count,
@@ -26,22 +36,12 @@ export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
   }
 
   return (
-    <div className="legend-item tw:flex tw:items-center tw:gap-1">
-      <span
-        className={classNames(
-          `legend-dot ${type}`,
-          'tw:size-2 tw:shrink-0 tw:rounded-full',
-          DATA_QUALITY_FILL_CLASS[type]
-        )}
-      />
-      <span className="legend-text tw:font-medium">
-        <Typography className="legend-text-label tw:text-[13px] tw:text-utility-gray-700">
-          {label}
-        </Typography>
-        <Typography className="legend-text-value tw:ml-0.5 tw:text-[13px] tw:text-utility-gray-900">
-          {count}
-        </Typography>
-      </span>
-    </div>
+    <BadgeWithDot
+      className={`legend-item ${type}`}
+      color={LEGEND_BADGE_COLOR[type]}
+      size="sm">
+      <span>{label}</span>
+      <span>{count}</span>
+    </BadgeWithDot>
   );
 };

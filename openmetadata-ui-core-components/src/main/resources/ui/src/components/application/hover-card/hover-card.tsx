@@ -123,7 +123,7 @@ export const HoverCard = ({
         <div
           {...cardHoverProps}
           className={cx(
-            'tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:p-4 tw:shadow-lg',
+            'tw:rounded-xl tw:bg-overlay-surface tw:p-4 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
             className
           )}>
           {content}

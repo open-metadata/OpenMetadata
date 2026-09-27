@@ -17,7 +17,7 @@ import {
   DataQualityType,
 } from './DataQualitySection.interface';
 
-export const DATA_QUALITY_FILL_CLASS: Record<DataQualityType, string> = {
+const FILL_CLASS: Record<DataQualityType, string> = {
   success: 'tw:bg-utility-success-500',
   aborted: 'tw:bg-utility-warning-500',
   failed: 'tw:bg-utility-error-500',
@@ -34,8 +34,8 @@ export const DataQualityProgressSegment: React.FC<
     <div
       className={classNames(
         `progress-segment ${type}`,
-        'tw:h-full tw:transition-[width] tw:duration-300 tw:ease-[ease]',
-        DATA_QUALITY_FILL_CLASS[type],
+        'tw:h-full tw:transition-all tw:duration-300',
+        FILL_CLASS[type],
         type === 'aborted' && 'tw:mx-px'
       )}
       style={{ width: `${percent}%` }}

@@ -99,15 +99,6 @@ const TaskTabNew = withSuspenseFallback(
   )
 );
 
-// Keeps the legacy filter trigger's 32px height, @grey-15 edge and brand
-// hover/open states on top of the secondary Button.
-const TASK_FILTER_TRIGGER_CLASS_NAME = classNames(
-  'tw:h-8 tw:gap-1 tw:px-3.75 tw:py-1 tw:text-xs tw:leading-none',
-  'tw:after:outline-utility-gray-blue-100 tw:dark:after:outline-subtle',
-  'tw:hover:after:outline-brand tw:dark:hover:after:outline-brand',
-  'tw:aria-expanded:bg-brand-primary tw:aria-expanded:after:outline-brand tw:dark:aria-expanded:after:outline-brand'
-);
-
 const componentsVisibility = {
   showThreadIcon: false,
   showRepliesContainer: true,
@@ -298,7 +289,6 @@ const TaskFilterBar = ({
     <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
       <Dropdown.Root>
         <Button
-          className={TASK_FILTER_TRIGGER_CLASS_NAME}
           color="secondary"
           data-testid="user-profile-page-task-filter-icon"
           iconLeading={<FilterIcon aria-hidden height={16} width={16} />}
@@ -307,10 +297,9 @@ const TaskFilterBar = ({
           {filterLabel}
         </Button>
         <Dropdown.Popover
-          className="task-tab-custom-dropdown tw:w-auto tw:min-w-(--trigger-width)"
+          className="task-tab-custom-dropdown"
           placement="bottom start">
           <Dropdown.Menu
-            className="tw:py-0"
             selectedKeys={[taskFilter]}
             onAction={(key) =>
               taskFilterOptions.find((option) => option.key === key)?.onClick()
@@ -428,7 +417,7 @@ const ActivityFeedTabRightPanel = ({
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <div className="placeholder-text tw:mb-[1em] tw:break-words">
+                  <div className="placeholder-text tw:mb-4 tw:break-words">
                     {placeholder}
                   </div>
                 </ErrorPlaceHolderNew>

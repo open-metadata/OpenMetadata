@@ -64,16 +64,3 @@ export const handleCardContainerKeyDown =
 // select-none are what that button's base style handed to the card.
 export const CARD_CONTAINER_CLASS_NAME =
   'tw:relative tw:block tw:w-full tw:cursor-pointer tw:select-none tw:whitespace-nowrap tw:rounded-xl tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2';
-
-// The feed timestamps keep their light bubble rather than the default dark
-// tooltip; the title span ships tw:text-white, hence the child override.
-export const TIMESTAMP_TOOLTIP_CLASS_NAME =
-  'tw:bg-overlay-surface tw:*:text-primary';
-
-// Surface, radius, border, height and font size come from the shared
-// `.comments-input-field` LESS rule (TaskTabNew renders a real input with it);
-// the rest undoes Button's own layout so it reads as an empty input. The text
-// colour is important because that rule forces text-primary in dark mode,
-// which is meant for typed text, not this placeholder.
-export const COMMENTS_TRIGGER_CLASS_NAME =
-  'comments-input-field tw:w-full tw:min-w-0 tw:cursor-text tw:justify-start tw:px-[11px] tw:py-1 tw:font-normal tw:text-utility-gray-400!';

@@ -902,14 +902,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         );
         await propertyCard.getByTestId('edit-icon').click();
 
-        const enumSelect = page.locator('[data-testid="enum-select"]');
+        const enumSelect = page.getByTestId('enum-select');
         await expect(enumSelect).toBeVisible();
-        await enumSelect.click();
-
-        await page
-          .locator('.ant-select-item-option-content')
-          .getByText('medium', { exact: true })
-          .click();
+        await enumSelect.getByRole('button', { name: /Enum Values/ }).click();
+        await page.getByRole('option', { name: 'medium', exact: true }).click();
+        await clickOutside(page);
 
         const saveButton = page.locator('[data-testid="inline-save-btn"]');
         const patchValue1 = page.waitForResponse(
@@ -925,16 +922,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         );
 
         await propertyCard.locator('[data-testid="edit-icon"]').click();
-        await enumSelect.hover();
-
-        const clearIcon = enumSelect.locator('.ant-select-clear');
-        if (await clearIcon.isVisible()) {
-          await clearIcon.click();
-        } else {
-          const enumInput = page.locator('#enumValues');
-          await enumInput.click();
-          await enumInput.fill('');
-        }
+        await enumSelect.getByRole('button', { name: 'Clear all' }).click();
 
         const patchValue2 = page.waitForResponse(
           (resp) =>

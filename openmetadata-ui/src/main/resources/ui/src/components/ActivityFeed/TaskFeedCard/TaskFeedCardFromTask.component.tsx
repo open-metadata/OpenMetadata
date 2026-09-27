@@ -70,11 +70,6 @@ import {
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
-// What antd's Row/Col contributed: a wrapping flex row, and columns that never
-// outgrow it; `span={24}` columns take a full line.
-const COL_CLASS_NAME = 'tw:relative tw:max-w-full tw:min-h-px';
-const FULL_ROW_COL_CLASS_NAME = `${COL_CLASS_NAME} tw:shrink-0 tw:grow-0 tw:basis-full`;
-
 const getTaskRowGapClassName = (
   isTaskTestCaseResult: boolean,
   isTaskApprovalRequest: boolean,
@@ -340,13 +335,9 @@ const TaskFeedCardFromTask = ({
   // access, per-status action buttons) stays out of the component's own
   // cyclomatic complexity.
   const renderTaskFooter = () => (
-    <div
-      className={classNames(
-        'task-feed-card-footer d-flex flex-wrap align-center justify-between',
-        FULL_ROW_COL_CLASS_NAME
-      )}>
-      <div className={classNames('d-flex', COL_CLASS_NAME)}>
-        <div className={classNames('d-flex flex-center', COL_CLASS_NAME)}>
+    <div className="task-feed-card-footer d-flex flex-wrap align-center justify-between w-full">
+      <div className="d-flex">
+        <div className="d-flex flex-center">
           <ReplyIcon
             className="m-r-xs"
             height={20}
@@ -367,11 +358,9 @@ const TaskFeedCardFromTask = ({
         </div>
 
         <div
-          className={classNames(
-            'flex items-center gap-2 text-grey-muted',
-            COL_CLASS_NAME,
-            { 'task-card-assignee': commentsCount > 0 }
-          )}>
+          className={classNames('flex items-center gap-2 text-grey-muted', {
+            'task-card-assignee': commentsCount > 0,
+          })}>
           <Owner
             isCompactView={false}
             owners={task.assignees ?? []}
@@ -381,25 +370,23 @@ const TaskFeedCardFromTask = ({
       </div>
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-        <div className={classNames('d-flex gap-2', COL_CLASS_NAME)}>
+        <div className="d-flex gap-2">
           {task.status === TaskEntityStatus.Open && (
             <CoreButton
-              noTextPadding
-              className="task-card-approve-btn tw:h-8 tw:gap-2"
               color="tertiary"
               data-testid="approve-button"
               iconLeading={<CheckCircleFilled />}
+              size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
             </CoreButton>
           )}
           {task.status === TaskEntityStatus.Open && (
             <CoreButton
-              noTextPadding
-              className="task-card-reject-btn tw:h-8 tw:gap-2"
-              color="tertiary"
+              color="tertiary-destructive"
               data-testid="reject-button"
               iconLeading={<CloseCircleFilled />}
+              size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}
             </CoreButton>
@@ -433,12 +420,8 @@ const TaskFeedCardFromTask = ({
               isTaskDescription
             )
           )}>
-          <div
-            className={classNames(
-              'd-flex flex-col align-start',
-              COL_CLASS_NAME
-            )}>
-            <div className={COL_CLASS_NAME}>
+          <div className="d-flex flex-col align-start tw:max-w-full">
+            <div>
               <Icon
                 className="m-r-xss m-t-xss text-md"
                 component={getTaskStatusIcon(task.status)}
@@ -446,8 +429,8 @@ const TaskFeedCardFromTask = ({
               />
               {taskLinkTitleElement}
             </div>
-            <div className={classNames('tw:-mt-2', COL_CLASS_NAME)}>
-              <span className="tw:text-primary">
+            <div className="tw:-mt-2">
+              <span>
                 <UserPopOverCard
                   key={task.createdBy?.name}
                   userName={task.createdBy?.name ?? ''}>
@@ -474,7 +457,7 @@ const TaskFeedCardFromTask = ({
               </span>
             </div>
           </div>
-          <div className={FULL_ROW_COL_CLASS_NAME}>
+          <div className="w-full">
             {isTaskTags && (
               <Card
                 bordered

@@ -12,6 +12,7 @@
  */
 
 import {
+  Card,
   Divider,
   Grid,
   GridItem,
@@ -257,16 +258,15 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     const headerTitle = t('label.custom-property-plural');
     const headerExtra = viewAllBtn;
     const propertyList = (
-      <div className="custom-property-right-panel-container tw:rounded-[10px] tw:bg-[var(--om-legacy-color-f8f8f8)] tw:p-3.5 tw:dark:bg-secondary">
+      <div className="custom-property-right-panel-container">
         {dataSource.map((record, index) => (
           <Fragment key={record.name}>
             <div
               className={classNames(
-                'custom-property-right-panel-card tw:bg-surface tw:p-3.5',
+                'custom-property-right-panel-card tw:py-3.5',
                 {
-                  'top-border-radius tw:rounded-t-[10px]': index === 0,
-                  'bottom-border-radius tw:rounded-b-[10px]':
-                    index === dataSource.length - 1,
+                  'top-border-radius': index === 0,
+                  'bottom-border-radius': index === dataSource.length - 1,
                 }
               )}
               key={record.name}>
@@ -281,9 +281,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
                 onExtensionUpdate={onExtensionUpdate}
               />
             </div>
-            {index !== dataSource.length - 1 && (
-              <Divider className="tw:bg-utility-gray-blue-100 tw:dark:bg-[var(--om-color-border-subtle)]" />
-            )}
+            {index !== dataSource.length - 1 && <Divider />}
           </Fragment>
         ))}
       </div>
@@ -309,7 +307,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return (
-    <div className="custom-properties-card tw:rounded-xl tw:border tw:border-utility-gray-blue-100 tw:bg-surface tw:p-5 tw:dark:border-subtle">
+    <Card className="custom-properties-card tw:p-5">
       <Grid data-testid="custom-properties-card" gap="4">
         {dataSourceColumns.map((columns, colIndex) => (
           // eslint-disable-next-line react/no-array-index-key -- static grid-layout column partition, fixed order
@@ -330,6 +328,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           </GridItem>
         ))}
       </Grid>
-    </div>
+    </Card>
   );
 };

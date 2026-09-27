@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -171,20 +171,18 @@ const FeedCardBodyNew = ({
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return (
-    <div
+    <Card
       className={classNames(
-        'tw:overflow-x-hidden tw:overflow-y-scroll tw:rounded-lg tw:border-[0.5px] tw:border-utility-gray-blue-100 tw:dark:border-subtle',
+        'tw:overflow-y-auto',
         showThread
           ? [
-              'tw:max-h-100 tw:bg-utility-gray-blue-50 tw:dark:bg-secondary_subtle',
+              'tw:max-h-100',
               isFeedWidget ? 'tw:mt-2.5 tw:px-4 tw:py-3' : 'tw:mt-5 tw:p-5',
             ]
-          : // The collapsed well takes the card's own tone in dark (surface, or
-            // the brand tint when selected); a filled well reads black there.
-            'tw:mt-0.5 tw:max-h-50 tw:bg-surface tw:p-5 tw:[scrollbar-width:none] tw:dark:bg-transparent tw:[&::-webkit-scrollbar]:hidden'
+          : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide'
       )}>
       {feedBodyRender}
-    </div>
+    </Card>
   );
 };
 
