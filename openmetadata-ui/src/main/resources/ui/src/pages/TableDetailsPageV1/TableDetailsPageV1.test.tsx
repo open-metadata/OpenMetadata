@@ -16,12 +16,10 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { TableType } from '../../generated/entity/data/table';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';

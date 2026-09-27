@@ -39,7 +39,7 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';

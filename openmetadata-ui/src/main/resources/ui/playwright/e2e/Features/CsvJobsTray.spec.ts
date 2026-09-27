@@ -77,7 +77,7 @@ test.describe('CsvJobsTray', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/metrics/);
+    await page.waitForURL(/\/metrics/, { waitUntil: 'domcontentloaded' });
   });
 
   test('shows a running export job and its progress text', async ({ page }) => {
