@@ -37,6 +37,7 @@ import {
   restoreDriveFile,
 } from '../../../rest/assetAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getFilterTabClassName } from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
@@ -270,20 +271,7 @@ const ContextCenterArchivePage: FC = () => {
                   items={filterTabItems}
                   type="button-brand">
                   {(tab) => (
-                    <Tabs.Item
-                      {...tab}
-                      className={({ isSelected }) =>
-                        classNames(
-                          'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
-                          {
-                            'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
-                              isSelected,
-                            'tw:border-primary tw:bg-primary tw:text-secondary':
-                              !isSelected,
-                          }
-                        )
-                      }
-                    />
+                    <Tabs.Item {...tab} className={getFilterTabClassName} />
                   )}
                 </Tabs.List>
               </Tabs>

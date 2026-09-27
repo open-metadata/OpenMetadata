@@ -147,7 +147,7 @@ export const AccordionHeader = ({
             // replaced a ring, which WebKit does not pixel-snap).
             'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:px-6 tw:py-4 tw:text-left tw:transition tw:duration-200 tw:ease-in-out',
             'tw:text-sm tw:font-semibold tw:text-primary',
-            'hover:tw:bg-primary_hover',
+            'tw:hover:bg-primary_hover',
             state.isFocusVisible &&
               'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
             state.isDisabled && 'tw:cursor-not-allowed tw:text-disabled',
