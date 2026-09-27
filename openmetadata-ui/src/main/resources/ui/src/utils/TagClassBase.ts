@@ -36,7 +36,7 @@ import {
   LazyOwnerLabelV2,
 } from './LazyTagComponents';
 import { getTermQuery } from './SearchPureUtils';
-import { escapeESReservedCharacters } from './StringUtils';
+import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';
 
 export interface TagRightPanelParams {
   editOwnerPermission: boolean;
@@ -69,7 +69,7 @@ class TagClassBase {
     page: number,
     emptyQueryFilter?: boolean
   ) {
-    const escapedValue = escapeESReservedCharacters(searchText);
+    const encodedValue = getEncodedFqn(escapeESReservedCharacters(searchText));
 
     // Build the queryFilter by merging disabled:false with any existing filters
     const disabledFilter = getTermQuery({ disabled: 'false' });
@@ -99,7 +99,7 @@ class TagClassBase {
     }
 
     const res = await searchQuery({
-      query: `*${escapedValue}*`,
+      query: `*${encodedValue}*`,
       pageNumber: page,
       pageSize: PAGE_SIZE,
       queryFilter: mergedQueryFilter,

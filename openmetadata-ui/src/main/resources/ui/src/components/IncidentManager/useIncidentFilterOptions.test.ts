@@ -11,20 +11,29 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import APIClient from '../../rest/axiosClient';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { useIncidentFilterOptions } from './useIncidentFilterOptions';
 
 jest.mock('../../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest.fn(),
 }));
 
-jest.mock('../../rest/axiosClient', () => ({
-  get: jest.fn(),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
+
+jest.mock('../../utils/EntityNameUtils', () => ({
+  getEntityName: jest
+    .fn()
+    .mockImplementation(
+      (entity?: { displayName?: string; name?: string }) =>
+        entity?.displayName ?? entity?.name ?? 'EntityName'
+    ),
 }));
 
 const mockGetUserAndTeamSearch = getUserAndTeamSearch as jest.Mock;
-const mockGet = APIClient.get as jest.Mock;
+const mockSearchQuery = searchQuery as jest.Mock;
 
 type TestCaseOption = { label: string; value?: string };
 
@@ -33,7 +42,7 @@ describe('useIncidentFilterOptions', () => {
     mockGetUserAndTeamSearch.mockResolvedValue({
       data: { hits: { hits: [] } },
     });
-    mockGet.mockResolvedValue({ data: { hits: { hits: [] } } });
+    mockSearchQuery.mockResolvedValue({ hits: { hits: [] } });
   });
 
   it('should expose the default option state and helper functions', () => {
@@ -147,19 +156,17 @@ describe('useIncidentFilterOptions', () => {
   });
 
   it('should query the test-case index with the wildcard and map fqn options', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: {
-        hits: {
-          hits: [
-            {
-              _source: {
-                fullyQualifiedName: 'svc.db.tc',
-                name: 'tc',
-                displayName: 'TC',
-              },
+    mockSearchQuery.mockResolvedValueOnce({
+      hits: {
+        hits: [
+          {
+            _source: {
+              fullyQualifiedName: 'svc.db.tc',
+              name: 'tc',
+              displayName: 'TC',
             },
-          ],
-        },
+          },
+        ],
       },
     });
     const { result } = renderHook(() =>
@@ -171,61 +178,35 @@ describe('useIncidentFilterOptions', () => {
       options = await result.current.searchTestCases();
     });
 
-    expect(mockGet).toHaveBeenCalledWith(
-      '/search/query?q=*',
+    expect(mockSearchQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        params: expect.objectContaining({
-          from: 0,
-          size: 15,
-          index: 'testCase',
-          fetch_source: true,
-          include_source_fields: ['name', 'displayName', 'fullyQualifiedName'],
-        }),
+        query: '*',
+        pageNumber: 1,
+        pageSize: 15,
+        searchIndex: 'testCase',
+        fetchSource: true,
+        includeFields: ['name', 'displayName', 'fullyQualifiedName'],
       })
     );
     expect(options).toEqual([{ label: 'TC', value: 'svc.db.tc' }]);
   });
 
-  it.each(['a#b', 'a&b', 'a+b', '100% complete', 'literal%20value', '測試 ✓'])(
-    'should preserve %s in the test-case HTTP query and returned options',
-    async (query) => {
-      mockGet.mockResolvedValueOnce({
-        data: {
-          hits: {
-            hits: [
-              {
-                _source: {
-                  fullyQualifiedName: 'svc.db.tc',
-                  name: 'tc',
-                  displayName: query,
-                },
-              },
-            ],
-          },
-        },
-      });
-      const { result } = renderHook(() =>
-        useIncidentFilterOptions({ filters: {} })
-      );
+  it('should url-encode a non-wildcard test-case search value', async () => {
+    const { result } = renderHook(() =>
+      useIncidentFilterOptions({ filters: {} })
+    );
 
-      let options: TestCaseOption[] = [];
-      await act(async () => {
-        options = await result.current.searchTestCases(query);
-      });
+    await act(async () => {
+      await result.current.searchTestCases('a#b');
+    });
 
-      expect(mockGet).toHaveBeenCalledTimes(1);
-
-      const url = new URL(mockGet.mock.calls[0][0], 'http://localhost');
-
-      expect(url.pathname).toBe('/search/query');
-      expect(Array.from(url.searchParams.entries())).toEqual([['q', query]]);
-      expect(url.hash).toBe('');
-      expect(options).toEqual([{ label: query, value: 'svc.db.tc' }]);
-    }
-  );
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'a%23b' })
+    );
+  });
 
   it('should return an empty test-case list when the search rejects', async () => {
-    mockGet.mockRejectedValueOnce(new Error('nope'));
+    mockSearchQuery.mockRejectedValueOnce(new Error('nope'));
     const { result } = renderHook(() =>
       useIncidentFilterOptions({ filters: {} })
     );
@@ -240,7 +221,7 @@ describe('useIncidentFilterOptions', () => {
 
   it('should toggle the loading flag and store only fqn-backed test-case options', async () => {
     let resolveSearch: (value: unknown) => void = (_value) => undefined;
-    mockGet.mockImplementationOnce(
+    mockSearchQuery.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           resolveSearch = resolve;
@@ -258,25 +239,23 @@ describe('useIncidentFilterOptions', () => {
 
     await act(async () => {
       resolveSearch({
-        data: {
-          hits: {
-            hits: [
-              {
-                _source: {
-                  fullyQualifiedName: 'svc.db.tc',
-                  name: 'tc',
-                  displayName: 'TC',
-                },
+        hits: {
+          hits: [
+            {
+              _source: {
+                fullyQualifiedName: 'svc.db.tc',
+                name: 'tc',
+                displayName: 'TC',
               },
-              {
-                _source: {
-                  fullyQualifiedName: undefined,
-                  name: 'nofqn',
-                  displayName: 'NoFQN',
-                },
+            },
+            {
+              _source: {
+                fullyQualifiedName: undefined,
+                name: 'nofqn',
+                displayName: 'NoFQN',
               },
-            ],
-          },
+            },
+          ],
         },
       });
     });

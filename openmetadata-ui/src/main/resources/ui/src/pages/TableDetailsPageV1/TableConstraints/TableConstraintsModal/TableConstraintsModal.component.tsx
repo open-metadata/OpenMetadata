@@ -34,7 +34,10 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityPureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getServiceNameQueryFilter } from '../../../../utils/ServicePureUtils';
-import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../../utils/StringUtils';
 import {
   createTableConstraintObject,
   getColumnOptionsFromTableColumn,
@@ -69,11 +72,11 @@ const TableConstraintsModal = ({
     setRelatedColumns([]);
     setIsRelatedColumnLoading(true);
     try {
-      const escapedValue = escapeESReservedCharacters(value);
+      const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const data = await searchQuery({
         query:
           value &&
-          `(columns.name.keyword:*${escapedValue}*) OR (columns.fullyQualifiedName:*${escapedValue}*)`,
+          `(columns.name.keyword:*${encodedValue}*) OR (columns.fullyQualifiedName:*${encodedValue}*)`,
         searchIndex: SearchIndex.TABLE,
         queryFilter: getServiceNameQueryFilter(
           tableDetails?.service?.name ?? ''

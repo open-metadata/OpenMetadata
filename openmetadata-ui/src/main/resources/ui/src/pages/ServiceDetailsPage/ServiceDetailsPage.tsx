@@ -178,7 +178,10 @@ import {
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { escapeESReservedCharacters } from '../../utils/StringUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../utils/StringUtils';
 import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -700,7 +703,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
           pageNumber: page,
           pageSize: ingestionPageSize,
           searchIndex: SearchIndex.INGESTION_PIPELINE,
-          query: `*${escapeESReservedCharacters(searchText ?? '')}*`,
+          query: `*${getEncodedFqn(
+            escapeESReservedCharacters(searchText ?? '')
+          )}*`,
           queryFilter: combinedQueryFilter,
         });
         const pipelines = res.hits.hits.map((hit) => hit._source);
