@@ -4049,7 +4049,7 @@
     "default-persona-removed-successfully": "Standardpersonan togs bort.",
     "default-persona-set-successfully": "Standardpersonan angavs.",
     "default-persona-update-error": "Det gick inte att uppdatera standardpersonan. Försök igen.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "Definiera de anpassade egenskaperna på kolumnnivå för tabeller och instrumentpanelers datamodeller.",
     "define-custom-property-for-entity": "Definiera de anpassade egenskaperna för din {{entity}} för att tillgodose din organisations behov.",
     "define-the-action-description": "Bestäm vad som händer: meddela, tilldela eller uppdatera.",

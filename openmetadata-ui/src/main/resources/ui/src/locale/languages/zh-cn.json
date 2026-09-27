@@ -4049,7 +4049,7 @@
     "default-persona-removed-successfully": "默认角色已成功移除。",
     "default-persona-set-successfully": "默认角色已成功设置。",
     "default-persona-update-error": "更新默认角色失败。请重试。",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "为表格和仪表板数据模型中的列级定义自定义属性。",
     "define-custom-property-for-entity": "为{{entity}}添加自定义属性以满足您的组织需求",
     "define-the-action-description": "决定要执行的操作：通知、分配或更新。",

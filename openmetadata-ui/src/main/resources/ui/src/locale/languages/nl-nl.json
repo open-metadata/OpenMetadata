@@ -4049,7 +4049,7 @@
     "default-persona-removed-successfully": "Standaard persona is succesvol verwijderd.",
     "default-persona-set-successfully": "Standaard persona is succesvol ingesteld.",
     "default-persona-update-error": "Fout bij het bijwerken van standaard persona. Probeer opnieuw.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "Definieer de aangepaste eigenschappen voor kolomniveau op tabellen en dashboarddata-modellen.",
     "define-custom-property-for-entity": "Definieer aangepaste eigenschappen voor {{entity}} om aan uw organisatorische behoeften te voldoen.",
     "define-the-action-description": "Bepaal wat er gebeurt: melden, toewijzen of bijwerken.",

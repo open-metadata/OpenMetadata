@@ -4049,7 +4049,7 @@
     "default-persona-removed-successfully": "Varsayılan kişilik başarıyla kaldırıldı.",
     "default-persona-set-successfully": "Varsayılan kişilik başarıyla ayarlandı.",
     "default-persona-update-error": "Varsayılan kişilik güncellenemedi. Lütfen tekrar deneyin.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "Tablolar ve dashboard veri modellerinde sütun düzeyinde özel özellikleri tanımlayın.",
     "define-custom-property-for-entity": "Kurumsal ihtiyaçlarınıza hizmet etmek için {{entity}} için özel özellikleri tanımlayın.",
     "define-the-action-description": "Ne olacağına karar verin: bildir, ata veya güncelle.",

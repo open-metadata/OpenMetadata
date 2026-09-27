@@ -4049,7 +4049,7 @@
     "default-persona-removed-successfully": "Default persona has been removed successfully.",
     "default-persona-set-successfully": "Default persona has been set successfully.",
     "default-persona-update-error": "Failed to update default persona. Please try again.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "Define the custom properties for column level on tables and dashboard data models.",
     "define-custom-property-for-entity": "Define the custom properties for your {{entity}} to serve your organizational needs.",
     "define-the-action-description": "Decide what happens: notify, assign, or update.",
