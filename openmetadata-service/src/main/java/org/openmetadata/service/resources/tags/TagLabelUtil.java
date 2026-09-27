@@ -362,6 +362,24 @@ public class TagLabelUtil {
     return result;
   }
 
+  /**
+   * Batch fetch derived tags once for a whole entity's tag set, degrading to no derived tags on
+   * failure exactly as {@link #addDerivedTagsGracefully} does. Callers hydrating many fields should
+   * prefetch through this and pass the result to {@link #addDerivedTagsWithPreFetched}, rather than
+   * calling {@code addDerivedTagsGracefully} per field — that issues one query per field.
+   */
+  public static Map<String, List<TagLabel>> batchFetchDerivedTagsGracefully(
+      List<TagLabel> tagLabels) {
+    try {
+      return batchFetchDerivedTags(tagLabels);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to batch fetch derived tags. Proceeding without derived. Error: {}",
+          ex.getMessage());
+      return Collections.emptyMap();
+    }
+  }
+
   /** Add derived tags using a pre-fetched map to avoid per-tag DB lookups. */
   public static List<TagLabel> addDerivedTagsWithPreFetched(
       List<TagLabel> tagLabels, Map<String, List<TagLabel>> derivedTagsMap) {
@@ -394,6 +412,32 @@ public class TagLabelUtil {
     Set<TagLabel> uniqueTags = new TreeSet<>(compareTagLabel);
     uniqueTags.addAll(tags);
     return uniqueTags.stream().toList();
+  }
+
+  /**
+   * A label the system computes or projects, as opposed to one a user applied. These are never
+   * written to {@code tag_usage}: DERIVED is recomputed on read from the glossary term's own
+   * classification tags, and PROPAGATED is projected from a parent onto its fields by {@code
+   * Entity.populateEntityFieldTags}. Persisting either would turn a projection into a stored row that
+   * outlives whatever it was projected from — a client that reads an entity and writes it back
+   * unchanged would silently pin the label in place.
+   */
+  public static boolean isSystemGenerated(TagLabel tagLabel) {
+    return tagLabel != null
+        && (TagLabel.LabelType.DERIVED.equals(tagLabel.getLabelType())
+            || TagLabel.LabelType.PROPAGATED.equals(tagLabel.getLabelType()));
+  }
+
+  /**
+   * Mutual-exclusivity applies to labels a user actually applied, never to projections. A field now
+   * reads back its parent's glossary terms as PROPAGATED, so a GET → PUT round trip would otherwise
+   * present the parent's term and the field's own term together and reject a table that saved fine
+   * before. Projections are already excluded from {@code tag_usage}; exclude them here for the same
+   * reason.
+   */
+  public static void checkMutuallyExclusiveForUserAppliedTags(List<TagLabel> tagLabels) {
+    checkMutuallyExclusive(
+        listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList());
   }
 
   public static void checkMutuallyExclusive(List<TagLabel> tagLabels) {

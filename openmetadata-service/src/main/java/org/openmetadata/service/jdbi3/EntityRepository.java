@@ -61,6 +61,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
@@ -3312,7 +3313,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : entities) {
       List<TagLabel> nonDerivedTags =
           listOrEmpty(entity.getTags()).stream()
-              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .filter(t -> !TagLabelUtil.isSystemGenerated(t))
               .toList();
       if (nonDerivedTags.isEmpty()) {
         continue;
@@ -6327,7 +6328,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+      if (!TagLabelUtil.isSystemGenerated(tagLabel)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -6352,10 +6353,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out DERIVED tags as they are system-generated
+    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
+    // entity's own labels, so they must never reach tag_usage.
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -6371,10 +6373,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out DERIVED tags as they are system-generated
+    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
+    // entity's own labels, so they must never reach tag_usage.
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -9087,7 +9090,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (Column column : listOrEmpty(columns)) {
       validateTags(column.getTags());
       column.setTags(addDerivedTags(column.getTags()));
-      checkMutuallyExclusive(column.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(column.getTags());
       if (column.getChildren() != null) {
         validateColumnTags(column.getChildren());
       }
@@ -10021,7 +10024,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // For PUT, we don't delete any existing tags
         // Merge the tags for validation and recording purposes
         EntityUtil.mergeTags(updatedTags, origTags);
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       } else {
         // PATCH and an explicit PUT override replace tags.
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
@@ -10041,7 +10044,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             addedTags.add(updatedTag);
           }
         }
-        checkMutuallyExclusive(updatedTags);
+        checkMutuallyExclusiveForUserAppliedTags(updatedTags);
       }
 
       // Filter out certification tags — handled exclusively by updateCertification()
@@ -10106,9 +10109,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (nullOrEmpty(tags)) {
         return Collections.emptyList();
       }
-      return tags.stream()
-          .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
-          .toList();
+      return tags.stream().filter(tag -> !TagLabelUtil.isSystemGenerated(tag)).toList();
     }
 
     protected final void applyTagsAddInFlush(List<TagLabel> tagLabels, String targetFqn) {

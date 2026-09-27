@@ -560,6 +560,8 @@ public class TagRepository extends EntityRepository<Tag> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
+        // updateEntity clears the change description, so the child fan-out never fires from here.
+        searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -704,11 +706,23 @@ public class TagRepository extends EntityRepository<Tag> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        searchRepository.propagateTagChangeToChildren(asset, List.of(), List.of(removedLabel(tag)));
         RdfUpdater.updateEntity(asset);
       }
     }
 
     return result.withSuccessRequest(success);
+  }
+
+  /**
+   * The label shape the child-doc cascade matches on. Only the FQN is compared, but the labelType
+   * has to read as system-applied so the delete script leaves a child's own manual label alone.
+   */
+  private static TagLabel removedLabel(Tag tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withSource(TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.PROPAGATED);
   }
 
   /**

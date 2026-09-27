@@ -226,8 +226,15 @@ const AsyncSelectList: FC<
     const tagDisplayName = getTagDisplay(label as string);
     const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
-    const isDerived =
-      (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
+    // Neither a derived nor a propagated label is the user's own: a propagated one is inherited
+    // from a parent asset, so offering the delete here would remove nothing server-side and the
+    // label would return on the next read.
+    const labelType = (selectedTag?.data as TagLabel)?.labelType;
+    const isDerived = labelType === LabelType.Derived;
+    const isSystemApplied = isDerived || labelType === LabelType.Propagated;
+    const systemTagTooltipKey = isDerived
+      ? 'message.derived-tag-warning'
+      : 'message.propagated-tag-warning';
     const isGlossaryTerm =
       (selectedTag?.data as TagLabel)?.source === TagSource.Glossary ||
       (selectedTag?.data as { entityType?: EntityType })?.entityType ===
@@ -242,9 +249,9 @@ const AsyncSelectList: FC<
         icon={tag.style?.iconURL}
         label={tagLabel}
         size="sm"
-        tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
+        tooltip={isSystemApplied ? t(systemTagTooltipKey) : undefined}
         onDelete={
-          isDerived
+          isSystemApplied
             ? undefined
             : (e) => {
                 e.stopPropagation();

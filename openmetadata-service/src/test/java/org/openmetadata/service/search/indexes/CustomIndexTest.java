@@ -340,6 +340,99 @@ class CustomIndexTest {
     assertEquals(Entity.TEST_CASE_RESULT, new TestCaseResultIndex(tcr).getEntityTypeName());
   }
 
+  /**
+   * A term on the table is projected onto its children on read and never stored, so the test case
+   * carries no trace of it. Deriving it here is what makes a rebuild reproduce what the tag cascade
+   * would have written, instead of quietly undoing it.
+   */
+  @Test
+  void testTestCaseResultIndex_derivesParentTableGlossaryTerms() {
+    TestCaseResult tcr =
+        new TestCaseResult().withTimestamp(12345L).withTestCaseFQN("svc.db.sc.t.myTest");
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withName("myTest")
+            .withFullyQualifiedName("svc.db.sc.t.myTest")
+            .withEntityLink("<#E::table::svc.db.sc.t>");
+
+    entityStaticMock
+        .when(() -> Entity.getEntityByName(eq(Entity.TEST_CASE), anyString(), anyString(), any()))
+        .thenReturn(testCase);
+    entityStaticMock
+        .when(() -> Entity.getEntityByName(eq(Entity.TABLE), anyString(), anyString(), any()))
+        .thenReturn(tableTaggedWith(glossaryTerm()));
+    entityStaticMock.when(() -> Entity.propagatedParentTags(any())).thenCallRealMethod();
+
+    Map<String, Object> result =
+        new TestCaseResultIndex(tcr).buildSearchIndexDocInternal(new HashMap<>());
+
+    Map<String, Object> embeddedTestCase = (Map<String, Object>) result.get("testCase");
+    List<Map<String, Object>> tags = (List<Map<String, Object>>) embeddedTestCase.get("tags");
+    assertEquals(1, tags.size());
+    assertEquals("Glossary.Term", tags.getFirst().get("tagFQN"));
+    assertEquals(
+        TagLabel.LabelType.PROPAGATED.value(), tags.getFirst().get("labelType").toString());
+  }
+
+  @Test
+  void testTestCaseResolutionStatusIndex_derivesParentTableGlossaryTerms() {
+    EntityReference testCaseRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.TEST_CASE)
+            .withName("myTest")
+            .withFullyQualifiedName("svc.db.sc.t.myTest");
+    TestCaseResolutionStatus status =
+        new TestCaseResolutionStatus()
+            .withId(UUID.randomUUID())
+            .withTimestamp(55555L)
+            .withTestCaseReference(testCaseRef);
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withName("myTest")
+            .withFullyQualifiedName("svc.db.sc.t.myTest")
+            .withEntityLink("<#E::table::svc.db.sc.t>");
+
+    entityStaticMock
+        .when(
+            () ->
+                Entity.getEntityOrNull(
+                    any(EntityReference.class), eq("testSuite,domains,tags,owners"), any()))
+        .thenReturn(testCase);
+    entityStaticMock
+        .when(() -> Entity.getEntityByName(eq(Entity.TABLE), anyString(), anyString(), any()))
+        .thenReturn(tableTaggedWith(glossaryTerm()));
+    entityStaticMock.when(() -> Entity.propagatedParentTags(any())).thenCallRealMethod();
+
+    Map<String, Object> result =
+        new TestCaseResolutionStatusIndex(status).buildSearchIndexDocInternal(new HashMap<>());
+
+    TestCase embeddedTestCase = (TestCase) result.get("testCase");
+    assertEquals(1, embeddedTestCase.getTags().size());
+    assertEquals("Glossary.Term", embeddedTestCase.getTags().getFirst().getTagFQN());
+    assertEquals(
+        TagLabel.LabelType.PROPAGATED, embeddedTestCase.getTags().getFirst().getLabelType());
+    // The fan-out finds time-series children by table.id, so the reference has to be on the doc.
+    assertNotNull(result.get("table"));
+  }
+
+  private static TagLabel glossaryTerm() {
+    return new TagLabel()
+        .withTagFQN("Glossary.Term")
+        .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL);
+  }
+
+  private static Table tableTaggedWith(TagLabel tag) {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("t")
+        .withFullyQualifiedName("svc.db.sc.t")
+        .withTags(List.of(tag));
+  }
+
   // ==================== TestCaseResolutionStatusIndex ==========================================
 
   @Test
