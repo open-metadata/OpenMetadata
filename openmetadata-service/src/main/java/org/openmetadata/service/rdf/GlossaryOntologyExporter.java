@@ -15,7 +15,6 @@ package org.openmetadata.service.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import java.io.StringWriter;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +30,6 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.OWL2;
@@ -578,9 +576,7 @@ public final class GlossaryOntologyExporter {
   }
 
   private static String serialize(final Model model, final RdfSerializationFormat format) {
-    final StringWriter writer = new StringWriter();
-    RDFDataMgr.write(writer, model, format.rdfFormat());
-    return writer.toString();
+    return RdfGraphSerializer.asString(model, format);
   }
 
   private static void addLiteral(
