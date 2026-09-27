@@ -43,7 +43,9 @@ const openTestCaseList = async (
   include: 'deleted' | 'non-deleted'
 ) => {
   const initialListResponse = waitForTestCaseListResponse(page);
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await initialListResponse;
 
   const searchResponse = waitForTestCaseListResponse(page);
