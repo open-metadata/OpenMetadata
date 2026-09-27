@@ -2,9 +2,13 @@ package org.openmetadata.it.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +17,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 /** Exactly-once is the probe's whole contract; these pin it, including under concurrency. */
 class SqlFailureProbeTest {
@@ -34,11 +39,11 @@ class SqlFailureProbeTest {
     try (var probe = probe(jdbi, "insert into chart_entity")) {
       assertFalse(probe.injected());
 
-      assertTrue(probe.claimInjection("INSERT INTO chart_entity (id, json) VALUES (?, ?)"));
+      assertTrue(probe.claimInjection(null, "INSERT INTO chart_entity (id, json) VALUES (?, ?)"));
       assertTrue(probe.injected());
 
       assertFalse(
-          probe.claimInjection("insert into chart_entity (id, json) values (?, ?)"),
+          probe.claimInjection(null, "insert into chart_entity (id, json) values (?, ?)"),
           "a spent probe must let the retry through, or the replay can never succeed");
     }
   }
@@ -47,10 +52,10 @@ class SqlFailureProbeTest {
   void doesNotSpendItselfOnAStatementThatDoesNotMatch() {
     Jdbi jdbi = unconnectedJdbi();
     try (var probe = probe(jdbi, "insert into chart_entity")) {
-      assertFalse(probe.claimInjection("insert into table_entity (id) values (?)"));
+      assertFalse(probe.claimInjection(null, "insert into table_entity (id) values (?)"));
       assertFalse(probe.injected());
 
-      assertTrue(probe.claimInjection("insert into chart_entity (id) values (?)"));
+      assertTrue(probe.claimInjection(null, "insert into chart_entity (id) values (?)"));
     }
   }
 
@@ -62,7 +67,7 @@ class SqlFailureProbeTest {
       Thread background =
           new Thread(
               () -> {
-                if (probe.claimInjection("insert into chart_entity (id) values (?)")) {
+                if (probe.claimInjection(null, "insert into chart_entity (id) values (?)")) {
                   claimed.incrementAndGet();
                 }
               });
@@ -91,7 +96,7 @@ class SqlFailureProbeTest {
             jdbi,
             "insert into chart_entity",
             () -> new IllegalStateException("injected"),
-            () -> {
+            ignored -> {
               try {
                 bothInsideTheWindow.await(30, TimeUnit.SECONDS);
               } catch (Exception e) {
@@ -104,7 +109,7 @@ class SqlFailureProbeTest {
         new Thread(
                 () -> {
                   try {
-                    if (probe.claimInjection("insert into chart_entity (id) values (?)")) {
+                    if (probe.claimInjection(null, "insert into chart_entity (id) values (?)")) {
                       claims.incrementAndGet();
                     }
                   } finally {
@@ -135,5 +140,68 @@ class SqlFailureProbeTest {
     }
 
     assertSame(original, jdbi.getConfig(SqlStatements.class).getSqlLogger());
+  }
+
+  @Test
+  void deadlockRaisesTheShapeDeadlockRetryReplays() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var probe = new SqlFailureProbe(jdbi, "update chart_entity", SqlFailureProbe.deadlock())) {
+      RuntimeException raised = probe.failureFor(null, "update chart_entity set json = ?");
+
+      assertNotNull(raised, "the probe must claim a matching statement");
+      SQLException cause = assertInstanceOf(SQLException.class, raised.getCause());
+      assertEquals("40001", cause.getSQLState(), "DeadlockRetry keys off SQLSTATE 40001");
+      assertEquals(1213, cause.getErrorCode(), "and off MySQL error code 1213");
+
+      assertNull(
+          probe.failureFor(null, "update chart_entity set json = ?"),
+          "a spent probe must let the replay through");
+    }
+  }
+
+  @Test
+  void forRequestsClaimsNothingOutsideARequest() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var probe =
+        SqlFailureProbe.forRequests(
+            jdbi,
+            "insert into chart_entity",
+            () -> new IllegalStateException("injected"),
+            ignored -> true)) {
+      assertFalse(
+          probe.claimInjection(null, "insert into chart_entity (id) values (?)"),
+          "no request in flight, so the probe must not spend itself");
+      assertFalse(probe.injected());
+
+      RequestLatencyContext.startRequest("/v1/test", "POST");
+      try {
+        assertTrue(probe.claimInjection(null, "insert into chart_entity (id) values (?)"));
+      } finally {
+        RequestLatencyContext.clearContext();
+      }
+      assertTrue(probe.injected());
+    }
+  }
+
+  @Test
+  void forRequestsStillHonoursTheCallerPredicate() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var probe =
+        SqlFailureProbe.forRequests(
+            jdbi,
+            "insert into chart_entity",
+            () -> new IllegalStateException("injected"),
+            ignored -> false)) {
+      RequestLatencyContext.startRequest("/v1/test", "POST");
+      try {
+        assertFalse(
+            probe.claimInjection(null, "insert into chart_entity (id) values (?)"),
+            "a request is in flight but the caller's predicate rejects this statement — the point"
+                + " of the overload is that a concurrent request cannot consume the injection");
+      } finally {
+        RequestLatencyContext.clearContext();
+      }
+      assertFalse(probe.injected());
+    }
   }
 }

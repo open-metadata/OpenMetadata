@@ -293,8 +293,21 @@ export const TreeSelect = <T = unknown,>({
   const { inputValue, searchTerm, setInputValue, clearSearch } =
     useTreeSelectSearch({ debounceMs, onSearch });
 
+  // Latched on first open so reopening reuses the loaded tree.
+  const [hasOpened, setHasOpened] = useState(isOpen);
+  if (isOpen && !hasOpened) {
+    setHasOpened(true);
+  }
+
+  // The button badge excludes root ids, so it needs the tree while closed.
   const { treeData, loading, loadingNodes, loadChildren } =
-    useTreeSelectData<T>({ fetchData, searchTerm, pageSize, onFetchError });
+    useTreeSelectData<T>({
+      fetchData,
+      searchTerm,
+      pageSize,
+      onFetchError,
+      enabled: hasOpened || isButtonVariant,
+    });
 
   const visibleNodeIds = useMemo(
     () =>
