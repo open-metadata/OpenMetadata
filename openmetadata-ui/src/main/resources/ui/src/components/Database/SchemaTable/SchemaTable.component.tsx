@@ -35,6 +35,7 @@ import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
   DE_ACTIVE_COLOR,
+  ENTITY_PATH,
   ICON_DIMENSION,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
@@ -56,7 +57,9 @@ import {
   Constraint,
   Table as TableType,
 } from '../../../generated/entity/data/table';
+import { Type } from '../../../generated/entity/type';
 import { TestSummary } from '../../../generated/tests/testCase';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -65,6 +68,7 @@ import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
@@ -86,6 +90,7 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
+  getCustomPropertyColumnKey,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   pruneEmptyChildren,
@@ -114,6 +119,7 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
+import { ColumnCustomPropertyCell } from './ColumnCustomPropertyCell';
 import { TableCellRendered } from './SchemaTable.interface';
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
@@ -173,6 +179,7 @@ const SchemaTable = () => {
   const [editConstraint, setEditConstraint] = useState<
     Constraint | undefined
   >();
+  const [columnTypeDetail, setColumnTypeDetail] = useState<Type>();
 
   const {
     permissions: tablePermissions,
@@ -220,11 +227,42 @@ const SchemaTable = () => {
     canEditGlossaryTerms: editGlossaryTermsPermission,
     canEditDescription: editDescriptionPermission,
     canEditDisplayName: editDisplayNamePermission,
+    canEditCustomFields: editCustomFieldsPermission,
+    canViewCustomFields,
     canEditAll,
   } = useMemo(
     () => getDerivedPermissionFlags(tablePermissions, deleted),
     [tablePermissions, deleted]
   );
+
+  useEffect(() => {
+    if (!canViewCustomFields) {
+      setColumnTypeDetail(undefined);
+
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchColumnTypeDetail = async () => {
+      try {
+        const res = await getTypeByFQN(ENTITY_PATH.column);
+        if (!cancelled) {
+          setColumnTypeDetail(res);
+        }
+      } catch {
+        if (!cancelled) {
+          setColumnTypeDetail(undefined);
+        }
+      }
+    };
+
+    fetchColumnTypeDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canViewCustomFields]);
 
   const searchTableColumns = useCallback(
     async (
@@ -472,24 +510,23 @@ const SchemaTable = () => {
     setEditColumn(undefined);
   };
 
-  const updateColumnDetails = async (
-    columnFqn: string,
-    column: Partial<Column>,
-    field: keyof Column
-  ) => {
-    const response = await updateTableColumn(columnFqn, column);
-    const cleanResponse = isEmpty(response.children)
-      ? omit(response, 'children')
-      : response;
+  const updateColumnDetails = useCallback(
+    async (columnFqn: string, column: Partial<Column>, field: keyof Column) => {
+      const response = await updateTableColumn(columnFqn, column);
+      const cleanResponse = isEmpty(response.children)
+        ? omit(response, 'children')
+        : response;
 
-    setTableColumns((prev) =>
-      pruneEmptyChildren(
-        updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
-      )
-    );
+      setTableColumns((prev) =>
+        pruneEmptyChildren(
+          updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
+        )
+      );
 
-    return response;
-  };
+      return response;
+    },
+    []
+  );
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
@@ -529,6 +566,21 @@ const SchemaTable = () => {
       }
     }
   };
+
+  const handleExtensionUpdate = useCallback(
+    async (record: Column, updatedExtension: Column['extension']) => {
+      if (!record.fullyQualifiedName) {
+        return;
+      }
+
+      await updateColumnDetails(
+        record.fullyQualifiedName,
+        { extension: updatedExtension },
+        'extension'
+      );
+    },
+    [updateColumnDetails]
+  );
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> =
     useCallback(
@@ -789,6 +841,27 @@ const SchemaTable = () => {
     [testCaseCounts]
   );
 
+  const customPropertyColumns: ColumnsType<Column> = useMemo(
+    () =>
+      (columnTypeDetail?.customProperties ?? []).map(
+        (property: CustomProperty) => ({
+          title: getEntityName(property),
+          dataIndex: 'extension',
+          key: getCustomPropertyColumnKey(property.name),
+          width: 230,
+          render: (_: Column['extension'], record: Column) => (
+            <ColumnCustomPropertyCell
+              hasEditPermissions={editCustomFieldsPermission}
+              property={property}
+              record={record}
+              onExtensionUpdate={handleExtensionUpdate}
+            />
+          ),
+        })
+      ),
+    [columnTypeDetail, editCustomFieldsPermission, handleExtensionUpdate]
+  );
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -896,6 +969,7 @@ const SchemaTable = () => {
         width: 120,
         render: renderDataQuality,
       },
+      ...customPropertyColumns,
     ],
     [
       tableFqn,
@@ -912,6 +986,7 @@ const SchemaTable = () => {
       sortBy,
       sortOrder,
       handleColumnHeaderSortToggle,
+      customPropertyColumns,
     ]
   );
 

@@ -157,6 +157,23 @@ describe('Test PropertyValue Component', () => {
     expect(iconElement).not.toBeInTheDocument();
   });
 
+  it('Should render the property name header by default', async () => {
+    render(<PropertyValue {...mockData} />);
+
+    expect(await screen.findByTestId('property-name')).toBeInTheDocument();
+  });
+
+  it('Should hide the property name header but keep value and edit when hideLabel is set', async () => {
+    render(<PropertyValue {...mockData} hideLabel />);
+
+    expect(await screen.findByTestId('value')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('custom-property-description-icon')
+    ).not.toBeInTheDocument();
+  });
+
   it('Should render richtext previewer component for markdown type', async () => {
     const extension = { yNumber: 'markdown value' };
     const propertyType = {

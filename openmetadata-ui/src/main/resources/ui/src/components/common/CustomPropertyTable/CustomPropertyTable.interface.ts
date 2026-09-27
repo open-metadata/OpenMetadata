@@ -82,6 +82,7 @@ export interface PropertyValueProps {
   versionDataKeys?: string[];
   isVersionView?: boolean;
   isRenderedInRightPanel?: boolean;
+  hideLabel?: boolean;
   onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
 }
 
