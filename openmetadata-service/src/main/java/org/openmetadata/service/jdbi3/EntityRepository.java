@@ -5155,16 +5155,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected final void cleanup(String deletedBy, T entityInterface) {
     flushInOneTransaction(() -> cleanupFlushBody(deletedBy, entityInterface));
-    // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
-    // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
-    // workflow queries out of the entity transaction's lock-hold time.
-    cancelWorkflowInstances(List.of(entityInterface.getId()));
+    // Flowable commits on its own connection, so cancel only once the owning entity transaction
+    // has committed: a rolled-back delete must not leave a live entity without its workflow. An
+    // enclosing unit of work drains this after its own commit; without one it runs right away.
+    // The same holds for the negative-cache marker, which would otherwise 404 a surviving row.
+    PostCommitActionQueue.runOrDefer(
+        () -> cancelWorkflowInstances(List.of(entityInterface.getId())));
     // Re-invalidate after the transaction commits. Any read that slipped in between the
     // pre-delete invalidate and the commit could have re-populated the cache from the
     // still-visible DB row; clearing again here guarantees the next read goes back to the
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
-    markEntityNotFound(entityInterface);
+    PostCommitActionQueue.runOrDefer(() -> markEntityNotFound(entityInterface));
   }
 
   private void cleanupFlushBody(String deletedBy, T entityInterface) {
@@ -7349,8 +7351,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
         });
-    // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
-    cancelWorkflowInstances(entityIds(entities));
+    // Keep Flowable's separate transaction after the owning entity commit. See cleanup().
+    final List<UUID> ids = entityIds(entities);
+    PostCommitActionQueue.runOrDefer(() -> cancelWorkflowInstances(ids));
   }
 
   private List<UUID> entityIds(List<T> entities) {
@@ -7511,8 +7514,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // returning a stale "found" entity. Without this the next get_by_name/find against
       // the same id or FQN can still hit the cache and return a deleted entity, which
       // breaks fixture teardown (DELETE returns 404 because the row is gone but Redis
-      // still hands out the entity to the get_by_name probe).
-      markEntityNotFound(entity);
+      // still hands out the entity to the get_by_name probe). Deferred like cleanup()'s so an
+      // enclosing rollback cannot leave a surviving row marked missing.
+      PostCommitActionQueue.runOrDefer(() -> markEntityNotFound(entity));
     }
   }
 
