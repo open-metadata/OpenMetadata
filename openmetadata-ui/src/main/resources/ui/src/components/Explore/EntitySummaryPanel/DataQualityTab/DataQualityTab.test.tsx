@@ -60,64 +60,6 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <div className={className} data-testid="card" {...props}>
-        {children}
-      </div>
-    )),
-    Col: jest
-      .fn()
-      .mockImplementation(({ children, span, className, ...props }) => (
-        <div
-          className={className}
-          data-span={span}
-          data-testid="col"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Row: jest
-      .fn()
-      .mockImplementation(({ children, className, gutter, ...props }) => (
-        <div
-          className={className}
-          data-gutter={gutter}
-          data-testid="row"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Typography: {
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ellipsis, ...props }) => (
-          <span
-            className={className}
-            data-ellipsis={ellipsis}
-            data-testid="typography-text"
-            {...props}>
-            {children}
-          </span>
-        )),
-      Paragraph: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <p
-            className={className}
-            data-testid="typography-paragraph"
-            {...props}>
-            {children}
-          </p>
-        )),
-    },
-  };
-});
-
 // Mock child components
 jest.mock('../../../common/DataQualitySection/DataQualitySection', () => {
   return jest

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../../styles/variables.less';
@@ -65,7 +65,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   }, [tests, totalTests]);
 
   return isDataQualityTab ? (
-    <div className="data-quality-stats-container">
+    <div className="data-quality-stats-container tw:mr-4 tw:mb-2.5 tw:flex tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface tw:dark:border-subtle">
       <DataQualityStatCard
         count={successTests}
         isActive={activeFilter === 'success'}
@@ -73,7 +73,10 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="success"
         onClick={() => onFilterChange?.('success')}
       />
-      <div className="stat-card-vertical-divider" />
+      <Divider
+        className="stat-card-vertical-divider tw:my-3 tw:bg-utility-gray-blue-100 tw:dark:bg-[var(--om-color-border-subtle)]"
+        orientation="vertical"
+      />
       <DataQualityStatCard
         count={abortedTests}
         isActive={activeFilter === 'aborted'}
@@ -81,7 +84,10 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="aborted"
         onClick={() => onFilterChange?.('aborted')}
       />
-      <div className="stat-card-vertical-divider" />
+      <Divider
+        className="stat-card-vertical-divider tw:my-3 tw:bg-utility-gray-blue-100 tw:dark:bg-[var(--om-color-border-subtle)]"
+        orientation="vertical"
+      />
       <DataQualityStatCard
         count={failedTests}
         isActive={activeFilter === 'failed'}
@@ -95,13 +101,13 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       showEditButton={false}
       title={
         <div className="d-flex">
-          <Typography.Text className="section-title mr-2">
+          <Typography className="section-title mr-2">
             {t('label.data-quality-test-plural')}
-          </Typography.Text>
+          </Typography>
           <div className="data-quality-badge">
-            <Typography.Text className="data-quality-badge-text">
+            <Typography className="data-quality-badge-text">
               {totalTests}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
       }
@@ -112,9 +118,9 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         </div>
       ) : (
         <div className="data-quality-content">
-          <div className="data-quality-header" />
-          <div className="data-quality-progress">
-            <div className="data-quality-progress-segments">
+          <div className="data-quality-header tw:flex tw:justify-end" />
+          <div className="data-quality-progress tw:mb-3">
+            <div className="data-quality-progress-segments tw:flex tw:h-3 tw:overflow-hidden tw:rounded-xs tw:bg-[var(--om-legacy-color-f0f0f0)]">
               <DataQualityProgressSegment
                 percent={successPercent}
                 type="success"
@@ -130,7 +136,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             </div>
           </div>
 
-          <div className="data-quality-legend">
+          <div className="data-quality-legend tw:flex tw:flex-wrap tw:gap-3.5">
             <DataQualityLegendItem
               count={successTests}
               label={t('label.-with-colon', { text: t('label.success') })}

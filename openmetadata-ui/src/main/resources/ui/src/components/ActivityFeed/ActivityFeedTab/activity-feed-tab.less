@@ -237,18 +237,6 @@
       }
     }
   }
-
-  .feed-card-header-v2-timestamp {
-    color: @grey-500;
-  }
-
-  .seperator {
-    vertical-align: middle;
-    font-size: var(--om-font-size-lg);
-    font-weight: var(--om-font-weight-extrabold);
-    color: @grey-500;
-    padding-bottom: var(--om-space-2);
-  }
 }
 
 .activity-feed-task {
@@ -312,7 +300,7 @@
   color: var(--om-color-text-primary);
 }
 
-.activity-feed-user-name.ant-typography a {
+.activity-feed-user-name a {
   color: var(--om-color-text-primary);
   font-weight: var(--om-font-weight-semibold);
 }
@@ -350,10 +338,6 @@
     }
   }
 
-  .ant-dropdown-menu {
-    padding: 0;
-  }
-
   .task-count-container {
     background: var(--om-color-gray-200);
     border-radius: var(--om-radius-2xl);
@@ -382,13 +366,20 @@
     }
   }
 
-  .ant-dropdown-menu .ant-dropdown-menu-item {
+  // Selected-row and count-chip colours follow the configurable antd theme
+  // primary (--ant-primary-*), which has no Tailwind counterpart yet.
+  .task-tab-filter-menu-item {
     box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
     padding: 0;
 
     .active {
       box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
       background-color: @primary-25;
+
+      // --ant-primary-25 is a fixed light tint; use the sidebar selected surface.
+      .dark-mode & {
+        background-color: var(--om-color-bg-brand);
+      }
 
       svg path {
         fill: @primary-5;
@@ -397,72 +388,8 @@
   }
 }
 
-.task-toggle {
-  background: var(--tw-color-bg-primary);
-  border-radius: @size-sm;
-  padding: var(--om-space-4);
-  border: 1px solid @grey-20;
-
-  .ant-segmented-item {
-    color: @text-color;
-    transition: all var(--om-duration-300) ease;
-
-    &-selected {
-      background: @blue-23;
-      color: @primary-heading-color;
-      text-align: center;
-      border-radius: @size-xs;
-      .ant-segmented-item-label {
-        color: @primary-heading-color;
-      }
-
-      svg path {
-        fill: @primary-heading-color;
-      }
-    }
-  }
-
-  &:hover {
-    background: none !important;
-  }
-
-  &:focus {
-    background: none !important;
-  }
-
-  .ant-segmented:not(.ant-segmented-disabled):hover,
-  .ant-segmented:not(.ant-segmented-disabled):focus {
-    background: none !important;
-  }
-}
-
 .header-container-card {
   margin-top: calc(-1 * var(--om-space-2));
-}
-
-.toggle-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--om-space-5);
-  font-size: var(--om-font-size-sm);
-  height: 40px;
-  width: 100px;
-
-  .ant-segmented-item-label {
-    color: @grey-13;
-    font-size: var(--om-font-size-xs);
-    font-style: normal;
-    font-weight: var(--om-font-weight-regular);
-    line-height: 20px;
-  }
-}
-
-.activity-feed-card-container.ant-btn:hover,
-.activity-feed-card-container.ant-btn:focus {
-  background-color: inherit !important;
-  color: inherit !important;
-  border-radius: var(--om-radius-xl) !important;
 }
 
 .activity-feed-comments-title {
@@ -533,17 +460,6 @@
   padding-bottom: var(--om-space-2);
 }
 
-// Tooltips render into a portal on document.body, so this has to sit in a
-// stylesheet that every component rendering `timestamp-tooltip` pulls in -
-// both ActivityFeedcardNew and CommentCard import this file. Without it the
-// tooltip keeps antd's default white text on the white background its `color`
-// prop sets, i.e. an empty bubble.
-.timestamp-tooltip {
-  .ant-tooltip-inner {
-    color: var(--om-color-text-primary);
-  }
-}
-
 .reply-message {
   color: var(--om-legacy-color-4a4a4a);
   white-space: normal;
@@ -552,7 +468,7 @@
   font-size: var(--om-font-size-xs);
 }
 
-.reply-card-user-name.activity-feed-user-name.ant-typography a {
+.reply-card-user-name.activity-feed-user-name a {
   color: @text-color;
   font-style: normal;
   font-weight: var(--om-font-weight-medium);
@@ -570,17 +486,6 @@
   background: var(--om-color-bg-surface);
   border-radius: var(--om-radius-xl);
   margin-top: var(--om-space-16);
-}
-
-.task-toggle.ant-segmented {
-  background-color: var(--tw-color-bg-primary);
-  border-radius: @size-sm;
-
-  &:hover {
-    .ant-segmented-item:not(.ant-segmented-item-selected) {
-      background-color: var(--tw-color-bg-primary);
-    }
-  }
 }
 
 .view-more-less-button {

@@ -130,7 +130,7 @@
 //user profile page
 .action-required-card {
   border-radius: var(--om-radius-xl);
-  border: 0.5px solid var(--om-color-gray-blue-100);
+  border: 0.5px solid @grey-15;
   background: linear-gradient(
     270deg,
     var(--om-legacy-color-85-155-238-0-2) 0.56%,
@@ -140,12 +140,17 @@
   padding: var(--om-space-16);
   margin: var(--om-space-24) 0;
   box-shadow: none;
+
+  // The gradient ends on a 20% light grey that hazes over dark surfaces.
+  .dark-mode & {
+    background: var(--om-color-bg-brand);
+  }
 }
 
 .action-required-text {
   flex-grow: 1;
   font-weight: var(--om-font-weight-regular);
-  color: var(--om-color-gray-700);
+  color: var(--om-color-text-secondary);
   font-weight: var(--om-font-weight-medium);
   line-height: 20px;
 }

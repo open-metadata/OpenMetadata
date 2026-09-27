@@ -12,8 +12,12 @@
  */
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
+import {
+  Button as CoreButton,
+  Owner,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -59,19 +63,28 @@ import {
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import {
+  CARD_CONTAINER_CLASS_NAME,
+  handleCardContainerKeyDown,
+} from '../ActivityFeedCardNew/ActivityFeedcardNew.utils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
-const getTaskRowGutter = (
+// What antd's Row/Col contributed: a wrapping flex row, and columns that never
+// outgrow it; `span={24}` columns take a full line.
+const COL_CLASS_NAME = 'tw:relative tw:max-w-full tw:min-h-px';
+const FULL_ROW_COL_CLASS_NAME = `${COL_CLASS_NAME} tw:shrink-0 tw:grow-0 tw:basis-full`;
+
+const getTaskRowGapClassName = (
   isTaskTestCaseResult: boolean,
   isTaskApprovalRequest: boolean,
   isTaskDescription: boolean
-): [number, number] | undefined => {
+): string | undefined => {
   if (isTaskTestCaseResult || isTaskApprovalRequest) {
-    return [0, 6];
+    return 'tw:gap-y-1.5';
   }
 
-  return isTaskDescription ? undefined : [0, 14];
+  return isTaskDescription ? undefined : 'tw:gap-y-3.5';
 };
 
 const getTaskStatusIcon = (status?: TaskEntityStatus) =>
@@ -327,11 +340,13 @@ const TaskFeedCardFromTask = ({
   // access, per-status action buttons) stays out of the component's own
   // cyclomatic complexity.
   const renderTaskFooter = () => (
-    <Col
-      className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
-      span={24}>
-      <Col className="d-flex">
-        <Col className="d-flex flex-center">
+    <div
+      className={classNames(
+        'task-feed-card-footer d-flex flex-wrap align-center justify-between',
+        FULL_ROW_COL_CLASS_NAME
+      )}>
+      <div className={classNames('d-flex', COL_CLASS_NAME)}>
+        <div className={classNames('d-flex flex-center', COL_CLASS_NAME)}>
           <ReplyIcon
             className="m-r-xs"
             height={20}
@@ -339,84 +354,100 @@ const TaskFeedCardFromTask = ({
             onClick={showReplies}
           />
           {commentsCount > 0 ? (
-            <Button
-              className="posts-length m-r-xss p-0 remove-button-default-styling"
+            <CoreButton
+              className="posts-length m-r-xss"
+              color="link-gray"
               data-testid="replies-count"
-              type="link"
-              onClick={showReplies}>
+              onPress={showReplies}>
               {t(getReplyCountLabelKey(commentsCount), {
                 number: commentsCount,
               })}
-            </Button>
+            </CoreButton>
           ) : null}
-        </Col>
+        </div>
 
-        <Col
-          className={`flex items-center gap-2 text-grey-muted ${
-            commentsCount > 0 ? 'task-card-assignee' : ''
-          }`}>
+        <div
+          className={classNames(
+            'flex items-center gap-2 text-grey-muted',
+            COL_CLASS_NAME,
+            { 'task-card-assignee': commentsCount > 0 }
+          )}>
           <Owner
             isCompactView={false}
             owners={task.assignees ?? []}
             showLabel={false}
           />
-        </Col>
-      </Col>
+        </div>
+      </div>
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-        <Col className="d-flex gap-2">
+        <div className={classNames('d-flex gap-2', COL_CLASS_NAME)}>
           {task.status === TaskEntityStatus.Open && (
-            <Button
-              className="task-card-approve-btn d-flex items-center"
+            <CoreButton
+              noTextPadding
+              className="task-card-approve-btn tw:h-8 tw:gap-2"
+              color="tertiary"
               data-testid="approve-button"
-              icon={<CheckCircleFilled />}
-              onClick={onTaskResolve}>
+              iconLeading={<CheckCircleFilled />}
+              onPress={onTaskResolve}>
               {t('label.approve')}
-            </Button>
+            </CoreButton>
           )}
           {task.status === TaskEntityStatus.Open && (
-            <Button
-              className="task-card-reject-btn d-flex items-center"
+            <CoreButton
+              noTextPadding
+              className="task-card-reject-btn tw:h-8 tw:gap-2"
+              color="tertiary"
               data-testid="reject-button"
-              icon={<CloseCircleFilled />}
-              type="default"
-              onClick={onTaskReject}>
+              iconLeading={<CloseCircleFilled />}
+              onPress={onTaskReject}>
               {t('label.reject')}
-            </Button>
+            </CoreButton>
           )}
-        </Col>
+        </div>
       )}
-    </Col>
+    </div>
   );
 
   return (
-    <Button
-      block
-      className="remove-button-default-styling"
-      type="text"
-      onClick={handleCardClick}>
+    <div
+      aria-label={`#${taskDisplayId} ${t(
+        TASK_ENTITY_TYPES[task.type] ?? 'label.task'
+      )}`}
+      className={CARD_CONTAINER_CLASS_NAME}
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={handleCardContainerKeyDown(handleCardClick)}>
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
         })}
         data-testid="task-feed-card">
-        <Row
-          gutter={getTaskRowGutter(
-            isTaskTestCaseResult,
-            isTaskApprovalRequest,
-            isTaskDescription
+        <div
+          className={classNames(
+            'tw:flex tw:min-w-0 tw:flex-wrap',
+            getTaskRowGapClassName(
+              isTaskTestCaseResult,
+              isTaskApprovalRequest,
+              isTaskDescription
+            )
           )}>
-          <Col className="d-flex flex-col align-start">
-            <Col>
+          <div
+            className={classNames(
+              'd-flex flex-col align-start',
+              COL_CLASS_NAME
+            )}>
+            <div className={COL_CLASS_NAME}>
               <Icon
                 className="m-r-xss m-t-xss text-md"
                 component={getTaskStatusIcon(task.status)}
                 data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
               />
               {taskLinkTitleElement}
-            </Col>
-            <Col style={{ marginTop: '-8px' }}>
-              <Typography.Text>
+            </div>
+            <div className={classNames('tw:-mt-2', COL_CLASS_NAME)}>
+              <span className="tw:text-primary">
                 <UserPopOverCard
                   key={task.createdBy?.name}
                   userName={task.createdBy?.name ?? ''}>
@@ -430,7 +461,9 @@ const TaskFeedCardFromTask = ({
                   {t('message.created-this-task-lowercase')}
                 </span>
                 {task.createdAt && (
-                  <Tooltip title={formatDateTime(task.createdAt)}>
+                  <Tooltip
+                    excludeTriggerFromTabOrder
+                    title={formatDateTime(task.createdAt)}>
                     <span
                       className="p-l-xss task-timestamp-text"
                       data-testid="timestamp">
@@ -438,10 +471,10 @@ const TaskFeedCardFromTask = ({
                     </span>
                   </Tooltip>
                 )}
-              </Typography.Text>
-            </Col>
-          </Col>
-          <Col span={24}>
+              </span>
+            </div>
+          </div>
+          <div className={FULL_ROW_COL_CLASS_NAME}>
             {isTaskTags && (
               <Card
                 bordered
@@ -449,14 +482,14 @@ const TaskFeedCardFromTask = ({
                 <TagsTaskFromTask hasEditAccess={false} task={task} />
               </Card>
             )}
-          </Col>
+          </div>
           {isTaskDescription && (
             <DescriptionTaskFromTask hasEditAccess={false} task={task} />
           )}
           {!isOpenInDrawer && renderTaskFooter()}
-        </Row>
+        </div>
       </div>
-    </Button>
+    </div>
   );
 };
 

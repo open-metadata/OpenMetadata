@@ -50,22 +50,6 @@
   }
 }
 
-.ant-tag.enum-key-tag {
-  width: max-content;
-  margin: 0;
-  padding: var(--om-space-2) var(--om-space-8);
-  border: 1px solid @text-color;
-  background: var(--tw-color-bg-primary);
-}
-
-// Light keeps the outlined chip; in dark the text-primary border + page bg
-// reads as a black chip with a white ring, so use the neutral utility chip.
-.dark-mode .ant-tag.enum-key-tag {
-  border-color: var(--tw-color-utility-gray-200);
-  background: var(--tw-color-utility-gray-50);
-  color: var(--tw-color-utility-gray-700);
-}
-
 .sql-query-custom-property {
   .ant-space-item:first-child {
     width: 100%;
@@ -77,15 +61,6 @@
   &::-webkit-scrollbar {
     display: none;
   }
-  .ant-card-body {
-    overflow-x: scroll;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
   .property-name {
     font-weight: var(--om-font-weight-regular);
   }
@@ -97,18 +72,6 @@
 
 .custom-property-card-right-panel {
   overflow-x: scroll;
-}
-
-.ant-tag.time-interval-separator {
-  height: 26px;
-  background: @grey-1;
-  padding: var(--om-space-4) var(--om-space-8);
-  border-radius: var(--om-radius-30);
-  margin-right: 0;
-  font-size: var(--om-font-size-xs);
-  text-align: center;
-  font-weight: var(--om-font-weight-medium);
-  line-height: 18px;
 }
 
 .custom-property-inline-edit-container {

@@ -12,68 +12,13 @@
  */
 @import (reference) '../../../../styles/variables.less';
 
-.test-title {
-  margin-top: var(--om-space-12);
-  margin-bottom: var(--om-space-10);
-  font-size: var(--om-font-size-13);
-  font-weight: var(--om-font-weight-semibold);
-}
-
-.incident-test-title {
-  margin-bottom: var(--om-space-10);
-  font-size: var(--om-font-size-13);
-  font-weight: var(--om-font-weight-semibold);
-}
-
-.incident-filter-buttons-container {
-  display: flex;
-  gap: var(--om-space-10);
-  overflow-x: auto;
-  margin-right: calc(-1 * var(--om-space-12));
-  padding-bottom: var(--om-space-8);
-  margin-bottom: var(--om-space-16);
-
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.data-quality-test-overview-section {
-  border-radius: var(--om-radius-lg);
-  border: 1px solid @grey-15;
-}
-.data-quality-test-overview-section-row {
-  padding-top: var(--om-space-12);
-  padding-bottom: var(--om-space-12);
-  padding-left: var(--om-space-16);
-  padding-right: var(--om-space-16);
-}
-.data-quality-tab-content {
-  padding-left: var(--om-space-16);
-  height: 100vh;
-  background-color: var(--om-color-bg-surface);
-}
-.dotted-row {
-  border-bottom: 1px dashed @grey-15;
-  padding-bottom: var(--om-space-10);
-}
-.stat-card-vertical-divider {
-  width: 1px;
-  align-self: stretch;
-  background-color: @grey-15;
-  margin-top: var(--om-space-12) !important;
-  margin-bottom: var(--om-space-12) !important;
-}
+// Kept in LESS: the incident stat cards' @purple-1 (#f2edfd) active fill has
+// no Tailwind token, so this block moves as one piece once one exists.
 .data-quality-tab-container {
+  // Also zeroes the border of the profiler DataQualityTab, which reuses this class.
   border: 0px !important;
 
   .incidents-tab-content {
-    padding-left: var(--om-space-16);
-    padding-right: var(--om-space-16);
-    background-color: var(--om-color-bg-surface);
     .incidents-stats-container {
       display: flex;
       border: 1px solid @grey-15;
@@ -254,141 +199,9 @@
         color: @green-600;
       }
     }
-
-    .test-cases-section {
-      .incident-cards-section {
-        margin-right: calc(-1 * var(--om-space-16));
-        margin-left: calc(-1 * var(--om-space-16));
-        .no-incidents {
-          text-align: center;
-          padding: var(--om-space-24);
-
-          .text-grey-muted {
-            color: @grey-10;
-            font-size: var(--om-font-size-sm);
-          }
-        }
-      }
-    }
-  }
-  .test-case-cards-section {
-    margin-top: var(--om-space-16);
   }
 
-  .test-case-card {
-    padding-bottom: var(--om-space-8);
-    border: 0.6px solid @grey-15;
-    margin-right: var(--om-space-16);
-    border-radius: var(--om-radius-10) !important;
-    margin-left: var(--om-space-16);
-
-    .test-case-card-content {
-      width: 100%;
-      .test-case-header {
-        border-top-right-radius: var(--om-radius-10) !important;
-        border-top-left-radius: var(--om-radius-10) !important;
-        padding-top: var(--om-space-12);
-        display: flex;
-        background-color: @grey-9;
-        justify-content: space-between;
-        align-items: center;
-        gap: var(--om-space-24);
-        padding-bottom: var(--om-space-12);
-        // @grey-9 bridges to gray-900 in dark, a black band on the gray-800 card;
-        // the translucent hover tint keeps the light header's "slightly lifted" read.
-        .dark-mode & {
-          background-color: var(--om-color-bg-secondary-hover);
-        }
-        .test-case-title-section {
-          flex: 1;
-          padding-left: var(--om-space-16);
-          .test-case-name {
-            font-size: var(--om-font-size-xs);
-            color: @grey-900;
-            font-weight: var(--om-font-weight-medium);
-            line-height: 20px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            word-break: break-word;
-          }
-        }
-
-        .test-case-status-section {
-          flex-shrink: 0;
-          display: flex;
-          align-items: flex-start;
-          padding-right: var(--om-space-14);
-        }
-      }
-
-      .test-case-details {
-        display: flex;
-        flex-direction: column;
-        gap: var(--om-space-8);
-
-        padding-top: var(--om-space-10);
-        .test-case-detail-item {
-          display: flex;
-          align-items: center;
-          padding-left: var(--om-space-16);
-          padding-right: var(--om-space-16);
-          gap: var(--om-space-4);
-          .detail-label {
-            font-size: var(--om-font-size-13);
-            color: @grey-700;
-            min-width: 60px;
-            font-weight: var(--om-font-weight-regular);
-
-            &::after {
-              content: ':';
-              margin-left: var(--om-space-2);
-            }
-          }
-
-          .detail-value {
-            font-size: var(--om-font-size-xs);
-            color: @grey-900;
-            font-weight: var(--om-font-weight-medium);
-          }
-
-          .assignee-info {
-            display: flex;
-            align-items: center;
-            gap: var(--om-space-6);
-            margin-left: var(--om-space-4);
-            .assignee-avatar {
-              background-color: @primary-7;
-              color: var(--tw-color-text-white);
-              font-size: var(--om-font-size-13) !important;
-              font-weight: var(--om-font-weight-semibold);
-              .ant-avatar-string {
-                line-height: 16px !important;
-              }
-            }
-
-            .assignee-name {
-              font-size: var(--om-font-size-xs);
-              color: @grey-11;
-              font-weight: var(--om-font-weight-medium);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  .no-test-cases {
-    text-align: center;
-    padding: var(--om-space-32) var(--om-space-16);
-    color: @grey-10;
-  }
-  .no-data-placeholder {
-    color: @grey-500 !important;
-    font-size: var(--om-font-size-13);
-  }
+  // Outranks the global `.searchbar-container` margin in EntityDetailsSection.less.
   .searchbar-container {
     margin-bottom: var(--om-space-4) !important;
   }

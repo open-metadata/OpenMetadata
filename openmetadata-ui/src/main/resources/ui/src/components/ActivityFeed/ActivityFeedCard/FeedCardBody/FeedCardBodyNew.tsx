@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -144,19 +144,18 @@ const FeedCardBodyNew = ({
           editAction={
             <div className="d-flex justify-end gap-2 m-r-xss">
               <Button
-                className="border border-primary text-primary rounded-4"
+                color="secondary-brand"
                 data-testid="cancel-button"
-                size="small"
-                onClick={onEditCancel}>
+                size="xs"
+                onPress={onEditCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="rounded-4"
+                color="primary"
                 data-testid="save-button"
-                disabled={!message.length}
-                size="small"
-                type="primary"
-                onClick={handleSave}>
+                isDisabled={!message.length}
+                size="xs"
+                onPress={handleSave}>
                 {t('label.save')}
               </Button>
             </div>
@@ -174,8 +173,15 @@ const FeedCardBodyNew = ({
   return (
     <div
       className={classNames(
-        showThread ? 'show-thread' : 'hide-thread',
-        isFeedWidget && 'feed-widget-body'
+        'tw:overflow-x-hidden tw:overflow-y-scroll tw:rounded-lg tw:border-[0.5px] tw:border-utility-gray-blue-100 tw:dark:border-subtle',
+        showThread
+          ? [
+              'tw:max-h-100 tw:bg-utility-gray-blue-50 tw:dark:bg-secondary_subtle',
+              isFeedWidget ? 'tw:mt-2.5 tw:px-4 tw:py-3' : 'tw:mt-5 tw:p-5',
+            ]
+          : // The collapsed well takes the card's own tone in dark (surface, or
+            // the brand tint when selected); a filled well reads black there.
+            'tw:mt-0.5 tw:max-h-50 tw:bg-surface tw:p-5 tw:[scrollbar-width:none] tw:dark:bg-transparent tw:[&::-webkit-scrollbar]:hidden'
       )}>
       {feedBodyRender}
     </div>

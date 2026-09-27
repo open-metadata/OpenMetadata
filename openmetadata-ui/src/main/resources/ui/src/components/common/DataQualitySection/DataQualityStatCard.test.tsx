@@ -13,24 +13,6 @@
 import { render, screen } from '@testing-library/react';
 import { DataQualityStatCard } from './DataQualityStatCard';
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
-
 describe('DataQualityStatCard', () => {
   const mockOnClick = jest.fn();
 

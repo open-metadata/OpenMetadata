@@ -13,14 +13,17 @@
 
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import {
+  Badge,
   Card,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
   Form,
   Input,
   Select,
-  Tag,
   TimePicker,
-  Tooltip,
-  Typography,
+  Typography as AntdTypography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -135,6 +138,13 @@ function getPropertyCountSuffix(
   return null;
 }
 
+// Light reproduces the outlined antd enum tag; dark is the neutral gray Badge.
+const ENUM_CHIP_CLASS_NAME = classNames(
+  'tw:h-6.5 tw:rounded-xs tw:px-[9px] tw:py-0 tw:leading-5',
+  'tw:bg-primary tw:text-primary tw:outline-[var(--tw-color-text-primary)]',
+  'tw:dark:bg-utility-gray-50 tw:dark:text-utility-gray-700 tw:dark:outline-utility-gray-200'
+);
+
 // Pure JSX helper (module scope): the right-panel view uses a plain wrapper div,
 // the default view wraps the same content in a Card.
 function renderCustomPropertyContainer(
@@ -154,9 +164,11 @@ function renderCustomPropertyContainer(
 
   return (
     <Card
-      className="w-full custom-property-card"
+      className="w-full custom-property-card tw:border-utility-gray-blue-100 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle"
       data-testid={`custom-property-${propertyName}-card`}>
-      {content}
+      <div className="tw:overflow-x-scroll tw:p-6 tw:scrollbar-hide">
+        {content}
+      </div>
     </Card>
   );
 }
@@ -960,11 +972,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           searchClassBase.getEntityIcon(item.type)
         )}
       </div>
-      <Typography.Text
+      <AntdTypography.Text
         className="text-left text-primary truncate w-max-full"
         ellipsis={{ tooltip: true }}>
         {getEntityName(item)}
-      </Typography.Text>
+      </AntdTypography.Text>
     </Link>
   );
 
@@ -991,16 +1003,29 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="w-max-full d-flex gap-2 flex-wrap"
             data-testid="enum-value">
             {value.map((val) => (
-              <Tooltip key={val} title={val} trigger="hover">
-                <Tag className="enum-key-tag">{val}</Tag>
+              <Tooltip
+                excludeTriggerFromTabOrder
+                key={val}
+                title={val}
+                triggerClassName="tw:inline-flex">
+                <Badge className={ENUM_CHIP_CLASS_NAME} size="sm">
+                  {val}
+                </Badge>
               </Tooltip>
             ))}
           </div>
         ) : (
-          <Tooltip key={value} title={value} trigger="hover">
-            <Tag className="enum-key-tag" data-testid="enum-value">
+          <Tooltip
+            excludeTriggerFromTabOrder
+            key={value}
+            title={value}
+            triggerClassName="tw:inline-flex">
+            <Badge
+              className={ENUM_CHIP_CLASS_NAME}
+              data-testid="enum-value"
+              size="sm">
               {value}
-            </Tag>
+            </Badge>
           </Tooltip>
         )}
       </>
@@ -1063,34 +1088,40 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           data-testid="time-interval-value">
           <div className="d-flex flex-column gap-2 items-center">
             <StartTimeIcon height={30} width={30} />
-            <Typography.Text className="property-value">{`${t(
+            <Typography className="property-value tw:text-primary">{`${t(
               'label.start-entity',
               {
                 entity: t('label.time'),
               }
-            )}`}</Typography.Text>
-            <Typography.Text className="text-sm text-grey-body property-value">
+            )}`}</Typography>
+            <Typography className="text-sm text-grey-body property-value">
               {timeInterval.start}
-            </Typography.Text>
+            </Typography>
           </div>
           <div className="d-flex items-center">
             <EndTimeArrowIcon />
-            <Tag className="time-interval-separator">
+            <Badge
+              className={classNames(
+                'tw:h-6.5 tw:px-[9px] tw:py-0 tw:text-xs tw:leading-[18px] tw:font-medium tw:text-primary',
+                'tw:bg-[var(--om-legacy-color-f8f8f8)] tw:outline-[var(--om-legacy-color-d9d9d9)]',
+                'tw:dark:bg-secondary tw:dark:outline-primary'
+              )}
+              size="sm">
               {calculateInterval(timeInterval.start, timeInterval.end)}
-            </Tag>
+            </Badge>
             <EndTimeArrowIcon />
           </div>
           <div className="d-flex flex-column gap-2 items-center">
             <EndTimeIcon height={30} width={30} />
-            <Typography.Text className="property-value">{`${t(
+            <Typography className="property-value tw:text-primary">{`${t(
               'label.end-entity',
               {
                 entity: t('label.time'),
               }
-            )}`}</Typography.Text>
-            <Typography.Text className="text-sm text-grey-body property-value">
+            )}`}</Typography>
+            <Typography className="text-sm text-grey-body property-value">
               {timeInterval.end}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
       );
@@ -1124,23 +1155,24 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const safeHref = isSafeUrl(hyperlinkValue.url) ? hyperlinkValue.url : '#';
 
       return (
-        <Typography.Link
-          className="break-all property-value"
+        <Typography
+          as="a"
+          className="break-all property-value not-prose"
           data-testid="hyperlink-value"
           href={safeHref}
           rel="noopener noreferrer"
           target="_blank">
           {hyperlinkValue.displayText || hyperlinkValue.url}
-        </Typography.Link>
+        </Typography>
       );
     };
 
     const renderDefaultValue = () => (
-      <Typography.Text
+      <Typography
         className="break-all text-grey-body property-value"
         data-testid="value">
         {value}
-      </Typography.Text>
+      </Typography>
     );
 
     const valueRenderers: Record<string, () => JSX.Element | null> = {
@@ -1216,20 +1248,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           placement="left"
           title={t('label.edit-entity', {
             entity: getEntityName(property),
-          })}>
+          })}
+          triggerClassName="tw:flex"
+          onTriggerPress={onShowInput}>
           <Icon
             component={EditIconComponent}
             data-testid={`edit-icon${
               isRenderedInRightPanel ? '-right-panel' : ''
             }`}
             style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-            tabIndex={0}
-            onClick={onShowInput}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                onShowInput();
-              }
-            }}
           />
         </Tooltip>
       )}
@@ -1256,17 +1283,17 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const customPropertyElement = (
     <div className="tw:flex tw:flex-col tw:gap-2" data-testid={propertyName}>
       <div className="d-flex items-center gap-1">
-        <Typography.Text
+        <Typography
           className="text-grey-body property-name"
           data-testid="property-name">
           {getEntityName(property)}
           {propertyCountSuffix}
-        </Typography.Text>
+        </Typography>
         {property.description && (
           <Tooltip
-            destroyTooltipOnHide
             placement="top"
-            title={getTextFromHtmlString(property.description)}>
+            title={getTextFromHtmlString(property.description)}
+            triggerClassName="tw:flex">
             <InfoCircleOutlined
               className="custom-property-description-icon"
               data-testid="custom-property-description-icon"

@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import React from 'react';
+import { DATA_QUALITY_FILL_CLASS } from './DataQualityProgressSegment';
 import { DataQualityLegendItemProps } from './DataQualitySection.interface';
 
 export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
@@ -24,11 +26,21 @@ export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
   }
 
   return (
-    <div className="legend-item">
-      <span className={`legend-dot ${type}`} />
-      <span className="legend-text">
-        <Typography.Text className="legend-text-label">{label}</Typography.Text>
-        <Typography.Text className="legend-text-value">{count}</Typography.Text>
+    <div className="legend-item tw:flex tw:items-center tw:gap-1">
+      <span
+        className={classNames(
+          `legend-dot ${type}`,
+          'tw:size-2 tw:shrink-0 tw:rounded-full',
+          DATA_QUALITY_FILL_CLASS[type]
+        )}
+      />
+      <span className="legend-text tw:font-medium">
+        <Typography className="legend-text-label tw:text-[13px] tw:text-utility-gray-700">
+          {label}
+        </Typography>
+        <Typography className="legend-text-value tw:ml-0.5 tw:text-[13px] tw:text-utility-gray-900">
+          {count}
+        </Typography>
       </span>
     </div>
   );

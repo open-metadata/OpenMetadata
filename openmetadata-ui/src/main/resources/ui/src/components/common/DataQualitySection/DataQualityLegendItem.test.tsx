@@ -13,24 +13,6 @@
 import { render, screen } from '@testing-library/react';
 import { DataQualityLegendItem } from './DataQualityLegendItem';
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
-
 describe('DataQualityLegendItem', () => {
   it('should render legend item with count and label', () => {
     render(<DataQualityLegendItem count={10} label="Passed" type="success" />);

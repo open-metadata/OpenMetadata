@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -35,6 +35,7 @@ import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEdito
 import '../ActivityFeedTab/activity-feed-tab.less';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import { TIMESTAMP_TOOLTIP_CLASS_NAME } from './ActivityFeedcardNew.utils';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
@@ -190,7 +191,7 @@ const CommentCard = ({
       <div className="w-full">
         <div className="d-flex items-center gap-2 tw:justify-between">
           <div className="d-flex items-center gap-2 flex-wrap">
-            <Typography.Text className="activity-feed-user-name reply-card-user-name">
+            <span className="activity-feed-user-name reply-card-user-name">
               <UserPopOverCard userName={authorName}>
                 <Link
                   className="reply-card-user-name"
@@ -198,22 +199,20 @@ const CommentCard = ({
                   {getEntityName(user)}
                 </Link>
               </UserPopOverCard>
-            </Typography.Text>
-            <Typography.Text className="seperator m-b-xss">
+            </span>
+            <span className="m-b-xss tw:pb-0.5 tw:align-middle tw:text-lg tw:font-extrabold tw:text-utility-gray-500">
               {seperator}
-            </Typography.Text>
-            <Typography.Text>
-              <Tooltip
-                color="white"
-                overlayClassName="timestamp-tooltip"
-                title={formatDateTime(createdAt)}>
-                <Typography.Text
-                  className="feed-card-header-v2-timestamp mr-2"
-                  data-testid="timestamp">
-                  {getRelativeTime(createdAt)}
-                </Typography.Text>
-              </Tooltip>
-            </Typography.Text>
+            </span>
+            <Tooltip
+              excludeTriggerFromTabOrder
+              containerClassName={TIMESTAMP_TOOLTIP_CLASS_NAME}
+              title={formatDateTime(createdAt)}>
+              <span
+                className="feed-card-header-v2-timestamp mr-2 tw:text-utility-gray-500!"
+                data-testid="timestamp">
+                {getRelativeTime(createdAt)}
+              </span>
+            </Tooltip>
           </div>
           <ActivityFeedActions
             isReply

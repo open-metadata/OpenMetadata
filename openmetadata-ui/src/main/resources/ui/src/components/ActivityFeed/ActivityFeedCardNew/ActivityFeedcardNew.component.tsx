@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  SkeletonParagraph,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
@@ -50,10 +56,16 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import {
+  COMMENTS_TRIGGER_CLASS_NAME,
+  TIMESTAMP_TOOLTIP_CLASS_NAME,
+} from './ActivityFeedcardNew.utils';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
+
+const POST_SKELETON_KEYS = ['first', 'second', 'third'];
 
 interface ActivityFeedCardNewProps {
   feed?: Conversation;
@@ -276,14 +288,14 @@ const ActivityFeedCardNew = ({
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
   const timestamp = timestampValue ? (
     <Tooltip
-      color="white"
-      overlayClassName="timestamp-tooltip"
+      excludeTriggerFromTabOrder
+      containerClassName={TIMESTAMP_TOOLTIP_CLASS_NAME}
       title={formatDateTime(timestampValue)}>
-      <Typography.Text
-        className="feed-card-header-v2-timestamp"
+      <span
+        className="feed-card-header-v2-timestamp tw:text-utility-gray-500!"
         data-testid="timestamp">
         {getRelativeTime(timestampValue)}
-      </Typography.Text>
+      </span>
     </Tooltip>
   ) : null;
 
@@ -309,11 +321,11 @@ const ActivityFeedCardNew = ({
     }
     if (isPostsLoading) {
       return (
-        <Space className="m-y-md" direction="vertical" size={16}>
-          <Skeleton active />
-          <Skeleton active />
-          <Skeleton active />
-        </Space>
+        <Box className="m-y-md" direction="col" gap={4}>
+          {POST_SKELETON_KEYS.map((key) => (
+            <SkeletonParagraph key={key} />
+          ))}
+        </Box>
       );
     }
 
@@ -325,7 +337,7 @@ const ActivityFeedCardNew = ({
     }
 
     return (
-      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+      <div className="p-l-0 p-r-0" data-testid="feed-replies">
         {orderedPosts.map((reply, index, arr) => {
           const conversationId = activity?.id ?? feed?.id ?? '';
           const canManage =
@@ -361,7 +373,7 @@ const ActivityFeedCardNew = ({
             />
           );
         })}
-      </Col>
+      </div>
     );
   }, [
     feed,
@@ -443,11 +455,11 @@ const ActivityFeedCardNew = ({
                     showThread,
                     entityRef?.type
                   )}>
-                  <Typography.Text
+                  <span
                     className="card-style-feed-header text-sm"
                     data-testid="headerText">
                     {feedHeaderText}
-                  </Typography.Text>
+                  </span>
 
                   {renderEntityLink}
                 </Space>
@@ -510,9 +522,9 @@ const ActivityFeedCardNew = ({
   const renderCommentsSection = () => (
     <div className="activity-feed-comments-container d-flex flex-col">
       {(showActivityFeedEditor || isOpenInDrawer) && (
-        <Typography.Text className="activity-feed-comments-title m-b-md">
+        <span className="activity-feed-comments-title m-b-md">
           {t('label.comment-plural')}
-        </Typography.Text>
+        </span>
       )}
       {showFeedEditor ? (
         <ActivityFeedEditorNew
@@ -538,12 +550,15 @@ const ActivityFeedCardNew = ({
             </UserPopOverCard>
           </div>
 
-          <Input
-            className="comments-input-field"
+          {/* Looks like an input but only opens the editor, so it is a button. */}
+          <Button
+            noTextPadding
+            className={COMMENTS_TRIGGER_CLASS_NAME}
+            color="tertiary"
             data-testid="comments-input-field"
-            placeholder={t('message.input-placeholder')}
-            onClick={() => setShowFeedEditor(true)}
-          />
+            onPress={() => setShowFeedEditor(true)}>
+            {t('message.input-placeholder')}
+          </Button>
         </div>
       )}
 
@@ -586,7 +601,7 @@ const ActivityFeedCardNew = ({
                   'header-container-right-panel': showThread,
                 })}
                 size={0}>
-                <Typography.Text
+                <span
                   className={classNames('mr-2', {
                     'activity-feed-user-name': !isPost,
                     'reply-card-user-name': isPost,
@@ -601,7 +616,7 @@ const ActivityFeedCardNew = ({
                       {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
-                </Typography.Text>
+                </span>
                 {timestamp}
               </Space>
               {!isPost && (
@@ -610,11 +625,11 @@ const ActivityFeedCardNew = ({
                     showThread,
                     entityRef?.type
                   )}>
-                  <Typography.Text
+                  <span
                     className="card-style-feed-header text-sm"
                     data-testid="headerText">
                     {feedHeaderText}
-                  </Typography.Text>
+                  </span>
 
                   {renderEntityLink}
                 </Space>
