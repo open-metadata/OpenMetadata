@@ -2192,8 +2192,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return;
       }
 
-      const validKeys = Array.from(keys);
-      const validSet = new Set(validKeys);
+      const nextKeys = Array.from(keys);
       const previousSelected = new Set(columnGridListing.selectedEntities);
       const finalSelection = new Set<string>();
       const addDescendantsToSelection = (rowId: string) => {
@@ -2201,10 +2200,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           finalSelection.add(descId)
         );
       };
-      validKeys.forEach(addDescendantsToSelection);
+      nextKeys.forEach(addDescendantsToSelection);
 
       previousSelected.forEach((id) => {
-        if (validSet.has(id)) {
+        if (keys.has(id)) {
           return;
         }
         getAllDescendantIds(id).forEach((descId) =>
@@ -2212,7 +2211,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       });
 
-      validKeys.forEach((id) => {
+      nextKeys.forEach((id) => {
         const entity = columnGridListing.entities.find((e) => e.id === id);
         const isGroupParent =
           entity?.isGroup && (entity.occurrenceCount ?? 0) > 1;
@@ -2246,15 +2245,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     ]
   );
 
-  // Real rows only: a fixed `colSpan` row throws `Cell count must match column count` mid-update.
-  const tableItems = filteredEntities;
-
+  // Loader is an overlay, not a row: a fixed-`colSpan` row breaks react-aria's cell count.
   const dataTable = useMemo(
     () => (
-      // Reserve body height: with no rows the table is just its header and the spinner lands on it.
       <div
+        aria-busy={columnGridListing.loading}
         className={classNames('tw:relative', {
-          'tw:min-h-40': columnGridListing.loading && isEmpty(tableItems),
+          // With no rows the table is only its header, so reserve room for the spinner.
+          'tw:min-h-40': columnGridListing.loading && isEmpty(filteredEntities),
         })}>
         {columnGridListing.loading && (
           <div
@@ -2264,6 +2262,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           </div>
         )}
         <Table
+          aria-label={t('label.column-bulk-operations')}
           className={TABLE_LAYOUT_CLASSES}
           data-testid="table-view-container"
           selectedKeys={selectedKeys}
@@ -2286,10 +2285,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               />
             )}
           </Table.Header>
-          <Table.Body items={tableItems as Iterable<ColumnGridRowData>}>
-            {(item) => {
-              const entity = item as ColumnGridRowData;
-
+          <Table.Body items={filteredEntities}>
+            {(entity) => {
               const isChildRow = Boolean(
                 entity.parentId || entity.isStructChild
               );
@@ -2320,7 +2317,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </div>
     ),
     [
-      tableItems,
+      filteredEntities,
       tableColumns,
       selectedKeys,
       handleTableSelectionChange,
@@ -2544,11 +2541,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Single source of truth for the empty state: no columns to show and not
   // mid-load. Drives both the placeholder and hiding the search/filter toolbar.
-  // `gridItems` too: `entities` lands two effects later, so the table would unmount for that frame.
+  // Skip while rows are being built, or the table unmounts for that frame.
   const isColumnDataEmpty =
     !columnGridListing.loading &&
-    isEmpty(filteredEntities) &&
-    isEmpty(columnGridListing.gridItems);
+    !columnGridListing.isBuildingRows &&
+    isEmpty(filteredEntities);
 
   // Pick the empty state that matches why the list is empty: an active search
   // shows the "no matching results" hint, active filters show the filter
