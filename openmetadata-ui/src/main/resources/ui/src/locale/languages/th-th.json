@@ -3732,7 +3732,7 @@
     "default-persona-removed-successfully": "บุคลิกภาพเริ่มต้นถูกลบเรียบร้อยแล้ว",
     "default-persona-set-successfully": "บุคลิกภาพเริ่มต้นถูกตั้งค่าเรียบร้อยแล้ว",
     "default-persona-update-error": "ไม่สามารถอัปเดตบุคลิกภาพเริ่มต้น กรุณาลองใหม่อีกครั้ง",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "กำหนดคุณสมบัติที่กำหนดเองสำหรับระดับคอลัมน์ในตารางและโมเดลข้อมูลแดชบอร์ด",
     "define-custom-property-for-entity": "กำหนดคุณสมบัติที่กำหนดเองสำหรับ {{entity}} ของคุณเพื่อตอบสนองความต้องการขององค์กร",
     "define-the-action-description": "ตัดสินใจว่าจะเกิดอะไรขึ้น: แจ้งเตือน มอบหมาย หรืออัปเดต",

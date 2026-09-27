@@ -3732,7 +3732,7 @@
     "default-persona-removed-successfully": "Персона по умолчанию была успешно удалена.",
     "default-persona-set-successfully": "Персона по умолчанию была успешно установлена.",
     "default-persona-update-error": "Не удалось обновить персону по умолчанию. Попробуйте снова.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "Определите дополнительные свойства для уровня столбца в таблицах и моделях данных панели.",
     "define-custom-property-for-entity": "Определите дополнительные поля для объектов типа «{{entity}}».",
     "define-the-action-description": "Решите, что произойдёт: уведомить, назначить или обновить.",

@@ -3732,7 +3732,7 @@
     "default-persona-removed-successfully": "デフォルトペルソナが正常に削除されました。",
     "default-persona-set-successfully": "デフォルトペルソナが正常に設定されました。",
     "default-persona-update-error": "デフォルトペルソナの更新に失敗しました。再試行してください。",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "テーブルとダッシュボードデータモデルのカラムレベルでカスタムプロパティを定義します。",
     "define-custom-property-for-entity": "{{entity}} にカスタムプロパティを定義して、組織のニーズに対応しましょう。",
     "define-the-action-description": "通知、割り当て、更新など、何を実行するかを決めます。",

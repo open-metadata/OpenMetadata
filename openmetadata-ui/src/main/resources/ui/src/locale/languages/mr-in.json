@@ -3732,7 +3732,7 @@
     "default-persona-removed-successfully": "डीफॉल्ट व्यक्तिमत्व यशस्वीरित्या काढले गेले.",
     "default-persona-set-successfully": "डीफॉल्ट व्यक्तिमत्व यशस्वीरित्या सेट केले गेले.",
     "default-persona-update-error": "डीफॉल्ट व्यक्तिमत्व अपडेट करण्यात अयशस्वी. कृपया पुन्हा प्रयत्न करा.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "टेबल्स आणि डॅशबोर्ड डेटा मॉडेल्सवर कॉलम पातळीसाठी सानुकूल गुणधर्म परिभाषित करा.",
     "define-custom-property-for-entity": "तुमच्या संस्थात्मक गरजा पूर्ण करण्यासाठी तुमच्या {{entity}} साठी सानुकूल गुणधर्म परिभाषित करा.",
     "define-the-action-description": "काय होते ते ठरवा: सूचित करा, नियुक्त करा किंवा अद्यतनित करा.",

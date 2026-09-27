@@ -3732,7 +3732,7 @@
     "default-persona-removed-successfully": "기본 페르소나가 성공적으로 제거되었습니다.",
     "default-persona-set-successfully": "기본 페르소나가 성공적으로 설정되었습니다.",
     "default-persona-update-error": "기본 페르소나 업데이트에 실패했습니다. 다시 시도해 주세요.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "테이블과 대시보드 데이터 모델의 열 수준에 대한 사용자 정의 속성을 정의하세요.",
     "define-custom-property-for-entity": "조직의 요구 사항을 충족시키기 위해 {{entity}}에 대한 사용자 정의 속성을 정의하세요.",
     "define-the-action-description": "알림, 할당, 업데이트 등 수행할 작업을 결정합니다.",

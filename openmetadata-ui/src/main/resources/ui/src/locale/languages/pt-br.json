@@ -3732,7 +3732,7 @@
     "default-persona-removed-successfully": "Persona padrão foi removida com sucesso.",
     "default-persona-set-successfully": "Persona padrão foi definida com sucesso.",
     "default-persona-update-error": "Falha ao atualizar persona padrão. Tente novamente.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "Defina as propriedades personalizadas para o nível da coluna em tabelas e modelos de dados de painel.",
     "define-custom-property-for-entity": "Defina propriedades personalizadas para {{entity}} para atender às necessidades da sua organização.",
     "define-the-action-description": "Decida o que acontece: notificar, atribuir ou atualizar.",

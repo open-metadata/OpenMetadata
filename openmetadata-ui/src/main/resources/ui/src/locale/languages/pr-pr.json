@@ -3732,7 +3732,7 @@
     "default-persona-removed-successfully": "ਡਿਫਾਲਟ ਸ਼ਖਸੀਅਤ ਸਫਲਤਾਪੂਰਵਕ ਹਟਾ ਦਿੱਤੀ ਗਈ.",
     "default-persona-set-successfully": "ਡਿਫਾਲਟ ਸ਼ਖਸੀਅਤ ਸਫਲਤਾਪੂਰਵਕ ਸੈੱਟ ਕਰ ਦਿੱਤੀ ਗਈ.",
     "default-persona-update-error": "ਡਿਫਾਲਟ ਸ਼ਖਸੀਅਤ ਨੂੰ ਅਪਡੇਟ ਕਰਨ ਵਿੱਚ ਅਸਫਲ. ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ.",
-    "default-time-format-description": "Configure the default time format for all users. Users can override this setting in their personal profile.",
+    "default-time-format-description": "Configure the default time format (12-hour or 24-hour) used to display timestamps for all users.",
     "define-custom-property-for-column": "جدول‌ها و مدل‌های دیتابورد ستون لوله‌ای سفارشی ویژگی‌ها را تعریف کنید.",
     "define-custom-property-for-entity": "ویژگی‌های سفارشی را برای {{entity}} خود تعریف کنید تا نیازهای سازمانی شما را برآورده کند.",
     "define-the-action-description": "تصمیم بگیرید چه اتفاقی بیفتد: اطلاع‌رسانی، تخصیص یا به‌روزرسانی.",
