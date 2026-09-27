@@ -95,7 +95,7 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
     // not raise the "session has timed out" banner, so assert the logged-out state.
     await evicted.reload();
     await evicted.waitForURL('**/signin', { timeout: 30_000 });
-    await expect(evicted.locator('button.signin-button')).toBeVisible();
+    await expect(evicted.getByTestId('sso-login-button')).toBeVisible();
 
     // The newest session is within the cap and stays authenticated.
     await survivor.reload();

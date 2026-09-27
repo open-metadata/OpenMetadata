@@ -49,6 +49,7 @@ const TestCases = () => {
     hasActiveFilters,
     clearAll,
     testCase,
+    entityPermissions,
     isLoading,
     pagingData,
     showPagination,
@@ -114,7 +115,7 @@ const TestCases = () => {
         testSummary={testCaseSummary}
       />
       <Box
-        className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+        className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
         direction="col">
         <Box className="tw:p-4">
           <TestCaseListTableHeader
@@ -137,6 +138,7 @@ const TestCases = () => {
           editVariant="modal"
           emptyStateAction={emptyStateAction}
           enableBulkActions={Boolean(testSuitePermission?.Create)}
+          entityPermissions={entityPermissions}
           fetchTestCases={sortTestCase}
           hasActiveFilters={hasActiveFilters}
           isLoading={isLoading}

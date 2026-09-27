@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import { getTags } from '../../../rest/tagAPI';
+import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import ClassificationDetails from './ClassificationDetails';
 
 const mockNavigate = jest.fn();
@@ -27,16 +29,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
   // from here, and a wholesale mock leaves them undefined.
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  Tooltip: ({
-    children,
-    title,
-  }: {
-    children: React.ReactNode;
-    title?: React.ReactNode;
-  }) => (
-    <div data-testid="tooltip" title={title as string}>
-      {children}
-    </div>
+  Tooltip: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tooltip">{children}</div>
   ),
   TooltipTrigger: ({
     children,
@@ -44,7 +38,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     children: React.ReactNode;
     className?: string;
-  }) => <button className={className}>{children}</button>,
+  }) => <span className={className}>{children}</span>,
   Badge: ({
     children,
     'data-testid': testId,
@@ -164,6 +158,10 @@ jest.mock('../../../rest/tagAPI', () => ({
     data: [],
     paging: { total: 0 },
   }),
+}));
+
+jest.mock('../../../rest/miscAPI', () => ({
+  postExactAggregateFieldOptions: jest.fn(),
 }));
 
 jest.mock('../../common/EntityDescription/Description', () =>
@@ -319,6 +317,15 @@ const mockTags: Tag[] = [
 ];
 
 const mockGetTags = getTags as jest.MockedFunction<typeof getTags>;
+const mockPostExactAggregateFieldOptions =
+  postExactAggregateFieldOptions as jest.MockedFunction<
+    typeof postExactAggregateFieldOptions
+  >;
+
+const mockUsageAggregation = (buckets: { key: string; doc_count: number }[]) =>
+  ({
+    data: { aggregations: { 'sterms#tags.tagFQN': { buckets } } },
+  } as unknown as Awaited<ReturnType<typeof postExactAggregateFieldOptions>>);
 
 const defaultProps = {
   classificationPermissions: ENTITY_PERMISSIONS,
@@ -343,6 +350,93 @@ describe('ClassificationDetails', () => {
       data: mockTags,
       paging: { total: 2 },
     });
+    mockPostExactAggregateFieldOptions.mockResolvedValue(
+      mockUsageAggregation([{ key: 'testclassification.tag1', doc_count: 12 }])
+    );
+  });
+
+  it('should fetch every tag usage count on the page in a single aggregation', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(mockPostExactAggregateFieldOptions).toHaveBeenCalledTimes(1)
+    );
+
+    expect(mockPostExactAggregateFieldOptions).toHaveBeenCalledWith(
+      {
+        index: 'all',
+        fieldName: 'tags.tagFQN',
+        fieldValue: '(testclassification\\.tag1|testclassification\\.tag2)',
+        size: 2,
+        deleted: false,
+      },
+      expect.any(AbortSignal)
+    );
+  });
+
+  it('should not request usage counts for a classification with no tags', async () => {
+    mockGetTags.mockResolvedValueOnce({ data: [], paging: { total: 0 } });
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('empty-tags-placeholder')).toBeInTheDocument()
+    );
+
+    expect(mockPostExactAggregateFieldOptions).not.toHaveBeenCalled();
+  });
+
+  it('should not request usage counts in version view', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} isVersionView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetTags).toHaveBeenCalled());
+
+    expect(mockPostExactAggregateFieldOptions).not.toHaveBeenCalled();
+  });
+
+  it('should render the aggregated usage count against each tag', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('usage-count-Tag1')).toHaveTextContent('12')
+    );
+
+    // No bucket came back for Tag2, which means zero assets, not unknown
+    expect(screen.getByTestId('usage-count-Tag2')).toHaveTextContent('0');
+  });
+
+  it('should fall back to a placeholder when the aggregation fails', async () => {
+    mockPostExactAggregateFieldOptions.mockRejectedValueOnce(
+      new Error('search unavailable')
+    );
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('usage-count-Tag1')).toHaveTextContent('--')
+    );
+
+    expect(screen.getByTestId('tag-row-Tag2')).toBeInTheDocument();
   });
 
   it('should display classification name, tags, and sidebar info', async () => {

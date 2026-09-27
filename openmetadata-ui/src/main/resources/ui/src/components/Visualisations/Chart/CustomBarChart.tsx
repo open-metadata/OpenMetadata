@@ -44,7 +44,7 @@ const CustomBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
-  const { cursorFill, grid } = useChartColors();
+  const { axis, cursorFill, grid } = useChartColors();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -95,7 +95,7 @@ const CustomBarChart = ({
           axisLine={false}
           dataKey="name"
           padding={{ left: 16, right: 16 }}
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickLine={false}
         />
 
@@ -103,7 +103,7 @@ const CustomBarChart = ({
           allowDataOverflow
           axisLine={false}
           padding={{ top: 16, bottom: 16 }}
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
           tickLine={false}
         />

@@ -90,20 +90,73 @@ class OmniTopic(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Users (SCIM)
+# ---------------------------------------------------------------------------
+
+
+class ScimEmail(BaseModel):
+    """One entry of a SCIM user's ``emails`` array."""
+
+    value: str | None = None
+    primary: bool | None = False
+
+
+class OmniUser(BaseModel):
+    """A SCIM user resource. ``id`` is the SCIM id, not a document owner id."""
+
+    id: str | None = None
+    displayName: str | None = None  # noqa: N815
+    userName: str | None = None  # noqa: N815
+    emails: list[ScimEmail] = Field(default_factory=list)
+
+    @property
+    def primary_email(self) -> str | None:
+        """Preferred email: the primary entry, else the first, else the username."""
+        for email in self.emails:
+            if email.primary and email.value:
+                return email.value
+        for email in self.emails:
+            if email.value:
+                return email.value
+        return self.userName
+
+
+class UsersResponse(BaseModel):
+    """SCIM ListResponse envelope returned by ``/scim/v2/Users``."""
+
+    Resources: list[OmniUser] | None = Field(default_factory=list)
+    totalResults: int | None = None  # noqa: N815
+    itemsPerPage: int | None = None  # noqa: N815
+    startIndex: int | None = None  # noqa: N815
+
+
+# ---------------------------------------------------------------------------
 # Documents (workbooks / dashboards)
 # ---------------------------------------------------------------------------
 
 
 class OmniOwner(BaseModel):
+    """A document owner as the documents API reports it: an id and a display name.
+
+    The id is not the owner's SCIM user id, so ``name`` is the only key shared
+    with the user directory.
+    """
+
     id: str | None = None
     name: str | None = None
-    email: str | None = None
 
 
 class OmniFolder(BaseModel):
     id: str | None = None
     name: str | None = None
     path: str | None = None
+
+
+class OmniLabel(BaseModel):
+    """A document label. The documents API reports these as objects, not strings."""
+
+    name: str | None = None
+    verified: bool | None = None
 
 
 class OmniDocument(BaseModel):
@@ -120,8 +173,12 @@ class OmniDocument(BaseModel):
     hasDashboard: bool | None = False  # noqa: N815
     url: str | None = None
     deleted: bool | None = False
-    labels: list[str] | None = Field(default_factory=list)
+    labels: list[OmniLabel] | None = Field(default_factory=list)
     updatedAt: str | None = None  # noqa: N815
+
+    @property
+    def label_names(self) -> list[str]:
+        return [label.name for label in self.labels or [] if label.name]
 
 
 class DocumentsResponse(BaseModel):

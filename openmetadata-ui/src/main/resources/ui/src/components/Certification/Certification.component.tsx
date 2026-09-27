@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Empty,
-  Popover,
-  Radio,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
+import { Button, Empty, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
+import { CERTIFICATION_CATEGORY } from '../../constants/constants';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
@@ -34,10 +35,19 @@ import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
-import { Icon } from '../common/Icon/Icon';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
+
+// Lazy-loaded from the dedicated `@openmetadata/ui-core-components/icon`
+// subpath (not the package root) so ICON_MAP's ~44 icon components — a plain
+// object a bundler cannot tree-shake key-by-key — never enter this eagerly
+// rendered component's chunk unless a certification actually has an iconURL.
+const Icon = lazy(() =>
+  import('@openmetadata/ui-core-components/icon').then((m) => ({
+    default: m.Icon,
+  }))
+);
 
 const Certification = ({
   currentCertificate = '',
@@ -67,7 +77,7 @@ const Certification = ({
 
     try {
       const response = await getTags({
-        parent: 'Certification',
+        parent: CERTIFICATION_CATEGORY,
         limit: 50,
         after: page > 1 ? paging.after : undefined,
         disabled: false,
@@ -161,12 +171,14 @@ const Certification = ({
 
             const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
             const renderedIcon = iconURL ? (
-              <Icon
-                alt={title}
-                fallback={<CertificationIcon height={28} width={28} />}
-                iconValue={iconURL}
-                size={28}
-              />
+              <Suspense fallback={<CertificationIcon height={28} width={28} />}>
+                <Icon
+                  alt={title}
+                  fallback={<CertificationIcon height={28} width={28} />}
+                  iconValue={iconURL}
+                  size={28}
+                />
+              </Suspense>
             ) : null;
 
             let iconContent: ReactNode;
@@ -263,29 +275,32 @@ const Certification = ({
       content={
         <FocusTrapWithContainer active={popoverProps?.open || false}>
           <Card
-            bordered={false}
-            className="certification-card"
-            data-testid="certification-cards"
-            title={
-              <Space className="w-full justify-between">
-                <div className="flex gap-2 items-center w-full">
-                  <CertificationIcon height={18} width={18} />
-                  <Typography.Text className="m-b-0 font-semibold text-sm">
-                    {t('label.edit-entity', {
-                      entity: t('label.certification'),
-                    })}
+            className="certification-card tw:overflow-visible tw:border-0 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
+            data-testid="certification-cards">
+            <div className="tw:-mb-px tw:flex tw:min-h-12 tw:w-full tw:items-center tw:text-base tw:leading-[1.5715] tw:font-medium tw:text-black/85 tw:dark:text-primary">
+              <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
+                <Space className="w-full justify-between">
+                  <div className="flex gap-2 items-center w-full">
+                    <CertificationIcon height={18} width={18} />
+                    <Typography.Text className="m-b-0 font-semibold text-sm">
+                      {t('label.edit-entity', {
+                        entity: t('label.certification'),
+                      })}
+                    </Typography.Text>
+                  </div>
+                  <Typography.Text
+                    className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
+                    data-testid="clear-certification"
+                    tabIndex={0}
+                    onClick={() => updateCertificationData()}
+                    onKeyDown={handleKeyboardActivation(
+                      updateCertificationData
+                    )}>
+                    {t('label.clear')}
                   </Typography.Text>
-                </div>
-                <Typography.Text
-                  className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
-                  data-testid="clear-certification"
-                  tabIndex={0}
-                  onClick={() => updateCertificationData()}
-                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
-                  {t('label.clear')}
-                </Typography.Text>
-              </Space>
-            }>
+                </Space>
+              </div>
+            </div>
             <Spin
               indicator={<Loader size="small" />}
               spinning={isLoadingCertificationData}>

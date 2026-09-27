@@ -32,10 +32,6 @@ jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-jest.mock('./QueryBuilderUtils', () => ({
-  getJsonTreeFromQueryFilter: jest.fn().mockReturnValue({}),
-}));
-
 jest.mock('./RouterUtils', () => ({
   getExplorePath: jest.fn().mockReturnValue('/explore'),
 }));

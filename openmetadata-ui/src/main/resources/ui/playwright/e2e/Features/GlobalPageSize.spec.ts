@@ -70,9 +70,13 @@ test.describe('Table & Data Model columns table pagination', () => {
     const menuItem1 = page.getByTestId('rows-per-page-option-50');
     const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' });
     await expect(async () => {
-      await pageSizeRecordBtn.click();
+      if (!(await menuItem1.isVisible())) {
+        await pageSizeRecordBtn.click({ timeout: 2_000 });
+      }
       await expect(menuItem1).toBeVisible({ timeout: 2_000 });
-      await menuItem1.click();
+      // The summary panel can resize the page and dismiss the popover. Let the
+      // outer retry reopen it if the option detaches during actionability checks.
+      await menuItem1.click({ timeout: 2_000 });
       await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
         '50'
       );

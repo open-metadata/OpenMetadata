@@ -197,8 +197,9 @@ public class CachedEntityDao {
     }
     String cacheKeyEntity = keys.entityByName(entityType, fqn);
     String cacheKeyRef = keys.refByName(entityType, fqn);
-    cache.del(cacheKeyEntity);
-    cache.del(cacheKeyRef);
+    // One DEL, not two: between two round trips a reader can see the entity alias evicted and the
+    // reference alias still live (or the reverse) and cache a half-stale view of the same entity.
+    cache.del(cacheKeyEntity, cacheKeyRef);
     LOG.debug("Invalidated cache for entity by name: {} -> {}", entityType, fqn);
   }
 
@@ -238,8 +239,7 @@ public class CachedEntityDao {
     }
     String entityCacheKey = keys.entityByName(entityType, fqn);
     String refCacheKey = keys.refByName(entityType, fqn);
-    cache.del(entityCacheKey);
-    cache.del(refCacheKey);
+    cache.del(entityCacheKey, refCacheKey);
     LOG.debug("Deleted corrupted cache entries for entity by name: {} -> {}", entityType, fqn);
   }
 

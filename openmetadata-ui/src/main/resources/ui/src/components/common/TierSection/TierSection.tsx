@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  ClassificationTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -20,7 +23,6 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import TierCard from '../TierCard/TierCard';
@@ -136,7 +138,7 @@ const TierSection: React.FC<TierSectionProps> = ({
       <TierCard
         currentTier={displayTier?.tagFQN}
         footerActionButtonsClassName="tier-card-footer-action-buttons"
-        popoverProps={{ open: popoverOpen }}
+        open={popoverOpen}
         tierCardClassName="tier-card-popover"
         updateTier={handleTierSelection}
         onClose={() => {
@@ -212,6 +214,8 @@ const TierSection: React.FC<TierSectionProps> = ({
         {canShowEditButton && (
           <EditIconButton
             newLook
+            aria-expanded={popoverOpen}
+            aria-haspopup="dialog"
             data-testid="edit-icon-tier"
             disabled={false}
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}

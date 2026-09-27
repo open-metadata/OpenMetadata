@@ -37,6 +37,7 @@ import type { StatusData } from '../../components/DataQuality/ChartWidgets/Statu
 import type { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import type { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { DEFAULT_DIMENSIONS_DATA } from '../../constants/DataQuality.constants';
+import { DATA_QUALITY_DIMENSION_INDEX_FIELD } from '../../constants/DataQualityDimension.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { DataQualityDimensions } from '../../enums/DataQuality.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
@@ -466,12 +467,12 @@ const buildDataQualityDimensionFilter = (dimension: string) => {
   if (dimension === DataQualityDimensions.NoDimension) {
     return {
       bool: {
-        must_not: [{ exists: { field: 'dataQualityDimension' } }],
+        must_not: [{ exists: { field: DATA_QUALITY_DIMENSION_INDEX_FIELD } }],
       },
     };
   }
 
-  return { term: { dataQualityDimension: dimension } };
+  return { term: { [DATA_QUALITY_DIMENSION_INDEX_FIELD]: dimension } };
 };
 
 type EsFilterClause = Record<string, unknown>;
@@ -935,10 +936,14 @@ export const transformToTestCaseStatusByDimension = (
   );
 
   inputData.forEach((item) => {
+    // The report keys each row by the aggregated Elasticsearch field name, not by the
+    // bucketName -- see SearchAggregation, which collects `field` into `dimensions`. The
+    // sibling `testCaseResult.testCaseStatus` key is the same shape.
     const {
       document_count,
       'testCaseResult.testCaseStatus': status,
-      dataQualityDimension = DataQualityDimensions.NoDimension,
+      [DATA_QUALITY_DIMENSION_INDEX_FIELD]:
+        dataQualityDimension = DataQualityDimensions.NoDimension,
     } = item;
     const count = parseInt(document_count, 10);
 

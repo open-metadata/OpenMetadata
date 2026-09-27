@@ -15,11 +15,16 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, Edit01, Trash01, XCircle } from '@untitledui/icons';
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+} from '@openmetadata/ui-core-components/icons';
+import { CheckCircle, XCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import React, {
   ComponentProps,
@@ -32,7 +37,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -69,9 +73,11 @@ import {
 } from '../../../../../utils/FeedUtilsPure';
 import { getTestCaseDetailPagePath } from '../../../../../utils/RouterUtils';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
+import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
 import { getTaskDetailPathFromTask } from '../../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import ActivityFeedEditorNew from '../../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { getTaskStatusBadge } from '../taskResolution.utils';
 import {
   buildResolveBody,
@@ -255,110 +261,6 @@ interface TaskCommentRowProps {
   onChanged: () => void;
 }
 
-interface CommentPermissions {
-  canDelete: boolean;
-  canEdit: boolean;
-  canModify: boolean;
-}
-
-/** The comment's author may edit or delete it; an admin may also delete it. */
-const resolveCommentPermissions = (
-  currentUser: { name?: string; isAdmin?: boolean } | undefined,
-  comment: TaskComment
-): CommentPermissions => {
-  const isAuthor =
-    Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
-  const canEdit = isAuthor;
-  const canDelete = isAuthor || Boolean(currentUser?.isAdmin);
-
-  return { canEdit, canDelete, canModify: canEdit || canDelete };
-};
-
-interface TaskCommentActionsProps {
-  canDelete: boolean;
-  canEdit: boolean;
-  onDeleteRequest: () => void;
-  onEditRequest: () => void;
-}
-
-/** Hover-only edit/delete affordances for a comment row. */
-const TaskCommentActions = ({
-  canDelete,
-  canEdit,
-  onDeleteRequest,
-  onEditRequest,
-}: TaskCommentActionsProps) => (
-  <Box align="center" data-testid="task-comment-actions" gap={1}>
-    {canEdit && (
-      <Edit01
-        className="tw:cursor-pointer tw:text-secondary"
-        data-testid="edit-task-comment"
-        height={16}
-        width={16}
-        onClick={onEditRequest}
-      />
-    )}
-    {canDelete && (
-      <Trash01
-        className="tw:cursor-pointer tw:text-error-primary"
-        data-testid="delete-task-comment"
-        height={16}
-        width={16}
-        onClick={onDeleteRequest}
-      />
-    )}
-  </Box>
-);
-
-interface TaskCommentBodyProps {
-  comment: TaskComment;
-  isEditing: boolean;
-  onCancelEdit: () => void;
-  onSave: (message: string) => Promise<void>;
-}
-
-/** The comment's editor when editing, else its rendered markdown. */
-const TaskCommentBody = ({
-  comment,
-  isEditing,
-  onCancelEdit,
-  onSave,
-}: TaskCommentBodyProps) => {
-  const { t } = useTranslation();
-
-  if (isEditing) {
-    return (
-      <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
-        <ActivityFeedEditorNew
-          focused
-          defaultValue={MarkdownToHTMLConverter.makeHtml(
-            getFrontEndFormat(comment.message)
-          )}
-          onSave={onSave}
-        />
-        <Box align="center" className="tw:justify-end">
-          <Button
-            color="link-gray"
-            data-testid="cancel-edit-task-comment"
-            size="sm"
-            onPress={onCancelEdit}>
-            {t('label.cancel')}
-          </Button>
-        </Box>
-      </Box>
-    );
-  }
-
-  return (
-    <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3">
-      <RichTextEditorPreviewerV1
-        className="inbox-feed-message tw:text-sm"
-        markdown={getFrontEndFormat(comment.message)}
-      />
-    </Box>
-  );
-};
-
 /**
  * A single task comment with author, message and timestamp. The comment's author
  * can edit or delete it (admins can also delete); the actions surface on hover.
@@ -379,7 +281,6 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
     canModify: canModifyComment,
   } = resolveCommentPermissions(currentUser, comment);
 
-  const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -414,42 +315,86 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
   }, [taskId, comment.id, onChanged]);
 
   return (
+    // align="start" keeps the avatar pinned to the top of the row, and the
+    // content column holds everything else so the message and timestamp line
+    // up under the author name instead of under the avatar.
     <Box
-      className="tw:relative"
+      align="start"
+      className="tw:relative tw:group"
       data-testid="task-comment-card"
-      direction="col"
-      gap={2}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      <Box align="center" className="tw:justify-between" gap={2}>
-        <Box align="center" gap={2}>
-          <ProfilePicture
-            displayName={authorName}
-            name={comment.author?.name ?? ''}
-            width="28"
-          />
+      gap={2}>
+      <ProfilePicture
+        displayName={authorName}
+        name={comment.author?.name ?? ''}
+        width="28"
+      />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        <Box align="center" className="tw:justify-between" gap={2}>
           <Typography size="text-sm" weight="semibold">
             {authorName}
           </Typography>
+          {!isEditing && canModifyComment && (
+            // Real buttons, kept mounted and revealed with opacity: unmounting
+            // them until hover puts them out of reach of the keyboard.
+            <div
+              aria-label={t('label.action-plural')}
+              className="tw:flex tw:items-center tw:gap-1 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
+              data-testid="task-comment-actions"
+              role="group">
+              {canEdit && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="edit-task-comment"
+                  icon={EditIcon}
+                  size="xs"
+                  tooltip={t('label.edit')}
+                  onClick={() => setIsEditing(true)}
+                />
+              )}
+              {canDelete && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="delete-task-comment"
+                  icon={DeleteIcon}
+                  size="xs"
+                  tooltip={t('label.delete')}
+                  onClick={() => setShowDeleteDialog(true)}
+                />
+              )}
+            </div>
+          )}
         </Box>
-        {isHovered && !isEditing && canModifyComment && (
-          <TaskCommentActions
-            canDelete={canDelete}
-            canEdit={canEdit}
-            onDeleteRequest={() => setShowDeleteDialog(true)}
-            onEditRequest={() => setIsEditing(true)}
-          />
+        {isEditing ? (
+          <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
+            <ActivityFeedEditorNew
+              focused
+              defaultValue={MarkdownToHTMLConverter.makeHtml(
+                getFrontEndFormat(comment.message)
+              )}
+              onSave={handleEditSave}
+            />
+            <Box align="center" className="tw:justify-end">
+              <Button
+                color="link-gray"
+                data-testid="cancel-edit-task-comment"
+                size="sm"
+                onPress={() => setIsEditing(false)}>
+                {t('label.cancel')}
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3">
+            <RichTextEditorPreviewerV1
+              className="inbox-feed-message tw:text-sm"
+              markdown={getFrontEndFormat(comment.message)}
+            />
+          </Box>
         )}
+        <Typography className="tw:text-secondary" size="text-xs">
+          {getRelativeTime(comment.createdAt)}
+        </Typography>
       </Box>
-      <TaskCommentBody
-        comment={comment}
-        isEditing={isEditing}
-        onCancelEdit={() => setIsEditing(false)}
-        onSave={handleEditSave}
-      />
-      <Typography className="tw:text-secondary" size="text-xs">
-        {getRelativeTime(comment.createdAt)}
-      </Typography>
 
       <DeleteModal
         entityTitle={t('label.comment')}

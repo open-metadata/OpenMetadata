@@ -12,19 +12,6 @@
  */
 import { expect, Page } from '@playwright/test';
 
-export const expectBreadcrumbCrumbsUnique = async (page: Page) => {
-  const breadcrumb = page.getByTestId('breadcrumb');
-
-  await expect(breadcrumb).toBeVisible();
-
-  const crumbLabels = (await breadcrumb.getByRole('listitem').allInnerTexts())
-    .map((label) => label.trim())
-    .filter((label) => label.length > 0);
-
-  expect(crumbLabels.length).toBeGreaterThan(0);
-  expect(new Set(crumbLabels).size).toBe(crumbLabels.length);
-};
-
 // The DataAssetsHeader breadcrumb auto-collapses: when the trail is too wide for
 // its row, the middle crumbs move into a `…` overflow menu (the first + current
 // crumbs always stay inline). These helpers read/navigate ancestors whether a

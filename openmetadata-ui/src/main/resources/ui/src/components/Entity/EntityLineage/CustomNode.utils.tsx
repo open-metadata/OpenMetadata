@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
-import { Button, Skeleton, Typography } from 'antd';
+import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -23,6 +24,7 @@ import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import { EntityChildrenItem } from './NodeChildren/NodeChildren.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -148,23 +150,30 @@ export const getCollapseHandle = (
 ) => {
   return (
     <Button
+      aria-label={t('label.collapse')}
+      // custom-node.less `.react-flow .lineage-node-handle` owns size, radius,
+      // border colour and surface bg (!important); these only replace what the
+      // antd button supplied (1px border, no padding).
       className={classNames(
-        'absolute lineage-node-minus lineage-node-handle flex-center',
+        'absolute lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border tw:p-0!',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      color="tertiary"
       data-testid={
         direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      icon={
-        <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
+      iconLeading={
+        <MinusIcon
+          className="lineage-expand-icon tw:dark:[&_path]:fill-fg-quaternary"
+          data-testid="minus-icon"
+        />
       }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
+      size="sm"
+      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();
       }}
@@ -284,6 +293,7 @@ const ColumnContentInner = ({
     <div
       className={classNames(`custom-node-column-container ${className}`, {
         'custom-node-header-column-tracing': isColumnTraced,
+        'tw:dark:text-primary': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
       role="presentation"
@@ -362,6 +372,14 @@ export function shouldShowNodeRemoveButton({
   return isRemovableSelection && !isRootNode && isNodeRemovable;
 }
 
+/**
+ * Dark swaps the static grey node/badge/handle borders (custom-node.less
+ * `@lineage-border`) for border-primary. A variable rather than a border class so
+ * the less hover/highlight/tracing states keep winning over it.
+ */
+export const LINEAGE_NODE_DARK_CLASS =
+  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
+
 export function getNodeClassNames({
   isSelected,
   showDqTracing,
@@ -377,6 +395,7 @@ export function getNodeClassNames({
 }) {
   return classNames(
     'lineage-node p-0',
+    LINEAGE_NODE_DARK_CLASS,
     isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
     {
       'data-quality-failed-custom-node-header': showDqTracing,

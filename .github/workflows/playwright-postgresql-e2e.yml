@@ -181,7 +181,15 @@ jobs:
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
-          pattern: playwright-results-json-*
+          # Restrict the glob to the current workflow attempt so a re-run
+          # cannot pull in a prior attempt's stale ci-status.json (which
+          # would otherwise outrank a green retry copy in the renderer's
+          # dedup and permanently red the required check). See run
+          # 35650435023: 4 shards' attempt-1 `-retry` uploads carried
+          # `downloadDistribution: failure` from an artifact-service 403;
+          # attempt-2 re-ran them green, but the summary kept counting
+          # attempt-1's failures because they matched the pattern too.
+          pattern: playwright-results-json-*-a${{ github.run_attempt }}*
           path: results
           # Pin the per-artifact subdirectory layout the renderer expects
           # (results/playwright-results-json-<shardId>/results.json). When

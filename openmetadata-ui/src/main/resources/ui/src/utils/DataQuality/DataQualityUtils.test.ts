@@ -51,6 +51,7 @@ import {
   getTestCaseFiltersValue,
   getTestCaseTabPath,
   parseColumnAggregateBuckets,
+  transformToTestCaseStatusByDimension,
   transformToTestCaseStatusObject,
 } from './DataQualityPureUtils';
 jest.mock('../../constants/profiler.constant', () => ({
@@ -870,7 +871,7 @@ describe('DataQualityUtils', () => {
         'originEntityFQN',
         'service.name.keyword',
         'testPlatforms',
-        'dataQualityDimension',
+        'dataQualityDimensionName',
         'testCaseResult.testCaseStatus',
         'entityLink',
         'testCaseResult.timestamp',
@@ -901,11 +902,11 @@ describe('DataQualityUtils', () => {
 
       expect(result).toContainEqual({
         bool: {
-          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+          must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
         },
       });
       expect(result).not.toContainEqual({
-        term: { dataQualityDimension: DataQualityDimensions.NoDimension },
+        term: { dataQualityDimensionName: DataQualityDimensions.NoDimension },
       });
     });
 
@@ -1555,6 +1556,72 @@ describe('DataQualityUtils', () => {
         )
       ).toBe(false);
       expect(patch.some((op) => op.path === '/topDimensions')).toBe(false);
+    });
+  });
+});
+
+describe('transformToTestCaseStatusByDimension', () => {
+  // The DQ report keys each aggregation row by the Elasticsearch field name, not by the
+  // bucketName, so this transform must read the same field the aggregation asked for.
+  const row = (
+    dimension: string | undefined,
+    status: string,
+    count: string
+  ) => ({
+    ...(dimension ? { dataQualityDimensionName: dimension } : {}),
+    'testCaseResult.testCaseStatus': status,
+    document_count: count,
+  });
+
+  it('should tally counts against the dimension from the renamed index field', () => {
+    const result = transformToTestCaseStatusByDimension([
+      row('Accuracy', 'success', '3'),
+      row('Accuracy', 'failed', '2'),
+      row('Completeness', 'aborted', '1'),
+    ] as DataQualityReport['data']);
+
+    expect(result).toContainEqual({
+      title: 'Accuracy',
+      success: 3,
+      failed: 2,
+      aborted: 0,
+      total: 5,
+    });
+    expect(result).toContainEqual({
+      title: 'Completeness',
+      success: 0,
+      failed: 0,
+      aborted: 1,
+      total: 1,
+    });
+  });
+
+  it('should not collapse every dimension into No Dimension', () => {
+    const result = transformToTestCaseStatusByDimension([
+      row('Accuracy', 'success', '3'),
+      row('Completeness', 'success', '4'),
+    ] as DataQualityReport['data']);
+
+    const noDimension = result.find(
+      ({ title }) => title === DataQualityDimensions.NoDimension
+    );
+
+    expect(noDimension?.total ?? 0).toBe(0);
+  });
+
+  it('should fall back to No Dimension when the row carries no dimension', () => {
+    const result = transformToTestCaseStatusByDimension([
+      row(undefined, 'failed', '7'),
+    ] as DataQualityReport['data']);
+
+    expect(
+      result.find(({ title }) => title === DataQualityDimensions.NoDimension)
+    ).toEqual({
+      title: DataQualityDimensions.NoDimension,
+      success: 0,
+      failed: 7,
+      aborted: 0,
+      total: 7,
     });
   });
 });

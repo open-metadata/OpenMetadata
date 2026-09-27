@@ -12,14 +12,14 @@
  */
 
 import { ProjectionState } from '../generated/api/rdf/rdfStatus';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   fetchRdfConfig,
   runGlossarySparqlQuery,
   runSparqlQuery,
 } from './rdfAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
 }));

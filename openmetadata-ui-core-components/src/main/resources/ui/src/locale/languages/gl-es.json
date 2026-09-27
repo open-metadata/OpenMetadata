@@ -28,12 +28,14 @@
     "pagination-navigation": "Navegación de paxinación",
     "previous-page": "Ir á páxina anterior",
     "records": "Rexistros",
+    "remove-entity": "Eliminar {{entity}}",
     "remove-filter": "Eliminar filtro",
     "search": "Buscar",
     "select-all": "Seleccionar todo",
     "select-dates": "Seleccionar datas",
     "select-only-one-row": "Seleccionar unha fila",
     "show-hidden-breadcrumbs": "Amosar migas de pan ocultas",
-    "today": "Hoxe"
+    "today": "Hoxe",
+    "tree-select": "Selección de árbore"
   }
 }

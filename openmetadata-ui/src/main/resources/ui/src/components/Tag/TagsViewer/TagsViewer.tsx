@@ -12,8 +12,11 @@
  */
 
 import {
+  AutoClassificationTag,
   Box,
   Button,
+  ClassificationTag,
+  GlossaryTag,
   Popover,
   PopoverTrigger,
   Tooltip,
@@ -32,9 +35,6 @@ import EntityLink from '../../../utils/EntityLink';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
-import AutoClassificationTag from '../../common/atoms/Tag/AutoClassificationTag';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
-import GlossaryTag from '../../common/atoms/Tag/GlossaryTag';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
 

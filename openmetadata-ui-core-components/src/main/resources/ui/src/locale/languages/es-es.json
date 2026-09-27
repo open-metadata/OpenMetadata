@@ -28,12 +28,14 @@
     "pagination-navigation": "Navegación de paginación",
     "previous-page": "Ir a la página anterior",
     "records": "Registros",
+    "remove-entity": "Eliminar {{entity}}",
     "remove-filter": "Eliminar filtro",
     "search": "Buscar",
     "select-all": "Seleccionar todo",
     "select-dates": "Seleccionar fechas",
     "select-only-one-row": "Seleccionar una fila",
     "show-hidden-breadcrumbs": "Mostrar migas de pan ocultas",
-    "today": "Hoy"
+    "today": "Hoy",
+    "tree-select": "Selección de árbol"
   }
 }

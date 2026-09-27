@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isEmpty } from 'lodash';
 import type { LineageScene } from '../../src/generated/api/lineage/lineageScene';
 import { SidebarItem } from '../constant/sidebar';
@@ -157,6 +157,201 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
   }
 };
 
+/**
+ * Drags the React Flow camera by (dx, dy) without touching a node.
+ *
+ * The grip has to be a point the pane itself owns: starting the drag on a node
+ * moves that node instead of the camera, and starting it on a connection handle
+ * begins drawing an edge.
+ */
+const panCanvas = async (page: Page, dx: number, dy: number) => {
+  const paneBounds = await page.locator('.react-flow__pane').boundingBox();
+  if (!paneBounds) {
+    throw new Error('The lineage canvas has no bounds');
+  }
+
+  const grip = await page.evaluate((bounds) => {
+    for (let row = 0.2; row <= 0.85; row += 0.1) {
+      for (let column = 0.4; column <= 0.9; column += 0.1) {
+        const x = bounds.x + bounds.width * column;
+        const y = bounds.y + bounds.height * row;
+        if (
+          document
+            .elementFromPoint(x, y)
+            ?.classList.contains('react-flow__pane')
+        ) {
+          return { x, y };
+        }
+      }
+    }
+
+    return null;
+  }, paneBounds);
+
+  if (!grip) {
+    throw new Error('The lineage canvas has no empty point to drag from');
+  }
+
+  await page.mouse.move(grip.x, grip.y);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + dx, grip.y + dy, { steps: 8 });
+  await page.mouse.up();
+};
+
+/**
+ * Pans until the marker's midpoint is the point the canvas actually receives.
+ *
+ * Edit mode paints a 110px node palette over the pane's left edge
+ * (`.entity-lineage.sidebar.open` is absolute at `left: 0` with a z-index above
+ * the canvas), while fitView measures the whole pane. A midpoint that lands in
+ * that strip still satisfies `toBeInViewport` — that compares against the
+ * viewport rectangle, not against what is painted on top — so the coordinate
+ * click below goes to the palette instead: the edge is never selected, the
+ * toolbar never opens, and the caller's retry loop repeats the same dead click
+ * until the test times out.
+ */
+const clearMidpointOfOverlays = async (page: Page, marker: Locator) => {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const box = await marker.boundingBox();
+    if (!box) {
+      return false;
+    }
+
+    const shift = await page.evaluate(
+      ([pointX, pointY]) => {
+        const top = document.elementFromPoint(pointX, pointY);
+        const flow = document.querySelector('.react-flow');
+        if (!top || !flow || top.closest('.react-flow')) {
+          return null;
+        }
+
+        // Climb to the outermost element that is still only the overlay: the
+        // first ancestor that also wraps the canvas is the shared container,
+        // and shifting by its width would throw the graph off screen.
+        let overlay = top;
+        while (
+          overlay.parentElement &&
+          overlay.parentElement !== document.body &&
+          !overlay.parentElement.contains(flow)
+        ) {
+          overlay = overlay.parentElement;
+        }
+        const bounds = overlay.getBoundingClientRect();
+        const margin = 8;
+        const right = bounds.right - pointX + margin;
+        const left = pointX - bounds.left + margin;
+        const down = bounds.bottom - pointY + margin;
+        const up = pointY - bounds.top + margin;
+        const dx = right <= left ? right : -left;
+        const dy = down <= up ? down : -up;
+
+        return Math.abs(dx) <= Math.abs(dy) ? { dx, dy: 0 } : { dx: 0, dy };
+      },
+      [box.x + box.width / 2, box.y + box.height / 2]
+    );
+
+    if (!shift) {
+      return true;
+    }
+
+    await panCanvas(page, shift.dx, shift.dy);
+  }
+
+  return false;
+};
+
+const clickCanvasEdge = async (page: Page, marker: Locator) => {
+  await fitToScreen(page);
+  await expect(marker).toBeInViewport();
+  const viewport = page.locator('.react-flow__viewport');
+  const getZoom = () =>
+    viewport.evaluate(
+      (element) => new DOMMatrix(getComputedStyle(element).transform).a
+    );
+  const zoom = await getZoom();
+  const initialBounds = await marker.boundingBox();
+  if (!initialBounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // At overview scale neighbouring curves collapse into the same screen pixel.
+  // Zoom around this edge before clicking, using React Flow's wheel interaction.
+  if (zoom < 1) {
+    await page.mouse.move(
+      initialBounds.x + initialBounds.width / 2,
+      initialBounds.y + initialBounds.height / 2
+    );
+    await page.mouse.wheel(0, -500 * Math.log2(1 / zoom));
+    await expect.poll(getZoom).toBeGreaterThanOrEqual(0.99);
+  }
+
+  expect(
+    await clearMidpointOfOverlays(page, marker),
+    'the edge midpoint stayed behind an overlay'
+  ).toBe(true);
+
+  await expect(marker).toBeInViewport();
+
+  // The click below is by screen coordinate, so the midpoint has to stop moving
+  // first. React Flow re-lays the graph out after every deletion, and a box read
+  // while that is in flight puts the click on a NEIGHBOURING edge -- which still
+  // opens a toolbar and still deletes something, just not the edge asked for.
+  // Hold until two consecutive reads agree before taking the coordinates.
+  let previous: { x: number; y: number } | null = null;
+  await expect
+    .poll(
+      async () => {
+        const box = await marker.boundingBox();
+        if (!box) {
+          previous = null;
+
+          return false;
+        }
+        const settled =
+          previous !== null &&
+          Math.abs(box.x - previous.x) < 1 &&
+          Math.abs(box.y - previous.y) < 1;
+        previous = { x: box.x, y: box.y };
+
+        return settled;
+      },
+      { timeout: 15_000 }
+    )
+    .toBe(true);
+
+  const bounds = await marker.boundingBox();
+  if (!bounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // Canvas edges receive real pointer events through the React Flow pane above
+  // the test-only midpoint marker, rather than through the marker's DOM button.
+  await page.mouse.click(
+    bounds.x + bounds.width / 2,
+    bounds.y + bounds.height / 2
+  );
+};
+
+// computeEdgeDataTestId only names the midpoint marker `pipeline-label-*` once
+// the edge's own details have loaded — the scene returns skeletal edges and each
+// pipeline arrives later via getLineageEdge. Until then the same marker still
+// carries the plain `edge-*` id. Exactly one is present for a given edge and
+// both open the same toolbar, so accept either rather than racing the hydration.
+const edgeMarker = (
+  page: Page,
+  fromNodeFqn: string | undefined,
+  toNodeFqn: string | undefined,
+  isPipeline: boolean
+) => {
+  const plainEdge = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
+
+  return isPipeline
+    ? page
+        .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
+        .or(plainEdge)
+    : plainEdge;
+};
+
 export const clickEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -166,14 +361,10 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const edgeDiv = page.getByTestId(
-    isPipeline
-      ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
-      : `edge-${fromNodeFqn}-${toNodeFqn}`
+  await clickCanvasEdge(
+    page,
+    edgeMarker(page, fromNodeFqn, toNodeFqn, isPipeline)
   );
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -183,9 +374,7 @@ export const clickEdgeBetweenColumns = async (
 ) => {
   const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
+  await clickCanvasEdge(page, edgeDiv);
 };
 
 export const deleteEdge = async (
@@ -850,6 +1039,18 @@ export const getEntityColumns = (
     return get(entity, 'entityResponseData.mlFeatures', []);
   } else if (entityName === 'searchIndex') {
     return get(entity, 'entityResponseData.fields', []);
+  } else if (entityName === 'metric') {
+    // A metric has no columns -- it is its own column-lineage endpoint.
+    return [
+      {
+        name: get(entity, 'entityResponseData.name', ''),
+        fullyQualifiedName: get(
+          entity,
+          'entityResponseData.fullyQualifiedName',
+          ''
+        ),
+      },
+    ];
   }
 
   return [];
@@ -1283,8 +1484,14 @@ export const verifyPlatformLineageForEntity = async (
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
   await expect(fromNode).toBeVisible();
 
-  // ensure node will be visible in the viewport
-  await performZoomOut(page);
+  // Fit rather than zoom out. Zooming is not just framing here: LineageMap's
+  // `handleMove` reads the new zoom, and when it crosses into a shallower
+  // semantic band it calls `getParentSceneRequest` and navigates to the parent
+  // scene -- so the entity this function is about to assert on gets folded into
+  // its service node ("pw-ml-model-service-… · 1 model" in the screenshot for
+  // this failure) and is genuinely absent from the DOM. `fit-screen` goes
+  // through `fitViewWithoutSemanticZoom`, which suppresses that.
+  await fitToScreen(page);
 
   await expect(fromNode).toBeVisible();
 

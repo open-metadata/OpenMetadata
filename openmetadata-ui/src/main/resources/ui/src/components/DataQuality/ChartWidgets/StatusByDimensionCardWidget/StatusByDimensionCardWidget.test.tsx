@@ -135,12 +135,12 @@ describe('StatusByDimensionCardWidget', () => {
     const mockData = {
       data: [
         {
-          dataQualityDimension: DataQualityDimensions.Accuracy,
+          dataQualityDimensionName: DataQualityDimensions.Accuracy,
           document_count: '6',
           'testCaseResult.testCaseStatus': 'success',
         },
         {
-          dataQualityDimension: DataQualityDimensions.Completeness,
+          dataQualityDimensionName: DataQualityDimensions.Completeness,
           document_count: '6',
           'testCaseResult.testCaseStatus': 'success',
         },
@@ -283,7 +283,7 @@ describe('StatusByDimensionCardWidget', () => {
       newerResponse.resolve({
         data: [
           {
-            dataQualityDimension: DataQualityDimensions.Accuracy,
+            dataQualityDimensionName: DataQualityDimensions.Accuracy,
             document_count: '2',
             'testCaseResult.testCaseStatus': 'success',
           },
@@ -301,7 +301,7 @@ describe('StatusByDimensionCardWidget', () => {
       olderResponse.resolve({
         data: [
           {
-            dataQualityDimension: DataQualityDimensions.Accuracy,
+            dataQualityDimensionName: DataQualityDimensions.Accuracy,
             document_count: '1',
             'testCaseResult.testCaseStatus': 'success',
           },

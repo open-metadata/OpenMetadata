@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""MinIO and S3 container classification test fixtures"""
+"""S3 container classification test fixtures"""
 
 import csv
 import io
@@ -50,7 +50,7 @@ from metadata.ingestion.source.storage.storage_service import (
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ...containers import MinioContainerConfigs, get_minio_container  # noqa: TID252
+from ...containers import S3ContainerConfigs, get_s3_container  # noqa: TID252
 
 
 @pytest.fixture(scope="module")
@@ -60,7 +60,7 @@ def metadata():
 
 @pytest.fixture(scope="module")
 def service_name():
-    return f"s3_container_classification_{uuid.uuid4().hex[:8]}"
+    return f"s3_classification_{uuid.uuid4().hex[:8]}"
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +70,7 @@ def bucket_name():
 
 @pytest.fixture(scope="module", autouse=True)
 def mock_cloudwatch():
-    """Mock CloudWatch client since MinIO doesn't support it"""
+    """Mock CloudWatch client: the S3 test container has no CloudWatch API"""
     from metadata.clients.aws_client import AWSClient
 
     original_get_client = AWSClient.get_client
@@ -88,15 +88,14 @@ def mock_cloudwatch():
 
 
 @pytest.fixture(scope="module")
-def minio(bucket_name):
-    config = MinioContainerConfigs(container_name=f"minio_{uuid.uuid4().hex[:8]}")
-    minio_container = get_minio_container(config)
-    minio_container.with_exposed_ports(9000, 9001)
+def s3(bucket_name):
+    config = S3ContainerConfigs(container_name=f"s3proxy_{uuid.uuid4().hex[:8]}")
+    s3_container = get_s3_container(config)
 
-    with minio_container:
-        minio_client = minio_container.get_client()
-        minio_client.make_bucket(bucket_name)
-        yield minio_container, minio_client
+    with s3_container:
+        s3_client = s3_container.get_client()
+        s3_client.make_bucket(bucket_name)
+        yield s3_container, s3_client
 
 
 @pytest.fixture(scope="module")
@@ -239,11 +238,11 @@ def pii_employees_parquet():
 
 
 @pytest.fixture(scope="module")
-def upload_test_data(minio, bucket_name, pii_customers_csv, non_pii_orders_csv, pii_employees_parquet):
-    """Upload test data files to MinIO"""
-    _, minio_client = minio
+def upload_test_data(s3, bucket_name, pii_customers_csv, non_pii_orders_csv, pii_employees_parquet):
+    """Upload test data files to the S3 container"""
+    _, s3_client = s3
 
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         "customers/data.csv",
         io.BytesIO(pii_customers_csv),
@@ -251,7 +250,7 @@ def upload_test_data(minio, bucket_name, pii_customers_csv, non_pii_orders_csv, 
         content_type="text/csv",
     )
 
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         "orders/data.csv",
         io.BytesIO(non_pii_orders_csv),
@@ -259,7 +258,7 @@ def upload_test_data(minio, bucket_name, pii_customers_csv, non_pii_orders_csv, 
         content_type="text/csv",
     )
 
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         "employees/data.parquet",
         io.BytesIO(pii_employees_parquet),
@@ -286,7 +285,7 @@ def upload_test_data(minio, bucket_name, pii_customers_csv, non_pii_orders_csv, 
         ]
     }
     metadata_json = json.dumps(metadata_config).encode("utf-8")
-    minio_client.put_object(
+    s3_client.put_object(
         bucket_name,
         OPENMETADATA_TEMPLATE_FILE_NAME,
         io.BytesIO(metadata_json),
@@ -296,14 +295,14 @@ def upload_test_data(minio, bucket_name, pii_customers_csv, non_pii_orders_csv, 
 
     yield
 
-    for obj in minio_client.list_objects(bucket_name):
-        minio_client.remove_object(bucket_name, obj.object_name)
+    for obj in s3_client.list_objects(bucket_name):
+        s3_client.remove_object(bucket_name, obj.object_name)
 
 
 @pytest.fixture(scope="module")
-def storage_service_config(minio, service_name, bucket_name):
-    """Storage service configuration for S3/MinIO"""
-    minio_container, _ = minio
+def storage_service_config(s3, service_name, bucket_name):
+    """Storage service configuration for S3"""
+    s3_container, _ = s3
     return {
         "source": {
             "type": "s3",
@@ -312,10 +311,10 @@ def storage_service_config(minio, service_name, bucket_name):
                 "config": {
                     "type": "S3",
                     "awsConfig": {
-                        "awsAccessKeyId": minio_container.access_key,
-                        "awsSecretAccessKey": minio_container.secret_key,
+                        "awsAccessKeyId": s3_container.access_key,
+                        "awsSecretAccessKey": s3_container.secret_key,
                         "awsRegion": "us-east-1",
-                        "endPointURL": f"http://localhost:{minio_container.get_exposed_port(9000)}",
+                        "endPointURL": f"http://localhost:{s3_container.get_exposed_port(9000)}",
                     },
                     "bucketNames": [bucket_name],
                 }
@@ -541,8 +540,8 @@ def non_sensitive_pii_tag(
 
 
 @pytest.fixture(scope="module")
-def autoclassification_config(storage_service_config, bot_workflow_config, bucket_name, service_name, minio):
-    minio_container, _ = minio
+def autoclassification_config(storage_service_config, bot_workflow_config, bucket_name, service_name, s3):
+    s3_container, _ = s3
     return {
         "source": {
             "type": "s3",
@@ -551,10 +550,10 @@ def autoclassification_config(storage_service_config, bot_workflow_config, bucke
                 "config": {
                     "type": "S3",
                     "awsConfig": {
-                        "awsAccessKeyId": minio_container.access_key,
-                        "awsSecretAccessKey": minio_container.secret_key,
+                        "awsAccessKeyId": s3_container.access_key,
+                        "awsSecretAccessKey": s3_container.secret_key,
                         "awsRegion": "us-east-1",
-                        "endPointURL": f"http://localhost:{minio_container.get_exposed_port(9000)}",
+                        "endPointURL": f"http://localhost:{s3_container.get_exposed_port(9000)}",
                     },
                     "bucketNames": [bucket_name],
                 }

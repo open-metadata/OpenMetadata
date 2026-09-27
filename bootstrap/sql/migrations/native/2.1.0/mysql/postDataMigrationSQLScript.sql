@@ -27,6 +27,14 @@ ON DUPLICATE KEY UPDATE
   updatedAt = VALUES(updatedAt),
   latestRecordId = VALUES(latestRecordId);
 
+-- Existing metrics predate the approval workflow and must remain usable. Explicit
+-- workflow statuses are preserved, and this update is idempotent.
+UPDATE metric_entity
+SET json = JSON_SET(json, '$.entityStatus', 'Approved')
+WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL
+   OR JSON_TYPE(JSON_EXTRACT(json, '$.entityStatus')) = 'NULL'
+   OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) = 'Unprocessed';
+
 -- Invalidate pre-2.1 projection success records. RDF status remains REBUILDING until a new
 -- RdfIndexApp run succeeds, and the applications page exposes that Search indexing must be run.
 DELETE FROM apps_extension_time_series
@@ -155,6 +163,67 @@ WHERE name IN (
   )
   AND NOT JSON_CONTAINS_PATH(json, 'one', '$.parameterDefinition');
 
+-- `tableRowInsertedCountToBeBetween` cannot run without `columnName` / `rangeType` /
+-- `rangeInterval`, yet deployments still carry a definition that only declares `min` and `max`
+-- (issue #33617): the 1.4.0 script rewrote the whole parameter array to just those two, and the
+-- 1.12.0 fix that added the three back was only ever written for Postgres. These run before the
+-- `threshold` / `thresholdUnit` statements below so the resulting parameter order matches the seeded
+-- definition. Guarded on each parameter being absent, which keeps re-runs -- and every deployment
+-- that already has them -- a no-op.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'columnName',
+        'displayName', 'Column Name',
+        'description', 'Name of the Column. It should be a timestamp, date or datetime field.',
+        'dataType', 'STRING',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"columnName"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'rangeType',
+        'displayName', 'Range Type',
+        'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR''',
+        'dataType', 'STRING',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"rangeType"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'rangeInterval',
+        'displayName', 'Interval',
+        'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
+        'dataType', 'INT',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"rangeInterval"'
+  );
+
 UPDATE test_definition
 SET json = JSON_ARRAY_APPEND(
     json,
@@ -235,3 +304,28 @@ WHERE name IN (
     COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
     '"dimensionFailurePolicy"'
   );
+
+-- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
+-- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
+-- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
+-- dataType, so mean/min/max/median/stddev/sum were unreachable on any NUMERIC column. Seeding only
+-- covers fresh installs (initializeEntity returns early when the entity exists), hence this
+-- backfill. The guard on NUMERIC being absent keeps re-runs a no-op, and it also skips a definition
+-- with no supportedDataTypes at all -- that already means "every data type" (issue #27718), so
+-- appending to it would narrow it to exactly one.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(json, '$.supportedDataTypes', 'NUMERIC')
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet'
+  )
+  AND NOT JSON_CONTAINS(json, JSON_QUOTE('NUMERIC'), '$.supportedDataTypes');
+
+-- Normalize user emails to lowercase: email is the primary identity lookup key and the
+-- application always compares lowercased values. The case-insensitive unique key on email
+-- guarantees no collisions can result from lowercasing.
+UPDATE user_entity
+SET json = JSON_SET(json, '$.email', LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email'))))
+WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')));

@@ -34,6 +34,7 @@ import {
 } from '../../../utils/EntityDiffPureUtils';
 import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -43,7 +44,6 @@ import {
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
   loading: boolean;
@@ -121,7 +121,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
               <Typography.Text
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
                 data-testid="entity-header-display-name">
-                {stringToHTML(displayName || knowledgePage.name)}
+                {renderHighlightedText(displayName || knowledgePage.name)}
               </Typography.Text>
               <Row align="middle" gutter={[16, 16]}>
                 <Col>

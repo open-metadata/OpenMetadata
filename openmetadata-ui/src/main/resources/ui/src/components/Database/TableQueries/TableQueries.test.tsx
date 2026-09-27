@@ -89,7 +89,7 @@ jest.mock('../../PaginationComponent/PaginationComponent', () => {
   ));
 });
 
-jest.mock('../../SearchDropdown/SearchDropdown', () => {
+jest.mock('../../common/FilterSelectDropdown/FilterSelectDropdown', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>SearchDropdown.component</div>);

@@ -28,12 +28,14 @@
     "pagination-navigation": "Navigation de pagination",
     "previous-page": "Aller à la page précédente",
     "records": "Enregistrements",
+    "remove-entity": "Supprimer {{entity}}",
     "remove-filter": "Supprimer le filtre",
     "search": "Rechercher",
     "select-all": "Tout sélectionner",
     "select-dates": "Sélectionner les dates",
     "select-only-one-row": "Sélectionner une ligne",
     "show-hidden-breadcrumbs": "Afficher le fil d'Ariane masqué",
-    "today": "Aujourd'hui"
+    "today": "Aujourd'hui",
+    "tree-select": "Sélection arborescente"
   }
 }

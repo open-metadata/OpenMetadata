@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
 import {
   SHORTCUTS,
   SLASH_COMMANDS,
@@ -18,7 +18,11 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
 import { redirectToHomePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { sidebarClick } from './sidebar';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
@@ -107,32 +111,27 @@ export const updateTags = async (
   const addTagBtn = tagsContainer.getByTestId('add-tag');
   const editTagBtn = tagsContainer.getByTestId('edit-button');
   const isAdd = await addTagBtn.isVisible();
-  if (isAdd) {
-    await addTagBtn.click();
-  } else {
-    await editTagBtn.click();
-  }
+  const trigger = isAdd ? addTagBtn : editTagBtn;
 
-  await page.waitForSelector('[data-testid="tag-selector"] input', {
-    state: 'visible',
-  });
+  await openClassificationTagPicker(page, trigger);
+
   const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=*${data.tag}*`) &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(data.tag))) &&
       response.request().method() === 'GET'
   );
-  await page.fill('[data-testid="tag-selector"] input', data.tag);
+  await page.getByTestId('classification-tag-picker-search').fill(data.tag);
   await searchTagResponse;
-  await page.click(`[data-testid='tag-${data.tagFqn}']`);
 
-  await expect(
-    page.locator(
-      `[data-testid="tag-selector"] [data-testid="selected-tag-${data.tagFqn}"]`
-    )
-  ).toBeVisible();
+  await page.getByTestId(`tree-node-${data.tagFqn}`).click();
 
-  await page.locator('[data-testid="saveAssociatedTag"]').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
+
   const response = await updateKnowledgePage;
   expect(response.status()).toBe(200);
 };
@@ -236,8 +235,39 @@ export const createQuickLink = async (
     '[data-testid="related-entities-container"] input[role="combobox"]'
   );
 
+  // Matches the exact `q` the field sent, with the ES reserved-character
+  // escaping the UI adds (`-` → `\-`) stripped.
+  const isAssetSearch = (res: Response, query: string) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'dataAsset' &&
+      url.searchParams.get('q')?.replaceAll('\\', '') === query &&
+      res.request().method() === 'GET'
+    );
+  };
+
+  // The field sits below the fold of the modal's scrollable body. Scrolling it
+  // in as part of the click dispatches the `scroll` event after react-aria has
+  // opened the popover, and its non-modal popover closes on any ancestor
+  // scroll. Scroll first so that event lands before the popover exists.
+  await assetInput.scrollIntoViewIfNeeded();
+
+  // Focus fires an unfiltered `q=*` fetch. Let it settle before typing so it
+  // cannot resolve after the typed query and replace its results.
+  const initialOptions = page.waitForResponse((res) => isAssetSearch(res, '*'));
   await assetInput.click();
-  await assetInput.fill(dataAsset.entity.name);
+  expect((await initialOptions).status()).toBe(200);
+
+  // `fill` sets .value and fires one synthetic input event; react-aria's
+  // combobox closes its popover on that, so the query still runs but the
+  // results have nowhere to render. Real keystrokes keep it open.
+  const assetSearch = page.waitForResponse((res) =>
+    isAssetSearch(res, `*${dataAsset.entity.name}*`)
+  );
+  await assetInput.pressSequentially(dataAsset.entity.name);
+  expect((await assetSearch).status()).toBe(200);
 
   await expect(
     page.getByRole('option', { name: dataAsset.entity.name })
@@ -318,20 +348,21 @@ export const updateQuickLink = async (
   await descriptionTextarea.press('ControlOrMeta+a');
   await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  const tagInput = modal.locator(
-    '[data-testid="tags-container"] input[role="combobox"]'
-  );
+  const tagsTrigger = modal.getByTestId('tags-container');
+  await tagsTrigger.click();
 
-  await tagInput.click();
-  await tagInput.fill(knowledgePageQuickLink.tag);
+  const searchInput = page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input');
+  await searchInput.waitFor({ state: 'visible' });
+  await searchInput.fill(knowledgePageQuickLink.tag);
 
-  await expect(
-    page.getByRole('option', { name: knowledgePageQuickLink.tag })
-  ).toBeVisible();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId(knowledgePageQuickLink.tagFqn)
+    .click();
 
-  await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
   await page.keyboard.press('Escape');
-
   await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {
@@ -450,17 +481,19 @@ export const verifyNotificationAndClick = async (
   await page.getByRole('tab', { name: 'Mentions' }).click();
   await mentionsTabResponse;
 
-  // Verify the notification contains the mentioned user and entity type
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(expectedUserName);
+  const mentionsPanel = page
+    .locator('.notification-box')
+    .getByRole('tabpanel', { name: /Mentions/ });
+  const notificationItem = mentionsPanel.getByTestId(
+    `notification-item-${entityName}`
+  );
 
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(entityName);
+  // Verify the notification contains the mentioned user and entity type
+  await expect(notificationItem).toContainText(expectedUserName);
+  await expect(notificationItem).toContainText(entityName);
 
   // Click on the notification to navigate to the entity
-  await page.getByTestId(`notification-link-${entityName}`).nth(1).click();
+  await mentionsPanel.getByTestId(`notification-link-${entityName}`).click();
 };
 
 export const getKnowledgePageCardByIndex = async (
@@ -720,7 +753,11 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag, { hasText: text })).toBeVisible();
+  await expect(editor.locator(formatTag).filter({ hasText: text })).toBeVisible(
+    {
+      timeout: 15_000,
+    }
+  );
 };
 
 export const undo = async (page: Page): Promise<void> => {

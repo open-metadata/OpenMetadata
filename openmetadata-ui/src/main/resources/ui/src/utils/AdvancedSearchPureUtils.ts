@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { escapeRegExp, isArray, isEmpty, toLower } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import type { Bucket } from 'Models';
 import {
   COMMON_DROPDOWN_ITEMS,
@@ -25,22 +25,10 @@ import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.const
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { AssetsOfEntity } from '../enums/Assets.enum';
 import { EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import type {
   ExploreQuickFilterField,
   SearchDropdownOption,
 } from '../interface/quickFilter.interface';
-import type {
-  ContainerSearchSource,
-  DashboardSearchSource,
-  ExploreSearchSource,
-  MlmodelSearchSource,
-  PipelineSearchSource,
-  SuggestOption,
-  TableSearchSource,
-  TopicSearchSource,
-} from '../interface/search.interface';
-import { getEntityName } from './EntityNameUtils';
 import { getNameFromFQN } from './FqnUtils';
 import { extractSourceValue } from './SearchPureUtils';
 
@@ -71,32 +59,6 @@ export const getAssetsPageQuickFilters = (
   }
 };
 
-export const getSearchLabel = (itemLabel: string, searchKey: string) => {
-  const htmlCharacterMap: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  };
-  const escapeHtml = (value: string) =>
-    value.replace(/[&<>"']/g, (character) => htmlCharacterMap[character]);
-
-  const escapedLabel = escapeHtml(itemLabel);
-  if (searchKey) {
-    const escapedSearchKey = escapeHtml(searchKey);
-    const regex = new RegExp(escapeRegExp(escapedSearchKey), 'gi');
-    const result = escapedLabel.replace(
-      regex,
-      (match) => `<mark>${match}</mark>`
-    );
-
-    return result;
-  } else {
-    return escapedLabel;
-  }
-};
-
 export const getSelectedOptionLabelString = (
   selectedOptions: SearchDropdownOption[],
   showAllOptions = false
@@ -111,119 +73,6 @@ export const getSelectedOptionLabelString = (
   } else {
     return '';
   }
-};
-
-export const getChartsOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const chartRef = (
-    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
-  )._source.charts?.find(
-    (chart) => chart.displayName === option.text || chart.name === option.text
-  );
-
-  const entityName = getEntityName(chartRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getDataModelOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const chartRef = (
-    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
-  )._source.dataModels?.find(
-    (dataModel) =>
-      dataModel.displayName === option.text || dataModel.name === option.text
-  );
-
-  const entityName = getEntityName(chartRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getTasksOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const taskRef = (
-    option as SuggestOption<SearchIndex.PIPELINE, PipelineSearchSource>
-  )._source.tasks?.find(
-    (task) => task.displayName === option.text || task.name === option.text
-  );
-
-  const entityName = getEntityName(taskRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getColumnsOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>,
-  index: SearchIndex
-) => {
-  if (index === SearchIndex.TABLE) {
-    const columnRef = (
-      option as SuggestOption<SearchIndex.TABLE, TableSearchSource>
-    )._source.columns.find(
-      (column) =>
-        column.displayName === option.text || column.name === option.text
-    );
-
-    const entityName = getEntityName(columnRef);
-
-    return isEmpty(entityName) ? option.text : entityName;
-  } else {
-    const dataModel = (
-      option as SuggestOption<SearchIndex.CONTAINER, ContainerSearchSource>
-    )._source.dataModel;
-    const columnRef = dataModel
-      ? dataModel.columns.find(
-          (column) =>
-            column.displayName === option.text || column.name === option.text
-        )
-      : undefined;
-
-    const entityName = getEntityName(columnRef);
-
-    return isEmpty(entityName) ? option.text : entityName;
-  }
-};
-
-export const getSchemaFieldOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const schemaFields = (
-    option as SuggestOption<SearchIndex.TOPIC, TopicSearchSource>
-  )._source.messageSchema?.schemaFields;
-
-  const schemaRef = schemaFields
-    ? schemaFields.find(
-        (field) =>
-          field.displayName === option.text || field.name === option.text
-      )
-    : undefined;
-
-  const entityName = getEntityName(schemaRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getServiceOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const service = (
-    option as SuggestOption<
-      SearchIndex,
-      | TableSearchSource
-      | DashboardSearchSource
-      | PipelineSearchSource
-      | MlmodelSearchSource
-      | TopicSearchSource
-    >
-  )._source.service;
-
-  return service
-    ? service.displayName ?? service.name ?? option.text
-    : option.text;
 };
 
 export const getQuickFilterSourceFields = (
@@ -366,26 +215,4 @@ export const getOptionsFromAggregationBucket = (
 
       return { key: option.key, label, count: option.doc_count ?? 0 };
     });
-};
-
-export const formatQueryValueBasedOnType = (
-  value: string[],
-  field: string,
-  type: string
-) => {
-  if (field.includes('extension') && type === 'text') {
-    return value.map((item) => toLower(item));
-  }
-
-  return value;
-};
-
-export const getCustomPropertyAdvanceSearchEnumOptions = (
-  enumValues: string[]
-) => {
-  return enumValues.reduce((acc: Record<string, string>, value) => {
-    acc[value] = value;
-
-    return acc;
-  }, {});
 };

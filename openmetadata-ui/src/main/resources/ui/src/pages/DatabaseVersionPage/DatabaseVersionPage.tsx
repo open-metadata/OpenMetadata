@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -45,6 +46,7 @@ import {
   getDatabaseVersionData,
   getDatabaseVersions,
 } from '../../rest/databaseAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
@@ -199,25 +201,24 @@ function DatabaseVersionPage() {
         ),
         key: EntityTabs.SCHEMA,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div data-testid="description-container">
                   <Description
                     description={description}
                     entityType={EntityType.DATABASE}
                     showActions={false}
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   <DatabaseSchemaTable isVersionPage />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -238,8 +239,8 @@ function DatabaseVersionPage() {
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
 
@@ -287,8 +288,8 @@ function DatabaseVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
@@ -302,7 +303,7 @@ function DatabaseVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -310,17 +311,28 @@ function DatabaseVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
-                    className="tabs-new"
+                    className="tw:gap-3"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
-                </Col>
+                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Tabs.List size="sm" type="underline" variant="card">
+                      {tabs.map(({ key, label }) => (
+                        <Tabs.Item id={key} key={key}>
+                          {label}
+                        </Tabs.Item>
+                      ))}
+                    </Tabs.List>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 

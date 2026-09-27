@@ -561,7 +561,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  test('renders cross-page relations and lineage while paging 100+ tagged assets', async ({
+  test('renders cross-page relations while paging 100+ tagged assets', async ({
     browser,
   }) => {
     test.slow();
@@ -581,8 +581,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
           url.searchParams.get('offset') === '0' &&
           url.searchParams.get('assetPreviewSize') === '4' &&
           url.searchParams.get('connectedTermLimit') === '48' &&
-          url.searchParams.get('edgeLimit') === '100' &&
-          url.searchParams.get('lineageEdgeLimit') === '100'
+          url.searchParams.get('edgeLimit') === '100'
         );
       });
       await page.getByRole('tab', { name: 'Data' }).click();
@@ -659,12 +658,9 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
           .getByTestId('ontology-data-semantic-edge-label')
           .filter({ hasText: /parent of/i })
       ).toHaveCount(1);
-      await expect(
-        page.getByTestId('ontology-data-observed-lineage-edge')
-      ).toHaveCount(1);
-      await expect(
-        page.getByTestId('ontology-data-observed-lineage-edge')
-      ).not.toHaveAttribute('stroke-dasharray');
+      // The Data view draws only the relations between concepts; the asset
+      // lineage in the response is not drawn, so each relation has one arrow.
+      await expect(page.getByTestId('ontology-data-edge-arrow')).toHaveCount(2);
       await expect(
         page.getByTestId(
           `ontology-data-cluster-${hierarchyTerm.responseData.id}`

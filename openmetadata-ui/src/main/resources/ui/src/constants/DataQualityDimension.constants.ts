@@ -12,6 +12,16 @@
  */
 
 /**
+ * Field the search document denormalizes the dimension name into. It is deliberately not
+ * `dataQualityDimension`: that name belongs to the EntityReference on the TestCase entity, and
+ * indexing a bare name under it makes a search hit fail to deserialize back into a TestCase.
+ *
+ * Only raw Elasticsearch queries and aggregations use this. The `dataQualityDimension` REST query
+ * parameter is unaffected — the server maps it onto this field.
+ */
+export const DATA_QUALITY_DIMENSION_INDEX_FIELD = 'dataQualityDimensionName';
+
+/**
  * Colours offered when creating or editing a data quality dimension. The system dimensions
  * seeded by the server pick their colour from this same list.
  *

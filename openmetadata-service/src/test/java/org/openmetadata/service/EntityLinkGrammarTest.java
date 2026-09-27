@@ -75,6 +75,8 @@ class EntityLinkGrammarTest {
           Entity.WORKFLOW_INSTANCE,
           Entity.WORKFLOW_INSTANCE_STATE,
           Entity.AUDIT_LOG,
+          // Policy resource for the RDF query surface, not a linkable entity
+          Entity.RDF,
           Entity.QUERY_COST_RECORD,
           Entity.AGENT_EXECUTION,
           Entity.DATA_CONTRACT_RESULT,

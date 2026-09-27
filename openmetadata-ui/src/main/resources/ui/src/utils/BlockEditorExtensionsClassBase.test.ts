@@ -108,7 +108,7 @@ jest.mock('../components/BlockEditor/Extensions/focus', () => ({
   },
 }));
 
-jest.mock('../components/BlockEditor/Extensions/hashtag', () => ({
+jest.mock('../components/BlockEditor/Extensions/hashtag/Hashtag', () => ({
   Hashtag: {
     configure: jest.fn(() => ({ name: 'Hashtag' })),
   },
@@ -129,19 +129,22 @@ jest.mock(
   })
 );
 
-jest.mock('../components/BlockEditor/Extensions/mention', () => ({
+jest.mock('../components/BlockEditor/Extensions/mention/Mention', () => ({
   Mention: {
     configure: jest.fn(() => ({ name: 'Mention' })),
   },
   mentionSuggestion: jest.fn(() => ({ name: 'mentionSuggestion' })),
 }));
 
-jest.mock('../components/BlockEditor/Extensions/slash-command', () => ({
-  __esModule: true,
-  default: {
-    configure: jest.fn(() => ({ name: 'slashCommand' })),
-  },
-}));
+jest.mock(
+  '../components/BlockEditor/Extensions/slash-command/slashCommand',
+  () => ({
+    __esModule: true,
+    default: {
+      configure: jest.fn(() => ({ name: 'slashCommand' })),
+    },
+  })
+);
 
 jest.mock('../components/BlockEditor/Extensions/slash-command/items', () => ({
   getSuggestionItems: jest.fn(),

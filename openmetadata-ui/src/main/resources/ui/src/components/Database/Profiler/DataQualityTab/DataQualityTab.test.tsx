@@ -23,6 +23,11 @@ import {
 import React, { act } from 'react';
 import { Link } from 'react-router-dom';
 import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
+import {
+  Access,
+  ResourcePermission,
+} from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
@@ -377,10 +382,30 @@ jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
   jest.fn().mockImplementation(() => <span data-testid="date-time-display" />)
 );
 
+// The list API is now the only source of row permissions, so the default props
+// carry the same grants the removed per-row fetch used to return.
+const mockInlinePermissions = (MOCK_TEST_CASE as TestCase[]).reduce(
+  (acc, testCase) => {
+    acc[testCase.id ?? ''] = {
+      resource: 'testCase',
+      permissions: Object.entries(MOCK_PERMISSIONS).map(
+        ([operation, allowed]) => ({
+          operation: operation as Operation,
+          access: allowed ? Access.Allow : Access.Deny,
+        })
+      ),
+    };
+
+    return acc;
+  },
+  {} as Record<string, ResourcePermission>
+);
+
 const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
+  entityPermissions: mockInlinePermissions,
 };
 const mockPermissionsData = MOCK_PERMISSIONS;
 const mockNavigateDataQualityTab = jest.fn();
@@ -406,11 +431,13 @@ jest.mock('../../../../hooks/authHooks', () => ({
   }),
 }));
 
+const mockGetEntityPermissionByFqn = jest
+  .fn()
+  .mockImplementation(() => mockPermissionsData);
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => mockPermissionsData),
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   }),
 }));
 
@@ -500,6 +527,58 @@ describe('DataQualityTab test', () => {
 
     expect(tableRows).toHaveLength(6);
     expect(await screen.findByTestId('test-case-table')).toBeVisible();
+  });
+
+  it('should consume inline entityPermissions and skip per-row permission calls', async () => {
+    const entityPermissions = (mockProps.testCases as TestCase[]).reduce(
+      (acc, testCase) => {
+        acc[testCase.id ?? ''] = {
+          resource: 'testCase',
+          permissions: [
+            { operation: Operation.EditAll, access: Access.Allow },
+            { operation: Operation.Delete, access: Access.Allow },
+          ],
+        };
+
+        return acc;
+      },
+      {} as Record<string, ResourcePermission>
+    );
+
+    await act(async () => {
+      render(
+        <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
+      );
+    });
+
+    expect(await screen.findByTestId('test-case-table')).toBeVisible();
+    // The list API already returned permissions, so the N per-test-case
+    // permission calls must not fire.
+    expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
+  });
+
+  it('should never fetch per-row permissions, whatever the list returned', async () => {
+    const testCases = mockProps.testCases as TestCase[];
+    const [covered] = testCases;
+    const partialMap = {
+      [covered.id ?? '']: {
+        resource: 'testCase',
+        permissions: [{ operation: Operation.EditAll, access: Access.Allow }],
+      },
+    } as Record<string, ResourcePermission>;
+
+    // No map, an empty map, and a partial map are all answered from the list
+    // response alone -- the permission endpoint is never called again.
+    for (const entityPermissions of [undefined, {}, partialMap]) {
+      const { unmount } = render(
+        <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
+      );
+
+      expect(await screen.findByTestId('test-case-table')).toBeVisible();
+      expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
+
+      unmount();
+    }
   });
 
   it('Table header should be visible', async () => {

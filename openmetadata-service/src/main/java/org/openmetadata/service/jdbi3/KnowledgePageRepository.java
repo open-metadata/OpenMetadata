@@ -515,6 +515,20 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         .withDescription(page.getDescription());
   }
 
+  /**
+   * editors is derived from EDITED_BY relationships, so it must never reach the stored json.
+   * storeEntity() nulls relatedEntities, parent and children before store(), which mirrors
+   * KNOWLEDGE_PATCH_FIELDS -- editors is absent from that list, so today it happens to be null at
+   * store time and nothing persists it. That is a coincidence of the field list rather than a
+   * guarantee: adding editors to the patch or update fields would start writing a snapshot of the
+   * relationship into the entity json, where setFields would then serve it back to any caller that
+   * did not ask for the field.
+   */
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(EDITORS);
+  }
+
   @Override
   public void storeEntity(Page knowledgePage, boolean update) {
     // Related Entities

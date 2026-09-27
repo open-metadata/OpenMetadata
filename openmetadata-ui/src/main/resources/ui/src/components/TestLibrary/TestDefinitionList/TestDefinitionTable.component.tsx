@@ -19,7 +19,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
 import { Button, Space, Switch, Tooltip, Typography } from 'antd';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
@@ -41,10 +42,13 @@ import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
 const TestDefinitionTable = ({
   testDefinitions,
   isLoading,
+  isInitialLoading,
   pagingData,
   showPagination,
   testDefinitionPermissions,
   permissionLoading,
+  sortDescriptor,
+  onSortChange,
   onEnableToggle,
   onEdit,
   onDelete,
@@ -53,9 +57,27 @@ const TestDefinitionTable = ({
 }: TestDefinitionTableProps) => {
   const { t } = useTranslation();
 
+  // react-aria reports the new descriptor; the listing state upstream is keyed
+  // by column id and asc/desc, so translate here rather than teaching every
+  // caller react-aria's vocabulary.
+  const handleSortChange = useCallback(
+    (descriptor: SortDescriptor) => {
+      onSortChange(
+        String(descriptor.column),
+        descriptor.direction === 'descending' ? 'desc' : 'asc'
+      );
+    },
+    [onSortChange]
+  );
+
   const columns = useMemo(
     () => [
-      { id: 'name', label: t('label.name'), className: 'tw:w-[30%]' },
+      {
+        id: 'name',
+        label: t('label.name'),
+        className: 'tw:w-[30%]',
+        allowsSorting: true,
+      },
       {
         id: 'description',
         label: t('label.description'),
@@ -65,11 +87,13 @@ const TestDefinitionTable = ({
         id: 'entityType',
         label: t('label.entity-type'),
         className: 'tw:w-[12%]',
+        allowsSorting: true,
       },
       {
         id: 'testPlatforms',
         label: t('label.test-platform-plural'),
         className: 'tw:w-[12%]',
+        allowsSorting: true,
       },
       { id: 'enabled', label: t('label.enabled'), className: 'tw:w-[5%]' },
       {
@@ -100,6 +124,18 @@ const TestDefinitionTable = ({
     []
   );
 
+  // A refetch dims the rows in place instead of unmounting them. aria-busy is
+  // what carries the state to a screen reader, since there is no longer a
+  // visual placeholder saying the list is being replaced.
+  //
+  // The rows being kept are the PREVIOUS query's rows, so their controls are
+  // held shut until the new ones land. Acting on one would patch a definition
+  // the list has already moved on from, and the arriving response would
+  // overwrite the toggle, showing a successful edit as if it had reverted.
+  // Disabled rather than pointer-events-none so the controls also leave the
+  // tab order instead of staying reachable but inert-looking.
+  const isRefetching = isLoading && !isInitialLoading;
+
   const renderEnabledCell = (record: TestDefinition) => {
     const entityPermissions = testDefinitionPermissions[record.name];
     const hasEditPermission = entityPermissions?.[Operation.EditAll];
@@ -122,7 +158,7 @@ const TestDefinitionTable = ({
           <Switch
             checked={record.enabled ?? true}
             data-testid={`enable-switch-${record.name}`}
-            disabled={isExternal || !hasEditPermission}
+            disabled={isExternal || !hasEditPermission || isRefetching}
             size="small"
             onChange={(checked) => onEnableToggle(record, checked)}
           />
@@ -166,7 +202,7 @@ const TestDefinitionTable = ({
         <Tooltip title={editTooltip}>
           <Button
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={!hasEditPermission}
+            disabled={!hasEditPermission || isRefetching}
             icon={<IconEdit height={16} width={16} />}
             type="text"
             onClick={() => onEdit(record)}
@@ -176,7 +212,7 @@ const TestDefinitionTable = ({
         <Tooltip title={deleteTooltip}>
           <Button
             data-testid={`delete-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasDeletePermission}
+            disabled={isSystemProvider || !hasDeletePermission || isRefetching}
             icon={<IconDelete height={16} width={16} />}
             type="text"
             onClick={() => onDelete(record)}
@@ -211,71 +247,88 @@ const TestDefinitionTable = ({
 
   return (
     <>
-      <Table
-        aria-label={t('label.data-quality-rule-plural')}
-        data-testid="test-definition-table"
-        size="sm">
-        <Table.Header columns={columns}>
-          {(col) => (
-            <Table.Head
-              className={col.className}
-              id={col.id}
-              isRowHeader={col.id === 'name'}
-              key={col.id}
-              label={col.label}
-            />
-          )}
-        </Table.Header>
-        <Table.Body
-          dependencies={[
-            testDefinitionPermissions,
-            permissionLoading,
-            testDefinitions,
-          ]}
-          items={isLoading ? [] : testDefinitions}
-          renderEmptyState={() =>
-            isLoading ? (
-              loadingSkeletons
-            ) : (
-              <Box className="tw:relative tw:min-h-80 tw:w-full">
-                <EmptyPlaceholder
-                  actions={
-                    hasActiveFilters && onClearFilters
-                      ? [
-                          {
-                            key: 'clear-filters',
-                            label: t('label.clear-filter-plural'),
-                            color: 'primary' as const,
-                            onPress: onClearFilters,
-                          },
-                        ]
-                      : undefined
-                  }
-                  description={t(
-                    hasActiveFilters
-                      ? 'message.no-results-for-filters-description'
-                      : 'message.no-test-definitions-yet-description'
-                  )}
-                  icon={
-                    hasActiveFilters ? (
-                      <FilterOffIcon className="tw:text-fg-quaternary" />
-                    ) : (
-                      <FileShield02 className="tw:text-fg-brand-primary" />
-                    )
-                  }
-                  title={t(
-                    hasActiveFilters
-                      ? 'message.no-results-for-filters'
-                      : 'message.no-test-definitions-yet'
-                  )}
-                  variant="blank"
-                />
-              </Box>
-            )
-          }>
-          {(record) => renderRow(record)}
-        </Table.Body>
-      </Table>
+      <div
+        aria-busy={isLoading}
+        className={
+          isRefetching
+            ? 'tw:opacity-60 tw:transition-opacity tw:duration-150'
+            : 'tw:transition-opacity tw:duration-150'
+        }
+        data-testid="test-definition-table-container">
+        <Table
+          aria-label={t('label.data-quality-rule-plural')}
+          data-testid="test-definition-table"
+          size="sm"
+          sortDescriptor={sortDescriptor}
+          onSortChange={handleSortChange}>
+          <Table.Header columns={columns}>
+            {(col) => (
+              <Table.Head
+                allowsSorting={col.allowsSorting}
+                className={col.className}
+                id={col.id}
+                isRowHeader={col.id === 'name'}
+                key={col.id}
+                label={col.label}
+              />
+            )}
+          </Table.Header>
+          <Table.Body
+            dependencies={[
+              testDefinitionPermissions,
+              permissionLoading,
+              testDefinitions,
+              // A refetch changes no row data, so without this the collection
+              // serves the cached nodes and the controls keep the disabled
+              // state they were built with - staying live for the whole
+              // refetch they are supposed to sit out.
+              isRefetching,
+            ]}
+            items={isInitialLoading ? [] : testDefinitions}
+            renderEmptyState={() =>
+              isInitialLoading ? (
+                loadingSkeletons
+              ) : (
+                <Box className="tw:relative tw:min-h-80 tw:w-full">
+                  <EmptyPlaceholder
+                    actions={
+                      hasActiveFilters && onClearFilters
+                        ? [
+                            {
+                              key: 'clear-filters',
+                              label: t('label.clear-filter-plural'),
+                              color: 'primary' as const,
+                              onPress: onClearFilters,
+                            },
+                          ]
+                        : undefined
+                    }
+                    description={t(
+                      hasActiveFilters
+                        ? 'message.no-results-for-filters-description'
+                        : 'message.no-test-definitions-yet-description'
+                    )}
+                    icon={
+                      hasActiveFilters ? (
+                        <FilterOffIcon className="tw:text-fg-quaternary" />
+                      ) : (
+                        <FileShield02 className="tw:text-fg-brand-primary" />
+                      )
+                    }
+                    title={t(
+                      hasActiveFilters
+                        ? 'message.no-results-for-filters'
+                        : 'message.no-test-definitions-yet'
+                    )}
+                    variant="blank"
+                  />
+                </Box>
+              )
+            }>
+            {(record) => renderRow(record)}
+          </Table.Body>
+        </Table>
+      </div>
       {showPagination && <NextPrevious {...pagingData} />}
     </>
   );

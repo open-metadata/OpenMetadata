@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Hello Pipelines",
   "description": "This schema defines configuration for an example eternal application",
   "properties": {

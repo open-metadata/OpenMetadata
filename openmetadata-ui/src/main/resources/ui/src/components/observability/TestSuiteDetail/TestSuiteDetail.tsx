@@ -33,7 +33,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
@@ -171,7 +170,6 @@ const getTabBadge = (count?: number) => toString(count) || undefined;
  */
 const TestSuiteDetail = () => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const {
     testSuite,
@@ -343,7 +341,7 @@ const TestSuiteDetail = () => {
       data-testid="test-suite-detail-page"
       header={
         <Box
-          className="tw:relative tw:mx-4 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
+          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
           data-testid="test-suite-header-container"
           direction="col"
           gap={4}>
@@ -369,7 +367,7 @@ const TestSuiteDetail = () => {
                   className={classNames(
                     'tw:relative tw:size-9 tw:shrink-0',
                     'tw:overflow-hidden tw:rounded-full',
-                    'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                    'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                   )}
                   justify="center">
                   <TestSuiteIcon className="tw:size-5" />
@@ -432,20 +430,19 @@ const TestSuiteDetail = () => {
                 entityId={testSuite?.id ?? ''}
                 entityType={EntityType.TEST_SUITE}
                 hasPermission={flags.canEditAll}
+                labelClassName="tw:text-secondary!"
                 multiple={canAddMultipleDomains}
-                textClassName="render-domain-lebel-style"
+                textClassName="render-domain-lebel-style tw:text-secondary!"
                 onUpdate={handleDomainUpdate}
               />
               <HeaderDotSeparator />
               <Owner
                 showDashPlaceholder
                 avatarSize={24}
-                className="header-owner-heading"
                 hasPermission={Boolean(permissions.hasEditOwnerPermission)}
                 isCompactView={false}
                 maxVisibleOwners={3}
-                owners={toOwnersWithHref(testOwners ?? [])}
-                renderOwnerContent={renderOwnerContent}
+                owners={testOwners ?? []}
                 selectorContent={
                   <UserTeamSelectableList
                     hasPermission={Boolean(permissions.hasEditOwnerPermission)}

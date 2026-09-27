@@ -25,7 +25,7 @@ import {
 import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/apps';
 

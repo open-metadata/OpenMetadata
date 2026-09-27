@@ -6,6 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
@@ -16,8 +20,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.UUID;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +33,8 @@ import org.openmetadata.mcp.server.auth.validators.IdTokenValidator.IdTokenValid
  */
 public class IdTokenValidatorTest {
 
-  private MockWebServer jwksServer;
+  private HttpServer jwksServer;
+  private String jwksUrl;
   private IdTokenValidator validator;
   private RSAPublicKey publicKey;
   private RSAPrivateKey privateKey;
@@ -51,21 +54,30 @@ public class IdTokenValidatorTest {
     expectedIssuer = "https://accounts.test.com";
     expectedAudience = "test-client-id";
 
-    jwksServer = new MockWebServer();
-    jwksServer.start();
-
-    String jwksJson = createJwksResponse(publicKey, keyId);
-    jwksServer.enqueue(
-        new MockResponse().setBody(jwksJson).setHeader("Content-Type", "application/json"));
-
-    String jwksUrl = jwksServer.url("/jwks").toString();
+    startJwksServer();
     validator = new IdTokenValidator(List.of(jwksUrl), expectedIssuer, expectedAudience);
   }
 
+  private void startJwksServer() throws IOException {
+    jwksServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    final byte[] body = createJwksResponse(publicKey, keyId).getBytes(StandardCharsets.UTF_8);
+    jwksServer.createContext(
+        "/jwks",
+        exchange -> {
+          try (exchange) {
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+          }
+        });
+    jwksServer.start();
+    jwksUrl = "http://127.0.0.1:" + jwksServer.getAddress().getPort() + "/jwks";
+  }
+
   @AfterEach
-  void tearDown() throws Exception {
+  void tearDown() {
     if (jwksServer != null) {
-      jwksServer.shutdown();
+      jwksServer.stop(0);
     }
   }
 
@@ -176,12 +188,7 @@ public class IdTokenValidatorTest {
   @Test
   void testValidateAndDecode_NoAudienceValidationWhenNull() throws Exception {
     IdTokenValidator validatorNoAudience =
-        new IdTokenValidator(List.of(jwksServer.url("/jwks").toString()), expectedIssuer, null);
-
-    jwksServer.enqueue(
-        new MockResponse()
-            .setBody(createJwksResponse(publicKey, keyId))
-            .setHeader("Content-Type", "application/json"));
+        new IdTokenValidator(List.of(jwksUrl), expectedIssuer, null);
 
     String tokenWithDifferentAudience =
         createValidIdToken(expectedIssuer, "any-audience", "test@example.com");
