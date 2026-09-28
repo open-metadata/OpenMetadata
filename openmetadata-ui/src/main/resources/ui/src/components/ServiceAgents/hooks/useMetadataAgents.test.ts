@@ -12,6 +12,7 @@
  */
 
 import { act, renderHook } from '@testing-library/react-hooks';
+import { useEffect } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   IngestionPipeline,
@@ -267,5 +268,44 @@ describe('useMetadataAgents', () => {
         (agent) => agent.fqn === 'testSnowflake.autopilot_agent'
       )
     ).toHaveLength(1);
+  });
+
+  it('keeps the fetched list when a stream event lands before the list re-renders', () => {
+    const fetched = [
+      buildPipeline('metadata_agent'),
+      buildPipeline('autopilot_agent'),
+    ];
+    // The effect below runs straight after the hook's own [pipelines] effect,
+    // before React re-renders — the window in which the stream replays the
+    // snapshot of a still-running agent right after the list response lands.
+    const { result, rerender } = renderHook(
+      ({ pipelines }: { pipelines: IngestionPipeline[] }) => {
+        const agentsState = useMetadataAgents(
+          pipelines,
+          ServiceCategory.DATABASE_SERVICES,
+          'testSnowflake'
+        );
+        useEffect(() => {
+          if (pipelines.length > 0) {
+            capturedOnEvent(
+              buildEvent('testSnowflake.autopilot_agent', {
+                ingestionPipeline: buildPipeline('autopilot_agent'),
+              })
+            );
+          }
+        }, [pipelines]);
+
+        return agentsState;
+      },
+      { initialProps: { pipelines: [] as IngestionPipeline[] } }
+    );
+
+    rerender({ pipelines: fetched });
+
+    expect(result.current.agents.map((agent) => agent.fqn)).toEqual([
+      'testSnowflake.metadata_agent',
+      'testSnowflake.autopilot_agent',
+    ]);
+    expect(result.current.discoveredCount).toBe(0);
   });
 });

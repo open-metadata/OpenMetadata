@@ -85,23 +85,26 @@ export const useMetadataAgents = (
       ...pipelines,
       ...Array.from(discoveredPipelinesRef.current.values()),
     ];
-    setAgents(
-      merged.map((pipeline) => {
-        const base = mapPipelineToAgent(pipeline);
-        const live = liveOverridesRef.current.get(base.fqn);
+    const nextAgents = merged.map((pipeline) => {
+      const base = mapPipelineToAgent(pipeline);
+      const live = liveOverridesRef.current.get(base.fqn);
 
-        return live?.status === 'running'
-          ? {
-              ...base,
-              status: live.status,
-              pct: live.pct,
-              assets: live.assets,
-              target: live.target,
-              eta: live.eta,
-            }
-          : base;
-      })
-    );
+      return live?.status === 'running'
+        ? {
+            ...base,
+            status: live.status,
+            pct: live.pct,
+            assets: live.assets,
+            target: live.target,
+            eta: live.eta,
+          }
+        : base;
+    });
+    // Sync the ref now, not on the next render: a stream event handled before
+    // that render would otherwise read the stale list, treat these pipelines
+    // as unknown and overwrite the fetched list with its own.
+    agentsRef.current = nextAgents;
+    setAgents(nextAgents);
   }, [pipelines]);
 
   const refetchAgent = useCallback(async (fqn: string) => {
@@ -111,9 +114,11 @@ export const useMetadataAgents = (
       });
       const mapped = mapPipelineToAgent(fresh);
       if (isMountedRef.current) {
-        setAgents((prev) =>
-          prev.map((a) => (a.fqn === mapped.fqn ? mapped : a))
+        const nextAgents = agentsRef.current.map((a) =>
+          a.fqn === mapped.fqn ? mapped : a
         );
+        agentsRef.current = nextAgents;
+        setAgents(nextAgents);
       }
     } catch {
       // A transient status fetch failure must not disrupt the list.
