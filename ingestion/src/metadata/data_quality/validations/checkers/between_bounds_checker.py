@@ -22,7 +22,7 @@ from metadata.data_quality.validations.checkers.base_checker import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.sql.elements import ClauseElement
+    from sqlalchemy.sql.elements import ClauseElement, ColumnElement
 
 
 class BetweenBoundsChecker(BaseValidationChecker):
@@ -119,7 +119,7 @@ class BetweenBoundsChecker(BaseValidationChecker):
             return literal(False)
         return or_(*conditions) if len(conditions) > 1 else conditions[0]
 
-    def build_row_level_violations_sqa(self, column: "ClauseElement") -> "ClauseElement":
+    def build_row_level_violations_sqa(self, column: "ClauseElement") -> "ColumnElement":
         """Build SQL expression to count row-level violations.
 
         Returns a SUM(CASE...) expression that counts individual rows where

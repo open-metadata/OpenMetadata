@@ -17,6 +17,7 @@ from collections import defaultdict
 from typing import cast
 
 import pandas as pd
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
@@ -63,7 +64,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         """
         return self.run_dataframe_results(self.runner, metric, column)
 
-    def _run_violation_count(self, column: SQALikeColumn, test_params: dict) -> tuple[int, int]:
+    def _run_violation_count(self, column: SQALikeColumn | Column, test_params: dict) -> tuple[int, int]:
         """Count the rows read and the values whose length falls outside the window
 
         The dataframes are walked one at a time rather than concatenated, like every other

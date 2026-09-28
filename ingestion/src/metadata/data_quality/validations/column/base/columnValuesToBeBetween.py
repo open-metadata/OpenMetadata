@@ -16,6 +16,7 @@ Validator for column values to be between test case
 import traceback
 from abc import abstractmethod
 from datetime import date, datetime, time
+from typing import Any
 
 from sqlalchemy import Column
 
@@ -76,7 +77,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             min_res = self._normalize_metric_value(min_res, is_min=True)
             max_res = self._normalize_metric_value(max_res, is_min=False)
 
-            metric_values = {
+            metric_values: dict[str, Any] = {
                 Metrics.min.name: min_res,
                 Metrics.max.name: max_res,
             }

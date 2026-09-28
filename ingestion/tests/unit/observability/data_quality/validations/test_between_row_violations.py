@@ -298,9 +298,13 @@ def test_min_and_max_are_still_reported(sqa_runner):
     ]
 
 
-def test_no_tolerance_keeps_the_min_max_verdict(sqa_runner):
-    """Without a tolerance nothing is counted: the extremes alone answer the same question"""
-    validator = SQAValuesValidator(sqa_runner, values_test_case(), EXECUTION_DATE.timestamp())
+@pytest.mark.parametrize("threshold", [None, 0, 0.0])
+def test_no_tolerance_keeps_the_min_max_verdict(sqa_runner, threshold):
+    """Without a tolerance nothing is counted: the extremes alone answer the same question
+
+    A threshold explicitly set to zero tolerates nothing either, so it must not pay for the count.
+    """
+    validator = SQAValuesValidator(sqa_runner, values_test_case(threshold), EXECUTION_DATE.timestamp())
 
     with patch.object(SQAValuesValidator, "_run_violation_count") as counted:
         result = validator.run_validation()

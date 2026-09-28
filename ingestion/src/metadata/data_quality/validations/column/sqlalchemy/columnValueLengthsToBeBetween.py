@@ -14,6 +14,7 @@ Validator for column value length to be between test case
 """
 
 import math
+from typing import cast
 
 from sqlalchemy import Column
 
@@ -37,7 +38,9 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.length import LenFn
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = test_suite_logger()
 
@@ -59,7 +62,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         """
         return self.run_query_results(self.runner, metric, column)
 
-    def _run_violation_count(self, column: Column, test_params: dict) -> tuple[int | None, int | None]:
+    def _run_violation_count(self, column: SQALikeColumn | Column, test_params: dict) -> tuple[int | None, int | None]:
         """Count the rows read and the values whose length falls outside the window
 
         Args:
@@ -67,7 +70,10 @@ class ColumnValueLengthsToBeBetweenValidator(
             test_params: test parameters including min and max bounds
         """
         checker = self._get_validation_checker(test_params)
-        return self._compute_row_violations(self.runner, checker.build_row_level_violations_sqa(LenFn(column)))
+        return self._compute_row_violations(
+            cast(QueryRunner, self.runner),  # noqa: TC006
+            checker.build_row_level_violations_sqa(LenFn(column)),
+        )
 
     def compute_row_count(self, column: Column, min_bound: int, max_bound: int):
         """Compute row count for the given column
