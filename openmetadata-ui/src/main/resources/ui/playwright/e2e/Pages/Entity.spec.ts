@@ -39,17 +39,14 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeSingleSelectDomain,
   resolveDescriptionBox,
   toastNotification,
   uuid,
-  verifyDomainPropagation,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
@@ -70,7 +67,6 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
-import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -178,50 +174,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       );
     });
 
-    /**
-     * Tests domain propagation from service to entity
-     * @description Verifies that a domain assigned to a service propagates to its child entities,
-     * and that removing the domain from the service removes it from the entity
-     */
-    test('Domain Propagation', async ({ page }) => {
-      test.slow(true);
-      const serviceCategory = entity.serviceCategory;
-      if (serviceCategory && 'service' in entity) {
-        await visitServiceDetailsPage(
-          page,
-          {
-            name: entity.service.name,
-            type: serviceCategory,
-          },
-          false
-        );
-
-        await assignSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
-        await verifyDomainPropagation(
-          page,
-          EntityDataClass.domain1.responseData,
-          entity.entityResponseData?.['fullyQualifiedName'] ??
-            entity.entityResponseData?.['name'],
-          entity.exploreTabName
-        );
-
-        await visitServiceDetailsPage(
-          page,
-          {
-            name: entity.service.name,
-            type: serviceCategory,
-          },
-          false
-        );
-        await removeSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
-      }
-    });
+    // Domain Propagation lives in `EntityDomainPropagation.spec.ts`. It
+    // assigns a domain to `entity.service`, which under SharedInfra is a
+    // per-shard shared service; concurrent tests in this file race on the
+    // same service's domain field. The extracted spec constructs each
+    // entity with `createFullHierarchy: true` so the assign/verify is
+    // race-free without paying that isolation cost for the other tests.
 
     /**
      * Tests user ownership management on entities
