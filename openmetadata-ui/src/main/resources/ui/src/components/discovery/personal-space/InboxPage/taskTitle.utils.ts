@@ -21,7 +21,10 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
-import { resolveIncidentTestCaseFqn } from './taskDetail.utils';
+import {
+  getPlainDescription,
+  resolveIncidentTestCaseFqn,
+} from './taskDetail.utils';
 
 // `TASK_ENTITY_TYPES` is keyed by the createTask `TaskType` enum while a Task
 // carries the identically-valued entity enum, so index it by the raw value.
@@ -117,7 +120,7 @@ export const getTaskTitleParts = (
 
   return (
     getPrefixedEntityTitle(task, t) ?? {
-      title: task.description?.trim() || task.taskId || '',
+      title: getPlainDescription(task) || task.taskId || '',
     }
   );
 };

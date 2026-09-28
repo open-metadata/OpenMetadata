@@ -20,6 +20,7 @@ import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { TaskDetailRow } from './taskDetail.types';
 import {
   deriveTaskAboutEntity,
+  getPlainDescription,
   getTaskDetailDescriptor,
   getTaskTypeBadge,
   resolveIncidentTestCaseFqn,
@@ -258,6 +259,20 @@ describe('getTaskDetailDescriptor', () => {
     expect(descriptor.callout?.text).toBe('Please take a look.');
   });
 
+  it('shows the callout description as text, not encoded markup', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: 'SomethingNew' as TaskType,
+        description: 'The 02:00 load timed out; yesterday&#39;s numbers.',
+      }),
+      t
+    );
+
+    expect(descriptor.callout?.text).toBe(
+      "The 02:00 load timed out; yesterday's numbers."
+    );
+  });
+
   // Who resolved it reads in the byline ("Rejected by bob on …"), not twice.
   it('leaves the resolver out of the rows', () => {
     const descriptor = getTaskDetailDescriptor(
@@ -404,5 +419,27 @@ describe('deriveTaskAboutEntity', () => {
       ownerCount: undefined,
       updatedAt: undefined,
     });
+  });
+});
+
+describe('getPlainDescription', () => {
+  it('strips tags and decodes entities', () => {
+    expect(
+      getPlainDescription({
+        description:
+          '<p>It&#39;s <strong>late</strong> &amp; &lt;empty&gt;</p>',
+      })
+    ).toBe("It's late & <empty>");
+  });
+
+  it('keeps an encoded tag as text rather than markup', () => {
+    expect(
+      getPlainDescription({ description: '&lt;img src=x onerror=alert(1)&gt;' })
+    ).toBe('<img src=x onerror=alert(1)>');
+  });
+
+  it('is empty for a missing or blank description', () => {
+    expect(getPlainDescription({})).toBe('');
+    expect(getPlainDescription({ description: '  ' })).toBe('');
   });
 });

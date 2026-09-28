@@ -31,6 +31,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import {
   TaskAboutEntity,
+  TaskDetailCallout,
   TaskDetailDescriptor,
   TaskDetailRow,
   TaskTypeBadge,
@@ -38,6 +39,38 @@ import {
 import { getTaskResolutionSummary } from './taskResolution.utils';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+/**
+ * A task description as plain text: tags stripped and entities decoded.
+ *
+ * Descriptions are stored as sanitized HTML/markdown, and the server's
+ * sanitizer encodes punctuation on update (`'` becomes `&#39;` once a workflow
+ * saves the task), so anything drawing the description outside a rich-text
+ * renderer must decode it. The parsed document is inert — nothing in it runs or
+ * loads — and the text is rendered escaped by React.
+ */
+export const getPlainDescription = (
+  task: Pick<Task, 'description'>
+): string => {
+  const html = task.description?.trim();
+
+  return html
+    ? (
+        new DOMParser().parseFromString(html, 'text/html').body.textContent ??
+        ''
+      ).trim()
+    : '';
+};
+
+// The description as a labelled callout, or none when it has no text.
+const descriptionCallout = (
+  task: Pick<Task, 'description'>,
+  label: string
+): TaskDetailCallout | undefined => {
+  const text = getPlainDescription(task);
+
+  return text ? { label, text } : undefined;
+};
 
 /**
  * The one PII tag that marks a column as holding personal data. Its siblings
@@ -346,9 +379,7 @@ const describeTagUpdate = (
       ),
       ...dateRow('requestedOn', t('label.requested-on'), task.createdAt),
     ],
-    callout: task.description
-      ? { label: t('label.justification'), text: task.description }
-      : undefined,
+    callout: descriptionCallout(task, t('label.justification')),
   };
 };
 
@@ -534,9 +565,7 @@ export const getTaskDetailDescriptor = (
       ? describe(task, t)
       : {
           rows: getCommonRows(task, t),
-          callout: task.description
-            ? { label: t('label.context'), text: task.description }
-            : undefined,
+          callout: descriptionCallout(task, t('label.context')),
         }),
     // A plugin's slices win, but only the slices it sets.
     ...override,
