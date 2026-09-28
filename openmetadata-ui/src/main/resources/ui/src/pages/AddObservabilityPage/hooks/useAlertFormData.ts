@@ -173,7 +173,7 @@ export function useAlertFormData({
 
   const isLoading = useMemo(
     () =>
-      Object.values(loadingState).some((val) => val) ||
+      Object.values(loadingState).some(Boolean) ||
       alertResources.loading ||
       alertTemplates.loading,
     [alertResources.loading, alertTemplates.loading, loadingState]

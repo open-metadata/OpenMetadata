@@ -12,7 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertType } from '../../../generated/events/eventSubscription';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
@@ -35,7 +35,7 @@ export function useAlertResources(
     ObservabilityFilterResourceDescriptor[]
   >([]);
 
-  const fetchFunctions = async () => {
+  const fetchFunctions = useCallback(async () => {
     try {
       setLoading(true);
       const filterResources =
@@ -53,11 +53,11 @@ export function useAlertResources(
     } finally {
       setLoading(false);
     }
-  };
+  }, [alertType, t]);
 
   useEffect(() => {
     fetchFunctions();
-  }, [alertType]);
+  }, [fetchFunctions]);
 
   const selectedResource = useMemo(
     () => filterResources.find((resource) => resource.name === selectedTrigger),

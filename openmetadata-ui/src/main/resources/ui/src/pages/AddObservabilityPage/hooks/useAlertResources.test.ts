@@ -26,8 +26,11 @@ jest.mock('../../../rest/alertsAPI', () => ({
   getResourceFunctions: () => mockNotificationResources(),
 }));
 
+// Stable like the real react-i18next `t`, which the fetch callback depends on.
+const mockT = (key: string) => key;
+
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: mockT }),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
