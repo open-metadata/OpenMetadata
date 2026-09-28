@@ -27,9 +27,9 @@ describe('MetricDetailsClassBase', () => {
 
     expect(tabs.map(({ id }) => id)).toEqual([
       EntityTabs.OVERVIEW,
+      EntityTabs.LINEAGE,
       EntityTabs.ASSETS,
       EntityTabs.ACTIVITY_FEED,
-      EntityTabs.LINEAGE,
       EntityTabs.CUSTOM_PROPERTIES,
     ]);
     expect(

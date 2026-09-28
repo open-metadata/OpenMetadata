@@ -131,6 +131,25 @@ export const getMetricDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={labelMap[EntityTabs.LINEAGE] ?? i18n.t('label.lineage')}
+        />
+      ),
+      key: EntityTabs.LINEAGE,
+      children: (
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(metricDetails?.deleted)}
+            entity={metricDetails as SourceType}
+            entityType={EntityType.METRIC}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
           count={assetIds?.length ?? 0}
           id={EntityTabs.ASSETS}
           isActive={activeTab === EntityTabs.ASSETS}
@@ -173,26 +192,6 @@ export const getMetricDetailsPageTabs = ({
           onUpdateEntityDetails={fetchMetricDetails}
           onUpdateFeedCount={handleFeedCount}
         />
-      ),
-    },
-
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.LINEAGE}
-          name={labelMap[EntityTabs.LINEAGE] ?? i18n.t('label.lineage')}
-        />
-      ),
-      key: EntityTabs.LINEAGE,
-      children: (
-        <Suspense fallback={<Loader />}>
-          <EntityLineageTab
-            deleted={Boolean(metricDetails?.deleted)}
-            entity={metricDetails as SourceType}
-            entityType={EntityType.METRIC}
-            hasEditAccess={editLineagePermission}
-          />
-        </Suspense>
       ),
     },
     {

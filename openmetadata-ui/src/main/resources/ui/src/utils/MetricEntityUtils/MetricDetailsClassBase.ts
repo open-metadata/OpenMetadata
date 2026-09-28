@@ -93,9 +93,9 @@ class MetricDetailsClassBase {
   public getMetricDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.OVERVIEW,
+      EntityTabs.LINEAGE,
       EntityTabs.ASSETS,
       EntityTabs.ACTIVITY_FEED,
-      EntityTabs.LINEAGE,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
