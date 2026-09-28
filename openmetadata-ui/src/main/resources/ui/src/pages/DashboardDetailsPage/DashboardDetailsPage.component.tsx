@@ -18,6 +18,7 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PageLoader } from '../../components/common/Loader/Loader';
 import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
@@ -48,7 +49,6 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 
 const DashboardDetailsPage = () => {
   const { t } = useTranslation();
