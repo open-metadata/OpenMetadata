@@ -31,6 +31,7 @@ import {
   ALL_SERVICES_CATEGORY,
   BETA_SERVICES,
   excludedService,
+  SERVICE_CATEGORY_TITLE_KEYS,
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
@@ -45,7 +46,6 @@ import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
 import { getServiceCategoryLabel } from '../../../../../utils/ServicePureUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { CATEGORY_CONFIGS } from '../../../../integration/ConnectionsPage/ConnectionsPage.constants';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -64,10 +64,12 @@ const SelectServiceType = ({
   const categorySelectItems: SelectItemType[] = useMemo(
     () => [
       { id: ALL_SERVICES_CATEGORY, label: t('label.all-services') },
-      ...CATEGORY_CONFIGS.map(({ key }) => ({
-        id: key,
-        label: getServiceCategoryLabel(key),
-      })),
+      ...(Object.keys(SERVICE_CATEGORY_TITLE_KEYS) as ServiceCategory[]).map(
+        (key) => ({
+          id: key,
+          label: getServiceCategoryLabel(key),
+        })
+      ),
     ],
     [t]
   );

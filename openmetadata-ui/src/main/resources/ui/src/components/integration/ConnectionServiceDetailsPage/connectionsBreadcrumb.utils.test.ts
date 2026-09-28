@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { TFunction } from 'i18next';
 import { getServiceCategoryBreadcrumb } from './connectionsBreadcrumb.utils';
+
+const t = ((key: string) => key) as unknown as TFunction;
 
 describe('getServiceCategoryBreadcrumb', () => {
   it('names the category and links to its tab on the listing', () => {
-    const crumb = getServiceCategoryBreadcrumb('databaseServices');
+    const crumb = getServiceCategoryBreadcrumb(t, 'databaseServices');
 
     // The crumb it replaced showed the connector ("Mysql") and went nowhere. The level above a
     // service is its category, and the listing tabs by exactly that, so it is a real destination.
@@ -27,17 +30,17 @@ describe('getServiceCategoryBreadcrumb', () => {
   });
 
   it('links each tabbed category to its own tab', () => {
-    expect(getServiceCategoryBreadcrumb('dashboardServices')?.href).toBe(
+    expect(getServiceCategoryBreadcrumb(t, 'dashboardServices')?.href).toBe(
       '/connections?category=dashboardServices'
     );
-    expect(getServiceCategoryBreadcrumb('securityServices')?.href).toBe(
+    expect(getServiceCategoryBreadcrumb(t, 'securityServices')?.href).toBe(
       '/connections?category=securityServices'
     );
   });
 
   it('is dropped for a category the listing does not tab', () => {
     // llm/mcp services have no tab, so a crumb would point at a tab that does not exist.
-    expect(getServiceCategoryBreadcrumb('llmServices')).toBeNull();
-    expect(getServiceCategoryBreadcrumb(undefined)).toBeNull();
+    expect(getServiceCategoryBreadcrumb(t, 'llmServices')).toBeNull();
+    expect(getServiceCategoryBreadcrumb(t, undefined)).toBeNull();
   });
 });

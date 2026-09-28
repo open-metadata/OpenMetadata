@@ -67,6 +67,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
 
 // Category names deliberately omit "Service": they label a kind of source (Connections tabs,
 // breadcrumbs, the add-service picker), whereas the `*-service` labels name the service entity.
+// Entry order is the add-service picker's order; keep it in step with the Connections tabs.
 export const SERVICE_CATEGORY_TITLE_KEYS: Record<ServiceCategory, string> = {
   [ServiceCategory.DATABASE_SERVICES]: 'label.database-plural',
   [ServiceCategory.DASHBOARD_SERVICES]: 'label.dashboard-plural',
