@@ -74,22 +74,24 @@ const stripMarkdownKeepingSpans = (text: string): string =>
 
 export const highlightEntityNameAndDescription = (
   entity: SearchedDataProps['data'][number]['_source'],
-  highlight: SearchedDataProps['data'][number]['highlight']
+  highlight: SearchedDataProps['data'][number]['highlight'],
+  stripMd = false
 ): SearchedDataProps['data'][number]['_source'] => {
-  let entityDescription = entity.description ?? '';
+  let entityDescription = stripMd
+    ? stripMarkdown(entity.description ?? '')
+    : entity.description ?? '';
   const descHighlights = highlight?.description ?? [];
 
   if (descHighlights.length > 0) {
-    const strippedHighlights = descHighlights.map(stripMarkdownKeepingSpans);
-    const matchTextArr = strippedHighlights.map((val: string) =>
+    const processed = stripMd
+      ? descHighlights.map(stripMarkdownKeepingSpans)
+      : descHighlights;
+    const matchTextArr = processed.map((val: string) =>
       val.replace(/<\/?span(.*?)>/g, '')
     );
 
     matchTextArr.forEach((text: string, i: number) => {
-      entityDescription = entityDescription.replace(
-        text,
-        strippedHighlights[i]
-      );
+      entityDescription = entityDescription.replace(text, processed[i]);
     });
   }
 

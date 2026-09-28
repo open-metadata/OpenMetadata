@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-  DatabaseServiceType,
-  DataType,
-  LabelType,
-  State,
-  TagSource,
+    DatabaseServiceType,
+    DataType,
+    LabelType,
+    State,
+    TagSource
 } from '../../generated/entity/data/table';
 
 export const entityWithoutNameAndDescHighlight = {

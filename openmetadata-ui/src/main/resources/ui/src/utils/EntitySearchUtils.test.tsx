@@ -12,22 +12,22 @@
  */
 import { render } from '@testing-library/react';
 import {
-  highlightEntityNameAndDescription,
-  highlightSearchArrayElement,
-  highlightSearchText,
-  renderHighlightedText,
+    highlightEntityNameAndDescription,
+    highlightSearchArrayElement,
+    highlightSearchText,
+    renderHighlightedText
 } from './EntitySearchUtils';
 import {
-  entityWithMarkdownDescription,
-  entityWithoutNameAndDescHighlight,
-  highlightedEntityDescription,
-  highlightedEntityDisplayName,
-  highlightedMarkdownDescription,
-  mockHighlightedResult,
-  mockHighlights,
-  mockHighlightsWithMarkdown,
-  mockSearchText,
-  mockText,
+    entityWithMarkdownDescription,
+    entityWithoutNameAndDescHighlight,
+    highlightedEntityDescription,
+    highlightedEntityDisplayName,
+    highlightedMarkdownDescription,
+    mockHighlightedResult,
+    mockHighlights,
+    mockHighlightsWithMarkdown,
+    mockSearchText,
+    mockText
 } from './mocks/EntityUtils.mock';
 
 jest.mock('./StringUtils', () => ({
@@ -54,20 +54,31 @@ describe('EntitySearchUtils unit tests', () => {
       expect(highlightedEntity.description).toBe(highlightedEntityDescription);
     });
 
-    it('should preserve highlight spans when ES fragments contain markdown', () => {
-      const entity = {
-        ...entityWithMarkdownDescription,
-        description: 'bold text and code snippet',
-      };
+    it('should preserve highlight spans when stripMd strips markdown from fragments', () => {
       const result = highlightEntityNameAndDescription(
-        entity,
-        mockHighlightsWithMarkdown
+        entityWithMarkdownDescription,
+        mockHighlightsWithMarkdown,
+        true
       );
 
       expect(result.description).toBe(highlightedMarkdownDescription);
       expect(result.description).toContain(
         '<span class="text-highlighter">code</span>'
       );
+    });
+
+    it('should leave markdown intact when stripMd is false', () => {
+      const entity = {
+        ...entityWithMarkdownDescription,
+        description: '**bold** text and `code` snippet',
+      };
+      const result = highlightEntityNameAndDescription(
+        entity,
+        mockHighlightsWithMarkdown,
+        false
+      );
+
+      expect(result.description).toContain('**bold**');
     });
   });
 

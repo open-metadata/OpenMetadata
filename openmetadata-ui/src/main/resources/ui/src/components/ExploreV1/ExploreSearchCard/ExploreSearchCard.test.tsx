@@ -562,7 +562,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         displayName: 'Test Table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -588,7 +589,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         name: 'test-table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -616,7 +618,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         description: 'This is a test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -645,7 +648,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'name',
         displayName: 'Display Name',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -679,7 +683,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         displayName: 'Highlighted Display',
         description: 'Highlighted description text',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -705,7 +710,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         description: 'Test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
