@@ -9,7 +9,7 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { isValidElement } from 'react';
+import { isValidElement, useCallback } from 'react';
 import type { Placement } from 'react-aria';
 import type {
   ButtonProps as AriaButtonProps,
@@ -78,7 +78,7 @@ export type Props = ButtonProps | LinkProps;
 export const ButtonUtility = ({
   tooltip,
   className,
-  isDisabled,
+  isDisabled: isDisabledProp,
   icon: Icon,
   size = 'sm',
   color = 'secondary',
@@ -87,6 +87,21 @@ export const ButtonUtility = ({
 }: Props) => {
   const href = 'href' in otherProps ? otherProps.href : undefined;
   const Component = href ? AriaLink : AriaButton;
+  // react-aria drops the native `disabled` and `title` attributes; see Button.
+  const isDisabled =
+    isDisabledProp ??
+    ('disabled' in otherProps ? otherProps.disabled : undefined);
+  const title = otherProps.title;
+  const titleRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (node && title) {
+        node.setAttribute('title', title);
+      } else if (node) {
+        node.removeAttribute('title');
+      }
+    },
+    [title]
+  );
 
   let props = {};
 
@@ -123,7 +138,8 @@ export const ButtonUtility = ({
         size === 'xs' ? 'tw:*:data-icon:size-4' : 'tw:*:data-icon:size-5',
 
         className
-      )}>
+      )}
+      ref={titleRef}>
       {isReactComponent(Icon) && <Icon data-icon />}
       {isValidElement(Icon) && Icon}
     </Component>

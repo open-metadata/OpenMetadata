@@ -9,12 +9,13 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { forwardRef, isValidElement } from 'react';
+import { forwardRef, isValidElement, useCallback, useMemo } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import type { Placement } from 'react-aria';
+import { mergeRefs } from '@react-aria/utils';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 export const styles = sortCx({
@@ -33,6 +34,8 @@ export const styles = sortCx({
     focusOutline:
       'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
+    // Link colors render as inline text unless `boxed` keeps the size's box.
+    linkInline: 'tw:justify-normal tw:rounded tw:p-0!',
   },
   sizes: {
     xxs: {
@@ -106,7 +109,7 @@ export const styles = sortCx({
     },
     'link-gray': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-tertiary tw:hover:text-tertiary_hover',
+        'tw:text-tertiary tw:hover:text-tertiary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -118,7 +121,7 @@ export const styles = sortCx({
         // Dark keeps light frozen (brand-secondary) but flips to the blue link
         // tone (blue-300) per the dark-mode palette guideline — links are blue,
         // not the gray brand-secondary text step.
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
+        'tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -159,7 +162,7 @@ export const styles = sortCx({
     },
     'link-destructive': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
+        'tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -214,6 +217,11 @@ export interface CommonProps {
   iconTrailing?: FC<{ className?: string }> | ReactNode;
   /** Removes horizontal padding from the text content */
   noTextPadding?: boolean;
+  /**
+   * Link colors only: keep the size's padding, height and radius instead of
+   * rendering as inline text, so a link-styled action occupies a button's box.
+   */
+  boxed?: boolean;
   /** When true, keeps the text visible during loading state */
   showTextWhileLoading?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
@@ -276,10 +284,11 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       className,
       hideFocusOutline,
       noTextPadding,
+      boxed,
       ellipsis,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
-      isDisabled: disabled,
+      isDisabled,
       isLoading: loading,
       showTextWhileLoading,
       tooltip,
@@ -290,12 +299,30 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
   ) {
     const href = 'href' in otherProps ? otherProps.href : undefined;
     const Component = href ? AriaLink : AriaButton;
+    // react-aria drops the native `disabled` and `title` attributes, so honour
+    // them here — a bare `disabled` would otherwise leave the button clickable.
+    const disabled =
+      isDisabled ??
+      ('disabled' in otherProps ? otherProps.disabled : undefined);
+    const title = otherProps.title;
+    const titleRef = useCallback(
+      (node: HTMLElement | null) => {
+        if (node && title) {
+          node.setAttribute('title', title);
+        } else if (node) {
+          node.removeAttribute('title');
+        }
+      },
+      [title]
+    );
+    const mergedRef = useMemo(() => mergeRefs(ref, titleRef), [ref, titleRef]);
 
     const isIcon = (IconLeading || IconTrailing) && !children;
     const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
       color
     );
-    noTextPadding = isLinkType || noTextPadding;
+    const isInlineLink = isLinkType && !boxed;
+    noTextPadding = isInlineLink || noTextPadding;
 
     let props = {};
 
@@ -324,7 +351,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         // simultaneously (an intersection), which `ref`'s real type — a union — can never
         // satisfy. The cast is safe: at runtime the ref always lands on whichever concrete
         // DOM node `Component` actually renders.
-        ref={ref as never}
+        ref={mergedRef as never}
         {...props}
         className={cx(
           styles.common.root,
@@ -333,7 +360,10 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
           styles.sizes[size].root,
           styles.colors[color].root,
-          isLinkType && styles.sizes[size].linkRoot,
+          isInlineLink && [
+            styles.common.linkInline,
+            styles.sizes[size].linkRoot,
+          ],
           ellipsis && 'tw:min-w-0',
           (loading || (href && (disabled || loading))) &&
             'tw:pointer-events-none',
