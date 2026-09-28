@@ -373,6 +373,17 @@ class TestBaseTestValidator:
         # Verify dimensional validation WAS attempted
         validator._run_dimensional_validation.assert_called_once()
 
+    def test_run_validation_records_the_duration(self, validator):
+        result = validator.run_validation()
+
+        assert result.duration > 0
+        assert result.errorDetails is None
+
+    def test_an_aborted_result_outside_an_except_block_has_no_error_details(self, validator):
+        result = validator.get_test_case_result_object(validator.execution_date, TestCaseStatus.Aborted, "aborted", [])
+
+        assert result.errorDetails is None
+
 
 class TestGetTopDimensions:
     @pytest.fixture

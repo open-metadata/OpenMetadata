@@ -16,6 +16,8 @@ Base validator class
 from __future__ import annotations
 
 import reprlib
+import sys
+import time
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -45,6 +47,7 @@ from metadata.data_quality.validations.thresholds import (
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
+    TestCaseErrorDetails,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -74,6 +77,22 @@ DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 DIMENSION_SUM_VALUE_KEY = "sum_value"  # For statistical validators weighted calculations
+
+
+def elapsed_ms(start: float) -> float:
+    """Milliseconds elapsed since a `time.perf_counter()` reading"""
+    return (time.perf_counter() - start) * 1000
+
+
+def error_details(exc: BaseException | None) -> TestCaseErrorDetails | None:
+    """Structured details of the exception that aborted a test run"""
+    if exc is None:
+        return None
+    return TestCaseErrorDetails(
+        errorType=type(exc).__name__,
+        message=str(exc),
+        stackTrace="".join(traceback.format_exception(exc)),
+    )
 
 
 class TestEvaluation(TypedDict, total=False):
@@ -156,6 +175,13 @@ class BaseTestValidator(ABC):
         return min(value, MAX_TOP_DIMENSIONS)
 
     def run_validation(self) -> TestCaseResult:
+        """Run the validation and record its wall-clock duration on the result"""
+        start = time.perf_counter()
+        test_result = self._run_validation_with_dimensions()
+        test_result.duration = elapsed_ms(start)
+        return test_result
+
+    def _run_validation_with_dimensions(self) -> TestCaseResult:
         """Template method defining the validation flow with optional dimensional analysis
 
         This method orchestrates the overall validation process:
@@ -175,8 +201,8 @@ class BaseTestValidator(ABC):
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
-            logger.debug(f"Executing dimensional validation for test case: {self.test_case.fullyQualifiedName}")
-            logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
+            logger.debug("Executing dimensional validation for test case: %s", self.test_case.fullyQualifiedName)
+            logger.debug("Dimension columns: %s", self.test_case.dimensionColumns)
 
             if not self.are_dimension_columns_valid():
                 return test_result
@@ -184,19 +210,19 @@ class BaseTestValidator(ABC):
             try:
                 dimension_results = self._run_dimensional_validation()
                 if dimension_results:
-                    logger.debug(f"Dimensional validation completed with {len(dimension_results)} results")
+                    logger.debug("Dimensional validation completed with %d results", len(dimension_results))
 
                     test_case_dimension_results = self._convert_to_test_case_dimension_results(
                         dimension_results, test_result
                     )
 
                     test_result.dimensionResults = test_case_dimension_results
-                    logger.debug(f"Attached {len(test_case_dimension_results)} dimension results to main test result")
+                    logger.debug("Attached %d dimension results to main test result", len(test_case_dimension_results))
                 else:
                     logger.debug("Dimensional validation completed with no results")
 
             except Exception as exc:
-                logger.warning(f"Dimensional validation failed for {self.test_case.fullyQualifiedName}: {exc}")
+                logger.warning("Dimensional validation failed for %s: %s", self.test_case.fullyQualifiedName, exc)
                 logger.debug(traceback.format_exc())
 
         return test_result
@@ -815,6 +841,9 @@ class BaseTestValidator(ABC):
             # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
             minBound=None if min_bound == float("-inf") else min_bound,
             maxBound=None if max_bound == float("inf") else max_bound,
+            # Every Aborted call site runs inside an `except` block, so the active exception is the
+            # cause; reading it here spares each validator from threading it through.
+            errorDetails=error_details(sys.exc_info()[1]) if status == TestCaseStatus.Aborted else None,
         )
 
         if (row_count is not None and row_count != 0) and (

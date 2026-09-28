@@ -280,6 +280,19 @@ class TestResultMessages:
         assert result.testCaseStatus is TestCaseStatus.Aborted
         assert "Evaluated on" not in result.result
 
+    def test_an_aborted_run_carries_the_error_details(self):
+        validator = build_validator(ColumnValuesToBeNotNullValidator, [scope_parameter(TEN_PERCENT)])
+        validator.get_column = MagicMock(side_effect=ValueError("no such column"))
+
+        result = validator.run_validation()
+
+        assert result.testCaseStatus is TestCaseStatus.Aborted
+        assert "no such column" in result.result
+        assert result.errorDetails.errorType == "ValueError"
+        assert result.errorDetails.message == "no such column"
+        assert result.errorDetails.stackTrace.rstrip().endswith("ValueError: no such column")
+        assert result.duration is not None
+
     def test_a_missing_scope_reports_the_full_table(self):
         """An older server, or a caller that does not go through the test suite interface"""
         validator = build_validator(ColumnValuesToBeNotNullValidator, [])

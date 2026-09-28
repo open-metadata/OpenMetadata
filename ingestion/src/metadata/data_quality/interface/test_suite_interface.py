@@ -14,12 +14,16 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
+import time
 from abc import ABC, abstractmethod
 from typing import cast
 
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator  # noqa: TC001
+from metadata.data_quality.validations.base_test_handler import (
+    BaseTestValidator,
+    elapsed_ms,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,  # noqa: TC001
 )
@@ -140,6 +144,7 @@ class TestSuiteInterface(ABC):
         validator_builder = self._get_validator_builder(test_case, entity_type)
         validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
+        start = time.perf_counter()
         try:
             test_result = validator.run_validation()
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
@@ -155,15 +160,14 @@ class TestSuiteInterface(ABC):
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
-            return TestCaseResultResponse(
-                testCase=test_case,
-                testCaseResult=validator.get_test_case_result_object(
-                    validator.execution_date,
-                    TestCaseStatus.Aborted,
-                    message,
-                    [],
-                ),
+            test_result = validator.get_test_case_result_object(
+                validator.execution_date,
+                TestCaseStatus.Aborted,
+                message,
+                [],
             )
+            test_result.duration = elapsed_ms(start)
+            return TestCaseResultResponse(testCase=test_case, testCaseResult=test_result)
 
     def _get_table_config(self):
         """Get the sampling configuration for the data quality tests"""
