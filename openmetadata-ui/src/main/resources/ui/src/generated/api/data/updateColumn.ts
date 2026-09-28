@@ -12,14 +12,17 @@
  */
 /**
  * Update Column API request to update individual column metadata such as display name,
- * description, tags, and glossary terms. This API works for columns in both tables and
- * dashboard data models using the column's fully qualified name. The constraint field is
- * only applicable to table columns.
+ * description, tags, and glossary terms, addressed by the column's fully qualified name.
+ * This API works for the inline children of table, dashboardDataModel, topic, container,
+ * mlmodel, pipeline, searchIndex, apiEndpoint and worksheet. The description and tags
+ * fields apply to every type; displayName applies to every type except mlmodel; constraint
+ * and removeConstraint apply to table only; extension applies to table and
+ * dashboardDataModel only.
  */
 export interface UpdateColumn {
     /**
      * Column level constraint. Only applicable to table columns, ignored for dashboard data
-     * model columns.
+     * model columns, rejected with 400 for every other entity type.
      */
     constraint?: Constraint;
     /**
@@ -27,17 +30,20 @@ export interface UpdateColumn {
      */
     description?: string;
     /**
-     * Display Name that identifies this column name.
+     * Display Name that identifies this column name. Rejected with 400 for mlmodel features,
+     * which have no display name.
      */
     displayName?: string;
     /**
-     * Entity extension data with custom attributes added to the column.
+     * Entity extension data with custom attributes added to the column. Supported for table and
+     * dashboard data model columns only, rejected with 400 for every other entity type.
      */
     extension?: any;
     /**
      * Set to true to remove the existing column constraint. Only applicable to table columns,
-     * ignored for dashboard data model columns. If both 'constraint' and 'removeConstraint' are
-     * provided, 'removeConstraint' takes precedence.
+     * ignored for dashboard data model columns, rejected with 400 for every other entity type.
+     * If both 'constraint' and 'removeConstraint' are provided, 'removeConstraint' takes
+     * precedence.
      */
     removeConstraint?: boolean;
     /**
@@ -51,7 +57,7 @@ export interface UpdateColumn {
 
 /**
  * Column level constraint. Only applicable to table columns, ignored for dashboard data
- * model columns.
+ * model columns, rejected with 400 for every other entity type.
  *
  * This enum defines the type for column constraint.
  */
