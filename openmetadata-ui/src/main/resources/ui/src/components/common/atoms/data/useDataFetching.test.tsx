@@ -27,6 +27,21 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 
 const emptyResponse = { hits: { hits: [], total: { value: 0 } } };
 
+const responseWith = (id: string) => ({
+  hits: { hits: [{ _source: { id } }], total: { value: 1 } },
+});
+
+// A promise plus the handle to settle it later, so two in-flight requests can
+// be resolved out of order.
+const deferred = () => {
+  let resolve!: (value: unknown) => void;
+  const promise = new Promise((res) => {
+    resolve = res;
+  });
+
+  return { promise, resolve };
+};
+
 const mockNlqSearch = nlqSearch as jest.Mock;
 const mockSearchQuery = searchQuery as jest.Mock;
 
@@ -68,6 +83,52 @@ describe('useDataFetching', () => {
       })
     );
     expect(mockSearchQuery).not.toHaveBeenCalled();
+  });
+
+  it('ignores a superseded response that lands after a newer one', async () => {
+    const slowFirst = deferred();
+    const fastSecond = deferred();
+    mockNlqSearch
+      .mockReturnValueOnce(slowFirst.promise)
+      .mockReturnValueOnce(fastSecond.promise);
+
+    const { result } = renderFetching(true);
+
+    await act(async () => {
+      result.current.searchEntities(1, 'finance', {});
+      result.current.searchEntities(1, 'finance products', {});
+      // The newer query answers first, then the stale one arrives late.
+      fastSecond.resolve(responseWith('newer'));
+      slowFirst.resolve(responseWith('older'));
+    });
+
+    expect(result.current.entities).toEqual([{ id: 'newer' }]);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('does not let a late NLQ response replace the result after the toggle is off', async () => {
+    const lateNlq = deferred();
+    mockNlqSearch.mockReturnValueOnce(lateNlq.promise);
+    mockSearchQuery.mockResolvedValue(responseWith('plain-es'));
+
+    const { result, rerender } = renderHook(
+      ({ useNlq }) =>
+        useDataFetching({ searchIndex: SearchIndex.DATA_PRODUCT, useNlq }),
+      { initialProps: { useNlq: true } }
+    );
+
+    await act(async () => {
+      result.current.searchEntities(1, 'finance', {});
+    });
+
+    rerender({ useNlq: false });
+
+    await act(async () => {
+      await result.current.searchEntities(1, 'finance', {});
+      lateNlq.resolve(responseWith('stale-nlq'));
+    });
+
+    expect(result.current.entities).toEqual([{ id: 'plain-es' }]);
   });
 
   it('keeps the plain endpoint for an empty term even with NLQ on', async () => {

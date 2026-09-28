@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
   Aggregations,
@@ -77,6 +77,10 @@ export const useDataFetching = <T extends { id: string }>(
     [baseFilter]
   );
 
+  // Only the newest request may write state: NLQ is slower and more variable
+  // than plain ES, so a superseded response can otherwise land last and win.
+  const requestIdRef = useRef(0);
+
   // Main search function with comprehensive handling
   const searchEntities = useCallback(
     async (
@@ -84,6 +88,8 @@ export const useDataFetching = <T extends { id: string }>(
       searchTerm = '',
       filters: Record<string, string[]> = {}
     ) => {
+      const requestId = ++requestIdRef.current;
+      const isStale = () => requestId !== requestIdRef.current;
       try {
         setLoading(true);
         setError(null);
@@ -104,6 +110,10 @@ export const useDataFetching = <T extends { id: string }>(
           includeDeleted: false,
         });
 
+        if (isStale()) {
+          return;
+        }
+
         // Process response
         const transformedEntities = transformData(response);
         const total = response?.hits?.total?.value || 0;
@@ -116,13 +126,18 @@ export const useDataFetching = <T extends { id: string }>(
         setAggregations((previous) => responseAggregations ?? previous);
         setError(null);
       } catch (err) {
+        if (isStale()) {
+          return;
+        }
         setError(err instanceof Error ? err : new Error('Search failed'));
         setEntities([]);
         setTotalEntities(0);
         setAggregations(null);
         showErrorToast(err as AxiosError);
       } finally {
-        setLoading(false);
+        if (!isStale()) {
+          setLoading(false);
+        }
       }
     },
     [searchIndex, pageSize, transformData, buildESQuery, useNlq]
