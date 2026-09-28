@@ -77,6 +77,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     page: currentPage,
     pageSize: hashPageSize,
     cursor: hashCursor,
+    cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
   const pageSize = hashPageSize || PAGE_SIZE_BASE;
@@ -309,8 +310,12 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
 
     if (newPage > currentPage) {
       await navigateSequentially(newPage);
-    } else if (paging.before) {
-      fetchAlerts({ before: paging.before }, newPage);
+    } else if (paging.before && newPage === currentPage - 1) {
+      const before = paging.before;
+      const result = await fetchAlerts({ before }, newPage);
+      if (result) {
+        setHashPage(newPage, 'before', before, pageSize);
+      }
     } else {
       setHashPage(1, undefined, undefined, pageSize);
       setCursorCache(new Map());
@@ -326,6 +331,8 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   useEffect(() => {
     if (currentPage <= 1 || !hashCursor) {
       fetchAlerts(undefined, 1);
+    } else if (hashCursorType === 'before') {
+      fetchAlerts({ before: hashCursor }, currentPage);
     } else {
       fetchAlerts({ after: hashCursor }, currentPage);
     }

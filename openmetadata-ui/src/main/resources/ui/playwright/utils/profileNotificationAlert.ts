@@ -102,10 +102,11 @@ const selectFilterType = async ({
   filterName: string;
   exclude?: boolean;
 }) => {
-  await selectCoreUIOption(page, `filter-select-${filterNumber}`, filterName);
+  await selectCoreUIOption(page, `filters-select-${filterNumber}`, filterName);
 
   if (exclude) {
-    const toggle = page.getByTestId(`filter-switch-${filterNumber}`);
+    const ruleRow = page.getByTestId(`filters-${filterNumber}`);
+    const toggle = ruleRow.getByRole('switch');
     await expect(toggle).toBeVisible();
     await toggle.click();
   }
@@ -126,7 +127,7 @@ export const addOwnerFilterProfile = async ({
 
   await fillAutocompleteAndSelect({
     page,
-    testId: 'owner-name-select',
+    testId: 'ownerNameList-autocomplete',
     searchText: ownerName,
   });
 };
@@ -151,7 +152,7 @@ export const addEntityFQNFilterProfile = async ({
 
   await fillAutocompleteAndSelect({
     page,
-    testId: 'fqn-list-select',
+    testId: 'fqnList-autocomplete',
     searchText: entityFQN,
   });
 };
@@ -175,7 +176,7 @@ export const addEventTypeFilterProfile = async ({
   });
 
   for (const eventType of eventTypes) {
-    const input = page.getByTestId('event-type-select').getByRole('combobox');
+    const input = page.getByTestId('eventTypeList-autocomplete').getByRole('combobox');
     await expect(input).toBeVisible();
     await input.click();
     await input.fill(eventType);
@@ -210,7 +211,7 @@ export const addDomainFilterProfile = async ({
 
   await fillAutocompleteAndSelect({
     page,
-    testId: 'domain-select',
+    testId: 'domainList-autocomplete',
     searchText: domainDisplayName,
   });
 };
@@ -235,7 +236,7 @@ export const addUpdaterNameFilterProfile = async ({
 
   await fillAutocompleteAndSelect({
     page,
-    testId: 'updater-name-select',
+    testId: 'updateByUserList-autocomplete',
     searchText: updaterName,
   });
 };
@@ -277,7 +278,7 @@ export const addMentionedUsersFilterProfile = async ({
 
   await fillAutocompleteAndSelect({
     page,
-    testId: 'user-name-select',
+    testId: 'userList-autocomplete',
     searchText: userName,
   });
 };

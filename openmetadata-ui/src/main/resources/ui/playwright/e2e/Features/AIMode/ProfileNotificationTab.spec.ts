@@ -159,24 +159,20 @@ const inputAlertInformation = async ({
   name: string;
   sourceName: string;
 }) => {
-  const nameInput = page.getByTestId('alert-name-input').getByRole('textbox');
+  const nameInput = page.getByRole('textbox', { name: /name/i });
   await expect(nameInput).toBeVisible();
   await nameInput.fill(name);
 
-  await getDescriptionBox(page).clear();
-  await fillDescriptionBox(page, ALERT_DESCRIPTION);
+  const descriptionTextArea = page.getByTestId('description');
+  await expect(descriptionTextArea).toBeVisible();
+  await descriptionTextArea.fill(ALERT_DESCRIPTION);
 
   const sourceSelect = page.getByTestId('source-select');
-
-  await expect(async () => {
-    if (!(await sourceSelect.isVisible())) {
-      await page.getByTestId('add-source-button').click();
-      await page
-        .getByRole('menuitemradio', { name: new RegExp(sourceName, 'i') })
-        .click();
-    }
-    await expect(sourceSelect).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+  await expect(sourceSelect).toBeVisible();
+  await sourceSelect.click();
+  await page
+    .getByRole('option', { name: new RegExp(sourceName, 'i') })
+    .click();
 };
 
 const saveNewAlertAndVerify = async (page: Page): Promise<AlertDetails> => {
