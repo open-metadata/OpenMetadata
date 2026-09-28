@@ -2338,6 +2338,100 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_patchUser_otherUser_forbiddenForDataConsumer(TestNamespace ns) {
+    // A user with only the default roles holds DataConsumer's EditDescription on all resources,
+    // which must not reach other users.
+    OpenMetadataClient consumer = clientFor(createRegularUser(ns, "consumer"));
+    User target = createRegularUser(ns, "consumertarget");
+
+    assertPatchForbidden(consumer, target, replaceOp("/description", "edited by consumer"));
+
+    assertNotEquals("edited by consumer", Users.get(target.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_patchUser_otherUser_forbiddenForDataSteward(TestNamespace ns) {
+    // DataSteward grants EditDisplayName on all resources, which must not reach other users.
+    OpenMetadataClient steward = clientFor(createDataSteward(ns));
+    User target = createRegularUser(ns, "stewardtarget");
+
+    assertPatchForbidden(steward, target, replaceOp("/displayName", "edited by steward"));
+
+    assertNotEquals("edited by steward", Users.get(target.getId().toString()).getDisplayName());
+  }
+
+  @Test
+  void test_patchUser_self_allowedForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "selfpatcher");
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/users/" + user.getId(), replaceOp("/description", "my own"));
+
+    assertEquals("my own", Users.get(user.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_patchUser_otherUser_allowedWithUserEditAll(TestNamespace ns) {
+    // A role granting EDIT_ALL on users is how a non admin is allowed to edit other users.
+    OpenMetadataClient editorClient = createUserEditorClient(ns);
+    User target = createRegularUser(ns, "editortarget");
+
+    editorClient
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + target.getId(),
+            replaceOp("/description", "edited by user editor"));
+
+    assertEquals("edited by user editor", Users.get(target.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_deleteUser_otherUser_forbiddenForNonAdmin(TestNamespace ns) {
+    OpenMetadataClient steward = clientFor(createDataSteward(ns));
+    User target = createRegularUser(ns, "deletetarget");
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                steward
+                    .getHttpClient()
+                    .executeForString(HttpMethod.DELETE, "/v1/users/" + target.getId(), null));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+
+    assertFalse(Boolean.TRUE.equals(Users.get(target.getId().toString()).getDeleted()));
+  }
+
+  private User createDataSteward(TestNamespace ns) {
+    String localPart = "steward" + ns.shortPrefix();
+    return createEntity(
+        new CreateUser()
+            .withName(localPart)
+            .withEmail(localPart + "@open-metadata.org")
+            .withRoles(List.of(dataStewardRole().getId())));
+  }
+
+  private void assertPatchForbidden(OpenMetadataClient client, User target, ArrayNode patch) {
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/users/" + target.getId(), patch));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private ArrayNode replaceOp(String path, String value) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject().put("op", "replace").put("path", path).put("value", value);
+    return ops;
+  }
+
+  @Test
   void test_createPersonalAccessToken_impersonatedBot_forbidden(TestNamespace ns) {
     // The bot's stored name must equal its email local-part: JwtFilter resolves the bot's
     // username from the token's email claim, and BotTokenCache is keyed by that name.
@@ -2599,44 +2693,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   void test_updateUser_crossUserRoleElevation_forbidden(TestNamespace ns) throws Exception {
     // A principal holding EDIT on users may update somebody else, but granting them a role stays
     // admin only - the same rule PATCH /v1/users/{id} enforces on the /roles path.
-    OpenMetadataClient admin = SdkClients.adminClient();
-    String prefix = ns.prefix("userEditor");
-    Policy policy =
-        admin
-            .policies()
-            .create(
-                new CreatePolicy()
-                    .withName(prefix + "_policy")
-                    .withDescription("Grants cross user edit for the role elevation IT")
-                    .withRules(
-                        List.of(
-                            userRule(prefix + "_view", MetadataOperation.VIEW_ALL),
-                            userRule(prefix + "_edit", MetadataOperation.EDIT_ALL))));
-    Role role =
-        admin
-            .roles()
-            .create(
-                new CreateRole()
-                    .withName(prefix + "_role")
-                    .withDescription("Cross user edit role for the role elevation IT")
-                    .withPolicies(List.of(policy.getFullyQualifiedName())));
-    CreateTeam createTeam = new CreateTeam();
-    createTeam.setName(prefix + "_team");
-    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
-    createTeam.setDefaultRoles(List.of(role.getId()));
-    Team team = admin.teams().create(createTeam);
-
-    // The name must equal the email local part: JwtFilter resolves the caller's username from the
-    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
-    String editorName = "usereditor" + ns.shortPrefix();
-    User editor =
-        createEntity(
-            new CreateUser()
-                .withName(editorName)
-                .withEmail(editorName + "@test.com")
-                .withTeams(List.of(team.getId())));
-    OpenMetadataClient editorClient =
-        SdkClients.createClient(editor.getName(), editor.getEmail(), new String[] {});
+    OpenMetadataClient editorClient = createUserEditorClient(ns);
 
     String targetName = ns.prefix("elevationTarget");
     User target =
@@ -2679,6 +2736,47 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String response =
         editorClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", updateBody);
     assertTrue(response.contains(description), "Cross user edit without roles must stay allowed");
+  }
+
+  // A non admin whose role grants EDIT_ALL on users, through a team's default roles.
+  private OpenMetadataClient createUserEditorClient(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.prefix("userEditor");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "_policy")
+                    .withDescription("Grants cross user edit for the user authorization ITs")
+                    .withRules(
+                        List.of(
+                            userRule(prefix + "_view", MetadataOperation.VIEW_ALL),
+                            userRule(prefix + "_edit", MetadataOperation.EDIT_ALL))));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_role")
+                    .withDescription("Cross user edit role for the user authorization ITs")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(prefix + "_team");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    createTeam.setDefaultRoles(List.of(role.getId()));
+    Team team = admin.teams().create(createTeam);
+
+    // The name must equal the email local part: JwtFilter resolves the caller's username from the
+    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
+    String editorName = "usereditor" + ns.shortPrefix();
+    User editor =
+        createEntity(
+            new CreateUser()
+                .withName(editorName)
+                .withEmail(editorName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    return SdkClients.createClient(editor.getName(), editor.getEmail(), new String[] {});
   }
 
   private Rule userRule(String name, MetadataOperation operation) {
