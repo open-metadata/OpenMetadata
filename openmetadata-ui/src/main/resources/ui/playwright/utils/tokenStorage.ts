@@ -108,6 +108,25 @@ const executeTokenOperation = async (
 
           request.onsuccess = () => {
             const db = request.result;
+
+            // Same trap as the read path: `onupgradeneeded` only fires when the
+            // version changes, so a database that already exists at version 1
+            // without this store (SwTokenStorageUtils opens it with no version
+            // at all, which creates exactly that) reaches here with nothing to
+            // write to. `db.transaction` then throws NotFoundError *inside this
+            // handler*, which neither rejects nor is caught by the caller — the
+            // promise never settles and the test hangs to its timeout. Reject
+            // instead, so the failure names itself.
+            if (!db.objectStoreNames.contains(storeName)) {
+              reject(
+                new Error(
+                  `IndexedDB store "${storeName}" is missing from "${dbName}", so the token could not be written.`
+                )
+              );
+
+              return;
+            }
+
             const transaction = db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
             const putRequest = store.put(value, key);

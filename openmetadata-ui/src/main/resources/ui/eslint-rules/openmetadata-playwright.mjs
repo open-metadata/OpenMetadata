@@ -129,8 +129,11 @@ const requireAggregationWaitHelper = {
  * The implementation modules that must log in (auth.setup, the fixtures, the
  * login helpers) are exempt by path.
  *
- * It runs at `warn`: there are ~290 existing call sites, and a rule whose
- * baseline is most of the corpus teaches nothing. Fix them as you touch them.
+ * It runs at `error` with zero suppressions. The ~290 call sites that made a
+ * warn-level rule the only honest setting have been migrated; what remains is
+ * six files carrying a justified disable, all of them specs where the form
+ * sign-in is the subject (`Pages/Login.spec.ts`) or where the route the app
+ * lands on afterwards is the assertion (`Features/AppMode/**`).
  */
 const ROLE_FIXTURES = [
   'adminPage',

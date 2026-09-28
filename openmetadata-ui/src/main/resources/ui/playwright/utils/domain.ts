@@ -349,9 +349,18 @@ const describeDomainVisibility = async (
   page: Page,
   domain: Domain['data']
 ): Promise<string> => {
-  const { apiContext, afterAction } = await getApiContext(page);
+  // Built inside the try, not above it: `getApiContext` reads the token through
+  // `page.evaluate`, which throws once the page or context is gone — and a
+  // closed page is exactly the case this diagnostic is here to explain. Outside
+  // the try that throw escapes and replaces the assertion failure the caller
+  // was reporting, so the diagnostic would eat the very error it exists for.
+  let afterAction: (() => Promise<void>) | undefined;
 
   try {
+    const context = await getApiContext(page);
+    const apiContext = context.apiContext;
+    afterAction = context.afterAction;
+
     const byName = await apiContext.get(
       `/api/v1/domains/name/${encodeURIComponent(domain.name)}`
     );
@@ -388,7 +397,7 @@ const describeDomainVisibility = async (
   } catch (diagnosticError) {
     return `Diagnostics unavailable: ${(diagnosticError as Error).message}`;
   } finally {
-    await afterAction();
+    await afterAction?.();
   }
 };
 
