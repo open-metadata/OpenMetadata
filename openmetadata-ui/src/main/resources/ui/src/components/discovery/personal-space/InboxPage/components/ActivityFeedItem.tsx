@@ -296,4 +296,6 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   );
 };
 
-export default ActivityFeedItem;
+// Selecting a card re-renders the tab; only the card whose isActive changed
+// needs to render again, not every card and its markdown.
+export default React.memo(ActivityFeedItem);

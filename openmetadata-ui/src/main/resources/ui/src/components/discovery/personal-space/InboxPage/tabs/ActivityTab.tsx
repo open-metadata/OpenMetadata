@@ -23,6 +23,11 @@ import ActivityFeedItem, {
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import { InboxDateRange, InboxScope } from '../inbox.utils';
 import { useInboxActivity } from '../useInboxActivity';
+import { useIncrementalRender } from '../useIncrementalRender';
+
+// Cards rendered per batch. The feed is fetched whole (up to ACTIVITY_LIMIT),
+// but mounting all of it made opening the detail drawer block for a second.
+const ACTIVITY_RENDER_BATCH = 40;
 
 export interface ActivityTabProps {
   // Admin ("all") widens the conversation fallback; "me" scopes it to the user.
@@ -61,6 +66,13 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   useEffect(() => {
     onCountChange?.(total);
   }, [total, onCountChange]);
+
+  const { visibleItems, hasMore, scrollRef, sentinelRef } =
+    useIncrementalRender(
+      items,
+      ACTIVITY_RENDER_BATCH,
+      `${scope}:${dateRange?.startTs}:${dateRange?.endTs}`
+    );
 
   const handleSelect = useCallback((selection: ActivityFeedItemSelection) => {
     setSelected(selection);
@@ -101,7 +113,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
         direction="col"
         gap={2}>
         <span className="tw:pointer-events-none tw:absolute tw:-top-5 tw:bottom-2 tw:left-[23px] tw:z-[2] tw:w-px tw:bg-utility-gray-blue-100" />
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const itemId = item.activity?.id ?? item.feed?.id;
 
           return (
@@ -114,6 +126,14 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
             />
           );
         })}
+        {hasMore && (
+          <div
+            aria-hidden
+            className="tw:h-px"
+            data-testid="inbox-activity-sentinel"
+            ref={sentinelRef}
+          />
+        )}
       </Box>
     );
   }
@@ -123,7 +143,8 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
       <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
         <div
           className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-4 tw:pr-1"
-          data-testid="inbox-activity-tab">
+          data-testid="inbox-activity-tab"
+          ref={scrollRef}>
           {activityContent}
         </div>
       </Box>
