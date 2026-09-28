@@ -87,6 +87,7 @@ import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
@@ -963,17 +964,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         return null;
       }
 
-      const isSafeUrl = (url: string): boolean => {
-        try {
-          const parsed = new URL(url);
-
-          return ['http:', 'https:'].includes(parsed.protocol);
-        } catch {
-          return false;
-        }
-      };
-
-      const safeHref = isSafeUrl(hyperlinkValue.url) ? hyperlinkValue.url : '#';
+      const safeHref = getSafeHttpUrl(hyperlinkValue.url) ?? '#';
 
       return (
         <Typography
