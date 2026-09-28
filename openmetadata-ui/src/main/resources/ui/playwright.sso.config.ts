@@ -38,7 +38,6 @@ export default defineConfig({
   outputDir: './playwright/output/sso-test-results',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  globalSetup: './playwright/globalSetup.ts',
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   maxFailures: 10,
