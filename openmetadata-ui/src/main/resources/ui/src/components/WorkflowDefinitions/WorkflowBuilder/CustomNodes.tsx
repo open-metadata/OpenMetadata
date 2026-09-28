@@ -36,7 +36,7 @@ export const StartNode: React.FC<NodeProps<CustomNodeData>> = () => {
       data-testid="workflow-start-node">
       <div className="tw:flex tw:items-center tw:justify-center tw:p-1.5">
         {getCanvasNodeIcon(NodeSubType.StartEvent, {
-          style: { width: '32px', height: '32px' },
+          style: { width: '16px', height: '16px' },
         })}
       </div>
       <div className="tw:pl-1.5 tw:pr-5.5">
@@ -82,7 +82,7 @@ export const EndNode: React.FC<NodeProps<CustomNodeData>> = () => {
 
       <div className="tw:flex tw:items-center tw:justify-center tw:p-1.5">
         {getCanvasNodeIcon(NodeSubType.EndEvent, {
-          style: { width: '32px', height: '32px' },
+          style: { width: '16px', height: '16px' },
         })}
       </div>
       <div className="tw:pl-1.5 tw:pr-5.5">
