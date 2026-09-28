@@ -314,29 +314,6 @@ const overrideAiContextGet = async (
   });
 };
 
-/**
- * Picks an entity type in the rule drawer. React Aria closes the popover when the drawer
- * scrolls, and click() scrolls a trigger that is out of view a frame after the popover opens;
- * a preview refresh re-rendering the form can land at the same moment. Scroll first, and
- * retry open-and-pick with a short option timeout so a late close reopens the popover.
- */
-const selectEntityType = async (
-  entitySelect: Locator,
-  entityTypePopup: Locator,
-  entityType: string
-) => {
-  const trigger = entitySelect.getByRole('button');
-  await trigger.scrollIntoViewIfNeeded();
-  await expect(async () => {
-    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
-      await trigger.click();
-    }
-    await entityTypePopup
-      .getByText(entityType, { exact: true })
-      .click({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
-};
-
 test.describe.serial('Persona AI Context', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
@@ -495,7 +472,10 @@ test.describe.serial('Persona AI Context', () => {
     await entityTypePopup.getByText('Data Product', { exact: true }).click();
     await expect(adminPage.getByText(/every asset it contains/)).toBeVisible();
 
-    await selectEntityType(entitySelect, entityTypePopup, 'Article');
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Article', { exact: true })
+    );
 
     await expect(adminPage.getByText(/Generic content/)).toBeVisible();
     await expect(
@@ -522,7 +502,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/18 entities matched/)).toBeVisible();
 
-    await selectEntityType(entitySelect, entityTypePopup, 'Metric');
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Metric', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Formula / expression',
@@ -537,7 +520,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/27 entities matched/)).toBeVisible();
 
-    await selectEntityType(entitySelect, entityTypePopup, 'Glossary Term');
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Glossary Term', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Synonyms',
@@ -551,7 +537,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/143 entities matched/)).toBeVisible();
 
-    await selectEntityType(entitySelect, entityTypePopup, 'Table');
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Table', { exact: true })
+    );
     for (const section of [
       'Description',
       'Schema',
@@ -583,7 +572,10 @@ test.describe.serial('Persona AI Context', () => {
     );
     await adminPage.getByTestId('delete-condition-button').last().click();
 
-    await selectEntityType(entitySelect, entityTypePopup, 'Article');
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Article', { exact: true })
+    );
     await adminPage.getByTestId('context-rule-max-assets').fill('25');
 
     const createRuleRequest = adminPage.waitForRequest(
