@@ -23,6 +23,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.informixConnection import (
     InformixConnection as InformixConnectionConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.informixConnection import (
+    InformixScheme,
+)
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -68,12 +71,12 @@ def get_connection_url(connection: InformixConnectionConfig) -> str:
     INFORMIXSERVER and re-emits the rest with Informix's ':'/';' property
     separators. See informix/dialect.py.
     """
-    url = f"{connection.scheme.value}://"
+    url = f"{(connection.scheme or InformixScheme.informix).value}://"
     if connection.username:
         url += quote_plus(connection.username)
-        password = get_password_secret(connection).get_secret_value()
-        if password:
-            url += f":{quote_plus(password)}"
+        password = get_password_secret(connection)
+        if password and password.get_secret_value():
+            url += f":{quote_plus(password.get_secret_value())}"
         url += "@"
     url += connection.hostPort
     url += f"/{connection.database}"

@@ -33,6 +33,7 @@ from typing import ClassVar
 from sqlalchemy import Interval, text
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.engine.interfaces import ReflectedTableComment
 from sqlalchemy.engine.url import URL
 from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.elements import Null
@@ -111,7 +112,16 @@ class InformixSQLCompiler(SQLCompiler):
     one in a projection.
     """
 
-    def visit_label(self, label, within_columns_clause: bool = False, **kw) -> str:
+    def visit_label(
+        self,
+        label,
+        add_to_result_map=None,
+        within_label_clause=False,
+        within_columns_clause=False,
+        render_label_as_label=None,
+        result_map_targets=(),
+        **kw,
+    ) -> str:
         """Give a NULL that is itself a SELECT-list item a type.
 
         Informix rejects a bare NULL there -- "201: A syntax error has occurred"
@@ -122,13 +132,20 @@ class InformixSQLCompiler(SQLCompiler):
         alone does not: it stays true all the way down, so keying off it rewrites
         the NULL inside "x IS NULL" too, which Informix likes even less.
         """
+        kw.update(
+            add_to_result_map=add_to_result_map,
+            within_label_clause=within_label_clause,
+            within_columns_clause=within_columns_clause,
+            render_label_as_label=render_label_as_label,
+            result_map_targets=result_map_targets,
+        )
         if within_columns_clause and isinstance(label.element, Null):
             self._informix_typed_null = True
             try:
-                return super().visit_label(label, within_columns_clause=within_columns_clause, **kw)
+                return super().visit_label(label, **kw)
             finally:
                 self._informix_typed_null = False
-        return super().visit_label(label, within_columns_clause=within_columns_clause, **kw)
+        return super().visit_label(label, **kw)
 
     def visit_null(self, expr, **kw) -> str:
         if getattr(self, "_informix_typed_null", False):
@@ -143,7 +160,17 @@ class InformixSQLCompiler(SQLCompiler):
             limits += f"FIRST {self.process(select._limit_clause, literal_execute=True, **kw)} "
         return limits + super().get_select_precolumns(select, **kw)
 
-    def visit_bindparam(self, bindparam, within_columns_clause=False, literal_binds=False, **kw) -> str:
+    def visit_bindparam(
+        self,
+        bindparam,
+        within_columns_clause=False,
+        literal_binds=False,
+        skip_bind_expression=False,
+        literal_execute=False,
+        render_postcompile=False,
+        is_upsert_set=False,
+        **kw,
+    ) -> str:
         """Render values in the SELECT list inline rather than as parameters.
 
         Informix's prepareStatement cannot infer a type for a ? in the projection,
@@ -156,10 +183,15 @@ class InformixSQLCompiler(SQLCompiler):
         the same way): the value still goes through its type's literal processor,
         and the statement stays cacheable.
         """
-        if within_columns_clause and not literal_binds:
-            kw["literal_execute"] = True
         return super().visit_bindparam(
-            bindparam, within_columns_clause=within_columns_clause, literal_binds=literal_binds, **kw
+            bindparam,
+            within_columns_clause=within_columns_clause,
+            literal_binds=literal_binds,
+            skip_bind_expression=skip_bind_expression,
+            literal_execute=literal_execute or (within_columns_clause and not literal_binds),
+            render_postcompile=render_postcompile,
+            is_upsert_set=is_upsert_set,
+            **kw,
         )
 
     def limit_clause(self, select, **kw) -> str:
@@ -174,14 +206,16 @@ class InformixInterval(Interval):
     epoch from the string; YEAR TO MONTH has no timedelta equivalent anyway.
     """
 
-    def bind_processor(self, dialect):
+    def bind_processor(self, dialect):  # pyright: ignore[reportIncompatibleMethodOverride]
         return None
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(self, dialect, coltype):  # pyright: ignore[reportIncompatibleMethodOverride]
         return None
 
 
-class InformixDialect(GBase8sDialect, DefaultDialect):
+class InformixDialect(  # pyright: ignore[reportIncompatibleMethodOverride, reportIncompatibleVariableOverride]
+    GBase8sDialect, DefaultDialect
+):
     """IBM Informix dialect.
 
     GBase 8s is Informix-derived, so its dialect only differs in the driver
@@ -198,10 +232,13 @@ class InformixDialect(GBase8sDialect, DefaultDialect):
     driver = "jdbcapi"
     supports_statement_cache = True
     statement_compiler = InformixSQLCompiler
-    colspecs: ClassVar[dict] = {**DefaultDialect.colspecs, Interval: InformixInterval}
+    colspecs: ClassVar[dict] = {  # pyright: ignore[reportIncompatibleVariableOverride]
+        **DefaultDialect.colspecs,
+        Interval: InformixInterval,
+    }
 
     @classmethod
-    def import_dbapi(cls) -> type:
+    def import_dbapi(cls) -> type:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Declared explicitly: SQLAlchemy 2.0 warns on the inherited dbapi()."""
         return super().import_dbapi()
 
@@ -228,7 +265,9 @@ class InformixDialect(GBase8sDialect, DefaultDialect):
         rows = connection.execute(text(INFORMIX_GET_VIEW_NAMES), {"owner": schema or self.default_schema_name})
         return [row[0] for row in rows]
 
-    def get_view_definition(self, connection, view_name, schema=None, **kw) -> str | None:
+    def get_view_definition(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, connection, view_name, schema=None, **kw
+    ) -> str | None:
         """The SQL behind a view.
 
         Without this SQLAlchemy raises NotImplementedError and the view is
@@ -242,7 +281,9 @@ class InformixDialect(GBase8sDialect, DefaultDialect):
         )
         return "".join(row[0] for row in rows if row[0]) or None
 
-    def get_foreign_keys(self, connection, table_name, schema=None, **kw) -> list[dict]:
+    def get_foreign_keys(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, connection, table_name, schema=None, **kw
+    ) -> list[dict]:
         """Name the database each foreign key refers to.
 
         A connector declaring supportsDatabase has its foreign keys resolved
@@ -261,7 +302,7 @@ class InformixDialect(GBase8sDialect, DefaultDialect):
             key.setdefault("referred_database", database)
         return keys
 
-    def get_table_comment(self, connection, table_name, schema=None, **kw) -> dict:
+    def get_table_comment(self, connection, table_name, schema=None, **kw) -> ReflectedTableComment:
         """Informix has no table comments, so report that rather than raising.
 
         The engine has no COMMENT ON statement and nothing in the catalogue to

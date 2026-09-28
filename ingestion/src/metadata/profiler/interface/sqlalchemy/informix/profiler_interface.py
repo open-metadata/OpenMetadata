@@ -36,6 +36,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.orm.registry import is_blob
+from metadata.sampler.sqlalchemy.informix.sampler import InformixSampler
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
@@ -57,7 +58,7 @@ class InformixProfilerInterface(SQAProfilerInterface):
         # These cannot come from the entity: an opaque column is catalogued as
         # the VARCHAR the driver reported.
         sampler = getattr(self, "sampler", None)
-        if not hasattr(sampler, "driver_unfriendly_columns"):
+        if not isinstance(sampler, InformixSampler):
             return set()
         try:
             return set(sampler.driver_unfriendly_columns())
@@ -78,7 +79,9 @@ class InformixProfilerInterface(SQAProfilerInterface):
         )
         return [column for column in super().get_columns() if column.name not in skipped]
 
-    def _programming_error_static_metric(self, runner, column, exc, session, metrics):
+    def _programming_error_static_metric(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, runner, column, exc, _, __
+    ):
         """Backstop for a type the skip above does not know: cost the column's
         metrics, not the whole table's."""
         logger.warning(

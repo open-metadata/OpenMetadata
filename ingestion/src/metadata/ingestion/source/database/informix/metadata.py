@@ -189,13 +189,13 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
-                service_name=self.context.get().database_service,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
                 database_name=new_database,
             )
 
             if filter_by_database(
                 self.source_config.databaseFilterPattern,
-                (database_fqn if self.source_config.useFqnForFiltering else new_database),
+                (database_fqn if self.source_config.useFqnForFiltering else new_database),  # pyright: ignore[reportArgumentType]
             ):
                 self.status.filter(database_fqn, "Database Filtered Out")
                 continue
@@ -275,7 +275,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         """
         if not self.source_config.includeStoredProcedures:
             return
-        schema_name = self.context.get().database_schema
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
         with self.engine.connect() as conn:
             rows = conn.execute(text(INFORMIX_GET_STORED_PROCEDURES), {"owner": schema_name}).fetchall()
         for name, is_proc, proc_id in rows:
@@ -297,24 +297,24 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload."""
         try:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 right=CreateStoredProcedureRequest(
                     name=EntityName(stored_procedure.name),
                     storedProcedureCode=StoredProcedureCode(
                         language=Language.SQL,
                         code=self._stored_procedure_code(stored_procedure.proc_id),
                     ),
-                    databaseSchema=fqn.build(
+                    databaseSchema=fqn.build(  # pyright: ignore[reportArgumentType]
                         metadata=self.metadata,
                         entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
+                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
                     ),
                 )
             )
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=stored_procedure.name,
                     error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
@@ -349,11 +349,11 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
                 continue
             if override.sqa_type is not None:
                 column["type"] = override.sqa_type()
-                column["system_data_type"] = override.display_name
+                column["system_data_type"] = override.display_name  # pyright: ignore[reportGeneralTypeIssues]
                 logger.debug(f"{table_name}.{column['name']} corrected to {override.display_name}")
             elif override.length is not None:
                 # Mutated rather than rebuilt so the reflected type keeps whatever
                 # else it carries (collation, charset).
-                column["type"].length = override.length
+                column["type"].length = override.length  # pyright: ignore[reportAttributeAccessIssue]
 
         return columns
