@@ -175,7 +175,7 @@ class TableauSource(DashboardServiceSource):
             logger.debug("Skipping owner information as includeOwners is False")
         self._declare_dashboard_progress_total()
         yield from self.client.get_workbooks(
-            include_owners=self.source_config.includeOwners,
+            include_owners=bool(self.source_config.includeOwners),
             dashboard_filter_pattern=self.source_config.dashboardFilterPattern,
             project_filter_pattern=self.source_config.projectFilterPattern,
             on_filtered=self.status.filter,

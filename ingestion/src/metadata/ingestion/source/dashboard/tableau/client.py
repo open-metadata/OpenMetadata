@@ -190,7 +190,8 @@ class TableauClient:
             logger.debug("Getting all projects from the tableau server")
             all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
             for project in Pager(self.tableau_server.projects):
-                all_projects[project.id] = project
+                if project.id:
+                    all_projects[project.id] = project
             if len(all_projects) >= MAX_CACHED_PROJECTS:
                 logger.warning(
                     "Tableau site has at least %s projects; the project cache is full and "
