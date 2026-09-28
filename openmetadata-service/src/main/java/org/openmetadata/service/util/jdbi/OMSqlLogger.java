@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
+import org.openmetadata.service.jdbi3.TransactionRollbackTracker;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 @Slf4j
@@ -43,12 +44,6 @@ public class OMSqlLogger implements SqlLogger {
 
   private static final Timer LEGACY_JDBI_TIMER = Metrics.timer("jdbi_requests_seconds");
   private static final Timer LEGACY_LATENCY_TIMER = Metrics.timer("jdbi_latency_requests_seconds");
-
-  private final AbortedTransactionGuard abortedTransactionGuard;
-
-  public OMSqlLogger(final AbortedTransactionGuard abortedTransactionGuard) {
-    this.abortedTransactionGuard = abortedTransactionGuard;
-  }
 
   public static void setSlowQueryThresholdMs(long thresholdMs) {
     slowQueryThresholdMs = thresholdMs;
@@ -139,14 +134,14 @@ public class OMSqlLogger implements SqlLogger {
 
   @Override
   public void logException(StatementContext context, SQLException exception) {
-    if (DeadlockRetry.isTransactionRolledBack(exception)) {
+    if (DeadlockRetry.rollsBackTransaction(exception)) {
       recordDeadlock(extractDaoMethod(context.getRenderedSql()));
-    } else if (DeadlockRetry.isDeadlock(exception)) {
+      TransactionRollbackTracker.recordRollback(exception);
+    } else if (DeadlockRetry.isLockWaitTimeout(exception)) {
       LOG.warn(
           "Lock wait timeout on {}; the database rolled back the statement",
           extractDaoMethod(context.getRenderedSql()));
     }
-    abortedTransactionGuard.onStatementFailure(context, exception);
   }
 
   private void recordDeadlock(String statement) {

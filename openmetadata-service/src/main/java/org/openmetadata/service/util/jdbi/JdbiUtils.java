@@ -25,7 +25,7 @@ public class JdbiUtils {
             });
 
     Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
-    installAbortedTransactionGuard(jdbiInstance);
+    jdbiInstance.setSqlLogger(new OMSqlLogger());
     // Set the Database type for choosing correct queries from annotations
     jdbiInstance
         .getConfig(SqlObjects.class)
@@ -47,19 +47,12 @@ public class JdbiUtils {
 
     Jdbi jdbiInstance = Jdbi.create(dbFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
     jdbiInstance.installPlugin(new SqlObjectPlugin());
-    installAbortedTransactionGuard(jdbiInstance);
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
     configureStatements(jdbiInstance, dbFactory);
 
     return jdbiInstance;
-  }
-
-  static void installAbortedTransactionGuard(Jdbi jdbi) {
-    AbortedTransactionGuard guard = new AbortedTransactionGuard(jdbi.getTransactionHandler());
-    jdbi.setTransactionHandler(guard);
-    jdbi.setSqlLogger(new OMSqlLogger(guard));
   }
 
   static void configureStatements(Jdbi jdbi, DataSourceFactory dbFactory) {
