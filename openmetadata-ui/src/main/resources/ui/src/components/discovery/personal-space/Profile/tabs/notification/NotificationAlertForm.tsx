@@ -268,7 +268,8 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
   return (
     <Box className="tw:flex tw:flex-col tw:h-full" direction="col">
-      <Box className="tw:flex-1 tw:overflow-y-auto" direction="col">
+      <Box className="tw:flex-1 tw:overflow-y-auto tw:px-8" direction="col">
+        <Box className="tw:w-1/2" direction="col">
         <AlertAiForm
           alert={alert}
           containerEntities={resourceDescriptor?.containerEntities}
@@ -302,6 +303,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           onChange={setFormData}
           onSubmit={handleSave}
         />
+        </Box>
       </Box>
 
       <Box
