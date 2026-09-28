@@ -14,6 +14,7 @@ Tests for CommonDbSourceService._prepare_foreign_constraints
 """
 
 import gc
+import uuid
 import weakref
 from unittest.mock import MagicMock, patch
 
@@ -31,6 +32,12 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
 )
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    ARRAY_ENTITY_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    build_patch,
+)
 from metadata.ingestion.source.database.common_db_source import (
     ColumnAndReferredColumn,
     CommonDbSourceService,
@@ -599,12 +606,22 @@ class TestYieldTableConstraintsGrouping:
         mock_source = MagicMock(spec=CommonDbSourceService)
         mock_source.yield_table_constraints = CommonDbSourceService.yield_table_constraints.__get__(mock_source)
         mock_source.service_connection = MagicMock(spec=[])  # no supportsDatabase attr
+        mock_source.metadata = MagicMock()
 
         context = MagicMock()
         context.database_service = "svc"
         mock_source.context.get.return_value = context
 
         return mock_source
+
+    def _make_table(self, name: str, column_names: list[str], constraints=None) -> Table:
+        return Table(
+            id=uuid.uuid4(),
+            name=name,
+            fullyQualifiedName=f"svc.mydb.public.{name}",
+            columns=[Column(name=col, dataType=DataType.INT) for col in column_names],
+            tableConstraints=constraints,
+        )
 
     def _make_fk_entry(self, col_name: str) -> ColumnAndReferredColumn:
         return ColumnAndReferredColumn(
@@ -631,14 +648,7 @@ class TestYieldTableConstraintsGrouping:
         global_ctx.foreign_tables = fk_entries
         grouping_source.context.get_global.return_value = global_ctx
 
-        mock_table = MagicMock(spec=Table)
-        mock_table.tableConstraints = None
-        mock_table.columns = [
-            Column(name="id", dataType=DataType.INT),
-            Column(name="a_id", dataType=DataType.INT),
-            Column(name="b_id", dataType=DataType.INT),
-            Column(name="c_id", dataType=DataType.INT),
-        ]
+        mock_table = self._make_table("child", ["id", "a_id", "b_id", "c_id"])
 
         def _fqn_build(**kwargs):
             return f"svc.mydb.public.{kwargs['table_name']}"
@@ -692,12 +702,8 @@ class TestYieldTableConstraintsGrouping:
         global_ctx.foreign_tables = [fk_alpha, fk_bravo]
         grouping_source.context.get_global.return_value = global_ctx
 
-        mock_alpha = MagicMock(spec=Table)
-        mock_alpha.tableConstraints = None
-        mock_alpha.columns = [Column(name="x_id", dataType=DataType.INT)]
-        mock_bravo = MagicMock(spec=Table)
-        mock_bravo.tableConstraints = None
-        mock_bravo.columns = [Column(name="y_id", dataType=DataType.INT)]
+        mock_alpha = self._make_table("alpha", ["x_id"])
+        mock_bravo = self._make_table("bravo", ["y_id"])
 
         def _fqn_build(**kwargs):
             return f"svc.mydb.public.{kwargs['table_name']}"
@@ -717,3 +723,67 @@ class TestYieldTableConstraintsGrouping:
         assert len(results) == 2
         tables_patched = {r.right.new_entity.tableConstraints[0].columns[0] for r in results}
         assert tables_patched == {"x_id", "y_id"}
+
+    def test_deferred_fks_are_appended_to_existing_constraints(self, grouping_source):
+        """The server omits tableConstraints unless requested. If the table is fetched
+        without it, the patch replaces the whole array and wipes the PK and the FK that
+        was already resolved when the table was created."""
+        existing = [
+            TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["id", "tenant"]),
+            TableConstraint(
+                constraintType=ConstraintType.FOREIGN_KEY,
+                columns=["cur"],
+                referredColumns=["svc.mydb.public.currencies.id"],
+            ),
+        ]
+        stored = self._make_table("child", ["id", "tenant", "cur", "a_id", "b_id"], existing)
+
+        def _get_by_name(entity, fqn, fields=None, **_):
+            if fields and "tableConstraints" in fields:
+                return stored
+            return stored.model_copy(update={"tableConstraints": None})
+
+        global_ctx = MagicMock()
+        global_ctx.foreign_tables = [self._make_fk_entry("a_id"), self._make_fk_entry("b_id")]
+        grouping_source.context.get_global.return_value = global_ctx
+        grouping_source.metadata.get_by_name.side_effect = _get_by_name
+        grouping_source._prepare_foreign_constraints.side_effect = [
+            TableConstraint(
+                constraintType=ConstraintType.FOREIGN_KEY,
+                columns=["a_id"],
+                referredColumns=["svc.mydb.public.a.id"],
+            ),
+            TableConstraint(
+                constraintType=ConstraintType.FOREIGN_KEY,
+                columns=["b_id"],
+                referredColumns=["svc.mydb.public.b.id"],
+            ),
+        ]
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.fqn.build",
+            return_value="svc.mydb.public.child",
+        ):
+            results = list(grouping_source.yield_table_constraints())
+
+        assert len(results) == 1
+        patch_request = results[0].right
+        json_patch = build_patch(
+            source=patch_request.original_entity,
+            destination=patch_request.new_entity,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            override_metadata=patch_request.override_metadata,
+        )
+        constraint_ops = [op for op in json_patch.patch if op["path"].startswith("/tableConstraints")]
+        assert [(op["op"], op["path"]) for op in constraint_ops] == [
+            ("add", "/tableConstraints/2"),
+            ("add", "/tableConstraints/3"),
+        ]
+        assert [c.columns for c in patch_request.new_entity.tableConstraints] == [
+            ["id", "tenant"],
+            ["cur"],
+            ["a_id"],
+            ["b_id"],
+        ]

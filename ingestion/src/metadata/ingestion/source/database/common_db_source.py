@@ -816,26 +816,32 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         supports_database = hasattr(self.service_connection, "supportsDatabase")
 
-        # Group deferred FK entries by target table FQN so all FKs for the same
-        # table are applied in a single PATCH. Without grouping each FK is applied
-        # independently: every iteration re-fetches the pre-patch table state and
-        # the PATCH diff overwrites whatever FKs the previous iteration wrote,
-        # leaving only the last FK per table persisted.
+        # One PATCH per table: fewer round trips than one per deferred FK.
         grouped: dict[str, list[ColumnAndReferredColumn]] = {}
         for foreign_table in self.context.get_global().foreign_tables or []:
             table_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Table,
-                service_name=self.context.get().database_service,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
                 database_name=foreign_table.db_name,
                 schema_name=foreign_table.schema_name,
                 table_name=foreign_table.table_name,
             )
+            if not table_fqn:
+                logger.warning(
+                    "Could not build FQN for table [%s.%s], skipping its foreign key constraints",
+                    foreign_table.schema_name,
+                    foreign_table.table_name,
+                )
+                continue
             grouped.setdefault(table_fqn, []).append(foreign_table)
 
         for table_fqn, foreign_table_list in grouped.items():
             try:
-                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                # tableConstraints is not a default field: without it the table comes back with
+                # tableConstraints=None, the patch becomes `add /tableConstraints` and replaces
+                # every constraint already stored (PK/UNIQUE and FKs resolved at creation time).
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["tableConstraints"])
                 if not table:
                     continue
 
@@ -846,7 +852,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         foreign_table.column,
                         foreign_table.table_name,
                         foreign_table.schema_name,
-                        foreign_table.db_name,
+                        foreign_table.db_name,  # pyright: ignore[reportArgumentType]
                         table.columns,
                         False,
                     )
