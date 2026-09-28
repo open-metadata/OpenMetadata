@@ -151,8 +151,10 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -164,6 +166,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.CSVExportResponse;
@@ -1113,6 +1116,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    ResourceContext<User> resourceContext =
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
+    boolean isSelf = isLoggedInUser(securityContext, resourceContext);
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (!patchOpObject.containsKey("path")) {
@@ -1125,13 +1131,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       if (patchOpObject.containsKey("value")) {
         // Check if updating personaPreferences - users can only update their own
-        if (path.startsWith("/personaPreferences")) {
-          String authenticatedUserName = securityContext.getUserPrincipal().getName();
-          User authenticatedUser =
-              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
-          if (!authenticatedUser.getId().equals(id)) {
-            throw new AuthorizationException("Users can only update their own persona preferences");
-          }
+        if (path.startsWith("/personaPreferences") && !isSelf) {
+          throw new AuthorizationException("Users can only update their own persona preferences");
         }
         // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
@@ -1153,7 +1154,35 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
     }
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return patchInternal(
+        uriInfo,
+        securityContext,
+        patchAuthRequests(patch, resourceContext, isSelf),
+        AuthorizationLogic.ALL,
+        id,
+        patch);
+  }
+
+  // Editing another user needs EDIT_ALL on that user, as PUT requires, so broad grants on all
+  // resources (e.g. DataConsumer's EditDescription) only ever reach the caller's own profile.
+  private List<AuthRequest> patchAuthRequests(
+      JsonPatch patch, ResourceContext<User> resourceContext, boolean isSelf) {
+    AuthRequest patchRequest =
+        new AuthRequest(new OperationContext(entityType, patch), resourceContext);
+    AuthRequest editAllRequest =
+        new AuthRequest(
+            new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext);
+    return isSelf ? List.of(patchRequest) : List.of(patchRequest, editAllRequest);
+  }
+
+  // The principal name comes from the token unmodified while the user name is normalized to lower
+  // case, so this comparison ignores case.
+  private static boolean isLoggedInUser(
+      SecurityContext securityContext, ResourceContext<User> resourceContext) {
+    return securityContext
+        .getUserPrincipal()
+        .getName()
+        .equalsIgnoreCase(resourceContext.getEntity().getName());
   }
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
