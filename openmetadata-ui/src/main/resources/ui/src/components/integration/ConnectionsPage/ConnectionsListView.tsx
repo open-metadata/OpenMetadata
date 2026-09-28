@@ -708,7 +708,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 {isCountReady ? `${title} (${totalRows})` : title}
               </Typography>
               <Typography
-                className="tw:mt-1 tw:text-tertiary"
+                className="tw:mt-1 tw:text-tertiary tw:ml-2"
                 data-testid="connections-page-subtitle"
                 size="text-sm">
                 {subtitle}
