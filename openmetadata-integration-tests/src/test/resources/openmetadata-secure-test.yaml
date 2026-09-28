@@ -112,8 +112,8 @@ objectStorage:
   s3:
     bucketName: test-bucket
     region: us-east-1
-    accessKey: minio
-    secretKey: minio123
+    accessKey: accesskey
+    secretKey: secretkey
     endpoint: http://placeholder:9000
 
 # RDF Configuration - will be dynamically configured by TestSuiteBootstrap

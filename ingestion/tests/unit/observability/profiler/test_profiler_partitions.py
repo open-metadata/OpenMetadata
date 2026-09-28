@@ -150,7 +150,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "e"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 3
             assert not resp.partitionValues
         else:
             assert False  # noqa: B011
@@ -191,7 +191,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONDATE"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 3
             assert not resp.partitionValues
         else:
             assert False  # noqa: B011
@@ -231,7 +231,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONTIME"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 24
             assert not resp.partitionValues
         else:
             assert False  # noqa: B011
