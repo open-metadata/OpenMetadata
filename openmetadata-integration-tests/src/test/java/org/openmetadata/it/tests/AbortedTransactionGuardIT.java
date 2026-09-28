@@ -16,7 +16,9 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -41,7 +43,8 @@ import org.openmetadata.service.Entity;
  * A real deadlock against the server's own Jdbi: two transactions lock two rows in opposite
  * orders, and the one the database rolls back swallows the error and writes anyway, the way a
  * best-effort cleanup step does. MySQL runs that write in a fresh transaction, so without the
- * guard it would be committed while the rest of its unit of work was rolled back.
+ * guard it would be committed while the rest of its unit of work was rolled back. A MySQL lock
+ * wait timeout is the opposite case: it rolls back only the statement, so the rest must commit.
  */
 @Execution(ExecutionMode.CONCURRENT)
 class AbortedTransactionGuardIT {
@@ -56,7 +59,7 @@ class AbortedTransactionGuardIT {
         .useHandle(
             handle -> {
               handle.execute("CREATE TABLE " + TABLE + " (id VARCHAR(64) PRIMARY KEY)");
-              handle.execute("INSERT INTO " + TABLE + " (id) VALUES ('left'), ('right')");
+              handle.execute("INSERT INTO " + TABLE + " (id) VALUES ('left'), ('right'), ('held')");
             });
   }
 
@@ -80,9 +83,38 @@ class AbortedTransactionGuardIT {
       Outcome winner = only(outcomes, outcome -> !outcome.lostDeadlock());
       assertTrue(loser.transactionFailed(), "the rolled-back transaction must not commit");
       assertFalse(winner.transactionFailed(), "the surviving transaction must commit");
-      assertEquals(Set.of(winner.marker()), writtenMarkers());
+      assertEquals(Set.of(winner.marker()), markers("written-%"));
     } finally {
       workers.shutdownNow();
+    }
+  }
+
+  @Test
+  void aLockWaitTimeoutLeavesTheRestOfTheTransactionToCommit() throws SQLException {
+    assumeTrue(isMySql(), "only MySQL gives up on a lock wait by default");
+    try (Handle holder = jdbi().open();
+        Handle waiter = jdbi().open()) {
+      holder.begin();
+      lock(holder, "held");
+      waiter.execute("SET SESSION innodb_lock_wait_timeout = 1");
+      try {
+        waiter.useTransaction(
+            transaction -> {
+              transaction.execute("INSERT INTO " + TABLE + " (id) VALUES ('timeout-before')");
+              assertFalse(tryLock(transaction, "held"), "the lock wait must time out");
+              transaction.execute("INSERT INTO " + TABLE + " (id) VALUES ('timeout-after')");
+            });
+      } finally {
+        waiter.execute("SET SESSION innodb_lock_wait_timeout = DEFAULT");
+        holder.rollback();
+      }
+    }
+    assertEquals(Set.of("timeout-before", "timeout-after"), markers("timeout-%"));
+  }
+
+  private static boolean isMySql() throws SQLException {
+    try (Handle handle = jdbi().open()) {
+      return handle.getConnection().getMetaData().getDatabaseProductName().contains("MySQL");
     }
   }
 
@@ -91,17 +123,22 @@ class AbortedTransactionGuardIT {
     String marker = "written-after-" + first;
     AtomicBoolean lostDeadlock = new AtomicBoolean();
     boolean transactionFailed = false;
-    try {
-      jdbi()
-          .useTransaction(
-              handle -> {
-                lock(handle, first);
-                barrier.await(1, MINUTES);
-                lostDeadlock.set(!tryLock(handle, second));
-                handle.execute("INSERT INTO " + TABLE + " (id) VALUES (?)", marker);
-              });
-    } catch (JdbiException failure) {
-      transactionFailed = true;
+    try (Handle handle = jdbi().open()) {
+      try {
+        handle.useTransaction(
+            transaction -> {
+              lock(transaction, first);
+              barrier.await(1, MINUTES);
+              lostDeadlock.set(!tryLock(transaction, second));
+              transaction.execute("INSERT INTO " + TABLE + " (id) VALUES (?)", marker);
+            });
+      } catch (JdbiException failure) {
+        transactionFailed = true;
+      }
+      assertEquals(
+          1,
+          handle.createQuery("SELECT 1").mapTo(Integer.class).one(),
+          "the connection must survive a refused commit");
     }
     return new Outcome(marker, lostDeadlock.get(), transactionFailed);
   }
@@ -123,12 +160,13 @@ class AbortedTransactionGuardIT {
         .one();
   }
 
-  private static Set<String> writtenMarkers() {
+  private static Set<String> markers(String pattern) {
     return jdbi()
         .withHandle(
             handle ->
                 handle
-                    .createQuery("SELECT id FROM " + TABLE + " WHERE id LIKE 'written-%'")
+                    .createQuery("SELECT id FROM " + TABLE + " WHERE id LIKE :pattern")
+                    .bind("pattern", pattern)
                     .mapTo(String.class)
                     .collect(Collectors.toSet()));
   }

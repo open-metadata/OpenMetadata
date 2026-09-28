@@ -15,15 +15,19 @@ package org.openmetadata.service.util.jdbi;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Optional;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.core.transaction.TransactionException;
@@ -70,8 +74,33 @@ class AbortedTransactionGuardTest {
         assertThrows(TransactionException.class, () -> guarded.commit(handle));
 
     assertTrue(DeadlockRetry.isDeadlock(refused), "the refusal must be replayable");
+    assertTrue(
+        refused.getMessage().contains("Deadlock found when trying to get lock"),
+        "the database's message must reach the caller");
     verify(transaction).rollback(handle);
     verify(transaction, never()).commit(handle);
+  }
+
+  @Test
+  void aRefusedCommitRollsBackOnceEvenWhenJdbiRollsBackAgain() {
+    guard.onStatementFailure(statement, deadlock());
+    assertThrows(TransactionException.class, () -> guarded.commit(handle));
+
+    guarded.rollback(handle);
+
+    verify(transaction, times(1)).rollback(handle);
+  }
+
+  @Test
+  void aRefusalStillReportsTheDeadlockWhenItsRollbackFails() {
+    doThrow(new TransactionException("connection lost")).when(transaction).rollback(handle);
+    guard.onStatementFailure(statement, deadlock());
+
+    TransactionException refused =
+        assertThrows(TransactionException.class, () -> guarded.commit(handle));
+
+    assertTrue(DeadlockRetry.isDeadlock(refused), "the refusal must stay replayable");
+    assertEquals(1, refused.getSuppressed().length, "the failed rollback is attached, not lost");
   }
 
   @Test
@@ -87,6 +116,15 @@ class AbortedTransactionGuardTest {
   void aDeadlockOutsideATransactionDoesNotBlockTheNextCommit() throws SQLException {
     when(connection.getAutoCommit()).thenReturn(true);
     guard.onStatementFailure(statement, deadlock());
+
+    guarded.commit(handle);
+
+    verify(transaction).commit(handle);
+  }
+
+  @Test
+  void aLockWaitTimeoutKeepsItsTransaction() {
+    guard.onStatementFailure(statement, lockWaitTimeout());
 
     guarded.commit(handle);
 
@@ -135,6 +173,26 @@ class AbortedTransactionGuardTest {
             .counter()
             .count());
     assertThrows(TransactionException.class, () -> guarded.commit(handle));
+  }
+
+  @Test
+  void theSqlLoggerDoesNotCountALockWaitTimeoutAsADeadlock() {
+    new OMSqlLogger(guard).logException(statement, lockWaitTimeout());
+
+    assertEquals(
+        0.0,
+        Optional.ofNullable(
+                meters
+                    .find(OMSqlLogger.DEADLOCK_METRIC)
+                    .tag(OMSqlLogger.STATEMENT_TAG, LOSING_STATEMENT)
+                    .counter())
+            .map(Counter::count)
+            .orElse(0.0));
+  }
+
+  private static SQLException lockWaitTimeout() {
+    return new SQLException(
+        "Lock wait timeout exceeded; try restarting transaction", "40001", 1205);
   }
 
   private static SQLException deadlock() {
