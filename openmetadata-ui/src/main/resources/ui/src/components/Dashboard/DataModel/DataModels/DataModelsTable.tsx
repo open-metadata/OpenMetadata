@@ -39,16 +39,18 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   dataProductTableObject,
   descriptionTableObject,
@@ -58,8 +60,8 @@ import {
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { DataModelTableProps } from './DataModelDetails.interface';
 
 const DataModelTable = ({
@@ -149,7 +151,7 @@ const DataModelTable = ({
                   EntityType.DASHBOARD_DATA_MODEL,
                   record.fullyQualifiedName || ''
                 )}>
-                {stringToHTML(
+                {renderHighlightedText(
                   highlightSearchText(dataModelDisplayName, searchValue)
                 )}
               </Link>

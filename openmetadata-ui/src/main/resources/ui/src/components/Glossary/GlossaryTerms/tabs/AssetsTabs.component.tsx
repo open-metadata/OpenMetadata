@@ -46,6 +46,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
@@ -86,6 +87,7 @@ import {
   getQuickFilterQuery,
 } from '../../../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
@@ -109,7 +111,7 @@ import {
   SourceType,
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
-import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
+import { AssetsTabsProps } from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -460,6 +462,15 @@ const AssetsTabs = forwardRef(
       useState<EntityReference[]>();
 
     const entityTypeString = getEntityTypeString(type);
+
+    // Consumer via prop. No `deleted` argument: `isEntityDeleted` is destructured but
+    // never referenced anywhere in this file's permission logic (only listed, unused, in
+    // a dependency array) — old expressions here read a bare permissions.EditAll with no
+    // deleted gating, so getDerivedPermissionFlags defaults to its `deleted = false`.
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     const handleMenuClick = ({ key }: { key: string }) => {
       setSelectedFilter((prevSelected) =>
@@ -984,7 +995,7 @@ const AssetsTabs = forwardRef(
               <ExploreSearchCard
                 showEntityIcon
                 actionPopoverContent={
-                  isRemovable && permissions.EditAll ? (
+                  isRemovable && canEditAll ? (
                     <Dropdown
                       align={{ targetOffset: [-12, 0] }}
                       dropdownRender={renderDropdownContainer}
@@ -1047,6 +1058,7 @@ const AssetsTabs = forwardRef(
         data,
         activeEntity,
         permissions,
+        canEditAll,
         paging,
         currentPage,
         selectedCard,
@@ -1296,7 +1308,7 @@ const AssetsTabs = forwardRef(
         </div>
         <BulkDeleteNotification
           assetRemoving={assetRemoving}
-          hasEditAllPermission={Boolean(permissions?.EditAll)}
+          hasEditAllPermission={canEditAll}
           isLoading={isLoading}
           selectedItemsCount={selectedItems.size}
           totalAssetCount={totalAssetCount}

@@ -28,7 +28,7 @@ import {
 import { validateTagAddtionToGlossary } from '../../../rest/glossaryAPI';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import {
   GlossaryUpdateConfirmationModalProps,
   UpdateState,

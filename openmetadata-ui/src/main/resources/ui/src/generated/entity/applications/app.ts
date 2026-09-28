@@ -301,8 +301,6 @@ export interface CollateAIAppConfig {
     bulkIndexSettings?: BulkIndexOverrides;
     /**
      * Number of threads to use for reindexing
-     *
-     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
@@ -345,9 +343,6 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
-     *
-     * Number of entities per partition for distributed RDF indexing. Smaller values create more
-     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -357,13 +352,12 @@ export interface CollateAIAppConfig {
     /**
      * Number of threads to use for reindexing
      *
-     * Number of producer threads to use for non-distributed RDF reindexing
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
@@ -405,14 +399,28 @@ export interface CollateAIAppConfig {
      */
     warmRelationships?: boolean;
     /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
+    /**
      * Recreate the RDF store before indexing.
      */
     recreateIndex?: boolean;
     /**
-     * Enable distributed RDF indexing across multiple servers with partition coordination and
-     * recovery.
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
      */
-    useDistributedIndexing?: boolean;
+    relationshipIsolationMaxFailures?: number;
     /**
      * Optional rule name for an on-demand single-rule run.
      */
@@ -452,6 +460,12 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for automation Workflows: the short-lived records left
+     * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
+     * forever.
+     */
+    workflowRetentionPeriod?: number;
     /**
      * Whether the AutoPilot Workflow should be active or not.
      */

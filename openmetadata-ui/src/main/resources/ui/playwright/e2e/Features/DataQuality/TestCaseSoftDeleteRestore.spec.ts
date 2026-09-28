@@ -43,7 +43,9 @@ const openTestCaseList = async (
   include: 'deleted' | 'non-deleted'
 ) => {
   const initialListResponse = waitForTestCaseListResponse(page);
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await initialListResponse;
 
   const searchResponse = waitForTestCaseListResponse(page);
@@ -264,10 +266,12 @@ test.describe(
       await expect(page.getByTestId('viewer-container')).toContainText(
         restoreTestCaseDescription
       );
-      await expect(page.getByTestId('parameter-container')).toContainText(
-        'columnCount'
-      );
-      await expect(page.getByTestId('parameter-container')).toContainText('4');
+      await expect(
+        page.getByTestId('test-case-configuration-card')
+      ).toContainText('columnCount');
+      await expect(
+        page.getByTestId('test-case-configuration-card')
+      ).toContainText('4');
       await expect(
         page.getByTestId('tags-container').getByTestId('tag-PII.Sensitive')
       ).toBeVisible();

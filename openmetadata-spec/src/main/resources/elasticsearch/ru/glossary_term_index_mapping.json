@@ -42,7 +42,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -50,6 +51,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -254,7 +256,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "docs",
+        "index_options": "positions",
         "term_vector": "with_positions_offsets"
       },
       "owners": {

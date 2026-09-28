@@ -19,6 +19,7 @@ import {
   Card,
   Divider,
   Dropdown,
+  Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -26,7 +27,6 @@ import {
 import {
   ChevronDown,
   Download02,
-  Flag04,
   PlayCircle,
   Plus,
   Trash01,
@@ -67,12 +67,12 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
@@ -292,6 +292,20 @@ const ContractDetail: React.FC<{
     setMode(e.target.value);
   }, []);
 
+  const statusBadge = useMemo(() => {
+    const { color, icon } = getEntityStatusBadgeConfig(contract?.entityStatus);
+
+    return (
+      <BadgeWithIcon
+        color={color}
+        iconLeading={icon}
+        size="sm"
+        type="pill-color">
+        {contract?.entityStatus ?? t('label.approved')}
+      </BadgeWithIcon>
+    );
+  }, [contract?.entityStatus, t]);
+
   const renderDataContractHeader = useMemo(() => {
     if (!contract) {
       return null;
@@ -452,7 +466,7 @@ const ContractDetail: React.FC<{
                     {`${t('label.created-by')} : `}
                   </Typography>
 
-                  <OwnerLabel
+                  <Owner
                     owners={[
                       { name: contract.createdBy, type: 'user', id: '' },
                     ]}
@@ -505,13 +519,7 @@ const ContractDetail: React.FC<{
                 {`${t('label.status')} : `}
               </Typography>
 
-              <BadgeWithIcon
-                color="success"
-                iconLeading={Flag04}
-                size="sm"
-                type="pill-color">
-                {contract.entityStatus ?? t('label.approved')}
-              </BadgeWithIcon>
+              {statusBadge}
             </Box>
 
             <Divider
@@ -524,11 +532,11 @@ const ContractDetail: React.FC<{
                 {`${t('label.owner-plural')} : `}
               </Typography>
 
-              <OwnerLabel
+              <Owner
                 avatarSize={24}
                 isCompactView={false}
                 maxVisibleOwners={5}
-                owners={contract.owners}
+                owners={contract.owners ?? []}
                 showLabel={false}
               />
             </Box>
@@ -545,6 +553,7 @@ const ContractDetail: React.FC<{
     hasEditPermission,
     isInheritedContract,
     handleContractAction,
+    statusBadge,
     t,
   ]);
 

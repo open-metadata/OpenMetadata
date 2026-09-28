@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
@@ -19,7 +20,6 @@ import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
-import { Icon } from '../Icon/Icon';
 import './certification-tag.less';
 
 const CertificationTag = ({
@@ -32,7 +32,7 @@ const CertificationTag = ({
   const imageItem = useMemo(() => {
     const iconURL = certification.tagLabel.style?.iconURL;
     const name = getEntityName(certification.tagLabel);
-    const defaultIconSize = 14;
+    const defaultIconSize = 16;
 
     return (
       <Icon
@@ -63,7 +63,7 @@ const CertificationTag = ({
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
         <Link
-          className={classNames('d-flex items-center', {
+          className={classNames('d-flex items-center tw:leading-0', {
             'certification-tag-with-name  gap-1': showName,
           })}
           data-testid={`certification-${certification.tagLabel.tagFQN}`}

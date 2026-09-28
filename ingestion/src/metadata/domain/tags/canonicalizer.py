@@ -21,6 +21,7 @@ import threading
 from collections.abc import Iterable
 from typing import Any, NamedTuple, cast
 
+from cachetools import LRUCache
 from tenacity import (
     before_sleep_log,
     retry,
@@ -28,6 +29,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
+from metadata.domain.tags.models import TagDefinition
 from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.type.basic import ProviderType
@@ -60,11 +62,26 @@ class TagCanonicalizer:
     surface them to workflow status.
     """
 
-    def __init__(self, metadata: OpenMetadata) -> None:
+    def __init__(self, metadata: OpenMetadata, cache_size: int = 1000) -> None:
+        if cache_size < 1:
+            raise ValueError("cache_size must be positive")
         self._metadata = metadata
-        self._classification_cache: dict[str, Canonical] = {}
-        self._tag_cache: dict[str, Canonical] = {}
+        self._classification_cache: LRUCache[str, Canonical | None] = LRUCache(maxsize=cache_size)
+        self._tag_cache: LRUCache[tuple[str, str], Canonical | None] = LRUCache(maxsize=cache_size)
         self._lock = threading.RLock()
+
+    def resolve(
+        self,
+        *,
+        classification_name: str,
+        tag_name: str,
+        classification_description: str,
+        tag_description: str,
+    ) -> TagDefinition:
+        """Resolve a definition against system classifications and tags."""
+        classification = self.classification(classification_name, classification_description)
+        tag = self.tag(classification.name, tag_name, tag_description)
+        return TagDefinition(classification.name, tag.name, classification.description, tag.description)
 
     def classification(
         self,
@@ -80,23 +97,22 @@ class TagCanonicalizer:
         """
         key = name.lower()
         with self._lock:
-            cached = self._classification_cache.get(key)
-        if cached is not None:
-            return cached
+            if key in self._classification_cache:
+                return self._with_fallback(self._classification_cache[key], name, default_description)
 
         results = self._es_search(Classification, name)
-        canonical = Canonical(name=name, description=default_description)
+        canonical = None
         for entity in results:
             if entity.provider == ProviderType.system and entity.name.root.lower() == key:
                 canonical = Canonical(
                     name=entity.name.root,
-                    description=entity.description.root if entity.description else default_description,
+                    description=entity.description.root if entity.description else "",
                 )
                 break
 
         with self._lock:
-            self._classification_cache.setdefault(key, canonical)
-        return canonical
+            self._classification_cache[key] = canonical
+        return self._with_fallback(canonical, name, default_description)
 
     def tag(
         self,
@@ -115,14 +131,13 @@ class TagCanonicalizer:
             "str",
             fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name),
         )
-        key = tag_fqn.lower()
+        key = (classification_name, tag_name.lower())
         with self._lock:
-            cached = self._tag_cache.get(key)
-        if cached is not None:
-            return cached
+            if key in self._tag_cache:
+                return self._with_fallback(self._tag_cache[key], tag_name, default_tag_description)
 
         results = self._es_search(Tag, tag_fqn)
-        canonical = Canonical(name=tag_name, description=default_tag_description)
+        canonical = None
         for entity in results:
             if (
                 entity.provider == ProviderType.system
@@ -131,15 +146,26 @@ class TagCanonicalizer:
             ):
                 canonical = Canonical(
                     name=entity.name.root,
-                    description=entity.description.root if entity.description else default_tag_description,
+                    description=entity.description.root if entity.description else "",
                 )
                 break
 
         with self._lock:
-            self._tag_cache.setdefault(key, canonical)
-        return canonical
+            self._tag_cache[key] = canonical
+        return self._with_fallback(canonical, tag_name, default_tag_description)
+
+    @staticmethod
+    def _with_fallback(canonical: Canonical | None, name: str, description: str) -> Canonical:
+        if canonical is None:
+            return Canonical(name, description)
+        return Canonical(canonical.name, canonical.description or description)
 
     @_es_retry
     def _es_search(self, entity_type: Any, search_string: str) -> Iterable[Any]:
         """Run an ES search by FQN with retries."""
-        return self._metadata.es_search_from_fqn(entity_type=entity_type, fqn_search_string=search_string) or []
+        return (
+            self._metadata.es_search_from_fqn(
+                entity_type=entity_type, fqn_search_string=search_string, raise_on_error=True
+            )
+            or []
+        )

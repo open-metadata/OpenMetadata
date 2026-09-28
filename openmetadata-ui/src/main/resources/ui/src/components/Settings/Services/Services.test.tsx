@@ -173,8 +173,9 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
 });
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(<></>),
 }));
 
 jest.mock('../../../utils/TableColumn.util', () => ({

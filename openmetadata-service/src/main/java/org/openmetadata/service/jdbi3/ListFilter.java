@@ -34,6 +34,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String ANNOUNCEMENT_TABLE = "announcement_entity";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
@@ -110,6 +111,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getActiveCondition(tableName));
+    conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -127,6 +129,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
+    conditions.add(getSourceFileCondition());
+    conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     conditions.add(getGlossaryIdCondition(tableName));
@@ -196,6 +200,39 @@ public class ListFilter extends Filter<ListFilter> {
       return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
     }
     return null;
+  }
+
+  /** Filters context memories down to the knowledge pills extracted from a given context file. */
+  private String getSourceFileCondition() {
+    String sourceFileId = queryParams.get("sourceFileId");
+    String result = "";
+    if (!nullOrEmpty(sourceFileId)) {
+      queryParams.put("sourceFileIdParam", sourceFileId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'contextFile' "
+                  + "AND entity_relationship.fromId = :sourceFileIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
+  }
+
+  /** Filters context memories down to the knowledge pills extracted from any source entity. */
+  private String getSourceEntityCondition() {
+    String sourceEntityId = queryParams.get("sourceEntityId");
+    String result = "";
+    if (!nullOrEmpty(sourceEntityId)) {
+      queryParams.put("sourceEntityIdParam", sourceEntityId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
   }
 
   /**
@@ -395,7 +432,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getActiveCondition(String tableName) {
     String active = queryParams.get("active");
-    if (active == null || !"announcement_entity".equals(tableName)) {
+    if (active == null || !ANNOUNCEMENT_TABLE.equals(tableName)) {
       return "";
     }
 
@@ -406,6 +443,11 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return String.format("(startTime > %d OR endTime < %d)", now, now);
+  }
+
+  private String getAnnouncementTypeCondition() {
+    String announcementType = queryParams.get("announcementType");
+    return announcementType == null ? "" : "type = :announcementType";
   }
 
   private String getEntityStatusCondition(String tableName) {

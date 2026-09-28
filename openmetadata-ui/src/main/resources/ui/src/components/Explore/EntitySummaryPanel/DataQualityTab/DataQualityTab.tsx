@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs, Typography } from 'antd';
+import { Owner, Tabs } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -43,11 +44,10 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DataQualitySection from '../../../common/DataQualitySection';
+import DataQualitySection from '../../../common/DataQualitySection/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
@@ -160,7 +160,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           label: t('label.assignee'),
           value: (
             <div className="assignee-info">
-              <OwnerLabel
+              <Owner
                 owners={assignee ? [assignee] : []}
                 placeHolder={t('label.no-entity', {
                   entity: t('label.assignee'),
@@ -232,6 +232,13 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           </div>
           <div className="test-case-status-section">
             <StatusBadgeV2
+              className={classNames(
+                'tw:rounded-2xl tw:outline-utility-gray-blue-100',
+                // Aborted pills here use the warning (yellow) tint, not the
+                // default orange Aborted badge colour.
+                statusBadgeType === StatusType.Aborted &&
+                  'tw:bg-utility-warning-50 tw:text-utility-warning-700'
+              )}
               label={status || 'Unknown'}
               showIcon={false}
               status={statusBadgeType}
@@ -874,13 +881,31 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <div className="data-quality-tab-container">
       <Tabs
-        activeKey={activeTab}
-        className={classNames('data-quality-tabs', {
-          'column-detail-data-quality-tabs': isColumnDetailPanel,
-        })}
-        items={tabItems}
-        onChange={handleTabChange}
-      />
+        className="data-quality-tabs"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(String(key))}>
+        <Tabs.List
+          className={classNames(
+            'tw:sticky tw:z-3 tw:gap-8 tw:bg-primary tw:px-4 tw:pt-2.5',
+            // Sits below the sticky entity title, which the column panel and the side drawer do not render.
+            isColumnDetailPanel
+              ? 'tw:top-0'
+              : 'tw:top-[54px] tw:[.drawer-summary-panel-container_&]:top-0'
+          )}
+          size="sm"
+          type="underline">
+          {tabItems.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabItems.map(({ key, children }) => (
+          <Tabs.Panel id={key} key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     </div>
   );
 };

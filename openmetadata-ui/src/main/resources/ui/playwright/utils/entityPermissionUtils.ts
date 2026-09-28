@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { Browser, expect, Page } from '@playwright/test';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
@@ -30,7 +30,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import { UserClass } from '../support/user/UserClass';
-import { redirectToHomePage } from './common';
+import { clickOutside, redirectToHomePage } from './common';
 import { addCustomPropertiesForEntity } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
@@ -84,7 +84,12 @@ const checkElementVisibility = async (
       }
 
       case 'multiple-containers': {
-        // Handle elements that exist in multiple containers
+        // Handle elements that exist in multiple containers. A container
+        // testId (e.g. tags-container) can be rendered once per row/column
+        // (e.g. Container entities' data model table), so resolve each
+        // locator to its full list of matched buttons via `.all()` instead
+        // of calling `.isVisible()` directly on a locator that may match
+        // more than one element (which throws a strict-mode violation).
         const containerLocators =
           config.containers?.map((container) =>
             testUserPage
@@ -92,14 +97,26 @@ const checkElementVisibility = async (
               .locator(`button[data-testid="${testId}"]`)
           ) || [];
 
-        const containerVisibilityChecks = await Promise.all(
-          containerLocators.map((locator) => locator.isVisible())
-        );
+        // `.all()` resolves against whatever is in the DOM at that instant --
+        // unlike `expect(locator)`, it does not auto-wait. The containers and
+        // their buttons mount asynchronously, so on a loaded CI runner the list
+        // came back empty and `.some()` failed outright rather than waiting
+        // (chromium-14, "Topic allow common operations permissions"). Retry the
+        // whole read so the assertion measures the settled page.
+        await expect(async () => {
+          const containerButtons = await Promise.all(
+            containerLocators.map((locator) => locator.all())
+          );
 
-        // In allow case: any one of the containers should have the element visible
-        expect(
-          containerVisibilityChecks.some((visible) => visible)
-        ).toBeTruthy();
+          const containerVisibilityChecks = await Promise.all(
+            containerButtons.flat().map((button) => button.isVisible())
+          );
+
+          // In allow case: any one of the matched buttons should be visible
+          expect(
+            containerVisibilityChecks.some((visible) => visible)
+          ).toBeTruthy();
+        }).toPass({ timeout: 15_000 });
 
         break;
       }
@@ -114,6 +131,13 @@ const checkElementVisibility = async (
           await expect(
             testUserPage.locator(`[data-testid="${testId}"]`)
           ).toBeVisible();
+
+          // The core menu is modal: while open, its underlay swallows the next
+          // manage-button click, so close it before the following check.
+          await clickOutside(testUserPage);
+          await expect(
+            testUserPage.getByTestId('manage-dropdown-list-container')
+          ).not.toBeVisible();
         }
 
         break;
@@ -142,22 +166,34 @@ const checkElementVisibility = async (
       }
 
       case 'multiple-containers': {
-        // Handle elements that exist in multiple containers for deny case
-        const containerLocators =
-          config.containers?.map((container) =>
-            testUserPage
-              .locator(`[data-testid="${container}"]`)
-              .locator(`button[data-testid="${testId}"]`)
-          ) || [];
+        const containers = config.containers ?? [];
+        const containerSelector = containers
+          .map((container) => `[data-testid="${container}"]`)
+          .join(', ');
+        const buttonSelector = containers
+          .map(
+            (container) =>
+              `[data-testid="${container}"] button[data-testid="${testId}"]`
+          )
+          .join(', ');
 
-        const containerVisibilityChecks = await Promise.all(
-          containerLocators.map((locator) => locator.isVisible())
+        // An empty list is not evidence of denial. The previous check read
+        // `.all()` and asserted `.every(v => !v)`, which is vacuously true when
+        // nothing has mounted -- and that is exactly what happened: measured
+        // across fourteen entity types, the button list resolved to zero
+        // elements every single time, so the assertion never once separated a
+        // denied page from an unrendered one.
+        //
+        // Anchor on the containers instead. They render regardless of
+        // permission (GlossaryTermsSection emits glossary-container in both its
+        // branches); only the button inside is gated, since TagsContainerV2
+        // renders add-tag behind `permission && isEmpty(tags)`. So the button is
+        // absent from the DOM rather than merely hidden, and asserting its
+        // absence only means something once its container is on the page.
+        await expect(testUserPage.locator(containerSelector)).not.toHaveCount(
+          0
         );
-
-        // In deny case: none of the containers should have the element visible
-        expect(
-          containerVisibilityChecks.every((visible) => !visible)
-        ).toBeTruthy();
+        await expect(testUserPage.locator(buttonSelector)).toHaveCount(0);
 
         break;
       }
@@ -171,6 +207,13 @@ const checkElementVisibility = async (
 
           await expect(
             testUserPage.locator(`[data-testid="${testId}"]`)
+          ).not.toBeVisible();
+
+          // The core menu is modal: while open, its underlay swallows the next
+          // manage-button click, so close it before the following check.
+          await clickOutside(testUserPage);
+          await expect(
+            testUserPage.getByTestId('manage-dropdown-list-container')
           ).not.toBeVisible();
         }
 
@@ -676,7 +719,7 @@ export const serviceEntityConfig = {
 
 // Function to create custom properties for different entity types
 export const createCustomPropertyForEntity = async (
-  browser: any,
+  browser: Browser,
   entityType: string,
   customPropertyName: string,
   adminUser: UserClass

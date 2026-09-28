@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import IncidentManagerTable from '../../IncidentManager/IncidentManagerTable.component';
 import { useIncidentManagerListPage } from '../../IncidentManager/useIncidentManagerListPage';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -26,7 +27,19 @@ import FilterBar from '../common/FilterChip/FilterBar';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import IncidentGroupsView from './IncidentGroups/IncidentGroupsView';
 import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';
+
+// Widget wrapper: strip the widgets' own border/padding and give the chart cards
+// a light bg in light and a dark surface in dark.
+const INCIDENT_WIDGETS_WRAPPER_CLASS = [
+  'tw:mb-4',
+  'tw:[&_.incident-page-widgets]:border-0',
+  'tw:[&_.incident-page-widgets]:p-0',
+  'tw:[&_.custom-chart-background]:border-0',
+  'tw:[&_.custom-chart-background]:bg-gray-blue-25',
+  'tw:[&_.custom-chart-background]:dark:bg-surface',
+].join(' ');
 
 /**
  * App-mode Incident Manager page. Composes the shared useIncidentManagerListPage
@@ -53,8 +66,14 @@ const IncidentManagerPage = () => {
     handleAssigneeUpdate,
   } = useIncidentManagerListPage({ isIncidentPage: true });
 
-  const hasViewPermission =
-    commonTestCasePermission?.ViewAll || commonTestCasePermission?.ViewBasic;
+  // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
+  // scope — incident permissions decouple from test-case perms in an open upstream PR
+  // #26521), mirroring the classic IncidentManager.component.tsx precedent. Pure rename:
+  // `!hasViewAccess` is De Morgan's law applied to the old `!ViewAll && !ViewBasic` — the
+  // exact same condition, just via the named flag.
+  const hasViewPermission = getDerivedPermissionFlags(
+    commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
+  ).hasViewAccess;
 
   // Attached to the test case links so the detail page breadcrumb reflects
   // the incidents page as the origin.
@@ -71,7 +90,7 @@ const IncidentManagerPage = () => {
   return (
     <ObservabilityPageShell
       header={
-        <HeaderShell
+        <PageLayout.PageHeader
           badge={
             <LearningIcon
               pageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
@@ -92,41 +111,43 @@ const IncidentManagerPage = () => {
               showHome={false}
             />
           }
-          padding="comfortable"
           subtitle={t(PAGE_HEADERS.INCIDENT_MANAGER.subHeader)}
           title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
           variant="gradient"
         />
       }
       pageTitle={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}>
-      <div className="tw:mb-4 tw:[&_.incident-page-widgets]:border-0 tw:[&_.incident-page-widgets]:p-0 tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-gray-blue-25">
+      <div className={INCIDENT_WIDGETS_WRAPPER_CLASS}>
         <IncidentManagerPageWidgets />
       </div>
       {hasViewPermission ? (
-        <Box
-          className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
-          direction="col">
-          <Box className="tw:border-b tw:border-secondary tw:p-4">
-            <FilterBar
-              filters={filterDescriptors}
-              hasActiveFilters={hasActiveFilters}
-              variant="input"
-              onClearAll={clearAllFilters}
+        <Box className="tw:gap-4" direction="col">
+          <IncidentGroupsView />
+          <Box
+            className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
+            direction="col">
+            <Box className="tw:border-b tw:border-secondary tw:p-4">
+              <FilterBar
+                filters={filterDescriptors}
+                hasActiveFilters={hasActiveFilters}
+                variant="input"
+                onClearAll={clearAllFilters}
+              />
+            </Box>
+            <IncidentManagerTable
+              breadcrumbData={incidentBreadcrumb}
+              handleAssigneeUpdate={handleAssigneeUpdate}
+              handleSeveritySubmit={handleSeveritySubmit}
+              handleStatusSubmit={handleStatusSubmit}
+              isIncidentPage={isIncidentPage}
+              isPermissionLoading={isPermissionLoading}
+              pagingData={pagingData}
+              showPagination={showPagination}
+              tableDetails={tableDetails}
+              testCaseListData={testCaseListData}
+              testCasePermissions={testCasePermissions}
             />
           </Box>
-          <IncidentManagerTable
-            breadcrumbData={incidentBreadcrumb}
-            handleAssigneeUpdate={handleAssigneeUpdate}
-            handleSeveritySubmit={handleSeveritySubmit}
-            handleStatusSubmit={handleStatusSubmit}
-            isIncidentPage={isIncidentPage}
-            isPermissionLoading={isPermissionLoading}
-            pagingData={pagingData}
-            showPagination={showPagination}
-            tableDetails={tableDetails}
-            testCaseListData={testCaseListData}
-            testCasePermissions={testCasePermissions}
-          />
         </Box>
       ) : (
         <ErrorPlaceHolder

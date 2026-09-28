@@ -123,6 +123,54 @@ describe('useTestCaseFilters', () => {
     });
   });
 
+  it('should reset the page back to the first one when the search value changes while paginated', () => {
+    mockLocation.search = '?currentPage=2&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleSearchParam('searchValue', 'orders');
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('currentPage=1'),
+    });
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('searchValue=orders'),
+    });
+  });
+
+  it('should reset the page back to the first one when any other filter changes while paginated', () => {
+    mockLocation.search = '?currentPage=3&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleFilterChange?.(
+        { testCaseStatus: TestCaseStatus.Failed },
+        {}
+      );
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('currentPage=1'),
+    });
+  });
+
+  it('should keep the current page when adding a filter that has no value yet', () => {
+    mockLocation.search = '?currentPage=3&pageSize=15';
+
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.tier });
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      search: expect.stringContaining('currentPage=3'),
+    });
+  });
+
   it('should route a single changed value through handleSearchParam on handleFilterChange', () => {
     const { result } = renderFilters();
 

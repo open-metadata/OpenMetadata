@@ -53,9 +53,13 @@ class LoginClassBase {
   // Gradient behind the login video panel. Returned from here (not inlined in
   // CarouselLayout) so Collate can override the login palette via
   // LoginClassCollate without forking the layout. Fixed brand illustration
-  // colours — no semantic-token equivalent.
+  // colours — no semantic-token equivalent. Dark drops the lavender wash for the
+  // page background so the panel matches the form side.
   public getLoginVideoPanelClassName(): string {
-    return 'tw:bg-[linear-gradient(165deg,#f8f7fc_0%,#f3effc_55%,#ece5fb_100%)]';
+    return (
+      'tw:bg-[linear-gradient(165deg,#f8f7fc_0%,#f3effc_55%,#ece5fb_100%)] ' +
+      'tw:dark:bg-none tw:dark:bg-primary'
+    );
   }
 
   // Gradient + shadow of the inset video card, shown until the video paints.

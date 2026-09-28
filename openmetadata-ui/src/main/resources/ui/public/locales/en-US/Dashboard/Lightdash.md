@@ -2,6 +2,8 @@
 
 In this section, we provide guides and references to use the Lightdash connector.
 
+You can find further information on the Lightdash connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/lightdash" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

@@ -20,6 +20,7 @@ import {
 } from '@playwright/test';
 import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
+import { CODE_EDITOR, getCodeEditorText } from '../../../utils/codeEditor';
 import {
   getApiContext,
   redirectToHomePage,
@@ -30,6 +31,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
+import { getCellByName } from '../../../utils/scopedLocators';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import {
@@ -228,7 +230,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await page.getByTestId('table').waitFor();
 
-      await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
+      await expect(getCellByName(page, DBT.tagName)).toBeVisible();
 
       // Verify DBT in table entity
       await visitEntityPage({
@@ -255,8 +257,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="dbt"]');
 
       // Verify query is present in the DBT tab
-      await page.locator('.CodeMirror').waitFor();
-      const codeMirrorText = await page.textContent('.CodeMirror');
+      await page.locator(CODE_EDITOR).waitFor();
+      const codeMirrorText = await getCodeEditorText(page);
 
       expect(codeMirrorText).toContain(DBT.dbtQuery);
 

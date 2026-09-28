@@ -21,6 +21,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
@@ -34,7 +35,29 @@ import {
 
 const VISIBLE_ITEM_COUNT = 5;
 
+type MetricSemanticContextProps = Pick<
+  MetricSemanticListProps<MetricSemanticItem>,
+  'metric' | 'onUpdate' | 'permissions'
+>;
+
+const useResolvedMetricContext = ({
+  metric,
+  permissions,
+  onUpdate,
+}: MetricSemanticContextProps) => {
+  const context = useGenericContext<Metric>();
+
+  return {
+    metricDetails: metric ?? context.data,
+    onUpdate: onUpdate ?? context.onUpdate,
+    permissions: permissions ?? context.permissions,
+  };
+};
+
 const MetricSemanticList = <T extends MetricSemanticItem>({
+  metric: metricProp,
+  permissions: permissionsProp,
+  onUpdate: onUpdateProp,
   items,
   title,
   fieldKey,
@@ -47,16 +70,21 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
   const [isShowMore, setIsShowMore] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
 
-  const {
-    data: metricDetails,
-    onUpdate,
-    permissions,
-  } = useGenericContext<Metric>();
+  const { metricDetails, onUpdate, permissions } = useResolvedMetricContext({
+    metric: metricProp,
+    onUpdate: onUpdateProp,
+    permissions: permissionsProp,
+  });
 
+  // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
+  // MetricDetailsPage, Task 8 Batch 6). Explicit-deny-wins fix: the old raw
+  // `EditAll || EditDescription` OR let EditAll grant unconditionally even when
+  // EditDescription was explicitly denied; canEditDescription is prioritized (field-specific
+  // wins) and already applies the same `!deleted` gating the old expression ANDed manually.
   const hasEditPermission = useMemo(
     () =>
-      (permissions.EditAll || permissions.EditDescription) &&
-      !metricDetails.deleted,
+      getDerivedPermissionFlags(permissions, metricDetails.deleted)
+        .canEditDescription,
     [permissions, metricDetails.deleted]
   );
 

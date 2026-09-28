@@ -19,31 +19,6 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
-const waitForTourBadgeWithRetry = async (
-  page: Page,
-  maxAttempts = 3,
-  timeout = 20000
-) => {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await page.locator('[data-tour-elem="badge"]').waitFor({
-        state: 'visible',
-        timeout,
-      });
-
-      return; // Success
-    } catch (e) {
-      if (attempt < maxAttempts) {
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      } else {
-        throw e;
-      }
-    }
-  }
-};
-
 const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
   // A single web-first assertion. The badge re-renders on every step transition,
   // so a separate visibility wait followed by a text poll gave the transition two
@@ -55,8 +30,6 @@ const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
 };
 
 const validateTourSteps = async (page: Page) => {
-  await waitForTourBadgeWithRetry(page);
-
   await expectTourBadge(page, '1');
 
   // step 1
@@ -140,6 +113,7 @@ const validateTourSteps = async (page: Page) => {
   await page.locator('[data-tour-elem="right-arrow"]').click();
 
   await expectTourBadge(page, '13');
+  await expect(page.locator('#profilerDetails')).toBeVisible();
 
   // step 12
   await page.locator('[data-tour-elem="right-arrow"]').click();
@@ -153,6 +127,7 @@ const validateTourSteps = async (page: Page) => {
 
   await expectTourBadge(page, '15');
 
+  await expect(page.getByTestId('lineage-map-onboarding-dialog')).toBeHidden();
   await page.getByTestId('last-step-button').click();
   await page.getByTestId('saveButton').click();
 };
@@ -188,7 +163,7 @@ test.describe(
       await page.getByRole('link', { name: 'Tour', exact: true }).click();
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
+      await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
 
       await page.locator('#feedWidgetData').waitFor();
 
@@ -208,7 +183,7 @@ test.describe(
           .click();
       }
       await page.getByText('Take a product tour to get started!').click();
-      await page.waitForURL('**/tour');
+      await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
@@ -222,11 +197,11 @@ test.describe(
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
-      await waitForTourBadgeWithRetry(page);
+      await expectTourBadge(page, '1');
     });
 
     test('Tour should work from URL directly', async ({ page }) => {
-      await page.goto('/tour');
+      await page.goto('/tour', { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       const isWelcomeScreenVisible = await page
         .getByTestId('welcome-screen')
@@ -237,12 +212,12 @@ test.describe(
       }
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await page.waitForURL('**/tour');
+      await page.waitForURL('**/tour', { waitUntil: 'domcontentloaded' });
 
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,
       // here we only validate whether the tour is loading or not.
-      await waitForTourBadgeWithRetry(page);
+      await expectTourBadge(page, '1');
     });
   }
 );

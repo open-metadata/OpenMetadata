@@ -25,6 +25,7 @@ import {
   addRelatedTerms,
   addRelatedTermsByRelationType,
   addSynonyms,
+  fillStyleIconUrl,
   openAddGlossaryTermModal,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
@@ -132,11 +133,9 @@ test.describe('Glossary Term Details Operations', () => {
           .getByText('References')
       ).toBeVisible();
 
-      // Remove first reference using the delete button in the row
-      // The delete button is the only button with IconDelete in the modal rows
       await page
         .getByTestId('glossary-term-references-modal')
-        .locator('.reference-edit-form button[type="button"]')
+        .getByTestId('delete-ref-btn')
         .first()
         .click();
 
@@ -245,7 +244,7 @@ test.describe('Glossary Term Details Operations', () => {
           glossaryTerm1.data.name
         )}*`
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadRes;
 
       await expect(page.getByTestId(relatedTermName)).toHaveCount(2);
@@ -446,9 +445,9 @@ test.describe('Glossary Term Details Operations', () => {
       await page.locator('#name-0').fill('Documentation');
       await page.locator('#url-0').fill('https://docs.example.com');
 
-      // Add icon URL (custom style)
+      // Add icon URL (custom style) through the picker's URL tab
       const iconUrl = 'https://example.com/icon.png';
-      await page.getByTestId('icon-url').fill(iconUrl);
+      await fillStyleIconUrl(page, iconUrl);
 
       // Submit the term
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');

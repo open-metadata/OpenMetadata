@@ -75,6 +75,14 @@ interface AddCustomPropertyProps {
   onClose?: () => void;
 }
 
+/**
+ * Column names reserved for internal use by the table-type custom property
+ * editor: this is the grid edit controller's rowIdKey (see EditTableTypePropertyModal
+ * ROW_ID_KEY). Allowing it as a user-defined column would collide with the internal
+ * row identifier and silently overwrite/strip user data on save.
+ */
+const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];
+
 const AddCustomProperty = ({
   formRef,
   onSubmit,
@@ -461,6 +469,15 @@ const AddCustomProperty = ({
                   throw t('message.maximum-count-allowed', {
                     count: 3,
                     label: t('label.column-plural'),
+                  });
+                }
+                if (
+                  value.some((c: string) =>
+                    RESERVED_TABLE_COLUMN_NAMES.includes(c)
+                  )
+                ) {
+                  throw t('message.reserved-column-name', {
+                    name: RESERVED_TABLE_COLUMN_NAMES.join(', '),
                   });
                 }
               } else {

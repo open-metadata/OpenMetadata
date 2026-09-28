@@ -13,6 +13,7 @@
 
 import { Operation } from 'fast-json-patch';
 import { ReactionType } from '../generated/type/reaction';
+import APIClient from './axiosClient';
 import {
   addConversationReaction,
   addConversationReplyReaction,
@@ -28,9 +29,8 @@ import {
   removeConversationReaction,
   removeConversationReplyReaction,
 } from './conversationsAPI';
-import APIClient from './index';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   delete: jest.fn(),
   get: jest.fn(),
   patch: jest.fn(),

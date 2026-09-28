@@ -33,9 +33,10 @@ const itemWrapperClass = (
 ) =>
   cx(
     itemWrapperBase,
-    state.isSelected && 'tw:bg-active',
+    // Selected matches the sidebar's selected nav item and wins over focus.
+    state.isSelected && 'tw:bg-brand-primary',
     state.isDisabled && 'tw:cursor-not-allowed',
-    state.isFocused && 'tw:bg-primary_hover',
+    state.isFocused && !state.isSelected && 'tw:bg-primary_hover',
     state.isFocusVisible &&
       'tw:outline-2 tw:-outline-offset-2 tw:outline-focus-ring',
     sizes[size],
@@ -44,7 +45,7 @@ const itemWrapperClass = (
 
 const checkClass = (size: 'sm' | 'md', isDisabled: boolean) =>
   cx(
-    'tw:ml-auto tw:shrink-0 tw:text-fg-brand-primary',
+    'tw:ml-auto tw:shrink-0 tw:text-fg-brand-secondary_alt',
     size === 'sm' ? 'tw:size-4 tw:stroke-[2.5px]' : 'tw:size-5',
     isDisabled && 'tw:text-fg-disabled'
   );
@@ -113,7 +114,8 @@ const DefaultItemContent = ({
     <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
       <AriaText
         className={cx(
-          'tw:truncate tw:font-medium tw:whitespace-nowrap tw:text-primary',
+          'tw:truncate tw:font-medium tw:whitespace-nowrap',
+          state.isSelected ? 'tw:text-brand-secondary' : 'tw:text-primary',
           fontSizeClass[fontSize],
           state.isDisabled && 'tw:text-disabled'
         )}

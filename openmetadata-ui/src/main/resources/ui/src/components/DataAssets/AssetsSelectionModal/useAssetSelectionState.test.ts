@@ -12,6 +12,7 @@
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Status } from '../../../generated/type/bulkOperationResult';
 import {
@@ -30,7 +31,6 @@ import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
 jest.mock('../../../rest/searchAPI', () => ({

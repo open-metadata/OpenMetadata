@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { clickOutside, redirectToHomePage } from './common';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const redirectToUserPage = async (page: Page) => {
   await redirectToHomePage(page);
@@ -34,10 +35,12 @@ export const redirectToUserPage = async (page: Page) => {
 };
 
 export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
-  const teamHierarchyResponse = page.waitForResponse(
+  const teamHierarchyResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/teams/hierarchy?isJoinable=false') &&
-      response.ok()
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/teams/hierarchy?isJoinable=false'),
+    'ok'
   );
   await page.getByTestId('edit-teams-button').click();
   await teamHierarchyResponse;

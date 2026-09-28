@@ -4,8 +4,12 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +29,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
+import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
@@ -38,6 +43,15 @@ import org.quartz.JobExecutionContext;
 public class DataRetention extends AbstractNativeApplication {
   private static final int BATCH_SIZE = 10_000;
 
+  /**
+   * Per-run ceiling on workflow deletions. Unlike the bulk-SQL cleanups, each delete here costs a
+   * repository round-trip plus a {@code deleteSecretsFromWorkflow} call, which reaches an external
+   * secrets manager over the network on AWS/Azure setups. Draining a large first-run backlog in one
+   * go would run for hours and risk that provider's rate limits, so a backlog is spread over
+   * several weekly runs instead.
+   */
+  private static final int MAX_WORKFLOW_DELETES_PER_RUN = 100_000;
+
   private DataRetentionConfiguration dataRetentionConfiguration;
   private final CollectionDAO.EventSubscriptionDAO eventSubscriptionDAO;
   private final Stats retentionStats = new Stats();
@@ -49,6 +63,7 @@ public class DataRetention extends AbstractNativeApplication {
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
+  private final WorkflowDocStoreDAOs.WorkflowDAO workflowDAO;
 
   private final DataRetentionExtensionRegistry extensionRegistry;
 
@@ -58,6 +73,7 @@ public class DataRetention extends AbstractNativeApplication {
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
+    this.workflowDAO = collectionDAO.workflowDAO();
     this.extensionRegistry = DataRetentionExtensionRegistry.discover();
   }
 
@@ -130,6 +146,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
     entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
+    entityStats.withAdditionalProperty("automation_workflows", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
   }
@@ -214,6 +231,16 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info(
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
+
+    Integer workflowRetentionPeriod = config.getWorkflowRetentionPeriod();
+    if (isRetentionEnabled(workflowRetentionPeriod)) {
+      LOG.info(
+          "Starting cleanup for automation workflows with retention period: {} days.",
+          workflowRetentionPeriod);
+      cleanAutomationWorkflows(workflowRetentionPeriod);
+    } else {
+      LOG.info("Automation workflows are retained indefinitely.");
+    }
 
     LOG.info("Starting cleanup for registered retention extensions.");
     cleanExtensions(config);
@@ -469,6 +496,99 @@ public class DataRetention extends AbstractNativeApplication {
         "audit_logs", () -> auditLogDAO.deleteInBatches(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Audit logs cleanup complete.");
+  }
+
+  private void cleanAutomationWorkflows(int retentionPeriod) {
+    LOG.info("Initiating automation workflows cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    AtomicInteger deletedThisRun = new AtomicInteger();
+    // Ids this run could not delete. Held so a failing row is attempted once instead of again at
+    // the head of every batch - each attempt can be a secrets-manager call - and charged to the
+    // failed count once instead of once per batch. Bounded by MAX_WORKFLOW_DELETES_PER_RUN.
+    Set<String> failedIds = new HashSet<>();
+
+    // Drains on zero progress rather than on a short batch, unlike the bulk-SQL steps. A batch here
+    // can come back full and still delete fewer rows than it fetched, because a workflow that fails
+    // to delete is skipped rather than rethrown. Stopping on a short batch would end the run at the
+    // first such failure, and since batches are ordered oldest first the same undeletable row would
+    // head every batch of every run.
+    drainInBatches(
+        "automation_workflows",
+        () -> deleteExpiredWorkflows(cutoffMillis, deletedThisRun, failedIds),
+        deleted -> deleted == 0);
+
+    if (!failedIds.isEmpty()) {
+      LOG.warn(
+          "Automation workflow cleanup skipped {} workflow(s) it could not delete; the next run "
+              + "retries them.",
+          failedIds.size());
+    }
+    LOG.info("Automation workflows cleanup complete. Deleted {}.", deletedThisRun.get());
+  }
+
+  /**
+   * Deletes one batch through the repository rather than with a bulk SQL delete: a Workflow holds
+   * the service connection it ran against, so dropping the row alone would strand its secrets in an
+   * external secrets manager and leave its owner relationship rows behind.
+   *
+   * <p>A workflow that cannot be deleted is charged to the run's failed count and skipped, not
+   * rethrown. Batches are ordered oldest first, so letting one bad row abort the drain would stop
+   * this cleanup from ever getting past it.
+   *
+   * <p>One such row does not fail the run either. The sibling entity cleanups report per-item
+   * failures through stats alone, and since the same undeletable row heads every batch, flipping
+   * the run's status here would mark every future run FAILED and bury real failures. The run is
+   * escalated only when a batch had rows to attempt and deleted none of them, which means nothing
+   * is getting through rather than one row being bad.
+   *
+   * <p>Deletes non-recursively: a Workflow has no children, and {@code recursive} is what makes
+   * {@code EntityRepository.delete} take a deletion lock, which would be a wasted round-trip per
+   * row.
+   *
+   * @return rows actually deleted, which is what ends the drain. 0 means the batch made no progress
+   *     - every row failed, or the per-run cap is spent - so there is no point asking for the same
+   *     rows again.
+   */
+  private int deleteExpiredWorkflows(
+      long cutoffMillis, AtomicInteger deletedThisRun, Set<String> failedIds) {
+    int budget = MAX_WORKFLOW_DELETES_PER_RUN - deletedThisRun.get();
+    if (budget <= 0) {
+      LOG.info(
+          "Automation workflow cleanup reached its per-run cap of {}; the rest waits for the next run.",
+          MAX_WORKFLOW_DELETES_PER_RUN);
+      return 0;
+    }
+
+    List<String> ids = workflowDAO.listIdsBeforeCutoff(cutoffMillis, Math.min(BATCH_SIZE, budget));
+    int deleted = 0;
+    int attempted = 0;
+    Exception lastFailure = null;
+
+    for (String id : ids) {
+      if (failedIds.contains(id)) {
+        continue;
+      }
+      attempted++;
+      try {
+        Entity.deleteEntity(
+            Entity.ADMIN_USER_NAME, Entity.WORKFLOW, UUID.fromString(id), false, true);
+        deleted++;
+      } catch (Exception ex) {
+        LOG.error("Failed to delete automation workflow {}", id, ex);
+        failedIds.add(id);
+        updateStats("automation_workflows", 0, 1);
+        lastFailure = ex;
+      }
+    }
+
+    if (attempted > 0 && deleted == 0 && lastFailure != null) {
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      recordFirstFailure(lastFailure);
+    }
+
+    deletedThisRun.addAndGet(deleted);
+    return deleted;
   }
 
   private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {

@@ -25,7 +25,7 @@ import { NodeType } from '../../../generated/governance/workflows/elements/nodeT
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { WorkflowMetadata } from '../../../interface/workflow-builder-components.interface';
 import { WorkflowTriggerFieldsConfig } from '../../../rest/metadataTypeAPI';
-import { TaskNodeFormRenderer } from './forms';
+import { TaskNodeFormRenderer } from './forms/TaskNodeFormRenderer';
 import { NodeConfigSidebar } from './NodeConfigSidebar';
 
 interface NodeFormSidebarProps {

@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import { EventsRecord } from '../generated/events/api/eventsRecord';
 import { EventSubscription } from '../generated/events/eventSubscription';
@@ -22,6 +21,7 @@ import { FilterResourceDescriptor } from '../generated/events/filterResourceDesc
 import { Function } from '../generated/type/function';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
+import axiosClient from './axiosClient';
 
 const BASE_URL = '/events/subscriptions';
 

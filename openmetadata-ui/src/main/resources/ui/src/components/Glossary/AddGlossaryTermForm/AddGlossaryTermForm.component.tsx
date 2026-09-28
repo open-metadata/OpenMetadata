@@ -11,16 +11,21 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import {
+  ColorPickerField,
+  FormSelectItem,
+  IconPickerField,
+  Owner,
+} from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { isEmpty, isString } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { TagSource } from '../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
   CustomProperty,
@@ -42,12 +47,17 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
-import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
+import {
+  AVAILABLE_ICONS,
+  DEFAULT_GLOSSARY_TERM_ICON,
+} from '../../common/IconPicker/IconPicker.constants';
 import {
   AddGlossaryTermFormProps,
   IntakeFieldsSectionProps,
@@ -74,33 +84,59 @@ interface BuildGlossaryTermSavePayloadParams {
   extension: Record<string, unknown>;
 }
 
-const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
-  relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
+// antd's injected `onChange` keeps only the first argument; forward the nodes.
+const RelatedTermsPicker = ({
+  excludeFqn,
+  value,
+  onChange,
+}: {
+  excludeFqn: string;
+  value?: GlossaryPickerValue[];
+  onChange?: (terms: GlossaryPickerValue[]) => void;
+}) => {
+  const { t } = useTranslation();
 
-// In edit mode the related-terms multiselect can carry a plain FQN string (a
-// value the user hasn't touched), a freshly picked option (`term.data.id`), or
-// an antd-normalised `{ value }` option — resolve each back to the term id.
+  return (
+    <GlossaryTermPicker
+      data-testid="related-terms"
+      // A term cannot be related to itself.
+      excludeFqns={[excludeFqn]}
+      placeholder={t('label.add-entity', {
+        entity: t('label.related-term-plural'),
+      })}
+      value={value}
+      onChange={(_terms, nodes) => onChange?.(nodes)}
+    />
+  );
+};
+
+// Seeded from the reference; the id is resolved from `relatedTerms` on submit.
+const relatedTermToPickerValue = (
+  related: EntityReference
+): GlossaryPickerValue =>
+  ({
+    tagFQN: related.fullyQualifiedName ?? '',
+    name: getEntityName(related),
+    source: TagSource.Glossary,
+  } as GlossaryPickerValue);
+
+// Create takes FQNs; edit takes ids, which a picked term carries as its entity.
 const resolveRelatedTerms = (
   editMode: boolean,
-  relatedTerms: DefaultOptionType[],
+  relatedTerms: GlossaryPickerValue[],
   glossaryTerm: GlossaryTerm | undefined
 ) =>
   editMode
-    ? relatedTerms.map((term: DefaultOptionType) => {
-        if (isString(term)) {
-          return glossaryTerm?.relatedTerms?.find(
-            (r) => r.fullyQualifiedName === term
-          )?.id;
-        }
-        if (term.data) {
-          return term.data.id;
-        }
-
-        return glossaryTerm?.relatedTerms?.find(
-          (r) => r.fullyQualifiedName === term.value
-        )?.id;
-      })
-    : getRelatedTermFqnList(relatedTerms);
+    ? relatedTerms
+        .map(
+          (term) =>
+            term.entity?.id ??
+            glossaryTerm?.relatedTerms?.find(
+              (r) => r.term.fullyQualifiedName === term.tagFQN
+            )?.term.id
+        )
+        .filter((id): id is string => Boolean(id))
+    : relatedTerms.map((term) => term.tagFQN);
 
 const buildGlossaryTermSavePayload = ({
   formObj,
@@ -158,7 +194,7 @@ const buildGlossaryTermSavePayload = ({
 const OwnersBadge = ({ owners, testId }: OwnersBadgeProps) =>
   Boolean(owners.length) && (
     <Space wrap data-testid={testId} size={[8, 8]}>
-      <OwnerLabel owners={owners} />
+      <Owner isCompactView={false} owners={owners} showLabel={false} />
     </Space>
   );
 
@@ -322,6 +358,23 @@ const AddGlossaryTermForm = ({
 
   const reviewersList = toEntityReferenceArray(reviewersData);
 
+  const selectedColor = Form.useWatch<string | undefined>('color', form);
+
+  const iconOptions = useMemo<FormSelectItem[]>(
+    () =>
+      [
+        DEFAULT_GLOSSARY_TERM_ICON,
+        ...AVAILABLE_ICONS.filter(
+          (icon) => icon.name !== DEFAULT_GLOSSARY_TERM_ICON.name
+        ),
+      ].map((icon) => ({
+        icon: icon.component,
+        id: icon.name,
+        label: icon.name,
+      })),
+    []
+  );
+
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     form
@@ -380,17 +433,21 @@ const AddGlossaryTermForm = ({
         tags,
         references,
         mutuallyExclusive,
-        relatedTerms: relatedTerms?.map((r) => r.fullyQualifiedName ?? ''),
+        relatedTerms: relatedTerms?.map((r) =>
+          relatedTermToPickerValue(r.term)
+        ),
       });
 
       if (reviewers) {
         form.setFieldValue('reviewers', reviewers);
       }
+      // The fields are flat (`color`, `iconURL`); writing the nested
+      // `style.*` paths here meant an existing style never reached the form.
       if (style?.color) {
-        form.setFieldValue('style.color', style.color);
+        form.setFieldValue('color', style.color);
       }
       if (style?.iconURL) {
-        form.setFieldValue('style.iconURL', style.iconURL);
+        form.setFieldValue('iconURL', style.iconURL);
       }
 
       if (owners) {
@@ -478,36 +535,50 @@ const AddGlossaryTermForm = ({
       required: false,
       label: t('label.related-term-plural'),
       id: 'root/relatedTerms',
-      type: FieldTypes.TREE_ASYNC_SELECT_LIST,
+      type: FieldTypes.COMPONENT,
       props: {
-        className: 'glossary-select',
-        'data-testid': 'related-terms',
-        mode: 'multiple',
-        placeholder: t('label.add-entity', {
-          entity: t('label.related-term-plural'),
-        }),
-        open: false,
-        hasNoActionButtons: true,
-        fetchOptions: fetchGlossaryList,
-        initialOptions: glossaryTerm?.relatedTerms?.map((data) => ({
-          label: data.fullyQualifiedName,
-          value: data.fullyQualifiedName,
-          data,
-        })),
-        filterOptions: [getGlossaryTermFqn(glossaryTerm)],
+        children: (
+          <RelatedTermsPicker excludeFqn={getGlossaryTermFqn(glossaryTerm)} />
+        ),
       },
     },
+    // antd's Form.Item feeds the real `value`/`onChange` into these controlled
+    // pickers, so the `value` below only satisfies their prop types.
     {
       name: 'iconURL',
       id: 'root/iconURL',
-      label: t('label.icon-url'),
+      label: t('label.icon'),
       required: false,
-      placeholder: t('label.icon-url'),
-      type: FieldTypes.TEXT,
-      helperText: t('message.govern-url-size-message'),
+      type: FieldTypes.COMPONENT,
+      helperText: t('message.icon-aspect-ratio'),
+      helperTextType: HelperTextType.Tooltip,
+      formItemProps: {
+        getValueProps: (value) => ({ value: (value as string) ?? '' }),
+      },
       props: {
-        'data-testid': 'icon-url',
-        tooltipPlacement: 'right',
+        children: (
+          <IconPickerField
+            allowUrl
+            backgroundColor={selectedColor}
+            data-testid="icon-picker-btn"
+            defaultIcon={DEFAULT_GLOSSARY_TERM_ICON}
+            items={iconOptions}
+            labels={{
+              customIconUrl: t('label.icon-url'),
+              emptyState: t('label.no-entity-available', {
+                entity: t('label.icon-plural'),
+              }),
+              enterIconUrl: t('label.enter-entity', {
+                entity: t('label.icon-url'),
+              }),
+              iconsTab: t('label.icon-plural'),
+              urlTab: t('label.url'),
+            }}
+            name="iconURL"
+            placeholder={t('label.icon-url')}
+            value=""
+          />
+        ),
       },
     },
     {
@@ -515,13 +586,13 @@ const AddGlossaryTermForm = ({
       id: 'root/color',
       label: t('label.color'),
       required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
+      type: FieldTypes.COMPONENT,
+      formItemProps: {
+        getValueProps: (value) => ({ value: (value as string) ?? '' }),
+      },
+      props: {
+        children: <ColorPickerField data-testid="color-picker" value="" />,
+      },
     },
     {
       name: 'mutuallyExclusive',

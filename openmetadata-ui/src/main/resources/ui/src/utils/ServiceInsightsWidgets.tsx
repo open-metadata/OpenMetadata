@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
@@ -230,19 +231,22 @@ export const getServiceInsightsWidgetPlaceholder = ({
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
       <Typography.Paragraph className="w-max-350">
-        <Transi18next
-          i18nKey={localizationKey}
-          renderElement={
-            <a
-              aria-label={t('label.learn-more')}
-              href={docsLink}
-              rel="noreferrer"
-              style={{ color: theme.primaryColor }}
-              target="_blank"
-              title="learn-more"
+        <Tooltip title={t('label.learn-more')}>
+          <span>
+            <Transi18next
+              i18nKey={localizationKey}
+              renderElement={
+                <a
+                  aria-label={t('label.learn-more')}
+                  href={docsLink}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
+                />
+              }
             />
-          }
-        />
+          </span>
+        </Tooltip>
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );

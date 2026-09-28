@@ -12,6 +12,7 @@
  */
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -58,7 +59,6 @@ import {
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -355,9 +355,9 @@ const TaskFeedCardFromTask = ({
           className={`flex items-center gap-2 text-grey-muted ${
             commentsCount > 0 ? 'task-card-assignee' : ''
           }`}>
-          <OwnerLabel
+          <Owner
             isCompactView={false}
-            owners={task.assignees}
+            owners={task.assignees ?? []}
             showLabel={false}
           />
         </Col>

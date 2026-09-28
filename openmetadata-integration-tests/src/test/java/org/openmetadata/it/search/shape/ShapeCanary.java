@@ -13,6 +13,7 @@
 package org.openmetadata.it.search.shape;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
 import org.openmetadata.it.search.SearchClient;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -39,19 +40,56 @@ public final class ShapeCanary {
   public ShapeResult index(
       final String entityType, final EntityInterface entity, final FieldProbe probe) {
     final String docId = entity.getId().toString();
+    // Built before the try: JsonUtils.pojoToJson reports a serialization bug as a
+    // JsonParsingException caused by a JsonProcessingException, which extends IOException -- so
+    // inside the transport handling below it would read as "the engine never answered" and be
+    // retried and skipped, hiding exactly the harness bug buildDoc's contract says must surface.
+    final String doc = buildDoc(entityType, entity);
     final String freshIndex = shadowIndex.create(entityType);
     ShapeResult result;
     try {
-      final String doc = buildDoc(entityType, entity);
       final String rejection = putDoc(freshIndex, docId, doc);
       result =
           rejection != null
               ? new ShapeResult(Outcome.REJECTED, rejection)
               : verify(freshIndex, docId, probe);
+    } catch (final ShapeTransportException e) {
+      throw e;
+    } catch (final RuntimeException e) {
+      throw isTransportFailure(e)
+          ? new ShapeTransportException(
+              "shape probe against " + freshIndex + " did not complete", e)
+          : e;
     } finally {
       shadowIndex.drop(freshIndex);
     }
     return result;
+  }
+
+  /**
+   * Whether the engine never answered, as opposed to answering "no". A deadline overrun, a dropped
+   * connection or a desynchronised HTTP stream says nothing about whether the shape under test is
+   * indexable, so it must not be reported as {@link Outcome#REJECTED} -- doing so blames the
+   * document for a slow or overloaded cluster.
+   */
+  static boolean isTransportFailure(final Throwable error) {
+    Throwable cursor = error;
+    int depth = 0;
+    while (cursor != null && depth < MAX_CAUSE_DEPTH) {
+      if (cursor instanceof IOException || cursor.getClass().getSimpleName().contains("Timeout")) {
+        return true;
+      }
+      cursor = cursor.getCause();
+      depth++;
+    }
+    return false;
+  }
+
+  /** The engine did not answer; the case was not observed either way. */
+  public static final class ShapeTransportException extends RuntimeException {
+    ShapeTransportException(final String message, final Throwable cause) {
+      super(message, cause);
+    }
   }
 
   /**
@@ -70,13 +108,18 @@ public final class ShapeCanary {
    * PUTs the built doc into the shadow index. Returns the engine's rejection detail when the write
    * fails, or {@code null} when it succeeds. Only this network write is caught — the engine refuses
    * an unindexable doc with varied exception types, and REJECTED plus the raw error chain is the
-   * honest signal. We do NOT classify the cause.
+   * honest signal. The cause is not classified beyond one distinction: an engine that never
+   * answered ({@link #isTransportFailure}) has not refused anything, so it propagates instead of
+   * being recorded as a refusal.
    */
   private String putDoc(final String freshIndex, final String docId, final String doc) {
     String rejection = null;
     try {
       searchRepository.getSearchClient().createEntity(freshIndex, docId, doc);
     } catch (final Exception e) {
+      if (isTransportFailure(e)) {
+        throw new ShapeTransportException("PUT to " + freshIndex + " did not complete", e);
+      }
       rejection = describe(e);
       LOG.warn("REJECTED: PUT to {} failed for doc {}: {}", freshIndex, docId, rejection, e);
     }
