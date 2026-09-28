@@ -76,6 +76,8 @@ import org.openmetadata.service.jdbi3.DomainNavFilter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.ActiveDomainContext;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -1098,7 +1100,7 @@ public final class EntityUtil {
       List<EntityReference> allowed = subjectContext.getUserDomains();
       if (!nullOrEmpty(allowed)) {
         // The navbar selection narrows within the role's scope; it can never widen past it.
-        EntityReference selected = subjectContext.getDefaultDomain();
+        EntityReference selected = activeDomain(securityContext);
         boolean selectedAllowed =
             selected != null && allowed.stream().anyMatch(d -> d.getId().equals(selected.getId()));
         filter.addQueryParam(
@@ -1113,7 +1115,7 @@ public final class EntityUtil {
     }
     // Global (navbar) domain filter: a view preference that narrows lists to the selected domain
     // and never restricts access, so it applies to admins too.
-    EntityReference selected = resolveSelectedDomain(subjectContext.getDefaultDomain());
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
     DomainNavFilter.apply(
         filter,
         entityType,
@@ -1122,6 +1124,19 @@ public final class EntityUtil {
         selected == null || nullOrEmpty(selected.getFullyQualifiedName())
             ? null
             : FullyQualifiedName.buildHash(selected.getFullyQualifiedName()));
+  }
+
+  /**
+   * The caller's selected domain, resolved once per request by the auth filter from the user's
+   * persisted {@code defaultDomain} (thread-local first; the security context when it is ours).
+   */
+  private static EntityReference activeDomain(SecurityContext securityContext) {
+    EntityReference active = ActiveDomainContext.getActiveDomain();
+    if (active == null
+        && securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
+      active = catalogSecurityContext.activeDomain();
+    }
+    return active;
   }
 
   /**

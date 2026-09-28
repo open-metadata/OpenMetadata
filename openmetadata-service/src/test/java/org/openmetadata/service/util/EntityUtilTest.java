@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -50,7 +51,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -857,6 +860,11 @@ class EntityUtilTest {
     }
   }
 
+  @AfterEach
+  void clearActiveDomain() {
+    ActiveDomainContext.clear();
+  }
+
   @Test
   void addDomainQueryParam_appliesNavbarDomainAsViewFilter() {
     EntityReference selected =
@@ -927,6 +935,8 @@ class EntityUtilTest {
           .thenReturn(new SubjectContext(bot, null))
           .thenReturn(new SubjectContext(restricted, null));
 
+      // The auth filter resolved the persisted pick onto the request context.
+      ActiveDomainContext.setActiveDomain(selected);
       EntityUtil.addDomainQueryParam(securityContext, viewFilter, "table");
       EntityUtil.addDomainQueryParam(securityContext, adminFilter, "table");
       EntityUtil.addDomainQueryParam(securityContext, excludedFilter, "user");
@@ -1000,8 +1010,11 @@ class EntityUtilTest {
           .thenReturn(new SubjectContext(outsideScope, null))
           .thenReturn(new SubjectContext(noSelection, null));
 
+      ActiveDomainContext.setActiveDomain(sales);
       EntityUtil.addDomainQueryParam(securityContext, narrowed, "table");
+      ActiveDomainContext.setActiveDomain(other);
       EntityUtil.addDomainQueryParam(securityContext, guarded, "table");
+      ActiveDomainContext.clear();
       EntityUtil.addDomainQueryParam(securityContext, full, "table");
 
       // The pick narrows the list within the role's scope.
@@ -1047,9 +1060,56 @@ class EntityUtilTest {
           .thenReturn(new SubjectContext(user, null));
 
       ListFilter filter = new ListFilter();
+      ActiveDomainContext.setActiveDomain(gone);
       EntityUtil.addDomainQueryParam(securityContext, filter, "table");
 
       assertTrue(filter.getQueryParams().isEmpty(), "a stale selection must not scope the list");
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_readsTheSelectionCarriedByTheRequest() {
+    // The auth filter resolves the persisted pick once per request; the list hook consumes only
+    // that, so a subject with a defaultDomain but no request-carried selection stays unfiltered.
+    EntityReference selected =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    SecurityContext securityContext = mock(SecurityContext.class);
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("viewer")
+            .withDefaultDomain(selected);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
+          .thenReturn(selected);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(user, null));
+
+      ListFilter withoutRequestSelection = new ListFilter();
+      EntityUtil.addDomainQueryParam(securityContext, withoutRequestSelection, "table");
+      assertTrue(withoutRequestSelection.getQueryParams().isEmpty());
+
+      ListFilter fromSecurityContext = new ListFilter();
+      CatalogSecurityContext carried =
+          new CatalogSecurityContext(
+              () -> "viewer", "https", "digest", null, false, null, null, selected);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(carried))
+          .thenReturn(new SubjectContext(user, null));
+      EntityUtil.addDomainQueryParam(carried, fromSecurityContext, "table");
+      assertEquals(selected.getId().toString(), fromSecurityContext.getQueryParam("domainId"));
     }
   }
 
