@@ -15,6 +15,7 @@ import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import { CalendarDate } from '@internationalized/date';
 import {
   Badge,
+  Box,
   Card,
   DatePicker,
   Form,
@@ -480,7 +481,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               ? formatCustomPropertyDateTime(dateTime, typeName, config)
               : undefined
           ),
-        <div className="tw:flex tw:gap-2">
+        <Box gap={2}>
           {showDate && (
             <DatePicker
               aria-label={t('label.date')}
@@ -509,7 +510,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onChange={handleTimeChange}
             />
           )}
-        </div>
+        </Box>
       );
     };
 

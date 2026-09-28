@@ -333,7 +333,7 @@ const ActivityFeedCardNew = ({
     }
 
     return (
-      <div className="p-l-0 p-r-0" data-testid="feed-replies">
+      <Box className="p-l-0 p-r-0" data-testid="feed-replies" direction="col">
         {orderedPosts.map((reply, index, arr) => {
           const conversationId = activity?.id ?? feed?.id ?? '';
           const canManage =
@@ -369,7 +369,7 @@ const ActivityFeedCardNew = ({
             />
           );
         })}
-      </div>
+      </Box>
     );
   }, [
     feed,
@@ -451,11 +451,12 @@ const ActivityFeedCardNew = ({
                     showThread,
                     entityRef?.type
                   )}>
-                  <span
-                    className="card-style-feed-header text-sm"
-                    data-testid="headerText">
+                  <Typography
+                    className="card-style-feed-header"
+                    data-testid="headerText"
+                    size="text-sm">
                     {feedHeaderText}
-                  </span>
+                  </Typography>
 
                   {renderEntityLink}
                 </Space>
@@ -518,9 +519,9 @@ const ActivityFeedCardNew = ({
   const renderCommentsSection = () => (
     <div className="activity-feed-comments-container d-flex flex-col">
       {(showActivityFeedEditor || isOpenInDrawer) && (
-        <span className="activity-feed-comments-title m-b-md">
+        <Typography className="activity-feed-comments-title m-b-md">
           {t('label.comment-plural')}
-        </span>
+        </Typography>
       )}
       {showFeedEditor ? (
         <ActivityFeedEditorNew
@@ -597,8 +598,8 @@ const ActivityFeedCardNew = ({
                   'header-container-right-panel': showThread,
                 })}
                 size={0}>
-                <span
-                  className={classNames('mr-2', {
+                <Typography
+                  className={classNames('mr-2 not-prose', {
                     'activity-feed-user-name': !isPost,
                     'reply-card-user-name': isPost,
                   })}>
@@ -612,7 +613,7 @@ const ActivityFeedCardNew = ({
                       {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
-                </span>
+                </Typography>
                 {timestamp}
               </Space>
               {!isPost && (
@@ -621,11 +622,12 @@ const ActivityFeedCardNew = ({
                     showThread,
                     entityRef?.type
                   )}>
-                  <span
-                    className="card-style-feed-header text-sm"
-                    data-testid="headerText">
+                  <Typography
+                    className="card-style-feed-header"
+                    data-testid="headerText"
+                    size="text-sm">
                     {feedHeaderText}
-                  </span>
+                  </Typography>
 
                   {renderEntityLink}
                 </Space>

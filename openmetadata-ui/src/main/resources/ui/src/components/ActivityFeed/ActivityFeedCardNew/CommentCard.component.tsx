@@ -190,7 +190,7 @@ const CommentCard = ({
       <div className="w-full">
         <div className="d-flex items-center gap-2 tw:justify-between">
           <div className="d-flex items-center gap-2 flex-wrap">
-            <span className="activity-feed-user-name reply-card-user-name">
+            <Typography className="activity-feed-user-name reply-card-user-name not-prose">
               <UserPopOverCard userName={authorName}>
                 <Link
                   className="reply-card-user-name"
@@ -198,7 +198,7 @@ const CommentCard = ({
                   {getEntityName(user)}
                 </Link>
               </UserPopOverCard>
-            </span>
+            </Typography>
             <Typography
               className="m-b-xss"
               color="secondary"

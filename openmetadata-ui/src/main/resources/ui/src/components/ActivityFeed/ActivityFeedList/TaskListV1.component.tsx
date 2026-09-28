@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
@@ -92,9 +93,9 @@ const TaskListV1 = ({
         <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div className="placeholder-text tw:break-words">
+          <Typography as="div" className="placeholder-text tw:break-words">
             {emptyPlaceholderText}
-          </div>
+          </Typography>
         </ErrorPlaceHolderNew>
       </div>
     );

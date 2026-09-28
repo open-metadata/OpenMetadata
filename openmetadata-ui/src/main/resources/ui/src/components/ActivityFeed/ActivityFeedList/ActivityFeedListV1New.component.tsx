@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
@@ -220,9 +221,9 @@ const ActivityFeedListV1New = ({
         <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div className="placeholder-text tw:break-words">
+          <Typography as="div" className="placeholder-text tw:break-words">
             {emptyPlaceholderText}
-          </div>
+          </Typography>
         </ErrorPlaceHolderNew>
       </div>
     );

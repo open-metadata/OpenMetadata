@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { FC, useCallback } from 'react';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
@@ -50,11 +51,12 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
 
   if (isActivityEvent) {
     return (
-      <div
-        className={`activity-feed-card-container ${CARD_CONTAINER_CLASS_NAME}`}
+      <Card
+        className={`activity-feed-card-container tw:cursor-pointer ${CARD_CONTAINER_CLASS_NAME}`}
         data-testid="message-container"
         role="button"
         tabIndex={0}
+        variant="ghost"
         onClick={handleActivityClick}
         onKeyDown={handleCardContainerKeyDown(handleActivityClick)}>
         <ActivityFeedCardNew
@@ -69,7 +71,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           showThread={showThread}
           onActivityClick={onActivityClick}
         />
-      </div>
+      </Card>
     );
   }
 
@@ -78,11 +80,12 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   }
 
   return (
-    <div
-      className={`activity-feed-card-container ${CARD_CONTAINER_CLASS_NAME}`}
+    <Card
+      className={`activity-feed-card-container tw:cursor-pointer ${CARD_CONTAINER_CLASS_NAME}`}
       data-testid="message-container"
       role="button"
       tabIndex={0}
+      variant="ghost"
       onClick={handleFeedClick}
       onKeyDown={handleCardContainerKeyDown(handleFeedClick)}>
       <ActivityFeedCardNew
@@ -95,7 +98,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         showActivityFeedEditor={showActivityFeedEditor}
         showThread={showThread}
       />
-    </div>
+    </Card>
   );
 };
 

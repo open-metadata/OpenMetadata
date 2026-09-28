@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithDot } from '@openmetadata/ui-core-components';
+import { BadgeWithDot, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import {
   DataQualityLegendItemProps,
@@ -40,8 +40,8 @@ export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
       className={`legend-item ${type}`}
       color={LEGEND_BADGE_COLOR[type]}
       size="sm">
-      <span>{label}</span>
-      <span>{count}</span>
+      <Typography>{label}</Typography>
+      <Typography>{count}</Typography>
     </BadgeWithDot>
   );
 };

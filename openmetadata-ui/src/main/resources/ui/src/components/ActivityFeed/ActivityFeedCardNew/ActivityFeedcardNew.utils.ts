@@ -60,7 +60,10 @@ export const handleCardContainerKeyDown =
     }
   };
 
-// Replaces the antd `<Button block type="text">` wrapper; nowrap and
-// select-none are what that button's base style handed to the card.
+// Extras for the clickable core `Card` that replaced the antd
+// `<Button block type="text">` wrapper: nowrap and select-none are what that
+// button's base style handed to the card, the core Card focus outline has no
+// colour of its own, and the transparent border reserves the 1px the ghost
+// variant's hover border adds so hovering does not shift the feed list.
 export const CARD_CONTAINER_CLASS_NAME =
-  'tw:relative tw:block tw:w-full tw:cursor-pointer tw:select-none tw:whitespace-nowrap tw:rounded-xl tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2';
+  'tw:select-none tw:whitespace-nowrap tw:border tw:border-transparent tw:outline-focus-ring';

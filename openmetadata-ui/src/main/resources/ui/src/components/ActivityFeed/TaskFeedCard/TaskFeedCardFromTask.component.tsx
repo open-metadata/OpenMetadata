@@ -13,9 +13,12 @@
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import {
+  Box,
   Button as CoreButton,
+  Card as CoreCard,
   Owner,
   Tooltip,
+  Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
@@ -335,9 +338,13 @@ const TaskFeedCardFromTask = ({
   // access, per-status action buttons) stays out of the component's own
   // cyclomatic complexity.
   const renderTaskFooter = () => (
-    <div className="task-feed-card-footer d-flex flex-wrap align-center justify-between w-full">
-      <div className="d-flex">
-        <div className="d-flex flex-center">
+    <Box
+      align="center"
+      className="task-feed-card-footer w-full"
+      justify="between"
+      wrap="wrap">
+      <Box>
+        <Box align="center" justify="center">
           <ReplyIcon
             className="m-r-xs"
             height={20}
@@ -355,22 +362,24 @@ const TaskFeedCardFromTask = ({
               })}
             </CoreButton>
           ) : null}
-        </div>
+        </Box>
 
-        <div
-          className={classNames('flex items-center gap-2 text-grey-muted', {
+        <Box
+          align="center"
+          className={classNames('text-grey-muted', {
             'task-card-assignee': commentsCount > 0,
-          })}>
+          })}
+          gap={2}>
           <Owner
             isCompactView={false}
             owners={task.assignees ?? []}
             showLabel={false}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-        <div className="d-flex gap-2">
+        <Box gap={2}>
           {task.status === TaskEntityStatus.Open && (
             <CoreButton
               color="tertiary"
@@ -391,88 +400,92 @@ const TaskFeedCardFromTask = ({
               {t('label.reject')}
             </CoreButton>
           )}
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 
   return (
-    <div
+    // The less `task-feed-card-v1-new` rules (unlayered) own the surface,
+    // border and active state; CoreCard adds the clickable/focus behaviour.
+    <CoreCard
+      isClickable
       aria-label={`#${taskDisplayId} ${t(
         TASK_ENTITY_TYPES[task.type] ?? 'label.task'
       )}`}
-      className={CARD_CONTAINER_CLASS_NAME}
+      className={classNames(
+        className,
+        'task-feed-card-v1-new',
+        CARD_CONTAINER_CLASS_NAME,
+        { active: isActive }
+      )}
+      data-testid="task-feed-card"
       role="button"
       tabIndex={0}
       onClick={handleCardClick}
       onKeyDown={handleCardContainerKeyDown(handleCardClick)}>
-      <div
-        className={classNames(className, 'task-feed-card-v1-new', {
-          active: isActive,
-        })}
-        data-testid="task-feed-card">
-        <div
-          className={classNames(
-            'tw:flex tw:min-w-0 tw:flex-wrap',
-            getTaskRowGapClassName(
-              isTaskTestCaseResult,
-              isTaskApprovalRequest,
-              isTaskDescription
-            )
-          )}>
-          <div className="d-flex flex-col align-start tw:max-w-full">
-            <div>
-              <Icon
-                className="m-r-xss m-t-xss text-md"
-                component={getTaskStatusIcon(task.status)}
-                data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
-              />
-              {taskLinkTitleElement}
-            </div>
-            <div className="tw:-mt-2">
-              <span>
-                <UserPopOverCard
-                  key={task.createdBy?.name}
-                  userName={task.createdBy?.name ?? ''}>
-                  <span
-                    className="task-created-by-text p-r-xss"
-                    data-testid="task-created-by">
-                    {getEntityName(user)}
-                  </span>
-                </UserPopOverCard>
-                <span className="task-timestamp-text">
-                  {t('message.created-this-task-lowercase')}
+      <Box
+        className={classNames(
+          'tw:min-w-0',
+          getTaskRowGapClassName(
+            isTaskTestCaseResult,
+            isTaskApprovalRequest,
+            isTaskDescription
+          )
+        )}
+        wrap="wrap">
+        <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
+          <div className="tw:w-full">
+            <Icon
+              className="m-r-xss m-t-xss text-md"
+              component={getTaskStatusIcon(task.status)}
+              data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
+            />
+            {taskLinkTitleElement}
+          </div>
+          <div className="tw:-mt-2">
+            <CoreTypography>
+              <UserPopOverCard
+                key={task.createdBy?.name}
+                userName={task.createdBy?.name ?? ''}>
+                <span
+                  className="task-created-by-text p-r-xss"
+                  data-testid="task-created-by">
+                  {getEntityName(user)}
                 </span>
-                {task.createdAt && (
-                  <Tooltip
-                    excludeTriggerFromTabOrder
-                    title={formatDateTime(task.createdAt)}>
-                    <span
-                      className="p-l-xss task-timestamp-text"
-                      data-testid="timestamp">
-                      {getRelativeTime(task.createdAt)}
-                    </span>
-                  </Tooltip>
-                )}
+              </UserPopOverCard>
+              <span className="task-timestamp-text">
+                {t('message.created-this-task-lowercase')}
               </span>
-            </div>
+              {task.createdAt && (
+                <Tooltip
+                  excludeTriggerFromTabOrder
+                  title={formatDateTime(task.createdAt)}>
+                  <span
+                    className="p-l-xss task-timestamp-text"
+                    data-testid="timestamp">
+                    {getRelativeTime(task.createdAt)}
+                  </span>
+                </Tooltip>
+              )}
+            </CoreTypography>
           </div>
-          <div className="w-full">
-            {isTaskTags && (
-              <Card
-                bordered
-                className="activity-feed-card-message tags-card-container">
-                <TagsTaskFromTask hasEditAccess={false} task={task} />
-              </Card>
-            )}
-          </div>
-          {isTaskDescription && (
-            <DescriptionTaskFromTask hasEditAccess={false} task={task} />
+        </Box>
+        <div className="w-full">
+          {isTaskTags && (
+            <Card
+              bordered
+              className="activity-feed-card-message tags-card-container">
+              <TagsTaskFromTask hasEditAccess={false} task={task} />
+            </Card>
           )}
-          {!isOpenInDrawer && renderTaskFooter()}
         </div>
-      </div>
-    </div>
+        {isTaskDescription && (
+          <DescriptionTaskFromTask hasEditAccess={false} task={task} />
+        )}
+        {!isOpenInDrawer && renderTaskFooter()}
+      </Box>
+    </CoreCard>
   );
 };
 

@@ -16,6 +16,7 @@ import {
   ButtonGroupItem,
   Divider,
   Dropdown,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -417,9 +418,11 @@ const ActivityFeedTabRightPanel = ({
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <div className="placeholder-text tw:mb-4 tw:break-words">
+                  <Typography
+                    as="div"
+                    className="placeholder-text tw:mb-4 tw:break-words">
                     {placeholder}
-                  </div>
+                  </Typography>
                 </ErrorPlaceHolderNew>
               </div>
             )}
@@ -545,38 +548,40 @@ export const ActivityFeedTab = ({
     if (isAllTab) {
       return (
         <div className="d-flex flex-col gap-4">
-          <span className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-activity-feed-title')}
-          </span>
-          <span className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-activity-feed-description')}
-          </span>
+          </Typography>
         </div>
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       return (
-        <span className="placeholder-text">{t('message.no-mentions')}</span>
+        <Typography className="placeholder-text">
+          {t('message.no-mentions')}
+        </Typography>
       );
     } else if (taskFilter === TaskStatusGroup.Closed) {
       return (
         <div className="d-flex flex-col gap-4">
-          <span className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-closed-tasks-title')}
-          </span>
-          <span className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-closed-tasks-description')}
-          </span>
+          </Typography>
         </div>
       );
     } else {
       return (
         <div className="d-flex flex-col gap-4">
-          <span className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-open-tasks-title')}
-          </span>
-          <span className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-open-tasks-description')}
-          </span>
+          </Typography>
         </div>
       );
     }
@@ -1052,20 +1057,20 @@ export const ActivityFeedTab = ({
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
       return (
-        <span className="placeholder-text m-t-0">
+        <Typography className="placeholder-text m-t-0">
           {t('message.no-mentions')}
-        </span>
+        </Typography>
       );
     }
 
     return (
       <div className="d-flex flex-col gap-4">
-        <span className="placeholder-title m-t-md">
+        <Typography className="placeholder-title m-t-md">
           {t('message.no-conversations')}
-        </span>
-        <span className="placeholder-text">
+        </Typography>
+        <Typography className="placeholder-text">
           {t('message.no-conversations-description')}
-        </span>
+        </Typography>
       </div>
     );
   }, [activeTab, t]);
