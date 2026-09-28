@@ -27,6 +27,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -264,6 +265,25 @@ class CustomIndexTest {
     assertNotNull(result.get("tags"));
     assertNotNull(result.get("classificationTags"));
     assertNotNull(result.get("glossaryTags"));
+  }
+
+  @Test
+  void testColumnSearchIndex_doesNotInheritTableCertification() {
+    Column col = new Column().withName("c").withFullyQualifiedName("svc.db.sc.t.c");
+    Table parent =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("t")
+            .withDeleted(false)
+            .withCertification(
+                new AssetCertification()
+                    .withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+
+    Map<String, Object> doc = new HashMap<>();
+    Map<String, Object> result =
+        new ColumnSearchIndex(col, parent).buildSearchIndexDocInternal(doc);
+
+    assertFalse(result.containsKey("certification"));
   }
 
   @Test

@@ -136,10 +136,6 @@ public class ColumnSearchIndex implements SearchIndex {
       }
     }
 
-    if (parentTable.getCertification() != null) {
-      doc.put("certification", parentTable.getCertification());
-    }
-
     if (column.getExtension() != null) {
       doc.put("extension", column.getExtension());
       doc.put(

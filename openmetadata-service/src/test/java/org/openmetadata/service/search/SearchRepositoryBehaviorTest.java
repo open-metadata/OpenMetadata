@@ -116,6 +116,14 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
           .build();
 
+  private static final IndexMapping TABLE_WITH_TEST_CASE_CHILD_MAPPING =
+      IndexMapping.builder()
+          .indexName("table_search_index")
+          .alias("table")
+          .childAliases(List.of(Entity.TEST_CASE, Entity.TABLE_COLUMN))
+          .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+          .build();
+
   private static final IndexMapping DOMAIN_MAPPING =
       IndexMapping.builder()
           .indexName("domain_search_index")
@@ -1314,7 +1322,8 @@ class SearchRepositoryBehaviorTest {
                 new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
             List.of());
 
-    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+    newRepository(Map.of(Entity.TABLE, TABLE_WITH_TEST_CASE_CHILD_MAPPING), "cluster")
+        .propagateCertificationTags(Entity.TABLE, table, changeDescription);
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
@@ -1323,7 +1332,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, String>> matchCaptor = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_tableColumn")), matchCaptor.capture(), updatesCaptor.capture());
+            eq(List.of("cluster_testCase")), matchCaptor.capture(), updatesCaptor.capture());
     assertEquals("table.id", matchCaptor.getValue().getLeft());
     assertEquals(entityId.toString(), matchCaptor.getValue().getRight());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
@@ -1345,16 +1354,41 @@ class SearchRepositoryBehaviorTest {
             List.of(),
             List.of(new FieldChange().withName("certification").withOldValue("{}")));
 
-    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+    newRepository(Map.of(Entity.TABLE, TABLE_WITH_TEST_CASE_CHILD_MAPPING), "cluster")
+        .propagateCertificationTags(Entity.TABLE, table, changeDescription);
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
-            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
+        .updateChildren(eq(List.of("cluster_testCase")), any(Pair.class), updatesCaptor.capture());
     assertEquals(SearchClient.CASCADE_CERTIFICATION_SCRIPT, updatesCaptor.getValue().getLeft());
     assertNull(updatesCaptor.getValue().getRight().get("certification"));
+  }
+
+  @Test
+  void propagateCertificationTagsNeverCascadesToColumns() throws IOException {
+    // A column is not certified because its table is — the table's only
+    // child here is tableColumn, so no child update may be issued.
+    Table table = mock(Table.class);
+    UUID entityId = UUID.randomUUID();
+    when(table.getId()).thenReturn(entityId);
+    when(table.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TABLE));
+    when(table.getCertification())
+        .thenReturn(
+            new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange().withName("certification").withOldValue("{}").withNewValue("{}")),
+            List.of());
+
+    repository.propagateCertificationTags(Entity.TABLE, table, changeDescription);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
   }
 
   @Test

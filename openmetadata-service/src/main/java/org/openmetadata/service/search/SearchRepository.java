@@ -2756,11 +2756,14 @@ public class SearchRepository {
     if (nullOrEmpty(childAliases)) {
       return List.of();
     }
-    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
     return childAliases.stream()
         .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
-        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .map(this::withClusterAlias)
         .toList();
+  }
+
+  private String withClusterAlias(String alias) {
+    return nullOrEmpty(clusterAlias) ? alias : clusterAlias + INDEX_NAME_SEPARATOR + alias;
   }
 
   /**
@@ -3017,6 +3020,7 @@ public class SearchRepository {
   // `certification.tagLabel.tagFQN`) would silently use the stale cert until a
   // reindex. RAW_REPLACE in PropagationDescriptor can't be used because it
   // restores the old value on delete; we drive a dedicated script instead.
+  // Columns are skipped: a column is not certified just because its table is.
   private void cascadeCertificationToChildren(
       EntityInterface entity, AssetCertification certification) {
     String type = entity.getEntityReference().getType();
@@ -3029,8 +3033,12 @@ public class SearchRepository {
     if (indexMapping == null) {
       return;
     }
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
-    if (nullOrEmpty(childAliases)) {
+    List<String> childAliases =
+        listOrEmpty(indexMapping.getChildAliases()).stream()
+            .filter(alias -> !Entity.TABLE_COLUMN.equals(alias))
+            .map(this::withClusterAlias)
+            .toList();
+    if (childAliases.isEmpty()) {
       return;
     }
 
