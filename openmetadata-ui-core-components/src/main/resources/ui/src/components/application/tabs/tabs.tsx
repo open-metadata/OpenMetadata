@@ -51,8 +51,7 @@ const getTabStyles = ({
     'tw:outline-focus-ring',
     isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
-    (isSelected || isHovered) &&
-      'tw:bg-brand-primary_alt tw:text-brand-secondary'
+    (isSelected || isHovered) && 'tw:bg-brand-primary tw:text-brand-secondary'
   ),
   'button-gray': cx(
     'tw:outline-focus-ring',

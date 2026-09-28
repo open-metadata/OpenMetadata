@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
@@ -64,7 +65,6 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import { AssetsTabRef } from './tabs/AssetsTabs.component';
-import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 
 const GlossaryHeader = withSuspenseFallback(
   lazy(() => import('../GlossaryHeader/GlossaryHeader.component'))
