@@ -63,14 +63,19 @@ export const searchInColumns = <T extends Column | SearchIndexField>(
   return searchedValue;
 };
 
+const SPAN_OPEN = '<span class="text-highlighter">';
+const SPAN_CLOSE = '</span>';
+const SENTINEL_OPEN = '{HL_O}';
+const SENTINEL_CLOSE = '{HL_C}';
+
 const stripMarkdownKeepingSpans = (text: string): string =>
   stripMarkdown(
     text
-      .replace(/<span class="text-highlighter">/g, '')
-      .replace(/<\/span>/g, '')
+      .replaceAll(SPAN_OPEN, SENTINEL_OPEN)
+      .replaceAll(SPAN_CLOSE, SENTINEL_CLOSE)
   )
-    .replace(//g, '<span class="text-highlighter">')
-    .replace(//g, '</span>');
+    .replaceAll(SENTINEL_OPEN, SPAN_OPEN)
+    .replaceAll(SENTINEL_CLOSE, SPAN_CLOSE);
 
 export const highlightEntityNameAndDescription = (
   entity: SearchedDataProps['data'][number]['_source'],
