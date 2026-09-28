@@ -126,6 +126,7 @@ describe('EntityMarkdownLink', () => {
           '/context-center/documents?document=doc-1'
         )
       );
+
       expect(mockListContextFiles).toHaveBeenCalledWith({ assetId, limit: 1 });
     });
 
@@ -141,6 +142,7 @@ describe('EntityMarkdownLink', () => {
       );
 
       await waitFor(() => expect(mockListContextFiles).toHaveBeenCalled());
+
       expect(screen.getByText('orphan.csv').closest('a')).toBeNull();
     });
   });
