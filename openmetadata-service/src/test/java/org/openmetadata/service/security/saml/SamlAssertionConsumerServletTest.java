@@ -34,6 +34,7 @@ import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.TestLoginCallbackPage;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
+import org.openmetadata.service.security.auth.TestLoginRoundTrip;
 
 class SamlAssertionConsumerServletTest {
   private final HttpServletRequest request = mock(HttpServletRequest.class);
@@ -52,14 +53,19 @@ class SamlAssertionConsumerServletTest {
     StringWriter body = new StringWriter();
     when(request.getParameter("RelayState")).thenReturn("omtest:no-such-test");
     when(response.getWriter()).thenReturn(new PrintWriter(body));
+    TestLoginRoundTrip roundTrip = mock(TestLoginRoundTrip.class);
 
     try (MockedStatic<AuthServeletHandlerRegistry> registry =
-        mockStatic(AuthServeletHandlerRegistry.class)) {
+            mockStatic(AuthServeletHandlerRegistry.class);
+        MockedStatic<TestLoginRoundTrip> roundTripMock = mockStatic(TestLoginRoundTrip.class)) {
       registry
           .when(() -> AuthServeletHandlerRegistry.getHandler(servletContext))
           .thenReturn(liveHandler);
+      roundTripMock.when(TestLoginRoundTrip::getInstance).thenReturn(roundTrip);
 
       servlet.doPost(request, response);
+
+      verify(roundTrip).completeSamlCallback("no-such-test", request, response);
     }
 
     verify(liveHandler, never()).handleCallback(any(), any());

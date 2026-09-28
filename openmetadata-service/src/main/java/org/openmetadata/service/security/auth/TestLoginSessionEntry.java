@@ -18,9 +18,9 @@ import org.openmetadata.schema.system.TestLoginResult;
 
 /**
  * One Test Login. While pending it carries the candidate configuration — including its client
- * secret or LDAP bind password — so it lives only in {@link TestLoginSessionCache}, is never
- * persisted, and its {@link #toString()} omits the candidate and the handshake. Once completed only
- * the result is kept: the secrets are dropped as soon as they are no longer needed.
+ * secret or LDAP bind password — so the {@link TestLoginSessionStore} keeps it sealed, and its
+ * {@link #toString()} omits the candidate and the handshake. Once completed only the result is
+ * kept: the secrets are dropped as soon as they are no longer needed.
  *
  * @param candidate {@code null} once completed
  * @param handshake {@code null} once completed

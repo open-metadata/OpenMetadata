@@ -12,21 +12,17 @@
  */
 package org.openmetadata.service.security.auth;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -47,31 +43,32 @@ import org.openmetadata.service.security.saml.TestLoginSamlHandler;
  *
  * <p>An authenticated admin starts a test; the identity provider's callback on the shared {@code
  * /callback} or SAML ACS servlet, or a credentials submission, completes it; the same admin reads
- * the outcome back by polling. Nothing here issues credentials, starts a session or persists
- * anything, and the live authentication system is never consulted or modified.
+ * the outcome back by polling. Those requests can reach different servers, so the test itself lives
+ * in a shared {@link TestLoginSessionStore}; nothing here issues credentials or starts a session,
+ * and the live authentication system is never consulted or modified.
  */
 @Slf4j
 public final class TestLoginRoundTrip {
   static final int MAX_CREDENTIAL_TESTS_PER_WINDOW = 10;
-  static final Duration CREDENTIAL_TEST_WINDOW = Duration.ofMinutes(10);
-  private static final int MAX_TRACKED_ADMINS = 1_000;
+  static final int MAX_LIVE_TESTS_PER_ADMIN = 20;
   private static final Set<String> WEB_URL_SCHEMES = Set.of("http", "https");
-  private static final TestLoginRoundTrip INSTANCE =
-      new TestLoginRoundTrip(new TestLoginSessionCache());
+  private static final String NOT_AWAITING_CREDENTIALS =
+      "This test login is not waiting for credentials. Start a new test login.";
 
-  private final TestLoginSessionCache sessions;
-  private final Cache<String, AtomicInteger> credentialTestsByAdmin =
-      Caffeine.newBuilder()
-          .maximumSize(MAX_TRACKED_ADMINS)
-          .expireAfterWrite(CREDENTIAL_TEST_WINDOW)
-          .build();
+  private final TestLoginSessionStore sessions;
 
-  TestLoginRoundTrip(TestLoginSessionCache sessions) {
+  TestLoginRoundTrip(TestLoginSessionStore sessions) {
     this.sessions = sessions;
   }
 
   public static TestLoginRoundTrip getInstance() {
-    return INSTANCE;
+    return Holder.INSTANCE;
+  }
+
+  /** Created on first use, once the application has set up its database access. */
+  private static final class Holder {
+    private static final TestLoginRoundTrip INSTANCE =
+        new TestLoginRoundTrip(JdbiTestLoginSessionStore.fromCollectionDao());
   }
 
   /**
@@ -80,6 +77,7 @@ public final class TestLoginRoundTrip {
    * already a failure, so the admin sees the same staged timeline either way.
    */
   public TestLoginSession start(String adminPrincipal, SecurityConfiguration candidate) {
+    requireLiveTestAllowance(adminPrincipal);
     TestLoginProtocol protocol = protocolOf(candidate.getAuthenticationConfiguration());
     TestLoginSession session = newSession(protocol);
     switch (protocol) {
@@ -93,16 +91,20 @@ public final class TestLoginRoundTrip {
   /**
    * Completes an LDAP/Basic test with the credentials the admin entered. The dry-run never records
    * a failed login — a mistyped test password must not lock a real account — so without a cap this
-   * would be an unthrottled password oracle for every account in the directory. A test therefore
-   * completes once, and attempts are capped per admin; the count is taken before verifying, so
-   * racing requests cannot exceed it.
+   * would be an unthrottled password oracle for every account in the directory. A test is therefore
+   * claimed before its password is checked, so only one request can verify it, and attempts are
+   * capped per admin across every server; the claim is counted before verifying, so racing
+   * requests cannot exceed the cap.
    */
   public TestLoginResult submitCredentials(
       String adminPrincipal, TestLoginCredentialsRequest request) {
     TestLoginSessionEntry entry =
         requireAwaitingCredentials(
             sessions.requireOwnedBy(request.getTestSessionId(), adminPrincipal));
-    countCredentialTest(adminPrincipal);
+    if (!sessions.claimForCredentials(entry.testSessionId())) {
+      throw new BadRequestException(NOT_AWAITING_CREDENTIALS);
+    }
+    requireCredentialTestAllowance(adminPrincipal);
     TestLoginResult result =
         entry.protocol() == TestLoginProtocol.LDAP
             ? TestLoginCredentialHandler.verifyLdap(
@@ -115,18 +117,24 @@ public final class TestLoginRoundTrip {
 
   private static TestLoginSessionEntry requireAwaitingCredentials(TestLoginSessionEntry entry) {
     if (entry.isCompleted() || !(entry.handshake() instanceof TestLoginHandshake.Credentials)) {
-      throw new BadRequestException(
-          "This test login is not waiting for credentials. Start a new test login.");
+      throw new BadRequestException(NOT_AWAITING_CREDENTIALS);
     }
     return entry;
   }
 
-  private void countCredentialTest(String adminPrincipal) {
-    int attempts =
-        credentialTestsByAdmin.get(adminPrincipal, admin -> new AtomicInteger()).incrementAndGet();
-    if (attempts > MAX_CREDENTIAL_TESTS_PER_WINDOW) {
+  private void requireCredentialTestAllowance(String adminPrincipal) {
+    if (sessions.countRecentCredentialTests(adminPrincipal) > MAX_CREDENTIAL_TESTS_PER_WINDOW) {
       throw new WebApplicationException(
           "Too many credential test logins. Wait a few minutes and try again.",
+          Response.Status.TOO_MANY_REQUESTS);
+    }
+  }
+
+  /** Bounds how many tests one admin can have open, now that they are stored. */
+  private void requireLiveTestAllowance(String adminPrincipal) {
+    if (sessions.countLive(adminPrincipal) >= MAX_LIVE_TESTS_PER_ADMIN) {
+      throw new WebApplicationException(
+          "Too many test logins in progress. Wait a few minutes and try again.",
           Response.Status.TOO_MANY_REQUESTS);
     }
   }
@@ -209,7 +217,7 @@ public final class TestLoginRoundTrip {
       TestLoginOidcHandler.Authorization authorization =
           TestLoginOidcHandler.authorize(
               candidate.getAuthenticationConfiguration().getOidcConfiguration(),
-              TestLoginSessionCache.markerFor(testSessionId));
+              TestLoginSessions.markerFor(testSessionId));
       URI authorizationUrl = requireWebUrl(authorization.authorizationUrl());
       sessions.put(
           TestLoginSessionEntry.pending(
@@ -234,7 +242,7 @@ public final class TestLoginRoundTrip {
           requireWebUrl(
               TestLoginSamlHandler.authorize(
                   candidate.getAuthenticationConfiguration().getSamlConfiguration(),
-                  TestLoginSessionCache.markerFor(testSessionId)));
+                  TestLoginSessions.markerFor(testSessionId)));
       sessions.put(
           TestLoginSessionEntry.pending(
               testSessionId,
@@ -312,10 +320,10 @@ public final class TestLoginRoundTrip {
 
   private static TestLoginSession newSession(TestLoginProtocol protocol) {
     return new TestLoginSession()
-        .withTestSessionId(TestLoginSessionCache.newSessionId())
+        .withTestSessionId(TestLoginSessions.newSessionId())
         .withProtocol(protocol)
         .withRequiresCredentials(false)
-        .withExpiresAt(System.currentTimeMillis() + TestLoginSessionCache.SESSION_TTL.toMillis());
+        .withExpiresAt(System.currentTimeMillis() + TestLoginSessions.SESSION_TTL.toMillis());
   }
 
   private static TestLoginResult pendingResult(TestLoginProtocol protocol) {

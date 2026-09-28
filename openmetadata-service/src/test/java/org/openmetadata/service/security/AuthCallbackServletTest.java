@@ -1,7 +1,10 @@
 package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,6 +27,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.service.security.auth.TestLoginRoundTrip;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -122,15 +126,19 @@ class AuthCallbackServletTest {
                 "code", new String[] {"authorization-code"}));
     when(response.getWriter()).thenReturn(new PrintWriter(body));
 
+    TestLoginRoundTrip roundTrip = mock(TestLoginRoundTrip.class);
     try (MockedStatic<AuthServeletHandlerRegistry> registryMock =
-        mockStatic(AuthServeletHandlerRegistry.class)) {
+            mockStatic(AuthServeletHandlerRegistry.class);
+        MockedStatic<TestLoginRoundTrip> roundTripMock = mockStatic(TestLoginRoundTrip.class)) {
       registryMock
           .when(() -> AuthServeletHandlerRegistry.getHandler(servletContext))
           .thenReturn(handler);
+      roundTripMock.when(TestLoginRoundTrip::getInstance).thenReturn(roundTrip);
 
       servlet.doGet(request, response);
 
       verify(handler, never()).handleCallback(request, response);
+      verify(roundTrip).completeOidcCallback(eq("no-such-test"), anyMap());
     }
     verify(response)
         .setHeader("Content-Security-Policy", TestLoginCallbackPage.CONTENT_SECURITY_POLICY);

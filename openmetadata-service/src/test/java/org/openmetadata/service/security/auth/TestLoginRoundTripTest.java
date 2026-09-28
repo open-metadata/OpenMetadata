@@ -44,7 +44,8 @@ import org.openmetadata.service.security.FakeOidcProvider;
 class TestLoginRoundTripTest {
   private static final String ADMIN = "admin";
 
-  private final TestLoginRoundTrip roundTrip = new TestLoginRoundTrip(new TestLoginSessionCache());
+  private final InMemoryTestLoginSessionStore store = new InMemoryTestLoginSessionStore();
+  private final TestLoginRoundTrip roundTrip = new TestLoginRoundTrip(store);
 
   @Test
   void aPublicClientIsSentToTheBrowserFlowItsLiveLoginUses() {
@@ -130,7 +131,7 @@ class TestLoginRoundTripTest {
       Map<String, String> query =
           FakeOidcProvider.queryOf(session.getAuthorizationUrl().toString());
       String marker = query.get("state");
-      String testSessionId = TestLoginSessionCache.sessionIdFromMarker(marker).orElseThrow();
+      String testSessionId = TestLoginSessions.sessionIdFromMarker(marker).orElseThrow();
 
       assertEquals(session.getTestSessionId(), testSessionId);
       assertEquals(
@@ -154,6 +155,79 @@ class TestLoginRoundTripTest {
     assertThrows(
         EntityNotFoundException.class,
         () -> roundTrip.result("another-admin", session.getTestSessionId()));
+  }
+
+  @Test
+  void aTestAnotherRequestAlreadyClaimedIsNotVerifiedAgain() {
+    TestLoginSession session = roundTrip.start(ADMIN, unreachableLdap());
+    // A concurrent submission, possibly on another server, won the claim first.
+    store.claimForCredentials(session.getTestSessionId());
+
+    assertThrows(
+        BadRequestException.class,
+        () -> roundTrip.submitCredentials(ADMIN, credentialsFor(session)));
+  }
+
+  @Test
+  void aTestStartedOnOneServerIsFinishedAndReadOnAnother() {
+    TestLoginRoundTrip otherServer = new TestLoginRoundTrip(store);
+    TestLoginSession session = roundTrip.start(ADMIN, unreachableLdap());
+
+    assertEquals(
+        TestLoginResult.Status.PENDING,
+        otherServer.result(ADMIN, session.getTestSessionId()).getStatus());
+
+    TestLoginResult outcome = otherServer.submitCredentials(ADMIN, credentialsFor(session));
+
+    assertEquals(outcome, roundTrip.result(ADMIN, session.getTestSessionId()));
+  }
+
+  @Test
+  void theCredentialLimitHoldsAcrossServers() {
+    TestLoginRoundTrip otherServer = new TestLoginRoundTrip(store);
+    for (int i = 0; i < TestLoginRoundTrip.MAX_CREDENTIAL_TESTS_PER_WINDOW; i++) {
+      TestLoginRoundTrip server = i % 2 == 0 ? roundTrip : otherServer;
+      server.submitCredentials(ADMIN, credentialsFor(server.start(ADMIN, unreachableLdap())));
+    }
+    TestLoginSession oneTooMany = otherServer.start(ADMIN, unreachableLdap());
+
+    WebApplicationException refused =
+        assertThrows(
+            WebApplicationException.class,
+            () -> roundTrip.submitCredentials(ADMIN, credentialsFor(oneTooMany)));
+    assertEquals(429, refused.getResponse().getStatus());
+
+    store.advance(TestLoginSessions.CREDENTIAL_TEST_WINDOW);
+    TestLoginSession later = roundTrip.start(ADMIN, unreachableLdap());
+
+    assertEquals(
+        TestLoginResult.Status.FAILED,
+        roundTrip.submitCredentials(ADMIN, credentialsFor(later)).getStatus());
+  }
+
+  @Test
+  void anAdminCannotKeepMoreThanTheLiveTestLimitOpen() {
+    for (int i = 0; i < TestLoginRoundTrip.MAX_LIVE_TESTS_PER_ADMIN; i++) {
+      roundTrip.start(ADMIN, candidateFor(AuthProvider.LDAP));
+    }
+
+    WebApplicationException refused =
+        assertThrows(
+            WebApplicationException.class,
+            () -> roundTrip.start(ADMIN, candidateFor(AuthProvider.LDAP)));
+    assertEquals(429, refused.getResponse().getStatus());
+    // Other admins are unaffected.
+    roundTrip.start("another-admin", candidateFor(AuthProvider.LDAP));
+  }
+
+  @Test
+  void aTestIsGoneOnceItsLifetimeIsOver() {
+    TestLoginSession session = roundTrip.start(ADMIN, candidateFor(AuthProvider.LDAP));
+
+    store.advance(TestLoginSessions.SESSION_TTL.plusSeconds(1));
+
+    assertThrows(
+        EntityNotFoundException.class, () -> roundTrip.result(ADMIN, session.getTestSessionId()));
   }
 
   @Test

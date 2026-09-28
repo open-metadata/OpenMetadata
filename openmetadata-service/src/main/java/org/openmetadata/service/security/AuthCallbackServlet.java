@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.security.auth.TestLoginRoundTrip;
-import org.openmetadata.service.security.auth.TestLoginSessionCache;
+import org.openmetadata.service.security.auth.TestLoginSessions;
 
 @WebServlet("/callback")
 @Slf4j
@@ -22,7 +22,7 @@ public class AuthCallbackServlet extends HttpServlet {
     // A Test Login reuses this registered redirect URI. Route it before any live login handling, so
     // a test can never provision a user, mint a token, or start a session.
     Optional<String> testSessionId =
-        TestLoginSessionCache.sessionIdFromMarker(req.getParameter("state"));
+        TestLoginSessions.sessionIdFromMarker(req.getParameter("state"));
     if (testSessionId.isPresent()) {
       TestLoginRoundTrip.getInstance()
           .completeOidcCallback(testSessionId.get(), callbackParameters(req));

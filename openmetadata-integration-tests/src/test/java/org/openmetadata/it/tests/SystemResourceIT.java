@@ -42,6 +42,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -100,7 +102,10 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.security.TestLoginCallbackPage;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -2036,6 +2041,62 @@ public class SystemResourceIT {
   }
 
   @Test
+  void test_testLoginRoundTrip_keepsItsStateSharedAndEncrypted(TestNamespace ns) throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Reads the embedded server's database and needs an LDAP directory in this JVM");
+    String userName = "ldapshared" + ns.shortPrefix();
+    InMemoryDirectoryServer directory = startDirectory(userName, "directory-password");
+    try {
+      OpenMetadataClient admin = SdkClients.adminClient();
+      String testSessionId =
+          startTestLogin(admin, ldapCandidate(directory.getListenPort())).getTestSessionId();
+
+      // Every server reads the test from this table, so none depends on the one that started it.
+      OAuthRecords.SsoTestLoginSession pending = storedTestLogin(testSessionId);
+      assertTrue(Fernet.isTokenized(pending.pendingState()), "the candidate must be encrypted");
+      assertFalse(pending.pendingState().contains(LDAP_LOOKUP_PASSWORD));
+
+      submitTestLoginCredentials(
+          admin, testSessionId, userName + "@open-metadata.org", "directory-password");
+
+      OAuthRecords.SsoTestLoginSession completed = storedTestLogin(testSessionId);
+      assertNull(completed.pendingState(), "a finished test must keep no secrets");
+      assertEquals(
+          TestLoginResult.Status.SUCCESS,
+          MAPPER.readValue(completed.result(), TestLoginResult.class).getStatus());
+    } finally {
+      directory.shutDown(true);
+    }
+  }
+
+  @Test
+  void test_testLoginRoundTrip_concurrentCredentialSubmissionsAreVerifiedOnce() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String testSessionId = startBasicTest(admin);
+    CountDownLatch go = new CountDownLatch(1);
+    List<CompletableFuture<Integer>> submissions = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      submissions.add(
+          CompletableFuture.supplyAsync(
+              () -> {
+                awaitQuietly(go);
+                try {
+                  submitTestLoginCredentials(admin, testSessionId, ADMIN_EMAIL, "guess");
+                  return 200;
+                } catch (Exception e) {
+                  return e instanceof OpenMetadataException failure ? failure.getStatusCode() : -1;
+                }
+              }));
+    }
+    go.countDown();
+
+    List<Integer> statuses = submissions.stream().map(CompletableFuture::join).sorted().toList();
+
+    assertEquals(List.of(200, 400), statuses);
+  }
+
+  @Test
   void test_testLoginCallback_answersWithAConstantPageThatEchoesNothing() throws Exception {
     String probe = "probe" + UUID.randomUUID();
 
@@ -2248,6 +2309,23 @@ public class SystemResourceIT {
                     .withEmail(email)
                     .withPassword(password)),
             RequestOptions.builder().build());
+  }
+
+  private static OAuthRecords.SsoTestLoginSession storedTestLogin(String testSessionId) {
+    OAuthRecords.SsoTestLoginSession row =
+        Entity.getCollectionDAO()
+            .ssoTestLoginSessionDAO()
+            .findLive(testSessionId, System.currentTimeMillis());
+    assertNotNull(row, "the test login must be stored");
+    return row;
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   private static int statusOf(Executable call) {
