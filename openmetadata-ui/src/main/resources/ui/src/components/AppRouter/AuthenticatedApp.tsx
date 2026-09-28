@@ -15,7 +15,7 @@ import { FC, ReactNode } from 'react';
 import { RouterProvider } from 'react-aria-components';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useNavigate } from 'react-router-dom';
+import { useHref, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import AirflowStatusProvider from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AsyncDeleteProvider from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -33,7 +33,13 @@ import { ThemeProvider as UntitledUIThemeProvider } from './../../context/Untitl
 const ReactAriaRouterBridge = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
-  return <RouterProvider navigate={navigate}>{children}</RouterProvider>;
+  // useHref adds the router basename to rendered hrefs, so new-tab and
+  // copied links work when the app is served under a sub-path.
+  return (
+    <RouterProvider navigate={navigate} useHref={useHref}>
+      {children}
+    </RouterProvider>
+  );
 };
 
 interface AuthenticatedAppProps {
