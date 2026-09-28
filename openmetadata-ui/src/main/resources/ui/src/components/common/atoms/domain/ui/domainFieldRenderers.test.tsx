@@ -13,7 +13,10 @@
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { forwardRef, ReactNode } from 'react';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../../../generated/entity/domains/domain';
+import {
+  Domain,
+  DomainType,
+} from '../../../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import {
@@ -27,6 +30,9 @@ import { useDomainCardTemplates } from './useDomainCardTemplates';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: () => <span data-testid="avatar" />,
+  BadgeWithIcon: ({ children }: { children: ReactNode }) => (
+    <span data-testid="domain-type-badge">{children}</span>
+  ),
   Owner: ({
     showDashPlaceholder,
     owners,
@@ -382,6 +388,49 @@ describe('useDomainCardTemplates > renderDataProductCard', () => {
 
     render(<>{result.current.renderDataProductCard(DATA_PRODUCT_BASE)}</>);
 
+    expect(screen.getAllByTestId('tags-viewer')).toHaveLength(2);
+  });
+});
+
+describe('useDomainCardTemplates > renderDomainCard', () => {
+  it('renders the name and all 4 field labels', () => {
+    const { result } = renderHook(() => useDomainCardTemplates());
+
+    render(<>{result.current.renderDomainCard(DOMAIN)}</>);
+
+    expect(screen.getByText('Engineering')).toBeInTheDocument();
+
+    [
+      'label.owner',
+      'label.domain-type',
+      'label.glossary-term-plural',
+      'label.tag-plural',
+    ].forEach((key) => expect(screen.getByText(key)).toBeInTheDocument());
+  });
+
+  it('renders the domain type chip', () => {
+    const { result } = renderHook(() => useDomainCardTemplates());
+
+    render(
+      <>
+        {result.current.renderDomainCard({
+          ...DOMAIN,
+          domainType: DomainType.Aggregate,
+        })}
+      </>
+    );
+
+    expect(screen.getByTestId('domain-type-badge')).toHaveTextContent(
+      'label.aggregate'
+    );
+  });
+
+  it('renders the owners and TagsViewer for both glossary terms and tags', () => {
+    const { result } = renderHook(() => useDomainCardTemplates());
+
+    render(<>{result.current.renderDomainCard(DOMAIN)}</>);
+
+    expect(screen.getByTestId('owner-label')).toBeInTheDocument();
     expect(screen.getAllByTestId('tags-viewer')).toHaveLength(2);
   });
 });

@@ -17,6 +17,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
@@ -174,6 +175,7 @@ const TestCaseResultTab = ({
     additionalComponents,
     shouldRenderDefaultGraph,
   } = useTestCaseResultTab();
+  const isAiMode = useIsAiMode();
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const isSidePanelVisible = resolveIsSidePanelVisible(
     showSidePanel,
@@ -254,7 +256,13 @@ const TestCaseResultTab = ({
               </div>
             )}
           {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
-            <div className="test-case-result-tab-graph tw:w-full">
+            // AI mode sets the result history straight on the page, as the mock
+            // does: the tiles carry the only borders in that section.
+            <div
+              className={
+                isAiMode ? 'tw:w-full' : 'test-case-result-tab-graph tw:w-full'
+              }
+              data-testid="test-case-result-tab-graph">
               <TestSummary data={testCaseData} />
             </div>
           )}
