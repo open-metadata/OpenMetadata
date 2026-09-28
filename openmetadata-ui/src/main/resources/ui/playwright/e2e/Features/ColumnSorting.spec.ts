@@ -18,11 +18,13 @@ import { test } from '../fixtures/pages';
 // Use existing sample_data table for testing
 const SAMPLE_TABLE_FQN = 'sample_data.ecommerce_db.shopify.fact_sale';
 
-test.describe.serial('Table Column Sorting', { tag: '@ingestion' }, () => {
+test.describe.serial('Table Column Sorting', () => {
   test.beforeEach('Navigate to home page', async ({ page }) => {
     await redirectToHomePage(page);
     const tablePromise = page.waitForResponse(/\/columns\?.*limit=50/);
-    await page.goto(`/table/${SAMPLE_TABLE_FQN}`);
+    await page.goto(`/table/${SAMPLE_TABLE_FQN}`, {
+      waitUntil: 'domcontentloaded',
+    });
     const tableResponse = await tablePromise;
     expect(tableResponse.status()).toBe(200);
   });
@@ -181,17 +183,16 @@ test.describe.serial('Table Column Sorting', { tag: '@ingestion' }, () => {
     // Search for columns - sort state should be preserved
     const searchInput = page.getByTestId('searchbar');
 
-    if (await searchInput.isVisible()) {
-      const searchPromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/columns/search') &&
-          response.url().includes('sortBy=ordinalPosition')
-      );
+    await expect(searchInput).toBeVisible();
+    const searchPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/columns/search') &&
+        response.url().includes('sortBy=ordinalPosition')
+    );
 
-      await searchInput.fill('api');
-      const searchResponse = await searchPromise;
-      expect(searchResponse.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
-    }
+    await searchInput.fill('api');
+    const searchResponse = await searchPromise;
+    expect(searchResponse.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
   });
 });

@@ -53,6 +53,7 @@ public final class RdfBlankNodeCanonicalizer {
     final Set<Node> blankNodes = new LinkedHashSet<>();
     for (final Triple triple : triples) {
       addBlank(blankNodes, triple.getSubject());
+      addBlank(blankNodes, triple.getPredicate());
       addBlank(blankNodes, triple.getObject());
     }
     return blankNodes;
@@ -61,6 +62,11 @@ public final class RdfBlankNodeCanonicalizer {
   private static void addBlank(final Set<Node> blankNodes, final Node node) {
     if (node.isBlank()) {
       blankNodes.add(node);
+    } else if (node.isTripleTerm()) {
+      final Triple tripleTerm = node.getTriple();
+      addBlank(blankNodes, tripleTerm.getSubject());
+      addBlank(blankNodes, tripleTerm.getPredicate());
+      addBlank(blankNodes, tripleTerm.getObject());
     }
   }
 
@@ -101,7 +107,7 @@ public final class RdfBlankNodeCanonicalizer {
       final Node blankNode, final List<Triple> triples, final Map<Node, String> neighborHashes) {
     final List<String> incident = new ArrayList<>();
     for (final Triple triple : triples) {
-      if (triple.getSubject().equals(blankNode) || triple.getObject().equals(blankNode)) {
+      if (contains(triple, blankNode)) {
         incident.add(signature(blankNode, triple, neighborHashes));
       }
     }
@@ -113,9 +119,19 @@ public final class RdfBlankNodeCanonicalizer {
       final Node blankNode, final Triple triple, final Map<Node, String> neighborHashes) {
     return signatureNode(blankNode, triple.getSubject(), neighborHashes)
         + ' '
-        + NodeFmtLib.strNT(triple.getPredicate())
+        + signatureNode(blankNode, triple.getPredicate(), neighborHashes)
         + ' '
         + signatureNode(blankNode, triple.getObject(), neighborHashes);
+  }
+
+  private static boolean contains(final Triple triple, final Node sought) {
+    return contains(triple.getSubject(), sought)
+        || contains(triple.getPredicate(), sought)
+        || contains(triple.getObject(), sought);
+  }
+
+  private static boolean contains(final Node node, final Node sought) {
+    return node.equals(sought) || node.isTripleTerm() && contains(node.getTriple(), sought);
   }
 
   private static String signatureNode(
@@ -125,6 +141,8 @@ public final class RdfBlankNodeCanonicalizer {
       value = "_:self";
     } else if (node.isBlank()) {
       value = "_:" + neighborHashes.getOrDefault(node, "blank");
+    } else if (node.isTripleTerm()) {
+      value = "<<( " + signature(blankNode, node.getTriple(), neighborHashes) + " )>>";
     } else {
       value = NodeFmtLib.strNT(node);
     }
@@ -151,14 +169,24 @@ public final class RdfBlankNodeCanonicalizer {
   private static String format(final Triple triple, final Map<Node, Node> skolemNodes) {
     return NodeFmtLib.strNT(replace(triple.getSubject(), skolemNodes))
         + ' '
-        + NodeFmtLib.strNT(triple.getPredicate())
+        + NodeFmtLib.strNT(replace(triple.getPredicate(), skolemNodes))
         + ' '
         + NodeFmtLib.strNT(replace(triple.getObject(), skolemNodes))
         + " .";
   }
 
   private static Node replace(final Node node, final Map<Node, Node> skolemNodes) {
-    return node.isBlank() ? skolemNodes.get(node) : node;
+    if (node.isBlank()) {
+      return skolemNodes.get(node);
+    }
+    if (node.isTripleTerm()) {
+      final Triple tripleTerm = node.getTriple();
+      return NodeFactory.createTripleTerm(
+          replace(tripleTerm.getSubject(), skolemNodes),
+          replace(tripleTerm.getPredicate(), skolemNodes),
+          replace(tripleTerm.getObject(), skolemNodes));
+    }
+    return node;
   }
 
   private static String digest(final String value) {

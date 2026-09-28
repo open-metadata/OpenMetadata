@@ -14,10 +14,8 @@
 import type { FormInstance } from 'antd';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import type {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { ResourceEntity } from '../../enums/permissions.enum';
 import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
@@ -49,6 +47,12 @@ export interface UseObservabilityAlertFormOptions {
   form?: FormInstance<ModifiedCreateEventSubscription>;
   fqn?: string;
   onCancel?: () => void;
+}
+
+export interface UseAlertFormDataOptions
+  extends Omit<UseObservabilityAlertFormOptions, 'form'> {
+  /** The chosen alert source; narrows the loaded source catalogue. */
+  selectedTrigger?: string;
 }
 
 export interface UseObservabilityAlertResourcesReturn {
@@ -128,6 +132,11 @@ export interface UseObservabilityAlertFormReturn {
   templateResourcePermission: OperationPermission;
   templates: NotificationTemplate[];
 }
+
+export type UseAlertFormDataReturn = Omit<
+  UseObservabilityAlertFormReturn,
+  'form'
+>;
 
 export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
 

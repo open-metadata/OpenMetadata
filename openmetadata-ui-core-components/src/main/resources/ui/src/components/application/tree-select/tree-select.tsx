@@ -25,6 +25,7 @@ import {
   useMemo,
   useRef,
   useState,
+  Fragment,
 } from 'react';
 import { FocusScope } from 'react-aria';
 import type { Key, Selection } from 'react-aria-components';
@@ -228,6 +229,10 @@ export const TreeSelect = <T = unknown,>({
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
+  triggerClassName,
+  fullWidthTrigger = false,
+  onFetchError,
+  renderSelectedItem,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
@@ -235,15 +240,20 @@ export const TreeSelect = <T = unknown,>({
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
+  triggerIcon,
   onNodeExpand,
   onNodeCollapse,
+  defaultExpandedKeys,
+  maxIndentLevel,
   onSearch,
   filterNode,
 }: TreeSelectProps<T>): ReactElement => {
   const { t } = useCoreTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledIsOpen ?? internalOpen;
-  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set());
+  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
+    () => new Set(defaultExpandedKeys ?? [])
+  );
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -256,6 +266,11 @@ export const TreeSelect = <T = unknown,>({
   // Parents already opened for this search, so a later result never reopens one.
   const autoExpandedRef = useRef<Set<Key>>(new Set());
   const lastSearchRef = useRef('');
+  // Which defaultExpandedKeys have been applied. Per-key, not a single boolean:
+  // the keys form an ancestor chain and a lazy tree only reveals one level per
+  // fetch, so deeper keys do not exist yet on the pass that applies the root.
+  // Each key is still applied at most once, so a later user collapse sticks.
+  const appliedDefaultExpandRef = useRef<Set<Key>>(new Set());
   // Stable root IDs captured before any search replaces treeData, so
   // displayedSelectedCount is not zeroed out while the user is searching.
   const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
@@ -282,8 +297,21 @@ export const TreeSelect = <T = unknown,>({
   const { inputValue, searchTerm, setInputValue, clearSearch } =
     useTreeSelectSearch({ debounceMs, onSearch });
 
+  // Latched on first open so reopening reuses the loaded tree.
+  const [hasOpened, setHasOpened] = useState(isOpen);
+  if (isOpen && !hasOpened) {
+    setHasOpened(true);
+  }
+
+  // The button badge excludes root ids, so it needs the tree while closed.
   const { treeData, loading, loadingNodes, loadChildren } =
-    useTreeSelectData<T>({ fetchData, searchTerm, pageSize });
+    useTreeSelectData<T>({
+      fetchData,
+      searchTerm,
+      pageSize,
+      onFetchError,
+      enabled: hasOpened || isButtonVariant,
+    });
 
   const visibleNodeIds = useMemo(
     () =>
@@ -331,6 +359,40 @@ export const TreeSelect = <T = unknown,>({
       setStableRootIds(new Set(treeData.map((n) => n.id)));
     }
   }, [treeData, searchTerm]);
+
+  // Expand each defaultExpandedKeys node as it first appears in the tree, and
+  // fetch its children when it loads lazily. Both halves are needed to reveal a
+  // selection nested more than one level deep: expanding an ancestor is what
+  // makes the next key materialise, and without the fetch that ancestor opens
+  // empty, so the chain stops at the first lazy node.
+  useEffect(() => {
+    if (!defaultExpandedKeys?.length) {
+      return;
+    }
+    const pending = defaultExpandedKeys.filter(
+      (key) =>
+        !appliedDefaultExpandRef.current.has(key) && findNode(treeData, key)
+    );
+    if (pending.length === 0) {
+      return;
+    }
+    pending.forEach((key) => appliedDefaultExpandRef.current.add(key));
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      pending.forEach((key) => next.add(key));
+
+      return next;
+    });
+    pending.forEach((key) => {
+      const id = String(key);
+      if (
+        shouldLazyLoad(findNode(treeData, id), lazyLoad) &&
+        !loadingNodes.has(id)
+      ) {
+        loadChildren(id);
+      }
+    });
+  }, [treeData, defaultExpandedKeys, lazyLoad, loadingNodes, loadChildren]);
 
   // Each parent opens once as it appears; clearing the search restores the old set.
   useEffect(() => {
@@ -413,7 +475,8 @@ export const TreeSelect = <T = unknown,>({
       // Rendered state, not membership: a parent checked via descendants deselects.
       const { isFullySelected } = getNodeSelectionState(
         getDescendantSelection(node),
-        isNodeSelected(node.id)
+        isNodeSelected(node.id),
+        multiple
       );
 
       // Both directions: a branch selected while collapsed keeps children out of the tree.
@@ -501,7 +564,8 @@ export const TreeSelect = <T = unknown,>({
         const isExclusiveGroup = hasExclusiveChildren(node);
         const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
           getDescendantSelection(node),
-          isNodeSelected(node.id)
+          isNodeSelected(node.id),
+          multiple
         );
 
         return (
@@ -514,6 +578,7 @@ export const TreeSelect = <T = unknown,>({
               isIndeterminate={isPartiallySelected}
               isLoading={loadingNodes.has(node.id)}
               isSelected={isFullySelected}
+              maxIndentLevel={maxIndentLevel}
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
@@ -555,6 +620,7 @@ export const TreeSelect = <T = unknown,>({
       showCheckbox,
       showExpandIcon,
       showIcon,
+      maxIndentLevel,
       handleNodeAction,
     ]
   );
@@ -571,7 +637,7 @@ export const TreeSelect = <T = unknown,>({
 
   const displayValue = isOpen
     ? inputValue
-    : !multiple
+    : !multiple && !renderSelectedItem
     ? selectedData[0]?.label ?? ''
     : '';
 
@@ -837,15 +903,29 @@ export const TreeSelect = <T = unknown,>({
           : { width: triggerWidth }
       }
       triggerRef={triggerRef}
-      onOpenChange={setOpen}>
+      // `isNonModal` makes react-aria close the popover on any ancestor scroll
+      // (`usePopover` passes `onClose: state.close` to `useOverlayPosition`).
+      // Opening the dropdown scrolls the trigger into view, and a page still
+      // settling after an unrelated save scrolls too, so the picker closed
+      // itself ~100ms after it opened and the next press only reopened it. This
+      // component owns dismissal — Escape and outside-pointerdown listeners
+      // above, plus the explicit apply/select/cancel paths — so a close request
+      // from react-aria is dropped and only its open request is honoured.
+      onOpenChange={(open: boolean) => {
+        if (open) {
+          setOpen(true);
+        }
+      }}>
       {treeDropdownContent}
     </Dropdown.Popover>
   );
 
   if (renderTrigger) {
     return (
-      <div className={cx('tw:relative tw:inline-block', className)}>
-        <div ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-flex', className)}>
+        <div
+          className={cx('tw:flex tw:min-w-0', fullWidthTrigger && 'tw:w-full')}
+          ref={triggerRef}>
           {renderTrigger({
             isOpen,
             toggle: toggleOpen,
@@ -864,19 +944,19 @@ export const TreeSelect = <T = unknown,>({
     const triggerText = label ?? placeholder ?? '';
 
     return (
-      <div className={cx('tw:relative tw:inline-block', className)}>
-        <div ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-flex', className)}>
+        <div className="tw:flex" ref={triggerRef}>
           <Button
             className={cx(
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
-              hasSelection &&
-                'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
-              hasSelection && bordered && 'tw:after:outline-brand'
+              triggerClassName
             )}
             color={bordered ? 'secondary' : 'tertiary'}
             data-testid={dataTestId}
-            iconTrailing={ChevronDown}
+            iconLeading={triggerIcon}
+            // A disabled trigger opens nothing, so the affordance would lie.
+            iconTrailing={disabled ? undefined : ChevronDown}
             isDisabled={disabled}
             size={bordered ? 'md' : 'sm'}
             onPress={toggleOpen}>
@@ -919,7 +999,14 @@ export const TreeSelect = <T = unknown,>({
           }}>
           <SearchLg className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
 
-          {multiple &&
+          {renderSelectedItem
+            ? selectedData.map((node) => (
+                <Fragment key={node.id}>{renderSelectedItem(node)}</Fragment>
+              ))
+            : null}
+
+          {!renderSelectedItem &&
+            multiple &&
             selectedData.map((node) => (
               <span
                 className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"

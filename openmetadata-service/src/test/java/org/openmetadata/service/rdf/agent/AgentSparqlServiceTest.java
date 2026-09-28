@@ -26,9 +26,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ServiceUnavailableException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -89,6 +91,31 @@ class AgentSparqlServiceTest {
     assertTerm(row, "blank", AgentSparqlRdfTermType.BNODE, null, null);
     assertTrue(!row.getAdditionalProperties().containsKey("missing"), "Unbound stays absent");
     verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void returnsRdf12TripleTermsAndDirectionalLanguageLiterals() {
+    when(repository.executeSparqlQueryDirect(anyString(), eq(SPARQL_JSON)))
+        .thenReturn(
+            """
+            {"head":{"vars":["statement"]},
+             "results":{"bindings":[{
+               "statement":{"type":"triple","value":{
+                 "subject":{"type":"uri","value":"urn:subject"},
+                 "predicate":{"type":"uri","value":"urn:predicate"},
+                 "object":{"type":"literal","value":"\u0642\u0637\u0629",
+                           "xml:lang":"ar","its:dir":"rtl"}}}}]}}
+            """);
+
+    AgentSparqlResult result = readyService().execute("user", SELECT_ALL + " LIMIT 1");
+    JsonNode statement =
+        JsonUtils.readTree(new String(result.body(), StandardCharsets.UTF_8))
+            .at("/results/bindings/0/statement");
+
+    assertEquals("triple", statement.path("type").asText());
+    assertEquals("urn:subject", statement.at("/value/subject/value").asText());
+    assertEquals("rtl", statement.at("/value/object/its:dir").asText());
+    assertEquals(1, result.rowCount());
   }
 
   @Test

@@ -124,7 +124,7 @@
   },
   "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Features/DataProductDomainMigration.spec.ts": {
@@ -199,7 +199,7 @@
   },
   "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 8
+      "count": 7
     }
   },
   "playwright/e2e/Features/EntityRenameConsolidation.spec.ts": {
@@ -377,11 +377,6 @@
       "count": 31
     }
   },
-  "playwright/e2e/Features/SSOTestLogin.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/SampleDataTableOperations.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 5
@@ -409,7 +404,7 @@
   },
   "playwright/e2e/Features/SettingsNavigationPage.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 8
     }
   },
   "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts": {
@@ -813,7 +808,7 @@
   },
   "playwright/e2e/Pages/UserDetails.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/Users.spec.ts": {
@@ -920,7 +915,7 @@
   },
   "playwright/utils/customProperty.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 13
+      "count": 12
     }
   },
   "playwright/utils/customPropertyAdvancedSearchUtils.ts": {
@@ -1029,11 +1024,6 @@
       "count": 2
     }
   },
-  "playwright/utils/rightPanelNavigation.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/utils/searchRBAC.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -1049,11 +1039,6 @@
       "count": 1
     }
   },
-  "playwright/utils/sidebar.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/utils/sso-providers/keycloak-saml.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -1061,7 +1046,7 @@
   },
   "playwright/utils/sso.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 9
     }
   },
   "playwright/utils/task.ts": {
@@ -1079,7 +1064,7 @@
   },
   "playwright/utils/team.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/utils/testCases.ts": {
