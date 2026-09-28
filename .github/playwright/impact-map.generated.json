@@ -680,7 +680,6 @@
         "playwright/e2e/Features/AIMode/ObservabilityFilters.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts",
         "playwright/e2e/Features/AIMode/TestCaseEdit.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
@@ -4100,7 +4099,6 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/observabilityAlert.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
@@ -5005,7 +5003,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
-        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -9503,8 +9500,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/AIUserMenu/AIUserMenu.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
@@ -9533,8 +9529,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfilePage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
@@ -9727,8 +9722,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationSourceSelect.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/Observability.spec.ts",
-        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+        "playwright/e2e/Features/AIMode/Observability.spec.ts"
       ]
     },
     {
@@ -10695,7 +10689,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
