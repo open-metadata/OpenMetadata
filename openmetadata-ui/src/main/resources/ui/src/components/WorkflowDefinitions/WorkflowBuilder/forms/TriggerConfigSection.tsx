@@ -28,16 +28,12 @@ import {
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { TriggerConfigSectionProps } from '../../../../interface/workflow-builder-components.interface';
+import {
+  EXTENSION_FIELD_PREFIX,
+  getFieldLabel,
+} from '../../../../utils/WorkflowConfigUtils';
 import { FormField } from '../common/FormField';
 import { CronExpressionBuilder } from './CronExpressionBuilder';
-
-const getFieldLabel = (v: string): string => {
-  if (v.startsWith('extension.')) {
-    return v.slice('extension.'.length);
-  }
-
-  return v;
-};
 
 /** Sync a useListData instance with an external string[] value. Replaces list content to avoid duplicates. */
 const useSyncedListData = (
@@ -155,10 +151,10 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
   const fieldItems = useMemo(
     () =>
       availableExcludeFields.map((v) => {
-        if (v.startsWith('extension.')) {
+        if (v.startsWith(EXTENSION_FIELD_PREFIX)) {
           return {
             id: v,
-            label: v.slice('extension.'.length),
+            label: getFieldLabel(v),
             supportingText: t('label.custom-property'),
           };
         }
