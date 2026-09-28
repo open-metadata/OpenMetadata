@@ -31,7 +31,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
-import { TaskType } from '../../../../../generated/entity/tasks/task';
 import {
   listMyVisibleTasks,
   listTasks,
@@ -166,10 +165,11 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   // Grouping covers the pages loaded so far: the server paginates by cursor,
   // not by type, so a later page can reopen a group that already appeared.
   const groupedList = groupTasksByType(tasks).map((group) => {
-    const badge = getTaskTypeBadge({ type: group.type } as Task, t);
+    // Every task in a group reads the same, so its first one names it.
+    const badge = getTaskTypeBadge(group.items[0], t);
 
     return (
-      <Box direction="col" gap={1} key={group.type}>
+      <Box direction="col" gap={1} key={group.key}>
         <Box
           align="center"
           className="tw:gap-2 tw:px-1 tw:py-2"
@@ -247,7 +247,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // stays responsive while the request trails it.
   const [searchQuery, setSearchQuery] = useState('');
   const [grouping, setGrouping] = useState<InboxTaskGrouping>('type');
-  const [typeFilter, setTypeFilter] = useState<TaskType[]>([]);
+  // Kinds as getTaskTypeKey names them, so types sharing a label filter as one.
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
 
   // Per-status totals for the All / Open / Closed badges, fetched cheaply
   // (limit=1, server paging.total) and cached by React Query keyed on the active

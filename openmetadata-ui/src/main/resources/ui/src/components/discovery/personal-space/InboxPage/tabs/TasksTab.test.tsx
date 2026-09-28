@@ -96,7 +96,7 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
       </button>
       <button
         data-testid="toolbar-filter-tag"
-        onClick={() => onTypeFilterChange(['TagUpdate'])}>
+        onClick={() => onTypeFilterChange(['label.tag-request'])}>
         filter tag
       </button>
     </div>

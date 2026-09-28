@@ -76,7 +76,7 @@ describe('groupTasksByType', () => {
     ]);
 
     expect(groups).toHaveLength(1);
-    expect(groups[0]).toMatchObject({ type: TaskType.TagUpdate, count: 2 });
+    expect(groups[0]).toMatchObject({ key: 'label.tag-request', count: 2 });
     expect(groups[0].items.map((item) => item.id)).toEqual(['a', 'b']);
   });
 
@@ -89,11 +89,22 @@ describe('groupTasksByType', () => {
       task('c', TaskType.TestCaseResolution),
     ]);
 
-    expect(groups.map((group) => group.type)).toEqual([
-      TaskType.TestCaseResolution,
-      TaskType.DataAccessRequest,
-      TaskType.TagUpdate,
+    expect(groups.map((group) => group.key)).toEqual([
+      'label.incident',
+      'label.access-request',
+      'label.tag-request',
     ]);
+  });
+
+  // Both read "Incident"; two headers with the same label read as a bug.
+  it('puts types that share a label under one header', () => {
+    const groups = groupTasksByType([
+      task('a', TaskType.IncidentResolution),
+      task('b', TaskType.TestCaseResolution),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ key: 'label.incident', count: 2 });
   });
 
   it('puts an unranked type last rather than dropping it', () => {
@@ -102,9 +113,9 @@ describe('groupTasksByType', () => {
       task('b', TaskType.TagUpdate),
     ]);
 
-    expect(groups.map((group) => group.type)).toEqual([
-      TaskType.TagUpdate,
-      'SomethingNew',
+    expect(groups.map((group) => group.key)).toEqual([
+      'label.tag-request',
+      'label.task',
     ]);
   });
 
@@ -121,8 +132,21 @@ describe('filterTasksByTypes', () => {
 
   it('keeps only the chosen types', () => {
     expect(
-      filterTasksByTypes(tasks, [TaskType.TagUpdate]).map((item) => item.id)
+      filterTasksByTypes(tasks, ['label.tag-request']).map((item) => item.id)
     ).toEqual(['a']);
+  });
+
+  it('keeps every type that reads as the chosen kind', () => {
+    expect(
+      filterTasksByTypes(
+        [
+          task('a', TaskType.IncidentResolution),
+          task('b', TaskType.TestCaseResolution),
+          task('c', TaskType.TagUpdate),
+        ],
+        ['label.incident']
+      ).map((item) => item.id)
+    ).toEqual(['a', 'b']);
   });
 
   it('treats an empty choice as no filter at all', () => {

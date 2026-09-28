@@ -113,9 +113,29 @@ const TASK_TYPE_BADGE: Record<
     icon: 'approval',
   },
   [TaskType.RequestApproval]: {
-    labelKey: 'label.task',
+    labelKey: 'label.approval',
     color: 'brand',
     icon: 'approval',
+  },
+  [TaskType.CustomTask]: {
+    labelKey: 'label.custom-task',
+    color: 'gray',
+    icon: 'approval',
+  },
+  [TaskType.DataQualityReview]: {
+    labelKey: 'label.data-quality-review',
+    color: 'blue-light',
+    icon: 'approval',
+  },
+  [TaskType.PipelineReview]: {
+    labelKey: 'label.pipeline-review',
+    color: 'indigo',
+    icon: 'approval',
+  },
+  [TaskType.RecognizerFeedbackApproval]: {
+    labelKey: 'label.recognizer-feedback',
+    color: 'purple',
+    icon: 'tag',
   },
 };
 
@@ -125,16 +145,26 @@ const DEFAULT_TYPE_BADGE = {
   icon: 'approval' as TaskTypeBadge['icon'],
 };
 
+const getTypeBadgeConfig = (task: Pick<Task, 'type' | 'category'>) =>
+  TASK_TYPE_BADGE[task.type] ??
+  (task.category === TaskCategory.Incident
+    ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
+    : DEFAULT_TYPE_BADGE);
+
+/**
+ * What a task reads as, as a stable key: two types that share a label (a test
+ * case incident and an incident) are one kind to a reviewer, so the list
+ * groups them under one header and the filter offers them as one option.
+ */
+export const getTaskTypeKey = (task: Pick<Task, 'type' | 'category'>) =>
+  getTypeBadgeConfig(task).labelKey;
+
 /**
  * The type chip shown in the detail header and on each list row. Falls back to
  * a neutral "Task" chip so an unmapped or future type still renders.
  */
 export const getTaskTypeBadge = (task: Task, t: Translate): TaskTypeBadge => {
-  const config =
-    TASK_TYPE_BADGE[task.type] ??
-    (task.category === TaskCategory.Incident
-      ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
-      : DEFAULT_TYPE_BADGE);
+  const config = getTypeBadgeConfig(task);
 
   return {
     label: t(config.labelKey),
