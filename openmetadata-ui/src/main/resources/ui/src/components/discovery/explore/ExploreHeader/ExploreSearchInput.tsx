@@ -42,6 +42,8 @@ export interface ExploreSearchInputProps {
   isNLPActive: boolean;
   isNLPEnabled: boolean;
   searchCriteria?: SearchIndex;
+  /** i18n key for the placeholder. Defaults to Explore's own. */
+  placeholderKey?: string;
   searchContainerRef: RefObject<HTMLFormElement>;
   onSearchChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -124,6 +126,7 @@ export const ExploreSearchInput = ({
   isNLPActive,
   isNLPEnabled,
   searchCriteria,
+  placeholderKey,
   searchContainerRef,
   onSearchChange,
   onSubmit,
@@ -136,6 +139,7 @@ export const ExploreSearchInput = ({
   const isSearchPopoverOpen =
     isSearchBoxOpen && (Boolean(searchValue) || isNLPActive);
   const searchShortcutLabel = getSearchShortcutLabel();
+  const placeholder = t(placeholderKey ?? SEARCH_PLACEHOLDER_KEY);
 
   return (
     <Box className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3">
@@ -146,7 +150,7 @@ export const ExploreSearchInput = ({
         itself, not synthetic interactivity added to a non-interactive element.
       */}
       <form
-        aria-label={t(SEARCH_PLACEHOLDER_KEY)}
+        aria-label={placeholder}
         className="tw:relative tw:w-full tw:min-w-0"
         data-testid="explore-search-form"
         ref={searchContainerRef}
@@ -201,7 +205,7 @@ export const ExploreSearchInput = ({
             icon={SearchMd}
             iconClassName="tw:size-4 tw:text-brand-600"
             inputClassName={INPUT_CLASS}
-            placeholder={t(SEARCH_PLACEHOLDER_KEY)}
+            placeholder={placeholder}
             value={searchValue}
             wrapperClassName={INPUT_WRAPPER_CLASS}
             onChange={onSearchChange}
@@ -227,7 +231,7 @@ export const ExploreSearchInput = ({
             />
           )}
           <kbd
-            aria-label={`${t(SEARCH_PLACEHOLDER_KEY)} (${searchShortcutLabel})`}
+            aria-label={`${placeholder} (${searchShortcutLabel})`}
             className={SEARCH_SHORTCUT_CLASS}
             data-testid="explore-search-shortcut">
             {searchShortcutLabel}

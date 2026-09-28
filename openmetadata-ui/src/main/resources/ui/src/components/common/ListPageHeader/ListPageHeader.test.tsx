@@ -44,7 +44,9 @@ const renderHeader = (props: Record<string, unknown> = {}) =>
 
 describe('ListPageHeader', () => {
   it('gives the search its own slot, apart from the title and the actions', () => {
-    renderHeader({ search: <input data-testid="search-box" /> });
+    renderHeader({
+      search: <input aria-label="search" data-testid="search-box" />,
+    });
 
     const searchSlot = screen.getByTestId('list-page-header-search');
 
@@ -57,7 +59,9 @@ describe('ListPageHeader', () => {
   });
 
   it('keeps the title on one line so the subtitle is never truncated', () => {
-    renderHeader({ search: <input data-testid="search-box" /> });
+    renderHeader({
+      search: <input aria-label="search" data-testid="search-box" />,
+    });
 
     // shrink-0 stops the flex row squeezing the subtitle.
     expect(screen.getByTestId('list-page-header-title')).toHaveClass(

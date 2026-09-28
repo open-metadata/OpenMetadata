@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   PageLayout,
   Typography,
@@ -45,9 +46,12 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
 
   // Search centres in the space the title leaves; 35vw matches Explore.
   const centeredHeaderLayout = (
-    <div
-      className="tw:flex tw:w-full tw:items-center tw:gap-4"
-      data-testid="list-page-header-layout">
+    <Box
+      align="center"
+      className="tw:w-full"
+      data-testid="list-page-header-layout"
+      direction="row"
+      gap={4}>
       <div className="tw:shrink-0" data-testid="list-page-header-title">
         <Typography as="h3" size="text-xl" weight="semibold">
           {t(titleKey)}
@@ -61,7 +65,7 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
           </Typography>
         )}
       </div>
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4">
+      <div className="tw:min-w-0 tw:flex-1">
         <div
           className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
           data-testid="list-page-header-search">
@@ -71,7 +75,7 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
       <div className="tw:shrink-0" data-testid="list-page-header-actions-group">
         {addButton}
       </div>
-    </div>
+    </Box>
   );
 
   return (

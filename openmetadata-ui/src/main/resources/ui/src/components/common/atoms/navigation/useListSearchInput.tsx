@@ -11,14 +11,11 @@
  *  limitations under the License.
  */
 
-import { CloseButton, Input, Tooltip } from '@openmetadata/ui-core-components';
+import { CloseButton } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
 import { debounce } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
-import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
-import { useSearchStore } from '../../../../hooks/useSearchStore';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -27,8 +24,6 @@ interface ListSearchInputConfig {
   searchQuery?: string;
   /** Push a new query to the listing. Debounced while typing, immediate on clear. */
   onSearchChange: (value: string) => void;
-  /** Offer the NLQ toggle. Shown only once the server reports NLP enabled. */
-  enableNlq?: boolean;
 }
 
 /**
@@ -42,20 +37,9 @@ interface ListSearchInputConfig {
 export const useListSearchInput = ({
   searchQuery,
   onSearchChange,
-  enableNlq,
 }: ListSearchInputConfig) => {
   const { t } = useTranslation();
   const [searchInputValue, setSearchInputValue] = useState(searchQuery ?? '');
-  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
-
-  // GlobalSearchBar is absent on these pages, so bootstrap the store.
-  useEffect(() => {
-    if (enableNlq) {
-      initNLP();
-    }
-  }, [enableNlq, initNLP]);
-
-  const showNlqToggle = Boolean(enableNlq) && isNLPEnabled;
 
   const debouncedSearch = useMemo(
     () => debounce(onSearchChange, SEARCH_DEBOUNCE_MS),
@@ -91,16 +75,13 @@ export const useListSearchInput = ({
 
   const searchInputProps = useMemo(
     () => ({
-      // `icon` is pointer-events-none, so the toggle is overlaid instead.
-      icon: showNlqToggle ? undefined : SearchLg,
+      icon: SearchLg,
       placeholder: t('label.search'),
       value: searchInputValue,
       // `InputBase` sizes its trailing padding from its own tooltip/invalid
       // icons and ignores `trailingSlot`, so the slot has to buy its own room
       // or the text runs under the button.
-      inputClassName: `${showNlqToggle ? 'tw:pl-11 ' : ''}${
-        searchInputValue ? 'tw:pr-9' : ''
-      }`.trim(),
+      inputClassName: searchInputValue ? 'tw:pr-9' : undefined,
       trailingSlot: searchInputValue ? (
         <CloseButton
           className="tw:absolute tw:right-1.5"
@@ -111,51 +92,8 @@ export const useListSearchInput = ({
       ) : undefined,
       onChange: handleChange,
     }),
-    [handleChange, handleClear, searchInputValue, showNlqToggle, t]
+    [handleChange, handleClear, searchInputValue, t]
   );
 
-  const renderSearchInput = useCallback(
-    (className?: string): ReactNode => (
-      <div className={`tw:relative ${className ?? ''}`.trim()}>
-        {showNlqToggle && (
-          // Position the div, not the button: Tooltip's wrapper stays in flow.
-          <div className="tw:absolute tw:left-3 tw:top-1/2 tw:z-10 tw:flex tw:-translate-y-1/2 tw:items-center">
-            <Tooltip
-              title={
-                isNLPActive
-                  ? t('message.natural-language-search-active')
-                  : t('label.use-natural-language-search')
-              }>
-              <button
-                className={`tw:flex tw:cursor-pointer tw:items-center tw:justify-center ${
-                  isNLPActive
-                    ? 'tw:[&_svg]:size-6 tw:[&_svg]:fill-none'
-                    : 'tw:rounded-sm tw:border tw:border-secondary tw:bg-primary tw:p-1 tw:[&_svg]:size-3.5 tw:[&_svg]:fill-transparent'
-                }`}
-                data-testid="list-search-nlq-toggle"
-                type="button"
-                onClick={() => setNLPActive(!isNLPActive)}>
-                {isNLPActive ? (
-                  <IconSuggestionsActive />
-                ) : (
-                  <IconSuggestionsBlue />
-                )}
-              </button>
-            </Tooltip>
-          </div>
-        )}
-        {/* 44px control, matching Explore's search box. */}
-        <Input
-          className="tw:w-full"
-          {...searchInputProps}
-          inputClassName={`${
-            searchInputProps.inputClassName ?? ''
-          } tw:!py-3`.trim()}
-        />
-      </div>
-    ),
-    [isNLPActive, searchInputProps, setNLPActive, showNlqToggle, t]
-  );
-
-  return { searchInputValue, searchInputProps, renderSearchInput };
+  return { searchInputValue, searchInputProps };
 };

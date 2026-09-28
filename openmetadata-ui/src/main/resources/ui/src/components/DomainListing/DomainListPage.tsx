@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { SearchIndex } from '../../enums/search.enum';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -34,6 +35,7 @@ import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardT
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
+import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import { useListSearchInput } from '../common/atoms/navigation/useListSearchInput';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
@@ -107,19 +109,18 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const showHeaderSearch = isAiMode;
 
-  const { searchInputProps, renderSearchInput } = useListSearchInput({
+  const { searchInputProps } = useListSearchInput({
     searchQuery: domainListing.urlState.searchQuery,
     onSearchChange: domainListing.handleSearchChange,
-    enableNlq: isAiMode,
   });
 
-  // The centred slot stretches its child; the classic actions row does not.
-  const centeredHeaderSearch = showHeaderSearch
-    ? renderSearchInput()
-    : undefined;
-  const headerSearch = showHeaderSearch
-    ? renderSearchInput('tw:w-72')
-    : undefined;
+  const headerSearch = showHeaderSearch ? (
+    <MarketplaceSearchInput
+      searchCriteria={SearchIndex.DOMAIN}
+      searchQuery={domainListing.urlState.searchQuery}
+      onSearchChange={domainListing.handleSearchChange}
+    />
+  ) : undefined;
 
   const canCreateDomain = permissions.domain?.Create || false;
 
@@ -313,7 +314,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             createPermission: canCreateDomain,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
-            search: centeredHeaderSearch,
+            search: headerSearch,
           })
         : pageHeader}
 

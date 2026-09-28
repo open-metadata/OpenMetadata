@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PageLayout, Typography } from '@openmetadata/ui-core-components';
+import { Box, PageLayout, Typography } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
@@ -33,9 +33,12 @@ export const MarketplaceOverviewHeader: FC = () => {
 
   // Same row as the marketplace list-page headers (`ListPageHeader`).
   const headerLayout = (
-    <div
-      className="tw:flex tw:w-full tw:items-center tw:gap-4"
-      data-testid="marketplace-header-layout">
+    <Box
+      align="center"
+      className="tw:w-full"
+      data-testid="marketplace-header-layout"
+      direction="row"
+      gap={4}>
       <div className="tw:shrink-0" data-testid="marketplace-header-title">
         <Typography as="h3" size="text-xl" weight="semibold">
           {t('label.data-marketplace')}
@@ -47,7 +50,7 @@ export const MarketplaceOverviewHeader: FC = () => {
           {t('message.discover-data-products-subtitle')}
         </Typography>
       </div>
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4">
+      <div className="tw:min-w-0 tw:flex-1">
         <div
           className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
           data-testid="marketplace-header-search">
@@ -57,7 +60,7 @@ export const MarketplaceOverviewHeader: FC = () => {
       <div className="tw:shrink-0" data-testid="marketplace-actions-group">
         <AddNewMenu />
       </div>
-    </div>
+    </Box>
   );
 
   return (

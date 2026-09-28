@@ -37,6 +37,7 @@ import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { SearchIndex } from '../../enums/search.enum';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -55,6 +56,7 @@ import {
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
+import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import { useListSearchInput } from '../common/atoms/navigation/useListSearchInput';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
@@ -190,19 +192,18 @@ const DataProductListPage = ({
 
   const showHeaderSearch = isAiMode;
 
-  const { searchInputProps, renderSearchInput } = useListSearchInput({
+  const { searchInputProps } = useListSearchInput({
     searchQuery: dataProductListing.urlState.searchQuery,
     onSearchChange: dataProductListing.handleSearchChange,
-    enableNlq: isAiMode,
   });
 
-  // The centred slot stretches its child; the classic actions row does not.
-  const centeredHeaderSearch = showHeaderSearch
-    ? renderSearchInput()
-    : undefined;
-  const headerSearch = showHeaderSearch
-    ? renderSearchInput('tw:w-72')
-    : undefined;
+  const headerSearch = showHeaderSearch ? (
+    <MarketplaceSearchInput
+      searchCriteria={SearchIndex.DATA_PRODUCT}
+      searchQuery={dataProductListing.urlState.searchQuery}
+      onSearchChange={dataProductListing.handleSearchChange}
+    />
+  ) : undefined;
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
@@ -409,7 +410,7 @@ const DataProductListPage = ({
             createPermission: permissions.dataProduct?.Create || false,
             count: dataProductListing.totalEntities,
             breadcrumb: headerBreadcrumb,
-            search: centeredHeaderSearch,
+            search: headerSearch,
           })
         : pageHeader}
     </>
