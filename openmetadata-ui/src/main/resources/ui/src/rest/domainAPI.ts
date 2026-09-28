@@ -148,7 +148,8 @@ export const listDomainHierarchy = async (
 export const getDomainChildrenPaginated = async (
   parentFQN?: string,
   pageSize = 15,
-  offset = 0
+  offset = 0,
+  signal?: AbortSignal
 ) => {
   const apiUrl = `${BASE_URL}/hierarchy`;
   const requestParams: Record<string, string | number | string[]> = {
@@ -163,6 +164,7 @@ export const getDomainChildrenPaginated = async (
 
   const { data } = await APIClient.get<PagingResponse<Domain[]>>(apiUrl, {
     params: requestParams,
+    signal,
   });
 
   return data;
