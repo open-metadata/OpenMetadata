@@ -150,9 +150,18 @@ export interface Asset {
      */
     assetType?: AssetType;
     /**
+     * SHA-256 of the file's bytes, hex-encoded. Two uploads with the same checksum hold the
+     * same file.
+     */
+    checksum?: string;
+    /**
      * MIME type of the asset.
      */
     contentType?: string;
+    /**
+     * Structure and statistics of a tabular file, absent until the Query Runner has read it.
+     */
+    dataProfile?: TabularProfile;
     /**
      * When `true` indicates the entity has been marked for permanent deletion.
      */
@@ -204,6 +213,70 @@ export interface Asset {
 export enum AssetType {
     External = "External",
     Inline = "Inline",
+}
+
+/**
+ * Structure and statistics of a tabular file, absent until the Query Runner has read it.
+ *
+ * How the Query Runner reads a tabular file, taken once after the upload by the worker that
+ * later queries it.
+ */
+export interface TabularProfile {
+    /**
+     * Why the file could not be read, when the read failed. A profile with an error has no
+     * relations.
+     */
+    error?:     string;
+    readAt?:    number;
+    relations?: TabularRelation[];
+}
+
+/**
+ * One relation the Query Runner registers from a tabular file: the file itself for a CSV,
+ * one per sheet for a workbook.
+ */
+export interface TabularRelation {
+    columns?: TabularColumn[];
+    /**
+     * Relation name, as registered for a file uploaded under its own name.
+     */
+    name:      string;
+    rowCount?: number;
+}
+
+/**
+ * One column of a tabular file with the statistics the Query Runner read for it, kept as
+ * the worker wrote them.
+ */
+export interface TabularColumn {
+    approxUnique?: string;
+    avg?:          string;
+    dataType?:     string;
+    /**
+     * Exact number of distinct values.
+     */
+    distinctCount?:  number;
+    max?:            string;
+    min?:            string;
+    name:            string;
+    nullPercentage?: string;
+    /**
+     * The most frequent values of a text column with their counts, most frequent first; at most
+     * fifty, so a small domain is listed in full.
+     */
+    topValues?: TabularValueCount[];
+    /**
+     * Number of non-null values.
+     */
+    valuesCount?: number;
+}
+
+/**
+ * One value of a column and how many rows carry it.
+ */
+export interface TabularValueCount {
+    count: number;
+    value: string;
 }
 
 /**
