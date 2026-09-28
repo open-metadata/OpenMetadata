@@ -56,19 +56,15 @@ const OMMultiSelectWidget = ({
     [JSON.stringify(listValues ?? null)]
   );
 
-  // Accumulate every fetched option in a bounded, id-keyed map. This is a label
-  // cache for values already picked, not the option list: an id the current
-  // search no longer returns still has to render as its name.
+  // Label cache for picked values, not the option list: an id the current search
+  // no longer returns still has to render as its name.
   const ASYNC_ITEM_CAP = 500;
   const [asyncItemMap, setAsyncItemMap] = useState<Map<string, SelectItemType>>(
     () => new Map()
   );
 
-  // Only what the latest fetch returned is offered. Offering everything ever
-  // fetched left the popup showing the whole catalogue while the search narrowed
-  // server-side — and since react-aria commits whichever option is focused when
-  // the input loses focus, a stale entry the user never looked at could end up
-  // in the value.
+  // Offer only the latest fetch: keeping every option ever fetched left the whole
+  // catalogue on screen while the search narrowed server-side.
   const [asyncResultIds, setAsyncResultIds] = useState<string[]>([]);
   const asyncItems = useMemo(
     () =>
@@ -146,9 +142,14 @@ const OMMultiSelectWidget = ({
   const handleItemInserted = useCallback(
     (key: Key) => {
       setValue([...valueArray, String(key)]);
+      // Picking clears the input without reporting a search, so restore the
+      // unfiltered catalogue — otherwise a second value means typing again.
+      if (isAsync) {
+        loadAsync('');
+      }
     },
 
-    [valueArray.join(','), setValue]
+    [valueArray.join(','), setValue, isAsync, loadAsync]
   );
 
   const handleItemCleared = useCallback(

@@ -376,10 +376,8 @@ export const fillRule = async (
       const listboxId = await dropdownInput.getAttribute('aria-controls');
       const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
-      // A multiselect rule renders one chip per committed value. Count them
-      // before picking so the assertion below can prove this call added exactly
-      // one — a rule that silently gains a value it was never given reads as a
-      // passing test on a query that means something else.
+      // One chip per committed value: counted before picking so the assertion
+      // below can prove this call added exactly one, and no more.
       const multiSelect = ruleLocator.getByTestId(
         'advanced-search-value-multiselect'
       );

@@ -1112,9 +1112,8 @@ function buildEsGroup(
   };
 }
 
-// De Morgan: a negated operator builds one `must_not` clause per option, and
-// "none of these" is the conjunction of those — `should` would ask for "not all
-// of these", which matches a document holding every option but one.
+// De Morgan: "none of these" is the conjunction of the per-option `must_not`
+// clauses — `should` would ask for "not all of these".
 function isNegatedOperator(operator, config) {
   return (
     NEGATED_OPERATORS.includes(operator) ||

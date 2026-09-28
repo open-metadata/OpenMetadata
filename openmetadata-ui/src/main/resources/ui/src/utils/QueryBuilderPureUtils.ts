@@ -380,9 +380,8 @@ const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
-// `Not in [a, b]` is written as one `must_not` clause per value, AND-ed together
-// — the negation of "any of these". Read back as a single multiselect rule so the
-// builder reopens with the row the user filled, not one `!=` row per value.
+// AND-ed `must_not` terms on one field are a `Not in` rule: read them back as the
+// row the user filled, not one `!=` row per value.
 const isMustNotTermClause = (clause: QueryFieldInterface) =>
   !isUndefined((clause?.bool?.must_not as EsTerm)?.term);
 

@@ -449,11 +449,9 @@ export const AutocompleteBase = ({
     [onItemCleared]
   );
 
-  // react-aria commits the focused option when the input is tabbed out of or
-  // loses focus (`ComboBoxState.commit()`), and the listbox focuses whatever
-  // option the pointer last passed over. That turns "move on" into "insert
-  // whatever the cursor happened to rest on", so those commits are dropped — a
-  // value is added by pressing or Entering an option, nothing else.
+  // react-aria commits the focused option on blur/Tab, and the listbox focuses
+  // whatever the pointer last passed over — so leaving the field inserted an
+  // option the user never picked. Only a press or Enter adds a value.
   const isLeavingRef = useRef(false);
   const suppressCommit = useCallback(() => {
     isLeavingRef.current = true;

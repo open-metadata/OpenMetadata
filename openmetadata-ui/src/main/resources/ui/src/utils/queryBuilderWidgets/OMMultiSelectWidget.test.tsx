@@ -26,9 +26,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
       items?: { id: string; label: string }[];
       selectedItems?: { id: string; label: string }[];
       onSearchChange?: (value: string) => void;
+      onItemInserted?: (key: string) => void;
     }): JSX.Element;
     Item?: (props: { children?: unknown }) => JSX.Element;
-  } = ({ isDisabled, items, selectedItems, onSearchChange }) =>
+  } = ({ isDisabled, items, selectedItems, onSearchChange, onItemInserted }) =>
     ReactModule.createElement(
       'div',
       null,
@@ -38,6 +39,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange: (event: { target: { value: string } }) =>
           onSearchChange?.(event.target.value),
       }),
+      ReactModule.createElement(
+        'button',
+        {
+          'data-testid': 'pick-first-option',
+          onClick: () => onItemInserted?.((items ?? [])[0]?.id),
+        },
+        'pick'
+      ),
       ReactModule.createElement(
         'ul',
         { 'data-testid': 'options' },
@@ -159,5 +168,26 @@ describe('OMMultiSelectWidget – async options', () => {
         (child) => child.textContent
       )
     ).toEqual(['Alpha']);
+  });
+
+  // Picking clears the Autocomplete's input without reporting a search, so
+  // nothing would refetch and the next value would have to be typed for.
+  it('restores the unfiltered catalogue after a value is picked', async () => {
+    const asyncFetch = fetchCatalogue();
+    render(<OMMultiSelectWidget {...asyncProps} asyncFetch={asyncFetch} />);
+
+    await waitFor(() => expect(optionLabels()).toHaveLength(3));
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Gamma' },
+    });
+
+    await waitFor(() => expect(optionLabels()).toEqual(['Gamma']));
+
+    fireEvent.click(screen.getByTestId('pick-first-option'));
+
+    await waitFor(() => expect(optionLabels()).toHaveLength(3));
+
+    expect(asyncFetch).toHaveBeenLastCalledWith('');
   });
 });
