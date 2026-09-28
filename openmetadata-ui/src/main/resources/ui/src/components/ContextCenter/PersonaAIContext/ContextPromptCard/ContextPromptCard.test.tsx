@@ -21,7 +21,9 @@ const SAVED_PROMPT = 'You assist finance analysts.';
 const SAVE_BUTTON = 'persona-context-prompt-save';
 const CANCEL_BUTTON = 'persona-context-prompt-cancel';
 
-const promptBox = () => screen.getByRole('textbox', { name: 'label.prompt' });
+// Regex, not an exact name: the core Label always renders a CSS-hidden required marker, which
+// jsdom (no Tailwind) counts as part of the accessible name.
+const promptBox = () => screen.getByRole('textbox', { name: /label\.prompt/ });
 
 describe('ContextPromptCard', () => {
   it('renders nothing for a read-only user when no prompt is set', () => {

@@ -165,7 +165,7 @@ describe('PersonaAIContext', () => {
     render(<PersonaAIContext canEdit persona={persona} />);
 
     fireEvent.change(
-      await screen.findByRole('textbox', { name: 'label.prompt' }),
+      await screen.findByRole('textbox', { name: /label\.prompt/ }),
       { target: { value: 'You assist finance analysts.' } }
     );
     fireEvent.click(screen.getByTestId('persona-context-prompt-save'));
