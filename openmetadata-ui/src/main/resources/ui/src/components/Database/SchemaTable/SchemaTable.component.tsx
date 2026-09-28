@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import { Label } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  Select,
-  TableProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Label, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -542,11 +533,12 @@ const SchemaTable = () => {
         }
 
         return (
-          <Typography.Paragraph
+          <Typography
             className="cursor-pointer"
-            ellipsis={{ tooltip: displayValue, rows: 3 }}>
+            ellipsis={{ tooltip: displayValue, rows: 3 }}
+            variant="paragraph">
             {highlightSearchArrayElement(dataTypeDisplay, searchText)}
-          </Typography.Paragraph>
+          </Typography>
         );
       },
       [searchText]
@@ -720,13 +712,14 @@ const SchemaTable = () => {
                 columnConstraint: record.constraint,
                 tableConstraints,
               })}
-              <Typography.Text
+              <Typography
                 className={classNames(
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
                 )}
-                data-testid="column-name">
+                data-testid="column-name"
+                variant="text">
                 {renderHighlightedText(highlightSearchText(name, searchText))}
-              </Typography.Text>
+              </Typography>
             </div>
             <div className="d-flex items-center">
               {editDisplayNamePermission && (
@@ -759,13 +752,14 @@ const SchemaTable = () => {
             </div>
           </div>
           {isEmpty(displayName) ? null : (
-            <Typography.Text
+            <Typography
               className="m-b-0 d-block break-word"
-              data-testid="column-display-name">
+              data-testid="column-display-name"
+              variant="text">
               {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
-            </Typography.Text>
+            </Typography>
           )}
         </div>
       );

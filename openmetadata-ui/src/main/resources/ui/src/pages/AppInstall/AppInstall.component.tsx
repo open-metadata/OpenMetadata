@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
@@ -295,7 +295,9 @@ const AppInstall = () => {
       case 3:
         return (
           <div className="m-auto bg-white w-3/5 p-md border rounded-4">
-            <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
+            <Typography level={5} variant="title">
+              {t('label.schedule')}
+            </Typography>
             <ScheduleInterval
               defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}

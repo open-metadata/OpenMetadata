@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Empty, Row } from 'antd';
 import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -63,11 +64,11 @@ const TreeViewTab = ({
           <ArrowSvg className="cursor-pointer" />
         </Col>
         <Col>
-          <Typography.Text className="p-b-0 m-b-0 font-medium">
+          <Typography className="p-b-0 m-b-0 font-medium" variant="text">
             {`${formatDateTime(startTime)} ${t(
               'label.to-lowercase'
             )} ${formatDateTime(endTime)}`}
-          </Typography.Text>
+          </Typography>
         </Col>
         <Col>
           <ArrowSvg className=" cursor-pointer transform-180" />

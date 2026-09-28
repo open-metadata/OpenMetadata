@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner, OwnerChip } from '@openmetadata/ui-core-components';
-import { Col, Row, Typography } from 'antd';
+import { Owner, OwnerChip, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -110,9 +110,9 @@ function ActivityOwnersFeed({
                     name={owner.name ?? ''}
                     width="24"
                   />
-                  <Typography.Text className="owner-chip-text">
+                  <Typography className="owner-chip-text" variant="text">
                     {owner.displayName}
-                  </Typography.Text>
+                  </Typography>
                 </div>
               </UserPopOverCard>
             ) : (
@@ -160,9 +160,9 @@ function ActivityOwnersFeed({
           <Row wrap align="middle">
             <Row align="middle">
               <AddIcon className="text-success-hover" height={16} width={16} />
-              <Typography.Text className="owners-label">
+              <Typography className="owners-label" variant="text">
                 {t('label.owner-plural-with-colon')}
-              </Typography.Text>
+              </Typography>
             </Row>
 
             <Col>{renderUpdatedOwner}</Col>
@@ -175,9 +175,9 @@ function ActivityOwnersFeed({
             <Col>
               <Row align="middle">
                 <DeletedIcon className="text-error" height={14} width={14} />
-                <Typography.Text className="owners-label">
+                <Typography className="owners-label" variant="text">
                   {t('label.owner-plural-with-colon')}
-                </Typography.Text>
+                </Typography>
               </Row>
             </Col>
             <Col>{renderPreviousOwner}</Col>

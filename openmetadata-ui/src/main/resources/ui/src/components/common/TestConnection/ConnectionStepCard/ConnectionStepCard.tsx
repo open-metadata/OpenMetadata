@@ -13,7 +13,8 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Button, Collapse, Divider, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Collapse, Divider, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -74,18 +75,18 @@ const ConnectionStepStatusBadge = ({
 
   if (isTestingConnection) {
     return (
-      <Typography.Text className="awaiting-status">
+      <Typography className="awaiting-status" variant="text">
         {`${t('label.awaiting-status')}...`}
-      </Typography.Text>
+      </Typography>
     );
   }
 
   if (success) {
     return (
       <div className="d-flex gap-2 align-center">
-        <Typography.Text className="success-status">
+        <Typography className="success-status" variant="text">
           {`${t('label.success')}`}
-        </Typography.Text>
+        </Typography>
         <Icon
           component={SuccessIcon}
           data-testid="success-badge"
@@ -98,9 +99,9 @@ const ConnectionStepStatusBadge = ({
   if (isMandatoryStepsFailing) {
     return (
       <div className="d-flex gap-2 align-center">
-        <Typography.Text className="failure-status">
+        <Typography className="failure-status" variant="text">
           {`${t('label.failed')}`}
-        </Typography.Text>
+        </Typography>
         <Icon
           component={FailIcon}
           data-testid="fail-badge"
@@ -113,9 +114,9 @@ const ConnectionStepStatusBadge = ({
   if (isNonMandatoryStepsFailing) {
     return (
       <div className="d-flex gap-2 align-center">
-        <Typography.Text className="warning-status">
+        <Typography className="warning-status" variant="text">
           {`${t('label.attention')}`}
-        </Typography.Text>
+        </Typography>
         <Icon
           component={AttentionIcon}
           data-testid="warning-badge"
@@ -127,9 +128,9 @@ const ConnectionStepStatusBadge = ({
 
   if (isSkipped) {
     return (
-      <Typography.Text className="skipped-status">
+      <Typography className="skipped-status" variant="text">
         {t('label.skipped')}
-      </Typography.Text>
+      </Typography>
     );
   }
 
@@ -178,11 +179,11 @@ const ConnectionStepCard = ({
         })}>
         <Space className="w-full justify-between">
           <Space>
-            <Typography.Text className="text-body text-600">
+            <Typography className="text-body text-600" variant="text">
               {testConnectionStep.mandatory
                 ? requiredField(testConnectionStep.name, true)
                 : testConnectionStep.name}
-            </Typography.Text>
+            </Typography>
             <Tooltip
               placement="bottom"
               showArrow={false}
@@ -203,9 +204,9 @@ const ConnectionStepCard = ({
         isNonMandatoryStepsFailing ||
         testConnectionStepResult?.message) && (
         <div className="connection-step-card-content">
-          <Typography.Text className="text-body">
+          <Typography className="text-body" variant="text">
             {testConnectionStepResult?.message}
-          </Typography.Text>
+          </Typography>
           {testConnectionStepResult?.errorLog && (
             <>
               <Divider className="connection-step-card-content-divider" />

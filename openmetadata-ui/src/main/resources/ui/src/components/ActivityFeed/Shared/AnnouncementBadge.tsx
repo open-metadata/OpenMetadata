@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import './task-badge.less';
@@ -24,9 +24,9 @@ const AnnouncementBadge = () => {
     <div className="announcement-badge-container">
       <Icon className="announcement-badge" component={AnnouncementIcon} />
 
-      <Typography.Text className="announcement-text">
+      <Typography className="announcement-text" variant="text">
         {t('label.announcement')}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };

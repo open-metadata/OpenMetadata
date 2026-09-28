@@ -17,8 +17,8 @@ import {
   Owner,
   Skeleton,
   Table,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -152,9 +152,9 @@ export const TestSuitesTable = ({
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>{renderNameCell(record)}</Table.Cell>
       <Table.Cell>
-        <Typography.Text>
+        <Typography variant="text">
           {(record.summary as TestSummary)?.total ?? 0}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>

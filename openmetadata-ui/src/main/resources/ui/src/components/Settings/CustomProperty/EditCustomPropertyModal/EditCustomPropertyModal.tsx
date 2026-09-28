@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Modal, Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
+import { Form, Modal } from 'antd';
 import { isUndefined, uniq } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -192,13 +194,14 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   }, [customProperty, hasEnumConfig]);
 
   const note = (
-    <Typography.Text
+    <Typography
       className="text-grey-muted"
-      style={{ display: 'block', marginTop: '-18px' }}>
+      style={{ display: 'block', marginTop: '-18px' }}
+      variant="text">
       {`Note: ${t(
         'message.updating-existing-not-possible-can-add-new-values'
       )}`}
-    </Typography.Text>
+    </Typography>
   );
 
   const enumUpdateBanner = isSaving && (
@@ -226,12 +229,12 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       okText={t('label.save')}
       open={visible}
       title={
-        <Typography.Text>
+        <Typography variant="text">
           {t('label.edit-entity-name', {
             entityType: t('label.property'),
             entityName: customProperty.name,
           })}
-        </Typography.Text>
+        </Typography>
       }
       width={800}
       onCancel={onCancel}>

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Select, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,6 +41,7 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
+
 const OnlineUsersPage = () => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -192,9 +194,9 @@ const OnlineUsersPage = () => {
 
         if (!activityTime) {
           return (
-            <Typography.Text type="secondary">
+            <Typography color="secondary" variant="text">
               {t('label.never')}
-            </Typography.Text>
+            </Typography>
           );
         }
 
@@ -223,12 +225,15 @@ const OnlineUsersPage = () => {
 
         return (
           <Space direction="vertical" size={0}>
-            <Typography.Text style={{ color: statusColor }}>
+            <Typography style={{ color: statusColor }} variant="text">
               {statusText}
-            </Typography.Text>
-            <Typography.Text style={{ fontSize: '12px' }} type="secondary">
+            </Typography>
+            <Typography
+              color="secondary"
+              style={{ fontSize: '12px' }}
+              variant="text">
               {formatDateTime(activityTime)}
-            </Typography.Text>
+            </Typography>
           </Space>
         );
       },
@@ -270,7 +275,9 @@ const OnlineUsersPage = () => {
             dataSource={userList}
             extraTableFilters={
               <Space>
-                <Typography.Text>{t('label.time-window')}:</Typography.Text>
+                <Typography variant="text">
+                  {t('label.time-window')}:
+                </Typography>
                 <Select
                   data-testid="time-window-select"
                   options={TIME_WINDOWS}

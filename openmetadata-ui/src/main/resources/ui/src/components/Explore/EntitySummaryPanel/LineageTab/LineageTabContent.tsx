@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner, Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Typography } from 'antd';
+import { Owner, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,9 +153,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             {searchClassBase.getEntityIcon(entityType)}
           </span>
         )}
-        <Typography.Text className="item-entity-type-text">
+        <Typography className="item-entity-type-text" variant="text">
           {capitalize(entityType)}
-        </Typography.Text>
+        </Typography>
       </>
     );
   };
@@ -285,9 +285,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                 </div>
                 <div className="lineage-card-content">
-                  <Typography.Text className="item-name-text">
+                  <Typography className="item-name-text" variant="text">
                     {getEntityName(item.entity)}
-                  </Typography.Text>
+                  </Typography>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
                     {renderEntityTypeInfo(item.entity.entityType)}
                     <span className="item-bullet-separator">
@@ -305,9 +305,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center  no-data-placeholder">
+              <Typography
+                className="text-center  no-data-placeholder"
+                variant="paragraph">
                 {t('label.lineage-not-found')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolderNew>
           </div>
         )}

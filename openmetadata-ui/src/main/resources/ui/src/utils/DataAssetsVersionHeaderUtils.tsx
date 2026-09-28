@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Divider, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Divider, Space } from 'antd';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
@@ -45,9 +46,9 @@ export const VersionExtraInfoLink = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <div className="d-flex items-center text-xs">
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+      <Typography href={href} style={{ fontSize: '12px' }} variant="link">
         {stringToHTML(value)}
-      </Typography.Link>
+      </Typography>
     </div>
   </>
 );
@@ -64,15 +65,19 @@ export const VersionExtraInfoLabel = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <Space align="center" data-testid={dataTestId}>
-      <Typography.Text className="self-center text-xs whitespace-nowrap">
+      <Typography
+        className="self-center text-xs whitespace-nowrap"
+        variant="text">
         {!isEmpty(label) && (
           <span className="text-grey-muted">{`${label}: `}</span>
         )}
-      </Typography.Text>
+      </Typography>
 
-      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+      <Typography
+        className="self-center text-xs whitespace-nowrap font-medium"
+        variant="text">
         {stringToHTML(value)}
-      </Typography.Text>
+      </Typography>
     </Space>
   </>
 );
@@ -103,11 +108,12 @@ export const getExtraInfoSourceUrl = (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
           <div className="d-flex items-center text-xs">
-            <Typography.Link
+            <Typography
               href={pipelineDetails.sourceUrl}
-              style={{ fontSize: '12px' }}>
+              style={{ fontSize: '12px' }}
+              variant="link">
               {getEntityName(pipelineDetails)}{' '}
-            </Typography.Link>
+            </Typography>
             <Icon
               className="m-l-xss"
               component={IconExternalLink}

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Switch, Typography } from 'antd';
+import { Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Switch } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -140,12 +140,14 @@ const SettingsSso = () => {
           <div className="enable-sso-card-container">
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
-                <Typography.Title className="enable-self-signup-header m-b-xs">
+                <Typography
+                  className="enable-self-signup-header m-b-xs"
+                  variant="title">
                   {t('label.enable-sso')}
-                </Typography.Title>
-                <Typography.Text className="enable-self-signup-desc">
+                </Typography>
+                <Typography className="enable-self-signup-desc" variant="text">
                   {t('message.allow-user-to-login-via-sso')}
-                </Typography.Text>
+                </Typography>
               </div>
               <Switch
                 checked={ssoEnabled}
@@ -381,9 +383,11 @@ const SettingsSso = () => {
                     />
                   )}
                 </div>
-                <Typography.Title className="m-0 sso-form-header text-md">
+                <Typography
+                  className="m-0 sso-form-header text-md"
+                  variant="title">
                   {getProviderDisplayName(currentProvider)}
-                </Typography.Title>
+                </Typography>
               </div>
             </div>
           </div>

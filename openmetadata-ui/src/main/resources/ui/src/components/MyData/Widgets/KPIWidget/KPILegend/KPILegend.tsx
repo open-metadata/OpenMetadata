@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import { Progress, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Progress, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +35,7 @@ const GoalCompleted = () => {
   return (
     <div className="goal-completed-container">
       <CheckIcon />
-      <Typography.Text>{t('label.goal-completed')}</Typography.Text>
+      <Typography variant="text">{t('label.goal-completed')}</Typography>
     </div>
   );
 };
@@ -45,7 +46,7 @@ const GoalMissed = () => {
   return (
     <div className="goal-missed-container">
       <WarningOutlined />
-      <Typography.Text>{t('label.goal-missed')}</Typography.Text>
+      <Typography variant="text">{t('label.goal-missed')}</Typography>
     </div>
   );
 };
@@ -83,10 +84,12 @@ const KPILegend: React.FC<KPILegendProps> = ({
           centerContent = <GoalMissed />;
         } else {
           centerContent = (
-            <Typography.Text className="text-xss font-semibold kpi-legend-days-left text-center">
+            <Typography
+              className="text-xss font-semibold kpi-legend-days-left text-center"
+              variant="text">
               {daysLeft <= 0 ? 0 : daysLeft}{' '}
               {t('label.days-left').toUpperCase()}
-            </Typography.Text>
+            </Typography>
           );
         }
 
@@ -94,11 +97,12 @@ const KPILegend: React.FC<KPILegendProps> = ({
           return (
             <div className="kpi-full-legend" key={key}>
               <div className="kpi-legend-header">
-                <Typography.Text
+                <Typography
                   className="kpi-legend-title"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{ tooltip: true }}
+                  variant="text">
                   {resultData.displayName}
-                </Typography.Text>
+                </Typography>
 
                 {daysLeft <= 0 || isTargetMet ? (
                   <Tooltip
@@ -120,17 +124,21 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
               <div className="kpi-legend-bottom-row">
                 <div className="kpi-legend-value-section">
-                  <Typography.Text className="text-xss kpi-legend-value">
+                  <Typography
+                    className="text-xss kpi-legend-value"
+                    variant="text">
                     {current.toFixed(0)}
                     {suffix}
-                  </Typography.Text>
+                  </Typography>
                 </div>
                 <div className="kpi-legend-center-section">{centerContent}</div>
                 <div className="kpi-legend-value-section">
-                  <Typography.Text className="text-xss kpi-legend-value">
+                  <Typography
+                    className="text-xss kpi-legend-value"
+                    variant="text">
                     {target.toFixed(0)}
                     {suffix}
-                  </Typography.Text>
+                  </Typography>
                 </div>
               </div>
             </div>
@@ -144,12 +152,15 @@ const KPILegend: React.FC<KPILegendProps> = ({
               className="legend-dot h-3 w-3 m-r-xss"
               style={{ backgroundColor: color }}
             />
-            <Typography.Text strong className="text-xs font-semibold">
+            <Typography strong className="text-xs font-semibold" variant="text">
               {`${resultData.displayName}:`}
-            </Typography.Text>
-            <Typography.Text className="text-xs font-normal" type="secondary">
+            </Typography>
+            <Typography
+              className="text-xs font-normal"
+              color="secondary"
+              variant="text">
               {daysLeft <= 0 ? 0 : daysLeft} {t('label.days-left')}
-            </Typography.Text>
+            </Typography>
           </div>
         );
       })}

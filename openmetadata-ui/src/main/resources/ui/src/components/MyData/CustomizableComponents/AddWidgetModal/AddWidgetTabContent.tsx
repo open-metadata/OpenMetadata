@@ -12,6 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -21,7 +22,6 @@ import {
   Row,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,7 +76,7 @@ function AddWidgetTabContent({
     <Row data-testid={widget.id}>
       <Col span={24}>
         <Space>
-          <Typography.Text>{`${t('label.size')}:`}</Typography.Text>
+          <Typography variant="text">{`${t('label.size')}:`}</Typography>
           <Radio.Group
             data-testid="size-selector-button"
             defaultValue={selectedWidgetSize}
@@ -96,11 +96,12 @@ function AddWidgetTabContent({
                 preview={false}
                 src={widgetImage}
               />
-              <Typography.Paragraph
+              <Typography
                 className="d-block text-center"
-                data-testid="widget-description">
+                data-testid="widget-description"
+                variant="paragraph">
                 {widget.description}
-              </Typography.Paragraph>
+              </Typography>
               <Tooltip
                 placement="bottom"
                 title={widgetAddable ? '' : t('message.can-not-add-widget')}>

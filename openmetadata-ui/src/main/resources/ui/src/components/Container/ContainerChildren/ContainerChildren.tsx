@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -235,9 +235,9 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
               data-testid="show-deleted"
               onClick={handleShowDeletedChange}
             />
-            <Typography.Text className="m-l-xs">
+            <Typography className="m-l-xs" variant="text">
               {t('label.deleted')}
-            </Typography.Text>
+            </Typography>
           </span>
         )
       }

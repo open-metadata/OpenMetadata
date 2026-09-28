@@ -111,11 +111,17 @@
   font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   .ant-typography,
+  [data-typography],
   .ant-typography a,
+  [data-typography] a,
   &.ant-typography,
+  &[data-typography],
   &.ant-typography a,
+  &[data-typography] a,
   & a.ant-typography,
-  & .ant-typography a {
+  & a[data-typography],
+  & .ant-typography a,
+  & [data-typography] a {
     color: @primary-heading-color;
   }
 }
@@ -205,11 +211,13 @@
   font-weight: var(--om-font-weight-semibold);
   color: @primary-heading-color;
   line-height: 20px;
-  &.ant-typography {
+  &.ant-typography,
+  &[data-typography] {
     color: @primary-heading-color;
   }
 }
-.entity-type.ant-typography {
+.entity-type.ant-typography,
+.entity-type[data-typography] {
   color: @primary-heading-color;
 }
 .entity-link {

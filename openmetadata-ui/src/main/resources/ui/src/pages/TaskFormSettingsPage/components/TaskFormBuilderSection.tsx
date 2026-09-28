@@ -25,6 +25,7 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -34,7 +35,6 @@ import {
   Input,
   Select,
   Space,
-  Typography,
 } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,13 +116,13 @@ const TaskFormBuilderSection = ({
     <div className="task-form-builder-section">
       <div className="task-form-builder-section__header">
         <div>
-          <Typography.Title className="m-b-xs" level={5}>
+          <Typography className="m-b-xs" level={5} variant="title">
             {title}
-          </Typography.Title>
+          </Typography>
           {description ? (
-            <Typography.Paragraph className="m-b-0 text-grey-muted">
+            <Typography className="m-b-0 text-grey-muted" variant="paragraph">
               {description}
-            </Typography.Paragraph>
+            </Typography>
           ) : null}
         </div>
         <Button
@@ -173,12 +173,16 @@ const TaskFormBuilderSection = ({
                   size="small"
                   title={
                     <div className="task-form-builder-section__field-heading">
-                      <Typography.Text className="task-form-builder-section__field-title">
+                      <Typography
+                        className="task-form-builder-section__field-title"
+                        variant="text">
                         {field.label || field.name || `Field ${index + 1}`}
-                      </Typography.Text>
-                      <Typography.Text className="task-form-builder-section__field-meta">
+                      </Typography>
+                      <Typography
+                        className="task-form-builder-section__field-meta"
+                        variant="text">
                         {summary}
-                      </Typography.Text>
+                      </Typography>
                     </div>
                   }>
                   <div className="d-grid gap-3">
@@ -335,9 +339,9 @@ const TaskFormBuilderSection = ({
               />
             </div>
           ) : (
-            <Typography.Text className="text-grey-muted">
+            <Typography className="text-grey-muted" variant="text">
               {t('message.add-fields-to-preview-form')}
-            </Typography.Text>
+            </Typography>
           )}
         </Card>
       </div>

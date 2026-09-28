@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Popover,
-  RefSelectProps,
-  Select,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Popover, RefSelectProps, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -44,11 +37,11 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       {props ? (
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
+        <Typography variant="text">{getEntityName(props)}</Typography>
       ) : (
-        <Typography.Text className="text-grey-body">
+        <Typography className="text-grey-body" variant="text">
           {t('message.no-data-available')}
-        </Typography.Text>
+        </Typography>
       )}
     </Space>
   );
@@ -248,11 +241,13 @@ export const PersonaSelectableList = ({
               <PersonaIcon height={16} />
             </div>
 
-            <Typography.Text className="user-profile-edit-popover-card-title">
+            <Typography
+              className="user-profile-edit-popover-card-title"
+              variant="text">
               {isDefaultPersona
                 ? t('label.default-persona')
                 : t('label.persona')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <div className="border" id="area" style={{ borderRadius: '5px' }}>

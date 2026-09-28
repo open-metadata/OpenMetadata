@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Select, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Select, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import React, {
@@ -134,14 +135,17 @@ const DataProductsSelectList = ({
         label: item.label,
         displayName: (
           <Space className="w-full" direction="vertical" size={0}>
-            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
+            <Typography
+              ellipsis
+              className="text-grey-muted m-0 p-0"
+              variant="paragraph">
               {item.value.domains
                 ?.map((domain) => getEntityName(domain))
                 .join(', ')}
-            </Typography.Paragraph>
-            <Typography.Text ellipsis>
+            </Typography>
+            <Typography ellipsis variant="text">
               {getEntityName(item.value)}
-            </Typography.Text>
+            </Typography>
           </Space>
         ),
         value: item.value.fullyQualifiedName,

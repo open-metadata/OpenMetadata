@@ -13,13 +13,18 @@
 
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
-import type {
-  ElementType,
-  HTMLAttributeAnchorTarget,
-  HTMLAttributes,
-  ReactNode,
-  Ref,
+import {
+  type CSSProperties,
+  type ElementType,
+  type HTMLAttributeAnchorTarget,
+  type HTMLAttributes,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useRef,
+  useState,
 } from 'react';
+import { mergeProps, useFocusable } from 'react-aria';
 import type { PressEvent } from 'react-aria-components';
 
 // Tooltip's auto-generated focusable wrapper uses react-aria's AriaButton,
@@ -77,6 +82,17 @@ type TypographyEllipsis =
       tooltip?: ReactNode;
     };
 
+/**
+ * Base styles matching antd `Typography` 1:1 (see the `[data-typography]`
+ * block in styles/typography.css): `text` = `Typography.Text`, `paragraph` =
+ * `Typography.Paragraph`, `title` = `Typography.Title`, `link` =
+ * `Typography.Link`. Omit it for the default prose-based rendering.
+ */
+type TypographyVariant = 'text' | 'paragraph' | 'title' | 'link';
+
+/** Heading level for `variant="title"`, as antd `Title` `level`. */
+type TypographyLevel = 1 | 2 | 3 | 4 | 5;
+
 interface TypographyProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;
   children?: ReactNode;
@@ -88,6 +104,12 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
   tooltip?: ReactNode;
+  variant?: TypographyVariant;
+  level?: TypographyLevel;
+  /** Wraps children in `<strong>`, as antd `strong`. */
+  strong?: boolean;
+  /** Wraps children in `<code>`, as antd `code`. */
+  code?: boolean;
   // Anchor pass-through, for the `as="a"` shape used by antd `Typography.Link`
   // migrations. `HTMLAttributes` doesn't include these — they're spread onto
   // `Component` at runtime regardless of `as`, so this only widens the type to
@@ -155,7 +177,129 @@ const colorClasses: Record<TypographyColor, string> = {
   danger: 'tw:text-error-primary',
 };
 
+// antd order: `strong` innermost, `code` around it.
+const decorate = (
+  children: ReactNode,
+  { strong, code }: Pick<TypographyProps, 'strong' | 'code'>
+) => {
+  let content = children;
+  if (strong) {
+    content = <strong>{content}</strong>;
+  }
+  if (code) {
+    content = <code>{content}</code>;
+  }
+
+  return content;
+};
+
+const variantElements: Record<
+  Exclude<TypographyVariant, 'title'>,
+  ElementType
+> = {
+  text: 'span',
+  paragraph: 'div',
+  link: 'a',
+};
+
+// antd's exact truncation test (Typography/Base): width for one line, height
+// for a line clamp.
+const isTruncated = (el: HTMLElement | null, rows: number) =>
+  !!el &&
+  (rows > 1
+    ? el.offsetHeight < el.scrollHeight
+    : el.offsetWidth < el.scrollWidth);
+
+type TooltipTargetProps = HTMLAttributes<HTMLElement> & {
+  as: ElementType;
+  targetRef: RefObject<HTMLElement | null>;
+};
+
+// Registers the element itself as the tooltip trigger — no wrapper box, so
+// layout matches antd, which clones the trigger instead of wrapping it.
+// `tabIndex` is dropped: antd ellipsis text is not a tab stop.
+const TooltipTarget = ({
+  as: Component,
+  targetRef,
+  ...props
+}: TooltipTargetProps) => {
+  const { focusableProps } = useFocusable({}, targetRef);
+  const { tabIndex: _tabIndex, ...triggerProps } = focusableProps;
+
+  return <Component {...mergeProps(triggerProps, props)} ref={targetRef} />;
+};
+
+const VariantTypography = ({
+  variant,
+  level = 1,
+  as,
+  className,
+  children,
+  size,
+  weight,
+  color,
+  ellipsis,
+  tooltip,
+  strong,
+  code,
+  style,
+  quoteVariant: _quoteVariant,
+  ...otherProps
+}: TypographyProps & { variant: TypographyVariant }) => {
+  const targetRef = useRef<HTMLElement>(null);
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+
+  const Component =
+    as ?? (variant === 'title' ? `h${level}` : variantElements[variant]);
+  const ellipsisConfig = typeof ellipsis === 'object' ? ellipsis : {};
+  const rows = ellipsisConfig.rows ?? 1;
+  const ellipsisTooltip =
+    ellipsis && ellipsisConfig.tooltip === true
+      ? children
+      : ellipsis && ellipsisConfig.tooltip;
+
+  const elementProps = {
+    ...otherProps,
+    className: cx(
+      'not-prose',
+      size && sizeClasses[size],
+      weight && weightClasses[weight],
+      className
+    ),
+    'data-color': color,
+    'data-ellipsis': ellipsis ? (rows > 1 ? 'multiple' : 'single') : undefined,
+    'data-typography': variant,
+    style: (ellipsis && rows > 1
+      ? { ...style, WebkitLineClamp: rows }
+      : style) as CSSProperties,
+    children: decorate(children, { strong, code }),
+  };
+
+  const tooltipTitle = ellipsisTooltip || tooltip;
+
+  if (!tooltipTitle) {
+    return <Component {...elementProps} />;
+  }
+
+  return (
+    <Tooltip
+      isOpen={isTooltipOpen}
+      title={tooltipTitle}
+      onOpenChange={(isOpen) =>
+        setIsTooltipOpen(
+          isOpen && (!ellipsisTooltip || isTruncated(targetRef.current, rows))
+        )
+      }>
+      <TooltipTarget {...elementProps} as={Component} targetRef={targetRef} />
+    </Tooltip>
+  );
+};
+
 export const Typography = (props: TypographyProps) => {
+  if (props.variant) {
+    return <VariantTypography {...props} variant={props.variant} />;
+  }
+
   const {
     as: Component = 'span',
     quoteVariant = 'default',
@@ -167,6 +311,10 @@ export const Typography = (props: TypographyProps) => {
     ellipsis,
     tooltip,
     style,
+    variant: _variant,
+    level: _level,
+    strong,
+    code,
     ...otherProps
   } = props;
 
@@ -220,7 +368,7 @@ export const Typography = (props: TypographyProps) => {
       {...otherProps}
       className={canUnwrap ? cx('prose', innerClassName) : innerClassName}
       style={style}>
-      {children}
+      {decorate(children, { strong, code })}
     </Component>
   );
 
@@ -261,8 +409,10 @@ export const Typography = (props: TypographyProps) => {
 export type {
   TypographyColor,
   TypographyEllipsis,
+  TypographyLevel,
   TypographyProps,
   TypographyQuoteVariant,
   TypographySize,
+  TypographyVariant,
   TypographyWeight,
 };

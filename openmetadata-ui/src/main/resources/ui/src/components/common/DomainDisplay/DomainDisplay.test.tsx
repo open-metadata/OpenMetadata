@@ -117,7 +117,7 @@ describe('DomainDisplay Component', () => {
       'flex-shrink-0'
     );
     expect(screen.getByText('+2')).toHaveClass('domain-count-label');
-    expect(screen.getByText('+2')).not.toHaveClass('ant-typography');
+    expect(screen.getByText('+2')).not.toHaveAttribute('data-typography');
     expect(screen.queryByText('Domain Two')).not.toBeInTheDocument();
     expect(screen.queryByText('Domain Three')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('domain-icon')).toHaveLength(1);

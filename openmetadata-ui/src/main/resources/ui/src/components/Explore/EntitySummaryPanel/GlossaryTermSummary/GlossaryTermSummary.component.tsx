@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,11 +86,12 @@ function GlossaryTermSummary({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
-              data-testid="reviewer-header">
+              data-testid="reviewer-header"
+              variant="text">
               {t('label.reviewer-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {reviewers.length > 0 ? (
@@ -100,11 +101,12 @@ function GlossaryTermSummary({
                 showLabel={false}
               />
             ) : (
-              <Typography.Text
+              <Typography
                 className="no-data-chip-placeholder"
-                data-testid="no-reviewer-header">
+                data-testid="no-reviewer-header"
+                variant="text">
                 {t('label.no-reviewer')}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>
@@ -113,11 +115,12 @@ function GlossaryTermSummary({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
-              data-testid="synonyms-header">
+              data-testid="synonyms-header"
+              variant="text">
               {t('label.synonym-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {synonyms.length > 0 ? (
@@ -127,11 +130,12 @@ function GlossaryTermSummary({
                 ))}
               </div>
             ) : (
-              <Typography.Text
+              <Typography
                 className="no-data-chip-placeholder"
-                data-testid="no-synonyms-available-header">
+                data-testid="no-synonyms-available-header"
+                variant="text">
                 {t('message.no-synonyms-available')}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>
@@ -140,11 +144,12 @@ function GlossaryTermSummary({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
-              data-testid="children-header">
+              data-testid="children-header"
+              variant="text">
               {t('label.children')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <SummaryList

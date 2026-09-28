@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
 } from '@untitledui/icons';
-import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
+import { Card, Drawer, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -788,7 +788,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           className="tw:inline-flex tw:items-center tw:min-w-0"
           key={breadcrumb.fullyQualifiedName}>
           <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
-            <Typography.Text
+            <Typography
               className={classNames('tw:text-xs tw:truncate', {
                 'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                   isLastItem,
@@ -796,11 +796,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   !isLastItem,
               })}
               title={getEntityName(breadcrumb)}
+              variant="text"
               onClick={
                 isLastItem ? undefined : () => handleBreadcrumbClick(breadcrumb)
               }>
               {getEntityName(breadcrumb)}
-            </Typography.Text>
+            </Typography>
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
                 className="tw:text-gray-400 tw:shrink-0"
@@ -853,12 +854,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text
+      <Typography
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
-        ellipsis={{ tooltip: true }}>
+        ellipsis={{ tooltip: true }}
+        variant="text">
         {renderHighlightedText(activeColumn.name || '')}
-      </Typography.Text>
+      </Typography>
     );
   }
 
@@ -920,17 +922,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     placement="topLeft"
                     title={getEntityName(activeColumn)}
                     trigger="hover">
-                    <Typography.Text
+                    <Typography
                       ellipsis
                       className="entity-title-link"
-                      data-testid="entity-link">
+                      data-testid="entity-link"
+                      variant="text">
                       {renderHighlightedText(
                         (activeColumn as { displayName?: string })
                           .displayName ||
                           activeColumn.name ||
                           ''
                       )}
-                    </Typography.Text>
+                    </Typography>
                   </Tooltip>
 
                   {renderEditDisplayNameButton()}
@@ -995,10 +998,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text className="pagination-header-text tw:font-medium">
+      <Typography
+        className="pagination-header-text tw:font-medium"
+        variant="text">
         {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
         {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-      </Typography.Text>
+      </Typography>
     );
   }
 

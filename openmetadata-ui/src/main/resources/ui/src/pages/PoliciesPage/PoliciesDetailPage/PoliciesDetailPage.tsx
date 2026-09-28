@@ -13,18 +13,8 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Modal,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Dropdown, Modal, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -367,11 +357,12 @@ const PoliciesDetailPage = () => {
                     align="baseline"
                     className="w-full justify-between p-b-lg"
                     direction="horizontal">
-                    <Typography.Text
+                    <Typography
                       className="font-medium text-base text-grey-body"
-                      data-testid="rule-name">
+                      data-testid="rule-name"
+                      variant="text">
                       {rule.name}
-                    </Typography.Text>
+                    </Typography>
                     {getRuleActionElement(rule)}
                   </Space>
 
@@ -379,9 +370,11 @@ const PoliciesDetailPage = () => {
                     {rule.description && (
                       <Row data-testid="description">
                         <Col span={2}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography
+                            className="text-grey-muted"
+                            variant="text">
                             {`${t('label.description')}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={22}>
                           <RichTextEditorPreviewerV1
@@ -393,49 +386,53 @@ const PoliciesDetailPage = () => {
 
                     <Row data-testid="resources">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted m-b-0">
+                        <Typography
+                          className="text-grey-muted m-b-0"
+                          variant="text">
                           {`${t('label.resource-plural')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body" variant="text">
                           {rule.resources
                             ?.map((resource) => startCase(resource))
                             ?.join(', ')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
 
                     <Row data-testid="operations">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted">
+                        <Typography className="text-grey-muted" variant="text">
                           {`${t('label.operation-plural')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body" variant="text">
                           {rule.operations?.join(', ')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                     <Row data-testid="effect">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted">
+                        <Typography className="text-grey-muted" variant="text">
                           {`${t('label.effect')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body" variant="text">
                           {startCase(rule.effect)}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                     {rule.condition && (
                       <Row data-testid="condition">
                         <Col span={2}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography
+                            className="text-grey-muted"
+                            variant="text">
                             {`${t('label.condition')}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={22}>
                           <code>{rule.condition}</code>
@@ -614,12 +611,12 @@ const PoliciesDetailPage = () => {
               );
               setEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography variant="text">
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: policyName,
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         )}
       </div>

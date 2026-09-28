@@ -25,15 +25,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import {
-  Checkbox,
-  Form,
-  Input,
-  InputNumber,
-  Select,
-  Tag,
-  Typography as AntTypography,
-} from 'antd';
+import { Checkbox, Form, Input, InputNumber, Select, Tag } from 'antd';
 import { uniqBy } from 'lodash';
 import {
   ReactNode,
@@ -447,9 +439,11 @@ const TaskPayloadSchemaFields = ({
           onChange={(value) => updateField(fieldName, value)}
         />
         {description ? (
-          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+          <Typography
+            className="m-b-0 m-t-xs text-grey-muted"
+            variant="paragraph">
             {description}
-          </AntTypography.Paragraph>
+          </Typography>
         ) : null}
       </Form.Item>
     );
@@ -500,9 +494,11 @@ const TaskPayloadSchemaFields = ({
           }}
         />
         {description ? (
-          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+          <Typography
+            className="m-b-0 m-t-xs text-grey-muted"
+            variant="paragraph">
             {description}
-          </AntTypography.Paragraph>
+          </Typography>
         ) : null}
       </Form.Item>
     );
@@ -530,9 +526,11 @@ const TaskPayloadSchemaFields = ({
           onChange={(newTags) => updateField(fieldName, newTags)}
         />
         {description ? (
-          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+          <Typography
+            className="m-b-0 m-t-xs text-grey-muted"
+            variant="paragraph">
             {description}
-          </AntTypography.Paragraph>
+          </Typography>
         ) : null}
       </Form.Item>
     );
@@ -707,9 +705,11 @@ const TaskPayloadSchemaFields = ({
           }}
         />
         {description ? (
-          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+          <Typography
+            className="m-b-0 m-t-xs text-grey-muted"
+            variant="paragraph">
             {description}
-          </AntTypography.Paragraph>
+          </Typography>
         ) : null}
       </Form.Item>
     );
@@ -737,9 +737,11 @@ const TaskPayloadSchemaFields = ({
           onChange={(event) => updateField(fieldName, event.target.value)}
         />
         {description ? (
-          <AntTypography.Paragraph className="m-b-0 m-t-xs text-grey-muted">
+          <Typography
+            className="m-b-0 m-t-xs text-grey-muted"
+            variant="paragraph">
             {description}
-          </AntTypography.Paragraph>
+          </Typography>
         ) : null}
       </Form.Item>
     );

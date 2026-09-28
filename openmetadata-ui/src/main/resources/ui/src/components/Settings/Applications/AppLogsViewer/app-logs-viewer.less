@@ -16,28 +16,32 @@
 .entity-stats {
   width: max-content;
 
-  .ant-typography {
+  .ant-typography,
+  [data-typography] {
     font-weight: var(--om-font-weight-medium);
   }
 
   &.total {
     background-color: @primary-1;
     border: 1px solid @primary-color;
-    .ant-typography {
+    .ant-typography,
+    [data-typography] {
       color: @primary-color;
     }
   }
   &.success {
     background-color: @green-2;
     border: 1px solid @success-color;
-    .ant-typography {
+    .ant-typography,
+    [data-typography] {
       color: @success-color;
     }
   }
   &.failure {
     background-color: @error-light-color;
     border: 1px solid @failed-color;
-    .ant-typography {
+    .ant-typography,
+    [data-typography] {
       color: @failed-color;
     }
   }

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
+import { Divider, Space, Tooltip as AntDTooltip } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
@@ -123,12 +124,14 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography.Text className="tw:text-primary_on-brand">{`${t(
+          <Typography className="tw:text-primary_on-brand" variant="text">{`${t(
             type
-          )} :`}</Typography.Text>
-          <Typography.Paragraph className="m-0 tw:text-primary_on-brand">
+          )} :`}</Typography>
+          <Typography
+            className="m-0 tw:text-primary_on-brand"
+            variant="paragraph">
             {t(description)}
-          </Typography.Paragraph>
+          </Typography>
         </Space>
 
         {index !== 2 && <Divider className="m-0" />}
@@ -162,11 +165,12 @@ export const renderDomainLink = (
         data-testid="domain-link"
         to={getDomainPath(domain?.fullyQualifiedName)}>
         {trimLink ? (
-          <Typography.Text
+          <Typography
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}>
+            ellipsis={{ tooltip: false }}
+            variant="text">
             {displayName}
-          </Typography.Text>
+          </Typography>
         ) : (
           <>{displayName}</>
         )}
@@ -214,7 +218,9 @@ export const convertDomainsToTreeOptions = (
             />
           )}
 
-          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
+          <Typography ellipsis variant="text">
+            {getEntityName(option)}
+          </Typography>
         </div>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,

@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Form, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Space } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { compact, isArray } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -114,14 +114,14 @@ const AddGlossary = ({
 
   const rightPanel = (
     <div data-testid="right-panel">
-      <Typography.Title level={5}>
+      <Typography level={5} variant="title">
         {t('label.configure-entity', {
           entity: t('label.glossary'),
         })}
-      </Typography.Title>
-      <Typography.Text className="mb-5">
+      </Typography>
+      <Typography className="mb-5" variant="text">
         {t('message.create-new-glossary-guide')}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 
@@ -306,12 +306,13 @@ const AddGlossary = ({
         children: (
           <>
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-            <Typography.Title
+            <Typography
               className="m-t-md"
               data-testid="form-heading"
-              level={5}>
+              level={5}
+              variant="title">
               {header}
-            </Typography.Title>
+            </Typography>
             <div className="add-glossary" data-testid="add-glossary">
               <Form form={form} layout="vertical" onFinish={handleSave}>
                 {generateFormFields(formFields)}

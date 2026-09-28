@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { MoreOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Space } from 'antd';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -45,13 +46,13 @@ const AnnouncementEntityLinkLabel = ({
   }
 
   return (
-    <Typography.Text className="text-grey-muted text-xs">
+    <Typography className="text-grey-muted text-xs" variant="text">
       {entityLink ? (
         <Link to={entityLink}>{entityFQN.split('.').pop()}</Link>
       ) : (
         entityFQN.split('.').pop()
       )}
-    </Typography.Text>
+    </Typography>
   );
 };
 
@@ -149,18 +150,18 @@ const AnnouncementFeedCardBody = ({
       data-testid="main-message">
       <div className="d-flex justify-between gap-4">
         <div className="d-flex flex-column gap-2 flex-1">
-          <Typography.Text className="text-base font-medium">
+          <Typography className="text-base font-medium" variant="text">
             {announcementTitle}
-          </Typography.Text>
+          </Typography>
           <Space wrap size={8}>
             {announcement.createdBy && (
-              <Typography.Text className="text-grey-muted text-xs">
+              <Typography className="text-grey-muted text-xs" variant="text">
                 {t('label.by-entity', { entity: announcement.createdBy })}
-              </Typography.Text>
+              </Typography>
             )}
-            <Typography.Text className="text-grey-muted text-xs">
+            <Typography className="text-grey-muted text-xs" variant="text">
               {formatDateTime(announcement.updatedAt ?? announcement.createdAt)}
-            </Typography.Text>
+            </Typography>
             <AnnouncementEntityLinkLabel
               entityFQN={entityFQN}
               entityLink={entityLink}
@@ -188,12 +189,12 @@ const AnnouncementFeedCardBody = ({
       )}
 
       <Space wrap className="m-t-sm" size={16}>
-        <Typography.Text className="text-grey-muted text-xs">
+        <Typography className="text-grey-muted text-xs" variant="text">
           {`${t('label.start-date')}: ${formatDateTime(details.startTime)}`}
-        </Typography.Text>
-        <Typography.Text className="text-grey-muted text-xs">
+        </Typography>
+        <Typography className="text-grey-muted text-xs" variant="text">
           {`${t('label.end-date')}: ${formatDateTime(details.endTime)}`}
-        </Typography.Text>
+        </Typography>
       </Space>
 
       {isEditAnnouncement && (

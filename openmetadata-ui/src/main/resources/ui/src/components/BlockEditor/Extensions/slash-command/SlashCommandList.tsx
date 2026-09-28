@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { Image, Space, Typography } from 'antd';
+import { Image, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -133,8 +134,12 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
               src={item.imgSrc}
             />
             <Space direction="vertical" size={0}>
-              <Typography className="font-bold">{item.title}</Typography>
-              <Typography>{item.description}</Typography>
+              <Typography as="article" className="font-bold" variant="text">
+                {item.title}
+              </Typography>
+              <Typography as="article" variant="text">
+                {item.description}
+              </Typography>
             </Space>
           </Space>
         ))}

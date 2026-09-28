@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Tag, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Tag } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +61,9 @@ const ContractSchemaTable: React.FC<{
         dataIndex: 'name',
         key: 'name',
         render: (name: string) => (
-          <Typography.Text className="text-primary">{name}</Typography.Text>
+          <Typography className="text-primary" variant="text">
+            {name}
+          </Typography>
         ),
       },
       {
@@ -86,9 +89,9 @@ const ContractSchemaTable: React.FC<{
                       {constraint}
                     </Tag>
                   ) : (
-                    <Typography.Text data-testid="no-constraints">
+                    <Typography data-testid="no-constraints" variant="text">
                       {NO_DATA_PLACEHOLDER}
-                    </Typography.Text>
+                    </Typography>
                   )}
                 </div>
               ),
@@ -136,9 +139,9 @@ const ContractSchemaTable: React.FC<{
       <Col className="d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
-            <Typography.Text>{`${t('label.entity-status', {
+            <Typography variant="text">{`${t('label.entity-status', {
               entity: t('label.schema'),
-            })} :`}</Typography.Text>
+            })} :`}</Typography>
             <StatusBadgeV2
               dataTestId="contract-status-card-item-schema-status"
               label={contractStatus}

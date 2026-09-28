@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -66,12 +65,14 @@ const CustomPropertiesSection = ({
   const emptyState = useMemo(() => {
     if (searchText) {
       return (
-        <Typography.Paragraph className="text-center text-grey-muted p-sm">
+        <Typography
+          className="text-center text-grey-muted p-sm"
+          variant="paragraph">
           {t('message.no-entity-found-for-name', {
             entity: t('label.custom-property-plural'),
             name: searchText,
           })}
-        </Typography.Paragraph>
+        </Typography>
       );
     }
 

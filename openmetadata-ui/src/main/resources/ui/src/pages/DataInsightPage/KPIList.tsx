@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,7 +105,7 @@ const KPIList = () => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography.Text>{formatDateTime(startDate)}</Typography.Text>
+          <Typography variant="text">{formatDateTime(startDate)}</Typography>
         ),
       },
       {
@@ -112,7 +113,7 @@ const KPIList = () => {
         dataIndex: 'endDate',
         key: 'endDate',
         render: (endDate: number) => (
-          <Typography.Text>{formatDateTime(endDate)}</Typography.Text>
+          <Typography variant="text">{formatDateTime(endDate)}</Typography>
         ),
       },
       {
@@ -124,7 +125,7 @@ const KPIList = () => {
             record.metricType === KpiTargetType.Percentage;
           const targetValue = isPercentageMetric ? `${+value}%` : value;
 
-          return <Typography.Text>{targetValue}</Typography.Text>;
+          return <Typography variant="text">{targetValue}</Typography>;
         },
       },
       {
@@ -132,7 +133,7 @@ const KPIList = () => {
         dataIndex: 'metricType',
         key: 'metricType',
         render: (metricType: KpiTargetType) => (
-          <Typography.Text>{metricType}</Typography.Text>
+          <Typography variant="text">{metricType}</Typography>
         ),
       },
       {

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -170,14 +171,15 @@ const DataProductsWidget = ({
                   </div>
                   <div className="data-product-card-full-content">
                     <div className="data-product-card-full-title-row">
-                      <Typography.Text
+                      <Typography
                         className="font-semibold"
                         data-testid="data-product-name"
                         ellipsis={{
                           tooltip: true,
-                        }}>
+                        }}
+                        variant="text">
                         {dataProduct.displayName || dataProduct.name}
-                      </Typography.Text>
+                      </Typography>
                       <span
                         className="data-product-card-full-count"
                         data-testid="data-product-asset-count">
@@ -198,12 +200,13 @@ const DataProductsWidget = ({
                         data-testid="data-product-icon-container">
                         {getDataProductIconByUrl(dataProduct.style?.iconURL)}
                       </div>
-                      <Typography.Text
+                      <Typography
                         className="data-product-card-name"
                         data-testid="data-product-name"
-                        ellipsis={{ tooltip: true }}>
+                        ellipsis={{ tooltip: true }}
+                        variant="text">
                         {dataProduct.displayName || dataProduct.name}
-                      </Typography.Text>
+                      </Typography>
                     </span>
                     <span
                       className="data-product-card-count"

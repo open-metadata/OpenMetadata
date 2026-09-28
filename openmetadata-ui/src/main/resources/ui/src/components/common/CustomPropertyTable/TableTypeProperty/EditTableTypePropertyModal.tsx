@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { isEmpty, omit } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import type { Column } from 'react-data-grid';
@@ -133,12 +134,12 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       maskClosable={false}
       open={isVisible}
       title={
-        <Typography.Text>
+        <Typography variant="text">
           {t('label.edit-entity-name', {
             entityType: t('label.property'),
             entityName: getEntityName(property),
           })}
-        </Typography.Text>
+        </Typography>
       }
       transitionName="ant-fade"
       width={800}>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space, Typography } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -145,7 +145,7 @@ const DirectoryVersion = ({
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
+          <Typography variant="text">{getEntityName(record)}</Typography>
         ),
       },
       {

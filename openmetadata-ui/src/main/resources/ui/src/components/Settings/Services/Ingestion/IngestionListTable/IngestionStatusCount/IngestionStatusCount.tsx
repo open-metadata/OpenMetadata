@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
@@ -36,12 +38,12 @@ function IngestionStatusCount({
       {records.map((record) => (
         <Col key={`${record.label}-${runId}`}>
           <div className={classNames('status-count', record.type)}>
-            <Typography.Text className="record-count">
+            <Typography className="record-count" variant="text">
               {record.value}
-            </Typography.Text>
-            <Typography.Text className="record-label">
+            </Typography>
+            <Typography className="record-label" variant="text">
               {record.label}
-            </Typography.Text>
+            </Typography>
           </div>
         </Col>
       ))}

@@ -10,17 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { LeftOutlined } from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Carousel,
-  Col,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Button, Carousel, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -167,9 +160,9 @@ const MarketPlaceAppDetails = () => {
           size="small"
           type="text"
           onClick={onBrowseAppsClick}>
-          <Typography.Text className="font-medium">
+          <Typography className="font-medium" variant="text">
             {t('label.browse-app-plural')}
-          </Typography.Text>
+          </Typography>
         </Button>
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
@@ -191,12 +184,12 @@ const MarketPlaceAppDetails = () => {
             className="m-t-md text-xs d-flex items-start p-xs"
             message={
               isCacheWarmupDisabled ? (
-                <Typography.Text>
+                <Typography variant="text">
                   {t('message.cache-service-not-configured-message')}
-                </Typography.Text>
+                </Typography>
               ) : (
                 <>
-                  <Typography.Text>
+                  <Typography variant="text">
                     <Transi18next
                       i18nKey="message.paid-addon-description"
                       renderElement={
@@ -209,11 +202,11 @@ const MarketPlaceAppDetails = () => {
                         app: appData?.displayName,
                       }}
                     />
-                  </Typography.Text>
+                  </Typography>
 
-                  <Typography.Text className="d-block">
+                  <Typography className="d-block" variant="text">
                     {t('message.please-contact-us')}
-                  </Typography.Text>
+                  </Typography>
                 </>
               )
             }
@@ -222,31 +215,40 @@ const MarketPlaceAppDetails = () => {
         )}
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
-          <Typography.Text className="text-xs font-medium text-grey-muted">
+          <Typography
+            className="text-xs font-medium text-grey-muted"
+            variant="text">
             {t('message.marketplace-verify-msg')}
-          </Typography.Text>
+          </Typography>
         </div>
         <Space className="p-t-lg" direction="vertical" size={8}>
-          <Typography.Text>
+          <Typography variant="text">
             {appData?.supportEmail && (
-              <Typography.Link
+              <Typography
                 data-testid="app-support-email"
                 href={`mailto:${appData?.supportEmail}`}
-                target="_blank">
+                target="_blank"
+                variant="link">
                 <Space>{t('label.get-app-support')}</Space>
-              </Typography.Link>
+              </Typography>
             )}
             {appData?.developerUrl && (
-              <Typography.Link href={appData?.developerUrl} target="_blank">
+              <Typography
+                href={appData?.developerUrl}
+                target="_blank"
+                variant="link">
                 <Space>{t('label.visit-developer-website')}</Space>
-              </Typography.Link>
+              </Typography>
             )}
             {appData?.privacyPolicyUrl && (
-              <Typography.Link href={appData?.privacyPolicyUrl} target="_blank">
+              <Typography
+                href={appData?.privacyPolicyUrl}
+                target="_blank"
+                variant="link">
                 <Space>{t('label.privacy-policy')}</Space>
-              </Typography.Link>
+              </Typography>
             )}
-          </Typography.Text>
+          </Typography>
         </Space>
       </div>
     );
@@ -268,9 +270,9 @@ const MarketPlaceAppDetails = () => {
       pageTitle={getEntityName(appData) || t('label.application-plural')}>
       <Row>
         <Col span={24}>
-          <Typography.Title className="p-md m-0 p-t-xss" level={2}>
+          <Typography className="p-md m-0 p-t-xss" level={2} variant="title">
             {getEntityName(appData)}
-          </Typography.Title>
+          </Typography>
         </Col>
       </Row>
       <Row>

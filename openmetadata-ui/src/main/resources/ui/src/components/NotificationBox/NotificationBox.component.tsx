@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Badge, Button, List, Typography } from 'antd';
+import { Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button, List } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -291,12 +291,13 @@ const NotificationBox = ({
 
   return (
     <div className="notification-box">
-      <Typography.Title
+      <Typography
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
-        level={5}>
+        level={5}
+        variant="title">
         {t('label.notification-plural')}
-      </Typography.Title>
+      </Typography>
       <Tabs
         defaultSelectedKey={NotificationTabsKey.TASK}
         onSelectionChange={(key) => updateActiveTab(String(key))}>

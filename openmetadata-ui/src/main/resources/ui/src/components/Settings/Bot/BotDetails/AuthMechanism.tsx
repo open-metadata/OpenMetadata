@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Divider, Input, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Divider, Input, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -143,9 +144,9 @@ const AuthMechanism: FC<Props> = ({
       <div className="flex justify-between mt-4">
         <div className="flex  gap-8">
           <div className="flex flex-col gap-2">
-            <Typography.Text className="created-by-label">
+            <Typography className="created-by-label" variant="text">
               {t('label.created-by')}
-            </Typography.Text>
+            </Typography>
             <div className="flex items-center gap-2 mt-1">
               <UserPopOverCard
                 showUserName
@@ -156,13 +157,13 @@ const AuthMechanism: FC<Props> = ({
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Typography.Text className="created-on-label">
+            <Typography className="created-on-label" variant="text">
               {t('label.created-on')}
-            </Typography.Text>
+            </Typography>
 
-            <Typography.Text className="created-on-value">
+            <Typography className="created-on-value" variant="text">
               {tokenCreatedOnLabel}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
       </div>
@@ -173,21 +174,23 @@ const AuthMechanism: FC<Props> = ({
       <Space className="w-full justify-between">
         {isSCIMBot ? (
           <div className="flex flex-col gap-2">
-            <Typography.Text className="card-title m-t-0 m-b-2 text-md">
+            <Typography
+              className="card-title m-t-0 m-b-2 text-md"
+              variant="text">
               {t('message.automate-provisioning-with-scim')}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0 card-description">
+            </Typography>
+            <Typography className="m-b-0 card-description" variant="paragraph">
               {t(
                 'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
               )}
-            </Typography.Paragraph>
+            </Typography>
           </div>
         ) : (
-          <Typography.Text className="text-base">
+          <Typography className="text-base" variant="text">
             {isBot
               ? t('label.om-jwt-token')
               : t('message.personal-access-token')}
-          </Typography.Text>
+          </Typography>
         )}
 
         <Space>
@@ -217,12 +220,12 @@ const AuthMechanism: FC<Props> = ({
       <Divider className={isSCIMBot ? 'scim-divider' : ''} />
 
       {!isSCIMBot && (
-        <Typography.Paragraph>{t('message.jwt-token')}</Typography.Paragraph>
+        <Typography variant="paragraph">{t('message.jwt-token')}</Typography>
       )}
       {isSCIMBot && (
-        <Typography.Text className="token-label">
+        <Typography className="token-label" variant="text">
           {t('label.scim-token')}
-        </Typography.Text>
+        </Typography>
       )}
 
       {renderTokenSection()}

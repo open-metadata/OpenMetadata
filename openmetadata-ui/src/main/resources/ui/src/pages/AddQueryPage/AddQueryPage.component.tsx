@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
@@ -232,13 +234,14 @@ const AddQueryPage = () => {
           <div>
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />
             <div className="m-t-md">
-              <Typography.Paragraph
+              <Typography
                 className="text-base"
-                data-testid="form-title">
+                data-testid="form-title"
+                variant="paragraph">
                 {t('label.add-new-entity', {
                   entity: t('label.query'),
                 })}
-              </Typography.Paragraph>
+              </Typography>
               <Form
                 data-testid="query-form"
                 form={form}
@@ -318,14 +321,14 @@ const AddQueryPage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography className="text-base font-medium" variant="paragraph">
               {t('label.add-entity', {
                 entity: t('label.query'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>
+            </Typography>
+            <Typography variant="text">
               {t('message.add-query-helper-message')}
-            </Typography.Text>
+            </Typography>
           </>
         ),
         className: 'content-resizable-panel-container',

@@ -20,7 +20,7 @@ import {
   Tooltip,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
-import { Button, Card, Typography } from 'antd';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -174,9 +174,9 @@ const TaskFeedCardFromTask = ({
 
     if (columnName) {
       return (
-        <Typography.Text className="p-r-xss column-name">
+        <CoreTypography className="p-r-xss column-name" variant="text">
           {columnName} {t('label.in-lowercase')}
-        </Typography.Text>
+        </CoreTypography>
       );
     }
 
@@ -201,21 +201,28 @@ const TaskFeedCardFromTask = ({
             data-testid="redirect-task-button-link"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography.Text>
+            <CoreTypography
+              className="m-r-xss task-details-id"
+              variant="text">{`#${taskDisplayId} `}</CoreTypography>
 
-            <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
+            <CoreTypography
+              className="m-r-xss  m-r-xss task-details-entity-link"
+              variant="text">
               {t(TASK_ENTITY_TYPES[task.type] ?? 'label.task')}
-            </Typography.Text>
+            </CoreTypography>
 
             {taskColumnName}
 
-            <Typography.Text
+            <CoreTypography
               className="break-all header-link text-sm"
-              data-testid="entity-link">
+              data-testid="entity-link"
+              variant="text">
               {getNameFromFQN(entityFQN)}
-            </Typography.Text>
+            </CoreTypography>
 
-            <Typography.Text className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography.Text>
+            <CoreTypography
+              className="p-l-xss text-sm entity-type"
+              variant="text">{`(${entityType})`}</CoreTypography>
           </Button>
         </EntityPopOverCard>
       ) : null,

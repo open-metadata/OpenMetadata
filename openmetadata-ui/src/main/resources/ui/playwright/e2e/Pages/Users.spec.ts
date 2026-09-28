@@ -892,7 +892,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Get text of all personas to verify sorting
       const personaTexts = await personaLabels
-        .locator('.ant-typography')
+        .locator('[data-typography]')
         .allTextContents();
 
       // Verify first one contains the default persona name
@@ -930,7 +930,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     // Get the current default persona name for later verification
     const originalDefaultPersonaText = await personaLabels
       .first()
-      .locator('.ant-typography')
+      .locator('[data-typography]')
       .textContent();
 
     // Close dropdown
@@ -981,7 +981,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     );
     const newDefaultPersonaLocator = updatedPersonaLabels
       .first()
-      .locator('.ant-typography');
+      .locator('[data-typography]');
 
     await expect(newDefaultPersonaLocator).toContainText(
       persona2.responseData.displayName

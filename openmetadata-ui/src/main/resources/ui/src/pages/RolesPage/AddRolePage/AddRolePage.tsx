@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Select, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -33,6 +34,7 @@ import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+
 const { Option } = Select;
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
@@ -136,13 +138,14 @@ const AddRolePage = () => {
           <div data-testid="add-role-container">
             <TitleBreadcrumb titleLinks={translatedRoleBreadcrumb} />
             <div className="m-t-md">
-              <Typography.Paragraph
+              <Typography
                 className="text-base"
-                data-testid="form-title">
+                data-testid="form-title"
+                variant="paragraph">
                 {t('label.add-new-entity', {
                   entity: t('label.role'),
                 })}
-              </Typography.Paragraph>
+              </Typography>
               <Form
                 data-testid="role-form"
                 id="role-form"
@@ -214,12 +217,14 @@ const AddRolePage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography className="text-base font-medium" variant="paragraph">
               {t('label.add-entity', {
                 entity: t('label.role'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>{t('message.add-role-message')}</Typography.Text>
+            </Typography>
+            <Typography variant="text">
+              {t('message.add-role-message')}
+            </Typography>
           </>
         ),
         className: 'content-resizable-panel-container',

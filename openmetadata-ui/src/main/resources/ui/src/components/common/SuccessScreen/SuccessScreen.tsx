@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,7 +89,9 @@ const SuccessScreen = ({
             height={100}
             width={100}
           />
-          <Typography>{t('message.pipeline-scheduler-message')}</Typography>
+          <Typography as="article" variant="text">
+            {t('message.pipeline-scheduler-message')}
+          </Typography>
         </Space>
       ),
     [isAirflowPlatform]
@@ -101,7 +104,10 @@ const SuccessScreen = ({
       <Card>
         <Space>
           <IconSuccessBadge data-testid="success-icon" width="20px" />
-          <Typography.Paragraph className="m-b-0" data-testid="success-line">
+          <Typography
+            className="m-b-0"
+            data-testid="success-line"
+            variant="paragraph">
             {isUndefined(successMessage) ? (
               <span>
                 <span className="m-r-xss font-semibold">
@@ -113,7 +119,7 @@ const SuccessScreen = ({
             ) : (
               successMessage
             )}
-          </Typography.Paragraph>
+          </Typography>
         </Space>
       </Card>
       <div className="m-t-sm">

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
@@ -250,13 +251,14 @@ const UpdateDescription = () => {
             />
 
             <div className="m-t-0 request-description" key="update-description">
-              <Typography.Paragraph
+              <Typography
                 className="text-base"
-                data-testid="form-title">
+                data-testid="form-title"
+                variant="paragraph">
                 {t('label.create-entity', {
                   entity: t('label.task'),
                 })}
-              </Typography.Paragraph>
+              </Typography>
               <Form
                 data-testid="form-container"
                 form={form}

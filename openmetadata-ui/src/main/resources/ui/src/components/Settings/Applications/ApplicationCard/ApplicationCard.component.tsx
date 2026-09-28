@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Card, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -55,9 +57,9 @@ const ApplicationCard = ({
         </div>
         <div className="application-info">
           <div className="d-flex gap-2">
-            <Typography.Title className="m-0" level={5}>
+            <Typography className="m-0" level={5} variant="title">
               {title}
-            </Typography.Title>
+            </Typography>
             {isUnavailable && (
               <div
                 className="deleted-badge-button text-xss flex-center tw:items-center"

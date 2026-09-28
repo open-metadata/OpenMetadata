@@ -37,24 +37,6 @@ jest.mock('../Loader/Loader', () => ({
     </div>
   )),
 }));
-// Partial antd mock for Typography.Text
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
 
 // SVG icon mocks
 jest.mock('../../../assets/svg/edit.svg', () => ({
@@ -154,8 +136,10 @@ describe('DomainsSection', () => {
     it('renders header, title and no-data when empty', () => {
       const { container } = render(<DomainsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
-      expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
+      expect(screen.getByText('label.domain-plural')).toHaveAttribute(
+        'data-typography',
+        'text'
+      );
       expect(container.querySelector('.domains-section')).toBeInTheDocument();
       expect(container.querySelector('.domains-header')).toBeInTheDocument();
       expect(container.querySelector('.domains-content')).toBeInTheDocument();

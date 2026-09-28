@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip, Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Space, Tooltip } from 'antd';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -138,9 +140,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           // If config is an array and not empty
           if (isArray(config) && !isEmpty(config)) {
             return (
-              <Typography.Text data-testid={`${record.name}-config`}>
+              <Typography data-testid={`${record.name}-config`} variant="text">
                 {JSON.stringify(config ?? [])}
-              </Typography.Text>
+              </Typography>
             );
           }
 
@@ -151,7 +153,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <div
                   className="w-full d-flex gap-2 flex-column"
                   data-testid="table-config">
-                  <Typography.Text>
+                  <Typography variant="text">
                     <span className="font-medium">{`${t(
                       'label.column-plural'
                     )}:`}</span>
@@ -160,7 +162,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                         <li key={column}>{column}</li>
                       ))}
                     </ul>
-                  </Typography.Text>
+                  </Typography>
                 </div>
               );
             }
@@ -169,19 +171,19 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               <div
                 className="w-full d-flex gap-2 flex-column"
                 data-testid="enum-config">
-                <Typography.Text>
+                <Typography variant="text">
                   {JSON.stringify(config?.values ?? [])}
-                </Typography.Text>
-                <Typography.Text>
+                </Typography>
+                <Typography variant="text">
                   {t('label.multi-select')}:{' '}
                   {config?.multiSelect ? t('label.yes') : t('label.no')}
-                </Typography.Text>
+                </Typography>
               </div>
             );
           }
 
           // else it is a string
-          return <Typography.Text>{config}</Typography.Text>;
+          return <Typography variant="text">{config}</Typography>;
         },
       },
       ...descriptionTableObject<CustomProperty>({ width: 300 }),

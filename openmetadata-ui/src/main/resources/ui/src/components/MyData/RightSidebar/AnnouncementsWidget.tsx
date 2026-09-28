@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -57,11 +58,11 @@ function AnnouncementsWidget({
               />
             }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph>
+            <Typography variant="paragraph">
               {t('message.no-entity-data-available', {
                 entity: t('label.announcement-lowercase'),
               })}
-            </Typography.Paragraph>
+            </Typography>
           </ErrorPlaceHolder>
         </div>
       );
@@ -79,12 +80,16 @@ function AnnouncementsWidget({
                   className="right-panel-announcement"
                   description={
                     <>
-                      <Typography.Text className="d-block text-sm font-medium">
+                      <Typography
+                        className="d-block text-sm font-medium"
+                        variant="text">
                         {item.displayName ?? item.name}
-                      </Typography.Text>
-                      <Typography.Text className="d-block text-grey-muted text-xs m-t-xs">
+                      </Typography>
+                      <Typography
+                        className="d-block text-grey-muted text-xs m-t-xs"
+                        variant="text">
                         {formatDateTime(item.updatedAt ?? item.createdAt)}
-                      </Typography.Text>
+                      </Typography>
                       <RichTextEditorPreviewerV1
                         className="p-t-xs"
                         markdown={item.description}
@@ -117,9 +122,9 @@ function AnnouncementsWidget({
       data-testid="announcement-container">
       <Row justify="space-between">
         <Col>
-          <Typography.Paragraph className="font-medium m-b-sm">
+          <Typography className="font-medium m-b-sm" variant="paragraph">
             {t('label.recent-announcement-plural')}
-          </Typography.Paragraph>
+          </Typography>
         </Col>
       </Row>
       {announcement}

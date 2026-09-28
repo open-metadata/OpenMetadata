@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -189,7 +189,9 @@ function APIEndpointsTab({
         key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
+          return (
+            <Typography variant="text">{requestMethod ?? NO_DATA}</Typography>
+          );
         },
       },
       ...descriptionTableObject(),
@@ -297,9 +299,9 @@ function APIEndpointsTab({
               data-testid="show-deleted"
               onClick={handleDeleteAction}
             />
-            <Typography.Text className="m-l-xs">
+            <Typography className="m-l-xs" variant="text">
               {t('label.deleted')}
-            </Typography.Text>{' '}
+            </Typography>{' '}
           </span>
         )
       }

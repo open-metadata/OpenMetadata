@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { SuggestionProps } from '@tiptap/suggestion';
-import { Space, Typography } from 'antd';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -117,7 +118,12 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
             key={item.id}
             onClick={() => selectItem(index)}>
             <ProfilePicture name={item.name} width="20" />
-            <Typography className="truncate w-max-200">{item.label}</Typography>
+            <Typography
+              as="article"
+              className="truncate w-max-200"
+              variant="text">
+              {item.label}
+            </Typography>
           </Space>
         ))}
       </Space>

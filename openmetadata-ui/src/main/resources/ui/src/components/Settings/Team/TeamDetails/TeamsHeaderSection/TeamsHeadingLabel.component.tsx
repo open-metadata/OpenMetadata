@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Button, Input, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Input, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -91,21 +93,23 @@ const TeamsHeadingLabel = ({
 
   const teamHeadingRender = useMemo(() => {
     const headingTitle = heading ? (
-      <Typography.Title
+      <Typography
         className="m-b-0 flex-1 w-min-0"
         data-testid="team-heading"
         ellipsis={{ tooltip: true }}
-        level={5}>
+        level={5}
+        variant="title">
         {heading}
-      </Typography.Title>
+      </Typography>
     ) : (
-      <Typography.Text
+      <Typography
         className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
-        data-testid="team-heading">
+        data-testid="team-heading"
+        variant="text">
         {t('label.no-entity', {
           entity: t('label.display-name'),
         })}
-      </Typography.Text>
+      </Typography>
     );
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;

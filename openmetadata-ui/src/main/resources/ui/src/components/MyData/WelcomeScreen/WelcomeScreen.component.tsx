@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Divider, Row, Space } from 'antd';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,8 +23,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import './welcome-screen.style.less';
-
-const { Paragraph, Text } = Typography;
 
 interface WelcomeScreenProps {
   onClose: () => void;
@@ -70,24 +69,28 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
         <Col span={12}>
           <Space className="m-y-xlg" direction="vertical">
             <div>
-              <Paragraph className="welcome-screen-header-first-line m-b-0">
+              <Typography
+                className="welcome-screen-header-first-line m-b-0"
+                variant="paragraph">
                 {t('message.hi-user-welcome-to', {
                   user: userName || t('label.user'),
                 })}
-              </Paragraph>
-              <Paragraph className="welcome-screen-header-second-line m-b-0">
+              </Typography>
+              <Typography
+                className="welcome-screen-header-second-line m-b-0"
+                variant="paragraph">
                 {`${title}! 🎉`}
-              </Paragraph>
+              </Typography>
             </div>
             <Divider className="welcome-screen-header-divider" />
 
-            <Paragraph className="m-b-0 text-base">
+            <Typography className="m-b-0 text-base" variant="paragraph">
               {t('message.welcome-screen-message')}
-            </Paragraph>
+            </Typography>
             <Link className="flex items-center gap-2 p-0" to={ROUTES.TOUR}>
-              <Text className="welcome-screen-button-text">
+              <Typography className="welcome-screen-button-text" variant="text">
                 {t('message.take-quick-product-tour')}
-              </Text>
+              </Typography>
               <LineArrowRight className="text-primary" height={14} width={18} />
             </Link>
           </Space>

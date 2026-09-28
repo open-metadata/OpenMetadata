@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -366,11 +367,12 @@ const CuratedAssetsWidgetContent = ({
             {getEntityIcon(item as SearchSourceAlias, EntityIconSize.Size24)}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
-                <Typography.Text
+                <Typography
                   className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{ tooltip: true }}
+                  variant="text">
                   {title}
-                </Typography.Text>
+                </Typography>
                 {certification && (
                   <CertificationTag
                     certification={certification as AssetCertification}
@@ -378,11 +380,12 @@ const CuratedAssetsWidgetContent = ({
                 )}
               </div>
               {description && (
-                <Typography.Text
+                <Typography
                   className="max-two-lines entity-list-item-description text-grey-muted"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{ tooltip: true }}
+                  variant="text">
                   {getTextFromHtmlString(description)}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
           </div>
@@ -437,13 +440,14 @@ const CuratedAssetsWidgetContent = ({
         selectedSortBy={selectedSortBy}
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}
         title={
-          <Typography.Text
+          <Typography
             className={
               isFullSize ? 'widget-title-full-size' : 'widget-title-half-size'
             }
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true }}
+            variant="text">
             {title || t('label.curated-asset-plural')}
-          </Typography.Text>
+          </Typography>
         }
         widgetKey={widgetKey}
         onEditClick={handleModalOpen}

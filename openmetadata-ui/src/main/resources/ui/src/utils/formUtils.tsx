@@ -16,6 +16,7 @@ import {
   SelectItemType,
   Toggle,
   ToggleProps,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Alert,
@@ -28,7 +29,6 @@ import {
   Select,
   Switch,
   TooltipProps,
-  Typography,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
@@ -387,7 +387,9 @@ export const getField = (field: FieldProp) => {
         <Form.Item className="m-b-0" {...formProps}>
           <Switch />
         </Form.Item>
-        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+        <Typography className="font-medium" variant="text">
+          {labelValue}
+        </Typography>
       </div>
     );
   }

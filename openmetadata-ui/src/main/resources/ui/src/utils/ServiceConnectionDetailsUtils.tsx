@@ -12,7 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Input, Row, Select, Space, Tooltip } from 'antd';
 import {
   get,
   isArray,
@@ -119,12 +120,12 @@ const renderFilterPattern = (
               <div
                 className="w-full flex flex-col"
                 key={`${key}-${JSON.stringify(value)}`}>
-                <Typography.Text className="key">{`${startCase(
+                <Typography className="key" variant="text">{`${startCase(
                   key
-                )}:`}</Typography.Text>
-                <Typography.Text className="value">
+                )}:`}</Typography>
+                <Typography className="value" variant="text">
                   {(value as string[]).join(', ')}
-                </Typography.Text>
+                </Typography>
               </div>
             );
           })}

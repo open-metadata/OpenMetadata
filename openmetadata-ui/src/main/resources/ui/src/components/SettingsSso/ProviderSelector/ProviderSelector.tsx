@@ -12,7 +12,8 @@
  */
 
 import { ArrowUpOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -42,9 +43,9 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   return (
     <div className="provider-selector-container">
       <div className="provider-selector-header">
-        <Typography.Title className="m-b-lg" level={5}>
+        <Typography className="m-b-lg" level={5} variant="title">
           {t('label.choose-provider')}
-        </Typography.Title>
+        </Typography>
         <Button
           disabled={!selectedProvider}
           type="primary"

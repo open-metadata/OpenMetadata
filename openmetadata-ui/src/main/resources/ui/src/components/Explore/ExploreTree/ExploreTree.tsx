@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
-import { Tooltip, Tree, TreeProps, Typography } from 'antd';
+import { Tooltip, Tree, TreeProps } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -87,24 +88,25 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   return (
     <Tooltip
       title={
-        <Typography.Text className="text-white">
+        <Typography className="text-white" variant="text">
           {tooltipText}
           {node.type && (
             <span className="text-grey-400">{` (${node.type})`}</span>
           )}
-        </Typography.Text>
+        </Typography>
       }>
       <div
         className={classNames('d-flex justify-between', {
           'tw:opacity-50': node.disabled,
         })}>
-        <Typography.Text
+        <Typography
           className={classNames({
             'm-l-xss': node.data?.isRoot,
           })}
-          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}
+          variant="text">
           {node.title}
-        </Typography.Text>
+        </Typography>
         {!isUndefined(node.count) && (
           <span className="explore-node-count">
             {getCountBadge(node.count)}
@@ -787,15 +789,16 @@ const ExploreTree = ({
         className="h-min-80 d-flex flex-col justify-center border-none"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph
+        <Typography
           className="font-medium"
-          style={{ marginBottom: '0' }}>
+          style={{ marginBottom: '0' }}
+          variant="paragraph">
           {t('message.no-data-yet')}
-        </Typography.Paragraph>
-        <Typography.Paragraph style={{ marginBottom: '0' }}>
+        </Typography>
+        <Typography style={{ marginBottom: '0' }} variant="paragraph">
           {t('message.add-service-and-data-assets')}
-        </Typography.Paragraph>
-        <Typography.Paragraph>
+        </Typography>
+        <Typography variant="paragraph">
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={
@@ -811,7 +814,7 @@ const ExploreTree = ({
               doc: t('message.see-how-to-get-started'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }

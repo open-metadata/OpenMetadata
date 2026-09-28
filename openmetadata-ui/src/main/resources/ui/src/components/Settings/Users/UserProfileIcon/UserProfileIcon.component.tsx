@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Radio, Tag, Tooltip, Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Radio, Tag, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -177,9 +179,9 @@ export const UserProfileIcon = () => {
             true
           )}>
           <div className="d-flex items-center default-persona-container">
-            <Typography.Text ellipsis={{ tooltip: true }}>
+            <Typography ellipsis={{ tooltip: true }} variant="text">
               {getEntityName(item)}
-            </Typography.Text>
+            </Typography>
 
             {isDefaultPersona && (
               <Tag
@@ -211,14 +213,15 @@ export const UserProfileIcon = () => {
   const readMoreTeamRenderer = useCallback(
     (count: number, isPersona?: boolean) =>
       isPersona ? (
-        <Typography.Text
+        <Typography
           className="more-teams-pill"
+          variant="text"
           onClick={(e) => {
             e.stopPropagation();
             setShowAllPersona(true);
           }}>
           {count} {t('label.more')}
-        </Typography.Text>
+        </Typography>
       ) : (
         <Link
           className="more-teams-pill"
@@ -275,11 +278,12 @@ export const UserProfileIcon = () => {
             data-testid="user-name"
             to={getUserPath(currentUser?.name as string)}
             onClick={handleCloseDropdown}>
-            <Typography.Paragraph
+            <Typography
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, tooltip: true }}>
+              ellipsis={{ rows: 1, tooltip: true }}
+              variant="paragraph">
               {t('label.view-entity', { entity: t('label.profile') })}
-            </Typography.Paragraph>
+            </Typography>
           </Link>
         ),
         type: 'group',
@@ -467,20 +471,22 @@ export const UserProfileIcon = () => {
         type="text">
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
-            <Typography.Text
+            <Typography
               className="font-semibold"
-              data-testid="nav-user-name">
+              data-testid="nav-user-name"
+              variant="text">
               {getEntityName(currentUser)}
-            </Typography.Text>
+            </Typography>
           </Tooltip>
 
-          <Typography.Text
+          <Typography
             data-testid="default-persona"
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true }}
+            variant="text">
             {isEmpty(selectedPersona)
               ? t('label.default')
               : getEntityName(selectedPersona)}
-          </Typography.Text>
+          </Typography>
         </div>
         <DropDownIcon width={12} />
       </Button>

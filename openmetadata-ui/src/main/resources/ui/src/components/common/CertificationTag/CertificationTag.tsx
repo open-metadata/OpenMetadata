@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -71,13 +72,14 @@ const CertificationTag = ({
           to={tagLink}>
           {imageItem}
           {showName && (
-            <Typography.Text
+            <Typography
               className={classNames('text-sm font-medium certification-text', {
                 [`${actualName.toLowerCase()}`]: Boolean(actualName),
               })}
-              ellipsis={{ tooltip: true }}>
+              ellipsis={{ tooltip: true }}
+              variant="text">
               {name}
-            </Typography.Text>
+            </Typography>
           )}
         </Link>
       </Tooltip>

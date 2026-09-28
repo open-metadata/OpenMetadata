@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -106,7 +107,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              <Typography className="m-0 text-grey-muted" variant="text">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
                   placement="top"
@@ -118,19 +119,19 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={24}>
-              <Typography.Text data-testid="max-login-fail-attampts">
+              <Typography data-testid="max-login-fail-attampts" variant="text">
                 {loginConfig?.maxLoginFailAttempts ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Row>
         </Col>
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              <Typography className="m-0 text-grey-muted" variant="text">
                 {t('label.access-block-time')}
                 <Tooltip
                   placement="top"
@@ -142,19 +143,19 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={24}>
-              <Typography.Text data-testid="access-block-time">
+              <Typography data-testid="access-block-time" variant="text">
                 {loginConfig?.accessBlockTime ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Row>
         </Col>
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              <Typography className="m-0 text-grey-muted" variant="text">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
                   placement="top"
@@ -166,13 +167,13 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={24}>
-              <Typography.Text data-testid="jwt-token-expiry-time">
+              <Typography data-testid="jwt-token-expiry-time" variant="text">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
                 {t('label.second-plural')}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Row>
         </Col>

@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Alert,
-  Badge,
-  Button,
-  Dropdown,
-  InputRef,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -88,6 +81,7 @@ import { NotificationBoxProp } from '../NotificationBox/NotificationBox.interfac
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
+
 const DomainSelectableList = withSuspenseFallback(
   lazy(
     () =>
@@ -614,9 +608,12 @@ const NavBar = () => {
                         name="domain"
                         width={20}
                       />
-                      <Typography.Text ellipsis className="domain-text">
+                      <Typography
+                        ellipsis
+                        className="domain-text"
+                        variant="text">
                         {domainDisplayName}
-                      </Typography.Text>
+                      </Typography>
                       {!isSingleDomainUser && <DropDownIcon width={12} />}
                     </Button>
                   </Tooltip>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -285,9 +285,9 @@ const TotalDataAssetsWidget = ({
                         pieChartColors[index % pieChartColors.length],
                     }}
                   />
-                  <Typography.Text ellipsis={{ tooltip: true }}>
+                  <Typography ellipsis={{ tooltip: true }} variant="text">
                     {startCase(label)}
-                  </Typography.Text>
+                  </Typography>
                   <span
                     className="text-xs font-medium p-y-xss p-x-xs data-value"
                     data-testid={`legend-count-${label}`}>

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -78,9 +80,9 @@ export const UserImportResult = ({
         fixed: true,
         render: (name: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography style={{ width: 200 }} variant="paragraph">
               {name}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -90,9 +92,9 @@ export const UserImportResult = ({
         key: 'displayName',
         render: (displayName: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography style={{ width: 200 }} variant="paragraph">
               {displayName || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -118,9 +120,9 @@ export const UserImportResult = ({
         key: 'email',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography style={{ width: 200 }} variant="paragraph">
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -130,9 +132,9 @@ export const UserImportResult = ({
         key: 'timezone',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography style={{ width: 200 }} variant="paragraph">
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -142,9 +144,9 @@ export const UserImportResult = ({
         key: 'isAdmin',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography style={{ width: 200 }} variant="paragraph">
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -154,9 +156,9 @@ export const UserImportResult = ({
         key: 'teams*',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography style={{ width: 200 }} variant="paragraph">
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -165,7 +167,7 @@ export const UserImportResult = ({
         dataIndex: 'Roles',
         key: 'Roles',
         render: (value: string) => {
-          return <Typography.Paragraph>{value || '--'}</Typography.Paragraph>;
+          return <Typography variant="paragraph">{value || '--'}</Typography>;
         },
       },
     ];

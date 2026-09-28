@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space, Tag as AntdTag, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -170,9 +171,11 @@ export const tagRender = (customTagProps: CustomTagProps) => {
         placement="topLeft"
         title={getTagTooltip(label as string)}
         trigger="hover">
-        <Typography.Paragraph className="m-0 d-inline-block break-all whitespace-normal">
+        <Typography
+          className="m-0 d-inline-block break-all whitespace-normal"
+          variant="paragraph">
           {tagLabel}
-        </Typography.Paragraph>
+        </Typography>
       </Tooltip>
     </AntdTag>
   );
@@ -215,7 +218,7 @@ export const TagListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       <ClassificationIcon className="d-block'" height={22} width={16} />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
+      <Typography variant="text">{getEntityName(props)}</Typography>
     </Space>
   );
 };

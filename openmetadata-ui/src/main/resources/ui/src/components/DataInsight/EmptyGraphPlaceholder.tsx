@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
@@ -29,12 +28,12 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
       icon={icon}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography.Paragraph style={{ marginBottom: '0' }}>
+      <Typography style={{ marginBottom: '0' }} variant="paragraph">
         {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.data-insight'),
         })}
-      </Typography.Paragraph>
-      <Typography.Paragraph>
+      </Typography>
+      <Typography variant="paragraph">
         <Tooltip title={t('label.documentation')}>
           <span>
             <Transi18next
@@ -53,7 +52,7 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
             />
           </span>
         </Tooltip>
-      </Typography.Paragraph>
+      </Typography>
     </ErrorPlaceHolder>
   );
 };

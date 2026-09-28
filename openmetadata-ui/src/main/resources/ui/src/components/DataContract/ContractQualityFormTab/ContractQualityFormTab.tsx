@@ -12,7 +12,8 @@
  */
 
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Card, Dropdown, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Dropdown } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -223,12 +224,14 @@ export const ContractQualityFormTab: React.FC<{
     <Card className="contract-quality-form-tab-container container bg-grey p-box">
       <div className="d-flex justify-between">
         <div>
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title" variant="text">
             {t('label.quality')}
-          </Typography.Text>
-          <Typography.Text className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography
+            className="contract-detail-form-tab-description"
+            variant="text">
             {t('message.quality-contract-description')}
-          </Typography.Text>
+          </Typography>
         </div>
 
         <Button

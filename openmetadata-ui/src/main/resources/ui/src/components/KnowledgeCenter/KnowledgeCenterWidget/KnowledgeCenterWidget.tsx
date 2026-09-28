@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import Icon from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
@@ -41,6 +43,7 @@ import { t } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
+
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,
@@ -148,11 +151,12 @@ const KnowledgeCenterWidget = ({
                             ),
                           }
                     }>
-                    <Typography.Text
+                    <Typography
                       className="article-header text-sm font-regular text-left cursor-pointer ellipsis-text"
-                      ellipsis={{ tooltip: true }}>
+                      ellipsis={{ tooltip: true }}
+                      variant="text">
                       {getEntityName(knowledgePage)}
-                    </Typography.Text>
+                    </Typography>
                   </Link>
                 </Col>
               </Row>

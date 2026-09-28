@@ -15,7 +15,7 @@ import {
   ButtonGroupItem,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Table, Typography as AntTypography } from 'antd';
+import { Button, Col, Row, Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -68,8 +68,6 @@ import { pruneEmptyChildren } from './TablePureUtils';
 import { showErrorToast } from './ToastUtils';
 
 const REQUEST_SCHEMA = 'request-schema' as const;
-
-const { Text } = AntTypography;
 
 const getFieldRowKey = (column: {
   fullyQualifiedName?: string;
@@ -398,12 +396,12 @@ const SchemaFieldCardsV1: React.FC<{
   if (isEmpty(columns) && searchText) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">
+        <Typography className="no-data-text" variant="text">
           {t('message.no-entity-found-for-name', {
             entity: t('label.column-plural'),
             name: searchText,
           })}
-        </Text>
+        </Typography>
       </div>
     );
   }
@@ -411,7 +409,9 @@ const SchemaFieldCardsV1: React.FC<{
   if (isEmpty(columns)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -471,7 +471,9 @@ const TopicFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -576,7 +578,9 @@ const ContainerFieldCardsV1: React.FC<{
   if (isEmpty(filteredColumns)) {
     return (
       <div className="no-data-container text-grey-muted m-t-md d-flex justify-center align-items-center">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -622,7 +626,9 @@ const PipelineTasksV1: React.FC<{
   if (isEmpty(filteredTasks)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -731,7 +737,9 @@ const APICollectionEndpointsV1: React.FC<{
   if (isEmpty(filteredEndpoints) && hasInitialized) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -836,7 +844,9 @@ const DatabaseSchemaTablesV1: React.FC<{
   if (isEmpty(filteredTables) && hasInitialized) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -899,7 +909,9 @@ const DashboardChartsV1: React.FC<{
   if (isEmpty(filteredCharts)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -1085,7 +1097,9 @@ const APIEndpointSchemaV1: React.FC<{
   if (isEmpty(requestSchemaFields) && isEmpty(responseSchemaFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -1123,7 +1137,9 @@ const APIEndpointSchemaV1: React.FC<{
 
       {isEmpty(activeSchemaFields) ? (
         <div className="no-data-container m-x-md">
-          <Text className="no-data-text">{t('message.no-data-available')}</Text>
+          <Typography className="no-data-text" variant="text">
+            {t('message.no-data-available')}
+          </Typography>
         </div>
       ) : (
         <div className="m-l-md">
@@ -1172,7 +1188,9 @@ const DatabaseSchemasV1: React.FC<{
   if (isEmpty(filteredSchemas)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -1232,7 +1250,9 @@ const SearchIndexFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text" variant="text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }

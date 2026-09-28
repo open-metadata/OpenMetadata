@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Col, Row, Tag, Tooltip, Typography } from 'antd';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -317,7 +321,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataTypeTopic, record: Field) => (
-      <Typography.Text>
+      <Typography variant="text">
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -325,7 +329,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
@@ -484,7 +488,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     return (
       <Col>
-        <Typography.Text type="secondary">{t('label.schema')}</Typography.Text>
+        <Typography color="secondary" variant="text">
+          {t('label.schema')}
+        </Typography>
         {schemaTypePlaceholder ?? (
           <Tag className="ml-4">{messageSchema.schemaType}</Tag>
         )}

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,11 +51,12 @@ const DomainSummary = ({
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
-              data-testid="owner-header">
+              data-testid="owner-header"
+              variant="text">
               {t('label.owner-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <Owner
@@ -70,23 +71,25 @@ const DomainSummary = ({
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
-              data-testid="expert-header">
+              data-testid="expert-header"
+              variant="text">
               {t('label.expert-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
               <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
-              <Typography.Text
+              <Typography
                 className="text-grey-body"
-                data-testid="no-expert-header">
+                data-testid="no-expert-header"
+                variant="text">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>

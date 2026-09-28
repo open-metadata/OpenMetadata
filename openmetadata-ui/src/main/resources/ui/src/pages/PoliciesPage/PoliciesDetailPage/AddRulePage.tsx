@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -147,11 +148,12 @@ const AddRulePage = () => {
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
 
-        <Typography.Paragraph
+        <Typography
           className="text-base"
-          data-testid="add-rule-title">
+          data-testid="add-rule-title"
+          variant="paragraph">
           {t('label.add-new-entity', { entity: t('label.rule') })}
-        </Typography.Paragraph>
+        </Typography>
         <Form
           data-testid="rule-form"
           id="rule-form"

@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Drawer, Empty, Spin, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Drawer, Empty, Spin } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -23,8 +24,6 @@ import { LearningResourceCard } from '../LearningResourceCard/LearningResourceCa
 import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.component';
 import './learning-drawer.less';
 import { LearningDrawerProps } from './LearningDrawer.interface';
-
-const { Title } = Typography;
 
 export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   open,
@@ -146,9 +145,12 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         placement="right"
         title={
           <div className="learning-drawer-header">
-            <Title className="learning-drawer-title" level={5}>
+            <Typography
+              className="learning-drawer-title"
+              level={5}
+              variant="title">
               {t('label.entity-resource', { entity: getPageTitle() })}
-            </Title>
+            </Typography>
             <CloseOutlined
               className="learning-drawer-close"
               data-testid="close-drawer"

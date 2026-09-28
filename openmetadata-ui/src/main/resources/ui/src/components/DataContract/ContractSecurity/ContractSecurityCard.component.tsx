@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Tag, Typography } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row, Tag } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -68,21 +68,24 @@ const ContractSecurityCard: React.FC<{
             'tw:dark:text-primary'
           )}>
           <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
-            <Typography.Text className="access-policy-label">{`${t(
+            <Typography className="access-policy-label" variant="text">{`${t(
               'label.access-policy'
-            )}: `}</Typography.Text>
-            <Typography.Text
+            )}: `}</Typography>
+            <Typography
               className="access-policy-value"
-              data-testid={`contract-security-access-policy-${index}`}>
+              data-testid={`contract-security-access-policy-${index}`}
+              variant="text">
               {policy.accessPolicy || NO_DATA_PLACEHOLDER}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
         <div className="tw:rounded-xl tw:border-t tw:border-utility-gray-200 tw:py-3 tw:pl-3">
           <div className="contract-security-policy-card-identity-container">
-            <Typography.Text className="contract-security-policy-subtitle-label">
+            <Typography
+              className="contract-security-policy-subtitle-label"
+              variant="text">
               {t('label.identities')}
-            </Typography.Text>
+            </Typography>
 
             {isEmpty(policy.identities)
               ? NO_DATA_PLACEHOLDER
@@ -101,9 +104,11 @@ const ContractSecurityCard: React.FC<{
               <Divider className="contract-dash-separator" />
 
               <div className="contract-security-policy-card-row-filter-container">
-                <Typography.Text className="contract-security-policy-subtitle-label">
+                <Typography
+                  className="contract-security-policy-subtitle-label"
+                  variant="text">
                   {t('label.row-filter-plural')}
-                </Typography.Text>
+                </Typography>
 
                 {policy.rowFilters?.map((filter, filterIndex) => {
                   return (
@@ -134,9 +139,11 @@ const ContractSecurityCard: React.FC<{
         <Card
           className="contract-security-classification-container tw:overflow-visible tw:px-5 tw:py-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
           data-testid="contract-security-classification">
-          <Typography.Text className="contract-security-classification-label">
+          <Typography
+            className="contract-security-classification-label"
+            variant="text">
             {t('label.classification')}
-          </Typography.Text>
+          </Typography>
 
           {isEmpty(security?.dataClassification)
             ? NO_DATA_PLACEHOLDER
@@ -150,9 +157,9 @@ const ContractSecurityCard: React.FC<{
 
       {!isEmpty(security?.policies) && (
         <Col data-testid="contract-security-policy-container" span={24}>
-          <Typography.Text className="contract-security-policy-label">
+          <Typography className="contract-security-policy-label" variant="text">
             {t('label.policy-plural')}
-          </Typography.Text>
+          </Typography>
 
           {renderSecurityPolicies}
         </Col>

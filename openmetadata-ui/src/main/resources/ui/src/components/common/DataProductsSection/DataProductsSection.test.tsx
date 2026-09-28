@@ -71,16 +71,6 @@ jest.mock('antd', () => {
         {children}
       </button>
     )),
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
   };
 });
 
@@ -253,8 +243,10 @@ describe('DataProductsSection', () => {
     it('renders with data products', () => {
       const { container } = render(<DataProductsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
-      expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
+      expect(screen.getByText('label.data-product-plural')).toHaveAttribute(
+        'data-typography',
+        'text'
+      );
 
       // display list
       expect(screen.getByText('DP 1')).toBeInTheDocument();

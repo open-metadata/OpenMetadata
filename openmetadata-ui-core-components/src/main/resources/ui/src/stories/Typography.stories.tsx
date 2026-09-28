@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
-import type { CSSProperties } from 'react';
+import {
+  type CSSProperties,
+  type ReactElement,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type {
   TypographySize,
   TypographyWeight,
@@ -450,5 +456,268 @@ export const EllipsisMultiLineWithTooltip: StoryObj = {
         {LONG_TEXT}
       </Typography>
     </div>
+  ),
+};
+
+type ParityRow = {
+  antd: string;
+  core: string;
+  node: ReactElement;
+  expected: Partial<Record<ParityProp, string>>;
+};
+
+type ParityProp =
+  | 'fontSize'
+  | 'lineHeight'
+  | 'fontWeight'
+  | 'color'
+  | 'marginBottom';
+
+const PARITY_PROPS: ParityProp[] = [
+  'fontSize',
+  'lineHeight',
+  'fontWeight',
+  'color',
+  'marginBottom',
+];
+
+// Chrome serialises color-mix() output as color(srgb …); compare as rgba.
+const normalizeColor = (value: string) =>
+  value.replace(
+    /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+) \/ ([\d.]+)\)/,
+    (_, r, g, b, a) =>
+      `rgba(${[r, g, b]
+        .map((c) => Math.round(Number(c) * 255))
+        .join(', ')}, ${Number(a)})`
+  );
+
+// Light-mode values measured from antd Typography rendered with the app's
+// antd-master.less + global overrides, 14px / 1.5715 body.
+const PARITY_ROWS: ParityRow[] = [
+  {
+    antd: '<Text>',
+    core: '<Typography variant="text">',
+    node: <Typography variant="text">Text</Typography>,
+    expected: { fontSize: '14px', fontWeight: '400', color: 'rgb(24, 29, 39)' },
+  },
+  {
+    antd: '<Text type="secondary">',
+    core: 'variant="text" color="secondary"',
+    node: (
+      <Typography color="secondary" variant="text">
+        Secondary
+      </Typography>
+    ),
+    expected: { color: 'rgba(0, 0, 0, 0.45)' },
+  },
+  {
+    antd: '<Text type="danger">',
+    core: 'variant="text" color="danger"',
+    node: (
+      <Typography color="danger" variant="text">
+        Danger
+      </Typography>
+    ),
+    expected: { color: 'rgb(217, 45, 32)' },
+  },
+  {
+    antd: '<Text strong>',
+    core: 'variant="text" strong',
+    node: (
+      <Typography strong variant="text">
+        Strong
+      </Typography>
+    ),
+    expected: { fontWeight: '600' },
+  },
+  {
+    antd: '<Text code>',
+    core: 'variant="text" code',
+    node: (
+      <Typography code variant="text">
+        code
+      </Typography>
+    ),
+    expected: { fontSize: '11.9px' },
+  },
+  {
+    antd: '<Paragraph>',
+    core: 'variant="paragraph"',
+    node: <Typography variant="paragraph">Paragraph</Typography>,
+    expected: { marginBottom: '14px' },
+  },
+  {
+    antd: '<Title level={1}>',
+    core: 'variant="title" level={1}',
+    node: (
+      <Typography level={1} variant="title">
+        Title 1
+      </Typography>
+    ),
+    expected: {
+      fontSize: '38px',
+      lineHeight: '46.74px',
+      fontWeight: '600',
+      color: 'rgba(0, 0, 0, 0.85)',
+      marginBottom: '19px',
+    },
+  },
+  {
+    antd: '<Title level={2}>',
+    core: 'variant="title" level={2}',
+    node: (
+      <Typography level={2} variant="title">
+        Title 2
+      </Typography>
+    ),
+    expected: {
+      fontSize: '30px',
+      lineHeight: '40.5px',
+      fontWeight: '600',
+      marginBottom: '15px',
+    },
+  },
+  {
+    antd: '<Title level={3}>',
+    core: 'variant="title" level={3}',
+    node: (
+      <Typography level={3} variant="title">
+        Title 3
+      </Typography>
+    ),
+    expected: {
+      fontSize: '24px',
+      lineHeight: '32.4px',
+      fontWeight: '600',
+      marginBottom: '12px',
+    },
+  },
+  {
+    antd: '<Title level={4}>',
+    core: 'variant="title" level={4}',
+    node: (
+      <Typography level={4} variant="title">
+        Title 4
+      </Typography>
+    ),
+    expected: {
+      fontSize: '20px',
+      lineHeight: '28px',
+      fontWeight: '600',
+      marginBottom: '10px',
+    },
+  },
+  {
+    antd: '<Title level={5}>',
+    core: 'variant="title" level={5}',
+    node: (
+      <Typography level={5} variant="title">
+        Title 5
+      </Typography>
+    ),
+    expected: {
+      fontSize: '16px',
+      lineHeight: '24px',
+      fontWeight: '600',
+      marginBottom: '8px',
+    },
+  },
+  {
+    antd: '<Link href>',
+    core: 'variant="link" href',
+    node: (
+      <Typography href="#parity" variant="link">
+        Link
+      </Typography>
+    ),
+    expected: {
+      fontSize: '14px',
+      lineHeight: '21px',
+      fontWeight: '500',
+      color: 'rgb(23, 92, 211)',
+    },
+  },
+];
+
+const ParityCheck = ({ row }: { row: ParityRow }) => {
+  const cellRef = useRef<HTMLTableCellElement>(null);
+  const [actual, setActual] = useState<Partial<Record<ParityProp, string>>>({});
+
+  useLayoutEffect(() => {
+    const el = cellRef.current?.querySelector('[data-typography]');
+    const text = el?.querySelector('strong, code') ?? el;
+    if (!el || !text) {
+      return;
+    }
+    const outer = getComputedStyle(el);
+    const inner = getComputedStyle(text);
+    setActual({
+      fontSize: inner.fontSize,
+      lineHeight: inner.lineHeight,
+      fontWeight: inner.fontWeight,
+      color: normalizeColor(inner.color),
+      marginBottom: outer.marginBottom,
+    });
+  }, []);
+
+  const mismatches = PARITY_PROPS.filter(
+    (prop) => row.expected[prop] && row.expected[prop] !== actual[prop]
+  );
+
+  return (
+    <tr>
+      <td>
+        <code>{row.antd}</code>
+      </td>
+      <td>
+        <code>{row.core}</code>
+      </td>
+      <td ref={cellRef}>{row.node}</td>
+      <td>
+        {PARITY_PROPS.filter((prop) => row.expected[prop]).map((prop) => (
+          <div key={prop}>
+            {prop}: {row.expected[prop]} / {actual[prop]}
+          </div>
+        ))}
+      </td>
+      <td data-testid="parity-result">
+        {mismatches.length ? `MISMATCH: ${mismatches.join(', ')}` : 'match'}
+      </td>
+    </tr>
+  );
+};
+
+export const AntdParity: StoryObj = {
+  name: 'antd parity (variant)',
+  parameters: {
+    docs: {
+      description: {
+        story: [
+          '`variant` reproduces antd Typography. Each row renders the core',
+          'element and compares its live computed style with the value antd',
+          'renders in the app (light mode). antd is not a core dependency, so',
+          'the antd column is the measured reference, not a live render; the',
+          'wrapper sets the antd body font (14px / 1.5715).',
+        ].join(' '),
+      },
+    },
+  },
+  render: () => (
+    <table style={{ fontSize: 14, lineHeight: 1.5715, borderSpacing: 12 }}>
+      <thead>
+        <tr>
+          <th>antd</th>
+          <th>core</th>
+          <th>rendered</th>
+          <th>expected / actual</th>
+          <th>result</th>
+        </tr>
+      </thead>
+      <tbody>
+        {PARITY_ROWS.map((row) => (
+          <ParityCheck key={row.antd} row={row} />
+        ))}
+      </tbody>
+    </table>
   ),
 };

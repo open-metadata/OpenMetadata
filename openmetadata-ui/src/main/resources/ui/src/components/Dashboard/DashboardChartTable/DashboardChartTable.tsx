@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { groupBy, uniqBy } from 'lodash';
@@ -453,9 +453,9 @@ export const DashboardChartTable = ({
               data-testid="show-deleted"
               onClick={handleShowDeletedCharts}
             />
-            <Typography.Text className="m-l-xs">
+            <Typography className="m-l-xs" variant="text">
               {t('label.deleted')}
-            </Typography.Text>
+            </Typography>
           </span>
         }
         loading={isChartsLoading}

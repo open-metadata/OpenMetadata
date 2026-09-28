@@ -16,7 +16,8 @@ import {
   RedoOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Space } from 'antd';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -118,23 +119,24 @@ export const CustomizablePageHeader = ({
       data-testid="customize-landing-page-header">
       <div className="d-flex items-center justify-between">
         <div>
-          <Typography.Title
+          <Typography
             className="m-0"
             data-testid="customize-page-title"
-            level={5}>
+            level={5}
+            variant="title">
             {t('label.customize-entity', {
               entity: isLandingPage
                 ? t('label.home-page')
                 : t(`label.${kebabCase(currentPageType as string)}`),
             })}
-          </Typography.Title>
-          <Typography.Paragraph className="m-0">
+          </Typography>
+          <Typography className="m-0" variant="paragraph">
             <Transi18next
               i18nKey={subTitle}
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
               values={i18Values}
             />
-          </Typography.Paragraph>
+          </Typography>
         </div>
         <Space>
           {showWidgetActions && (

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -379,9 +379,9 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         width: 100,
         render: (dataType, record) => (
-          <Typography.Text>
+          <Typography variant="text">
             {record.dataTypeDisplay || dataType}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {

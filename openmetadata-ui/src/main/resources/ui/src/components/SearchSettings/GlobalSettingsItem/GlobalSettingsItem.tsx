@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Input, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import { useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
@@ -60,9 +61,9 @@ export const GlobalSettingItem = ({
 
   return (
     <div className="d-flex items-center justify-between p-y-xs global-settings-item">
-      <Typography.Text data-testid="global-setting-label">
+      <Typography data-testid="global-setting-label" variant="text">
         {label}
-      </Typography.Text>
+      </Typography>
 
       {isEditing ? (
         <div className="m-l-md d-flex justify-end flex-wrap inline-edit-container">

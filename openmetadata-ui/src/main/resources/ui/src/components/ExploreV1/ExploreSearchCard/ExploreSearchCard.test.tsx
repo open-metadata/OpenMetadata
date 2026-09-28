@@ -130,6 +130,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Owner: jest.fn().mockReturnValue(null),
     toOwnerRef: actual.toOwnerRef,
     toOwnerRefs: actual.toOwnerRefs,
+    Typography: actual.Typography,
   };
 });
 

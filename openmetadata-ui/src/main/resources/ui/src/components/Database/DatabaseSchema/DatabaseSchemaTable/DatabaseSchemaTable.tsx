@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { ColumnsType } from '../../../common/Table/Table.interface';
@@ -389,9 +389,9 @@ export const DatabaseSchemaTable = ({
               data-testid="show-deleted"
               onClick={handleShowDeletedSchemas}
             />
-            <Typography.Text className="m-l-xs">
+            <Typography className="m-l-xs" variant="text">
               {t('label.deleted')}
-            </Typography.Text>{' '}
+            </Typography>{' '}
           </span>
           {getBulkEditButton(
             getDerivedPermissionFlags(

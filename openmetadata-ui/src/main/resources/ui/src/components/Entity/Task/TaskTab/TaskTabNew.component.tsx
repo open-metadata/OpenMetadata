@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Owner } from '@openmetadata/ui-core-components';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -24,7 +24,6 @@ import {
   Skeleton,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
@@ -280,7 +279,7 @@ const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
             <UserPopOverCard userName={assignee.name ?? ''}>
               <ProfilePicture name={assignee.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography.Text>{getEntityName(assignee)}</Typography.Text>
+            <Typography variant="text">{getEntityName(assignee)}</Typography>
           </div>
         ))}
       </div>
@@ -662,9 +661,9 @@ export const TaskTabNew = ({
   const taskColumnName = useMemo(() => {
     if (taskColumnLabel) {
       return (
-        <Typography.Text className="p-r-xss">
+        <Typography className="p-r-xss" variant="text">
           {taskColumnLabel} {t('label.in-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -706,7 +705,7 @@ export const TaskTabNew = ({
             <UserPopOverCard userName={task.createdBy?.name ?? ''}>
               <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography.Text>{task.createdBy?.name}</Typography.Text>
+            <Typography variant="text">{task.createdBy?.name}</Typography>
           </Link>
         ),
       },
@@ -781,21 +780,26 @@ export const TaskTabNew = ({
             data-testid="task-title"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography.Text>
+            <Typography
+              className="p-0 task-id text-sm task-details-id"
+              variant="text">{`#${taskDisplayId} `}</Typography>
 
-            <Typography.Text className="p-xss task-details">
+            <Typography className="p-xss task-details" variant="text">
               {t(TASK_ENTITY_TYPES[task.type])}
-            </Typography.Text>
+            </Typography>
 
             {taskColumnName}
 
-            <Typography.Text
+            <Typography
               className="break-all text-sm entity-link header-link whitespace-normal"
-              data-testid="entity-link">
+              data-testid="entity-link"
+              variant="text">
               {getNameFromFQN(entityFQN)}
-            </Typography.Text>
+            </Typography>
 
-            <Typography.Text className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography.Text>
+            <Typography
+              className="p-l-xss entity-type header-link whitespace-normal"
+              variant="text">{`(${entityType})`}</Typography>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -1639,9 +1643,11 @@ export const TaskTabNew = ({
               span={8}
               style={{ paddingLeft: 0 }}>
               <UserIcon height={16} />
-              <Typography.Text className="incident-manager-details-label">
+              <Typography
+                className="incident-manager-details-label"
+                variant="text">
                 {t('label.created-by')}
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={16} style={{ paddingLeft: '2px' }}>
               <Link
@@ -1656,7 +1662,7 @@ export const TaskTabNew = ({
                   </div>
                 </UserPopOverCard>
 
-                <Typography.Text>{task.createdBy?.name}</Typography.Text>
+                <Typography variant="text">{task.createdBy?.name}</Typography>
               </Link>
             </Col>
 
@@ -1715,9 +1721,11 @@ export const TaskTabNew = ({
                   span={8}
                   style={{ paddingLeft: 0 }}>
                   <AssigneesIcon height={16} />
-                  <Typography.Text className="incident-manager-details-label @grey-8">
+                  <Typography
+                    className="incident-manager-details-label @grey-8"
+                    variant="text">
                     {t('label.assignee-plural')}
-                  </Typography.Text>
+                  </Typography>
                 </Col>
                 <Col
                   className="flex gap-2"
@@ -1733,9 +1741,9 @@ export const TaskTabNew = ({
                           />
                         </div>
                       </UserPopOverCard>
-                      <Typography.Text className="text-grey-body">
+                      <Typography className="text-grey-body" variant="text">
                         {getEntityName(task?.assignees[0])}
-                      </Typography.Text>
+                      </Typography>
                       {editAssigneeButton}
                     </div>
                   ) : (
@@ -1778,9 +1786,9 @@ export const TaskTabNew = ({
     return (
       <div className="action-required-card d-flex flex-wrap justify-between items-center">
         <Col>
-          <Typography.Text className="action-required-text">
+          <Typography className="action-required-text" variant="text">
             {t('label.action-required')}
-          </Typography.Text>
+          </Typography>
         </Col>
         {actionButtons}
       </div>
@@ -1900,9 +1908,9 @@ export const TaskTabNew = ({
     return (
       <Col span={24}>
         <div className="task-proposed-changes">
-          <Typography.Text className="task-proposed-changes-title">
+          <Typography className="task-proposed-changes-title" variant="text">
             {t('label.proposed-change-plural')}
-          </Typography.Text>
+          </Typography>
           <div className="task-proposed-changes-fields">
             {Object.entries(proposedChanges).map(
               ([field, { added, removed }]) => {
@@ -1910,9 +1918,11 @@ export const TaskTabNew = ({
 
                 return (
                   <div className="task-proposed-changes-field-row" key={field}>
-                    <Typography.Text className="task-proposed-changes-field-name">
+                    <Typography
+                      className="task-proposed-changes-field-name"
+                      variant="text">
                       {startCase(field)}
-                    </Typography.Text>
+                    </Typography>
                     <div className="task-proposed-changes-chips">
                       {removed.map((val) =>
                         getUrl ? (
@@ -2018,9 +2028,9 @@ export const TaskTabNew = ({
     return (
       <Col span={24}>
         <div className="activity-feed-comments-container d-flex flex-col">
-          <Typography.Text className={commentsTitleClassName}>
+          <Typography className={commentsTitleClassName} variant="text">
             {t('label.comment-plural')}
-          </Typography.Text>
+          </Typography>
 
           {showFeedEditor ? (
             <ActivityFeedEditorNew

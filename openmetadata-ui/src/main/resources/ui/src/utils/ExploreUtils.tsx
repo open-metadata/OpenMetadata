@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, lowerCase } from 'lodash';
@@ -126,11 +126,12 @@ export const generateTabItems = (
                 )}
               />
             </span>
-            <Typography.Text
+            <Typography
               className={tabSearchIndex === searchIndex ? 'text-primary' : ''}
-              ellipsis={{ tooltip: true }}>
+              ellipsis={{ tooltip: true }}
+              variant="text">
               {tabDetail.label}
-            </Typography.Text>
+            </Typography>
           </div>
           <span>
             {!isNil(searchHitCounts)

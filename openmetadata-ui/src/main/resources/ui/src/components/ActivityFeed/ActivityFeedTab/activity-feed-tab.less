@@ -229,7 +229,12 @@
     &.ant-typography,
     &.ant-typography a,
     & a.ant-typography,
-    & .ant-typography a {
+    & .ant-typography a,
+    [data-typography],
+    [data-typography] a,
+    &[data-typography],
+    &[data-typography] a,
+    & a[data-typography] {
       color: @primary-heading-color;
 
       &:hover {

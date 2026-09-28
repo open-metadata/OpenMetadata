@@ -12,7 +12,8 @@
  */
 
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
-import { Col, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -47,9 +48,9 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             <RightOutlined className="text-xs text-primary cursor-pointer" />
           )}
         </span>
-        <Typography.Text className="font-medium m-y-0">
+        <Typography className="font-medium m-y-0" variant="text">
           {t('label.source-plural')}
-        </Typography.Text>
+        </Typography>
       </Space>
       {showFeatureSources &&
         feature.featureSources?.map((source, i) => (
@@ -59,29 +60,29 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             wrap={false}>
             <Col span={1}>{String(i + 1).padStart(2, '0')}</Col>
             <Col span={6}>
-              <Typography.Text className="text-grey-muted">
+              <Typography className="text-grey-muted" variant="text">
                 {`${t('label.name')}:`}
-              </Typography.Text>
-              <Typography.Text className="m-l-xs">
+              </Typography>
+              <Typography className="m-l-xs" variant="text">
                 {source.name}
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={6}>
-              <Typography.Text className="text-grey-muted">
+              <Typography className="text-grey-muted" variant="text">
                 {`${t('label.type')}:`}
-              </Typography.Text>
-              <Typography.Text className="m-l-xs">
+              </Typography>
+              <Typography className="m-l-xs" variant="text">
                 {source.dataType}
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={11}>
               <Row>
                 <Col flex="100px">
-                  <Typography.Text className="text-grey-muted">
+                  <Typography className="text-grey-muted" variant="text">
                     {`${t('label.data-entity', {
                       entity: t('label.source'),
                     })}:`}
-                  </Typography.Text>
+                  </Typography>
                 </Col>
                 <Col flex="auto">
                   <Link

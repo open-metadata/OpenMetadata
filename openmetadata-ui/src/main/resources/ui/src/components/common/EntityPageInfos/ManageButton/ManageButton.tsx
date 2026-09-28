@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Modal, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -420,11 +420,11 @@ const ManageButton: FC<ManageButtonProps> = ({
               setShowReactiveModal(false);
             }}
             onOk={handleRestore}>
-            <Typography.Text data-testid="restore-modal-body">
+            <Typography data-testid="restore-modal-body" variant="text">
               {t('message.are-you-want-to-restore', {
                 entity: entityName,
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         </Button>
       )}

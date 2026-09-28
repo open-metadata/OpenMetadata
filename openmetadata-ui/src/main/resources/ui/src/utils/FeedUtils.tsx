@@ -12,7 +12,7 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import type { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
@@ -197,7 +197,11 @@ const renderFieldActionHeader = (field: string, action: string): ReactNode => (
   <Transi18next
     i18nKey="message.feed-field-action-entity-header"
     renderElement={
-      <Typography.Text className="font-bold" style={{ fontSize: '14px' }} />
+      <Typography
+        className="font-bold"
+        style={{ fontSize: '14px' }}
+        variant="text"
+      />
     }
     values={{ field, action }}
   />
@@ -207,24 +211,24 @@ const ACTIVITY_EVENT_HEADER_RENDERERS: Partial<
   Record<ActivityEventType, () => ReactNode>
 > = {
   [ActivityEventType.EntityCreated]: () => (
-    <Typography.Text className="font-bold">
+    <Typography className="font-bold" variant="text">
       {t('label.created-lowercase')}
-    </Typography.Text>
+    </Typography>
   ),
   [ActivityEventType.EntityDeleted]: () => (
-    <Typography.Text className="font-bold">
+    <Typography className="font-bold" variant="text">
       {t('label.deleted-lowercase')}
-    </Typography.Text>
+    </Typography>
   ),
   [ActivityEventType.EntitySoftDeleted]: () => (
-    <Typography.Text className="font-bold">
+    <Typography className="font-bold" variant="text">
       {t('label.deleted-lowercase')}
-    </Typography.Text>
+    </Typography>
   ),
   [ActivityEventType.EntityRestored]: () => (
-    <Typography.Text className="font-bold">
+    <Typography className="font-bold" variant="text">
       {t('label.restored-lowercase')}
-    </Typography.Text>
+    </Typography>
   ),
   [ActivityEventType.DescriptionUpdated]: () =>
     renderFieldActionHeader(
@@ -249,19 +253,19 @@ const ACTIVITY_EVENT_HEADER_RENDERERS: Partial<
   [ActivityEventType.CustomPropertyUpdated]: () => (
     <Transi18next
       i18nKey="message.feed-custom-property-header"
-      renderElement={<Typography.Text className="font-bold" />}
+      renderElement={<Typography className="font-bold" variant="text" />}
     />
   ),
   [ActivityEventType.TestCaseStatusChanged]: () => (
     <Transi18next
       i18nKey="message.feed-test-case-header"
-      renderElement={<Typography.Text className="font-bold" />}
+      renderElement={<Typography className="font-bold" variant="text" />}
     />
   ),
   [ActivityEventType.PipelineStatusChanged]: () => (
-    <Typography.Text className="font-bold">
+    <Typography className="font-bold" variant="text">
       {t('label.pipeline-status-changed')}
-    </Typography.Text>
+    </Typography>
   ),
 };
 
@@ -281,15 +285,15 @@ export const getActivityEventHeaderText = (
 
   if (fieldName) {
     return (
-      <Typography.Text className="font-bold">
+      <Typography className="font-bold" variant="text">
         {t('label.updated-field-for-lowercase', { field: fieldName })}
-      </Typography.Text>
+      </Typography>
     );
   }
 
   return (
-    <Typography.Text className="font-bold">
+    <Typography className="font-bold" variant="text">
       {t('label.updated-lowercase')}
-    </Typography.Text>
+    </Typography>
   );
 };

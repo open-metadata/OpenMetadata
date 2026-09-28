@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Typography } from './typography';
 
 describe('Typography', () => {
@@ -243,5 +243,211 @@ describe('Typography ellipsis tooltip', () => {
     fireEvent.click(el);
 
     expect(handleAncestorClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+// `variant` is antd Typography parity: the styling lives in the
+// `[data-typography]` block of styles/typography.css (verified against antd
+// computed styles in a browser), so these tests pin the DOM contract that
+// block keys on — element, data attributes, no prose wrapper.
+describe('Typography variant (antd parity)', () => {
+  it.each([
+    ['text', 'SPAN'],
+    ['paragraph', 'DIV'],
+    ['link', 'A'],
+    ['title', 'H1'],
+  ] as const)('renders variant="%s" as a bare <%s>', (variant, tagName) => {
+    render(<Typography variant={variant}>Hello</Typography>);
+
+    const el = screen.getByText('Hello');
+
+    expect(el.tagName).toBe(tagName);
+    expect(el).toHaveAttribute('data-typography', variant);
+    expect(el).toHaveClass('not-prose');
+    expect(el).not.toHaveClass('prose');
+    expect(el.parentElement).not.toHaveClass('prose');
+  });
+
+  it.each([1, 2, 3, 4, 5] as const)(
+    'renders title level %s as h%s',
+    (level) => {
+      render(
+        <Typography level={level} variant="title">
+          Hello
+        </Typography>
+      );
+
+      expect(screen.getByText('Hello').tagName).toBe(`H${level}`);
+    }
+  );
+
+  it('lets `as` override the variant element', () => {
+    render(
+      <Typography as="article" variant="text">
+        Hello
+      </Typography>
+    );
+
+    expect(screen.getByText('Hello').tagName).toBe('ARTICLE');
+  });
+
+  it('exposes color as data-color instead of a utility class', () => {
+    render(
+      <Typography color="secondary" variant="text">
+        Hello
+      </Typography>
+    );
+
+    const el = screen.getByText('Hello');
+
+    expect(el).toHaveAttribute('data-color', 'secondary');
+    expect(el.className).not.toMatch(/tw:text-/);
+  });
+
+  it('keeps consumer classes, size and weight', () => {
+    render(
+      <Typography
+        className="text-grey-muted"
+        size="text-xs"
+        variant="text"
+        weight="medium">
+        Hello
+      </Typography>
+    );
+
+    const el = screen.getByText('Hello');
+
+    expect(el).toHaveClass('text-grey-muted', 'tw:text-xs', 'tw:font-medium');
+  });
+
+  it('wraps children in strong inside code, like antd', () => {
+    render(
+      <Typography code strong variant="text">
+        Hello
+      </Typography>
+    );
+
+    const strong = screen.getByText('Hello');
+
+    expect(strong.tagName).toBe('STRONG');
+    expect(strong.parentElement?.tagName).toBe('CODE');
+    expect(strong.parentElement?.parentElement).toHaveAttribute(
+      'data-typography',
+      'text'
+    );
+  });
+
+  it('marks single-line ellipsis on the element itself', () => {
+    render(
+      <Typography ellipsis variant="text">
+        Hello
+      </Typography>
+    );
+
+    const el = screen.getByText('Hello');
+
+    expect(el).toHaveAttribute('data-ellipsis', 'single');
+    expect(el.style.getPropertyValue('-webkit-line-clamp')).toBe('');
+    expect(el.parentElement).not.toHaveClass('prose');
+  });
+
+  it('clamps multi-row ellipsis through an inline line-clamp', () => {
+    render(
+      <Typography
+        ellipsis={{ rows: 3 }}
+        style={{ color: 'red' }}
+        variant="paragraph">
+        Hello
+      </Typography>
+    );
+
+    const el = screen.getByText('Hello');
+
+    expect(el).toHaveAttribute('data-ellipsis', 'multiple');
+    expect(el.style.getPropertyValue('-webkit-line-clamp')).toBe('3');
+    expect(el.style.color).toBe('red');
+  });
+
+  describe('ellipsis tooltip', () => {
+    const LONG = 'A long piece of text';
+
+    const mockOverflow = (overflowing: boolean) => {
+      vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(
+        100
+      );
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        overflowing ? 300 : 100
+      );
+    };
+
+    const hover = async (text: string) => {
+      const user = userEvent.setup();
+      fireEvent.mouseMove(document);
+      await user.hover(screen.getByText(text));
+
+      return user;
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('shows the tooltip when the text is truncated', async () => {
+      mockOverflow(true);
+      render(
+        <Typography ellipsis={{ tooltip: 'Full text' }} variant="text">
+          {LONG}
+        </Typography>
+      );
+
+      await hover(LONG);
+
+      await waitFor(() => {
+        expect(screen.getByText('Full text')).toBeInTheDocument();
+      });
+    });
+
+    it('does not show the tooltip when the text fits', async () => {
+      mockOverflow(false);
+      render(
+        <Typography ellipsis={{ tooltip: 'Full text' }} variant="text">
+          {LONG}
+        </Typography>
+      );
+
+      await hover(LONG);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      expect(screen.queryByText('Full text')).not.toBeInTheDocument();
+    });
+
+    it('adds no wrapper, no tab stop, and lets clicks reach ancestors', () => {
+      const handleAncestorClick = vi.fn();
+      render(
+        <div onClick={handleAncestorClick}>
+          <Typography ellipsis={{ tooltip: true }} variant="text">
+            {LONG}
+          </Typography>
+        </div>
+      );
+
+      const el = screen.getByText(LONG);
+
+      expect(el.parentElement?.tagName).toBe('DIV');
+      expect(el.closest('button')).toBeNull();
+      expect(el).not.toHaveAttribute('tabindex');
+
+      fireEvent.click(el);
+
+      expect(handleAncestorClick).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+describe('Typography strong / code without variant', () => {
+  it('decorates the default prose rendering too', () => {
+    render(<Typography strong>Hello</Typography>);
+
+    expect(screen.getByText('Hello').tagName).toBe('STRONG');
   });
 });

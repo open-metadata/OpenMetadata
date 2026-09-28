@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Select, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -149,11 +150,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
         name: column,
         title: (
           <div className="d-flex flex-column">
-            <Typography.Text> {column}</Typography.Text>
+            <Typography variant="text"> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+              <Typography
+                className="text-grey-muted text-xs font-normal"
+                variant="text">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
-              )})`}</Typography.Text>
+              )})`}</Typography>
             )}
           </div>
         ),
@@ -292,7 +295,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
       <ErrorPlaceHolder className="error-placeholder">
-        <Typography.Paragraph>
+        <Typography variant="paragraph">
           <Transi18next
             i18nKey="message.view-sample-data-entity"
             renderElement={
@@ -308,7 +311,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               entity: t('label.auto-classification'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }
@@ -322,9 +325,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
       id="sampleDataDetails">
       <Space className="m-y-xss justify-between w-full">
         <Space>
-          <Typography.Text className="text-grey-muted">
+          <Typography className="text-grey-muted" variant="text">
             {t('label.row-limit')}:
-          </Typography.Text>
+          </Typography>
           <Select
             className="w-28"
             data-testid="row-limit-select"

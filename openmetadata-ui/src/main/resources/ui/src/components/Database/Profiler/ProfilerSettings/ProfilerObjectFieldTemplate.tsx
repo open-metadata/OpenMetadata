@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button, Space, Typography } from 'antd';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -50,7 +51,9 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         )}
       </Space>
       {isEmpty(properties) ? (
-        <Typography>{t('message.no-config-plural')}</Typography>
+        <Typography as="article" variant="text">
+          {t('message.no-config-plural')}
+        </Typography>
       ) : (
         properties.map((element) => (
           <div
