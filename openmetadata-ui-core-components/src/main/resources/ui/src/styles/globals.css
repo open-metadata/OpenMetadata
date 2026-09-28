@@ -1037,26 +1037,28 @@
     --color-gray-900: rgb(19 22 27);
     --color-gray-950: rgb(12 14 18);
 
-    --color-utility-blue-50: theme(--color-blue-950);
-    --color-utility-blue-100: theme(--color-blue-900);
-    --color-utility-blue-200: theme(--color-blue-800);
+    /* Hue chips (blue, brand, indigo, purple, pink, …) take the status-chip recipe
+       too: the solid 950 step reads as a navy/purple filled block on dark cards. */
+    --color-utility-blue-50: --alpha(theme(--color-blue-500) / 16%);
+    --color-utility-blue-100: --alpha(theme(--color-blue-500) / 16%);
+    --color-utility-blue-200: --alpha(theme(--color-blue-500) / 35%);
     --color-utility-blue-300: theme(--color-blue-700);
     --color-utility-blue-400: theme(--color-blue-600);
-    --color-utility-blue-500: theme(--color-blue-500);
+    --color-utility-blue-500: theme(--color-blue-400);
     --color-utility-blue-600: theme(--color-blue-400);
     --color-utility-blue-700: theme(--color-blue-300);
 
-    --color-utility-brand-50: theme(--color-brand-950);
+    --color-utility-brand-50: --alpha(theme(--color-brand-500) / 16%);
     --color-utility-brand-50_alt: theme(--color-utility-gray-50);
-    --color-utility-brand-100: theme(--color-brand-900);
+    --color-utility-brand-100: --alpha(theme(--color-brand-500) / 16%);
     --color-utility-brand-100_alt: theme(--color-utility-gray-100);
-    --color-utility-brand-200: theme(--color-brand-800);
+    --color-utility-brand-200: --alpha(theme(--color-brand-500) / 35%);
     --color-utility-brand-200_alt: theme(--color-utility-gray-200);
     --color-utility-brand-300: theme(--color-brand-700);
     --color-utility-brand-300_alt: theme(--color-utility-gray-300);
     --color-utility-brand-400: theme(--color-brand-600);
     --color-utility-brand-400_alt: theme(--color-utility-gray-400);
-    --color-utility-brand-500: theme(--color-brand-500);
+    --color-utility-brand-500: theme(--color-brand-400);
     --color-utility-brand-500_alt: theme(--color-utility-gray-500);
     --color-utility-brand-600: theme(--color-brand-400);
     --color-utility-brand-600_alt: theme(--color-utility-gray-600);
@@ -1109,57 +1111,59 @@
     --color-utility-success-600: theme(--color-success-400);
     --color-utility-success-700: theme(--color-success-400);
 
-    --color-utility-orange-50: theme(--color-orange-950);
-    --color-utility-orange-100: theme(--color-orange-900);
-    --color-utility-orange-200: theme(--color-orange-800);
+    /* Same status-chip recipe as success/warning/error: the solid 950/800 steps
+       read as a heavy filled block on dark surfaces. */
+    --color-utility-orange-50: --alpha(theme(--color-orange-500) / 16%);
+    --color-utility-orange-100: --alpha(theme(--color-orange-500) / 16%);
+    --color-utility-orange-200: --alpha(theme(--color-orange-500) / 35%);
     --color-utility-orange-300: theme(--color-orange-700);
     --color-utility-orange-400: theme(--color-orange-600);
-    --color-utility-orange-500: theme(--color-orange-500);
+    --color-utility-orange-500: theme(--color-orange-400);
     --color-utility-orange-600: theme(--color-orange-400);
-    --color-utility-orange-700: theme(--color-orange-300);
+    --color-utility-orange-700: theme(--color-orange-400);
 
-    --color-utility-blue-dark-50: theme(--color-blue-dark-950);
-    --color-utility-blue-dark-100: theme(--color-blue-dark-900);
-    --color-utility-blue-dark-200: theme(--color-blue-dark-800);
+    --color-utility-blue-dark-50: --alpha(theme(--color-blue-dark-500) / 16%);
+    --color-utility-blue-dark-100: --alpha(theme(--color-blue-dark-500) / 16%);
+    --color-utility-blue-dark-200: --alpha(theme(--color-blue-dark-500) / 35%);
     --color-utility-blue-dark-300: theme(--color-blue-dark-700);
     --color-utility-blue-dark-400: theme(--color-blue-dark-600);
-    --color-utility-blue-dark-500: theme(--color-blue-dark-500);
+    --color-utility-blue-dark-500: theme(--color-blue-dark-400);
     --color-utility-blue-dark-600: theme(--color-blue-dark-400);
     --color-utility-blue-dark-700: theme(--color-blue-dark-300);
 
-    --color-utility-indigo-50: theme(--color-indigo-950);
-    --color-utility-indigo-100: theme(--color-indigo-900);
-    --color-utility-indigo-200: theme(--color-indigo-800);
+    --color-utility-indigo-50: --alpha(theme(--color-indigo-500) / 16%);
+    --color-utility-indigo-100: --alpha(theme(--color-indigo-500) / 16%);
+    --color-utility-indigo-200: --alpha(theme(--color-indigo-500) / 35%);
     --color-utility-indigo-300: theme(--color-indigo-700);
     --color-utility-indigo-400: theme(--color-indigo-600);
-    --color-utility-indigo-500: theme(--color-indigo-500);
+    --color-utility-indigo-500: theme(--color-indigo-400);
     --color-utility-indigo-600: theme(--color-indigo-400);
     --color-utility-indigo-700: theme(--color-indigo-300);
 
-    --color-utility-fuchsia-50: theme(--color-fuchsia-950);
-    --color-utility-fuchsia-100: theme(--color-fuchsia-900);
-    --color-utility-fuchsia-200: theme(--color-fuchsia-800);
+    --color-utility-fuchsia-50: --alpha(theme(--color-fuchsia-500) / 16%);
+    --color-utility-fuchsia-100: --alpha(theme(--color-fuchsia-500) / 16%);
+    --color-utility-fuchsia-200: --alpha(theme(--color-fuchsia-500) / 35%);
     --color-utility-fuchsia-300: theme(--color-fuchsia-700);
     --color-utility-fuchsia-400: theme(--color-fuchsia-600);
-    --color-utility-fuchsia-500: theme(--color-fuchsia-500);
+    --color-utility-fuchsia-500: theme(--color-fuchsia-400);
     --color-utility-fuchsia-600: theme(--color-fuchsia-400);
     --color-utility-fuchsia-700: theme(--color-fuchsia-300);
 
-    --color-utility-pink-50: theme(--color-pink-950);
-    --color-utility-pink-100: theme(--color-pink-900);
-    --color-utility-pink-200: theme(--color-pink-800);
+    --color-utility-pink-50: --alpha(theme(--color-pink-500) / 16%);
+    --color-utility-pink-100: --alpha(theme(--color-pink-500) / 16%);
+    --color-utility-pink-200: --alpha(theme(--color-pink-500) / 35%);
     --color-utility-pink-300: theme(--color-pink-700);
     --color-utility-pink-400: theme(--color-pink-600);
-    --color-utility-pink-500: theme(--color-pink-500);
+    --color-utility-pink-500: theme(--color-pink-400);
     --color-utility-pink-600: theme(--color-pink-400);
     --color-utility-pink-700: theme(--color-pink-300);
 
-    --color-utility-purple-50: theme(--color-purple-950);
-    --color-utility-purple-100: theme(--color-purple-900);
-    --color-utility-purple-200: theme(--color-purple-800);
+    --color-utility-purple-50: --alpha(theme(--color-purple-500) / 16%);
+    --color-utility-purple-100: --alpha(theme(--color-purple-500) / 16%);
+    --color-utility-purple-200: --alpha(theme(--color-purple-500) / 35%);
     --color-utility-purple-300: theme(--color-purple-700);
     --color-utility-purple-400: theme(--color-purple-600);
-    --color-utility-purple-500: theme(--color-purple-500);
+    --color-utility-purple-500: theme(--color-purple-400);
     --color-utility-purple-600: theme(--color-purple-400);
     --color-utility-purple-700: theme(--color-purple-300);
 
@@ -1172,12 +1176,12 @@
     --color-utility-orange-dark-600: theme(--color-orange-dark-400);
     --color-utility-orange-dark-700: theme(--color-orange-dark-300);
 
-    --color-utility-blue-light-50: theme(--color-blue-light-950);
-    --color-utility-blue-light-100: theme(--color-blue-light-900);
-    --color-utility-blue-light-200: theme(--color-blue-light-800);
+    --color-utility-blue-light-50: --alpha(theme(--color-blue-light-500) / 16%);
+    --color-utility-blue-light-100: --alpha(theme(--color-blue-light-500) / 16%);
+    --color-utility-blue-light-200: --alpha(theme(--color-blue-light-500) / 35%);
     --color-utility-blue-light-300: theme(--color-blue-light-700);
     --color-utility-blue-light-400: theme(--color-blue-light-600);
-    --color-utility-blue-light-500: theme(--color-blue-light-500);
+    --color-utility-blue-light-500: theme(--color-blue-light-400);
     --color-utility-blue-light-600: theme(--color-blue-light-400);
     --color-utility-blue-light-700: theme(--color-blue-light-300);
 
@@ -1843,6 +1847,13 @@ label/icon elements so it wins regardless of the .prose/Tailwind cascade
 order. */
 .tag-color-text {
   color: var(--tag-color) !important;
+}
+
+/* Dark: a user-picked tag colour is often a dark hue that is unreadable as
+text on the dark surface. Lift the label/icon toward white while keeping the
+hue; the accent border keeps the exact colour. */
+.dark-mode .tag-color-text {
+  color: color-mix(in srgb, var(--tag-color) 55%, white) !important;
 }
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */

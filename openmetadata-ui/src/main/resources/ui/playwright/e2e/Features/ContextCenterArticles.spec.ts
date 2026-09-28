@@ -1600,16 +1600,24 @@ test.describe('Context Center Articles', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Editor autosave can land the data consumer's edit as one or several
-    // versions, so assert on the newest entry rather than every match.
+    // versions, and the governance workflow asynchronously bumps entityStatus
+    // as governance-bot, so the newest entry need not be the data consumer's.
+    // Pick the newest version the data consumer authored and assert on it.
     const { versions } = await versionsListRes.json();
-    const latestVersion = parseFloat(JSON.parse(versions[0]).version).toFixed(
-      1
-    );
+    const dataConsumerVersion = (versions as string[])
+      .map((entry) => JSON.parse(entry))
+      .find((entry: { updatedBy?: string }) =>
+        entry.updatedBy?.startsWith('pw-data-consumer')
+      );
+
+    expect(dataConsumerVersion).toBeDefined();
 
     await expect(
       page
         .getByTestId('versions-list-container')
-        .getByTestId(`version-entry-v${latestVersion}`)
+        .getByTestId(
+          `version-entry-v${parseFloat(dataConsumerVersion.version).toFixed(1)}`
+        )
         .getByRole('link', { name: /PW DataConsumer/i })
     ).toBeVisible();
 

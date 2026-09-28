@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { Button, Card, Space } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
+import { Button, Space } from 'antd';
 import { noop, startCase } from 'lodash';
 import { useLayoutEffect, useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -26,7 +27,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import type { EntityUnion } from '../../Explore/ExplorePage.interface';
 import { useGlossaryStore } from '../../Glossary/useGlossary.store';
 import { GenericProvider } from '../GenericProvider/GenericProvider';
-import './generic-widget.less';
 
 export const GenericWidget = (props: WidgetCommonProps) => {
   const { currentPageType } = useCustomizeStore();
@@ -76,31 +76,34 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   }, [props.widgetKey]);
 
   return (
-    <Card
-      className="generic-widget-card"
-      extra={
-        props.handleRemoveWidget ? (
-          <Button
-            data-testid="remove-widget-button"
-            icon={<MinusCircleOutlined size={16} />}
-            size="small"
-            onClick={handleRemoveClick}
-          />
-        ) : undefined
-      }
-      title={
-        <Space>
-          <Button
-            className="drag-widget-icon"
-            data-testid="drag-widget-button"
-            icon={<HolderOutlined size={16} />}
-            size="small"
-          />
-          {widgetName}
-        </Space>
-      }
-      type="inner">
-      {cardContent}
+    // Light values reproduce the antd inner Card this replaced.
+    <Card className="tw:h-full tw:overflow-visible tw:border-utility-gray-blue-100 tw:pb-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle">
+      <div className="tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-utility-gray-100 tw:px-6 tw:font-medium tw:text-black/85 tw:dark:text-primary">
+        <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-3 tw:text-sm tw:leading-[1.5715]">
+          <Space>
+            <Button
+              className="drag-widget-icon"
+              data-testid="drag-widget-button"
+              icon={<HolderOutlined size={16} />}
+              size="small"
+            />
+            {widgetName}
+          </Space>
+        </div>
+        {props.handleRemoveWidget && (
+          <div className="tw:ml-auto tw:py-[13.5px] tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary">
+            <Button
+              data-testid="remove-widget-button"
+              icon={<MinusCircleOutlined size={16} />}
+              size="small"
+              onClick={handleRemoveClick}
+            />
+          </div>
+        )}
+      </div>
+      <div className="tw:pointer-events-none tw:max-h-[calc(100%-48px)] tw:overflow-y-auto tw:px-6 tw:py-4">
+        {cardContent}
+      </div>
     </Card>
   );
 };
