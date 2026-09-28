@@ -64,13 +64,13 @@ class HealthyDataAssetsChartMigrationTest {
   }
 
   @Test
-  void bothFormulasAreHealthyPercentages() {
+  void bothFormulasAreHealthyCounts() {
     for (String formula :
         Set.of(
             HealthyDataAssetsChartMigration.DAILY_FORMULA,
             HealthyDataAssetsChartMigration.LIVE_FORMULA)) {
       assertTrue(DataInsightFormulaEvaluator.isValidFormula(formula), formula);
-      assertTrue(formula.endsWith("*100"), formula);
+      assertFalse(formula.contains("/") || formula.contains("*100"), formula);
     }
   }
 
