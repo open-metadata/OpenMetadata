@@ -804,7 +804,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return source?.entityType === EntityType.TABLE_COLUMN
         ? buildColumnDetails()
         : buildEntityDetails();
-    }, [source]);
+    }, [source, t]);
 
     const breadcrumbs = useMemo(
       () =>
