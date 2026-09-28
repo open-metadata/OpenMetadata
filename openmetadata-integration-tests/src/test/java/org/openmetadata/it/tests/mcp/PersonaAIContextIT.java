@@ -352,6 +352,18 @@ class PersonaAIContextIT extends McpTestBase {
       assertThat(getResponse(documentPath + "?refresh=true", authToken).body())
           .doesNotContain(prompt);
 
+      // MCP clients get the prompt on part 1 under its own key, outside the paged document.
+      JsonNode toolResult =
+          executeMcp(
+                  McpTestUtils.createToolCallRequest(
+                      "get_persona_context", Map.of("personaName", owned.getFullyQualifiedName())),
+                  authToken)
+              .path("result");
+      JsonNode page =
+          OBJECT_MAPPER.readTree(toolResult.path("content").get(0).path("text").asText());
+      assertThat(page.path("instructions").asText()).isEqualTo(prompt);
+      assertThat(page.path("content").asText()).doesNotContain(prompt);
+
       put(ownedContextPath, settings(false), PersonaContextDefinition.class);
       JsonNode disabled =
           OBJECT_MAPPER.readTree(
