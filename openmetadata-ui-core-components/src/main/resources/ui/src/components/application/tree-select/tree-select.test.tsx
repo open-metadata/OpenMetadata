@@ -12,6 +12,7 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import type { TreeSelectNode } from './tree-select.types';
 import { TreeSelect } from './tree-select';
 
 // jsdom ships no ResizeObserver; the open dropdown measures its trigger with one.
@@ -92,6 +93,38 @@ describe('TreeSelect', () => {
 
     expect(await screen.findByText('Node A')).toBeInTheDocument();
     expect(fetchData).toHaveBeenCalledTimes(1);
+  });
+
+  it('walks defaultExpandedKeys down a lazy tree to reveal a nested selection', async () => {
+    // 'a.b.c' is selected, so the ancestor chain is ['a', 'a.b']. 'a.b' does not
+    // exist until 'a' is expanded *and* fetched, so this only passes if default
+    // expansion keeps draining the list and loads each lazy node it opens.
+    const childrenById: Record<string, TreeSelectNode[]> = {
+      a: [{ id: 'a.b', label: 'Node B', value: 'a.b' }],
+      'a.b': [{ id: 'a.b.c', label: 'Node C', value: 'a.b.c', isLeaf: true }],
+    };
+    const fetchData = vi
+      .fn()
+      .mockImplementation(({ parentId }: { parentId?: string }) =>
+        Promise.resolve({
+          nodes: parentId
+            ? childrenById[parentId] ?? []
+            : [{ id: 'a', label: 'Node A', value: 'a' }],
+        })
+      );
+
+    render(
+      <TreeSelect
+        isOpen
+        lazyLoad
+        defaultExpandedKeys={['a', 'a.b']}
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        value={[{ id: 'a.b.c', label: 'Node C', value: 'a.b.c' }]}
+      />
+    );
+
+    expect(await screen.findByText('Node C')).toBeInTheDocument();
   });
 
   it('fetches on mount for the button variant, whose badge needs the roots', async () => {
