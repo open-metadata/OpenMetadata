@@ -48,9 +48,14 @@ import TaskDetailSkeleton from '../components/TaskDetailSkeleton';
 import { TASK_TYPE_DOT_CLASS } from '../components/TaskTypeIcon';
 import { isTaskOpen } from '../inbox.utils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
-import { filterTasksByTypes, groupTasksByType } from '../taskList.utils';
+import {
+  filterTasksByTypes,
+  groupTasksByType,
+  TaskTypeGroup,
+} from '../taskList.utils';
 import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
+import { useIsScrolled } from '../useIsScrolled';
 
 const TASK_LIMIT = 25;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -107,7 +112,8 @@ interface TasksTabBodyProps {
   isLoading: boolean;
   isLoadingMore: boolean;
   tasks: Task[];
-  grouping: InboxTaskGrouping;
+  // Set when grouped by type; the list renders these instead of `tasks`.
+  groups?: TaskTypeGroup[];
   selectedTaskId?: string;
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
@@ -125,7 +131,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   isLoading,
   isLoadingMore,
   tasks,
-  grouping,
+  groups,
   selectedTaskId,
   scrollRef,
   sentinelRef,
@@ -135,6 +141,8 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   handleTaskUpdated,
 }) => {
   const { t } = useTranslation();
+  const { isScrolled: isListScrolled, onScroll: onListScroll } =
+    useIsScrolled();
 
   const detailContent = selectedTaskId ? (
     <TaskDetailPanel
@@ -164,7 +172,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
 
   // Grouping covers the pages loaded so far: the server paginates by cursor,
   // not by type, so a later page can reopen a group that already appeared.
-  const groupedList = groupTasksByType(tasks).map((group) => {
+  const groupedList = groups?.map((group) => {
     // Every task in a group reads the same, so its first one names it.
     const badge = getTaskTypeBadge(group.items[0], t);
 
@@ -202,16 +210,24 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
       <Box
         className="tw:min-h-0 tw:border-r tw:border-secondary"
         direction="col">
-        {toolbar}
+        {/* Lifts off the rows with a light shadow once they scroll under it. */}
+        <div
+          className={classNames(
+            'tw:relative tw:z-10 tw:transition-shadow',
+            isListScrolled && 'tw:shadow-sm'
+          )}>
+          {toolbar}
+        </div>
         <div
           className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
           data-testid="inbox-tasks-scroll"
-          ref={scrollRef}>
+          ref={scrollRef}
+          onScroll={onListScroll}>
           {isLoading ? (
             <InboxTaskListSkeleton />
           ) : (
             <div className="tw:flex tw:flex-col tw:gap-4 tw:px-3 tw:pb-3">
-              {grouping === 'type' ? groupedList : tasks.map(renderRow)}
+              {groupedList ?? tasks.map(renderRow)}
             </div>
           )}
 
@@ -355,15 +371,24 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [tasks, typeFilter]
   );
 
-  // Keep a valid selection: default to the first task and recover if the
+  // Grouped once here so the list and the default selection agree on order.
+  const taskGroups = useMemo(
+    () => (grouping === 'type' ? groupTasksByType(visibleTasks) : undefined),
+    [grouping, visibleTasks]
+  );
+  // The top row as displayed; grouping reorders the server's newest-first
+  // list, so its first task can sit anywhere in the grouped view.
+  const firstTaskId = taskGroups
+    ? taskGroups[0]?.items[0]?.id
+    : visibleTasks[0]?.id;
+
+  // Keep a valid selection: default to the top row and recover if the
   // selected one drops out of the list (e.g. after resolution or filtering).
   useEffect(() => {
     setSelectedTaskId((prev) =>
-      prev && visibleTasks.some((task) => task.id === prev)
-        ? prev
-        : visibleTasks[0]?.id
+      prev && visibleTasks.some((task) => task.id === prev) ? prev : firstTaskId
     );
-  }, [visibleTasks]);
+  }, [visibleTasks, firstTaskId]);
 
   // The Activity/Tasks tab badges and the sidebar inbox bubble are separate
   // react-query fetches under their own keys, so a mutation here would otherwise
@@ -513,7 +538,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         emptyState={
           !isLoading && visibleTasks.length === 0 ? emptyState : undefined
         }
-        grouping={grouping}
+        groups={taskGroups}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
         handleTaskUpdated={handleTaskUpdated}

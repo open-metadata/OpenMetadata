@@ -221,7 +221,9 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
             {formatInboxDateTime(comment.createdAt)}
           </Typography>
         </Box>
-        <Box align="center" className="tw:shrink-0" gap={2}>
+        {/* The hover actions and "You" pill are taller than the author line;
+            the negative margin keeps them from padding the card's top edge. */}
+        <Box align="center" className="tw:-my-1 tw:shrink-0" gap={2}>
           {!isEditing && canModifyComment && (
             <TaskCommentActions
               canDelete={canDelete}

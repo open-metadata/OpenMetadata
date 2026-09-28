@@ -104,6 +104,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
           data-testid="inbox-tasks-group-by"
           label={t('label.group')}
           options={groupingOptions}
+          popoverClassName="tw:w-40"
           selectedValues={[grouping]}
           selectionMode="single"
           triggerIcon={FilterLines}

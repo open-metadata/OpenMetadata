@@ -138,7 +138,9 @@ const InboxContent: React.FC = () => {
       className="tw:mt-3"
       selectedKey={selectedTab}
       onSelectionChange={onTabChange}>
-      <Tabs.List size="sm" type="underline">
+      {/* The header's bottom border is the rule under these tabs; the list's
+          own separator would draw a second, shorter line right above it. */}
+      <Tabs.List className="tw:before:hidden" size="sm" type="underline">
         <Tabs.Item id="activity">
           {renderTabLabel(t('label.activity'), activityCount)}
         </Tabs.Item>

@@ -46,13 +46,24 @@ export interface TaskDetailHeaderProps {
 type TaskActionButtonColor = ComponentProps<typeof Button>['color'];
 
 // The status reads as a coloured dot and word beside the id, not as a pill:
-// the type chip is the header's one badge.
-const STATUS_TONE_CLASS: Record<TaskStatusTone, string> = {
-  success: 'tw:text-success-primary',
-  error: 'tw:text-error-primary',
-  warning: 'tw:text-warning-primary',
-  gray: 'tw:text-tertiary',
-};
+// the type chip is the header's one badge. The word sits a shade darker than
+// its dot, as in the design.
+const STATUS_TONE_CLASS: Record<TaskStatusTone, { text: string; dot: string }> =
+  {
+    success: {
+      text: 'tw:text-utility-success-700',
+      dot: 'tw:text-fg-success-primary',
+    },
+    error: {
+      text: 'tw:text-utility-error-700',
+      dot: 'tw:text-fg-error-primary',
+    },
+    warning: {
+      text: 'tw:text-utility-warning-700',
+      dot: 'tw:text-fg-warning-primary',
+    },
+    gray: { text: 'tw:text-tertiary', dot: 'tw:text-fg-quaternary' },
+  };
 
 const getTaskActionTestId = (action: TaskResolveAction): string => {
   if (action.kind === 'approve') {
@@ -177,11 +188,15 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           <span
             className={classNames(
               'tw:inline-flex tw:items-center tw:gap-1.5 tw:text-xs tw:font-medium',
-              STATUS_TONE_CLASS[statusBadge.tone]
+              STATUS_TONE_CLASS[statusBadge.tone].text
             )}
             data-color={statusBadge.tone}
             data-testid="task-status-badge">
-            <Dot aria-hidden size="sm" />
+            <Dot
+              aria-hidden
+              className={STATUS_TONE_CLASS[statusBadge.tone].dot}
+              size="sm"
+            />
             {statusBadge.label}
           </span>
         )}

@@ -77,6 +77,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
       defaultValue,
       focused = false,
       onSave,
+      emptyMentionText,
     }: FeedEditorProp,
     ref
   ) => {
@@ -156,11 +157,31 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
       } catch (error) {
         // Empty
       } finally {
-        renderList(newMatches, searchTerm);
+        const noMatchRow: MentionSuggestionsItem = {
+          id: undefined,
+          value: emptyMentionText ?? '',
+          link: '',
+          name: emptyMentionText ?? '',
+          breadcrumbs: [],
+          disabled: true,
+        };
+        renderList(
+          newMatches.length === 0 && emptyMentionText
+            ? [noMatchRow]
+            : newMatches,
+          searchTerm
+        );
       }
     };
 
     const renderItems = useCallback((item: MentionSuggestionsItem) => {
+      if (item.disabled) {
+        const emptyRow = document.createElement('div');
+        emptyRow.className = 'ql-mention-empty';
+        emptyRow.textContent = item.value;
+
+        return emptyRow;
+      }
       if (['user', 'team'].includes(item.type as string)) {
         return item.avatarEle;
       }

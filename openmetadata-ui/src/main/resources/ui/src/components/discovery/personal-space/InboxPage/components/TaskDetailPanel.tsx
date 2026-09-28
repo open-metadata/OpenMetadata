@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import React, {
   ReactNode,
   useCallback,
@@ -73,6 +74,7 @@ import {
   TaskResolveAction,
 } from '../taskResolve.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
+import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
 import ClampedText from './ClampedText';
 import InboxCommentComposer from './InboxCommentComposer';
@@ -253,6 +255,7 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
     <Box align="center" gap={2}>
       {person && (
         <ProfilePicture
+          matchRingToFill
           displayName={getEntityName(person)}
           name={person.name ?? ''}
           width="20"
@@ -273,6 +276,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onCommentsChanged,
 }) => {
   const { t } = useTranslation();
+  const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
+    useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
   const { currentUser } = useApplicationStore();
   const { extensionRegistry } = useApplicationsProvider();
@@ -655,8 +660,12 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       className="tw:h-full tw:w-full tw:min-h-0"
       data-testid="task-detail-panel"
       direction="col">
+      {/* Lifts off the body with a light shadow once it scrolls under it. */}
       <Box
-        className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-5"
+        className={classNames(
+          'tw:relative tw:z-10 tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-5 tw:transition-shadow',
+          isBodyScrolled && 'tw:shadow-sm'
+        )}
         direction="col">
         <TaskDetailHeader
           actions={actions}
@@ -679,7 +688,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       <Box
         className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:py-6 tw:*:shrink-0"
         direction="col"
-        gap={6}>
+        gap={6}
+        onScroll={onBodyScroll}>
         <TaskAssetCard
           StatTiles={contribution?.stats}
           about={about}
@@ -715,14 +725,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-secondary tw:to-transparent"
         />
         <InboxCommentComposer onSave={handleAddComment} />
-        <Box align="center" className="tw:justify-between tw:gap-2 tw:pl-8">
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('message.markdown-supported-mention-hint')}
-          </Typography>
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('message.commenting-does-not-change-status')}
-          </Typography>
-        </Box>
       </Box>
 
       <TaskActionCommentModal

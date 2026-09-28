@@ -54,7 +54,8 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
       {requesterName && (
         <Box align="center" className="tw:gap-1.5">
           <ProfilePicture
-            displayName={requester?.name}
+            matchRingToFill
+            displayName={requesterName}
             name={requester?.name ?? ''}
             width="16"
           />
@@ -129,7 +130,10 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
         {taskTitle && (
           <ClampedText text={taskTitle}>
-            <Typography className="tw:text-primary" size="text-sm">
+            <Typography
+              className="tw:text-primary"
+              size="text-sm"
+              weight="medium">
               {taskTitle}
             </Typography>
             <TaskTitleEntityBadge entityType={entityType} />
