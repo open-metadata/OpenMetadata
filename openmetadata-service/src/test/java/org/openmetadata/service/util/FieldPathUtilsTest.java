@@ -637,6 +637,46 @@ class FieldPathUtilsTest {
   }
 
   @Test
+  void findField_columnsAliasOnApiEndpoint_refusesAnAmbiguousName() {
+    // findField is what the TAG path resolves through (TaskWorkflowHandler.patchFieldTags),
+    // and it walks a different method from the description path. Guarding only the
+    // description walkers left an approved `columns.<name>.tags` suggestion writing onto
+    // whichever of the two schemas' same-named fields came first, reporting success — the
+    // same silent mis-write, reached through the other door.
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withId(UUID.randomUUID())
+            .withName("registerCustomer")
+            .withRequestSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("email")))))
+            .withResponseSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("email")))));
+
+    assertTrue(FieldPathUtils.findField(endpoint, "columns::email::tags").isEmpty());
+  }
+
+  @Test
+  void findField_apiEndpointOwnContainer_resolvesASharedName() {
+    // The counterweight: naming the container makes it unambiguous, and findField resolves.
+    Field responseEmail = new Field().withName("email");
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withId(UUID.randomUUID())
+            .withName("registerCustomer")
+            .withRequestSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("email")))))
+            .withResponseSchema(
+                new APISchema().withSchemaFields(new ArrayList<>(List.of(responseEmail))));
+
+    assertSame(
+        responseEmail,
+        FieldPathUtils.findField(endpoint, "responseSchema::email::tags").orElse(null));
+  }
+
+  @Test
   void updateFieldDescription_columnsAliasOnApiEndpoint_refusesAnAmbiguousName() {
     // A REST endpoint normally echoes its request shape in its response, so the two schemas share
     // field names. The "columns" alias concatenates both, and resolving by position wrote the

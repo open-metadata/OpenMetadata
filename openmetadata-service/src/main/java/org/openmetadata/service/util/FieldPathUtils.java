@@ -382,6 +382,14 @@ public class FieldPathUtils {
    */
   @SuppressWarnings("unchecked")
   private static Optional<Object> findFieldInList(List<?> fieldList, String fieldName) {
+    // The tag path resolves through here (TaskWorkflowHandler.patchFieldTags), so an approved
+    // `columns.<name>.tags` on an apiEndpoint would otherwise write onto whichever of the request
+    // and response schemas holds that name first. Returning early also keeps the recursive
+    // branches below from picking a grandchild of the same name.
+    if (isAmbiguous(fieldList, fieldName)) {
+      return Optional.empty();
+    }
+
     Optional<Object> found = (Optional<Object>) findFieldByName(fieldList, fieldName);
     if (found.isPresent()) {
       return found;
