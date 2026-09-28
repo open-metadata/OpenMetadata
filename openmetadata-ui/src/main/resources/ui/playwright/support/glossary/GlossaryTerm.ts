@@ -65,23 +65,38 @@ export class GlossaryTerm extends EntityClass {
 
   async visitPage(page: Page) {
     await visitGlossaryPage(page, this.responseData.glossary.displayName);
-    const expandCollapseButtonText = await page
-      .locator('[data-testid="expand-collapse-all-button"]')
-      .textContent();
-    const isExpanded = expandCollapseButtonText?.includes('Expand All');
-    if (isExpanded) {
+    const glossaryTerm = page.getByTestId(this.data.displayName);
+    const expandCollapseButton = page.getByTestId('expand-collapse-all-button');
+
+    // The terms tree loads async: poll until the term is rendered or the tree
+    // has settled collapsed, otherwise the expand click lands on a stale label
+    // and is silently dropped.
+    await expect
+      .poll(async () => {
+        if (await glossaryTerm.isVisible()) {
+          return 'term-visible';
+        }
+
+        return (await expandCollapseButton.textContent())?.trim();
+      })
+      .toMatch(/^(term-visible|.*Expand All.*)$/);
+
+    if (!(await glossaryTerm.isVisible())) {
+      const glossaryId = this.responseData.glossary.id;
       const glossaryTermListResponse = page.waitForResponse(
-        `/api/v1/glossaryTerms?*glossary=${this.responseData.glossary.id}*`
+        (response) =>
+          response.url().includes('/api/v1/glossaryTerms?') &&
+          response.url().includes(`glossary=${glossaryId}`)
       );
-      await page.click('[data-testid="expand-collapse-all-button"]');
-      await glossaryTermListResponse;
+      await expandCollapseButton.click();
+      expect((await glossaryTermListResponse).status()).toBe(200);
     }
     const glossaryTermResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/name/${encodeURIComponent(
         this.responseData.fullyQualifiedName
       )}?*`
     );
-    await page.getByTestId(this.data.displayName).click();
+    await glossaryTerm.click();
     await glossaryTermResponse;
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(
