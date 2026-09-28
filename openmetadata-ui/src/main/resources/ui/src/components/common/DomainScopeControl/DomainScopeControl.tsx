@@ -171,26 +171,24 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     </>
   );
 
-  if (isSingleDomainUser) {
-    return (
-      <RestrictedScopeAffordance
-        cardClassName={cardClassName}
-        isRail={variant === 'rail'}>
-        {cardInner}
-      </RestrictedScopeAffordance>
-    );
-  }
-
+  // Landing is checked first: a single-domain user on the landing header must
+  // still get the pill, not the AI-sidebar card. The pill renders disabled for
+  // them, since there is no other scope to switch to.
   if (variant === 'landing') {
+    const isLocked = Boolean(disabled) || isSingleDomainUser;
+
     const landingTrigger = (
-      <div
+      <button
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label={t('label.domain-scope')}
         className={classNames(
-          'd-flex items-center gap-2 border-radius-sm p-x-md bg-white domain-selector',
-          { 'domain-active': isActiveScope, disabled }
+          'd-flex items-center gap-2 border-radius-sm p-x-md tw:bg-primary domain-selector',
+          { 'domain-active': isActiveScope, disabled: isLocked }
         )}
         data-testid="domain-selector"
-        role="button"
-        tabIndex={0}>
+        disabled={isLocked}
+        type="button">
         <DomainIcon
           className="domain-icon"
           data-testid="domain-icon"
@@ -207,7 +205,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
           height={14}
           width={14}
         />
-      </div>
+      </button>
     );
 
     return (
@@ -219,6 +217,16 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
         onUpdate={handleUpdate}>
         {landingTrigger}
       </DomainSelectableList>
+    );
+  }
+
+  if (isSingleDomainUser) {
+    return (
+      <RestrictedScopeAffordance
+        cardClassName={cardClassName}
+        isRail={variant === 'rail'}>
+        {cardInner}
+      </RestrictedScopeAffordance>
     );
   }
 

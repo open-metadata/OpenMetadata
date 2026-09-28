@@ -13,12 +13,12 @@
 import type { TreeSelectNode } from '@openmetadata/ui-core-components';
 import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import Fqn from '../../../utils/Fqn';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -200,10 +200,13 @@ export function getSelectedAncestorKeys(selected: EntityReference[]): string[] {
       return;
     }
 
-    const parts = fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
+    // Fqn.split/build, not a raw split: a domain name containing a dot appears
+    // in the FQN as a quoted segment (`"a.b".child`), and a raw split would
+    // shatter it into keys that match no tree node.
+    const parts = Fqn.split(fullyQualifiedName);
     // Every prefix except the node itself is an ancestor to open.
     for (let i = 1; i < parts.length; i++) {
-      keys.add(parts.slice(0, i).join(FQN_SEPARATOR_CHAR));
+      keys.add(Fqn.build(...parts.slice(0, i)));
     }
   });
 

@@ -41,8 +41,11 @@ export interface DataAssetsVersionHeaderProps {
    * Domains for the version, already diffed (added *and* deleted) by
    * `getCommonExtraInfoForVersionDetails`, so this stays aligned 1:1 with
    * `domainDisplayName` instead of being recomputed here.
+   *
+   * Required, not optional: the header no longer derives this itself, so a
+   * caller that forgot it would silently render "No Domains".
    */
-  domains?: EntityReference[];
+  domains: EntityReference[] | undefined;
   tierDisplayName: React.ReactNode;
   ownerRef?: EntityReference[];
   onVersionClick: () => void;

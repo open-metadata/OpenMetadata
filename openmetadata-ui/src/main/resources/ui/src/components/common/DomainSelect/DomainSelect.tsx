@@ -31,7 +31,10 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
-import { isDomainFqnAllowed } from '../../../utils/DomainRestrictionUtils';
+import {
+  isDomainFqnAllowed,
+  toAllowedFqns,
+} from '../../../utils/DomainRestrictionUtils';
 import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
@@ -80,10 +83,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
     (triggerVariant !== 'input' && multiple ? 'staged' : 'immediate');
 
   const allowedFqns = useMemo(
-    () =>
-      (restrictedDomains ?? [])
-        .map((domain) => domain.fullyQualifiedName)
-        .filter(Boolean) as string[],
+    () => toAllowedFqns(restrictedDomains ?? []),
     [restrictedDomains]
   );
 

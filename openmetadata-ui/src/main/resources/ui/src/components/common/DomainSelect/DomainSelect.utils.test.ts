@@ -258,3 +258,19 @@ describe('getSelectedAncestorKeys', () => {
     expect(getSelectedAncestorKeys([{} as never])).toEqual([]);
   });
 });
+
+describe('getSelectedAncestorKeys with dotted domain names', () => {
+  const ref = (fqn: string) => ({ fullyQualifiedName: fqn } as never);
+
+  it('keeps a quoted segment intact instead of splitting on its dot', () => {
+    // `"a.b".child` is one domain named `a.b` with a child — not three levels.
+    expect(getSelectedAncestorKeys([ref('"a.b".child')])).toEqual(['"a.b"']);
+  });
+
+  it('handles a quoted segment nested deeper', () => {
+    expect(getSelectedAncestorKeys([ref('root."a.b".leaf')])).toEqual([
+      'root',
+      'root."a.b"',
+    ]);
+  });
+});

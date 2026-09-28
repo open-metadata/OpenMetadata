@@ -125,7 +125,7 @@ jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
 
 // The menu is a `React.lazy` wrapper, so the first render suspends until the
 // (mocked) module resolves — await the list before asserting.
-const renderControl = async (variant?: 'panel' | 'rail') => {
+const renderControl = async (variant?: 'panel' | 'rail' | 'landing') => {
   const utils = render(<DomainScopeControl variant={variant} />);
   await screen.findByTestId('domain-selectable-list');
 
@@ -235,5 +235,53 @@ describe('DomainScopeControl', () => {
     expect(
       screen.queryByTestId('ask-domain-scope-card')
     ).not.toBeInTheDocument();
+  });
+
+  describe('landing variant', () => {
+    it('renders the landing pill, not the AI-sidebar card', async () => {
+      await renderControl('landing');
+
+      expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ask-domain-scope-card')
+      ).not.toBeInTheDocument();
+    });
+
+    it('keeps the pill for a single-domain user instead of the card', async () => {
+      storeState = {
+        ...storeState,
+        isDomainRestricted: true,
+        userDomains: [complianceDomain],
+      };
+
+      await renderControl('landing');
+
+      // The restricted branch must not pre-empt the landing variant.
+      expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ask-domain-scope-card')
+      ).not.toBeInTheDocument();
+    });
+
+    it('disables the pill for a single-domain user, who has nothing to switch to', async () => {
+      storeState = {
+        ...storeState,
+        isDomainRestricted: true,
+        userDomains: [complianceDomain],
+      };
+
+      await renderControl('landing');
+
+      expect(screen.getByTestId('domain-selector')).toBeDisabled();
+    });
+
+    it('exposes the pill as a real button with menu semantics', async () => {
+      await renderControl('landing');
+      const trigger = screen.getByTestId('domain-selector');
+
+      expect(trigger.tagName).toBe('BUTTON');
+      expect(trigger).toHaveAttribute('aria-haspopup', 'listbox');
+      expect(trigger).toHaveAttribute('aria-expanded');
+    });
   });
 });
