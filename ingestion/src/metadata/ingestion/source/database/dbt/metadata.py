@@ -520,7 +520,7 @@ class DbtSource(DbtServiceSource):
         return self._validate_custom_properties_against(
             definitions=self.omd_custom_properties,
             custom_properties=custom_properties,
-            entity_label=f"Table {table_entity.fullyQualifiedName.root}",
+            entity_label=f"Table {model_str(table_entity.fullyQualifiedName)}",
         )
 
     def _validate_custom_properties_against(
@@ -1511,7 +1511,7 @@ class DbtSource(DbtServiceSource):
                 filters=filters or None,
                 tags=tags or None,
                 owners=owners,
-                domains=[domain_ref.fullyQualifiedName] if domain_ref else None,
+                domains=[domain_ref.fullyQualifiedName] if domain_ref and domain_ref.fullyQualifiedName else None,
                 unitOfMeasurement=unit_of_measurement,
                 customUnitOfMeasurement=custom_unit,
                 extension=extension,
