@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.migration.mysql.v203;
 
+import static org.openmetadata.service.migration.utils.v203.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v203.MigrationUtil.addTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v203.TableAliasesSearchSettingsMigration.addAliasesSearchSettings;
 
 import lombok.extern.slf4j.Slf4j;
@@ -27,8 +29,8 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
-    // Log and continue rather than abort: alias search degrades to not matching synonyms, which
-    // is not worth failing an upgrade over. Matches v201's pattern.
+    addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
+    addTaskRuleToDataConsumerPolicy(collectionDAO);
     try {
       addAliasesSearchSettings();
     } catch (Exception e) {
