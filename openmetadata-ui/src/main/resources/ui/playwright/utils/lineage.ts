@@ -871,7 +871,7 @@ export const applyPipelineFromModal = async (
   await page.click(`[data-testid="pipeline-entry-${pipelineFqn}"]`);
 
   const saveButton = page.getByTestId('save-button');
-  await expect(saveButton).not.toHaveClass(/ant-btn-loading/);
+  await expect(saveButton).not.toHaveAttribute('data-loading');
 
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await saveButton.click();

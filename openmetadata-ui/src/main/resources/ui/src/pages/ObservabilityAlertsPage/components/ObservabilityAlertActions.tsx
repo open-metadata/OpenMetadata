@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Skeleton, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Skeleton, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
+import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { ObservabilityAlertActionsProps } from '../ObservabilityAlertsPage.interface';
@@ -52,13 +49,21 @@ function ObservabilityAlertActions({
 
   const editButton = (
     <Button
-      className="flex flex-center"
+      aria-label={t('label.edit')}
+      color="tertiary"
       data-testid={`alert-edit-${record.name}`}
-      icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
-      type="text"
+      href={
+        onEditAlert
+          ? undefined
+          : observabilityRouterClassBase.getObservabilityAlertsEditPath(
+              record.fullyQualifiedName ?? ''
+            )
+      }
+      iconLeading={EditIcon}
+      size="md"
       onClick={
         onEditAlert
-          ? (event) => {
+          ? (event: MouseEvent) => {
               event.preventDefault();
               event.stopPropagation();
               onEditAlert(record);
@@ -72,28 +77,22 @@ function ObservabilityAlertActions({
     <div className="d-flex items-center">
       {alertPermission.edit && (
         <Tooltip placement="bottom" title={t('label.edit')}>
-          {onEditAlert ? (
-            editButton
-          ) : (
-            <Link
-              to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
-                record.fullyQualifiedName ?? ''
-              )}>
-              {editButton}
-            </Link>
-          )}
+          {editButton}
         </Tooltip>
       )}
       {alertPermission.delete && (
         <Tooltip placement="bottom" title={t('label.delete')}>
-          <Button
-            className="flex flex-center"
-            data-testid={`alert-delete-${record.name}`}
-            disabled={record.provider === ProviderType.System}
-            icon={<DeleteIcon height={16} width={16} />}
-            type="text"
-            onClick={() => onSelectAlert(record)}
-          />
+          <span className="tw:inline-flex">
+            <Button
+              aria-label={t('label.delete')}
+              color="tertiary"
+              data-testid={`alert-delete-${record.name}`}
+              iconLeading={DeleteIcon}
+              isDisabled={record.provider === ProviderType.System}
+              size="md"
+              onClick={() => onSelectAlert(record)}
+            />
+          </span>
         </Tooltip>
       )}
     </div>

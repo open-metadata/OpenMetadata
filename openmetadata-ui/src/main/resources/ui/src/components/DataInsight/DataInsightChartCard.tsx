@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -27,7 +28,6 @@ import {
 } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
@@ -256,11 +256,13 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
 
   return (
     <Col className="d-flex justify-end" span={24}>
-      <Link
+      <Button
+        className="text-primary"
+        color="tertiary"
         data-testid={`explore-asset-with-no-${
           isDescriptionType ? 'description' : 'owner'
         }`}
-        to={getExplorePath({
+        href={getExplorePath({
           tab: tabsInfo[SearchIndex.TABLE].path,
           isPersistFilters: true,
           extraParameters: {
@@ -270,19 +272,20 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
                 : NO_OWNER_ADVANCE_SEARCH_FILTER
             ),
           },
-        })}>
-        <Button
-          className="text-primary d-flex items-center gap-1"
-          size="small"
-          type="text">
-          {t('label.explore-asset-plural-with-type', {
-            type: isDescriptionType
-              ? t('label.no-description')
-              : t('label.no-owner'),
-          })}
-          <RightArrowIcon height={12} width={12} />
-        </Button>
-      </Link>
+        })}
+        iconTrailing={
+          <RightArrowIcon
+            className="tw:size-3! tw:shrink-0"
+            data-icon="trailing"
+          />
+        }
+        size="sm">
+        {t('label.explore-asset-plural-with-type', {
+          type: isDescriptionType
+            ? t('label.no-description')
+            : t('label.no-owner'),
+        })}
+      </Button>
     </Col>
   );
 };
@@ -639,7 +642,11 @@ export const DataInsightChartCard = ({
             </Col>
             {activeKeys.length > 0 && (
               <Col className="flex justify-end" span={24}>
-                <Button type="link" onClick={() => setActiveKeys([])}>
+                <Button
+                  boxed
+                  color="link-color"
+                  size="md"
+                  onClick={() => setActiveKeys([])}>
                   {t('label.clear')}
                 </Button>
               </Col>

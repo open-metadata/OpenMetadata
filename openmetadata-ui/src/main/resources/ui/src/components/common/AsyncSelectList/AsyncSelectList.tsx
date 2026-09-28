@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Button,
   ClassificationTag,
   GlossaryTag,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Empty, Form, Select, SelectProps, Space } from 'antd';
+import { Empty, Form, Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, pick } from 'lodash';
@@ -187,20 +188,23 @@ const AsyncSelectList: FC<
       {onCancel && (
         <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
           <Button
+            showTextWhileLoading
             className="update-btn"
+            color="secondary"
             data-testid="saveAssociatedTag"
-            disabled={
+            isDisabled={
               isEmpty(props.value ?? selectedTags) && isEmpty(initialOptions)
             }
-            htmlType="submit"
-            loading={isSubmitLoading}
-            size="small"
+            isLoading={isSubmitLoading}
+            size="sm"
+            type="submit"
             onClick={() => form.submit()}>
             {t('label.update')}
           </Button>
           <Button
+            color="secondary"
             data-testid="cancelAssociatedTag"
-            size="small"
+            size="sm"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>

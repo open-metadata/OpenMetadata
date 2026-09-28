@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Modal, Row } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Modal, Row } from 'antd';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,9 +105,10 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         render: (failures: StepSummary['failures'], record: StepSummary) =>
           (failures?.length ?? 0) > 0 ? (
             <Button
+              boxed
+              color="link-color"
               data-testid={`log-${record.name}`}
-              size="small"
-              type="link"
+              size="sm"
               onClick={() => setExpandedKeys([record.name])}>
               {t('label.log-plural')}
             </Button>

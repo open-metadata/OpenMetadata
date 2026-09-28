@@ -12,11 +12,12 @@
  */
 
 import { DragOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
@@ -60,6 +61,7 @@ const WidgetHeader = ({
   title,
   widgetKey,
 }: WidgetHeaderProps) => {
+  const { t } = useTranslation();
   const handleSortByClick = (e: MenuInfo) => {
     onSortChange?.(e.key);
   };
@@ -124,10 +126,13 @@ const WidgetHeader = ({
               />
               {onEditClick && (
                 <Button
+                  aria-label={t('label.edit')}
                   className="widget-header-options widget-header-edit-button"
+                  color="secondary"
                   data-testid="edit-widget-button"
-                  disabled={disableEdit}
-                  icon={<EditIcon height={20} width={20} />}
+                  iconLeading={EditIcon}
+                  isDisabled={disableEdit}
+                  size="md"
                   onClick={onEditClick}
                 />
               )}

@@ -12,8 +12,19 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
+import {
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
+} from '@openmetadata/ui-core-components';
+import {
+  Button as AntdButton,
+  Col,
+  Dropdown,
+  MenuProps,
+  Row,
+  Space,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
@@ -169,16 +180,17 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
             <Space>
               <Dropdown menu={statusMenuItems} placement="bottom">
                 <Button
-                  ghost
+                  color="secondary-brand"
                   data-testid="status-button"
-                  icon={<Icon component={FilterIcon} size={12} />}
-                  type="primary">
+                  iconLeading={FilterIcon}
+                  size="md">
                   {status === MenuOptions.all ? t('label.status') : status}
                 </Button>
               </Dropdown>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
                 <>
-                  <Button
+                  {/* ponytail: stays antd; react-aria press handling would eat keys from the nested RangePicker */}
+                  <AntdButton
                     ghost
                     className={classNames('range-picker-button delay-100', {
                       'range-picker-button-width delay-100':
@@ -206,7 +218,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         onOpenChange={setIsClickedCalendar}
                       />
                     </span>
-                  </Button>
+                  </AntdButton>
                 </>
               ) : null}
             </Space>

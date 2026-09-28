@@ -16,14 +16,14 @@ import {
   EditOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import './draggable-tabs.less';
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 
@@ -117,13 +117,13 @@ export const TabItem = ({
         }}
         trigger={['click']}>
         <Button
-          className="draggable-tab-item"
+          className="draggable-tab-item tw:cursor-move tw:hover:cursor-grab tw:active:cursor-grabbing"
+          color="secondary"
           data-testid={`tab-${item.name}`}
+          iconTrailing={MoreOutlined}
+          size="md"
           onClick={() => onItemClick?.(item.id)}>
-          <Space>
-            {getTabDisplayName(item)}
-            <MoreOutlined />
-          </Space>
+          {getTabDisplayName(item)}
         </Button>
       </Dropdown>
     </div>

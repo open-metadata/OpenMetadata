@@ -62,6 +62,7 @@ jest.mock('../../../../rest/rolesAPIV1', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
   TooltipTrigger: jest
     .fn()

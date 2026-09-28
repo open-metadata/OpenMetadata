@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Switch } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -226,9 +226,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         <Button
-          className="m-b-sm p-0"
-          size="small"
-          type="link"
+          className="m-b-sm"
+          color="link-color"
+          size="sm"
           onClick={onBack}>
           {t('label.back')}
         </Button>
@@ -246,7 +246,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderActiveConversationView = () => (
     <Fragment>
-      <Button className="m-b-sm p-0" size="small" type="link" onClick={onBack}>
+      <Button className="m-b-sm" color="link-color" size="sm" onClick={onBack}>
         {t('label.back')}
       </Button>
       <ActivityFeedCardNew

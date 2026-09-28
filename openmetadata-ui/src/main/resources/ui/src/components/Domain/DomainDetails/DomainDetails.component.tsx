@@ -14,10 +14,11 @@ import Icon, { DownOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Box,
+  Button,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
+import { Button as AntdButton, Dropdown, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -1055,12 +1056,11 @@ const DomainDetails = ({
                     placement="bottomRight"
                     trigger={['click']}>
                     <Button
+                      color="primary"
                       data-testid="domain-details-add-button"
-                      type="primary">
-                      <Space>
-                        {t('label.add')}
-                        <DownOutlined />
-                      </Space>
+                      iconTrailing={DownOutlined}
+                      size="md">
+                      {t('label.add')}
                     </Button>
                   </Dropdown>
                 )}
@@ -1083,7 +1083,7 @@ const DomainDetails = ({
                             : 'version-plural-history'
                         }`
                       )}>
-                      <Button
+                      <AntdButton
                         className={classNames('', {
                           'text-primary border-primary': version,
                         })}
@@ -1097,7 +1097,7 @@ const DomainDetails = ({
                           variant="text">
                           {toString(domain.version)}
                         </Typography>
-                      </Button>
+                      </AntdButton>
                     </Tooltip>
                   )}
 
@@ -1119,7 +1119,7 @@ const DomainDetails = ({
                         title={t('label.manage-entity', {
                           entity: t('label.domain'),
                         })}>
-                        <Button
+                        <AntdButton
                           className="domain-manage-dropdown-button tw-px-1.5"
                           data-testid="manage-button"
                           icon={

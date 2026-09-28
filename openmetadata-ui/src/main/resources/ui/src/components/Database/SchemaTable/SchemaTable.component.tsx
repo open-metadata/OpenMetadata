@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Label, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
+import { Button, Label, Typography } from '@openmetadata/ui-core-components';
+import { Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -725,21 +725,18 @@ const SchemaTable = () => {
               {editDisplayNamePermission && (
                 <Tooltip placement="top" title={t('label.edit')}>
                   <Button
-                    className="cursor-pointer hover-cell-icon flex-center"
+                    aria-label={t('label.edit')}
+                    className="hover-cell-icon tw:size-6 tw:p-0! tw:hover:bg-transparent"
+                    color="tertiary"
                     data-testid="edit-displayName-button"
-                    style={{
-                      color: DE_ACTIVE_COLOR,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                      width: '24px',
-                      height: '24px',
-                    }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
-                    <IconEdit
-                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    />
-                  </Button>
+                    iconLeading={
+                      <IconEdit
+                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                      />
+                    }
+                    size="sm"
+                    onClick={() => handleEditDisplayNameClick(record)}
+                  />
                 </Tooltip>
               )}
               {record.fullyQualifiedName && (
@@ -788,9 +785,11 @@ const SchemaTable = () => {
       {
         title: (
           <Button
-            className="d-flex items-center cursor-pointer bg-transparent border-none p-0 h-auto hover:bg-transparent"
+            noTextPadding
+            className="tw:h-auto tw:p-0! tw:hover:bg-transparent"
+            color="tertiary"
             data-testid="name-column-header"
-            type="text"
+            size="md"
             onClick={handleColumnHeaderSortToggle}>
             <span
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
@@ -1015,11 +1014,10 @@ const SchemaTable = () => {
                 menu={{ items: sortMenuItems, onClick: handleSortMenuClick }}
                 trigger={['click']}>
                 <Button
-                  className="flex-center gap-2"
+                  color="tertiary"
                   data-testid="sort-dropdown"
-                  icon={<IconSort height={14} width={14} />}
-                  size="small"
-                  type="text">
+                  iconLeading={IconSort}
+                  size="sm">
                   {t('label.sort')}
                 </Button>
               </Dropdown>

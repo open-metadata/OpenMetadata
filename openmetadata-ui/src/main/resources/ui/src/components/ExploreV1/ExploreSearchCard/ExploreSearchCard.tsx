@@ -12,13 +12,14 @@
  */
 import {
   Breadcrumbs,
+  Button,
   Card,
   ClassificationTag,
   Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Checkbox, Col, Row, Space } from 'antd';
+import { Checkbox, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
@@ -299,7 +300,11 @@ const EntityTitleColumn = ({
     }${source.name}`}
     span={24}>
     {isTourOpen ? (
-      <Button data-testid={source.fullyQualifiedName} type="link">
+      <Button
+        boxed
+        color="link-color"
+        data-testid={source.fullyQualifiedName}
+        size="md">
         <Typography
           className="text-lg font-medium text-link-color"
           data-testid="entity-header-display-name"

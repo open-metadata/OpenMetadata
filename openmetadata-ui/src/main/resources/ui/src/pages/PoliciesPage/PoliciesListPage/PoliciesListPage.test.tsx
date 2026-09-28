@@ -28,11 +28,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   PopoverTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
-    )),
   ButtonUtility: jest
     .fn()
     .mockImplementation(

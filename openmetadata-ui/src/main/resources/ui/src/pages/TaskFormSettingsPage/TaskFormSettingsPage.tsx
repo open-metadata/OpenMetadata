@@ -25,8 +25,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button, Card, Form, Input, Select, Space, Spin } from 'antd';
+import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Alert, Card, Form, Input, Select, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -207,10 +207,10 @@ const SchemaSidebarCard: FC<{
     )}
 
     <Button
-      block
-      className="task-form-settings-sidebar-action"
+      className="task-form-settings-sidebar-action tw:w-full"
+      color="primary"
       data-testid="task-form-add-button"
-      type="primary"
+      size="md"
       onClick={onAddNew}>
       {t('label.add')}
     </Button>
@@ -233,8 +233,10 @@ const TransitionFormsPane: FC<{
         </Typography>
       </div>
       <Button
+        color="secondary"
         data-testid="task-form-transition-add-button"
-        icon={<PlusOutlined />}
+        iconLeading={PlusOutlined}
+        size="md"
         onClick={() =>
           syncTransitionDesigner([
             ...transitionBuilders,
@@ -252,10 +254,9 @@ const TransitionFormsPane: FC<{
             data-testid={`task-form-transition-card-${index}`}
             extra={
               <Button
-                danger
+                color="primary-destructive"
                 data-testid={`task-form-transition-remove-${index}`}
-                size="small"
-                type="text"
+                size="sm"
                 onClick={() =>
                   syncTransitionDesigner(
                     transitionBuilders.filter(
@@ -339,8 +340,10 @@ const WorkflowStagesPane: FC<{
         </Typography>
       </div>
       <Button
+        color="secondary"
         data-testid="task-form-stage-mapping-add-button"
-        icon={<PlusOutlined />}
+        iconLeading={PlusOutlined}
+        size="md"
         onClick={() =>
           syncStageMappings([...stageMappings, createEmptyStageMapping()])
         }>
@@ -355,10 +358,9 @@ const WorkflowStagesPane: FC<{
             data-testid={`task-form-stage-mapping-card-${index}`}
             extra={
               <Button
-                danger
+                color="primary-destructive"
                 data-testid={`task-form-stage-mapping-remove-${index}`}
-                size="small"
-                type="text"
+                size="sm"
                 onClick={() =>
                   syncStageMappings(
                     stageMappings.filter(
@@ -1012,15 +1014,19 @@ const TaskFormSettingsPage = () => {
                   className="task-form-settings-hero__actions"
                   size="middle">
                   <Button
+                    color="secondary"
                     data-testid="task-form-cancel-button"
+                    size="md"
                     onClick={handleDiscardChanges}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    showTextWhileLoading
+                    color="primary"
                     data-testid="task-form-save-button"
-                    htmlType="submit"
-                    loading={saving}
-                    type="primary">
+                    isLoading={saving}
+                    size="md"
+                    type="submit">
                     {t('label.save')}
                   </Button>
                 </Space>
@@ -1091,7 +1097,9 @@ const TaskFormSettingsPage = () => {
                       <Input data-testid="task-form-workflow-definition-input" />
                     </Form.Item>
                     <Button
+                      color="secondary"
                       data-testid="task-form-load-template-button"
+                      size="md"
                       onClick={handleLoadTemplate}>
                       {t('label.load-built-in-template')}
                     </Button>

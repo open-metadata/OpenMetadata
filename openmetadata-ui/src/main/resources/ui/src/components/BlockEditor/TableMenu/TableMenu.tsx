@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import type { Editor } from '@tiptap/react';
-import { Button, Space, Tooltip } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import tippy, { Instance } from 'tippy.js';
 import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';
@@ -84,6 +86,7 @@ const getSelectedCellsRect = (tableWrapper: Element): DOMRect | null => {
 
 const TableMenu = (props: TableMenuProps) => {
   const { editor } = props;
+  const { t } = useTranslation();
   const { view, isEditable } = editor;
   const menuRef = useRef<HTMLDivElement>(null);
   const tableMenuPopup = useRef<Instance | null>(null);
@@ -161,50 +164,60 @@ const TableMenu = (props: TableMenuProps) => {
       <Space size="middle">
         <Tooltip showArrow={false} title="Add row after current row">
           <Button
+            aria-label={t('label.add-entity', { entity: t('label.row') })}
+            color="tertiary"
             data-testid="Add row after current row"
-            type="text"
-            onClick={() => editor.chain().focus().addRowAfter().run()}>
-            <IconAddRowAfter style={{ verticalAlign: 'middle' }} />
-          </Button>
+            iconLeading={IconAddRowAfter}
+            size="md"
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+          />
         </Tooltip>
 
         <Tooltip showArrow={false} title="Add column after current column">
           <Button
+            aria-label={t('label.add-entity', { entity: t('label.column') })}
+            color="tertiary"
             data-testid="Add column after current column"
-            type="text"
-            onClick={() => editor.chain().focus().addColumnAfter().run()}>
-            <IconAddColumnAfter style={{ verticalAlign: 'middle' }} />
-          </Button>
+            iconLeading={IconAddColumnAfter}
+            size="md"
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+          />
         </Tooltip>
 
         <Tooltip showArrow={false} title="Delete current row">
           <Button
+            aria-label={t('label.delete-entity', { entity: t('label.row') })}
+            color="tertiary"
             data-testid="Delete current row"
-            type="text"
-            onClick={() => editor.chain().focus().deleteRow().run()}>
-            <IconDeleteRow style={{ verticalAlign: 'middle' }} />
-          </Button>
+            iconLeading={IconDeleteRow}
+            size="md"
+            onClick={() => editor.chain().focus().deleteRow().run()}
+          />
         </Tooltip>
 
         <Tooltip showArrow={false} title="Delete current column">
           <Button
+            aria-label={t('label.delete-entity', { entity: t('label.column') })}
+            color="tertiary"
             data-testid="Delete current col"
-            type="text"
-            onClick={() => editor.chain().focus().deleteColumn().run()}>
-            <IconDeleteColumn style={{ verticalAlign: 'middle' }} />
-          </Button>
+            iconLeading={IconDeleteColumn}
+            size="md"
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+          />
         </Tooltip>
 
         <Tooltip showArrow={false} title="Delete table">
           <Button
+            aria-label={t('label.delete-entity', { entity: t('label.table') })}
+            color="tertiary"
             data-testid="Delete table"
-            type="text"
+            iconLeading={IconDeleteTable}
+            size="md"
             onClick={() => {
               editor.chain().focus().deleteTable().run();
               tableMenuPopup.current?.hide();
-            }}>
-            <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
-          </Button>
+            }}
+          />
         </Tooltip>
       </Space>
     </div>

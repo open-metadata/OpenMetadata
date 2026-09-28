@@ -12,8 +12,13 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Avatar, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -716,15 +721,17 @@ const TeamDetailsV1 = ({
           />
         </Typography>
         <Tooltip placement="top" title={addTeamButtonTitle}>
-          <Button
-            ghost
-            data-testid="add-placeholder-button"
-            disabled={!entityPermissions.Create || isTeamDeleted}
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={handleAddTeamButtonClick}>
-            {t('label.add')}
-          </Button>
+          <span className="tw:inline-flex">
+            <Button
+              color="secondary-brand"
+              data-testid="add-placeholder-button"
+              iconLeading={PlusOutlined}
+              isDisabled={!entityPermissions.Create || isTeamDeleted}
+              size="md"
+              onClick={handleAddTeamButtonClick}>
+              {t('label.add')}
+            </Button>
+          </span>
         </Tooltip>
       </ErrorPlaceHolder>
     ) : (
@@ -831,23 +838,25 @@ const TeamDetailsV1 = ({
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.role') })
               }>
-              <Button
-                ghost
-                className={classNames({
-                  'p-x-lg': canEditAll,
-                })}
-                data-testid="add-placeholder-button"
-                disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={() =>
-                  setAddAttribute({
-                    type: EntityType.ROLE,
-                    selectedData: currentTeam.defaultRoles ?? [],
-                  })
-                }>
-                {t('label.add')}
-              </Button>
+              <span className="tw:inline-flex">
+                <Button
+                  className={classNames({
+                    'p-x-lg': canEditAll,
+                  })}
+                  color="secondary-brand"
+                  data-testid="add-placeholder-button"
+                  iconLeading={PlusOutlined}
+                  isDisabled={isTeamDeleted}
+                  size="md"
+                  onClick={() =>
+                    setAddAttribute({
+                      type: EntityType.ROLE,
+                      selectedData: currentTeam.defaultRoles ?? [],
+                    })
+                  }>
+                  {t('label.add')}
+                </Button>
+              </span>
             </Tooltip>
           ),
         })
@@ -856,8 +865,9 @@ const TeamDetailsV1 = ({
           {canEditAll && (
             <Col className="d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-role"
-                type="primary"
+                size="md"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
@@ -903,23 +913,25 @@ const TeamDetailsV1 = ({
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.policy') })
               }>
-              <Button
-                ghost
-                className={classNames({
-                  'p-x-lg': canEditAll,
-                })}
-                data-testid="add-placeholder-button"
-                disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={() =>
-                  setAddAttribute({
-                    type: EntityType.POLICY,
-                    selectedData: currentTeam.policies ?? [],
-                  })
-                }>
-                {t('label.add')}
-              </Button>
+              <span className="tw:inline-flex">
+                <Button
+                  className={classNames({
+                    'p-x-lg': canEditAll,
+                  })}
+                  color="secondary-brand"
+                  data-testid="add-placeholder-button"
+                  iconLeading={PlusOutlined}
+                  isDisabled={isTeamDeleted}
+                  size="md"
+                  onClick={() =>
+                    setAddAttribute({
+                      type: EntityType.POLICY,
+                      selectedData: currentTeam.policies ?? [],
+                    })
+                  }>
+                  {t('label.add')}
+                </Button>
+              </span>
             </Tooltip>
           ),
         })
@@ -928,11 +940,12 @@ const TeamDetailsV1 = ({
           {canEditAll && (
             <Col className="d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-policy"
+                size="md"
                 title={
                   canEditAll ? addPolicy : t('message.no-permission-for-action')
                 }
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
@@ -963,7 +976,11 @@ const TeamDetailsV1 = ({
     const canManageTeamMembership =
       !isOrganization && !isUndefined(currentUser) && isGroupType;
     const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-      <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+      <Button
+        color="primary"
+        data-testid="join-teams"
+        size="md"
+        onClick={joinTeam}>
         {t('label.join-team')}
       </Button>
     );
@@ -972,10 +989,10 @@ const TeamDetailsV1 = ({
       canManageTeamMembership &&
       (isAlreadyJoinedTeam ? (
         <Button
-          ghost
+          color="secondary-brand"
           data-testid="leave-team-button"
-          type="primary"
-          onClick={(e) => {
+          size="md"
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);

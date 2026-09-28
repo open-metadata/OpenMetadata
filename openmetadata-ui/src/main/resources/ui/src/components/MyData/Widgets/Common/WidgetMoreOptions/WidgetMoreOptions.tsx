@@ -12,9 +12,11 @@
  */
 
 import { MoreOutlined } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getVisiblePopupContainer } from '../../../../../utils/LandingPageWidget/WidgetsUtils';
 import './widget-more-options.less';
 
@@ -36,6 +38,8 @@ const WidgetMoreOptions = ({
   onMenuClick,
   className = '',
 }: WidgetMoreOptionsProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="widget-more-options-container">
       <Dropdown
@@ -52,9 +56,12 @@ const WidgetMoreOptions = ({
         placement="bottomLeft"
         trigger={['click']}>
         <Button
+          aria-label={t('label.more-action-plural')}
           className="widget-more-options-button"
+          color="secondary"
           data-testid="more-options-button"
-          icon={<MoreOutlined size={20} />}
+          iconLeading={MoreOutlined}
+          size="md"
         />
       </Dropdown>
     </div>

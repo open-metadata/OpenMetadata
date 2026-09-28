@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -203,18 +203,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
-              <Button
-                className="cursor-pointer p-0"
-                data-testid="edit-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
-                onClick={() => {
-                  setSelectedProperty(record);
-                  setOperation(OPERATION.UPDATE);
-                }}>
-                <IconEdit name={t('label.edit')} width={16} />
-              </Button>
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.edit')}
+                  className="cursor-pointer p-0"
+                  color="tertiary"
+                  data-testid="edit-button"
+                  iconLeading={<IconEdit name={t('label.edit')} width={16} />}
+                  isDisabled={!hasAccess}
+                  size="sm"
+                  onClick={() => {
+                    setSelectedProperty(record);
+                    setOperation(OPERATION.UPDATE);
+                  }}
+                />
+              </span>
             </Tooltip>
             <Tooltip
               title={
@@ -224,18 +227,23 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
-              <Button
-                className="cursor-pointer p-0"
-                data-testid="delete-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
-                onClick={() => {
-                  setSelectedProperty(record);
-                  setOperation(OPERATION.DELETE);
-                }}>
-                <IconDelete name={t('label.delete')} width={16} />
-              </Button>
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.delete')}
+                  className="cursor-pointer p-0"
+                  color="tertiary"
+                  data-testid="delete-button"
+                  iconLeading={
+                    <IconDelete name={t('label.delete')} width={16} />
+                  }
+                  isDisabled={!hasAccess}
+                  size="sm"
+                  onClick={() => {
+                    setSelectedProperty(record);
+                    setOperation(OPERATION.DELETE);
+                  }}
+                />
+              </span>
             </Tooltip>
           </Space>
         ),

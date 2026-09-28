@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Slider } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';
@@ -179,9 +179,12 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         </Col>
         <Col className="d-flex items-center justify-end gap-2">
           <Button
+            aria-label={t('label.delete')}
             className="delete-term-boost"
+            color="tertiary"
             data-testid="delete-term-boost"
-            icon={<Icon className="text-md" component={Delete} />}
+            iconLeading={Delete}
+            size="md"
             onClick={() => onDeleteBoost(termBoost.value)}
           />
         </Col>

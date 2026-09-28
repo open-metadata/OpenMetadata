@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Select, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DomainType } from '../../../generated/api/domains/createDomain';
 import { DomainTypeSelectFormProps } from './DomainTypeSelectForm.interface';
 
@@ -22,6 +24,7 @@ const DomainTypeSelectForm = ({
   onSubmit,
   onCancel,
 }: DomainTypeSelectFormProps) => {
+  const { t } = useTranslation();
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const domainTypeArray = Object.keys(DomainType).map((key) => ({
@@ -42,21 +45,22 @@ const DomainTypeSelectForm = ({
         <Col className="gutter-row d-flex justify-end" span={24}>
           <Space align="center">
             <Button
-              className="p-x-05"
+              aria-label={t('label.cancel')}
+              color="secondary"
               data-testid="cancelAssociatedTag"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
+              iconLeading={CloseOutlined}
+              isDisabled={isSubmitLoading}
+              size="sm"
               onClick={onCancel}
             />
             <Button
-              className="p-x-05"
+              aria-label={t('label.save')}
+              color="primary"
               data-testid="saveAssociatedTag"
-              htmlType="submit"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
+              iconLeading={CheckOutlined}
+              isLoading={isSubmitLoading}
+              size="sm"
+              type="submit"
             />
           </Space>
         </Col>

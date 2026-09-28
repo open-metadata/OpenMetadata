@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { isEmpty } from 'lodash';
 
 import { useMemo } from 'react';
@@ -75,10 +75,12 @@ const SuggestionsSlider = () => {
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
         <Button
-          className="suggestion-pending-btn"
+          showTextWhileLoading
+          className="suggestion-pending-btn tw:ml-1 tw:rounded-full tw:px-2! tw:text-xs! tw:before:rounded-full"
+          color="primary"
           data-testid="more-suggestion-button"
-          loading={loading}
-          type="primary"
+          isLoading={loading}
+          size="md"
           onClick={() => fetchSuggestions()}>
           {t('label.plus-count-more', {
             count: suggestionPendingCount,
@@ -90,26 +92,28 @@ const SuggestionsSlider = () => {
           {hasSuggestionEditAccess && (
             <>
               <Button
-                ghost
+                showTextWhileLoading
                 className="text-xs text-primary font-medium"
+                color="secondary-brand"
                 data-testid="accept-all-suggestions"
-                disabled={loadingAccept}
-                icon={<CheckOutlined />}
-                loading={loadingAccept}
-                type="primary"
+                iconLeading={CheckOutlined}
+                isDisabled={loadingAccept}
+                isLoading={loadingAccept}
+                size="md"
                 onClick={() =>
                   acceptRejectAllSuggestions(SuggestionAction.Accept)
                 }>
                 {t('label.accept-all')}
               </Button>
               <Button
-                ghost
+                showTextWhileLoading
                 className="text-xs text-primary font-medium"
+                color="secondary-brand"
                 data-testid="reject-all-suggestions"
-                disabled={loadingReject}
-                icon={<CloseOutlined />}
-                loading={loadingReject}
-                type="primary"
+                iconLeading={CloseOutlined}
+                isDisabled={loadingReject}
+                isLoading={loadingReject}
+                size="md"
                 onClick={() =>
                   acceptRejectAllSuggestions(SuggestionAction.Reject)
                 }>
@@ -118,12 +122,12 @@ const SuggestionsSlider = () => {
             </>
           )}
           <Button
-            ghost
-            className="text-xs text-primary font-medium close-suggestion-btn flex-center"
+            className="text-xs text-primary font-medium close-suggestion-btn"
+            color="secondary-brand"
             data-testid="close-suggestion"
-            type="primary"
+            iconLeading={ExitIcon}
+            size="md"
             onClick={() => onUpdateActiveUser()}>
-            <ExitIcon />
             {t('label.close')}
           </Button>
         </Space>

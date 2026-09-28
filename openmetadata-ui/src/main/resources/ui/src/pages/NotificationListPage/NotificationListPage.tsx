@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Skeleton, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -296,27 +296,38 @@ const NotificationListPage = () => {
             <div className="d-flex items-center">
               {alertPermission.edit && (
                 <Tooltip placement="bottom" title={t('label.edit')}>
-                  <Link to={getNotificationAlertsEditPath(fullyQualifiedName)}>
+                  <span className="tw:inline-flex">
                     <Button
-                      className="flex flex-center"
+                      aria-label={t('label.edit')}
+                      color="tertiary"
                       data-testid={`alert-edit-${record.name}`}
-                      disabled={record.provider === ProviderType.System}
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      type="text"
+                      href={getNotificationAlertsEditPath(fullyQualifiedName)}
+                      iconLeading={
+                        <EditIcon
+                          data-icon
+                          color={DE_ACTIVE_COLOR}
+                          width="14px"
+                        />
+                      }
+                      isDisabled={record.provider === ProviderType.System}
+                      size="md"
                     />
-                  </Link>
+                  </span>
                 </Tooltip>
               )}
               {alertPermission.delete && (
                 <Tooltip placement="bottom" title={t('label.delete')}>
-                  <Button
-                    className="flex flex-center"
-                    data-testid={`alert-delete-${record.name}`}
-                    disabled={record.provider === ProviderType.System}
-                    icon={<DeleteIcon height={16} />}
-                    type="text"
-                    onClick={() => setSelectedAlert(record)}
-                  />
+                  <span className="tw:inline-flex">
+                    <Button
+                      aria-label={t('label.delete')}
+                      color="tertiary"
+                      data-testid={`alert-delete-${record.name}`}
+                      iconLeading={<DeleteIcon data-icon height={16} />}
+                      isDisabled={record.provider === ProviderType.System}
+                      size="md"
+                      onClick={() => setSelectedAlert(record)}
+                    />
+                  </span>
                 </Tooltip>
               )}
             </div>
@@ -347,8 +358,9 @@ const NotificationListPage = () => {
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
                 <Button
+                  color="primary"
                   data-testid="create-notification"
-                  type="primary"
+                  size="md"
                   onClick={() =>
                     navigate(
                       getSettingPath(

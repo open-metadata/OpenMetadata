@@ -12,8 +12,8 @@
  */
 
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -75,7 +75,13 @@ const ApplicationCard = ({
               markdown={description}
             />
           )}
-          <Button className="p-0" data-testid="config-btn" type="link">
+          <Button
+            boxed
+            className="p-0"
+            color="link-color"
+            data-testid="config-btn"
+            size="md"
+            onClick={!isUnavailable ? onClick : undefined}>
             {linkTitle}
           </Button>
         </div>

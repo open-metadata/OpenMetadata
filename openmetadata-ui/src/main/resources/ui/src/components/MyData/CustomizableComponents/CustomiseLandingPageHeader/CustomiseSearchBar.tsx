@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Input, Popover, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Input, Popover, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -197,18 +197,16 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
               : t('label.use-natural-language-search')
           }>
           <Button
+            aria-label={t('label.use-natural-language-search')}
             className={classNames('nlp-search-button w-6 h-6', {
               active: isNLPActive,
             })}
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
-              <Icon
-                component={
-                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                }
-              />
+            iconLeading={
+              isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
             }
-            type="text"
+            size="sm"
             onClick={() => setNLPActive(!isNLPActive)}
           />
         </Tooltip>

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -223,18 +224,16 @@ export const GlobalSearchBar = () => {
               : t('label.use-natural-language-search')
           }>
           <Button
+            aria-label={t('label.use-natural-language-search')}
             className={classNames('nav-search-button', 'w-6', 'h-6', {
               active: isNLPActive,
             })}
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
-              <Icon
-                component={
-                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                }
-              />
+            iconLeading={
+              isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
             }
-            type="text"
+            size="md"
             onClick={() => setNLPActive(!isNLPActive)}
           />
         </Tooltip>

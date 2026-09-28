@@ -25,17 +25,8 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Checkbox,
-  Empty,
-  Form,
-  Input,
-  Select,
-  Space,
-} from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Checkbox, Empty, Form, Input, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -126,8 +117,10 @@ const TaskFormBuilderSection = ({
           ) : null}
         </div>
         <Button
+          color="secondary"
           data-testid={`${testIdPrefix}-add-field`}
-          icon={<PlusOutlined />}
+          iconLeading={PlusOutlined}
+          size="md"
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
           {t('label.add-field')}
         </Button>
@@ -154,11 +147,10 @@ const TaskFormBuilderSection = ({
                   data-testid={`${testIdPrefix}-field-card-${index}`}
                   extra={
                     <Button
-                      danger
+                      color="primary-destructive"
                       data-testid={`${testIdPrefix}-field-remove-${index}`}
-                      icon={<DeleteOutlined />}
-                      size="small"
-                      type="text"
+                      iconLeading={DeleteOutlined}
+                      size="sm"
                       onClick={() =>
                         onChange(
                           fields.filter(

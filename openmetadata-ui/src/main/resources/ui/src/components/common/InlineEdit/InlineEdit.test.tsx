@@ -80,7 +80,7 @@ describe('InlineEdit component', () => {
     const saveBtn = await screen.findByTestId('inline-save-btn');
     const cancelBtn = await screen.findByTestId('inline-cancel-btn');
 
-    expect(saveBtn).toHaveClass('ant-btn-loading');
+    expect(saveBtn).toHaveAttribute('data-loading');
 
     expect(cancelBtn).toBeDisabled();
   });

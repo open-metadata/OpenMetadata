@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 import './inline-edit.less';
-import { InlineEditProps } from './InlineEdit.interface';
+import { InlineEditButtonProps, InlineEditProps } from './InlineEdit.interface';
+
+const toCoreButtonProps = ({
+  htmlType,
+  ...rest
+}: InlineEditButtonProps = {}) => ({ ...rest, type: htmlType });
 
 const InlineEdit = ({
   children,
@@ -26,6 +33,7 @@ const InlineEdit = ({
   cancelButtonProps,
   saveButtonProps,
 }: InlineEditProps) => {
+  const { t } = useTranslation();
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -46,22 +54,26 @@ const InlineEdit = ({
 
       <Space className="w-full justify-end" data-testid="buttons" size={4}>
         <Button
+          aria-label={t('label.cancel')}
+          className="tw:size-6 tw:p-0!"
+          color="primary"
           data-testid="inline-cancel-btn"
-          disabled={isLoading}
-          icon={<CloseOutlined />}
-          size="small"
-          type="primary"
+          iconLeading={CloseOutlined}
+          isDisabled={isLoading}
+          size="sm"
           onClick={onCancel}
-          {...cancelButtonProps}
+          {...toCoreButtonProps(cancelButtonProps)}
         />
         <Button
+          aria-label={t('label.save')}
+          className="tw:size-6 tw:p-0!"
+          color="primary"
           data-testid="inline-save-btn"
-          icon={<CheckOutlined />}
-          loading={isLoading}
-          size="small"
-          type="primary"
+          iconLeading={CheckOutlined}
+          isLoading={isLoading}
+          size="sm"
           onClick={onSave}
-          {...saveButtonProps}
+          {...toCoreButtonProps(saveButtonProps)}
         />
       </Space>
     </Space>

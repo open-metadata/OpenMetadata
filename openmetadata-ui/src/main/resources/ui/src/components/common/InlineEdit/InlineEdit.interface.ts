@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonProps, SpaceProps } from 'antd';
+import { ButtonProps } from '@openmetadata/ui-core-components';
+import { SpaceProps } from 'antd';
 import { ReactNode } from 'react';
+
+/** Core Button props; `htmlType` is kept as an alias of `type` for existing callers. */
+export type InlineEditButtonProps = Omit<ButtonProps, 'type'> & {
+  htmlType?: ButtonProps['type'];
+};
 
 export interface InlineEditProps {
   className?: string;
@@ -21,6 +27,6 @@ export interface InlineEditProps {
   onSave: () => void | Promise<void>;
   direction?: SpaceProps['direction'];
   isLoading?: boolean;
-  cancelButtonProps?: ButtonProps;
-  saveButtonProps?: ButtonProps;
+  cancelButtonProps?: InlineEditButtonProps;
+  saveButtonProps?: InlineEditButtonProps;
 }

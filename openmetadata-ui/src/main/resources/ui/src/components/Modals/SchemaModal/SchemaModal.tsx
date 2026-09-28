@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import classNames from 'classnames';
 
 import { clone } from 'lodash';
@@ -61,16 +61,20 @@ const SchemaModal: FC<SchemaModalProp> = ({
         isFooterVisible ? (
           <KeyDownStopPropagationWrapper>
             <Button
+              boxed
+              color="link-color"
               data-testid="cancel"
               key="cancelButton"
-              type="link"
+              size="md"
               onClick={onClose}>
               {t('label.cancel')}
             </Button>
             <Button
+              className="tw:ml-2"
+              color="primary"
               data-testid="save"
               key="saveButton"
-              type="primary"
+              size="md"
               onClick={onSave}>
               {t('label.save')}
             </Button>

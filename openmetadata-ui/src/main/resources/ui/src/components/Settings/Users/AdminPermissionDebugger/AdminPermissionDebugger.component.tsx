@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   AutoComplete,
-  Button,
   Card,
   Col,
   Form,
@@ -450,9 +449,11 @@ const AdminPermissionDebugger: React.FC = () => {
 
                   <Form.Item>
                     <Button
-                      htmlType="submit"
-                      loading={loadingEvaluation}
-                      type="primary">
+                      showTextWhileLoading
+                      color="primary"
+                      isLoading={loadingEvaluation}
+                      size="md"
+                      type="submit">
                       {t('label.evaluate')}
                     </Button>
                   </Form.Item>

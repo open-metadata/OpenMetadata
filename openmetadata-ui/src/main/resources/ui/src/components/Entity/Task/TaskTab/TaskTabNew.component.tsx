@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button, Owner, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
+  Button as AntdButton,
   Col,
   Divider,
   Dropdown,
@@ -285,9 +285,10 @@ const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
       </div>
       {hasOverflow && (
         <Button
-          className="p-0 text-xs font-medium"
-          size="small"
-          type="link"
+          boxed
+          className="tw:px-0! text-xs font-medium"
+          color="link-color"
+          size="sm"
           onClick={() => setExpanded((prev) => !prev)}>
           {expanded ? t('label.show-less') : t('label.show-more')}
         </Button>
@@ -775,7 +776,7 @@ export const TaskTabNew = ({
     () =>
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <Button
+          <AntdButton
             className="p-0 task-feed-message font-medium text-md"
             data-testid="task-title"
             type="link"
@@ -800,7 +801,7 @@ export const TaskTabNew = ({
             <Typography
               className="p-l-xss entity-type header-link whitespace-normal"
               variant="text">{`(${entityType})`}</Typography>
-          </Button>
+          </AntdButton>
         </EntityPopOverCard>
       ) : null,
     [
@@ -1268,9 +1269,10 @@ export const TaskTabNew = ({
   const renderCommentButton = useMemo(() => {
     return (
       <Button
+        color="primary"
         data-testid="comment-button"
-        disabled={isEmpty(comment)}
-        type="primary"
+        isDisabled={isEmpty(comment)}
+        size="md"
         onClick={onSave}>
         {t('label.comment')}
       </Button>
@@ -1326,11 +1328,13 @@ export const TaskTabNew = ({
           data-testid="task-cta-buttons"
           size="small">
           <Button
+            showTextWhileLoading
             className="task-action-button"
+            color="primary"
             data-testid="workflow-task-action-primary"
-            disabled={!hasWorkflowAccess}
-            loading={isActionLoading}
-            type="primary"
+            isDisabled={!hasWorkflowAccess}
+            isLoading={isActionLoading}
+            size="md"
             onClick={() =>
               handleWorkflowTransitionSelect(selectedTransition.id)
             }>
@@ -1484,7 +1488,11 @@ export const TaskTabNew = ({
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
-          <Button data-testid="close-button" onClick={onTaskClose}>
+          <Button
+            color="secondary"
+            data-testid="close-button"
+            size="md"
+            onClick={onTaskClose}>
             {t('label.close')}
           </Button>
         )}
@@ -1807,7 +1815,9 @@ export const TaskTabNew = ({
   const editTaskModalFooter = useMemo(
     () => [
       <Button
+        color="secondary"
         key="cancel"
+        size="md"
         onClick={() => {
           form.resetFields();
           setShowEditTaskModel(false);
@@ -1815,11 +1825,21 @@ export const TaskTabNew = ({
         {t('label.cancel')}
       </Button>,
       showRejectInEditModal ? (
-        <Button key="reject" onClick={onTaskReject}>
+        <Button
+          className="tw:ml-2"
+          color="secondary"
+          key="reject"
+          size="md"
+          onClick={onTaskReject}>
           {t('label.reject')}
         </Button>
       ) : null,
-      <Button key="submit" type="primary" onClick={() => form.submit()}>
+      <Button
+        className="tw:ml-2"
+        color="primary"
+        key="submit"
+        size="md"
+        onClick={() => form.submit()}>
         {t('label.ok')}
       </Button>,
     ],

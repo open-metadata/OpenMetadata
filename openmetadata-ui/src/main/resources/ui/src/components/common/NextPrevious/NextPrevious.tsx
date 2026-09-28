@@ -13,9 +13,9 @@
 
 import Icon from '@ant-design/icons';
 import { Button as CoreButton } from '@openmetadata/ui-core-components';
-import { Button, Dropdown } from 'antd';
+import { Dropdown } from 'antd';
 import classNames from 'classnames';
-import { FC } from 'react';
+import { FC, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
 import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
@@ -149,14 +149,17 @@ const NextPrevious: FC<NextPreviousProps> = ({
               onClick: () => onShowSizeChange(size),
             })),
           }}>
-          <Button
+          <CoreButton
             className="pagination-button"
+            color="tertiary"
             data-testid="page-size-selection-dropdown"
-            type="text"
-            onClick={(e) => e.preventDefault()}>
+            iconTrailing={
+              <Icon component={DownOutlined} style={ICON_DIMENSION} />
+            }
+            size="md"
+            onClick={(e: MouseEvent) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
-            <Icon component={DownOutlined} style={ICON_DIMENSION} />
-          </Button>
+          </CoreButton>
         </Dropdown>
       )}
     </div>

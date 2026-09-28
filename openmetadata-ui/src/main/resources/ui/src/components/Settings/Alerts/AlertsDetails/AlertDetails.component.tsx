@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Divider, Row, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Space } from 'antd';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import {
@@ -61,18 +60,19 @@ export const AlertDetailsComponent = ({
           {pageHeaderData ? <PageHeader data={pageHeaderData} /> : null}
           <Space size={16}>
             {allowEdit && (
-              <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
-                <Button
-                  className="flex flex-center"
-                  icon={<IconEdit height={12} />}>
-                  {t('label.edit')}
-                </Button>
-              </Link>
+              <Button
+                color="secondary"
+                href={`${EDIT_LINK_PATH}/${alerts?.id}`}
+                iconLeading={<IconEdit height={12} />}
+                size="md">
+                {t('label.edit')}
+              </Button>
             )}
             {allowDelete && (
               <Button
-                className="flex flex-center"
-                icon={<IconDelete height={12} />}
+                color="secondary"
+                iconLeading={<IconDelete height={12} />}
+                size="md"
                 onClick={onDelete}>
                 {t('label.delete')}
               </Button>

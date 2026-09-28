@@ -12,16 +12,18 @@
  */
 
 import Icon, { PlusOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { Fragment, FunctionComponent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
 ) => {
+  const { t } = useTranslation();
   const { formContext, idSchema, title, canAdd, onAddClick, items } = props;
 
   return (
@@ -30,11 +32,12 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
         <span className="control-label">{title}</span>
         {canAdd && (
           <Button
+            aria-label={t('label.add-entity', { entity: title })}
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            iconLeading={PlusOutlined}
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="sm"
             onClick={onAddClick}
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {

@@ -16,8 +16,8 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Button as AntdButton, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -494,13 +494,16 @@ const TableQueries: FC<TableQueriesProp> = ({
     <Tooltip
       placement="top"
       title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
-      <Button
-        data-testid="add-query-btn"
-        disabled={!permissions?.query.Create}
-        type="primary"
-        onClick={handleAddQueryClick}>
-        {t('label.add')}
-      </Button>
+      <span className="tw:inline-flex">
+        <Button
+          color="primary"
+          data-testid="add-query-btn"
+          isDisabled={!permissions?.query.Create}
+          size="md"
+          onClick={handleAddQueryClick}>
+          {t('label.add')}
+        </Button>
+      </span>
     </Tooltip>
   );
 
@@ -601,7 +604,8 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onGetInitialOptions={getInitialTagsOptions}
                         onSearch={handleTagsSearch}
                       />
-                      <Button
+                      {/* ponytail: stays antd; react-aria press handling would eat keys from the nested RangePicker */}
+                      <AntdButton
                         className="p-x-0"
                         type="text"
                         onClick={() => {
@@ -624,7 +628,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                             }}
                           />
                         </span>
-                      </Button>
+                      </AntdButton>
                     </Space>
                     <Space size={16}>
                       <SortingDropDown
@@ -633,23 +637,27 @@ const TableQueries: FC<TableQueriesProp> = ({
                         sortField={sortQuery.field}
                       />
                       <Button
-                        className="p-0"
+                        aria-label={t('label.sort-order')}
+                        className="tw:p-0!"
+                        color="tertiary"
                         data-testid="sort-order-button"
-                        type="text"
+                        iconLeading={
+                          isAscSortOrder ? (
+                            <SortAscendingOutlined
+                              className="text-base text-grey-muted"
+                              style={{ fontSize: '14px' }}
+                            />
+                          ) : (
+                            <SortDescendingOutlined className="text-sm text-grey-muted" />
+                          )
+                        }
+                        size="md"
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
-                        }>
-                        {isAscSortOrder ? (
-                          <SortAscendingOutlined
-                            className="text-base text-grey-muted"
-                            style={{ fontSize: '14px' }}
-                          />
-                        ) : (
-                          <SortDescendingOutlined className="text-sm text-grey-muted" />
-                        )}
-                      </Button>
+                        }
+                      />
                       {addButton}
                     </Space>
                   </Space>

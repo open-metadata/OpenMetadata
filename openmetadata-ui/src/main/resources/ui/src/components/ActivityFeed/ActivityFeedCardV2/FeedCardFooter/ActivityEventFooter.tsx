@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback } from 'react';
@@ -55,9 +56,11 @@ function ActivityEventFooter({
         <div>
           <div className="flex items-center gap-2 w-full rounded-8">
             <Button
-              className="p-0 flex-center"
+              noTextPadding
+              className="tw:p-0!"
+              color="tertiary"
               data-testid="comment-button"
-              type="text"
+              size="md"
               onClick={isForFeedTab ? handleCommentClick : undefined}>
               <ThreadIcon data-testid="comment-icon" height={18} width={18} />
             </Button>

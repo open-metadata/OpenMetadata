@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, List, Popover, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Checkbox, List, Popover, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
@@ -51,16 +51,16 @@ const FeedsFilterPopover = ({
         footer={
           <Space className="w-full justify-end">
             <Button
-              color="primary"
+              color="secondary"
               data-testid="cancel-button"
-              size="small"
+              size="sm"
               onClick={() => setPopupVisible(false)}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="selectable-list-update-btn"
-              size="small"
-              type="primary"
+              size="sm"
               onClick={onFilterUpdate}>
               {t('label.update')}
             </Button>
@@ -111,9 +111,12 @@ const FeedsFilterPopover = ({
       onOpenChange={setPopupVisible}>
       <Tooltip title={t('label.feed-filter-plural')}>
         <Button
+          aria-label={t('label.feed-filter-plural')}
           className="feed-filter-icon"
+          color="secondary"
           data-testid="filter-button"
-          icon={<FilterIcon height={16} />}
+          iconLeading={FilterIcon}
+          size="md"
         />
       </Tooltip>
     </Popover>

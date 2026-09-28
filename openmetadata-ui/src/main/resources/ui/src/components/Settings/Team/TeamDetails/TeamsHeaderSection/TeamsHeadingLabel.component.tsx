@@ -16,8 +16,8 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Input, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Input, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,19 +123,24 @@ const TeamsHeadingLabel = ({
               })
             : t('message.no-permission-for-action')
         }>
-        <Button
-          className="p-0 edit-team-name flex-center"
-          data-testid="edit-team-name"
-          disabled={!hasEditDisplayNamePermission}
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-          size="small"
-          type="text"
-          onClick={(e) => {
-            // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-            e.stopPropagation();
-            setIsHeadingEditing(true);
-          }}
-        />
+        <span className="tw:inline-flex">
+          <Button
+            aria-label={t('label.edit-entity', {
+              entity: t('label.display-name'),
+            })}
+            className="p-0 edit-team-name"
+            color="tertiary"
+            data-testid="edit-team-name"
+            iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            isDisabled={!hasEditDisplayNamePermission}
+            size="sm"
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setIsHeadingEditing(true);
+            }}
+          />
+        </span>
       </Tooltip>
     );
 
@@ -158,21 +163,25 @@ const TeamsHeadingLabel = ({
         />
         <Space className="flex-none" data-testid="buttons" size={4}>
           <Button
+            aria-label={t('label.cancel')}
             className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="cancelAssociatedTag"
-            disabled={isLoading}
-            type="primary"
-            onMouseDown={handleClose}>
-            <CloseOutlined />
-          </Button>
+            iconLeading={CloseOutlined}
+            isDisabled={isLoading}
+            size="md"
+            onMouseDown={handleClose}
+          />
           <Button
+            aria-label={t('label.save')}
             className="rounded-4 text-sm p-xss"
+            color="primary"
             data-testid="saveAssociatedTag"
-            loading={isLoading}
-            type="primary"
-            onMouseDown={onHeadingSave}>
-            <CheckOutlined />
-          </Button>
+            iconLeading={CheckOutlined}
+            isLoading={isLoading}
+            size="md"
+            onMouseDown={onHeadingSave}
+          />
         </Space>
       </div>
     ) : (

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Collapse, Row, Slider, Switch } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Collapse, Row, Slider, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -111,17 +110,20 @@ const SearchBoostsSection = ({
               <Col className="d-flex items-center gap-2">
                 <Button
                   className="term-boost-save-btn"
+                  color="secondary"
                   data-testid="term-boost-save-btn"
-                  disabled={!termBoostsChanged}
+                  isDisabled={!termBoostsChanged}
+                  size="md"
                   onClick={onSaveTermBoost}>
                   {t('label.save')}
                 </Button>
                 <Button
                   className="term-boost-add-btn"
+                  color="primary"
                   data-testid="term-boost-add-btn"
-                  disabled={isUpdating || showNewTermBoost}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
-                  type="primary"
+                  iconLeading={PlusOutlined}
+                  isDisabled={isUpdating || showNewTermBoost}
+                  size="md"
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
                 </Button>
@@ -156,9 +158,11 @@ const SearchBoostsSection = ({
               <Col className="d-flex items-center gap-2">
                 <Button
                   className="field-value-boost-add-btn"
+                  color="secondary"
                   data-testid="add-field-value-boost-btn"
-                  disabled={isUpdating || showFieldValueBoostModal}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
+                  iconLeading={PlusOutlined}
+                  isDisabled={isUpdating || showFieldValueBoostModal}
+                  size="md"
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}
                 </Button>
@@ -523,8 +527,10 @@ const SearchSettingsPage = () => {
             </Typography>
             {isAdminUser && (
               <Button
+                color="secondary"
                 data-testid="reset-search-settings-btn"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
+                size="md"
                 onClick={() => setShowResetModal(true)}>
                 {t('label.reset')}
               </Button>
@@ -580,10 +586,12 @@ const SearchSettingsPage = () => {
                     {t('label.hybrid-search-weight-plural')}
                   </Typography>
                   <Button
+                    showTextWhileLoading
+                    color="primary"
                     data-testid="hybrid-weights-save-btn"
-                    disabled={!hybridWeightsChanged || isUpdating}
-                    loading={isUpdating}
-                    type="primary"
+                    isDisabled={!hybridWeightsChanged || isUpdating}
+                    isLoading={isUpdating}
+                    size="md"
                     onClick={onHybridWeightSave}>
                     {t('label.save')}
                   </Button>

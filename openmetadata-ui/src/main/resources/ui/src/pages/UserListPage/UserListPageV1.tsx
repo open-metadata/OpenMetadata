@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -334,16 +335,21 @@ const UserListPageV1 = () => {
                       })
                     : t(ADMIN_ONLY_ACTION)
                 }>
-                <Button
-                  data-testid={`restore-user-btn-${record.name}`}
-                  disabled={!isAdminUser}
-                  icon={<IconRestore name={t('label.restore')} width="16px" />}
-                  type="text"
-                  onClick={() => {
-                    setSelectedUser(record);
-                    setShowReactiveModal(true);
-                  }}
-                />
+                <span className="tw:inline-flex">
+                  <Button
+                    aria-label={t('label.restore')}
+                    className="tw:size-5 tw:p-0!"
+                    color="tertiary"
+                    data-testid={`restore-user-btn-${record.name}`}
+                    iconLeading={IconRestore}
+                    isDisabled={!isAdminUser}
+                    size="sm"
+                    onClick={() => {
+                      setSelectedUser(record);
+                      setShowReactiveModal(true);
+                    }}
+                  />
+                </span>
               </Tooltip>
             )}
             <Tooltip
@@ -355,22 +361,25 @@ const UserListPageV1 = () => {
                     })
                   : t(ADMIN_ONLY_ACTION)
               }>
-              <Button
-                disabled={!isAdminUser}
-                icon={
-                  <IconDelete
-                    data-testid={`delete-user-btn-${record.name}`}
-                    name={t('label.delete')}
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={() => {
-                  setSelectedUser(record);
-                  setShowDeleteModal(true);
-                }}
-              />
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.delete')}
+                  className="tw:size-5 tw:p-0!"
+                  color="tertiary"
+                  iconLeading={
+                    <IconDelete
+                      data-testid={`delete-user-btn-${record.name}`}
+                      width="16px"
+                    />
+                  }
+                  isDisabled={!isAdminUser}
+                  size="sm"
+                  onClick={() => {
+                    setSelectedUser(record);
+                    setShowDeleteModal(true);
+                  }}
+                />
+              </span>
             </Tooltip>
           </Space>
         ),
@@ -509,8 +518,9 @@ const UserListPageV1 = () => {
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
+                  color="primary"
                   data-testid="add-user"
-                  type="primary"
+                  size="md"
                   onClick={handleAddNewUser}>
                   {t('label.add-entity', {
                     entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Select, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Select, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -358,11 +358,16 @@ const SampleDataTable: FC<SampleDataProps> = ({
               entity: t('label.sample-data'),
             })}>
             <Button
-              className="flex-center px-1.5"
+              aria-label={t('label.manage-entity', {
+                entity: t('label.sample-data'),
+              })}
+              className="tw:px-1.5!"
+              color="secondary"
               data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}>
-              <IconDropdown className="anticon self-center " />
-            </Button>
+              iconLeading={IconDropdown}
+              size="md"
+              onClick={() => setShowActions(true)}
+            />
           </Tooltip>
         </Dropdown>
       </Space>

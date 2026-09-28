@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import {
+  Button,
   ButtonGroup,
   ButtonGroupItem,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Table } from 'antd';
+import { Col, Row, Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -126,10 +127,10 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               </span>
             )}
             <Button
-              className="d-flex p-0 h-auto m-b-xs"
+              className="m-b-xs"
+              color="link-color"
               data-testid="expand-icon"
-              size="small"
-              type="link"
+              size="sm"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {getExpandToggleLabel(isExpanded, childrenCount)}
@@ -205,10 +206,10 @@ const NestedSchemaFieldCard: React.FC<{
               </span>
             )}
             <Button
-              className="d-flex p-0 h-auto m-b-xs"
+              className="m-b-xs"
+              color="link-color"
               data-testid="expand-icon"
-              size="small"
-              type="link"
+              size="sm"
               onClick={() => onToggleExpand(rowKey)}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
@@ -362,9 +363,12 @@ const SchemaFieldCardsV1: React.FC<{
 
     return (
       <Button
-        block
-        loading={isLoading && currentPage > 1}
-        type="link"
+        boxed
+        showTextWhileLoading
+        className="tw:w-full"
+        color="link-color"
+        isLoading={isLoading && currentPage > 1}
+        size="md"
         onClick={handleLoadMore}>
         {t('label.show-more')}
       </Button>
@@ -1128,7 +1132,11 @@ const APIEndpointSchemaV1: React.FC<{
             </ButtonGroupItem>
           ))}
         </ButtonGroup>
-        <Button size="small" type="link" onClick={handleToggleExpandAll}>
+        <Button
+          boxed
+          color="link-color"
+          size="sm"
+          onClick={handleToggleExpandAll}>
           {expandedRowKeys.length < allRowKeys.length
             ? t('label.expand-all')
             : t('label.collapse-all')}

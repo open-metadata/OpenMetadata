@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
@@ -52,23 +51,21 @@ const CollapseHeader = ({
           trigger={['click']}>
           <Button
             className="add-field-btn"
+            color="primary"
             data-testid={dataTestId}
-            icon={<Icon className="text-xs" component={PlusOutlined} />}
-            type="primary"
-            onClick={(e) => e.stopPropagation()}>
+            iconLeading={PlusOutlined}
+            size="md">
             {t('label.add')}
           </Button>
         </Dropdown>
       ) : (
         <Button
           className="add-field-btn"
+          color="primary"
           data-testid={dataTestId}
-          icon={<Icon className="text-xs" component={PlusOutlined} />}
-          type="primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAddNewBoost?.();
-          }}>
+          iconLeading={PlusOutlined}
+          size="md"
+          onClick={() => handleAddNewBoost?.()}>
           {t('label.add')}
         </Button>
       )}

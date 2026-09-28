@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Dropdown } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Dropdown } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -235,9 +235,13 @@ export const ContractQualityFormTab: React.FC<{
         </div>
 
         <Button
-          className="contract-export-button"
+          className="contract-export-button tw:font-semibold"
+          color="secondary"
           data-testid="add-test-button"
-          icon={<Icon className="anticon" component={PlusIcon} />}
+          iconLeading={
+            <PlusIcon className="tw:rotate-45" data-icon="leading" />
+          }
+          size="md"
           onClick={handleOpenTestCaseDrawer}>
           {t('label.add-entity', {
             entity: t('label.test'),
@@ -252,7 +256,7 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown menu={filterMenu}>
-              <Button icon={<DownOutlined />} type="default">
+              <Button color="secondary" iconLeading={DownOutlined} size="md">
                 {t('label.filter-plural')}
               </Button>
             </Dropdown>
@@ -285,16 +289,19 @@ export const ContractQualityFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
+          color="secondary"
+          iconLeading={LeftOutlined}
+          size="md"
           onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
-          type="primary"
+          color="primary"
+          iconTrailing={RightIcon}
+          size="md"
           onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
         </Button>
       </div>
 

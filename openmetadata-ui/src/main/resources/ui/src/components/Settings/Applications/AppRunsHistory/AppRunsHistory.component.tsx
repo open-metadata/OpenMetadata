@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal, Space } from 'antd';
+import { Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -217,29 +217,32 @@ const AppRunsHistory = forwardRef(
         return (
           <>
             <Button
+              boxed
               className="p-0"
+              color="link-color"
               data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
+              isDisabled={showLogAction(record)}
+              size="sm"
               onClick={() => handleRowExpandable(record.id, record)}>
               {t('label.log-plural')}
             </Button>
             <Button
+              boxed
               className="m-l-xs p-0"
+              color="link-color"
               data-testid="app-historical-config"
-              disabled={!jsonSchema}
-              size="small"
-              type="link"
+              isDisabled={!jsonSchema}
+              size="sm"
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
             {canStopAppRun && (
               <Button
+                boxed
                 className="m-l-xs p-0"
+                color="link-color"
                 data-testid="stop-button"
-                size="small"
-                type="link"
+                size="sm"
                 onClick={() => {
                   const rawRunId = record.properties?.pipelineRunId;
                   setSelectedRunId(
@@ -538,8 +541,9 @@ const AppRunsHistory = forwardRef(
           footer={
             <Space className="w-full justify-end">
               <Button
+                color="primary"
                 data-testid="app-run-config-close"
-                type="primary"
+                size="md"
                 onClick={() => setShowConfigModal(false)}>
                 {t('label.close')}
               </Button>

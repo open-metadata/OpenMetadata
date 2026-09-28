@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Card, Col, Divider, Row, Space, Table } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Card, Col, Divider, Row, Space, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -631,8 +631,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {failureLogs && (
         <div className="m-t-md">
           <Button
+            boxed
+            color="link-color"
             data-testid="view-logs-button"
-            type="link"
+            size="md"
             onClick={() => setShowLogsModal(true)}>
             {t('label.view-entity', { entity: t('label.log-plural') })}
           </Button>
@@ -642,8 +644,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {hasFailures && (
         <div className="m-t-md">
           <Button
+            boxed
+            color="link-color"
             data-testid="view-reindex-failures-button"
-            type="link"
+            size="md"
             onClick={() => setShowFailuresDrawer(true)}>
             {t('label.view-reindex-failure-plural')}
           </Button>

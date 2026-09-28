@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, MenuProps, Space, Tooltip } from 'antd';
+import { Badge, Button } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -168,27 +168,31 @@ const QueryCardExtraOption = ({
 
       <Tooltip title={t('label.up-vote')}>
         <Button
+          showTextWhileLoading
           className="vote-button"
+          color="secondary"
           data-testid="up-vote-btn"
-          icon={
+          iconLeading={
             voteStatus === QueryVoteType.votedUp ? (
               <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
               <ThumbsUpOutline height={15} width={15} />
             )
           }
-          loading={loading === QueryVoteType.votedUp}
-          size="small"
+          isLoading={loading === QueryVoteType.votedUp}
+          size="sm"
           onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-          {query.votes?.upVotes || 0}
+          {String(query.votes?.upVotes || 0)}
         </Button>
       </Tooltip>
 
       <Tooltip title={t('label.down-vote')}>
         <Button
+          showTextWhileLoading
           className="vote-button"
+          color="secondary"
           data-testid="down-vote-btn"
-          icon={
+          iconLeading={
             voteStatus === QueryVoteType.votedDown ? (
               <ThumbsUpFilled
                 className="rotate-inverse text-warning-7"
@@ -203,10 +207,10 @@ const QueryCardExtraOption = ({
               />
             )
           }
-          loading={loading === QueryVoteType.votedDown}
-          size="small"
+          isLoading={loading === QueryVoteType.votedDown}
+          size="sm"
           onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-          {query.votes?.downVotes || 0}
+          {String(query.votes?.downVotes || 0)}
         </Button>
       </Tooltip>
 
@@ -226,11 +230,14 @@ const QueryCardExtraOption = ({
             entity: t('label.query'),
           })}>
           <Button
-            className="flex-center button-size"
+            aria-label={t('label.manage-entity', {
+              entity: t('label.query'),
+            })}
+            className="button-size"
+            color="tertiary"
             data-testid="query-btn"
-            icon={<IconDropdown />}
-            size="small"
-            type="text"
+            iconLeading={IconDropdown}
+            size="sm"
           />
         </Tooltip>
       </Dropdown>

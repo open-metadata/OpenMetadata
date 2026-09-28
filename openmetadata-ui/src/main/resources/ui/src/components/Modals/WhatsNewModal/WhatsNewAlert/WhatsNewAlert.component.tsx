@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card, Col, Row } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Affix, Card, Col, Row } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,21 +109,23 @@ const WhatsNewAlert = () => {
                 </Typography>
                 <div className="whats-new-alert-links">
                   <Button
-                    className="p-0"
+                    className="tw:h-7 tw:font-semibold"
+                    color="link-color"
                     href={releaseLink}
                     rel="noopener noreferrer"
-                    target="_blank"
-                    type="link">
+                    size="md"
+                    target="_blank">
                     {t('label.release-notes')}
                   </Button>
                   {/* Only show the blog link for major releases */}
                   {isMajorRelease && (
                     <Button
-                      className="p-0"
+                      className="tw:h-7 tw:font-semibold"
+                      color="link-color"
                       href={blogLink}
                       rel="noopener noreferrer"
-                      target="_blank"
-                      type="link">
+                      size="md"
+                      target="_blank">
                       {t('label.blog')}
                     </Button>
                   )}

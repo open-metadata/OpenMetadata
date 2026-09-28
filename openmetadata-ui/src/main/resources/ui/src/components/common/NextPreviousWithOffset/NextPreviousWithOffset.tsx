@@ -16,8 +16,9 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
-import { useCallback, useMemo } from 'react';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
+import { MouseEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
@@ -70,27 +71,27 @@ const NextPreviousWithOffset = ({
   return (
     <div className="flex-center gap-3" data-testid="pagination">
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        className="text-sm"
+        color="secondary-brand"
         data-testid="previous"
-        disabled={currentPage === 1 || isLoading}
-        icon={<ArrowLeftOutlined />}
-        type="primary"
+        iconLeading={ArrowLeftOutlined}
+        isDisabled={currentPage === 1 || isLoading}
+        size="md"
         onClick={onPreviousHandler}>
-        <span>{t('label.previous')}</span>
+        {t('label.previous')}
       </Button>
       <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
         'label.page'
       )}`}</span>
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        className="text-sm"
+        color="secondary-brand"
         data-testid="next"
-        disabled={nextButtonDisabled || isLoading}
-        type="primary"
+        iconTrailing={ArrowRightOutlined}
+        isDisabled={nextButtonDisabled || isLoading}
+        size="md"
         onClick={onNextHandler}>
-        <span> {t('label.next')}</span>
-        <ArrowRightOutlined />
+        {t('label.next')}
       </Button>
       {onShowSizeChange && (
         <Dropdown
@@ -104,10 +105,12 @@ const NextPreviousWithOffset = ({
             })),
           }}>
           <Button
+            color="secondary"
             data-testid="page-size-change-button"
-            onClick={(e) => e.preventDefault()}>
+            iconTrailing={DownOutlined}
+            size="md"
+            onClick={(e: MouseEvent) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
-            <DownOutlined />
           </Button>
         </Dropdown>
       )}

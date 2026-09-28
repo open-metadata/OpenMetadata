@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Switch, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -324,19 +323,17 @@ const BotListV1 = ({
 
           return (
             <Tooltip placement="topRight" title={title}>
-              <Button
-                data-testid={`bot-delete-${record.name}`}
-                disabled={isDisabled}
-                icon={
-                  <Icon
-                    className="align-middle"
-                    component={IconDelete}
-                    style={{ fontSize: '16px' }}
-                  />
-                }
-                type="text"
-                onClick={() => setSelectedUser(record)}
-              />
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.delete')}
+                  color="tertiary"
+                  data-testid={`bot-delete-${record.name}`}
+                  iconLeading={IconDelete}
+                  isDisabled={isDisabled}
+                  size="md"
+                  onClick={() => setSelectedUser(record)}
+                />
+              </span>
             </Tooltip>
           );
         },
@@ -492,15 +489,18 @@ const BotListV1 = ({
           <Tooltip
             placement="topLeft"
             title={!isAdminUser && t('message.admin-only-action')}>
-            <LimitWrapper resource="bot">
-              <Button
-                data-testid="add-bot"
-                disabled={!isAdminUser}
-                type="primary"
-                onClick={handleAddBotClick}>
-                {addBotLabel}
-              </Button>
-            </LimitWrapper>
+            <span className="tw:inline-flex">
+              <LimitWrapper resource="bot">
+                <Button
+                  color="primary"
+                  data-testid="add-bot"
+                  isDisabled={!isAdminUser}
+                  size="md"
+                  onClick={handleAddBotClick}>
+                  {addBotLabel}
+                </Button>
+              </LimitWrapper>
+            </span>
           </Tooltip>
         </Space>
       </Col>

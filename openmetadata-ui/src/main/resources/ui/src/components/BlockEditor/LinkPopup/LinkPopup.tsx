@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as UnlinkIcon } from '../../../assets/svg/ic-format-unlink.svg';
@@ -23,36 +25,40 @@ interface LinkPopupProps {
   handleUnlink: () => void;
 }
 
-const iconSize = 14;
-
 const LinkPopup: FC<LinkPopupProps> = ({
   href,
   handleLinkToggle,
   handleUnlink,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Space className="link-popup">
       <Button
-        className="p-0"
+        aria-label={t('label.edit-entity', { entity: t('label.link') })}
+        color="tertiary"
         data-testid="link-popup-edit"
-        icon={<EditIcon width={iconSize} />}
-        type="text"
+        iconLeading={EditIcon}
+        size="md"
         onClick={handleLinkToggle}
       />
       <Button
-        className="p-0"
+        boxed
+        aria-label={t('label.open-in-new-tab')}
+        color="link-color"
         data-testid="link-popup-open"
         href={href}
-        icon={<ExternalLinkIcon width={iconSize + 2} />}
+        iconLeading={ExternalLinkIcon}
         rel="noopener noreferrer"
+        size="md"
         target="_blank"
-        type="link"
       />
       <Button
-        className="p-0"
+        aria-label={t('label.remove-entity', { entity: t('label.link') })}
+        color="tertiary"
         data-testid="link-popup-unlink"
-        icon={<UnlinkIcon width={iconSize} />}
-        type="text"
+        iconLeading={UnlinkIcon}
+        size="md"
         onClick={handleUnlink}
       />
     </Space>

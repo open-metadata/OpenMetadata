@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Empty, Popover, Radio, Space, Spin } from 'antd';
+import { Button, Card, Typography } from '@openmetadata/ui-core-components';
+import { Empty, Popover, Radio, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import {
   lazy,
@@ -314,19 +314,21 @@ const Certification = ({
               {certificationCardData}
               <div className="flex justify-end text-lg gap-2 mt-4">
                 <Button
+                  aria-label={t('label.close')}
+                  color="secondary"
                   data-testid="close-certification"
-                  type="default"
-                  onClick={handleCloseCertification}>
-                  <CloseOutlined />
-                </Button>
+                  iconLeading={CloseOutlined}
+                  size="md"
+                  onClick={handleCloseCertification}
+                />
                 <Button
+                  aria-label={t('label.update')}
+                  color="primary"
                   data-testid="update-certification"
-                  type="primary"
-                  onClick={() =>
-                    updateCertificationData(selectedCertification)
-                  }>
-                  <CheckOutlined />
-                </Button>
+                  iconLeading={CheckOutlined}
+                  size="md"
+                  onClick={() => updateCertificationData(selectedCertification)}
+                />
               </div>
             </Spin>
           </Card>

@@ -14,8 +14,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Alert } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -125,8 +125,9 @@ function InlineAlert({
             {combinedText.length >= 200 && (
               <Button
                 className="text-xs p-0 m-0 w-fit-content h-auto"
+                color="link-color"
                 data-testid={`read-${showMore ? 'less' : 'more'}-button`}
-                type="link"
+                size="md"
                 onClick={handleToggleShowMore}>
                 {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
               </Button>

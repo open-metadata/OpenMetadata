@@ -13,13 +13,14 @@
 
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Skeleton,
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
-import { Button, Space, Switch, Tooltip } from 'antd';
+import { Space, Switch, Tooltip } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -201,23 +202,33 @@ const TestDefinitionTable = ({
     return (
       <Space size={0}>
         <Tooltip title={editTooltip}>
-          <Button
-            data-testid={`edit-test-definition-${record.name}`}
-            disabled={!hasEditPermission || isRefetching}
-            icon={<IconEdit height={16} width={16} />}
-            type="text"
-            onClick={() => onEdit(record)}
-          />
+          <span className="tw:inline-flex">
+            <Button
+              aria-label={t('label.edit')}
+              color="tertiary"
+              data-testid={`edit-test-definition-${record.name}`}
+              iconLeading={<IconEdit data-icon height={16} width={16} />}
+              isDisabled={!hasEditPermission || isRefetching}
+              size="md"
+              onClick={() => onEdit(record)}
+            />
+          </span>
         </Tooltip>
 
         <Tooltip title={deleteTooltip}>
-          <Button
-            data-testid={`delete-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasDeletePermission || isRefetching}
-            icon={<IconDelete height={16} width={16} />}
-            type="text"
-            onClick={() => onDelete(record)}
-          />
+          <span className="tw:inline-flex">
+            <Button
+              aria-label={t('label.delete')}
+              color="tertiary"
+              data-testid={`delete-test-definition-${record.name}`}
+              iconLeading={<IconDelete data-icon height={16} width={16} />}
+              isDisabled={
+                isSystemProvider || !hasDeletePermission || isRefetching
+              }
+              size="md"
+              onClick={() => onDelete(record)}
+            />
+          </span>
         </Tooltip>
       </Space>
     );

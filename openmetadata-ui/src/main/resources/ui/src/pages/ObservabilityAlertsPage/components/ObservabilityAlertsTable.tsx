@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Table,
   TableCard,
@@ -24,7 +25,6 @@ import {
   Plus,
   ZapFast,
 } from '@untitledui/icons';
-import { Button } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -110,9 +110,9 @@ function ObservabilityAlertsTable({
           )}>
           {onViewAlert ? (
             <Button
-              className="tw:h-auto tw:p-0"
+              color="link-color"
               data-testid="alert-name"
-              type="link"
+              size="md"
               onClick={() => onViewAlert(record)}>
               {alertName}
             </Button>

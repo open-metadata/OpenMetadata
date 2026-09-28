@@ -101,6 +101,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     // StatusBadge renders the core Badge; keep the real one (a plain span).
     Badge: actual.Badge,
+    Button: actual.Button,
     Breadcrumbs: jest.fn(({ items = [] }) => (
       <nav data-testid="breadcrumbs">
         {items.map(

@@ -12,11 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse, Space } from 'antd';
+import { Collapse, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -400,13 +401,17 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
           {schema.additionalProperties && (
             <Button
+              aria-label={t('label.add')}
+              color="primary"
               data-testid={`add-item-${title}`}
-              icon={
-                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              iconLeading={
+                <PlusOutlined
+                  data-icon
+                  style={{ color: 'white', fontSize: '12px' }}
+                />
               }
               id={`${idSchema.$id}`}
-              size="small"
-              type="primary"
+              size="sm"
               onClick={() => {
                 onAddClick(schema)();
               }}

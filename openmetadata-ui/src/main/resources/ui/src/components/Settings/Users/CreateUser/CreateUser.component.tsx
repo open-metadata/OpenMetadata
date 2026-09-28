@@ -13,16 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Select,
-  Space,
-  Switch,
-} from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input, Radio, Select, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import {
@@ -94,10 +86,18 @@ const buildDomainsField = (
     multiple: true,
     children: (
       <Button
+        aria-label={t('label.add-entity', {
+          entity: t('label.domain-plural'),
+        })}
+        color="primary"
         data-testid="add-domain"
-        icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-        size="small"
-        type="primary"
+        iconLeading={
+          <PlusOutlined
+            data-icon
+            style={{ color: 'white', fontSize: '12px' }}
+          />
+        }
+        size="sm"
       />
     ),
   },
@@ -737,15 +737,22 @@ const CreateUser = ({
       )}
 
       <Space className="w-full justify-end" size={4}>
-        <Button data-testid="cancel-user" type="link" onClick={onCancel}>
+        <Button
+          boxed
+          color="link-color"
+          data-testid="cancel-user"
+          size="md"
+          onClick={onCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          showTextWhileLoading
+          color="primary"
           data-testid="save-user"
           form="create-user-bot-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          size="md"
+          type="submit">
           {t('label.create')}
         </Button>
       </Space>

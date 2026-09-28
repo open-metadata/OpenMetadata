@@ -113,18 +113,6 @@ describe('CopyLinkButton', () => {
     expect(mockOnCopyToClipBoard).not.toHaveBeenCalled();
   });
 
-  it('should apply correct button styles', () => {
-    render(<CopyLinkButton {...defaultProps} />);
-
-    const button = screen.getByTestId('copy-column-link-button');
-
-    expect(button).toHaveStyle({
-      padding: '0',
-      width: '24px',
-      height: '24px',
-    });
-  });
-
   it('should have correct CSS classes', () => {
     render(<CopyLinkButton {...defaultProps} />);
 
@@ -133,7 +121,8 @@ describe('CopyLinkButton', () => {
     expect(button).toHaveClass(
       'cursor-pointer',
       'hover-cell-icon',
-      'flex-center'
+      'tw:size-6',
+      'tw:p-0!'
     );
   });
 });

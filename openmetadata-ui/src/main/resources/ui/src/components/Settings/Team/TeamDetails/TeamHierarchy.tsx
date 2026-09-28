@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal, Skeleton, Space, Switch } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Modal, Skeleton, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -341,8 +341,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
               {createTeamPermission && !isTeamDeleted && (
                 <Button
+                  color="primary"
                   data-testid="add-team"
-                  type="primary"
+                  size="md"
                   onClick={handleAddTeamButtonClick}>
                   {t('label.add-entity', { entity: t('label.team') })}
                 </Button>

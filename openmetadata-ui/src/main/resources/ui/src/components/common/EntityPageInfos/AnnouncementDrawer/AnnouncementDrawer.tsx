@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Drawer, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Drawer, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
@@ -109,13 +109,16 @@ const AnnouncementDrawer: FC<Props> = ({
       <div className="d-flex justify-end">
         <Tooltip
           title={!createPermission && t('message.no-permission-to-view')}>
-          <Button
-            data-testid="add-announcement"
-            disabled={!createPermission}
-            type="primary"
-            onClick={handleOpenAnnouncementModal}>
-            {t('label.add-entity', { entity: t('label.announcement') })}
-          </Button>
+          <span className="tw:inline-flex">
+            <Button
+              color="primary"
+              data-testid="add-announcement"
+              isDisabled={!createPermission}
+              size="md"
+              onClick={handleOpenAnnouncementModal}>
+              {t('label.add-entity', { entity: t('label.announcement') })}
+            </Button>
+          </span>
         </Tooltip>
       </div>
 

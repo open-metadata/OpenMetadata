@@ -10,104 +10,65 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { PlusOutlined } from '@ant-design/icons';
-import { ButtonUtility } from '@openmetadata/ui-core-components';
-import type { ButtonProps } from 'antd';
-import { Button, Tooltip } from 'antd';
+import {
+  Button,
+  ButtonProps,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import { forwardRef } from 'react';
-import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
+import { forwardRef, ReactNode, Ref } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
-import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 
-export type IconButtonProps = ButtonProps & {
+export type IconButtonProps = Omit<ButtonProps, 'size' | 'color'> & {
   newLook?: boolean;
+  /** antd-style size kept so existing callers stay unchanged. */
+  size?: 'small' | 'middle' | 'large';
+  icon?: ReactNode;
 };
+
+// `.bordered` icon-only boxes from the retired antd look: 20px (small) / 30px.
+const getBorderedClassName = (size: IconButtonProps['size']) =>
+  size === 'small'
+    ? 'tw:size-5 tw:p-0! tw:rounded-md tw:before:rounded-md tw:[&_svg]:size-3'
+    : 'tw:size-[30px] tw:p-0! tw:[&_svg]:size-4';
+
+const withDisabledTooltip = (
+  title: IconButtonProps['title'],
+  disabled: boolean | undefined,
+  button: ReactNode
+) => (
+  <Tooltip title={title}>
+    {/* antd Tooltip only auto-wraps a disabled antd Button; a disabled core
+        Button needs a span so the tooltip still shows. */}
+    {disabled ? <span className="tw:inline-flex">{button}</span> : button}
+  </Tooltip>
+);
 
 // Forwards its ref so react-aria's Pressable can make it a PopoverTrigger child.
 export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ title, className, size, newLook, ...props }, ref) => {
-    return (
-      <Tooltip title={title}>
-        {newLook ? (
-          <Button
-            className={classNames('bordered', className)}
-            icon={<EditIcon />}
-            ref={ref}
-            size={size}
-            {...props}
-          />
-        ) : (
-          <Button
-            className={className}
-            icon={<EditIcon className="table-action-icon" />}
-            ref={ref}
-            size="small"
-            type="text"
-            {...props}
-          />
+  ({ title, className, size, newLook, icon, disabled, ...props }, ref) =>
+    withDisabledTooltip(
+      title,
+      disabled,
+      <Button
+        aria-label={title}
+        className={classNames(
+          newLook && ['bordered', getBorderedClassName(size)],
+          className
         )}
-      </Tooltip>
-    );
-  }
+        color={newLook ? 'secondary' : 'tertiary'}
+        iconLeading={icon ?? EditIcon}
+        isDisabled={disabled}
+        ref={ref as Ref<HTMLButtonElement | HTMLAnchorElement>}
+        size="sm"
+        {...props}
+      />
+    )
 );
-
-export const RequestIconButton = ({
-  title,
-  className,
-  newLook,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      {newLook ? (
-        <Button
-          className={classNames('bordered', className)}
-          icon={<RequestIcon />}
-          size={size}
-          {...props}
-        />
-      ) : (
-        <Icon
-          className={classNames('table-action-icon', className)}
-          component={RequestIcon}
-          {...props}
-        />
-      )}
-    </Tooltip>
-  );
-};
-
-export const CommentIconButton = ({
-  title,
-  className,
-  newLook,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      {newLook ? (
-        <Button
-          className={classNames('bordered', className)}
-          icon={<CommentIcon />}
-          size={size}
-          {...props}
-        />
-      ) : (
-        <Icon
-          className={classNames('table-action-icon', className)}
-          component={CommentIcon}
-          {...props}
-        />
-      )}
-    </Tooltip>
-  );
-};
 
 interface AlignRightIconButtonProps {
   title: string;
@@ -134,60 +95,44 @@ export const CardExpandCollapseIconButton = ({
   title,
   className,
   disabled,
+  size,
+  icon,
+  newLook: _newLook,
   ...props
-}: IconButtonProps) => {
-  const button = (
+}: IconButtonProps) =>
+  withDisabledTooltip(
+    title,
+    disabled,
     <Button
-      className={classNames('bordered', className)}
-      disabled={disabled}
-      icon={<CardExpandCollapseIcon />}
-      tabIndex={0}
-      type="text"
+      aria-label={title}
+      className={classNames('bordered', getBorderedClassName(size), className)}
+      color="secondary"
+      iconLeading={icon ?? CardExpandCollapseIcon}
+      isDisabled={disabled}
+      size="sm"
       {...props}
     />
   );
-
-  return (
-    <Tooltip title={title}>
-      {/* Adding span to fix the issue with className is not being applied for disabled button
-        Refer this comment for more details https://github.com/ant-design/ant-design/issues/21404#issuecomment-586800984 */}
-      {disabled ? <span className={className}>{button}</span> : button}
-    </Tooltip>
-  );
-};
-
-export const PlusIconButton = ({
-  title,
-  className,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <Button
-        className={classNames('bordered', className)}
-        icon={<PlusOutlined />}
-        size={size}
-        {...props}
-      />
-    </Tooltip>
-  );
-};
 
 export const DeleteIconButton = ({
   title,
   className,
   size,
+  disabled,
+  icon,
+  newLook: _newLook,
   ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <Button
-        className={classNames('bordered', className)}
-        icon={<IconDelete />}
-        size={size}
-        {...props}
-      />
-    </Tooltip>
+}: IconButtonProps) =>
+  withDisabledTooltip(
+    title,
+    disabled,
+    <Button
+      aria-label={title}
+      className={classNames('bordered', getBorderedClassName(size), className)}
+      color="secondary"
+      iconLeading={icon ?? IconDelete}
+      isDisabled={disabled}
+      size="sm"
+      {...props}
+    />
   );
-};

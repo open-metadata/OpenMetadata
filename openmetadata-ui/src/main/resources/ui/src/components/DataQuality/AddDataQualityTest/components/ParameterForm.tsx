@@ -12,10 +12,8 @@
  */
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Form,
   FormItemProps,
   Input,
@@ -378,10 +376,11 @@ const buildArraySetField = ({
           <>
             <span>{data.displayName}</span>
             <Button
-              className="m-x-sm list-add-btn"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
+              aria-label={t('label.add')}
+              className="m-x-sm tw:size-6 tw:rounded-sm tw:p-0! tw:before:rounded-sm"
+              color="primary"
+              iconLeading={PlusOutlined}
+              size="sm"
               onClick={() => add()}
             />
           </>
@@ -411,14 +410,10 @@ const buildArraySetField = ({
               )}
             </Form.Item>
             <Button
-              icon={
-                <Icon
-                  className="align-middle"
-                  component={IconDelete}
-                  style={{ fontSize: '16px' }}
-                />
-              }
-              type="text"
+              aria-label={t('label.delete')}
+              color="tertiary"
+              iconLeading={IconDelete}
+              size="md"
               onClick={() => remove(name)}
             />
           </div>

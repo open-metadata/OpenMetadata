@@ -14,9 +14,10 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   BadgeWithButton,
   Box,
+  Button,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -87,20 +88,21 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
         <Col className="gutter-row d-flex justify-end" span={24}>
           <Space align="center">
             <Button
-              className="p-x-05"
+              aria-label={t('label.cancel')}
+              color="secondary"
               data-testid="cancelDataAssets"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
+              iconLeading={CloseOutlined}
+              isDisabled={isSubmitLoading}
+              size="sm"
               onClick={onCancel}
             />
             <Button
-              className="p-x-05"
+              aria-label={t('label.save')}
+              color="primary"
               data-testid="saveDataAssets"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
+              iconLeading={CheckOutlined}
+              isLoading={isSubmitLoading}
+              size="sm"
               onClick={handleSubmit}
             />
           </Space>

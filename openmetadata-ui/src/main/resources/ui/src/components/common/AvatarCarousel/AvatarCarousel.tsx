@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Button, Carousel } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Carousel } from 'antd';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from '../AvatarCarouselItem/AvatarCarouselItem';
 import './avatar-carousel.less';
@@ -22,6 +24,7 @@ interface AvatarCarouselProps {
 }
 
 const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
+  const { t } = useTranslation();
   const {
     allSuggestionsUsers: avatarList,
     onUpdateActiveUser,
@@ -67,12 +70,13 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
     <div className="avatar-carousel-container d-flex items-center">
       {showArrows && (
         <Button
+          aria-label={t('label.previous')}
           className="carousel-arrow"
+          color="tertiary"
           data-testid="prev-slide"
-          disabled={avatarList.length <= 1 || currentSlide <= 0}
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
+          iconLeading={LeftOutlined}
+          isDisabled={avatarList.length <= 1 || currentSlide <= 0}
+          size="sm"
           onClick={prevSlide}
         />
       )}
@@ -96,14 +100,15 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
 
       {showArrows && (
         <Button
+          aria-label={t('label.next')}
           className="carousel-arrow"
+          color="tertiary"
           data-testid="next-slide"
-          disabled={
+          iconLeading={RightOutlined}
+          isDisabled={
             avatarList.length <= 1 || currentSlide === avatarList.length - 1
           }
-          icon={<RightOutlined />}
-          size="small"
-          type="text"
+          size="sm"
           onClick={nextSlide}
         />
       )}

@@ -70,29 +70,9 @@
   }
 }
 
-.ant-btn.domain-nav-btn {
-  background-color: var(--tw-color-bg-primary);
-  border: 1px solid var(--tw-color-border-primary);
-  color: var(--tw-color-text-secondary);
-  height: 40px;
-
-  .domain-text {
-    max-width: 15vw;
-    color: inherit;
-  }
-
-  &:hover,
-  &:focus {
-    background-color: var(--tw-color-bg-primary_hover);
-    border: 1px solid var(--tw-color-border-primary);
-    color: var(--tw-color-text-secondary);
-  }
-
-  &.domain-active {
-    color: var(--tw-color-text-brand-tertiary);
-    border: 1px solid var(--tw-color-border-brand);
-    background-color: var(--tw-color-bg-brand-primary);
-  }
+.domain-nav-btn .domain-text {
+  max-width: 15vw;
+  color: inherit;
 }
 
 .ant-alert.ant-alert-info.refresh-alert {
@@ -120,10 +100,5 @@
 
   .ant-alert-content {
     border-right: 1px solid var(--tw-color-text-white);
-  }
-
-  .ant-btn {
-    font-weight: var(--om-font-weight-bold);
-    color: var(--tw-color-text-white);
   }
 }

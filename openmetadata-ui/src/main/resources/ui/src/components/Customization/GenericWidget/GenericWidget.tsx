@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { Card } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import { Button, Card } from '@openmetadata/ui-core-components';
+import { Button as AntdButton, Space } from 'antd';
 import { noop, startCase } from 'lodash';
 import { useLayoutEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
@@ -29,6 +30,7 @@ import { useGlossaryStore } from '../../Glossary/useGlossary.store';
 import { GenericProvider } from '../GenericProvider/GenericProvider';
 
 export const GenericWidget = (props: WidgetCommonProps) => {
+  const { t } = useTranslation();
   const { currentPageType } = useCustomizeStore();
   const handleRemoveClick = () => {
     if (props.handleRemoveWidget) {
@@ -81,7 +83,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       <div className="tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-utility-gray-100 tw:px-6 tw:font-medium tw:text-black/85 tw:dark:text-primary">
         <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-3 tw:text-sm tw:leading-[1.5715]">
           <Space>
-            <Button
+            {/* Kept on antd: react-aria stops mousedown propagation, which would
+                break the react-grid-layout `.drag-widget-icon` drag handle. */}
+            <AntdButton
               className="drag-widget-icon"
               data-testid="drag-widget-button"
               icon={<HolderOutlined size={16} />}
@@ -93,9 +97,11 @@ export const GenericWidget = (props: WidgetCommonProps) => {
         {props.handleRemoveWidget && (
           <div className="tw:ml-auto tw:py-[13.5px] tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary">
             <Button
+              aria-label={t('label.remove')}
+              color="secondary"
               data-testid="remove-widget-button"
-              icon={<MinusCircleOutlined size={16} />}
-              size="small"
+              iconLeading={MinusCircleOutlined}
+              size="sm"
               onClick={handleRemoveClick}
             />
           </div>

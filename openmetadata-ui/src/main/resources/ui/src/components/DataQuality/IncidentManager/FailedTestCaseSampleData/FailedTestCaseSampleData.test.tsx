@@ -83,6 +83,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Button: jest.requireActual('@openmetadata/ui-core-components').Button,
     Table: TableMock,
     Typography: ({ children }: React.PropsWithChildren<unknown>) => (
       <span>{children}</span>
@@ -186,10 +187,9 @@ describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', ()
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
     const exploreBtn = await screen.findByTestId('explore-with-query');
-    const link = exploreBtn.closest('a');
 
-    expect(link).not.toBeNull();
-    expect(link?.dataset.to).toBe(
+    expect(exploreBtn.tagName).toBe('A');
+    expect(exploreBtn.getAttribute('href')).toBe(
       observabilityRouterClassBase.getTestCaseDetailPagePath(
         FQN,
         TestCasePageTabs.SQL_QUERY

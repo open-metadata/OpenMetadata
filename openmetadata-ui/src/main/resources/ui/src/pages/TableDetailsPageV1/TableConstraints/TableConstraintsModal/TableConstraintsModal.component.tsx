@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Empty, Form, Modal, Select, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Empty, Form, Modal, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -287,17 +286,22 @@ const TableConstraintsModal = ({
       data-testid="table-constraint-modal"
       footer={[
         <Button
-          disabled={isLoading}
+          boxed
+          color="link-color"
+          isDisabled={isLoading}
           key="cancel-btn"
-          type="link"
+          size="md"
           onClick={onClose}>
           {t('label.cancel')}
         </Button>,
         <Button
+          showTextWhileLoading
+          className="tw:ml-2"
+          color="primary"
           data-testid="save-btn"
+          isLoading={isLoading}
           key="save-btn"
-          loading={isLoading}
-          type="primary"
+          size="md"
           onClick={form.submit}>
           {t('label.save')}
         </Button>,
@@ -546,26 +550,27 @@ const TableConstraintsModal = ({
                       </Select>
                     </Form.Item>
                     <Button
+                      aria-label={t('label.delete')}
                       className="delete-constraint-button"
+                      color="tertiary"
                       data-testid={`${key}-delete-constraint-button`}
-                      icon={
-                        <Icon
-                          className="align-middle text-grey-muted"
-                          component={IconDelete}
-                          style={{ fontSize: '16px' }}
+                      iconLeading={
+                        <IconDelete
+                          className="tw:size-4! tw:shrink-0"
+                          data-icon="leading"
                         />
                       }
-                      size="small"
-                      type="text"
+                      size="sm"
                       onClick={() => remove(name)}
                     />
                   </div>
                 ))}
                 <Button
-                  className="text-primary d-flex items-center m-t-md"
+                  className="text-primary m-t-md"
+                  color="secondary"
                   data-testid="add-constraint-button"
-                  icon={<PlusIcon className="anticon" />}
-                  size="small"
+                  iconLeading={PlusIcon}
+                  size="sm"
                   onClick={() => add()}>
                   {t('label.add-entity', {
                     entity: t('label.constraint-plural'),

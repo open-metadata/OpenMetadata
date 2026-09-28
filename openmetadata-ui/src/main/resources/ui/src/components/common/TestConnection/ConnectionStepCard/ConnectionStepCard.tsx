@@ -13,8 +13,8 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Divider, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Collapse, Divider, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -217,9 +217,12 @@ const ConnectionStepCard = ({
                   extra={
                     <Tooltip title={t('message.copy-to-clipboard')}>
                       <Button
-                        className="flex-center bg-white"
+                        aria-label={t('message.copy-to-clipboard')}
+                        className="bg-white"
+                        color="secondary"
                         data-testid="query-entity-copy-button"
-                        icon={<CopyIcon height={16} width={16} />}
+                        iconLeading={CopyIcon}
+                        size="md"
                         onClick={handleCopyToClipBoard}
                       />
                     </Tooltip>

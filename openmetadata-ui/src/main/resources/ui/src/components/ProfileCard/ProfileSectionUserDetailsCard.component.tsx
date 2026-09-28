@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Modal, Popover } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button as AntdButton, Modal, Popover } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -75,8 +75,10 @@ const ProfileManageOptions = ({
   <div style={{ width: '180px' }}>
     {isLoggedInUser && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling tw:justify-start"
+        color="tertiary"
         data-testid="edit-displayname"
+        size="md"
         onClick={onEditDisplayName}>
         <EditProfileIcon
           className="m-r-xss"
@@ -92,8 +94,10 @@ const ProfileManageOptions = ({
     )}
     {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling tw:justify-start"
+        color="tertiary"
         data-testid="change-password-button"
+        size="md"
         onClick={onChangePassword}>
         <ChangePassword
           className="m-r-xss"
@@ -109,7 +113,9 @@ const ProfileManageOptions = ({
     )}
     {userData?.deleted ? (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling tw:justify-start"
+        color="tertiary"
+        size="md"
         onClick={onRestore}>
         <DeleteIcon
           className="m-r-xss"
@@ -123,7 +129,9 @@ const ProfileManageOptions = ({
     ) : (
       isAdminUser && (
         <Button
-          className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+          className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent tw:justify-start"
+          color="tertiary"
+          size="md"
           onClick={onDelete}>
           <DeleteIcon
             className="m-r-xss"
@@ -350,7 +358,7 @@ const ProfileSectionUserDetailsCard = ({
       )}
 
       {showRestoreModal && (
-        <Button
+        <AntdButton
           className="remove-button-default-styling"
           onClick={(e) => e.stopPropagation()}>
           <Modal
@@ -380,7 +388,7 @@ const ProfileSectionUserDetailsCard = ({
               })}
             </Typography>
           </Modal>
-        </Button>
+        </AntdButton>
       )}
     </div>
   );

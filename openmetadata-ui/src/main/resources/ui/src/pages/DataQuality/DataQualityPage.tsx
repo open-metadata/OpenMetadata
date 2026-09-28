@@ -12,8 +12,8 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Card, Dropdown, Space } from 'antd';
+import { Box, Button, Tabs } from '@openmetadata/ui-core-components';
+import { Card, Dropdown } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -180,8 +180,9 @@ const DataQualityPage = () => {
               {activeTab === DataQualityPageTabs.TEST_SUITES &&
                 testSuitePermission?.Create && (
                   <Button
+                    color="primary"
                     data-testid="add-test-suite-btn"
-                    type="primary"
+                    size="md"
                     onClick={handleOpenBundleSuiteModal}>
                     {t('label.add-a-entity', {
                       entity: t('label.bundle-suite'),
@@ -190,8 +191,9 @@ const DataQualityPage = () => {
                 )}
               {activeTab === DataQualityPageTabs.TEST_CASES && (
                 <Button
+                  color="primary"
                   data-testid="add-test-case-btn"
-                  type="primary"
+                  size="md"
                   onClick={handleOpenTestCaseModal}>
                   {t('label.add-a-entity', {
                     entity: t('label.test-case'),
@@ -210,12 +212,11 @@ const DataQualityPage = () => {
                     placement="bottomRight"
                     trigger={['click']}>
                     <Button
+                      color="primary"
                       data-testid="data-quality-add-button-menu"
-                      type="primary">
-                      <Space>
-                        {t('label.add')}
-                        <DownOutlined />
-                      </Space>
+                      iconTrailing={DownOutlined}
+                      size="md">
+                      {t('label.add')}
                     </Button>
                   </Dropdown>
                 )}

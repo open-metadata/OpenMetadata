@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -204,13 +205,17 @@ const RolesListPage = () => {
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
-              <Button
-                data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!deleteRolePermission}
-                icon={<IconDelete name={t('label.delete')} width="16px" />}
-                type="text"
-                onClick={() => setSelectedRole(record)}
-              />
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.delete')}
+                  color="tertiary"
+                  data-testid={`delete-action-${getEntityName(record)}`}
+                  iconLeading={IconDelete}
+                  isDisabled={!deleteRolePermission}
+                  size="md"
+                  onClick={() => setSelectedRole(record)}
+                />
+              </span>
             </Tooltip>
           );
         },
@@ -306,8 +311,9 @@ const RolesListPage = () => {
 
             {addRolePermission && (
               <Button
+                color="primary"
                 data-testid="add-role"
-                type="primary"
+                size="md"
                 onClick={handleAddRole}>
                 {t('label.add-entity', { entity: t('label.role').toString() })}
               </Button>

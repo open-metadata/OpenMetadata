@@ -178,6 +178,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Typography: jest.requireActual('@openmetadata/ui-core-components')
       .Typography,
     Box: MockBox,
+    Button: jest.requireActual('@openmetadata/ui-core-components').Button,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: MockSkeleton,
     Table: MockTable,

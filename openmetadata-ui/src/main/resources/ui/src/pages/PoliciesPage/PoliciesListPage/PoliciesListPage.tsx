@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -207,13 +208,22 @@ const PoliciesListPage = () => {
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
-              <Button
-                data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!deletePolicyPermission}
-                icon={<IconDelete name={t('label.delete')} width="16px" />}
-                type="text"
-                onClick={() => setSelectedPolicy(record)}
-              />
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.delete')}
+                  color="tertiary"
+                  data-testid={`delete-action-${getEntityName(record)}`}
+                  iconLeading={
+                    <IconDelete
+                      className="tw:size-4! tw:shrink-0"
+                      data-icon="leading"
+                    />
+                  }
+                  isDisabled={!deletePolicyPermission}
+                  size="md"
+                  onClick={() => setSelectedPolicy(record)}
+                />
+              </span>
             </Tooltip>
           );
         },
@@ -308,8 +318,9 @@ const PoliciesListPage = () => {
 
             {addPolicyPermission && (
               <Button
+                color="primary"
                 data-testid="add-policy"
-                type="primary"
+                size="md"
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>

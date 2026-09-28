@@ -125,6 +125,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Box: MockBox,
+    Button: jest.requireActual('@openmetadata/ui-core-components').Button,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Table: MockTable,
     TableCard: MockTableCard,

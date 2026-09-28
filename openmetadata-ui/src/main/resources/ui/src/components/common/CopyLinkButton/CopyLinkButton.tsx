@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
@@ -50,21 +51,20 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
           ? t('message.link-copy-to-clipboard')
           : t('label.copy-item', { item: t('label.url-uppercase') })
       }>
-      <Button
-        className="cursor-pointer hover-cell-icon flex-center"
-        data-testid={testId}
-        disabled={!fieldFqn}
-        style={{
-          color: DE_ACTIVE_COLOR,
-          padding: 0,
-          border: 'none',
-          background: 'transparent',
-          width: '24px',
-          height: '24px',
-        }}
-        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}>
-        <ShareIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
-      </Button>
+      <span className="tw:inline-flex">
+        <Button
+          aria-label={t('label.copy-item', { item: t('label.url-uppercase') })}
+          className="cursor-pointer hover-cell-icon tw:size-6 tw:p-0!"
+          color="tertiary"
+          data-testid={testId}
+          iconLeading={
+            <ShareIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
+          }
+          isDisabled={!fieldFqn}
+          size="sm"
+          onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}
+        />
+      </span>
     </Tooltip>
   );
 };

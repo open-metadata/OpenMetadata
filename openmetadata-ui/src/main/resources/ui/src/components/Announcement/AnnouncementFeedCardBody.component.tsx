@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { MoreOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Space } from 'antd';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -172,9 +172,11 @@ const AnnouncementFeedCardBody = ({
         {dropdownItems.length > 0 && (
           <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
             <Button
+              aria-label={t('label.more')}
+              color="tertiary"
               data-testid="announcement-actions"
-              icon={<MoreOutlined />}
-              type="text"
+              iconLeading={MoreOutlined}
+              size="md"
             />
           </Dropdown>
         )}

@@ -285,16 +285,6 @@
 
 .activity-feed-editor-send-btn {
   color: var(--tw-color-text-white);
-
-  .ant-btn.send-button {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border-radius: 50%;
-  }
 }
 
 .activity-feed-user-name {
@@ -564,37 +554,6 @@
 
 .feed-filter-icon {
   cursor: pointer;
-  &.ant-btn.ant-btn-default {
-    border: 1px solid @grey-15;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    &.disabled {
-      cursor: not-allowed;
-      stroke: border-color-2;
-      border-radius: @size-xs;
-      border: 1px solid @grey-100;
-      background: var(--tw-color-bg-primary);
-    }
-    &:not(.disabled):hover {
-      border: 1px solid @blue-12;
-
-      svg {
-        stroke: @blue-12;
-        stroke-width: 0.2px;
-      }
-    }
-    &.selected,
-    &.ant-dropdown-open,
-    &.ant-popover-open {
-      border: 1px solid @blue-12;
-      background: @primary-button-background;
-      svg {
-        stroke: @blue-12;
-        stroke-width: 0.2px;
-      }
-    }
-  }
 }
 .no-data-placeholder-container-right-panel {
   margin-top: @size-xl;

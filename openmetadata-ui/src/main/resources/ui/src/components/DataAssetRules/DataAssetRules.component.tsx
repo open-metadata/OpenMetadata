@@ -12,18 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Table,
-} from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Input, Modal, Row, Space, Switch, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -400,11 +390,11 @@ export const useSemanticsRuleList = ({
             })}
           </Typography>
           <Button
-            ghost
             className="add-button"
+            color="secondary-brand"
             data-testid="add-widget-button"
-            icon={<PlusOutlined />}
-            type="primary"
+            iconLeading={PlusOutlined}
+            size="md"
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>

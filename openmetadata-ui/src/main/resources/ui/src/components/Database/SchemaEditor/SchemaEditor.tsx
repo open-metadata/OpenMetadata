@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import CodeMirror from '@uiw/react-codemirror';
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
@@ -85,9 +85,12 @@ const SchemaEditor = ({
               hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
             }>
             <Button
+              aria-label={t('message.copy-to-clipboard')}
               className="query-editor-copy-button"
+              color="secondary"
               data-testid="query-copy-button"
-              icon={<Icon component={CopyIcon} />}
+              iconLeading={CopyIcon}
+              size="md"
               onClick={() => onCopyToClipBoard(internalValue)}
             />
           </Tooltip>

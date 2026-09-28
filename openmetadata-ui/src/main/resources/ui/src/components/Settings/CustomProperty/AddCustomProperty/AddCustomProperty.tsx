@@ -19,7 +19,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, FormInstance, Row } from 'antd';
+import { Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
@@ -619,21 +619,25 @@ const AddCustomProperty = ({
       {isUndefined(open) && (
         <Row justify="end">
           <Col>
-            <Button
+            <CoreButton
+              boxed
+              color="link-color"
               data-testid="back-button"
-              type="link"
+              size="md"
               onClick={handleCancel}>
               {t('label.back')}
-            </Button>
+            </CoreButton>
           </Col>
           <Col>
-            <Button
+            <CoreButton
+              showTextWhileLoading
+              color="primary"
               data-testid="create-button"
-              htmlType="submit"
-              loading={isCreating || loading}
-              type="primary">
+              isLoading={isCreating || loading}
+              size="md"
+              type="submit">
               {t('label.create')}
-            </Button>
+            </CoreButton>
           </Col>
         </Row>
       )}

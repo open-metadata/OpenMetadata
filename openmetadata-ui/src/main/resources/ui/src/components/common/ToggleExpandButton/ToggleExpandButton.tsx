@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
@@ -34,12 +34,10 @@ function ToggleExpandButton({
   return (
     <Button
       className="text-primary rounded-4"
+      color="tertiary"
       data-testid="toggle-expand-button"
-      size="small"
-      type="text"
-      onClick={toggleExpandAll}>
-      <Space align="center" size={4}>
-        {showCollapseAllText ? (
+      iconLeading={
+        showCollapseAllText ? (
           <DownUpArrowIcon
             color={DE_ACTIVE_COLOR}
             data-testid="collapse-icon"
@@ -51,10 +49,11 @@ function ToggleExpandButton({
             data-testid="expand-icon"
             height="14px"
           />
-        )}
-
-        {showCollapseAllText ? t('label.collapse-all') : t('label.expand-all')}
-      </Space>
+        )
+      }
+      size="sm"
+      onClick={toggleExpandAll}>
+      {showCollapseAllText ? t('label.collapse-all') : t('label.expand-all')}
     </Button>
   );
 }

@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Alert,
-  Button,
   Checkbox,
   Col,
   Dropdown,
@@ -292,9 +291,12 @@ const AssetsFilterBar = ({
           }}
           trigger={['click']}>
           <Button
-            className={classNames('feed-filter-icon')}
+            aria-label={t('label.filter')}
+            className="feed-filter-icon"
+            color="secondary"
             data-testid="asset-filter-button"
-            icon={<FilterIcon height={16} />}
+            iconLeading={FilterIcon}
+            size="md"
           />
         </Dropdown>
         <div className="flex-1">
@@ -369,10 +371,11 @@ const BulkDeleteNotification = ({
           {selectedItemsCount} {t('label.items-selected-lowercase')}
         </Typography>
         <Button
-          danger
+          showTextWhileLoading
+          color="primary-destructive"
           data-testid="delete-all-button"
-          loading={assetRemoving}
-          type="primary"
+          isLoading={assetRemoving}
+          size="md"
           onClick={onBulkDeleteClick}>
           {t('label.delete')}
         </Button>
@@ -1012,11 +1015,20 @@ const AssetsTabs = forwardRef(
                           entity: t('label.asset'),
                         })}>
                         <Button
-                          className={classNames('flex-center px-1.5')}
+                          aria-label={t('label.manage-entity', {
+                            entity: t('label.asset'),
+                          })}
+                          className="tw:px-1.5!"
+                          color="tertiary"
                           data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                          type="text">
-                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                        </Button>
+                          iconLeading={
+                            <IconDropdown
+                              data-icon
+                              className="manage-dropdown-icon"
+                            />
+                          }
+                          size="md"
+                        />
                       </Tooltip>
                     </Dropdown>
                   ) : null

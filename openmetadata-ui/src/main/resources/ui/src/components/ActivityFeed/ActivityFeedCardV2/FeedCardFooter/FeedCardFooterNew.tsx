@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AvatarStack } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { AvatarStack, Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -89,9 +89,11 @@ function FeedCardFooterNew({
                 avatarSize={AVATAR_SIZE}
                 items={repliedUsers.map((user) => (
                   <Button
-                    className="p-0"
+                    noTextPadding
+                    className="tw:p-0!"
+                    color="tertiary"
                     key={user}
-                    type="text"
+                    size="md"
                     onClick={isForFeedTab ? showReplies : undefined}>
                     <UserPopOverCard userName={user}>
                       <ProfilePicture name={user} width="20" />
@@ -105,9 +107,11 @@ function FeedCardFooterNew({
 
             {!isReply && (
               <Button
-                className="p-0 flex-center"
+                noTextPadding
+                className="tw:p-0!"
+                color="tertiary"
                 data-testid="reply-button"
-                type="text"
+                size="md"
                 onClick={isForFeedTab ? showReplies : undefined}>
                 <ThreadIcon data-testid="reply-count" height={18} width={18} />
               </Button>

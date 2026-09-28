@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
@@ -150,11 +149,10 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
           </Col>
           <Col flex="none">
             <Button
-              className={classNames('', {
-                'text-primary border-primary': version,
-              })}
+              color={version ? 'secondary-brand' : 'secondary'}
               data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
+              iconLeading={VersionIcon}
+              size="md"
               onClick={handleVersionClick}>
               <Typography
                 className={classNames('', {

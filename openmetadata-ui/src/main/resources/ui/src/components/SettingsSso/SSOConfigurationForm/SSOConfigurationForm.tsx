@@ -12,7 +12,7 @@
  */
 
 import { removeSession } from '@analytics/session-utils';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
   CustomValidator,
@@ -23,7 +23,7 @@ import {
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Check, UploadCloud02, X } from '@untitledui/icons';
-import { Button, Card, Upload } from 'antd';
+import { Button as AntdButton, Card, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,9 +153,10 @@ const MetadataUploadStatusCard = ({
         </Typography>
       </div>
       <Button
+        boxed
+        color="link-color"
         data-testid="change-metadata-xml-btn"
-        size="small"
-        type="link"
+        size="sm"
         onClick={onChangeFile}>
         {t('label.change-entity', { entity: t('label.file') })}
       </Button>
@@ -1127,36 +1128,46 @@ const SSOConfigurationFormRJSF = ({
         {renderConfigAlerts()}
         <div className="form-actions-bottom">
           <Button
+            boxed
             className="cancel-sso-configuration text-md"
+            color="link-color"
             data-testid="cancel-sso-configuration"
-            type="link"
+            size="md"
             onClick={handleCancelClick}>
             {t('label.cancel')}
           </Button>
           <Button
+            showTextWhileLoading
             className="test-sso-configuration text-md"
+            color="secondary"
             data-testid="test-sso-configuration"
-            disabled={isLoading || isTesting || !currentProvider}
-            loading={isTesting}
+            isDisabled={isLoading || isTesting || !currentProvider}
+            isLoading={isTesting}
+            size="md"
             onClick={handleTestConfiguration}>
             {t('label.test-entity', { entity: t('label.configuration') })}
           </Button>
           {isOidcPublicClientProvider && (
             <Button
+              showTextWhileLoading
               className="test-login-sso-configuration text-md"
+              color="secondary"
               data-testid="test-login-sso-configuration"
-              disabled={isLoading || isTestingLogin || !currentProvider}
-              loading={isTestingLogin}
+              isDisabled={isLoading || isTestingLogin || !currentProvider}
+              isLoading={isTestingLogin}
+              size="md"
               onClick={handleTestLogin}>
               {t('label.test-login')}
             </Button>
           )}
           <Button
+            showTextWhileLoading
             className="save-sso-configuration text-md"
+            color="primary"
             data-testid="save-sso-configuration"
-            disabled={isLoading}
-            loading={isLoading}
-            type="primary"
+            isDisabled={isLoading}
+            isLoading={isLoading}
+            size="md"
             onClick={handleSave}>
             {t('label.save')}
           </Button>
@@ -1222,12 +1233,12 @@ const SSOConfigurationFormRJSF = ({
                 style={{ maxWidth: '220px' }}>
                 <Typography className="font-medium" variant="text">
                   {t('label.click-to')}{' '}
-                  <Button
+                  <AntdButton
                     className="h-auto p-0 font-semibold"
                     size="small"
                     type="link">
                     {t('label.upload-lowercase')}
-                  </Button>{' '}
+                  </AntdButton>{' '}
                   {t('label.or-drag-and-drop-an-xml-file-here')}
                 </Typography>
               </div>
@@ -1360,8 +1371,10 @@ const SSOConfigurationFormRJSF = ({
         </div>
         {hasExistingConfig && onChangeProvider && (
           <Button
+            boxed
+            color="link-color"
             data-testid="change-provider-button"
-            type="link"
+            size="md"
             onClick={onChangeProvider}>
             {t('label.change-provider')}
           </Button>

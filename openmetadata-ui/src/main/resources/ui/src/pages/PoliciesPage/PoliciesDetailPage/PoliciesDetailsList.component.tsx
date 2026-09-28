@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -83,17 +83,22 @@ const PoliciesDetailsList = ({
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <Button
-                data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={!hasAccess}
-                type="text"
-                onClick={() => onDelete(record)}>
-                <Icon
-                  className="align-middle"
-                  component={IconRemove}
-                  style={{ fontSize: '16px' }}
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.remove')}
+                  color="tertiary"
+                  data-testid={`remove-action-${getEntityName(record)}`}
+                  iconLeading={
+                    <IconRemove
+                      className="tw:size-4! tw:shrink-0"
+                      data-icon="leading"
+                    />
+                  }
+                  isDisabled={!hasAccess}
+                  size="md"
+                  onClick={() => onDelete(record)}
                 />
-              </Button>
+              </span>
             </Tooltip>
           );
         },

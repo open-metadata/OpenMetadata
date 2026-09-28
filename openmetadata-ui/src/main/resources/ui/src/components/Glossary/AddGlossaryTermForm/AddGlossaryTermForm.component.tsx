@@ -12,12 +12,13 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import {
+  Button,
   ColorPickerField,
   FormSelectItem,
   IconPickerField,
   Owner,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
+import { Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -625,10 +626,13 @@ const AddGlossaryTermForm = ({
       hasPermission: true,
       children: (
         <Button
+          aria-label={t('label.add-entity', {
+            entity: t('label.owner-plural'),
+          })}
+          color="primary"
           data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={PlusOutlined}
+          size="sm"
         />
       ),
       multiple: {
@@ -659,10 +663,13 @@ const AddGlossaryTermForm = ({
       label: t('label.reviewer-plural'),
       children: (
         <Button
+          aria-label={t('label.add-entity', {
+            entity: t('label.reviewer-plural'),
+          })}
+          color="primary"
           data-testid="add-reviewers"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={PlusOutlined}
+          size="sm"
         />
       ),
     },
@@ -692,14 +699,13 @@ const AddGlossaryTermForm = ({
                 colon={false}
                 label={t('label.reference-plural')}>
                 <Button
+                  aria-label={t('label.add-entity', {
+                    entity: t('label.reference-plural'),
+                  })}
+                  color="primary"
                   data-testid="add-reference"
-                  icon={
-                    <PlusOutlined
-                      style={{ color: 'white', fontSize: '12px' }}
-                    />
-                  }
-                  size="small"
-                  type="primary"
+                  iconLeading={PlusOutlined}
+                  size="sm"
                   onClick={() => {
                     add();
                   }}
@@ -746,9 +752,10 @@ const AddGlossaryTermForm = ({
                   </Col>
                   <Col span={2}>
                     <Button
-                      icon={<DeleteIcon width={16} />}
-                      size="small"
-                      type="text"
+                      aria-label={t('label.delete')}
+                      color="tertiary"
+                      iconLeading={DeleteIcon}
+                      size="sm"
                       onClick={() => {
                         remove(field.name);
                       }}

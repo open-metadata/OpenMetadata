@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Space } from 'antd';
+import { Button, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Form, Space } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { compact, isArray } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -215,10 +215,13 @@ const AddGlossary = ({
       },
       children: (
         <Button
+          aria-label={t('label.add-entity', {
+            entity: t('label.owner-plural'),
+          })}
+          color="primary"
           data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={PlusOutlined}
+          size="sm"
         />
       ),
       multiple: {
@@ -247,10 +250,13 @@ const AddGlossary = ({
       },
       children: (
         <Button
+          aria-label={t('label.add-entity', {
+            entity: t('label.reviewer-plural'),
+          })}
+          color="primary"
           data-testid="add-reviewers"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={PlusOutlined}
+          size="sm"
         />
       ),
       multiple: { user: true, team: false },
@@ -280,10 +286,13 @@ const AddGlossary = ({
       },
       children: (
         <Button
+          aria-label={t('label.add-entity', {
+            entity: t('label.domain-plural'),
+          })}
+          color="primary"
           data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={PlusOutlined}
+          size="sm"
         />
       ),
       multiple: entityRules.canAddMultipleDomains,
@@ -358,17 +367,21 @@ const AddGlossary = ({
                   data-testid="cta-buttons"
                   size={16}>
                   <Button
+                    boxed
+                    color="link-color"
                     data-testid="cancel-glossary"
-                    type="link"
+                    size="md"
                     onClick={onCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    showTextWhileLoading
+                    color="primary"
                     data-testid="save-glossary"
-                    disabled={!allowAccess}
-                    htmlType="submit"
-                    loading={isLoading}
-                    type="primary">
+                    isDisabled={!allowAccess}
+                    isLoading={isLoading}
+                    size="md"
+                    type="submit">
                     {t('label.save')}
                   </Button>
                 </Space>

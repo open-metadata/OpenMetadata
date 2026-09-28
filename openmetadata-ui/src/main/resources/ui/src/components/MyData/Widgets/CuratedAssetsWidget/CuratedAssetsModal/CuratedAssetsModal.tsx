@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -134,17 +134,20 @@ const CuratedAssetsModal = ({
   const modalFooter = useMemo(
     () => [
       <Button
+        color="secondary"
         data-testid="cancelButton"
         key="cancelButton"
-        type="ghost"
+        size="md"
         onClick={handleCancel}>
         {t('label.cancel')}
       </Button>,
       <Button
+        className="tw:ml-2"
+        color="primary"
         data-testid="saveButton"
-        disabled={disableSave}
+        isDisabled={disableSave}
         key="saveButton"
-        type="primary"
+        size="md"
         onClick={() => form.submit()}>
         {t('label.save')}
       </Button>,

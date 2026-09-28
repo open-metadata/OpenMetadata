@@ -12,7 +12,8 @@
  */
 
 import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps, Space } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
@@ -51,6 +52,15 @@ interface DatePickerMenuProps {
   placeholder?: string;
   size?: SizeType;
 }
+
+const CORE_BUTTON_SIZE: Record<NonNullable<SizeType>, 'sm' | 'md' | 'lg'> = {
+  small: 'sm',
+  middle: 'md',
+  large: 'lg',
+};
+
+const toCoreButtonSize = (size?: SizeType) =>
+  size ? CORE_BUTTON_SIZE[size] : 'md';
 
 const DatePickerMenu = ({
   allowClear = false,
@@ -262,8 +272,9 @@ const DatePickerMenu = ({
           size === 'small' &&
             (isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-72')
         )}
+        color="secondary"
         data-testid="date-picker-menu"
-        size={size}>
+        size={toCoreButtonSize(size)}>
         <Space align="center" size={8}>
           <span
             className={classNames(
@@ -302,14 +313,11 @@ const DatePickerMenu = ({
             'tw:border-0 tw:bg-transparent tw:p-0! tw:text-disabled tw:shadow-none',
             'tw:hover:bg-transparent tw:hover:text-secondary'
           )}
+          color="tertiary"
           data-testid="clear-date-picker"
-          icon={<CloseCircleFilled />}
-          size="small"
-          type="text"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleClear();
-          }}
+          iconLeading={<CloseCircleFilled />}
+          size="sm"
+          onClick={handleClear}
         />
       )}
     </div>

@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button as AntdButton,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Tooltip,
+} from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -152,11 +160,15 @@ const TeamsSubscription = ({
               entity: t('label.subscription'),
             })}>
             <Button
-              className="flex-center teams-info-email-edit-button p-0"
+              aria-label={t('label.edit-entity', {
+                entity: t('label.subscription'),
+              })}
+              className="teams-info-email-edit-button p-0"
+              color="tertiary"
               data-testid="edit-team-subscription"
-              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
-              {...ICON_DIMENSION}
-              onClick={(e) => {
+              iconLeading={<EditIcon {...ICON_DIMENSION} width="12px" />}
+              size="md"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 setEditSubscription(true);
@@ -170,16 +182,21 @@ const TeamsSubscription = ({
               entity: t('label.subscription'),
             })}>
             <Button
-              className="flex-center teams-info-email-edit-button p-0"
+              aria-label={t('label.edit-entity', {
+                entity: t('label.subscription'),
+              })}
+              className="teams-info-email-edit-button p-0"
+              color="tertiary"
               data-testid="edit-team-subscription"
-              icon={
+              iconLeading={
                 <EditIcon
                   color={DE_ACTIVE_COLOR}
                   {...ICON_DIMENSION}
                   width="12px"
                 />
               }
-              onClick={(e) => {
+              size="md"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 setEditSubscription(true);
@@ -193,7 +210,7 @@ const TeamsSubscription = ({
 
       {editSubscription && (
         // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
-        <Button
+        <AntdButton
           className="remove-button-default-styling"
           onClick={(e) => e.stopPropagation()}>
           <Modal
@@ -250,7 +267,7 @@ const TeamsSubscription = ({
               </Form.Item>
             </Form>
           </Modal>
-        </Button>
+        </AntdButton>
       )}
     </Space>
   );

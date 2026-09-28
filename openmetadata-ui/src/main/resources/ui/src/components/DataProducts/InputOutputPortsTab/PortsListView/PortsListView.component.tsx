@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Row, Skeleton } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Dropdown, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import {
   forwardRef,
@@ -244,11 +245,16 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                         placement="bottomRight"
                         trigger={['click']}>
                         <Button
-                          className="flex-center"
+                          aria-label={t('label.action-plural')}
+                          color="tertiary"
                           data-testid={`port-actions-${port.id}`}
-                          icon={<IconDropdown height={14} width={14} />}
-                          size="small"
-                          type="text"
+                          iconLeading={
+                            <IconDropdown
+                              className="tw:size-3.5! tw:shrink-0"
+                              data-icon="leading"
+                            />
+                          }
+                          size="sm"
                         />
                       </Dropdown>
                     ) : undefined

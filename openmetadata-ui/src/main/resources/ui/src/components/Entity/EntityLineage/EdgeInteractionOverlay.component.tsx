@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
@@ -29,6 +29,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
   onPipelineClick,
   onEdgeRemove,
 }) => {
+  const { t } = useTranslation();
   const { isEditMode, selectedEdge, columnsInCurrentPages, isRepositioning } =
     useLineageStore();
   const { getNode } = useReactFlow();
@@ -69,17 +70,17 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
     return (
       <div key={`edit-${edge.id}`} style={buttonPosition}>
         <Button
-          className="cursor-pointer d-flex"
+          boxed
+          aria-label={t('label.edit-entity', { entity: t('label.pipeline') })}
+          color="link-color"
           data-testid="add-pipeline"
-          icon={
-            <Icon
-              alt="edit-circle"
-              className="align-middle"
-              component={IconEditCircle}
-              style={{ fontSize: '16px' }}
+          iconLeading={
+            <IconEditCircle
+              className="tw:size-4! tw:shrink-0"
+              data-icon="leading"
             />
           }
-          type="link"
+          size="md"
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -96,17 +97,17 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
     return (
       <div key={`delete-${edge.id}`} style={buttonPosition}>
         <Button
-          className="cursor-pointer d-flex"
+          boxed
+          aria-label={t('label.delete')}
+          color="link-color"
           data-testid="delete-button"
-          icon={
-            <Icon
-              alt="times-circle"
-              className="align-middle"
-              component={IconTimesCircle}
-              style={{ fontSize: '16px' }}
+          iconLeading={
+            <IconTimesCircle
+              className="tw:size-4! tw:shrink-0"
+              data-icon="leading"
             />
           }
-          type="link"
+          size="md"
           onClick={() => onEdgeRemove?.()}
         />
       </div>

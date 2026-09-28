@@ -12,10 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Drawer,
   Input,
   InputNumber,
@@ -475,14 +473,16 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const drawerFooter = (
     <div className="drawer-footer-actions">
       <Space size={16}>
-        <Button type="link" onClick={handleCancel}>
+        <Button boxed color="link-color" size="md" onClick={handleCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          showTextWhileLoading
+          color="primary"
           form="profiler-setting-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          size="md"
+          type="submit">
           {t('label.save')}
         </Button>
       </Space>
@@ -632,10 +632,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       {`${t('label.include')}:`}
                     </p>
                     <Button
-                      className="include-columns-add-button flex-center"
-                      icon={<PlusOutlined />}
-                      size="small"
-                      type="primary"
+                      aria-label={t('label.add')}
+                      className="include-columns-add-button tw:size-[18px] tw:p-0!"
+                      color="primary"
+                      iconLeading={<PlusOutlined className="tw:text-[8px]" />}
+                      size="sm"
                       onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
@@ -679,15 +680,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             />
                           </Form.Item>
                           <Button
-                            className="delete-btn"
-                            icon={
-                              <Icon
-                                className="align-middle"
-                                component={IconDelete}
-                                style={{ fontSize: '16px' }}
-                              />
-                            }
-                            type="text"
+                            aria-label={t('label.delete')}
+                            className="delete-btn tw:size-8"
+                            color="tertiary"
+                            iconLeading={IconDelete}
+                            size="sm"
                             onClick={() => remove(name)}
                           />
                         </Col>
@@ -915,10 +912,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             {`${t('label.value')}:`}
                           </p>
                           <Button
-                            className="include-columns-add-button flex-center"
-                            icon={<PlusOutlined />}
-                            size="small"
-                            type="primary"
+                            aria-label={t('label.add')}
+                            className="include-columns-add-button tw:size-[18px] tw:p-0!"
+                            color="primary"
+                            iconLeading={
+                              <PlusOutlined className="tw:text-[8px]" />
+                            }
+                            size="sm"
                             onClick={() => add()}
                           />
                         </div>
@@ -951,15 +951,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 />
                               </Form.Item>
                               <Button
-                                className="delete-btn"
-                                icon={
-                                  <Icon
-                                    className="align-middle"
-                                    component={IconDelete}
-                                    style={{ fontSize: '16px' }}
-                                  />
-                                }
-                                type="text"
+                                aria-label={t('label.delete')}
+                                className="delete-btn tw:size-8"
+                                color="tertiary"
+                                iconLeading={IconDelete}
+                                size="sm"
                                 onClick={() => remove(name)}
                               />
                             </Col>
@@ -985,9 +981,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       data-testid="profiler-settings-modal"
       extra={
         <Button
-          className="drawer-close-icon flex-center"
-          icon={<CloseIcon />}
-          type="link"
+          aria-label={t('label.close')}
+          className="drawer-close-icon"
+          color="tertiary"
+          iconLeading={<CloseIcon height={16} width={16} />}
+          size="md"
           onClick={handleCancel}
         />
       }

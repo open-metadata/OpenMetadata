@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Modal, Tooltip } from 'antd';
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,11 +101,18 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
                 entity: t('label.user'),
               })}>
               <Button
+                aria-label={t('label.remove')}
+                color="tertiary"
                 data-testid="remove-user-btn"
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
+                iconLeading={
+                  <IconRemove
+                    data-icon
+                    height={16}
+                    name={t('label.remove')}
+                    width={16}
+                  />
                 }
-                type="text"
+                size="md"
                 onClick={() => handleRemoveButtonClick(record)}
               />
             </Tooltip>

@@ -12,8 +12,10 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Select, Space } from 'antd';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
@@ -25,6 +27,7 @@ function TeamTypeSelect({
   updateTeamType,
   parentTeamType,
 }: TeamTypeSelectProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState<TeamType>(teamType);
 
   const handleSelect = (type: TeamType) => {
@@ -66,21 +69,23 @@ function TeamTypeSelect({
       />
       <Space className="m-l-xs" size={4}>
         <Button
+          aria-label={t('label.cancel')}
           className="h-8 p-x-xss"
+          color="primary"
           data-testid="cancel-btn"
-          size="small"
-          type="primary"
-          onClick={handleCancel}>
-          <CloseOutlined />
-        </Button>
+          iconLeading={CloseOutlined}
+          size="sm"
+          onClick={handleCancel}
+        />
         <Button
+          aria-label={t('label.save')}
           className="h-8 p-x-xss"
+          color="primary"
           data-testid="save-btn"
-          size="small"
-          type="primary"
-          onClick={handleSubmit}>
-          <CheckOutlined />
-        </Button>
+          iconLeading={CheckOutlined}
+          size="sm"
+          onClick={handleSubmit}
+        />
       </Space>
     </Space>
   );

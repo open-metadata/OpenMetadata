@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, DropdownProps } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown, DropdownProps } from 'antd';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -283,10 +284,13 @@ function PipelineActionsDropdown({
         trigger={['click']}
         onOpenChange={(value) => setIsOpen(value)}>
         <Button
+          boxed
+          aria-label={t('label.more-action-plural')}
           className="pipeline-actions-dropdown-button"
+          color="link-color"
           data-testid="more-actions"
-          icon={<MoreIcon />}
-          type="link"
+          iconLeading={MoreIcon}
+          size="md"
           onClick={() => setIsOpen((value) => !value)}
           {...moreActionButtonProps}
         />

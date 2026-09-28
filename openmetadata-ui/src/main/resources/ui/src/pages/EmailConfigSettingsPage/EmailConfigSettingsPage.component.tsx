@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Skeleton } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -174,7 +173,10 @@ function EmailConfigSettingsPage() {
             </Col>
             <Col className="d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
-                <Button type="primary" onClick={handleTestEmailModal}>
+                <Button
+                  color="primary"
+                  size="md"
+                  onClick={handleTestEmailModal}>
                   {t('label.test-email')}
                 </Button>
               )}
@@ -184,11 +186,11 @@ function EmailConfigSettingsPage() {
               ) : (
                 <Button
                   className="m-l-md"
-                  icon={
-                    !isUndefined(emailConfigValues) && (
-                      <Icon component={IconEdit} size={12} />
-                    )
+                  color="secondary"
+                  iconLeading={
+                    isUndefined(emailConfigValues) ? undefined : IconEdit
                   }
+                  size="md"
                   onClick={handleEditClick}>
                   {isUndefined(emailConfigValues)
                     ? t('label.add')

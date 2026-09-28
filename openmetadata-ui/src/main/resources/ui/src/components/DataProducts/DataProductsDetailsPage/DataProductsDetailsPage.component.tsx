@@ -397,14 +397,15 @@ function DataProductActionButtons(
       {dataProductClassBase.getRequestDataAccessButton()}
 
       {!isVersionsView && canCreate && (
-        <Button
+        <CoreButton
+          color="primary"
           data-testid="data-product-details-add-button"
-          type="primary"
+          size="md"
           onClick={openAssetDrawer}>
           {t('label.add-entity', {
             entity: t('label.asset-plural'),
           })}
-        </Button>
+        </CoreButton>
       )}
 
       <ButtonGroup className="spaced" size="small">

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Tooltip } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
@@ -21,7 +22,6 @@ import { Operation } from '../../../../../../generated/entity/policies/accessCon
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useLogsModal } from '../../../../../../hooks/useLogsModal';
 import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
-import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
@@ -106,17 +106,21 @@ function PipelineActions({
                   ? t('label.pause')
                   : t('message.pipeline-not-deployed')
               }>
-              <Button
-                data-testid="pause-button"
-                disabled={isDisabled || !pipeline.deployed}
-                icon={getLoadingStatus(
-                  currPauseId,
-                  pipeline.id,
-                  <PauseIcon height={12} width={12} />
-                )}
-                onClick={() => onPauseUnpauseClick(pipelineId)}>
-                {t('label.pause')}
-              </Button>
+              <span className="tw:inline-flex">
+                <Button
+                  color="secondary"
+                  data-testid="pause-button"
+                  iconLeading={getLoadingStatus(
+                    currPauseId,
+                    pipeline.id,
+                    <PauseIcon height={12} width={12} />
+                  )}
+                  isDisabled={isDisabled || !pipeline.deployed}
+                  size="sm"
+                  onClick={() => onPauseUnpauseClick(pipelineId)}>
+                  {t('label.pause')}
+                </Button>
+              </span>
             </Tooltip>
           ) : (
             <Tooltip
@@ -125,17 +129,21 @@ function PipelineActions({
                   ? t('label.resume')
                   : t('message.pipeline-not-deployed')
               }>
-              <Button
-                data-testid="resume-button"
-                disabled={isDisabled || !pipeline.deployed}
-                icon={getLoadingStatus(
-                  currPauseId,
-                  pipeline.id,
-                  <ResumeIcon height={12} width={12} />
-                )}
-                onClick={() => onPauseUnpauseClick(pipelineId)}>
-                {t('label.resume')}
-              </Button>
+              <span className="tw:inline-flex">
+                <Button
+                  color="secondary"
+                  data-testid="resume-button"
+                  iconLeading={getLoadingStatus(
+                    currPauseId,
+                    pipeline.id,
+                    <ResumeIcon height={12} width={12} />
+                  )}
+                  isDisabled={isDisabled || !pipeline.deployed}
+                  size="sm"
+                  onClick={() => onPauseUnpauseClick(pipelineId)}>
+                  {t('label.resume')}
+                </Button>
+              </span>
             </Tooltip>
           )}
         </Col>
@@ -158,9 +166,11 @@ function PipelineActions({
         <Row align="middle" gutter={[8, 8]} wrap={false}>
           <Col>
             <Button
+              color="secondary"
               data-testid="logs-button"
-              disabled={isDisabled}
-              icon={<LogsIcon height={12} width={12} />}
+              iconLeading={<LogsIcon height={12} width={12} />}
+              isDisabled={isDisabled}
+              size="sm"
               onClick={handleLogsClick}>
               {t('label.log-plural')}
             </Button>

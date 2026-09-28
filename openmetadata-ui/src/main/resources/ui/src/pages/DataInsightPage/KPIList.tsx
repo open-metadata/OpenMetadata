@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -151,14 +150,17 @@ const KPIList = () => {
                     ? t('label.edit')
                     : t('message.no-permission-for-action')
                 }>
-                <Button
-                  className="flex-center"
-                  data-testid={`edit-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={<EditIcon width="16px" />}
-                  type="text"
-                  onClick={() => navigate(getKpiPath(record.name))}
-                />
+                <span className="tw:inline-flex">
+                  <Button
+                    aria-label={t('label.edit')}
+                    color="tertiary"
+                    data-testid={`edit-action-${getEntityName(record)}`}
+                    iconLeading={EditIcon}
+                    isDisabled={!isAdminUser}
+                    size="md"
+                    onClick={() => navigate(getKpiPath(record.name))}
+                  />
+                </span>
               </Tooltip>
               <Tooltip
                 placement="left"
@@ -167,15 +169,17 @@ const KPIList = () => {
                     ? t('label.delete')
                     : t('message.no-permission-for-action')
                 }>
-                <Button
-                  data-testid={`delete-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={
-                    <Icon component={IconDelete} style={{ fontSize: '16px' }} />
-                  }
-                  type="text"
-                  onClick={() => setSelectedKpi(record)}
-                />
+                <span className="tw:inline-flex">
+                  <Button
+                    aria-label={t('label.delete')}
+                    color="tertiary"
+                    data-testid={`delete-action-${getEntityName(record)}`}
+                    iconLeading={IconDelete}
+                    isDisabled={!isAdminUser}
+                    size="md"
+                    onClick={() => setSelectedKpi(record)}
+                  />
+                </span>
               </Tooltip>
             </div>
           );

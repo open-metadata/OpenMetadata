@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Modal } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -125,20 +126,23 @@ const AddPipeLineModal = ({
       data-testid="add-edge-modal"
       footer={[
         <Button
-          danger
+          color="primary-destructive"
           data-testid="remove-edge-button"
           key="remove-edge-btn"
-          type="primary"
+          size="md"
           onClick={onRemoveEdgeClick}>
           {t('label.remove-entity', {
             entity: t('label.edge-lowercase'),
           })}
         </Button>,
         <Button
+          showTextWhileLoading
+          className="tw:ml-2"
+          color="primary"
           data-testid="save-button"
+          isLoading={loading}
           key="save-btn"
-          loading={loading}
-          type="primary"
+          size="md"
           onClick={() => onSave(edgeSelection)}>
           {t('label.save')}
         </Button>,

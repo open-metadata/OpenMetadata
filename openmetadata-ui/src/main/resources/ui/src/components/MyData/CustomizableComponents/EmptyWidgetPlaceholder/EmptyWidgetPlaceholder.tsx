@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,11 +87,11 @@ function EmptyWidgetPlaceholder({
                   })}
                 </Typography>
                 <Button
-                  ghost
-                  className="add-button"
+                  className="add-button tw:mt-4 tw:px-6"
+                  color="secondary-brand"
                   data-testid="add-widget-button"
-                  icon={<PlusOutlined />}
-                  type="primary"
+                  iconLeading={PlusOutlined}
+                  size="md"
                   onClick={handleAddClick}>
                   {t('label.add')}
                 </Button>

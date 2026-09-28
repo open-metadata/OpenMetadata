@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Modal, Row, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Modal, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -258,10 +258,12 @@ const AppSchedule = ({
             <Space>
               {appData.appType === AppType.External && (
                 <Button
+                  showTextWhileLoading
+                  color="primary"
                   data-testid="deploy-button"
-                  disabled={isAppDisabled}
-                  loading={isDeployLoading}
-                  type="primary"
+                  isDisabled={isAppDisabled}
+                  isLoading={isDeployLoading}
+                  size="md"
                   onClick={onDeployTrigger}>
                   {t('label.deploy')}
                 </Button>
@@ -269,9 +271,10 @@ const AppSchedule = ({
 
               {!appData.system && (
                 <Button
+                  color="primary"
                   data-testid="edit-button"
-                  disabled={isAppDisabled}
-                  type="primary"
+                  isDisabled={isAppDisabled}
+                  size="md"
                   onClick={onDialogOpen}>
                   {t('label.edit')}
                 </Button>
@@ -279,10 +282,12 @@ const AppSchedule = ({
 
               {showRunNowButton && (
                 <Button
+                  showTextWhileLoading
+                  color="primary"
                   data-testid="run-now-button"
-                  disabled={isAppDisabled}
-                  loading={isRunLoading}
-                  type="primary"
+                  isDisabled={isAppDisabled}
+                  isLoading={isRunLoading}
+                  size="md"
                   onClick={onAppTrigger}>
                   {t('label.run-now')}
                 </Button>
@@ -315,16 +320,20 @@ const AppSchedule = ({
         />
         <div className="d-flex justify-end gap-2 m-t-md">
           <Button
+            boxed
+            color="link-color"
             data-testid="back-button"
-            type="link"
+            size="md"
             onClick={onDialogCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            showTextWhileLoading
+            color="primary"
             data-testid="deploy-button"
-            disabled={!isScheduleValid}
-            loading={isSaveLoading}
-            type="primary"
+            isDisabled={!isScheduleValid}
+            isLoading={isSaveLoading}
+            size="md"
             onClick={onDialogSave}>
             {t('label.save')}
           </Button>

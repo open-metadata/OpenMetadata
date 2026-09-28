@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -106,8 +105,10 @@ const UrlConfigurationPage = () => {
             </Col>
             <Col>
               <Button
+                color="secondary"
                 data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
+                iconLeading={IconEdit}
+                size="md"
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>

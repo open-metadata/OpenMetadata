@@ -12,8 +12,13 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Modal } from 'antd';
+import {
+  Box,
+  Button,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -271,8 +276,9 @@ const RolesDetailPage = () => {
           <Card>
             <div className="flex justify-end m-b-md">
               <Button
+                color="primary"
                 data-testid="add-policy"
-                type="primary"
+                size="md"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
@@ -360,9 +366,9 @@ const RolesDetailPage = () => {
                 })}
               </p>
               <Button
-                ghost
                 className="m-t-sm"
-                type="primary"
+                color="secondary-brand"
+                size="md"
                 onClick={() => navigate(rolesPath)}>
                 {t('label.go-back')}
               </Button>

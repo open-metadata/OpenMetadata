@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -99,18 +99,23 @@ export const ModalWithCustomPropertyEditor = ({
       footer={
         <KeyDownStopPropagationWrapper>
           <Button
+            boxed
+            color="link-color"
             data-testid="cancel"
-            disabled={isSaveLoading}
+            isDisabled={isSaveLoading}
             key="cancelButton"
-            type="link"
+            size="md"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            showTextWhileLoading
+            className="tw:ml-2"
+            color="primary"
             data-testid="save"
+            isLoading={isSaveLoading}
             key="saveButton"
-            loading={isSaveLoading}
-            type="primary"
+            size="md"
             onClick={handleSaveData}>
             {t('label.save')}
           </Button>

@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './widget-empty-state.less';
@@ -52,17 +50,23 @@ const WidgetEmptyState = ({
   };
 
   const actionButton = showActionButton && (
-    <Button className="m-t-md" type="primary" onClick={handleActionClick}>
+    <Button
+      className="m-t-md tw:h-8 tw:px-3"
+      color="primary"
+      size="sm"
+      onClick={handleActionClick}>
       {actionButtonText || t('label.explore')}
     </Button>
   );
 
   const actionLink = actionButtonLink && (
-    <Link to={actionButtonLink}>
-      <Button className="m-t-md" type="primary">
-        {actionButtonText || t('label.explore')}
-      </Button>
-    </Link>
+    <Button
+      className="m-t-md tw:h-8 tw:px-3"
+      color="primary"
+      href={actionButtonLink}
+      size="sm">
+      {actionButtonText || t('label.explore')}
+    </Button>
   );
 
   return (

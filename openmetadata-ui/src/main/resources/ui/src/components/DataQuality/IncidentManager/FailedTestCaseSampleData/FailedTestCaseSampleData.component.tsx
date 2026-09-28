@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
+import { Button, Table, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
@@ -255,15 +255,16 @@ const FailedTestCaseSampleData = ({
         </Typography>
         <div className="d-flex gap-4">
           {testCaseData?.inspectionQuery && !isVersionPage && (
-            <Link
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+            <Button
+              color="primary"
+              data-testid="explore-with-query"
+              href={observabilityRouterClassBase.getTestCaseDetailPagePath(
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
-              )}>
-              <Button data-testid="explore-with-query" type="primary">
-                {t('label.explore-with-query')}
-              </Button>
-            </Link>
+              )}
+              size="md">
+              {t('label.explore-with-query')}
+            </Button>
           )}
           {hasEditPermission && (
             <Dropdown
@@ -282,11 +283,15 @@ const FailedTestCaseSampleData = ({
                   entity: t('label.sample-data'),
                 })}>
                 <Button
-                  className="flex-center px-1.5"
+                  aria-label={t('label.manage-entity', {
+                    entity: t('label.sample-data'),
+                  })}
+                  color="secondary"
                   data-testid="sample-data-manage-button"
-                  onClick={() => setShowActions(true)}>
-                  <IconDropdown className="anticon self-center " />
-                </Button>
+                  iconLeading={IconDropdown}
+                  size="md"
+                  onClick={() => setShowActions(true)}
+                />
               </Tooltip>
             </Dropdown>
           )}

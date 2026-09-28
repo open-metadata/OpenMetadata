@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Alert, Badge, Dropdown, InputRef, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -525,8 +525,10 @@ const NavBar = () => {
           showIcon
           action={
             <Button
-              size="small"
-              type="link"
+              boxed
+              className="tw:font-bold tw:text-white tw:hover:text-white tw:dark:text-white tw:dark:hover:text-white"
+              color="link-color"
+              size="sm"
               onClick={() => {
                 navigate(0);
               }}>
@@ -550,17 +552,16 @@ const NavBar = () => {
           <div className="flex-center gap-2">
             <Tooltip placement="right" title={sidebarTooltipTitle}>
               <Button
-                className="w-6 h-6 p-0 flex-center"
+                aria-label={sidebarTooltipTitle}
+                className="w-6 h-6 p-0"
+                color="tertiary"
                 data-testid="sidebar-toggle"
-                icon={
-                  isSidebarCollapsed ? (
-                    <SidebarCollapsedIcon height={20} width={20} />
-                  ) : (
-                    <SidebarExpandedIcon height={20} width={20} />
-                  )
+                iconLeading={
+                  isSidebarCollapsed
+                    ? SidebarCollapsedIcon
+                    : SidebarExpandedIcon
                 }
-                size="middle"
-                type="text"
+                size="md"
                 onClick={() =>
                   setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
@@ -591,14 +592,13 @@ const NavBar = () => {
                         : undefined
                     }>
                     <Button
-                      className={classNames(
-                        'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
-                        {
-                          'domain-active':
-                            activeDomain !== DEFAULT_DOMAIN_VALUE,
-                        }
-                      )}
+                      className={classNames('domain-nav-btn tw:gap-2', {
+                        'domain-active tw:bg-brand-primary tw:text-brand-tertiary tw:after:outline-brand tw:hover:bg-brand-primary tw:hover:text-brand-tertiary':
+                          activeDomain !== DEFAULT_DOMAIN_VALUE,
+                      })}
+                      color="secondary"
                       data-testid="domain-dropdown"
+                      size="md"
                       onClick={() =>
                         setIsDomainDropdownOpen(!isDomainDropdownOpen)
                       }>
@@ -632,11 +632,12 @@ const NavBar = () => {
               placement="bottomRight"
               trigger={['click']}>
               <Button
-                className="flex-center gap-2 p-x-xs font-medium"
+                className="gap-2 p-x-xs"
+                color="tertiary"
                 data-testid="language-selector-button"
-                type="text">
+                iconTrailing={<DropDownIcon width={12} />}
+                size="md">
                 {currentLanguage}
-                <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown
@@ -661,16 +662,17 @@ const NavBar = () => {
               trigger={['click']}
               onOpenChange={handleBellClick}>
               <Button
-                className="flex-center"
-                icon={
+                aria-label={t('label.notification-plural')}
+                color="tertiary"
+                iconLeading={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
                     offset={[-3, 3]}>
                     <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
+                size="md"
                 title={t('label.notification-plural')}
-                type="text"
               />
             </Dropdown>
             <Dropdown
@@ -681,11 +683,12 @@ const NavBar = () => {
               placement="bottomRight"
               trigger={['click']}>
               <Button
-                className="flex-center"
+                aria-label={t('label.need-help')}
+                color="tertiary"
                 data-testid="help-icon"
-                icon={<Help width={20} />}
+                iconLeading={Help}
+                size="md"
                 title={t('label.need-help')}
-                type="text"
               />
             </Dropdown>
             <UserProfileIcon />

@@ -12,9 +12,9 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Button, Card, Input, Select, Space } from 'antd';
+import { Card, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -341,11 +341,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
               <Grid.Item className="tw:flex tw:items-center" span={1}>
                 <Button
+                  aria-label={t('label.remove')}
+                  color="tertiary"
                   data-testid={`remove-mapping-btn-${mapping.id}`}
-                  disabled={disabled || readonly}
-                  icon={<DeleteIcon height={20} width={20} />}
-                  size="large"
-                  type="text"
+                  iconLeading={DeleteIcon}
+                  isDisabled={disabled || readonly}
+                  size="lg"
                   onClick={() => handleRemoveMapping(mapping.id)}
                 />
               </Grid.Item>
@@ -355,11 +356,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
         {!readonly && (
           <Button
-            block
-            className="add-mapping-btn"
+            className="add-mapping-btn tw:mb-2 tw:w-full"
+            color="secondary"
             data-testid="add-mapping-btn"
-            disabled={disabled}
-            icon={<PlusOutlined />}
+            iconLeading={PlusOutlined}
+            isDisabled={disabled}
+            size="md"
             onClick={handleAddMapping}>
             {t('label.add-entity', {
               entity: t('label.ldap-group-mapping'),

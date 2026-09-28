@@ -32,6 +32,7 @@ jest.mock('@untitledui/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
   Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest
     .fn()
@@ -106,23 +107,6 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-    )),
-}));
-
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, className, size, ...props }) => (
-      <button
-        className={className}
-        data-size={size}
-        data-testid="button"
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
     )),
 }));
 

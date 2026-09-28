@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
+import { Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -216,11 +216,11 @@ const KnowledgePageEmptyState = ({
               <LimitWrapper resource="knowledgeCenter">
                 <Dropdown menu={{ items }} trigger={['click']}>
                   <Button
-                    ghost
                     className="p-x-lg"
+                    color="secondary-brand"
                     data-testid="add-knowledge-page-btn"
-                    type="primary">
-                    <PlusOutlined />
+                    iconLeading={PlusOutlined}
+                    size="md">
                     {t('label.add')}
                   </Button>
                 </Dropdown>

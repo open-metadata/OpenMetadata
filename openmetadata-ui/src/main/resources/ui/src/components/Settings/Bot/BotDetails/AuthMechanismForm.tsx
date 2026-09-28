@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Select, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
@@ -134,9 +134,9 @@ const AuthMechanismForm: FC<Props> = ({
       </div>
       <Button
         className="text-sm generate-scim-token-btn"
+        color="primary"
         data-testid="generate-scim-token"
-        size="small"
-        type="primary"
+        size="sm"
         onClick={handleGenerateSCIMToken}>
         {t('label.generate-token')}
       </Button>
@@ -174,16 +174,23 @@ const AuthMechanismForm: FC<Props> = ({
 
       <Space className="w-full justify-end" size={4}>
         {!isEmpty(authenticationMechanism) && (
-          <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
+          <Button
+            boxed
+            color="link-color"
+            data-testid="cancel-edit"
+            size="md"
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
         )}
         <Button
+          showTextWhileLoading
+          color="primary"
           data-testid="save-edit"
           form="update-auth-mechanism-form"
-          htmlType="submit"
-          loading={isUpdating}
-          type="primary">
+          isLoading={isUpdating}
+          size="md"
+          type="submit">
           {t('label.generate')}
         </Button>
       </Space>

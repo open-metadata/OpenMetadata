@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Popover, RefSelectProps, Select, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Popover, RefSelectProps, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -294,24 +294,26 @@ export const PersonaSelectableList = ({
 
           <div className="flex justify-end gap-2">
             <Button
-              className="persona-profile-edit-save"
+              aria-label={t('label.cancel')}
+              className="persona-profile-edit-save tw:absolute tw:right-[38px] tw:bottom-0 tw:size-[30px] tw:p-0!"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              icon={<ClosePopoverIcon height={24} />}
-              size="small"
-              type="primary"
+              iconLeading={<ClosePopoverIcon height={24} />}
+              size="sm"
               onClick={handleCloseEditTeam}
             />
             <Button
-              className="persona-profile-edit-cancel"
+              aria-label={t('label.save')}
+              className="persona-profile-edit-cancel tw:absolute tw:bottom-0 tw:size-[30px] tw:p-0!"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              icon={<SavePopoverIcon height={24} />}
-              loading={isSaving}
-              size="small"
-              type="primary"
+              iconLeading={<SavePopoverIcon height={24} />}
+              isLoading={isSaving}
+              size="sm"
               onClick={handlePersonaUpdate}
             />
           </div>

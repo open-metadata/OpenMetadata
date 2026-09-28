@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -93,20 +91,23 @@ interface CustomiseHeaderButtonProps {
 const CustomiseHeaderButton = ({
   hidden,
   onClick,
-}: CustomiseHeaderButtonProps) =>
-  hidden ? null : (
+}: CustomiseHeaderButtonProps) => {
+  const { t } = useTranslation();
+
+  return hidden ? null : (
     <Button
+      aria-label={t('label.customize-entity', {
+        entity: t('label.landing-page'),
+      })}
       className="customise-header-btn"
+      color="tertiary"
       data-testid="customise-header-btn"
-      icon={
-        <Icon
-          component={FilterIcon}
-          style={{ fontSize: '16px', color: 'white' }}
-        />
-      }
+      iconLeading={<FilterIcon data-icon style={{ color: 'white' }} />}
+      size="md"
       onClick={onClick}
     />
   );
+};
 
 interface LandingPageRecentlyViewedProps {
   isPreviewHeader: boolean;

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
-import { Button, Card } from 'antd';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
@@ -1178,10 +1179,11 @@ export default function EntitySummaryPanel({
           />
           <Button
             aria-label={t('label.close')}
-            className="drawer-close-icon flex-center mr-2"
+            className="drawer-close-icon mr-2"
+            color="tertiary"
             data-testid="drawer-close-icon"
-            icon={<XClose />}
-            size="small"
+            iconLeading={XClose}
+            size="sm"
             onClick={handleClosePanel}
           />
         </div>

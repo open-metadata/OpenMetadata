@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Space, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Button as AntdButton, Col, Modal, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
@@ -274,15 +275,24 @@ export const UserTab = ({
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <Button
-                data-testid="remove-user-btn"
-                disabled={!editUserPermission}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => handleRemoveClick(record.id)}
-              />
+              <span className="tw:inline-flex">
+                <Button
+                  aria-label={t('label.remove')}
+                  className="tw:size-5.5 tw:p-0!"
+                  color="tertiary"
+                  data-testid="remove-user-btn"
+                  iconLeading={
+                    <IconRemove
+                      height={16}
+                      name={t('label.remove')}
+                      width={16}
+                    />
+                  }
+                  isDisabled={!editUserPermission}
+                  size="sm"
+                  onClick={() => handleRemoveClick(record.id)}
+                />
+              </span>
             </Tooltip>
           </Space>
         ),
@@ -387,7 +397,7 @@ export const UserTab = ({
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
               <Tooltip placement="topRight" title={addUserButtonTitle}>
-                <Button
+                <AntdButton
                   ghost
                   className={classNames({
                     'p-x-lg': editUserPermission && !isTeamDeleted,
@@ -397,7 +407,7 @@ export const UserTab = ({
                   icon={<PlusOutlined />}
                   type="primary">
                   {t('label.add')}
-                </Button>
+                </AntdButton>
               </Tooltip>
             </UserSelectableList>
             {!isTeamDeleted && (
@@ -437,7 +447,7 @@ export const UserTab = ({
               includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
-              <Button data-testid="add-new-user" type="primary">
+              <Button color="primary" data-testid="add-new-user" size="md">
                 {t('label.add-entity', { entity: t('label.user') })}
               </Button>
             </UserSelectableList>
