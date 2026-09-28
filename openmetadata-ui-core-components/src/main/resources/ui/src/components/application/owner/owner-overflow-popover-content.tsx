@@ -54,7 +54,7 @@ export const OwnerOverflowPopoverContent = ({
         )}
         {group.map((owner) => (
           <div
-            className="tw:rounded-md tw:transition-colors hover:tw:bg-secondary"
+            className="tw:rounded-md tw:transition-colors tw:hover:bg-secondary"
             key={owner.id}>
             <OwnerChip
               avatarSize={avatarSize}

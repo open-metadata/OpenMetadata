@@ -49,10 +49,8 @@ import {
 } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';

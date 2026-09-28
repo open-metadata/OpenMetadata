@@ -51,6 +51,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../../../constants/Learning.constants';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -95,7 +96,6 @@ import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBread
 import { useEntityExportModalProvider } from '../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
 import { useApplicationsProvider } from '../../Applications/ApplicationsProvider/ApplicationsProvider';
 import ListEntities from './RolesAndPoliciesList';

@@ -460,3 +460,39 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Announcement type: stored generated column so the list API can filter by type. Rows written
+-- before the field existed have no $.type and read back as the Information default.
+SET @announcement_type_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'type'
+    ),
+    'SELECT 1',
+    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Information'')) STORED'
+  )
+);
+PREPARE announcement_type_column_stmt FROM @announcement_type_column_ddl;
+EXECUTE announcement_type_column_stmt;
+DEALLOCATE PREPARE announcement_type_column_stmt;
+
+SET @announcement_type_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND index_name = 'idx_announcement_type'
+    ),
+    'SELECT 1',
+    'ALTER TABLE announcement_entity ADD INDEX idx_announcement_type (type)'
+  )
+);
+PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
+EXECUTE announcement_type_index_stmt;
+DEALLOCATE PREPARE announcement_type_index_stmt;

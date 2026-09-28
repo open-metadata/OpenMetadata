@@ -87,7 +87,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
 
   if (folders.length === 0) {
     return (
-      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-utility-gray-400">
+      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-quaternary">
         {t('label.no-entity', { entity: t('label.folder-plural') })}
       </Typography>
     );
@@ -103,7 +103,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
 
         return (
           <Dropdown.Item
-            className={isCurrent ? 'tw:[&>div]:bg-utility-blue-50' : undefined}
+            className={isCurrent ? 'tw:[&>div]:bg-brand-primary' : undefined}
             data-testid={`move-to-folder-${folder.id}`}
             id={folder.id}
             key={folder.id}
@@ -341,10 +341,10 @@ const ListHeader: FC<ListHeaderProps> = ({
     return (
       <Box
         align="center"
-        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-utility-blue-100 tw:bg-utility-blue-50"
+        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-brand-primary"
         gap={2}>
         <Typography
-          className="tw:text-utility-blue-700"
+          className="tw:text-brand-secondary"
           size="text-sm"
           weight="semibold">
           {selectedCount} {t('label.selected-lowercase')}
@@ -413,7 +413,7 @@ const ListHeader: FC<ListHeaderProps> = ({
   return (
     <Box
       align="center"
-      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
+      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary">
       <Typography
         className="tw:text-quaternary"
         data-testid="documents-view-file-count"
@@ -487,9 +487,7 @@ const FileRow: FC<FileRowProps> = ({
     <Box
       align="center"
       className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
-        isActive
-          ? 'tw:bg-utility-blue-50'
-          : 'tw:bg-primary hover:tw:bg-secondary_subtle'
+        isActive ? 'tw:bg-brand-primary' : 'tw:hover:bg-primary_hover'
       }`}
       data-testid={`document-row-${file.id}`}
       gap={4}

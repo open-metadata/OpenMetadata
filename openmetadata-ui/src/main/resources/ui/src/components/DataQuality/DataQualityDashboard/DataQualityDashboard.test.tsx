@@ -18,12 +18,12 @@ import {
   FAILED_CHART_COLOR_SCHEME,
   SUCCESS_CHART_COLOR_SCHEME,
 } from '../../../constants/Chart.constants';
+import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
-import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import DataQualityDashboard from './DataQualityDashboard.component';
 
 const mockSearchQuery = jest.fn().mockResolvedValue({

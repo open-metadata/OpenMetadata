@@ -21,6 +21,7 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -233,7 +234,8 @@ export class WorksheetClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/driveServices/name/${encodeURIComponent(
         this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`
