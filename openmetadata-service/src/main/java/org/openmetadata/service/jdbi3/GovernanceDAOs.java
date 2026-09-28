@@ -18,16 +18,29 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.util.List;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeApplication;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
+import org.openmetadata.schema.governance.changeRequest.DeliveryStatus;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.approval.ChangeRequestKeys;
+import org.openmetadata.service.governance.approval.ChangeRequestMappers;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindConcat;
+import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface GovernanceDAOs {
   @CreateSqlObject
@@ -38,6 +51,18 @@ public interface GovernanceDAOs {
 
   @CreateSqlObject
   DataContractDAO dataContractDAO();
+
+  @CreateSqlObject
+  ChangeRequestDAO changeRequestDAO();
+
+  @CreateSqlObject
+  ChangeRevisionDAO changeRevisionDAO();
+
+  @CreateSqlObject
+  ApprovalDecisionDAO approvalDecisionDAO();
+
+  @CreateSqlObject
+  ChangeApplicationDAO changeApplicationDAO();
 
   interface DomainDAO extends EntityDAO<Domain> {
     @Override
@@ -225,5 +250,290 @@ public interface GovernanceDAOs {
         connectionType = POSTGRES)
     String getContractByEntityId(
         @Bind("entityId") String entityId, @Bind("entityType") String entityType);
+  }
+
+  interface ChangeRequestDAO {
+    String COLUMNS =
+        "id, entityType, entityId, requestedBy, workflowDefinitionId, status, activeInterceptKey,"
+            + " taskId, deliveryStatus, deliveryAttempts, nextDeliveryAt, updatedAt, json";
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_request ("
+                + COLUMNS
+                + ") VALUES (:id, :entityType, :entityId,"
+                + " :requestedBy, :workflowDefinitionId, :status, :activeInterceptKey, :taskId,"
+                + " :deliveryStatus, 0, :updatedAt, :updatedAt, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_request ("
+                + COLUMNS
+                + ") VALUES (:id, :entityType, :entityId,"
+                + " :requestedBy, :workflowDefinitionId, :status, :activeInterceptKey, :taskId,"
+                + " :deliveryStatus, 0, :updatedAt, :updatedAt, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insertRow(
+        @Bind("id") String id,
+        @Bind("entityType") String entityType,
+        @Bind("entityId") String entityId,
+        @Bind("requestedBy") String requestedBy,
+        @Bind("workflowDefinitionId") String workflowDefinitionId,
+        @Bind("status") String status,
+        @Bind("activeInterceptKey") String activeInterceptKey,
+        @Bind("taskId") String taskId,
+        @Bind("deliveryStatus") String deliveryStatus,
+        @Bind("updatedAt") long updatedAt,
+        @Bind("json") String json);
+
+    default void insert(ChangeRequest request) {
+      insertRow(
+          request.getId().toString(),
+          request.getEntityType(),
+          request.getEntityId().toString(),
+          request.getRequestedBy(),
+          request.getWorkflowDefinitionId().toString(),
+          request.getStatus().value(),
+          ChangeRequestKeys.activeInterceptKey(request),
+          request.getTaskId() == null ? null : request.getTaskId().toString(),
+          DeliveryStatus.PENDING.value(),
+          request.getUpdatedAt(),
+          JsonUtils.pojoToJson(persistable(request)));
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_request SET status = :status, activeInterceptKey = :activeInterceptKey,"
+                + " taskId = :taskId, updatedAt = :updatedAt, json = :json WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_request SET status = :status, activeInterceptKey = :activeInterceptKey,"
+                + " taskId = :taskId, updatedAt = :updatedAt, json = :json::jsonb WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateRow(
+        @Bind("id") String id,
+        @Bind("status") String status,
+        @Bind("activeInterceptKey") String activeInterceptKey,
+        @Bind("taskId") String taskId,
+        @Bind("updatedAt") long updatedAt,
+        @Bind("json") String json);
+
+    default void update(ChangeRequest request) {
+      request.setUpdatedAt(System.currentTimeMillis());
+      updateRow(
+          request.getId().toString(),
+          request.getStatus().value(),
+          ChangeRequestKeys.activeInterceptKey(request),
+          request.getTaskId() == null ? null : request.getTaskId().toString(),
+          request.getUpdatedAt(),
+          JsonUtils.pojoToJson(persistable(request)));
+    }
+
+    // activeRevision is a read-side projection; delivery fields are column-owned.
+    private static ChangeRequest persistable(ChangeRequest request) {
+      return JsonUtils.deepCopy(request, ChangeRequest.class)
+          .withActiveRevision(null)
+          .withDeliveryStatus(null)
+          .withDeliveryAttempts(null);
+    }
+
+    @SqlQuery("SELECT * FROM change_request WHERE id = :id")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    ChangeRequest findById(@BindUUID("id") UUID id);
+
+    @SqlQuery("SELECT * FROM change_request WHERE id = :id FOR UPDATE")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    ChangeRequest findByIdForUpdate(@BindUUID("id") UUID id);
+
+    @SqlQuery("SELECT * FROM change_request WHERE activeInterceptKey = :key FOR UPDATE")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    ChangeRequest findByActiveInterceptKeyForUpdate(@Bind("key") String activeInterceptKey);
+
+    @SqlQuery("SELECT * FROM change_request WHERE taskId = :taskId")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    ChangeRequest findByTaskId(@BindUUID("taskId") UUID taskId);
+
+    @SqlQuery(
+        "SELECT * FROM change_request WHERE entityId = :entityId ORDER BY updatedAt DESC LIMIT :limit")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByEntity(@BindUUID("entityId") UUID entityId, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT * FROM change_request WHERE entityId = :entityId AND status = :status")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByEntityAndStatus(
+        @BindUUID("entityId") UUID entityId, @Bind("status") String status);
+
+    @SqlQuery(
+        "SELECT * FROM change_request WHERE requestedBy = :requestedBy ORDER BY updatedAt DESC LIMIT :limit")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByRequester(
+        @Bind("requestedBy") String requestedBy, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT * FROM change_request WHERE workflowDefinitionId = :workflowId AND status = :status")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByWorkflowAndStatus(
+        @BindUUID("workflowId") UUID workflowDefinitionId, @Bind("status") String status);
+
+    @SqlUpdate(
+        "UPDATE change_request SET deliveryStatus = 'Pending', nextDeliveryAt = :next,"
+            + " claimToken = NULL, leaseUntil = NULL WHERE id = :id")
+    void markDeliveryDue(@BindUUID("id") UUID id, @Bind("next") long nextDeliveryAt);
+
+    @SqlUpdate(
+        "UPDATE change_request SET deliveryStatus = 'Delivering', claimToken = :token,"
+            + " leaseUntil = :leaseUntil, deliveryAttempts = deliveryAttempts + 1 WHERE id = :id"
+            + " AND status = 'Pending' AND ((deliveryStatus = 'Pending' AND nextDeliveryAt <= :now)"
+            + " OR (deliveryStatus = 'Delivering' AND leaseUntil < :now))")
+    int claimForDelivery(
+        @BindUUID("id") UUID id,
+        @Bind("token") String claimToken,
+        @Bind("leaseUntil") long leaseUntil,
+        @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE change_request SET deliveryStatus = 'Delivered', claimToken = NULL, leaseUntil = NULL"
+            + " WHERE id = :id AND claimToken = :token")
+    int completeDelivery(@BindUUID("id") UUID id, @Bind("token") String claimToken);
+
+    @SqlUpdate(
+        "UPDATE change_request SET deliveryStatus = :deliveryStatus, nextDeliveryAt = :next,"
+            + " claimToken = NULL, leaseUntil = NULL WHERE id = :id AND claimToken = :token")
+    int releaseDelivery(
+        @BindUUID("id") UUID id,
+        @Bind("token") String claimToken,
+        @Bind("deliveryStatus") String deliveryStatus,
+        @Bind("next") long nextDeliveryAt);
+
+    @SqlQuery(
+        "SELECT id FROM change_request WHERE status = 'Pending' AND ((deliveryStatus = 'Pending'"
+            + " AND nextDeliveryAt <= :now) OR (deliveryStatus = 'Delivering' AND leaseUntil < :now))"
+            + " ORDER BY nextDeliveryAt LIMIT :limit")
+    List<String> listDueForDelivery(@Bind("now") long now, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT id FROM change_request WHERE status = 'Approved' AND updatedAt < :before"
+            + " ORDER BY updatedAt LIMIT :limit")
+    List<String> listApprovedBefore(@Bind("before") long updatedBefore, @Bind("limit") int limit);
+  }
+
+  interface ChangeRevisionDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_revision (id, changeRequestId, revisionNumber, status, json)"
+                + " VALUES (:id, :changeRequestId, :revisionNumber, :status, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_revision (id, changeRequestId, revisionNumber, status, json)"
+                + " VALUES (:id, :changeRequestId, :revisionNumber, :status, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insertRow(
+        @Bind("id") String id,
+        @Bind("changeRequestId") String changeRequestId,
+        @Bind("revisionNumber") int revisionNumber,
+        @Bind("status") String status,
+        @Bind("json") String json);
+
+    default void insert(ChangeRevision revision) {
+      insertRow(
+          revision.getId().toString(),
+          revision.getChangeRequestId().toString(),
+          revision.getRevisionNumber(),
+          revision.getStatus().value(),
+          JsonUtils.pojoToJson(revision));
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE change_revision SET status = :status, json = :json WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE change_revision SET status = :status, json = :json::jsonb WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateStatusRow(
+        @Bind("id") String id, @Bind("status") String status, @Bind("json") String json);
+
+    default void updateStatus(ChangeRevision revision) {
+      updateStatusRow(
+          revision.getId().toString(),
+          revision.getStatus().value(),
+          JsonUtils.pojoToJson(revision));
+    }
+
+    @SqlQuery("SELECT json FROM change_revision WHERE id = :id")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRevisionMapper.class)
+    ChangeRevision findById(@BindUUID("id") UUID id);
+  }
+
+  interface ApprovalDecisionDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO approval_decision (id, changeRequestId, revisionId, decidedBy, decision,"
+                + " decidedAt, json) VALUES (:id, :changeRequestId, :revisionId, :decidedBy,"
+                + " :decision, :decidedAt, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO approval_decision (id, changeRequestId, revisionId, decidedBy, decision,"
+                + " decidedAt, json) VALUES (:id, :changeRequestId, :revisionId, :decidedBy,"
+                + " :decision, :decidedAt, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insertRow(
+        @Bind("id") String id,
+        @Bind("changeRequestId") String changeRequestId,
+        @Bind("revisionId") String revisionId,
+        @Bind("decidedBy") String decidedBy,
+        @Bind("decision") String decision,
+        @Bind("decidedAt") long decidedAt,
+        @Bind("json") String json);
+
+    default void insert(ApprovalDecision decision) {
+      insertRow(
+          decision.getId().toString(),
+          decision.getChangeRequestId().toString(),
+          decision.getRevisionId().toString(),
+          decision.getDecidedBy(),
+          decision.getDecision().value(),
+          decision.getDecidedAt(),
+          JsonUtils.pojoToJson(decision));
+    }
+
+    @SqlQuery(
+        "SELECT json FROM approval_decision WHERE revisionId = :revisionId ORDER BY decidedAt")
+    @RegisterRowMapper(ChangeRequestMappers.ApprovalDecisionMapper.class)
+    List<ApprovalDecision> listByRevision(@BindUUID("revisionId") UUID revisionId);
+  }
+
+  interface ChangeApplicationDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_application (id, changeRequestId, revisionId, appliedAt, json)"
+                + " VALUES (:id, :changeRequestId, :revisionId, :appliedAt, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_application (id, changeRequestId, revisionId, appliedAt, json)"
+                + " VALUES (:id, :changeRequestId, :revisionId, :appliedAt, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insertRow(
+        @Bind("id") String id,
+        @Bind("changeRequestId") String changeRequestId,
+        @Bind("revisionId") String revisionId,
+        @Bind("appliedAt") long appliedAt,
+        @Bind("json") String json);
+
+    default void insert(ChangeApplication application) {
+      insertRow(
+          application.getId().toString(),
+          application.getChangeRequestId().toString(),
+          application.getRevisionId().toString(),
+          application.getAppliedAt(),
+          JsonUtils.pojoToJson(application));
+    }
+
+    @SqlQuery("SELECT json FROM change_application WHERE changeRequestId = :id")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeApplicationMapper.class)
+    ChangeApplication findByRequest(@BindUUID("id") UUID changeRequestId);
   }
 }
