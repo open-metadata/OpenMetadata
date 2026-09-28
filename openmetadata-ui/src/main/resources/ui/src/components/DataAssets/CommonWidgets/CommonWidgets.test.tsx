@@ -128,8 +128,8 @@ jest.mock('../../common/CertificationWidget/CertificationWidget', () => ({
   __esModule: true,
   default: () => <div data-testid="certification-widget" />,
 }));
-jest.mock('../DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: ({ multiple }: { multiple?: boolean }) => (
+jest.mock('../../common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: ({ multiple }: { multiple?: boolean }) => (
     <div
       data-multiple={String(Boolean(multiple))}
       data-testid="domain-widget"
