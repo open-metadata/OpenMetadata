@@ -124,11 +124,18 @@ const UNWRAPPED_ELEMENTS = new Set<unknown>(['span', 'div']);
 // container width) instead of breaking the line with a block wrapper.
 const INLINE_ELEMENTS = new Set<unknown>(['span', 'a']);
 
-const isTruncated = (el: HTMLElement | null, rows: number) =>
+const overflows = (el: Element | null, rows: number) =>
   !!el &&
   (rows > 1
     ? el.scrollHeight > el.clientHeight
     : el.scrollWidth > el.clientWidth);
+
+// The clamp classes sit on both the wrapper and the inner element. A block
+// inner element clips its own overflow, so the wrapper never sees it — check
+// the inner element too.
+const isTruncated = (wrapper: HTMLElement | null, rows: number) =>
+  overflows(wrapper, rows) ||
+  overflows(wrapper?.firstElementChild ?? null, rows);
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
   default: '',

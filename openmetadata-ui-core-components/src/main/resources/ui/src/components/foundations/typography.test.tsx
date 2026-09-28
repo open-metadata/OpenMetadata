@@ -189,6 +189,30 @@ describe('Typography ellipsis tooltip', () => {
     expect(wrapper).toHaveClass('tw:inline-block', 'tw:max-w-full');
   });
 
+  it('shows the tooltip when only a block inner element overflows', async () => {
+    vi.restoreAllMocks();
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.tagName === 'P' ? 200 : 100;
+      }
+    );
+    const user = userEvent.setup();
+
+    render(
+      <Typography as="p" ellipsis={{ tooltip: 'Full text' }}>
+        Clipped paragraph
+      </Typography>
+    );
+
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText('Clipped paragraph'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Full text')).toBeInTheDocument();
+    });
+  });
+
   it('keeps a block wrapper for block elements', () => {
     render(
       <Typography ellipsis as="p">

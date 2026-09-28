@@ -45,7 +45,7 @@ const ErrorMessage = ({ text }: { text: string }) => {
   const [isClamped, setIsClamped] = useState(false);
 
   useLayoutEffect(() => {
-    const clampEl = textRef.current?.firstElementChild;
+    const clampEl = textRef.current?.querySelector('p');
     if (clampEl && !isExpanded) {
       setIsClamped(clampEl.scrollHeight > clampEl.clientHeight);
     }
