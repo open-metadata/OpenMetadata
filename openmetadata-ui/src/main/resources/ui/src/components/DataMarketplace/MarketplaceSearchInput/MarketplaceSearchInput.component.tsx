@@ -26,6 +26,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { useSearchStore } from '../../../hooks/useSearchStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
 import { ExploreSearchInput } from '../../discovery/explore/ExploreHeader/ExploreSearchInput';
@@ -49,10 +50,9 @@ interface MarketplaceSearchInputProps {
   /** Placeholder text. Defaults to Explore's. */
   placeholder?: string;
   /**
-   * Render results in the popover instead of Explore's suggestions. Only for a
-   * page with no list of its own - the overview. Everywhere else the list is
-   * the results surface, as Explore's cards are, and the popover just prompts
-   * for Enter.
+   * Render matching domains and data products in the popover instead of
+   * Explore's suggestions, so a query can be previewed across both before it is
+   * applied.
    */
   showEntityResults?: boolean;
 }
@@ -161,27 +161,41 @@ const MarketplaceSearchInput = ({
     showEntityResults ? suggestionSearch : ''
   );
 
-  const handleDataProductClick = useCallback(
-    (dataProduct: DataProduct) => {
+  // A page with a list shows the pick there; a page without one (the overview)
+  // has nowhere to put it, so it opens the entity instead.
+  const applyOrOpen = useCallback(
+    (name: string, path: string) => {
       setIsSearchBoxOpen(false);
-      navigate(
+      if (onSearchChange) {
+        debouncedSearch.cancel();
+        setSearchValue(name);
+        onSearchChange(name);
+
+        return;
+      }
+      navigate(path, { state: { fromMarketplace: true } });
+    },
+    [onSearchChange, debouncedSearch, navigate]
+  );
+
+  const handleDataProductClick = useCallback(
+    (dataProduct: DataProduct) =>
+      applyOrOpen(
+        getEntityName(dataProduct),
         `${dataProductBasePath}/${getEncodedFqn(
           dataProduct.fullyQualifiedName ?? ''
-        )}`,
-        { state: { fromMarketplace: true } }
-      );
-    },
-    [navigate, dataProductBasePath]
+        )}`
+      ),
+    [applyOrOpen, dataProductBasePath]
   );
 
   const handleDomainClick = useCallback(
-    (domain: Domain) => {
-      setIsSearchBoxOpen(false);
-      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''), {
-        state: { fromMarketplace: true },
-      });
-    },
-    [navigate]
+    (domain: Domain) =>
+      applyOrOpen(
+        getEntityName(domain),
+        getDomainDetailsPath(domain.fullyQualifiedName ?? '')
+      ),
+    [applyOrOpen]
   );
 
   return (
