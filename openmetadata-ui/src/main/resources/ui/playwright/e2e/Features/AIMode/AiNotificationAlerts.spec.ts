@@ -28,7 +28,7 @@ import {
   selectAlertSource,
   selectDestinationCategory,
 } from '../../Utils/aiAlertModal';
-import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
+import { enableAiAppMode } from '../../Utils/appMode';
 import {
   expectSurfaceTheme,
   expectTheme,
@@ -50,9 +50,7 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
   const testAlerts: AlertClass[] = [];
 
   test.beforeAll(async ({ browser }) => {
-    const setupPage = await browser.newPage();
-    await redirectToAiModeHomePage(setupPage);
-    const { apiContext, afterAction } = await getApiContext(setupPage);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // The list is name-sorted and cursor-paged; this prefix keeps the alert on page 1.
     alert = new AlertClass({
@@ -62,12 +60,10 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
     await alert.create(apiContext);
 
     await afterAction();
-    await setupPage.close();
   });
 
   test.afterAll(async ({ browser }) => {
-    const teardownPage = await browser.newPage();
-    const { apiContext, afterAction } = await getApiContext(teardownPage);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await alert?.delete(apiContext);
     for (const testAlert of testAlerts) {
@@ -75,7 +71,6 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
     }
 
     await afterAction();
-    await teardownPage.close();
   });
 
   test.beforeEach(async ({ page }) => {
@@ -152,6 +147,77 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
       await expectSurfaceTheme(detailsPage, theme);
       await expectSurfaceTheme(dialog, theme);
     });
+
+    test(`notification alert details show recent events and diagnostic info (${theme})`, async ({
+      page,
+    }) => {
+      await seedTheme(page, theme);
+      const alertId = alert.responseData.id;
+      const listEvents = (status?: string) =>
+        page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            url.pathname ===
+              `/api/v1/events/subscriptions/id/${alertId}/listEvents` &&
+            url.searchParams.get('limit') === '15' &&
+            url.searchParams.get('paginationOffset') === '0' &&
+            url.searchParams.get('status') === (status ?? null)
+          );
+        });
+      const allEvents = listEvents();
+
+      await page.goto(
+        `${NOTIFICATION_ALERTS_PATH}/${encodeURIComponent(
+          alert.responseData.fullyQualifiedName
+        )}/recentEvents`,
+        { waitUntil: 'domcontentloaded' }
+      );
+
+      const { data: events } = await (await allEvents).json();
+      const recentEvents = page.getByTestId('alert-recent-events');
+
+      await expect(page.getByTestId('total-events-count')).toHaveText(
+        /^Total Events: \d+$/
+      );
+      await expect(page.getByTestId('failed-events-count')).toHaveText(
+        /^Failed Events: \d+$/
+      );
+      await expect(
+        events.length > 0
+          ? recentEvents.getByTestId(`event-collapse-${events[0].data[0].id}`)
+          : recentEvents.getByText('No recent events')
+      ).toBeVisible();
+
+      const failedEvents = listEvents('failed');
+      await recentEvents.getByRole('button', { name: /Filter/ }).click();
+      await page.getByRole('option', { name: 'Failed', exact: true }).click();
+      const { data: failed } = await (await failedEvents).json();
+
+      if (failed.length === 0) {
+        await expect(
+          recentEvents.getByText('No results for these filters')
+        ).toBeVisible();
+      }
+
+      const diagnosticInfo = page.waitForResponse(
+        `/api/v1/events/subscriptions/**/diagnosticInfo`
+      );
+      await page.getByRole('tab', { name: 'Diagnostic Info' }).click();
+      await diagnosticInfo;
+      const diagnostics = page.getByTestId('alert-diagnostic-info');
+
+      await expect(page).toHaveURL(/\/diagnostic-info$/);
+      await expect(
+        diagnostics.getByTestId('diagnostic-value-Latest Offset')
+      ).toHaveText(/^\d+$/);
+      await expect(
+        diagnostics.getByTestId('diagnostic-value-Processed All Events')
+      ).toHaveText(/^(Yes|No)$/);
+
+      await expectTheme(page, theme);
+      await expectSurfaceTheme(diagnostics, theme);
+    });
   }
 
   test('deletes a notification alert from the AI details page', async ({
@@ -205,8 +271,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
   });
 
   test.afterAll(async ({ browser }) => {
-    const teardownPage = await browser.newPage();
-    const { apiContext, afterAction } = await getApiContext(teardownPage);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     for (const id of createdAlertIds) {
       await apiContext.delete(
@@ -215,7 +280,6 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
     }
 
     await afterAction();
-    await teardownPage.close();
   });
 
   test('narrows destinations and event types to what the source supports', async ({
