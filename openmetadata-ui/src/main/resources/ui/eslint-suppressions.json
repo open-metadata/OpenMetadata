@@ -445,9 +445,19 @@
       "count": 2
     }
   },
+  "playwright/e2e/Features/Tasks/TaskCreation.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 8
+    }
+  },
   "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 7
+    }
+  },
+  "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts": {
