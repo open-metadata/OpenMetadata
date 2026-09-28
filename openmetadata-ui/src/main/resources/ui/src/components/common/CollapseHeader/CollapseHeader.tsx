@@ -38,9 +38,7 @@ const CollapseHeader = ({
 
   return (
     <div className="d-flex items-center justify-between">
-      <Typography className="text-md font-semibold" variant="text">
-        {title}
-      </Typography>
+      <Typography className="text-md font-semibold">{title}</Typography>
       {menuItems ? (
         <Dropdown
           getPopupContainer={getPopupContainer}

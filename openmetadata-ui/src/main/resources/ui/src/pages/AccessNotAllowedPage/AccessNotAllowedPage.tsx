@@ -32,10 +32,7 @@ const AccessNotAllowedPage = () => {
       size={SIZE.LARGE}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
       <DocumentTitle title={t('label.access-denied')} />
-      <Typography
-        className="w-80"
-        style={{ marginBottom: '0' }}
-        variant="paragraph">
+      <Typography as="p" className="w-80" style={{ marginBottom: '0' }}>
         {t('message.error-self-signup-disabled')}
       </Typography>
     </ErrorPlaceHolder>

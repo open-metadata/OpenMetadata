@@ -37,9 +37,9 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       {props ? (
-        <Typography variant="text">{getEntityName(props)}</Typography>
+        <Typography>{getEntityName(props)}</Typography>
       ) : (
-        <Typography className="text-grey-body" variant="text">
+        <Typography className="text-grey-body">
           {t('message.no-data-available')}
         </Typography>
       )}
@@ -241,9 +241,7 @@ export const PersonaSelectableList = ({
               <PersonaIcon height={16} />
             </div>
 
-            <Typography
-              className="user-profile-edit-popover-card-title"
-              variant="text">
+            <Typography className="user-profile-edit-popover-card-title">
               {isDefaultPersona
                 ? t('label.default-persona')
                 : t('label.persona')}

@@ -295,7 +295,7 @@ const AppInstall = () => {
       case 3:
         return (
           <div className="m-auto bg-white w-3/5 p-md border rounded-4">
-            <Typography level={5} variant="title">
+            <Typography as="h5" size="text-md" weight="semibold">
               {t('label.schedule')}
             </Typography>
             <ScheduleInterval

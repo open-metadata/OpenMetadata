@@ -153,7 +153,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             {searchClassBase.getEntityIcon(entityType)}
           </span>
         )}
-        <Typography className="item-entity-type-text" variant="text">
+        <Typography className="item-entity-type-text">
           {capitalize(entityType)}
         </Typography>
       </>
@@ -285,7 +285,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                 </div>
                 <div className="lineage-card-content">
-                  <Typography className="item-name-text" variant="text">
+                  <Typography className="item-name-text">
                     {getEntityName(item.entity)}
                   </Typography>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
@@ -305,9 +305,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography
-                className="text-center  no-data-placeholder"
-                variant="paragraph">
+              <Typography as="p" className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
               </Typography>
             </ErrorPlaceHolderNew>

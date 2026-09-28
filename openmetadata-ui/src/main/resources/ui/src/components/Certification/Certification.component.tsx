@@ -214,13 +214,13 @@ const Certification = ({
                   {iconContent}
                   <div>
                     <Typography
-                      className="m-b-0 font-regular text-xs text-grey-body"
-                      variant="paragraph">
+                      as="p"
+                      className="m-b-0 font-regular text-xs text-grey-body">
                       {title}
                     </Typography>
                     <Typography
-                      className="m-b-0 font-regular text-xs text-grey-muted"
-                      variant="paragraph">
+                      as="div"
+                      className="m-b-0 font-regular text-xs text-grey-muted">
                       {stringToHTML(description)}
                     </Typography>
                   </div>
@@ -286,9 +286,7 @@ const Certification = ({
                 <Space className="w-full justify-between">
                   <div className="flex gap-2 items-center w-full">
                     <CertificationIcon height={18} width={18} />
-                    <Typography
-                      className="m-b-0 font-semibold text-sm"
-                      variant="text">
+                    <Typography className="m-b-0 font-semibold text-sm">
                       {t('label.edit-entity', {
                         entity: t('label.certification'),
                       })}
@@ -298,7 +296,6 @@ const Certification = ({
                     className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
                     data-testid="clear-certification"
                     tabIndex={0}
-                    variant="text"
                     onClick={() => updateCertificationData()}
                     onKeyDown={handleKeyboardActivation(
                       updateCertificationData

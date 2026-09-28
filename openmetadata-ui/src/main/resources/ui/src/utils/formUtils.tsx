@@ -387,9 +387,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item className="m-b-0" {...formProps}>
           <Switch />
         </Form.Item>
-        <Typography className="font-medium" variant="text">
-          {labelValue}
-        </Typography>
+        <Typography className="font-medium">{labelValue}</Typography>
       </div>
     );
   }

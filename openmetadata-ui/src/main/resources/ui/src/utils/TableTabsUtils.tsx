@@ -450,10 +450,10 @@ export const getTableDetailPageBaseTabs = ({
           title={
             <Space className="p-y-xss" size="small">
               <div>
-                <Typography className="text-grey-muted" variant="text">
+                <Typography className="text-grey-muted">
                   {`${t('label.dbt-source-project')}: `}
                 </Typography>
-                <Typography data-testid="dbt-source-project-id" variant="text">
+                <Typography data-testid="dbt-source-project-id">
                   {tableDetails?.dataModel?.dbtSourceProject ??
                     NO_DATA_PLACEHOLDER}
                 </Typography>
@@ -465,12 +465,10 @@ export const getTableDetailPageBaseTabs = ({
               />
 
               <div>
-                <Typography className="text-grey-muted" variant="text">
+                <Typography className="text-grey-muted">
                   {`${t('label.path')}: `}
                 </Typography>
-                <Typography variant="text">
-                  {tableDetails?.dataModel?.path}
-                </Typography>
+                <Typography>{tableDetails?.dataModel?.path}</Typography>
               </div>
             </Space>
           }

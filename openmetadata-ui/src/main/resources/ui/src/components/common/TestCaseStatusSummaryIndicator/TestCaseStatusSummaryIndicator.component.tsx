@@ -52,7 +52,7 @@ const TestCaseStatusSummaryIndicator = ({
       ))}
     </Space>
   ) : (
-    <Typography data-testid="no-data-placeholder" variant="text">
+    <Typography data-testid="no-data-placeholder">
       {NO_DATA_PLACEHOLDER}
     </Typography>
   );

@@ -134,7 +134,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       maskClosable={false}
       open={isVisible}
       title={
-        <Typography variant="text">
+        <Typography>
           {t('label.edit-entity-name', {
             entityType: t('label.property'),
             entityName: getEntityName(property),

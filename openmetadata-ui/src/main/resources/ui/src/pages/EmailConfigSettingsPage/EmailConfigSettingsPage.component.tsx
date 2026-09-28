@@ -107,12 +107,12 @@ function EmailConfigSettingsPage() {
           <Col key={title} span={12}>
             <Row align="middle">
               <Col span={24}>
-                <Typography className="m-0 text-grey-muted" variant="text">
+                <Typography className="m-0 text-grey-muted">
                   {`${title}:`}
                 </Typography>
               </Col>
               <Col span={24}>
-                <Typography className="" variant="text">
+                <Typography className="">
                   {isEmpty(displayValue) ? '--' : displayValue}
                 </Typography>
               </Col>

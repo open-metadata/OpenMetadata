@@ -172,12 +172,11 @@ const TableConstraintsModal = ({
                 <Fragment key={breadcrumb.name}>
                   <Typography
                     className="constraint-breadcrumb-item"
-                    ellipsis={{ tooltip: true }}
-                    variant="text">
+                    ellipsis={{ tooltip: true }}>
                     {breadcrumb.name}
                   </Typography>
                   {index !== breadcrumbs.length - 2 && (
-                    <Typography className="text-xss" variant="text">
+                    <Typography className="text-xss">
                       {t('label.slash-symbol')}
                     </Typography>
                   )}
@@ -186,8 +185,7 @@ const TableConstraintsModal = ({
             </Space>
             <Typography
               className="constraint-breadcrumb-item constraint-column-name"
-              ellipsis={{ tooltip: true }}
-              variant="text">
+              ellipsis={{ tooltip: true }}>
               {breadcrumbs[4].name}
             </Typography>
           </div>

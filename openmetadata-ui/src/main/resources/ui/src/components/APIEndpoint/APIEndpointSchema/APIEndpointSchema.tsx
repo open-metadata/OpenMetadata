@@ -327,7 +327,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataType, record: Field) => (
-      <Typography variant="text">
+      <Typography>
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}

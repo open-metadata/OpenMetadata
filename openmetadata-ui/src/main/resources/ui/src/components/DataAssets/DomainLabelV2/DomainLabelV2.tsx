@@ -195,9 +195,7 @@ export const DomainLabelV2 = <
 
         return (
           <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
-            <Typography
-              className="self-center text-xs whitespace-nowrap"
-              variant="text">
+            <Typography className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
                 color={DE_ACTIVE_COLOR}

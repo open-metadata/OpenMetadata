@@ -82,7 +82,7 @@ const UploadFile: FC<UploadFileProps> = ({
           <span className="file-dragger-compact-icon">
             <UploadCloud01 size={22} />
           </span>
-          <Typography className="file-dragger-compact-title" variant="text">
+          <Typography className="file-dragger-compact-title">
             <Transi18next
               i18nKey="message.drop-csv-or-browse"
               renderElement={<span className="browse-text" />}
@@ -91,9 +91,7 @@ const UploadFile: FC<UploadFileProps> = ({
               }}
             />
           </Typography>
-          <Typography
-            className="file-dragger-compact-description"
-            variant="text">
+          <Typography className="file-dragger-compact-description">
             {acceptedFileDescription ??
               t('message.accepts-file-up-to-size', {
                 fileType,
@@ -108,7 +106,7 @@ const UploadFile: FC<UploadFileProps> = ({
           direction="vertical"
           size={42}>
           <ImportIcon height={86} width={86} />
-          <Typography variant="text">
+          <Typography className="file-dragger-text">
             <Transi18next
               i18nKey="message.drag-and-drop-or-browse-csv-files-here"
               renderElement={<span className="browse-text" />}

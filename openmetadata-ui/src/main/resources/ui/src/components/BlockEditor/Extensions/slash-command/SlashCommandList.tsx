@@ -134,12 +134,10 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
               src={item.imgSrc}
             />
             <Space direction="vertical" size={0}>
-              <Typography as="article" className="font-bold" variant="text">
+              <Typography as="article" className="font-bold">
                 {item.title}
               </Typography>
-              <Typography as="article" variant="text">
-                {item.description}
-              </Typography>
+              <Typography as="article">{item.description}</Typography>
             </Space>
           </Space>
         ))}

@@ -203,8 +203,7 @@ const getColumnNameContent = (
         className="custom-node-column-label"
         ellipsis={{
           tooltip: true,
-        }}
-        variant="text">
+        }}>
         {getEntityName(column)}
       </Typography>
     </>

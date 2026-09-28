@@ -48,7 +48,7 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             <RightOutlined className="text-xs text-primary cursor-pointer" />
           )}
         </span>
-        <Typography className="font-medium m-y-0" variant="text">
+        <Typography className="font-medium m-y-0">
           {t('label.source-plural')}
         </Typography>
       </Space>
@@ -60,25 +60,21 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             wrap={false}>
             <Col span={1}>{String(i + 1).padStart(2, '0')}</Col>
             <Col span={6}>
-              <Typography className="text-grey-muted" variant="text">
+              <Typography className="text-grey-muted">
                 {`${t('label.name')}:`}
               </Typography>
-              <Typography className="m-l-xs" variant="text">
-                {source.name}
-              </Typography>
+              <Typography className="m-l-xs">{source.name}</Typography>
             </Col>
             <Col span={6}>
-              <Typography className="text-grey-muted" variant="text">
+              <Typography className="text-grey-muted">
                 {`${t('label.type')}:`}
               </Typography>
-              <Typography className="m-l-xs" variant="text">
-                {source.dataType}
-              </Typography>
+              <Typography className="m-l-xs">{source.dataType}</Typography>
             </Col>
             <Col span={11}>
               <Row>
                 <Col flex="100px">
-                  <Typography className="text-grey-muted" variant="text">
+                  <Typography className="text-grey-muted">
                     {`${t('label.data-entity', {
                       entity: t('label.source'),
                     })}:`}

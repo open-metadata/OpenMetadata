@@ -54,7 +54,7 @@ const AppBadge = ({
           {icon}
         </span>
       )}
-      <Typography variant="text">{label}</Typography>
+      <Typography className="app-badge-label">{label}</Typography>
     </span>
   );
 };

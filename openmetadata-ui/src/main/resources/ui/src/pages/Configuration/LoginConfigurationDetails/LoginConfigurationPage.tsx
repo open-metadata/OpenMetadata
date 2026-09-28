@@ -107,7 +107,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography className="m-0 text-grey-muted" variant="text">
+              <Typography className="m-0 text-grey-muted">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
                   placement="top"
@@ -122,7 +122,7 @@ const LoginConfigurationPage = () => {
               </Typography>
             </Col>
             <Col span={24}>
-              <Typography data-testid="max-login-fail-attampts" variant="text">
+              <Typography data-testid="max-login-fail-attampts">
                 {loginConfig?.maxLoginFailAttempts ?? NO_DATA_PLACEHOLDER}
               </Typography>
             </Col>
@@ -131,7 +131,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography className="m-0 text-grey-muted" variant="text">
+              <Typography className="m-0 text-grey-muted">
                 {t('label.access-block-time')}
                 <Tooltip
                   placement="top"
@@ -146,7 +146,7 @@ const LoginConfigurationPage = () => {
               </Typography>
             </Col>
             <Col span={24}>
-              <Typography data-testid="access-block-time" variant="text">
+              <Typography data-testid="access-block-time">
                 {loginConfig?.accessBlockTime ?? NO_DATA_PLACEHOLDER}
               </Typography>
             </Col>
@@ -155,7 +155,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography className="m-0 text-grey-muted" variant="text">
+              <Typography className="m-0 text-grey-muted">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
                   placement="top"
@@ -170,7 +170,7 @@ const LoginConfigurationPage = () => {
               </Typography>
             </Col>
             <Col span={24}>
-              <Typography data-testid="jwt-token-expiry-time" variant="text">
+              <Typography data-testid="jwt-token-expiry-time">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
                 {t('label.second-plural')}
               </Typography>

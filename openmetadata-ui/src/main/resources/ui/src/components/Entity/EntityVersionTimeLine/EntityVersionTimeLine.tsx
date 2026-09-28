@@ -73,12 +73,10 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </div>
             </Tooltip>
             <div className="version-pricing-reached">
-              <Typography className="font-medium" level={4} variant="title">
+              <Typography as="h4" className="font-medium">
                 {t('message.unlock-all-version-history')}
               </Typography>
-              <Typography
-                className="text-grey-muted font-normal"
-                variant="text">
+              <Typography className="text-grey-muted font-normal">
                 {t('message.upgrade-to-paid-plan-for-version-history')}
               </Typography>
 
@@ -110,7 +108,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         <>
           <Row className="p-b-xss" justify="space-between">
             <Col>
-              <Typography className="font-medium" variant="text">
+              <Typography className="font-medium">
                 {t('label.version-plural-history')}
               </Typography>
             </Col>

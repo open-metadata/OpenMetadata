@@ -99,9 +99,7 @@ const SearchBoostsSection = ({
           header={
             <Row className="d-flex items-center justify-between w-full">
               <Col className="d-flex items-center gap-4">
-                <Typography
-                  className="text-sm font-semibold m-0"
-                  variant="text">
+                <Typography className="text-sm font-semibold m-0">
                   {t('label.term-boost')}
                 </Typography>
                 <span className="count-label">
@@ -144,9 +142,7 @@ const SearchBoostsSection = ({
           header={
             <Row className="d-flex items-center justify-between w-full">
               <Col className="d-flex items-center gap-4">
-                <Typography
-                  className="text-sm font-semibold m-0"
-                  variant="text">
+                <Typography className="text-sm font-semibold m-0">
                   {t('label.field-value-boost')}
                 </Typography>
                 <span className="count-label">
@@ -516,9 +512,10 @@ const SearchSettingsPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Typography
+              as="h5"
               className="text-sm font-semibold m-b-0"
-              level={5}
-              variant="title">
+              size="text-md"
+              weight="semibold">
               {t('label.global-setting-plural')}
             </Typography>
             {isAdminUser && (
@@ -534,9 +531,7 @@ const SearchSettingsPage = () => {
         <Col span={24}>
           <Row className="p-x-xs global-settings-cards-container" gutter={0}>
             <Col className="global-setting-card">
-              <Typography
-                className="global-setting-card__content"
-                variant="text">
+              <Typography className="global-setting-card__content">
                 {t('label.enable-roles-polices-in-search')}
               </Typography>
               <Switch
@@ -574,9 +569,10 @@ const SearchSettingsPage = () => {
               <Col span={24}>
                 <Row align="middle" justify="space-between">
                   <Typography
+                    as="h5"
                     className="text-sm font-semibold m-b-0"
-                    level={5}
-                    variant="title">
+                    size="text-md"
+                    weight="semibold">
                     {t('label.hybrid-search-weight-plural')}
                   </Typography>
                   <Button
@@ -592,7 +588,7 @@ const SearchSettingsPage = () => {
               <Col span={24}>
                 <Row align="middle" className="p-y-xs" gutter={16}>
                   <Col flex="100px">
-                    <Typography variant="text">
+                    <Typography>
                       {t('label.keyword')}:{' '}
                       {(
                         1 -
@@ -629,7 +625,7 @@ const SearchSettingsPage = () => {
                     />
                   </Col>
                   <Col flex="100px">
-                    <Typography variant="text">
+                    <Typography>
                       {t('label.semantic')}:{' '}
                       {(
                         searchConfig?.globalSettings?.semanticWeight ?? 0.4

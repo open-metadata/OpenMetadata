@@ -82,8 +82,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   <>
                     <Typography
                       className="days-remaining"
-                      data-testid="kpi-success"
-                      variant="text">
+                      data-testid="kpi-success">
                       <CheckCircleOutlined style={{ fontSize: '20px' }} />
                     </Typography>
                   </>
@@ -91,11 +90,10 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   <>
                     <Typography
                       className="days-remaining"
-                      data-testid="kpi-days-remaining"
-                      variant="text">
+                      data-testid="kpi-days-remaining">
                       {daysLeft <= 0 ? 0 : daysLeft}
                     </Typography>
-                    <Typography className="days-left" variant="text">
+                    <Typography className="days-left">
                       {t('label.day-left', { day: 'days' })}
                     </Typography>
                   </>
@@ -103,7 +101,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
               </div>
               <div className="m-l-sm flex-1">
                 <Space className="w-full justify-between">
-                  <Typography className="text-xs" variant="text">
+                  <Typography className="text-xs">
                     {resultData.displayName ?? name}
                   </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
@@ -126,13 +124,13 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 />
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
-                    <Typography className="text-xs" variant="text">
+                    <Typography className="text-xs">
                       {targetPercentValue}
                       {suffix}
                     </Typography>
                   </div>
                   <div>
-                    <Typography className="text-xs" variant="text">
+                    <Typography className="text-xs">
                       {targetMetPercentValue}
                       {suffix}
                     </Typography>

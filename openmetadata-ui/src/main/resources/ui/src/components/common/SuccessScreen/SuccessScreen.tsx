@@ -89,7 +89,7 @@ const SuccessScreen = ({
             height={100}
             width={100}
           />
-          <Typography as="article" variant="text">
+          <Typography as="article">
             {t('message.pipeline-scheduler-message')}
           </Typography>
         </Space>
@@ -104,10 +104,7 @@ const SuccessScreen = ({
       <Card>
         <Space>
           <IconSuccessBadge data-testid="success-icon" width="20px" />
-          <Typography
-            className="m-b-0"
-            data-testid="success-line"
-            variant="paragraph">
+          <Typography as="p" className="m-b-0" data-testid="success-line">
             {isUndefined(successMessage) ? (
               <span>
                 <span className="m-r-xss font-semibold">

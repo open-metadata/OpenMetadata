@@ -24,10 +24,10 @@ import { RightPanelProps } from '../AddDataQualityTest.interface';
 const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
   return (
     <Row>
-      <Typography data-testid="right-panel-header" variant="paragraph">
+      <Typography as="p" data-testid="right-panel-header">
         {data.title}
       </Typography>
-      <Typography variant="paragraph">{data.body}</Typography>
+      <Typography as="div">{data.body}</Typography>
     </Row>
   );
 };

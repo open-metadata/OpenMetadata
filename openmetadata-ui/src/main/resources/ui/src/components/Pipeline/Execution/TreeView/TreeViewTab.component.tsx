@@ -64,7 +64,7 @@ const TreeViewTab = ({
           <ArrowSvg className="cursor-pointer" />
         </Col>
         <Col>
-          <Typography className="p-b-0 m-b-0 font-medium" variant="text">
+          <Typography className="p-b-0 m-b-0 font-medium">
             {`${formatDateTime(startTime)} ${t(
               'label.to-lowercase'
             )} ${formatDateTime(endTime)}`}

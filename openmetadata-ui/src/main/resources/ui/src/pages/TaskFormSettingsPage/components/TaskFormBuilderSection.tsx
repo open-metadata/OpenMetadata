@@ -116,11 +116,15 @@ const TaskFormBuilderSection = ({
     <div className="task-form-builder-section">
       <div className="task-form-builder-section__header">
         <div>
-          <Typography className="m-b-xs" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-xs"
+            size="text-md"
+            weight="semibold">
             {title}
           </Typography>
           {description ? (
-            <Typography className="m-b-0 text-grey-muted" variant="paragraph">
+            <Typography as="p" className="m-b-0 text-grey-muted">
               {description}
             </Typography>
           ) : null}
@@ -173,14 +177,10 @@ const TaskFormBuilderSection = ({
                   size="small"
                   title={
                     <div className="task-form-builder-section__field-heading">
-                      <Typography
-                        className="task-form-builder-section__field-title"
-                        variant="text">
+                      <Typography className="task-form-builder-section__field-title">
                         {field.label || field.name || `Field ${index + 1}`}
                       </Typography>
-                      <Typography
-                        className="task-form-builder-section__field-meta"
-                        variant="text">
+                      <Typography className="task-form-builder-section__field-meta">
                         {summary}
                       </Typography>
                     </div>
@@ -339,7 +339,7 @@ const TaskFormBuilderSection = ({
               />
             </div>
           ) : (
-            <Typography className="text-grey-muted" variant="text">
+            <Typography className="text-grey-muted">
               {t('message.add-fields-to-preview-form')}
             </Typography>
           )}

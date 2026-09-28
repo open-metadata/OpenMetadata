@@ -146,12 +146,10 @@ export const ContractDetailFormTab: React.FC<{
     <>
       <Card className="container bg-grey p-box">
         <div>
-          <Typography className="contract-detail-form-tab-title" variant="text">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.contract-detail-plural')}
           </Typography>
-          <Typography
-            className="contract-detail-form-tab-description"
-            variant="paragraph">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.contract-detail-plural-description')}
           </Typography>
         </div>

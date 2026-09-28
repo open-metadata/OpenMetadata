@@ -70,25 +70,25 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
           <Space className="m-y-xlg" direction="vertical">
             <div>
               <Typography
-                className="welcome-screen-header-first-line m-b-0"
-                variant="paragraph">
+                as="p"
+                className="welcome-screen-header-first-line m-b-0">
                 {t('message.hi-user-welcome-to', {
                   user: userName || t('label.user'),
                 })}
               </Typography>
               <Typography
-                className="welcome-screen-header-second-line m-b-0"
-                variant="paragraph">
+                as="p"
+                className="welcome-screen-header-second-line m-b-0">
                 {`${title}! 🎉`}
               </Typography>
             </div>
             <Divider className="welcome-screen-header-divider" />
 
-            <Typography className="m-b-0 text-base" variant="paragraph">
+            <Typography as="p" className="m-b-0 text-base">
               {t('message.welcome-screen-message')}
             </Typography>
             <Link className="flex items-center gap-2 p-0" to={ROUTES.TOUR}>
-              <Typography className="welcome-screen-button-text" variant="text">
+              <Typography className="welcome-screen-button-text">
                 {t('message.take-quick-product-tour')}
               </Typography>
               <LineArrowRight className="text-primary" height={14} width={18} />

@@ -60,8 +60,10 @@ const TeamsSubscription = ({
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
-      <Typography href={value.endpoint} target="_blank" variant="link">
-        {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
+      <Typography>
+        <a href={value.endpoint} rel="noopener noreferrer" target="_blank">
+          {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
+        </a>
       </Typography>
     ),
     []
@@ -76,8 +78,7 @@ const TeamsSubscription = ({
           <div className="d-flex gap-2">
             <Typography
               className="font-medium text-sm text-secondary-new "
-              data-testid="subscription-no-data"
-              variant="text">
+              data-testid="subscription-no-data">
               {t('label.none')}
             </Typography>
           </div>
@@ -87,8 +88,7 @@ const TeamsSubscription = ({
       return (
         <Typography
           className="font-medium text-sm text-secondary-new"
-          data-testid="subscription-no-data"
-          variant="text">
+          data-testid="subscription-no-data">
           {NO_DATA_PLACEHOLDER}
         </Typography>
       );
@@ -141,9 +141,7 @@ const TeamsSubscription = ({
       className="teams-subscription-container d-flex flex-col gap-2"
       data-testid="teams-subscription">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
-        <Typography
-          className="right-panel-label text-sm font-medium subscription-label"
-          variant="text">
+        <Typography className="right-panel-label text-sm font-medium subscription-label">
           {`${t('label.subscription')}`}
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (

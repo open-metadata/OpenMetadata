@@ -24,7 +24,7 @@ const AnnouncementBadge = () => {
     <div className="announcement-badge-container">
       <Icon className="announcement-badge" component={AnnouncementIcon} />
 
-      <Typography className="announcement-text" variant="text">
+      <Typography className="announcement-text">
         {t('label.announcement')}
       </Typography>
     </div>

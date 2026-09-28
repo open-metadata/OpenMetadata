@@ -34,26 +34,25 @@ const CustomStatistic = ({
   return (
     <Row justify="space-between">
       <Col>
-        <Typography className="font-medium m-b-0" variant="paragraph">
+        <Typography as="p" className="font-medium m-b-0">
           {label}
         </Typography>
-        <Typography className="font-bold text-2xl m-b-0" variant="paragraph">
+        <Typography as="p" className="font-bold text-2xl m-b-0">
           {value}
         </Typography>
       </Col>
       <Col className="text-right">
         {!isNil(changeInValue) && (
-          <Typography className="m-b-0" variant="paragraph">
+          <Typography as="p" className="m-b-0">
             <Typography
               className="d-block"
-              color={changeInValue >= 0 ? 'success' : 'danger'}
-              variant="text">
+              color={changeInValue >= 0 ? 'success' : 'danger'}>
               {`${changeInValue >= 0 ? '+' : ''}${round(
                 changeInValue || 0,
                 2
               )}%`}
             </Typography>
-            <Typography className="d-block" variant="text">
+            <Typography className="d-block">
               {!isNil(duration) &&
                 t('label.days-change-lowercase', {
                   days: duration,

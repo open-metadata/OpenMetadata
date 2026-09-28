@@ -136,10 +136,7 @@ describe('DomainsSection', () => {
     it('renders header, title and no-data when empty', () => {
       const { container } = render(<DomainsSection {...defaultProps} />);
 
-      expect(screen.getByText('label.domain-plural')).toHaveAttribute(
-        'data-typography',
-        'text'
-      );
+      expect(screen.getByText('label.domain-plural').tagName).toBe('SPAN');
       expect(container.querySelector('.domains-section')).toBeInTheDocument();
       expect(container.querySelector('.domains-header')).toBeInTheDocument();
       expect(container.querySelector('.domains-content')).toBeInTheDocument();

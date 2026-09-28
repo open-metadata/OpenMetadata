@@ -64,7 +64,7 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="p-xs rounded-4 m-y-xss m-b-sm">
-          <Typography className="text-grey-muted" variant="text">
+          <Typography className="text-grey-muted">
             {t('label.no-entity', { entity: t('label.description') })}
           </Typography>
         </div>
@@ -88,7 +88,7 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
 
     return !newDescription && !currentDescription ? (
       <div className="no-description-suggestion-card w-full">
-        <Typography className="text-grey-muted p-xs" variant="text">
+        <Typography className="text-grey-muted p-xs">
           {t('label.no-entity', { entity: t('label.suggestion') })}
         </Typography>
       </div>

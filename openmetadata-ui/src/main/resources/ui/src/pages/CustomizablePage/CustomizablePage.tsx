@@ -520,7 +520,7 @@ const CustomizablePageContent = () => {
           <ErrorPlaceHolder
             className="m-t-lg"
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography className="w-max-500" variant="paragraph">
+            <Typography as="p" className="w-max-500">
               <Transi18next
                 i18nKey="message.no-persona-message"
                 renderElement={

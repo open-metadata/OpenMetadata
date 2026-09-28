@@ -90,7 +90,7 @@ const Assignees: FC<Props> = ({
                 height={16}
                 width={16}
               />
-              <Typography variant="text">{team.label}</Typography>
+              <Typography>{team.label}</Typography>
             </div>
           ),
         })),

@@ -334,7 +334,7 @@ export const PipelineTaskTab = () => {
         width: 180,
         title: t('label.type'),
         render: (text) => (
-          <Typography variant="text">{text || NO_DATA_PLACEHOLDER}</Typography>
+          <Typography>{text || NO_DATA_PLACEHOLDER}</Typography>
         ),
       },
       {

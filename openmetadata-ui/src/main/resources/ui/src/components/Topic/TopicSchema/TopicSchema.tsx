@@ -321,7 +321,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataTypeTopic, record: Field) => (
-      <Typography variant="text">
+      <Typography>
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -488,9 +488,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     return (
       <Col>
-        <Typography color="secondary" variant="text">
-          {t('label.schema')}
-        </Typography>
+        <Typography color="secondary">{t('label.schema')}</Typography>
         {schemaTypePlaceholder ?? (
           <Tag className="ml-4">{messageSchema.schemaType}</Tag>
         )}

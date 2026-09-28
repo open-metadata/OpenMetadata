@@ -88,8 +88,7 @@ function GlossaryTermSummary({
           <Col span={24}>
             <Typography
               className="summary-panel-section-title"
-              data-testid="reviewer-header"
-              variant="text">
+              data-testid="reviewer-header">
               {t('label.reviewer-plural')}
             </Typography>
           </Col>
@@ -103,8 +102,7 @@ function GlossaryTermSummary({
             ) : (
               <Typography
                 className="no-data-chip-placeholder"
-                data-testid="no-reviewer-header"
-                variant="text">
+                data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
               </Typography>
             )}
@@ -117,8 +115,7 @@ function GlossaryTermSummary({
           <Col span={24}>
             <Typography
               className="summary-panel-section-title"
-              data-testid="synonyms-header"
-              variant="text">
+              data-testid="synonyms-header">
               {t('label.synonym-plural')}
             </Typography>
           </Col>
@@ -132,8 +129,7 @@ function GlossaryTermSummary({
             ) : (
               <Typography
                 className="no-data-chip-placeholder"
-                data-testid="no-synonyms-available-header"
-                variant="text">
+                data-testid="no-synonyms-available-header">
                 {t('message.no-synonyms-available')}
               </Typography>
             )}
@@ -146,8 +142,7 @@ function GlossaryTermSummary({
           <Col span={24}>
             <Typography
               className="summary-panel-section-title"
-              data-testid="children-header"
-              variant="text">
+              data-testid="children-header">
               {t('label.children')}
             </Typography>
           </Col>

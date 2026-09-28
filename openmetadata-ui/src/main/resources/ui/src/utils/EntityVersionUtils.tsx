@@ -117,7 +117,7 @@ export const getSummary = ({
   return (
     <Fragment>
       {isDeleteUpdated?.length > 0 ? (
-        <Typography variant="paragraph">
+        <Typography as="p">
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
@@ -132,7 +132,7 @@ export const getSummary = ({
         </Typography>
       ) : null}
       {fieldsAdded?.length > 0 ? (
-        <Typography variant="paragraph">
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsAdded,
@@ -142,7 +142,7 @@ export const getSummary = ({
         </Typography>
       ) : null}
       {fieldsUpdated?.length ? (
-        <Typography variant="paragraph">
+        <Typography as="div">
           {bulkImportSummary ? (
             <>
               {t('message.bulk-import-completed')}
@@ -160,7 +160,7 @@ export const getSummary = ({
         </Typography>
       ) : null}
       {fieldsDeleted?.length ? (
-        <Typography variant="paragraph">
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsDeleted,
@@ -225,16 +225,16 @@ export const getParameterValueDiffDisplay = (
         className="parameter-value-container parameter-value"
         size={6}>
         {otherParamDiffs.length === 0 ? (
-          <Typography color="secondary" variant="text">
+          <Typography color="secondary">
             {t('label.no-parameter-available')}
           </Typography>
         ) : (
           otherParamDiffs.map((diff, index) => (
             <Space data-testid={diff.name} key={diff.name} size={4}>
-              <Typography className="parameter-label" variant="text">
+              <Typography className="parameter-label">
                 {`${diff.name}:`}
               </Typography>
-              <Typography className="parameter-value-text" variant="text">
+              <Typography className="parameter-value-text">
                 {getDiffDisplayValue(diff)}
               </Typography>
               {otherParamDiffs.length - 1 !== index && (
@@ -247,7 +247,7 @@ export const getParameterValueDiffDisplay = (
       {/* Render sqlExpression parameter separately, using inline diff in a code-style block */}
       {sqlParamDiff && (
         <div className="m-t-md">
-          <Typography className="right-panel-label" variant="text">
+          <Typography className="right-panel-label">
             {startCase(sqlParamDiff.name)}
           </Typography>
 

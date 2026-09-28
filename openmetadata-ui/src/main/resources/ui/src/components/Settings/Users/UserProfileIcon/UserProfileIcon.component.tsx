@@ -179,7 +179,7 @@ export const UserProfileIcon = () => {
             true
           )}>
           <div className="d-flex items-center default-persona-container">
-            <Typography ellipsis={{ tooltip: true }} variant="text">
+            <Typography ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
             </Typography>
 
@@ -215,7 +215,6 @@ export const UserProfileIcon = () => {
       isPersona ? (
         <Typography
           className="more-teams-pill"
-          variant="text"
           onClick={(e) => {
             e.stopPropagation();
             setShowAllPersona(true);
@@ -279,9 +278,9 @@ export const UserProfileIcon = () => {
             to={getUserPath(currentUser?.name as string)}
             onClick={handleCloseDropdown}>
             <Typography
+              as="p"
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, tooltip: true }}
-              variant="paragraph">
+              ellipsis={{ rows: 1, tooltip: true }}>
               {t('label.view-entity', { entity: t('label.profile') })}
             </Typography>
           </Link>
@@ -472,17 +471,16 @@ export const UserProfileIcon = () => {
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
             <Typography
-              className="font-semibold"
-              data-testid="nav-user-name"
-              variant="text">
+              className="name-persona-text font-semibold"
+              data-testid="nav-user-name">
               {getEntityName(currentUser)}
             </Typography>
           </Tooltip>
 
           <Typography
+            className="name-persona-text"
             data-testid="default-persona"
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             {isEmpty(selectedPersona)
               ? t('label.default')
               : getEntityName(selectedPersona)}

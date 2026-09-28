@@ -107,7 +107,7 @@ const AnnouncementThreadBody = ({
       <ErrorPlaceHolder
         className="h-auto mt-24"
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography data-testid="announcement-error" variant="paragraph">
+        <Typography as="p" data-testid="announcement-error">
           {t('message.no-announcement-message')}
         </Typography>
       </ErrorPlaceHolder>

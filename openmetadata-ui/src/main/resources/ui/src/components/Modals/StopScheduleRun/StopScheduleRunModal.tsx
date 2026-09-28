@@ -65,7 +65,7 @@ const StopScheduleModal: FC<StopScheduleRunModalProps> = ({
       onCancel={onClose}
       onOk={handleConfirm}>
       <div data-testid="stop-modal">
-        <Typography data-testid="stop-modal-body" variant="text">
+        <Typography data-testid="stop-modal-body">
           {t('message.are-you-sure-action-property', {
             action: 'Stop',
             propertyName: displayName,

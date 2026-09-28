@@ -123,10 +123,10 @@ const AuthMechanismForm: FC<Props> = ({
   return isSCIMBot ? (
     <div className="flex  justify-between items-center">
       <div className="flex flex-col gap-2">
-        <Typography className="card-title m-t-0 m-b-2 text-md" variant="text">
+        <Typography className="card-title m-t-0 m-b-2 text-md">
           {t('message.automate-provisioning-with-scim')}
         </Typography>
-        <Typography className="m-b-0 card-description" variant="paragraph">
+        <Typography as="p" className="m-b-0 card-description">
           {t(
             'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
           )}

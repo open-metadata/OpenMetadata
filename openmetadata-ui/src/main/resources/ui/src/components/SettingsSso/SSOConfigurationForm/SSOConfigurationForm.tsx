@@ -141,9 +141,7 @@ const MetadataUploadStatusCard = ({
             <X className="text-white" size={16} />
           )}
         </div>
-        <Typography
-          className="text-grey-body text-sm font-medium"
-          variant="text">
+        <Typography className="text-grey-body text-sm font-medium">
           {t(
             isSuccess
               ? 'message.metadata-xml-file-parsed-success'
@@ -1220,7 +1218,7 @@ const SSOConfigurationFormRJSF = ({
               <div
                 className="flex align-center flex-wrap gap-4 justify-center"
                 style={{ maxWidth: '220px' }}>
-                <Typography className="font-medium" variant="text">
+                <Typography className="font-medium">
                   {t('label.click-to')}{' '}
                   <Button
                     className="h-auto p-0 font-semibold"
@@ -1231,7 +1229,7 @@ const SSOConfigurationFormRJSF = ({
                   {t('label.or-drag-and-drop-an-xml-file-here')}
                 </Typography>
               </div>
-              <Typography className="text-grey-muted text-xs" variant="text">
+              <Typography className="text-grey-muted text-xs">
                 {t('message.upload-saml-metadata-xml-description')}
               </Typography>
             </div>
@@ -1354,7 +1352,7 @@ const SSOConfigurationFormRJSF = ({
               />
             )}
           </div>
-          <Typography className="m-0 text-md" variant="title">
+          <Typography as="h1" className="sso-provider-title m-0 text-md">
             {getProviderDisplayName(currentProvider)} {t('label.set-up')}
           </Typography>
         </div>

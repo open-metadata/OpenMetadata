@@ -98,8 +98,7 @@ const KnowledgePageSummary = ({
               <Col span={24}>
                 <Typography
                   className="summary-panel-section-title"
-                  data-testid="tags-header"
-                  variant="text">
+                  data-testid="tags-header">
                   {t('label.link')}
                 </Typography>
               </Col>

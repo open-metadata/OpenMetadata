@@ -121,7 +121,7 @@ const CuratedAssetsModal = ({
     () => (
       <div className="flex items-center">
         <PlusSquare className="text-xl" />
-        <Typography strong className="m-l-xs text-white" variant="text">
+        <Typography className="m-l-xs text-white" weight="semibold">
           {!isEmpty(curatedAssetsConfig)
             ? t('label.edit-widget')
             : t('label.create-widget')}

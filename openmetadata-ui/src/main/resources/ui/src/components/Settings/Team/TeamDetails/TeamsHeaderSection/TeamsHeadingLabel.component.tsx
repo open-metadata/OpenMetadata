@@ -94,18 +94,18 @@ const TeamsHeadingLabel = ({
   const teamHeadingRender = useMemo(() => {
     const headingTitle = heading ? (
       <Typography
+        as="h5"
         className="m-b-0 flex-1 w-min-0"
         data-testid="team-heading"
         ellipsis={{ tooltip: true }}
-        level={5}
-        variant="title">
+        size="text-md"
+        weight="semibold">
         {heading}
       </Typography>
     ) : (
       <Typography
         className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
-        data-testid="team-heading"
-        variant="text">
+        data-testid="team-heading">
         {t('label.no-entity', {
           entity: t('label.display-name'),
         })}

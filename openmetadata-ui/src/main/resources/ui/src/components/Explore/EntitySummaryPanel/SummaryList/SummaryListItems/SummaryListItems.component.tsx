@@ -46,8 +46,7 @@ function SummaryListItem({
               })}
             <Typography
               className="m-r-xs"
-              ellipsis={{ tooltip: entityDetails.title }}
-              variant="text">
+              ellipsis={{ tooltip: entityDetails.title }}>
               {entityDetails.title}
             </Typography>
 
@@ -65,13 +64,12 @@ function SummaryListItem({
           {entityDetails.algorithm && (
             <Col span={24}>
               <Space className="h-6" size={4}>
-                <Typography className="text-grey-muted" variant="text">{`${t(
+                <Typography className="text-grey-muted">{`${t(
                   'label.algorithm'
                 )}:`}</Typography>
                 <Typography
                   className="font-medium text-grey-body"
-                  data-testid="algorithm"
-                  variant="text">
+                  data-testid="algorithm">
                   {entityDetails.algorithm}
                 </Typography>
               </Space>
@@ -79,16 +77,14 @@ function SummaryListItem({
           )}
 
           <Col span={24}>
-            <Typography className="text-grey-body m-y-0" variant="paragraph">
+            <Typography as="div" className="text-grey-body m-y-0">
               {entityDetails.description ? (
                 <RichTextEditorPreviewerV1
                   markdown={entityDetails.description || ''}
                   maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                 />
               ) : (
-                <Typography
-                  className="text-sm no-data-chip-placeholder"
-                  variant="text">
+                <Typography className="text-sm no-data-chip-placeholder">
                   {t('label.no-entity', { entity: t('label.description') })}
                 </Typography>
               )}

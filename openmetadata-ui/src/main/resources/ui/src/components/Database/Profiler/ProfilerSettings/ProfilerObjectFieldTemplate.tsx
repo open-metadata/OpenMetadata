@@ -51,9 +51,7 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         )}
       </Space>
       {isEmpty(properties) ? (
-        <Typography as="article" variant="text">
-          {t('message.no-config-plural')}
-        </Typography>
+        <Typography as="article">{t('message.no-config-plural')}</Typography>
       ) : (
         properties.map((element) => (
           <div

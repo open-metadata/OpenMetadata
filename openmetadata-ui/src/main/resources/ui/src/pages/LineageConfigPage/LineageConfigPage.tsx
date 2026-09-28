@@ -135,10 +135,11 @@ const LineageConfigPage = () => {
 
                 <Col span={24}>
                   <Typography
+                    as="h5"
                     className="m-b-0"
                     data-testid="heading"
-                    level={5}
-                    variant="title">
+                    size="text-md"
+                    weight="semibold">
                     {t('label.lineage')}
                   </Typography>
                 </Col>

@@ -39,8 +39,7 @@ const RolesElement = ({ userData }: RolesElementProps) => {
           <Icon component={IconUser} style={{ fontSize: '16px' }} />
           <Typography
             className="ant-typography-ellipsis-custom w-48"
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             {getEntityName(role)}
           </Typography>
         </div>

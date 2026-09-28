@@ -55,7 +55,6 @@ const DeployIngestionLoaderModal = ({
               style={{
                 background: `linear-gradient(to right, ${theme.primaryColor} ${progress}%, ${LITE_GRAY_COLOR} ${progress}%)`,
               }}
-              variant="text"
             />
 
             <div className="ingestion-wrappe absolute" style={{ left: '16%' }}>
@@ -63,9 +62,8 @@ const DeployIngestionLoaderModal = ({
                 className={classNames('ingestion-deploy-rounder self-center')}
                 style={{
                   background: isActive(isIngestionCreated),
-                }}
-                variant="text">
-                <Typography className="flex-center h-full" variant="text">
+                }}>
+                <Typography className="flex-center h-full">
                   <Icon
                     className="align-middle"
                     component={IconCreateIngestion}
@@ -79,9 +77,8 @@ const DeployIngestionLoaderModal = ({
                 className={classNames('ingestion-deploy-rounder self-center')}
                 style={{
                   background: isActive(isDeployed),
-                }}
-                variant="text">
-                <Typography className="flex-center h-full" variant="text">
+                }}>
+                <Typography className="flex-center h-full">
                   <Icon
                     className="align-middle"
                     component={IconDeployIngestion}
@@ -92,9 +89,9 @@ const DeployIngestionLoaderModal = ({
             </div>
           </Fragment>
         </div>
-        <Typography className="text-center mt-24" variant="text">
+        <Typography className="text-center mt-24">
           {action}
-          <Typography className="font-semibold m-l-xss" variant="text">
+          <Typography className="font-semibold m-l-xss">
             {`“${ingestionName}”`}
           </Typography>
         </Typography>

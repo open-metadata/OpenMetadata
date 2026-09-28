@@ -295,8 +295,7 @@ export const getAgentRunningStatusMessage = (
 
       <Typography
         className="text-grey-muted text-sm"
-        data-testid="agents-status-message"
-        variant="text">
+        data-testid="agents-status-message">
         {message}
       </Typography>
     </div>

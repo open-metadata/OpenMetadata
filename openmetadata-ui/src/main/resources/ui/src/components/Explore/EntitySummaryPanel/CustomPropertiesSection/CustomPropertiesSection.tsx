@@ -65,9 +65,7 @@ const CustomPropertiesSection = ({
   const emptyState = useMemo(() => {
     if (searchText) {
       return (
-        <Typography
-          className="text-center text-grey-muted p-sm"
-          variant="paragraph">
+        <Typography as="p" className="text-center text-grey-muted p-sm">
           {t('message.no-entity-found-for-name', {
             entity: t('label.custom-property-plural'),
             name: searchText,

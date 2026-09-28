@@ -292,10 +292,11 @@ const NotificationBox = ({
   return (
     <div className="notification-box">
       <Typography
+        as="h5"
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
-        level={5}
-        variant="title">
+        size="text-md"
+        weight="semibold">
         {t('label.notification-plural')}
       </Typography>
       <Tabs

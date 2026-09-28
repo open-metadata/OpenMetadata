@@ -32,8 +32,8 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
   return (
     <div className="header-theme-settings">
       <Typography
-        className="header-theme-title display-xs font-semibold"
-        variant="title">
+        as="h1"
+        className="header-theme-title display-xs font-semibold">
         {t('label.preview-header')}
       </Typography>
       <div className="header-theme-container p-box bg-white">
@@ -45,7 +45,7 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
         />
       </div>
       <div className="select-background-container">
-        <Typography className="display-xs font-semibold" variant="text">
+        <Typography className="display-xs font-semibold">
           {t('label.select-background')}
         </Typography>
         <div className="select-background-options p-y-lg p-x-0 d-flex flex-wrap items-center">

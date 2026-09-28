@@ -179,7 +179,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   return (
     <div data-testid="summary-card">
-      <Typography className="font-medium" variant="paragraph">
+      <Typography as="p" className="font-medium">
         {t('label.data-insight-summary', {
           organization:
             getEntityName(OrganizationDetails) ?? t('label.brand-name'),

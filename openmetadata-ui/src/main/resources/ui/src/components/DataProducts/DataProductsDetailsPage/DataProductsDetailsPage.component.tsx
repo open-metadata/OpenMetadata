@@ -437,8 +437,7 @@ function DataProductActionButtons(
               <Typography
                 className={classNames('', {
                   'text-primary': version,
-                })}
-                variant="text">
+                })}>
                 {toString(dataProduct.version)}
               </Typography>
             </Button>

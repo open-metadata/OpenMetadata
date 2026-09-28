@@ -71,8 +71,7 @@ function CommonEntitySummaryInfo({
           valueContent = (
             <Typography
               className={classNames('summary-item-value text-grey-body')}
-              data-testid={`${info.name}-value`}
-              variant="text">
+              data-testid={`${info.name}-value`}>
               {info.value}
             </Typography>
           );
@@ -84,8 +83,7 @@ function CommonEntitySummaryInfo({
               <Col span={8}>
                 <Typography
                   className="summary-item-key font-semibold"
-                  data-testid={`${info.name}-label`}
-                  variant="text">
+                  data-testid={`${info.name}-label`}>
                   {info.name}
                 </Typography>
               </Col>

@@ -132,7 +132,7 @@ const GithubStarCard = () => {
           <Space>
             <StarIcon className="github-star-icon" />
 
-            <Typography className="github-star-popup-header" variant="text">
+            <Typography className="github-star-popup-header">
               {t('label.star-us-on-github')}
             </Typography>
           </Space>
@@ -145,31 +145,39 @@ const GithubStarCard = () => {
           />
         </Space>
 
-        <Typography
-          className="github-star-popup-description"
-          variant="paragraph">
+        <Typography as="p" className="github-star-popup-description">
           {t('message.star-on-github-description')}
         </Typography>
 
         <ButtonGroup className="github-action-button-group">
-          <Typography href={OMD_REPOSITORY_LINK} target="_blank" variant="link">
-            <Button
-              className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}>
-              {t('label.star')}
-            </Button>
+          <Typography>
+            <a
+              href={OMD_REPOSITORY_LINK}
+              rel="noopener noreferrer"
+              target="_blank">
+              <Button
+                className="github-star-button github-modal-action-button"
+                icon={<Icon component={StarGithubIcon} size={12} />}>
+                {t('label.star')}
+              </Button>
+            </a>
           </Typography>
 
-          <Typography href={OMD_REPOSITORY_LINK} target="_blank" variant="link">
-            <Button className="github-modal-action-button">
-              {isLoading ? (
-                <div data-testid="skeleton-loader">
-                  <Skeleton.Button active size="small" />
-                </div>
-              ) : (
-                starredCount
-              )}
-            </Button>
+          <Typography>
+            <a
+              href={OMD_REPOSITORY_LINK}
+              rel="noopener noreferrer"
+              target="_blank">
+              <Button className="github-modal-action-button">
+                {isLoading ? (
+                  <div data-testid="skeleton-loader">
+                    <Skeleton.Button active size="small" />
+                  </div>
+                ) : (
+                  starredCount
+                )}
+              </Button>
+            </a>
           </Typography>
         </ButtonGroup>
       </Card>

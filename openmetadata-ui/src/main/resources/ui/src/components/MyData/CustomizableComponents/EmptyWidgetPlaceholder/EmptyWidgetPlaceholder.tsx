@@ -81,7 +81,7 @@ function EmptyWidgetPlaceholder({
                   height={iconHeight}
                   width={iconWidth}
                 />
-                <Typography variant="text">
+                <Typography>
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                     entity: t('label.widget'),
                   })}

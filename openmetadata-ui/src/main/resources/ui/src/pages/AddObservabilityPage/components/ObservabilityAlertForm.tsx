@@ -55,14 +55,12 @@ function ObservabilityAlertForm({
       </Col>
 
       <Col span={24}>
-        <Typography level={5} variant="title">
+        <Typography as="h5" size="text-md" weight="semibold">
           {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
             entity: t('label.alert'),
           })}
         </Typography>
-        <Typography variant="text">
-          {t('message.alerts-description')}
-        </Typography>
+        <Typography>{t('message.alerts-description')}</Typography>
       </Col>
 
       <Col span={24}>

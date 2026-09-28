@@ -200,9 +200,7 @@ function SpreadsheetsTable({
             data-testid="show-deleted"
             onClick={handleShowDeletedChange}
           />
-          <Typography className="m-l-xs" variant="text">
-            {t('label.deleted')}
-          </Typography>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}

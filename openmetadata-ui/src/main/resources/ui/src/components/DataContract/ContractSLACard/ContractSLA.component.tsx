@@ -166,7 +166,7 @@ const ContractSLA: React.FC<{
       span={24}>
       <div className="contract-card-header-container">
         <div className="d-flex items-center gap-1">
-          <Typography className="contract-card-header" variant="text">
+          <Typography className="contract-card-header">
             {t('label.service-level-agreement')}
           </Typography>
           {inheritedIcon}

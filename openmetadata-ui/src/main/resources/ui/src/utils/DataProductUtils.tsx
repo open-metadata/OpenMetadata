@@ -453,16 +453,16 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
     <Space direction="vertical" size={0}>
       <Space>
         <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
-        <Typography variant="text">{getEntityName(props)}</Typography>
+        <Typography>{getEntityName(props)}</Typography>
       </Space>
       {props.description && (
         <Typography
+          as="div"
           className="data-product-list-description"
           ellipsis={{
             tooltip: props.description,
             rows: 2,
-          }}
-          variant="paragraph">
+          }}>
           <RichTextEditorPreviewerV1 markdown={props.description} />
         </Typography>
       )}

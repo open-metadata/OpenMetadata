@@ -425,7 +425,7 @@ function ServiceMainTabContent({
                               data-testid="show-deleted"
                               onClick={onShowDeletedChange}
                             />
-                            <Typography className="m-l-xs" variant="text">
+                            <Typography className="m-l-xs">
                               {t('label.deleted')}
                             </Typography>
                           </span>

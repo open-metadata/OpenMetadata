@@ -69,10 +69,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
           />
         )}
 
-        <Typography
-          className="text-primary"
-          ellipsis={{ tooltip: true }}
-          variant="text">
+        <Typography className="text-primary" ellipsis={{ tooltip: true }}>
           {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
         </Typography>
       </div>
@@ -165,8 +162,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
       render: (text: string) => (
         <Typography
           data-testid={`lineage-column-${header}-${text}`}
-          ellipsis={{ tooltip: true }}
-          variant="text">
+          ellipsis={{ tooltip: true }}>
           {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
         </Typography>
       ),

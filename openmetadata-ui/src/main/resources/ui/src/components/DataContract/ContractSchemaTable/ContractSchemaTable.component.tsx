@@ -61,9 +61,7 @@ const ContractSchemaTable: React.FC<{
         dataIndex: 'name',
         key: 'name',
         render: (name: string) => (
-          <Typography className="text-primary" variant="text">
-            {name}
-          </Typography>
+          <Typography className="text-primary">{name}</Typography>
         ),
       },
       {
@@ -89,7 +87,7 @@ const ContractSchemaTable: React.FC<{
                       {constraint}
                     </Tag>
                   ) : (
-                    <Typography data-testid="no-constraints" variant="text">
+                    <Typography data-testid="no-constraints">
                       {NO_DATA_PLACEHOLDER}
                     </Typography>
                   )}
@@ -139,9 +137,12 @@ const ContractSchemaTable: React.FC<{
       <Col className="d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
-            <Typography variant="text">{`${t('label.entity-status', {
-              entity: t('label.schema'),
-            })} :`}</Typography>
+            <Typography className="contract-status-label">{`${t(
+              'label.entity-status',
+              {
+                entity: t('label.schema'),
+              }
+            )} :`}</Typography>
             <StatusBadgeV2
               dataTestId="contract-status-card-item-schema-status"
               label={contractStatus}

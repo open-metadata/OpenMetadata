@@ -120,10 +120,8 @@ const renderFilterPattern = (
               <div
                 className="w-full flex flex-col"
                 key={`${key}-${JSON.stringify(value)}`}>
-                <Typography className="key" variant="text">{`${startCase(
-                  key
-                )}:`}</Typography>
-                <Typography className="value" variant="text">
+                <Typography className="key">{`${startCase(key)}:`}</Typography>
+                <Typography className="value">
                   {(value as string[]).join(', ')}
                 </Typography>
               </div>

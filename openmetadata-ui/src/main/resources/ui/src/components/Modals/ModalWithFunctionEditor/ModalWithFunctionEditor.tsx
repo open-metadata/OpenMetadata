@@ -78,11 +78,7 @@ export const ModalWithFunctionEditor = ({
       getContainer={getContainer}
       maskClosable={false}
       open={visible}
-      title={
-        <Typography data-testid="header" variant="text">
-          {header}
-        </Typography>
-      }
+      title={<Typography data-testid="header">{header}</Typography>}
       width="700px"
       onCancel={onCancel}>
       {isLoading ? (

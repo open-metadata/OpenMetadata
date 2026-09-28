@@ -40,13 +40,13 @@ const CustomTooltip = ({
     return (
       <Card className="custom-tooltip-area-chart">
         <div className="flex-center gap-2">
-          <Typography className="font-medium text-md" variant="text">
+          <Typography className="font-medium text-md">
             {valueFormatter
               ? valueFormatter(payloadData['count'])
               : payloadData['count']}
           </Typography>
           <Divider type="vertical" />
-          <Typography className="text-xs" variant="text">
+          <Typography className="text-xs">
             {formatDate(payloadData.timestamp)}
           </Typography>
         </div>

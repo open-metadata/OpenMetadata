@@ -209,18 +209,13 @@ const SearchPreview = ({
     <div className="search-preview">
       <Row className="d-flex justify-between items-center m-b-sm search-preview-header">
         <Col>
-          <Typography
-            className="header-title"
-            data-testid="search-preview"
-            variant="text">
+          <Typography className="header-title" data-testid="search-preview">
             {t('label.preview')}
           </Typography>
         </Col>
         <Col className="search-preview-actions">
           <span className="ranking-details-control">
-            <Typography variant="text">
-              {t('label.ranking-detail-plural')}
-            </Typography>
+            <Typography>{t('label.ranking-detail-plural')}</Typography>
             <Toggle
               aria-label={t('label.ranking-detail-plural')}
               data-testid="ranking-details-switch"

@@ -80,7 +80,7 @@ export const UserImportResult = ({
         fixed: true,
         render: (name: string) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {name}
             </Typography>
           );
@@ -92,7 +92,7 @@ export const UserImportResult = ({
         key: 'displayName',
         render: (displayName: string) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {displayName || '--'}
             </Typography>
           );
@@ -120,7 +120,7 @@ export const UserImportResult = ({
         key: 'email',
         render: (value: string) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -132,7 +132,7 @@ export const UserImportResult = ({
         key: 'timezone',
         render: (value: string) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -144,7 +144,7 @@ export const UserImportResult = ({
         key: 'isAdmin',
         render: (value: string) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -156,7 +156,7 @@ export const UserImportResult = ({
         key: 'teams*',
         render: (value: string) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -167,7 +167,7 @@ export const UserImportResult = ({
         dataIndex: 'Roles',
         key: 'Roles',
         render: (value: string) => {
-          return <Typography variant="paragraph">{value || '--'}</Typography>;
+          return <Typography as="p">{value || '--'}</Typography>;
         },
       },
     ];

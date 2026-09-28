@@ -136,9 +136,7 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
               <div className="security-form-item-title-container">
                 <div className="d-flex items-center gap-6">
                   <div className="d-flex flex-column">
-                    <Typography
-                      className="consumer-form-item-title"
-                      variant="text">
+                    <Typography className="consumer-form-item-title">
                       {policiesFormData?.[policyField.key]?.accessPolicy ||
                         t('label.untitled')}
                     </Typography>
@@ -219,9 +217,7 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                     return (
                       <>
                         <div className="d-flex items-center justify-between">
-                          <Typography
-                            className="row-filter-title"
-                            variant="text">
+                          <Typography className="row-filter-title">
                             {t('label.row-filter-plural')}
                           </Typography>
 
@@ -461,12 +457,10 @@ export const ContractSecurityFormTab: React.FC<{
     <>
       <Card className="contract-security-form-container container bg-grey p-box">
         <div>
-          <Typography className="contract-detail-form-tab-title" variant="text">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.security')}
           </Typography>
-          <Typography
-            className="contract-detail-form-tab-description"
-            variant="paragraph">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-security-description')}
           </Typography>
         </div>
@@ -495,12 +489,10 @@ export const ContractSecurityFormTab: React.FC<{
           <div className="contract-form-content-container">
             <div className="d-flex justify-between items-center">
               <div className="consumer-title-container">
-                <Typography className="consumer-title" variant="text">
+                <Typography className="consumer-title">
                   {t('label.policy-plural')}
                 </Typography>
-                <Typography
-                  className="consumer-description"
-                  variant="paragraph">
+                <Typography as="p" className="consumer-description">
                   {t('message.contract-security-consume-description')}
                 </Typography>
               </div>

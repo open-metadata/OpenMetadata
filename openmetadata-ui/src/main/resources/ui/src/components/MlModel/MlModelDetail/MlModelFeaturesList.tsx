@@ -172,7 +172,7 @@ const MlModelFeaturesList = () => {
             <Divider className="m-y-md" />
           </Col>
           <Col span={24}>
-            <Typography level={5} variant="title">
+            <Typography as="h5" size="text-md" weight="semibold">
               {t('label.feature-plural-used')}
             </Typography>
           </Col>
@@ -192,7 +192,6 @@ const MlModelFeaturesList = () => {
                         style={{
                           cursor: isDeleted ? 'default' : 'pointer',
                         }}
-                        variant="text"
                         onClick={(event) => handleColumnClick(feature, event)}>
                         {feature.name}
                       </Typography>
@@ -200,23 +199,17 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Space align="start">
                         <Space>
-                          <Typography
-                            className="text-grey-muted"
-                            variant="text">
+                          <Typography className="text-grey-muted">
                             {`${t('label.type')} :`}
                           </Typography>{' '}
-                          <Typography variant="text">
-                            {feature.dataType || '--'}
-                          </Typography>
+                          <Typography>{feature.dataType || '--'}</Typography>
                         </Space>
                         <Divider className="border-gray" type="vertical" />
                         <Space>
-                          <Typography
-                            className="text-grey-muted"
-                            variant="text">
+                          <Typography className="text-grey-muted">
                             {`${t('label.algorithm')} :`}
                           </Typography>{' '}
-                          <Typography variant="text">
+                          <Typography>
                             {feature.featureAlgorithm || '--'}
                           </Typography>
                         </Space>
@@ -226,9 +219,7 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography
-                            className="text-grey-muted"
-                            variant="text">
+                          <Typography className="text-grey-muted">
                             {`${t('label.glossary-term-plural')} :`}
                           </Typography>
                         </Col>
@@ -252,9 +243,7 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography
-                            className="text-grey-muted"
-                            variant="text">
+                          <Typography className="text-grey-muted">
                             {`${t('label.tag-plural')} :`}
                           </Typography>
                         </Col>
@@ -277,9 +266,7 @@ const MlModelFeaturesList = () => {
                     <Col className="m-t-xs" span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography
-                            className="text-grey-muted"
-                            variant="text">
+                          <Typography className="text-grey-muted">
                             {`${t('label.description')} :`}
                           </Typography>
                         </Col>

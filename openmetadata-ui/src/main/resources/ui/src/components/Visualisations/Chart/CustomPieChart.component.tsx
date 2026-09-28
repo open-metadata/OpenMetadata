@@ -106,15 +106,12 @@ const CustomPieChart = ({
                 className="legend-dot"
                 style={{ backgroundColor: item.color }}
               />
-              <Typography
-                className="text-grey-muted m-b-0 font-medium"
-                variant="paragraph">
+              <Typography as="p" className="text-grey-muted m-b-0 font-medium">
                 {item.name}{' '}
                 <Typography
-                  strong
                   className="text-grey-muted"
                   data-testid={`legend-count-${item.name.toLowerCase()}`}
-                  variant="text">
+                  weight="semibold">
                   {formatNumberWithComma(item.value)}
                 </Typography>
               </Typography>

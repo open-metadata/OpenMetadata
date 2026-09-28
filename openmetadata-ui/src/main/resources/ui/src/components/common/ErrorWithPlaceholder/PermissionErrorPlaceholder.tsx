@@ -40,10 +40,7 @@ const PermissionErrorPlaceholder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography
-            className="w-68"
-            style={{ marginBottom: '0' }}
-            variant="paragraph">
+          <Typography as="p" className="w-68" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.no-access-placeholder"
               renderElement={<b />}

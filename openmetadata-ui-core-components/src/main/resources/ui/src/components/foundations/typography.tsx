@@ -14,17 +14,14 @@
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import {
-  type CSSProperties,
   type ElementType,
   type HTMLAttributeAnchorTarget,
   type HTMLAttributes,
   type ReactNode,
   type Ref,
-  type RefObject,
   useRef,
   useState,
 } from 'react';
-import { mergeProps, useFocusable } from 'react-aria';
 import type { PressEvent } from 'react-aria-components';
 
 // Tooltip's auto-generated focusable wrapper uses react-aria's AriaButton,
@@ -82,17 +79,6 @@ type TypographyEllipsis =
       tooltip?: ReactNode;
     };
 
-/**
- * Base styles matching antd `Typography` 1:1 (see the `[data-typography]`
- * block in styles/typography.css): `text` = `Typography.Text`, `paragraph` =
- * `Typography.Paragraph`, `title` = `Typography.Title`, `link` =
- * `Typography.Link`. Omit it for the default prose-based rendering.
- */
-type TypographyVariant = 'text' | 'paragraph' | 'title' | 'link';
-
-/** Heading level for `variant="title"`, as antd `Title` `level`. */
-type TypographyLevel = 1 | 2 | 3 | 4 | 5;
-
 interface TypographyProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;
   children?: ReactNode;
@@ -104,12 +90,6 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
   tooltip?: ReactNode;
-  variant?: TypographyVariant;
-  level?: TypographyLevel;
-  /** Wraps children in `<strong>`, as antd `strong`. */
-  strong?: boolean;
-  /** Wraps children in `<code>`, as antd `code`. */
-  code?: boolean;
   // Anchor pass-through, for the `as="a"` shape used by antd `Typography.Link`
   // migrations. `HTMLAttributes` doesn't include these — they're spread onto
   // `Component` at runtime regardless of `as`, so this only widens the type to
@@ -139,6 +119,16 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
 // === 'string'` guard: that guard narrows `Component` to `string` in the JSX
 // below, which TypeScript then resolves to an arbitrary intrinsic element.
 const UNWRAPPED_ELEMENTS = new Set<unknown>(['span', 'div']);
+
+// Ellipsis on these keeps them in the text flow (inline-block, capped at the
+// container width) instead of breaking the line with a block wrapper.
+const INLINE_ELEMENTS = new Set<unknown>(['span', 'a']);
+
+const isTruncated = (el: HTMLElement | null, rows: number) =>
+  !!el &&
+  (rows > 1
+    ? el.scrollHeight > el.clientHeight
+    : el.scrollWidth > el.clientWidth);
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
   default: '',
@@ -177,133 +167,7 @@ const colorClasses: Record<TypographyColor, string> = {
   danger: 'tw:text-error-primary',
 };
 
-// antd order: `strong` innermost, `code` around it.
-const decorate = (
-  children: ReactNode,
-  { strong, code }: Pick<TypographyProps, 'strong' | 'code'>
-) => {
-  let content = children;
-  if (strong) {
-    content = <strong>{content}</strong>;
-  }
-  if (code) {
-    content = <code>{content}</code>;
-  }
-
-  return content;
-};
-
-const variantElements: Record<
-  Exclude<TypographyVariant, 'title'>,
-  ElementType
-> = {
-  text: 'span',
-  paragraph: 'div',
-  link: 'a',
-};
-
-// antd's exact truncation test (Typography/Base): width for one line, height
-// for a line clamp.
-const isTruncated = (el: HTMLElement | null, rows: number) =>
-  !!el &&
-  (rows > 1
-    ? el.offsetHeight < el.scrollHeight
-    : el.offsetWidth < el.scrollWidth);
-
-type TooltipTargetProps = HTMLAttributes<HTMLElement> & {
-  as: ElementType;
-  targetRef: RefObject<HTMLElement | null>;
-};
-
-// Registers the element itself as the tooltip trigger — no wrapper box, so
-// layout matches antd, which clones the trigger instead of wrapping it.
-// `tabIndex` is dropped: antd ellipsis text is not a tab stop.
-const TooltipTarget = ({
-  as: Component,
-  targetRef,
-  ...props
-}: TooltipTargetProps) => {
-  const { focusableProps } = useFocusable({}, targetRef);
-  const { tabIndex: _tabIndex, ...triggerProps } = focusableProps;
-
-  return <Component {...mergeProps(triggerProps, props)} ref={targetRef} />;
-};
-
-const VariantTypography = ({
-  variant,
-  level = 1,
-  as,
-  className,
-  children,
-  size,
-  weight,
-  color,
-  ellipsis,
-  tooltip,
-  strong,
-  code,
-  style,
-  quoteVariant: _quoteVariant,
-  ...otherProps
-}: TypographyProps & { variant: TypographyVariant }) => {
-  const targetRef = useRef<HTMLElement>(null);
-  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
-
-  const Component =
-    as ?? (variant === 'title' ? `h${level}` : variantElements[variant]);
-  const ellipsisConfig = typeof ellipsis === 'object' ? ellipsis : {};
-  const rows = ellipsisConfig.rows ?? 1;
-  const ellipsisTooltip =
-    ellipsis && ellipsisConfig.tooltip === true
-      ? children
-      : ellipsis && ellipsisConfig.tooltip;
-
-  const elementProps = {
-    ...otherProps,
-    // antd Typography.Link parity: new-tab links never leak the opener or referrer.
-    rel:
-      otherProps.rel ??
-      (otherProps.target === '_blank' ? 'noopener noreferrer' : undefined),
-    className: cx(
-      'not-prose',
-      size && sizeClasses[size],
-      weight && weightClasses[weight],
-      className
-    ),
-    'data-color': color,
-    'data-ellipsis': ellipsis ? (rows > 1 ? 'multiple' : 'single') : undefined,
-    'data-typography': variant,
-    style: (ellipsis && rows > 1
-      ? { ...style, WebkitLineClamp: rows }
-      : style) as CSSProperties,
-    children: decorate(children, { strong, code }),
-  };
-
-  const tooltipTitle = ellipsisTooltip || tooltip;
-
-  if (!tooltipTitle) {
-    return <Component {...elementProps} />;
-  }
-
-  return (
-    <Tooltip
-      isOpen={isTooltipOpen}
-      title={tooltipTitle}
-      onOpenChange={(isOpen) =>
-        setIsTooltipOpen(
-          isOpen && (!ellipsisTooltip || isTruncated(targetRef.current, rows))
-        )
-      }>
-      <TooltipTarget {...elementProps} as={Component} targetRef={targetRef} />
-    </Tooltip>
-  );
-};
-
 export const Typography = (props: TypographyProps) => {
-  if (props.variant) {
-    return <VariantTypography {...props} variant={props.variant} />;
-  }
-
   const {
     as: Component = 'span',
     quoteVariant = 'default',
@@ -315,12 +179,11 @@ export const Typography = (props: TypographyProps) => {
     ellipsis,
     tooltip,
     style,
-    variant: _variant,
-    level: _level,
-    strong,
-    code,
     ...otherProps
   } = props;
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isEllipsisTooltipOpen, setIsEllipsisTooltipOpen] = useState(false);
 
   const sizeClass = size ? sizeClasses[size] : undefined;
   const weightClass = weight ? weightClasses[weight] : undefined;
@@ -348,6 +211,7 @@ export const Typography = (props: TypographyProps) => {
   // `color` prop, matching how `className` already overrides `sizeClass`/
   // `weightClass` above.
   const innerClassName = cx(
+    'tw:wrap-break-word',
     sizeClass,
     weightClass,
     colorClass,
@@ -372,25 +236,47 @@ export const Typography = (props: TypographyProps) => {
       {...otherProps}
       className={canUnwrap ? cx('prose', innerClassName) : innerClassName}
       style={style}>
-      {decorate(children, { strong, code })}
+      {children}
     </Component>
   );
+
+  const isInlineEllipsis = isEllipsis && INLINE_ELEMENTS.has(Component);
+  const Wrapper = isInlineEllipsis ? 'span' : 'div';
 
   const content = canUnwrap ? (
     element
   ) : (
-    <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
+    <Wrapper
+      className={cx(
+        'prose',
+        quoteStyles[quoteVariant],
+        ellipsisClassName,
+        isInlineEllipsis && 'tw:inline-block tw:max-w-full tw:align-bottom'
+      )}
+      ref={wrapperRef}>
       {element}
-    </div>
+    </Wrapper>
   );
 
   if (ellipsisTooltip) {
     return (
       <Tooltip
+        isOpen={isEllipsisTooltipOpen}
         title={ellipsisTooltip}
         // cursor-[inherit] overrides the UA `cursor: default` the wrapper gets
         // for being a button, which would beat a clickable ancestor's pointer.
-        triggerClassName="tw:block tw:w-full tw:min-w-0 tw:cursor-[inherit]"
+        triggerClassName={cx(
+          'tw:min-w-0 tw:cursor-[inherit]',
+          isInlineEllipsis
+            ? 'tw:inline-block tw:max-w-full tw:align-bottom'
+            : 'tw:block tw:w-full'
+        )}
+        onOpenChange={(isOpen) =>
+          // The full text is only worth a tooltip when it is actually cut off.
+          setIsEllipsisTooltipOpen(
+            isOpen && isTruncated(wrapperRef.current, ellipsisRows)
+          )
+        }
         onTriggerPress={allowEllipsisTooltipPressToPropagate}>
         {content}
       </Tooltip>
@@ -413,10 +299,8 @@ export const Typography = (props: TypographyProps) => {
 export type {
   TypographyColor,
   TypographyEllipsis,
-  TypographyLevel,
   TypographyProps,
   TypographyQuoteVariant,
   TypographySize,
-  TypographyVariant,
   TypographyWeight,
 };

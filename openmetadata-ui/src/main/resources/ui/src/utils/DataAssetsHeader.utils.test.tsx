@@ -749,7 +749,7 @@ describe('ExtraInfoLabel', () => {
   it('should handle React node as value', () => {
     const nodeValue = (
       <Tooltip title="Full text value">
-        <Typography ellipsis className="w-full" variant="text">
+        <Typography ellipsis className="w-full">
           Truncated text value
         </Typography>
       </Tooltip>

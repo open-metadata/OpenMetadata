@@ -112,9 +112,7 @@ const TableConstraints = ({
                 key={ConstraintType.ForeignKey}>
                 <ForeignKeyConstraint />
                 <div className="d-flex flex-column gap-2">
-                  <Typography
-                    data-testid="constraint-column-name"
-                    variant="text">
+                  <Typography data-testid="constraint-column-name">
                     {columns?.join(', ')}
                   </Typography>
                   <div data-testid="referred-column-name-fqn">
@@ -138,9 +136,7 @@ const TableConstraints = ({
                               FQN_SEPARATOR_CHAR
                             )
                           )}>
-                          <Typography
-                            className="truncate referred-column-name"
-                            variant="text">
+                          <Typography className="truncate referred-column-name">
                             {referredColumn}
                           </Typography>
                         </Link>

@@ -49,16 +49,16 @@ const EntitySummaryProgressBar = ({
         md={12}
         sm={24}>
         <Typography
+          as="p"
           className="m-b-0 entity-summary-name break-all"
-          data-testid="entity-name"
-          variant="paragraph">
+          data-testid="entity-name">
           {pluralize ? pluralizeName(entity) : entity}
         </Typography>
 
         <Typography
+          as="p"
           className="m-b-0 entity-summary-value"
-          data-testid="entity-value"
-          variant="paragraph">
+          data-testid="entity-value">
           {label ?? round(progress || 0, 2)}
         </Typography>
       </Col>

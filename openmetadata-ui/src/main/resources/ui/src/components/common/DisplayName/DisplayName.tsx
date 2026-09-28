@@ -78,8 +78,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
         {renderNameWithOptionalLink(name)}
         <Typography
           className="d-block break-word"
-          data-testid="column-display-name"
-          variant="text">
+          data-testid="column-display-name">
           {renderNameWithOptionalLink(displayName)}
         </Typography>
       </>
@@ -93,8 +92,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
       <div className="d-inline-flex items-start gap-1 flex-column">
         <Typography
           className="m-b-0 d-block text-link-color"
-          data-testid="column-name"
-          variant="text">
+          data-testid="column-name">
           {renderMainContent}
         </Typography>
 

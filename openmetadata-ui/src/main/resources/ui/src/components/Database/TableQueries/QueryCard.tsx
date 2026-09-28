@@ -174,18 +174,11 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const renderCardTitle = () => (
     <Space className="font-normal p-y-xs" size={8}>
-      <Typography className="text-sm" variant="text">
-        {queryDate}
-      </Typography>
+      <Typography className="text-sm">{queryDate}</Typography>
       {duration && (
         <>
-          <Typography className="text-gray-400" variant="text">
-            {PIPE_SYMBOL}
-          </Typography>
-          <Typography
-            className="text-sm"
-            data-testid="query-run-duration"
-            variant="text">
+          <Typography className="text-gray-400">{PIPE_SYMBOL}</Typography>
+          <Typography className="text-sm" data-testid="query-run-duration">
             {duration}
           </Typography>
         </>

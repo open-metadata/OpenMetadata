@@ -62,9 +62,7 @@ const SuggestionsAlert = ({
           {showSuggestedBy && (
             <>
               <StarIcon width={14} />
-              <Typography
-                className="text-grey-muted font-italic"
-                variant="text">
+              <Typography className="text-grey-muted font-italic">
                 {t('label.suggested-by')}
               </Typography>
               <UserPopOverCard userName={userName}>

@@ -518,7 +518,7 @@ export const renderColumnDataEditor = (
     case 'status':
       return statusRenderer(value as Status);
     case 'glossaryStatus':
-      return <Typography variant="text">{glossaryStatus}</Typography>;
+      return <Typography>{glossaryStatus}</Typography>;
     case 'expressionCode':
       return renderExpressionCodeCell(value, row);
     case 'description':

@@ -43,7 +43,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   return (
     <div className="provider-selector-container">
       <div className="provider-selector-header">
-        <Typography className="m-b-lg" level={5} variant="title">
+        <Typography as="h5" className="m-b-lg" size="text-md" weight="semibold">
           {t('label.choose-provider')}
         </Typography>
         <Button

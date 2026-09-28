@@ -199,7 +199,7 @@ const SchemaSidebarCard: FC<{
             );
           })
         ) : (
-          <Typography className="text-grey-muted" variant="text">
+          <Typography className="text-grey-muted">
             {t('message.no-task-forms-found')}
           </Typography>
         )}
@@ -225,10 +225,10 @@ const TransitionFormsPane: FC<{
   <div className="task-form-settings-transition-pane">
     <div className="task-form-settings-section-header">
       <div>
-        <Typography className="m-b-xs" level={5} variant="title">
+        <Typography as="h5" className="m-b-xs" size="text-md" weight="semibold">
           {t('label.transition-form-plural')}
         </Typography>
-        <Typography className="m-b-0 text-grey-muted" variant="paragraph">
+        <Typography as="p" className="m-b-0 text-grey-muted">
           {t('message.transition-forms-help')}
         </Typography>
       </div>
@@ -316,7 +316,7 @@ const TransitionFormsPane: FC<{
         ))}
       </div>
     ) : (
-      <Typography className="text-grey-muted" variant="text">
+      <Typography className="text-grey-muted">
         {t('message.no-transition-forms-configured')}
       </Typography>
     )}
@@ -331,10 +331,10 @@ const WorkflowStagesPane: FC<{
   <div className="task-form-settings-stage-pane">
     <div className="task-form-settings-section-header">
       <div>
-        <Typography className="m-b-xs" level={5} variant="title">
+        <Typography as="h5" className="m-b-xs" size="text-md" weight="semibold">
           {t('label.stage-to-status-mapping')}
         </Typography>
-        <Typography className="m-b-0 text-grey-muted" variant="paragraph">
+        <Typography as="p" className="m-b-0 text-grey-muted">
           {t('message.stage-status-mapping-help')}
         </Typography>
       </div>
@@ -413,7 +413,7 @@ const WorkflowStagesPane: FC<{
         ))}
       </div>
     ) : (
-      <Typography className="text-grey-muted" variant="text">
+      <Typography className="text-grey-muted">
         {t('message.no-stage-mappings-configured')}
       </Typography>
     )}
@@ -830,7 +830,11 @@ const TaskFormSettingsPage = () => {
       label: 'Advanced JSON',
       children: (
         <div className="task-form-settings-json-pane">
-          <Typography className="m-b-sm" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.resolve-form-schema')}
           </Typography>
           <CodeEditor
@@ -849,7 +853,11 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography className="m-b-sm" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.resolve-ui-schema')}
           </Typography>
           <CodeEditor
@@ -868,7 +876,11 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography className="m-b-sm" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.create-form-schema')}
           </Typography>
           <CodeEditor
@@ -887,7 +899,11 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography className="m-b-sm" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.create-ui-schema')}
           </Typography>
           <CodeEditor
@@ -906,7 +922,11 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography className="m-b-sm" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.transition-form-plural')}
           </Typography>
           <CodeEditor
@@ -926,7 +946,11 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography className="m-b-sm" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.default-stage-mappings')}
           </Typography>
           <CodeEditor
@@ -946,7 +970,11 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography className="m-b-sm" level={5} variant="title">
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.workflow-definition-json')}
           </Typography>
           <CodeEditor
@@ -984,26 +1012,21 @@ const TaskFormSettingsPage = () => {
             <section className="task-form-settings-main">
               <div className="task-form-settings-hero">
                 <div className="task-form-settings-hero__copy">
-                  <Typography
-                    className="task-form-settings-hero__eyebrow"
-                    variant="text">
+                  <Typography className="task-form-settings-hero__eyebrow">
                     {t('label.form-builder')}
                   </Typography>
                   <Typography
-                    className="task-form-settings-hero__title"
-                    level={2}
-                    variant="title">
+                    as="h2"
+                    className="task-form-settings-hero__title">
                     {schemaHeading}
                   </Typography>
                   <Typography
-                    className="task-form-settings-hero__description"
-                    variant="paragraph">
+                    as="p"
+                    className="task-form-settings-hero__description">
                     {pageDescription}
                   </Typography>
                   {schemaSubtitle ? (
-                    <Typography
-                      className="task-form-settings-hero__meta"
-                      variant="text">
+                    <Typography className="task-form-settings-hero__meta">
                       {schemaSubtitle}
                     </Typography>
                   ) : null}

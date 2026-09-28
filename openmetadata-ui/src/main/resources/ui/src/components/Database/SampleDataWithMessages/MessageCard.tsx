@@ -27,7 +27,7 @@ const { Panel } = Collapse;
 const MessageCard = ({ message }: { message: string }) => {
   const { t } = useTranslation();
   const [header, setHeader] = useState<ReactNode>(
-    <Typography ellipsis className="text-primary" variant="text">
+    <Typography ellipsis className="text-primary">
       {message}
     </Typography>
   );
@@ -47,8 +47,7 @@ const MessageCard = ({ message }: { message: string }) => {
         <Typography
           ellipsis
           className="text-primary"
-          data-testid="collapsed-header"
-          variant="text">
+          data-testid="collapsed-header">
           {message}
         </Typography>
       );

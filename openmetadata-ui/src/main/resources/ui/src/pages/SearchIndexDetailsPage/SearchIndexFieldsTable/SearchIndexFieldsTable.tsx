@@ -257,7 +257,7 @@ const SearchIndexFieldsTable = ({
             toLower(displayValue)
           ) : (
             <Tooltip title={toLower(displayValue)}>
-              <Typography ellipsis className="cursor-pointer" variant="text">
+              <Typography ellipsis className="cursor-pointer">
                 {highlightSearchArrayElement(displayValue, searchText)}
               </Typography>
             </Tooltip>

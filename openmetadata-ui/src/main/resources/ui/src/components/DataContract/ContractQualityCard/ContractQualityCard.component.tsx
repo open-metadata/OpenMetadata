@@ -120,7 +120,7 @@ const ContractQualityCard: React.FC<{
       <Col span={12}>
         {showTestCaseSummaryChart && (
           <>
-            <Typography className="data-quality-total-test" variant="text">
+            <Typography className="data-quality-total-test">
               {`${t('label.total-entity', {
                 entity: t('label.test'),
               })}:`}{' '}
@@ -153,9 +153,7 @@ const ContractQualityCard: React.FC<{
             <div className="data-quality-legends-container">
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot success" />
-                <Typography
-                  className="data-quality-legends-label"
-                  variant="text">
+                <Typography className="data-quality-legends-label">
                   {`${t('label.success')}:`}{' '}
                   <span className="data-quality-legends-value">
                     {testCaseSummary?.success}
@@ -164,9 +162,7 @@ const ContractQualityCard: React.FC<{
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot failed" />
-                <Typography
-                  className="data-quality-legends-label"
-                  variant="text">
+                <Typography className="data-quality-legends-label">
                   {`${t('label.failed')}:`}{' '}
                   <span className="data-quality-legends-value">
                     {testCaseSummary?.failed}
@@ -175,9 +171,7 @@ const ContractQualityCard: React.FC<{
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot aborted" />
-                <Typography
-                  className="data-quality-legends-label"
-                  variant="text">
+                <Typography className="data-quality-legends-label">
                   {`${t('label.aborted')}:`}{' '}
                   <span className="data-quality-legends-value">
                     {testCaseSummary?.aborted}
@@ -215,9 +209,12 @@ const ContractQualityCard: React.FC<{
       <Col className="d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
-            <Typography variant="text">{`${t('label.entity-status', {
-              entity: t('label.quality'),
-            })} :`}</Typography>
+            <Typography className="contract-status-label">{`${t(
+              'label.entity-status',
+              {
+                entity: t('label.quality'),
+              }
+            )} :`}</Typography>
             <StatusBadgeV2
               dataTestId="contract-status-card-item-quality-status"
               label={contractStatus}

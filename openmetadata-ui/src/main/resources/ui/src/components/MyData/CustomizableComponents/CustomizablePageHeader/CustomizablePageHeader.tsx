@@ -120,17 +120,18 @@ export const CustomizablePageHeader = ({
       <div className="d-flex items-center justify-between">
         <div>
           <Typography
+            as="h5"
             className="m-0"
             data-testid="customize-page-title"
-            level={5}
-            variant="title">
+            size="text-md"
+            weight="semibold">
             {t('label.customize-entity', {
               entity: isLandingPage
                 ? t('label.home-page')
                 : t(`label.${kebabCase(currentPageType as string)}`),
             })}
           </Typography>
-          <Typography className="m-0" variant="paragraph">
+          <Typography as="p" className="m-0">
             <Transi18next
               i18nKey={subTitle}
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}

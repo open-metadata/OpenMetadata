@@ -302,9 +302,9 @@ const AddNotificationPage = () => {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography
+          as="p"
           className="tw-max-w-md"
-          style={{ marginBottom: '0' }}
-          variant="paragraph">
+          style={{ marginBottom: '0' }}>
           {t('message.system-alert-edit-message')}
         </Typography>
       </ErrorPlaceHolder>
@@ -326,14 +326,12 @@ const AddNotificationPage = () => {
               </Col>
 
               <Col span={24}>
-                <Typography level={5} variant="title">
+                <Typography as="h5" size="text-md" weight="semibold">
                   {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
                     entity: t('label.alert'),
                   })}
                 </Typography>
-                <Typography variant="text">
-                  {t('message.alerts-description')}
-                </Typography>
+                <Typography>{t('message.alerts-description')}</Typography>
               </Col>
               <Col span={24}>
                 <Form<ModifiedCreateEventSubscription>

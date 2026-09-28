@@ -117,12 +117,12 @@ const UrlConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography className="m-0 text-grey-muted" variant="text">
+              <Typography className="m-0 text-grey-muted">
                 {t('label.brand-name-url')}
               </Typography>
             </Col>
             <Col span={24}>
-              <Typography data-testid="open-metadata-url" variant="text">
+              <Typography data-testid="open-metadata-url">
                 {urlConfig?.openMetadataUrl
                   ? urlConfig.openMetadataUrl
                   : NO_DATA_PLACEHOLDER}

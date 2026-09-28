@@ -261,7 +261,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
       <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography variant="paragraph">
+        <Typography as="p">
           {isTaskClosed
             ? t('message.no-closed-task')
             : t('message.no-open-task')}
@@ -303,9 +303,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <Fragment>
         {(showNewConversation || hasNoConversations) && isConversationType && (
           <Space className="w-full" direction="vertical">
-            <Typography variant="paragraph">
-              {t('message.new-conversation')}
-            </Typography>
+            <Typography as="p">{t('message.new-conversation')}</Typography>
             <ActivityFeedEditor
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),

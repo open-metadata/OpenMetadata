@@ -77,16 +77,12 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         return {
           label: (
             <div className="d-flex flex-column">
-              <Typography
-                className="text-sm"
-                data-testid="tag-option-label"
-                variant="text">
+              <Typography className="text-sm" data-testid="tag-option-label">
                 {item.data.displayName ?? item.data.name}
               </Typography>
               <Typography
                 className="text-grey-muted text-sm"
-                data-testid="tag-option-fully-qualified-name"
-                variant="text">
+                data-testid="tag-option-fully-qualified-name">
                 {fqn}
               </Typography>
             </div>
@@ -155,13 +151,12 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         </Col>
         <Col className="d-flex flex-column gap-1">
           <div className="d-flex items-center justify-between p-x-xss">
-            <Typography data-testid="term-boost-impact-label" variant="text">
+            <Typography data-testid="term-boost-impact-label">
               {t('label.boost')}
             </Typography>
             <Typography
               className="font-semibold boost-value"
-              data-testid="term-boost-value"
-              variant="text">
+              data-testid="term-boost-value">
               {termBoostData.boost}
             </Typography>
           </div>

@@ -97,7 +97,7 @@ export const ListView = <T extends object = Record<string, unknown>>({
                 data-testid="show-deleted-switch"
                 onChange={handleDeletedSwitchChange}
               />
-              <Typography variant="text">{t('label.deleted')}</Typography>
+              <Typography>{t('label.deleted')}</Typography>
             </span>
           )}
 

@@ -313,8 +313,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   <Typography
                     className="text-xs m-t-xss"
                     color="danger"
-                    data-testid={`ldap-group-error-${mapping.id}`}
-                    variant="text">
+                    data-testid={`ldap-group-error-${mapping.id}`}>
                     {errors[mapping.id]}
                   </Typography>
                 )}
@@ -368,7 +367,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         )}
 
         {mappings.length === 0 && readonly && (
-          <Typography color="secondary" variant="text">
+          <Typography color="secondary">
             {t('message.no-ldap-role-mappings')}
           </Typography>
         )}

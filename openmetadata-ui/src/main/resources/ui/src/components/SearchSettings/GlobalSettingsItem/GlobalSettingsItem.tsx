@@ -61,9 +61,7 @@ export const GlobalSettingItem = ({
 
   return (
     <div className="d-flex items-center justify-between p-y-xs global-settings-item">
-      <Typography data-testid="global-setting-label" variant="text">
-        {label}
-      </Typography>
+      <Typography data-testid="global-setting-label">{label}</Typography>
 
       {isEditing ? (
         <div className="m-l-md d-flex justify-end flex-wrap inline-edit-container">

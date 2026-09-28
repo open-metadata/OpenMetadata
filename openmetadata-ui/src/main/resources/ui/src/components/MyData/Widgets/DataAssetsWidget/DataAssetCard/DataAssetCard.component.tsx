@@ -62,8 +62,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
 
         <Typography
           className="m-t-sm text-sm text-grey-body font-medium truncate w-full d-inline-block"
-          data-testid={`service-name-${key}`}
-          variant="text">
+          data-testid={`service-name-${key}`}>
           {formattedServiceType}
         </Typography>
 

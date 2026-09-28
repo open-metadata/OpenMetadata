@@ -121,8 +121,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
             <Space className="w-full" direction="vertical" size={32}>
               <Typography
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
-                data-testid="entity-header-display-name"
-                variant="text">
+                data-testid="entity-header-display-name">
                 {renderHighlightedText(displayName || knowledgePage.name)}
               </Typography>
               <Row align="middle" gutter={[16, 16]}>
@@ -159,8 +158,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
               <Typography
                 className={classNames('', {
                   'text-primary': version,
-                })}
-                variant="text">
+                })}>
                 {toString(version)}
               </Typography>
             </Button>
@@ -171,7 +169,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
         <Row gutter={[0, 16]}>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography className="text-grey-muted" variant="text">
+              <Typography className="text-grey-muted">
                 {`${t('label.tag-plural')}:`}
               </Typography>
               <TagsContainerV2
@@ -185,7 +183,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
           </Col>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography className="text-grey-muted" variant="text">
+              <Typography className="text-grey-muted">
                 {`${t('label.glossary-term-plural')}:`}
               </Typography>
               <TagsContainerV2

@@ -83,7 +83,7 @@ const ProfileManageOptions = ({
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
-        <Typography className="profile-manage-label" variant="text">
+        <Typography className="profile-manage-label">
           {t('label.edit-entity', {
             entity: t('label.display-name'),
           })}
@@ -100,7 +100,7 @@ const ProfileManageOptions = ({
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
-        <Typography className="profile-manage-label" variant="text">
+        <Typography className="profile-manage-label">
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
           })}
@@ -116,7 +116,7 @@ const ProfileManageOptions = ({
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
-        <Typography className="profile-manage-label" variant="text">
+        <Typography className="profile-manage-label">
           {t('label.restore')}
         </Typography>
       </Button>
@@ -130,7 +130,7 @@ const ProfileManageOptions = ({
             style={{ marginRight: '10px' }}
             {...ICON_DIMENSION_USER_PAGE}
           />
-          <Typography className="profile-manage-label" variant="text">
+          <Typography className="profile-manage-label">
             {t('label.delete-profile')}
           </Typography>
         </Button>
@@ -213,9 +213,9 @@ const ProfileSectionUserDetailsCard = ({
     () =>
       !isMaskedEmail(userData.email) && (
         <Typography
+          as="p"
           className="m-b-0 profile-details-email"
-          data-testid="user-email-value"
-          variant="paragraph">
+          data-testid="user-email-value">
           {userData.email}
         </Typography>
       ),
@@ -374,7 +374,7 @@ const ProfileSectionUserDetailsCard = ({
             })}
             onCancel={() => setShowRestoreModal(false)}
             onOk={handleRestore}>
-            <Typography data-testid="restore-modal-body" variant="text">
+            <Typography data-testid="restore-modal-body">
               {t('message.are-you-want-to-restore', {
                 entity: getEntityName(userData),
               })}

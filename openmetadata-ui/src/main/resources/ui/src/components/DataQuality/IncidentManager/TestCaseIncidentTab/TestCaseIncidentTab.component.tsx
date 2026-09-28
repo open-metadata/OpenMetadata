@@ -169,7 +169,6 @@ const TestCaseIncidentTab = () => {
               }
             )}
             data-testid="open-task"
-            variant="text"
             onClick={() => handleOpenCloseTaskClick('open')}>
             <TaskIcon className="m-r-xss" width={14} /> {openTasksCount}{' '}
             {t('label.open')}
@@ -179,7 +178,6 @@ const TestCaseIncidentTab = () => {
               'font-medium': taskFilter === 'close',
             })}
             data-testid="closed-task"
-            variant="text"
             onClick={() => handleOpenCloseTaskClick('close')}>
             <CheckIcon className="m-r-xss" width={14} /> {closedTasksCount}{' '}
             {t('label.closed')}

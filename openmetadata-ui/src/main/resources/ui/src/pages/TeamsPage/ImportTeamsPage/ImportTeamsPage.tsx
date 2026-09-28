@@ -188,7 +188,7 @@ const ImportTeamsPage = () => {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <div className="m-t-sm text-center text-sm font-normal">
-          <Typography className="w-80" variant="paragraph">
+          <Typography as="p" className="w-80">
             {t('message.group-type-team-not-allowed-to-have-sub-team')}
           </Typography>
         </div>
@@ -212,7 +212,11 @@ const ImportTeamsPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </Col>
         <Col span={24}>
-          <Typography data-testid="title" level={5} variant="title">
+          <Typography
+            as="h5"
+            data-testid="title"
+            size="text-md"
+            weight="semibold">
             {t('label.import-entity', {
               entity:
                 type === ImportType.USERS

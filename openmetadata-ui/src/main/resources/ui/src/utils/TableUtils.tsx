@@ -362,7 +362,7 @@ export const tableConstraintRendererBasedOnType = (
 
       <Space direction="vertical" size={16}>
         {columns?.map((column) => (
-          <Typography ellipsis={{ tooltip: true }} key={column} variant="text">
+          <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
           </Typography>
         ))}

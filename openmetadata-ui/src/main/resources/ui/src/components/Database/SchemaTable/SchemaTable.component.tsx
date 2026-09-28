@@ -534,9 +534,9 @@ const SchemaTable = () => {
 
         return (
           <Typography
+            as="p"
             className="cursor-pointer"
-            ellipsis={{ tooltip: displayValue, rows: 3 }}
-            variant="paragraph">
+            ellipsis={{ tooltip: displayValue, rows: 3 }}>
             {highlightSearchArrayElement(dataTypeDisplay, searchText)}
           </Typography>
         );
@@ -716,8 +716,7 @@ const SchemaTable = () => {
                 className={classNames(
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
                 )}
-                data-testid="column-name"
-                variant="text">
+                data-testid="column-name">
                 {renderHighlightedText(highlightSearchText(name, searchText))}
               </Typography>
             </div>
@@ -754,8 +753,7 @@ const SchemaTable = () => {
           {isEmpty(displayName) ? null : (
             <Typography
               className="m-b-0 d-block break-word"
-              data-testid="column-display-name"
-              variant="text">
+              data-testid="column-display-name">
               {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}

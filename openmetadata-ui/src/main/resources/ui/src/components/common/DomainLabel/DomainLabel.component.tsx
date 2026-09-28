@@ -146,9 +146,7 @@ export const DomainLabel = ({
             key={domain.id}>
             {/* condition to show icon for new layout perticulary for multiple domains */}
             {(!headerLayout || (headerLayout && multiple)) && (
-              <Typography
-                className="self-center text-xs whitespace-nowrap"
-                variant="text">
+              <Typography className="self-center text-xs whitespace-nowrap">
                 <DomainIcon
                   className="d-flex"
                   color={DE_ACTIVE_COLOR}
@@ -191,8 +189,7 @@ export const DomainLabel = ({
                   remainingCount <= 9 ? 'h-6 w-6' : ''
                 }`}
                 color="secondary"
-                data-testid="domain-count-button"
-                variant="text">
+                data-testid="domain-count-button">
                 <span className="ant-typography domain-count-label">{`+${remainingCount}`}</span>
               </Typography>
             </Dropdown>
@@ -210,8 +207,7 @@ export const DomainLabel = ({
           { 'font-medium text-sm': !showDomainHeading },
           textClassName
         )}
-        data-testid="no-domain-text"
-        variant="text">
+        data-testid="no-domain-text">
         {defaultDomainText}
       </Typography>
     );
@@ -246,7 +242,7 @@ export const DomainLabel = ({
             className="d-flex text-sm  font-medium items-center m-b-xs"
             data-testid="header-domain-container">
             {!headerLayout ? (
-              <Typography className="right-panel-label m-r-xss" variant="text">
+              <Typography className="right-panel-label m-r-xss">
                 {t('label.domain-plural')}
               </Typography>
             ) : (
@@ -254,8 +250,7 @@ export const DomainLabel = ({
                 className={classNames(
                   'domain-link right-panel-label m-r-xss',
                   labelClassName
-                )}
-                variant="text">
+                )}>
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
@@ -281,8 +276,7 @@ export const DomainLabel = ({
               className={classNames(
                 'domain-link right-panel-label m-r-xss',
                 labelClassName
-              )}
-              variant="text">
+              )}>
               {t('label.domain-plural')}
             </Typography>
             {selectableList}

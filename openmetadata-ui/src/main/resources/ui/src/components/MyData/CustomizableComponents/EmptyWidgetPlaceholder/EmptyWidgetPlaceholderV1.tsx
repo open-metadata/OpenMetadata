@@ -35,10 +35,10 @@ function EmptyWidgetPlaceholderV1({
 
   const widgetContent = (
     <div className="empty-widget-placeholder-v1-content">
-      <Typography className="add-widgets-title" level={4} variant="title">
+      <Typography as="h4" className="add-widgets-title">
         {t('label.add-new-widget-plural')}
       </Typography>
-      <Typography className="add-widgets-description" variant="text">
+      <Typography className="add-widgets-description">
         {t('message.tailor-experience-for-persona', {
           persona: personaName,
         })}

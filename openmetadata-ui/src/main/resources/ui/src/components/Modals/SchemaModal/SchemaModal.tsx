@@ -80,7 +80,7 @@ const SchemaModal: FC<SchemaModalProp> = ({
       maskClosable={false}
       open={visible}
       title={
-        <Typography strong data-testid="schema-modal-header" variant="text">
+        <Typography data-testid="schema-modal-header" weight="semibold">
           {t('label.json-data')}
         </Typography>
       }

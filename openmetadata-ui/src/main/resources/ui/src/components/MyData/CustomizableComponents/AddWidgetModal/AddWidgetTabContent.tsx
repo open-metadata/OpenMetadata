@@ -76,7 +76,7 @@ function AddWidgetTabContent({
     <Row data-testid={widget.id}>
       <Col span={24}>
         <Space>
-          <Typography variant="text">{`${t('label.size')}:`}</Typography>
+          <Typography>{`${t('label.size')}:`}</Typography>
           <Radio.Group
             data-testid="size-selector-button"
             defaultValue={selectedWidgetSize}
@@ -97,9 +97,9 @@ function AddWidgetTabContent({
                 src={widgetImage}
               />
               <Typography
+                as="p"
                 className="d-block text-center"
-                data-testid="widget-description"
-                variant="paragraph">
+                data-testid="widget-description">
                 {widget.description}
               </Typography>
               <Tooltip

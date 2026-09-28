@@ -135,17 +135,12 @@ const DataProductsSelectList = ({
         label: item.label,
         displayName: (
           <Space className="w-full" direction="vertical" size={0}>
-            <Typography
-              ellipsis
-              className="text-grey-muted m-0 p-0"
-              variant="paragraph">
+            <Typography ellipsis as="p" className="text-grey-muted m-0 p-0">
               {item.value.domains
                 ?.map((domain) => getEntityName(domain))
                 .join(', ')}
             </Typography>
-            <Typography ellipsis variant="text">
-              {getEntityName(item.value)}
-            </Typography>
+            <Typography ellipsis>{getEntityName(item.value)}</Typography>
           </Space>
         ),
         value: item.value.fullyQualifiedName,

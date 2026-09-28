@@ -53,7 +53,7 @@ const AnnouncementDrawer: FC<Props> = ({
       className="justify-between"
       data-testid="title"
       style={{ width: '100%' }}>
-      <Typography className="font-medium break-all" variant="text">
+      <Typography className="font-medium break-all">
         {t('label.announcement-plural')}
       </Typography>
       <CloseOutlined data-testid="announcement-close" onClick={onClose} />

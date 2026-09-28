@@ -92,7 +92,7 @@ const LandingPageDomainSelector = ({
           height={22}
           width={22}
         />
-        <Typography className="text-sm font-medium domain-title" variant="text">
+        <Typography className="text-sm font-medium domain-title">
           {domainDisplayName}
         </Typography>
         <DropdownIcon

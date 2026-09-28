@@ -83,13 +83,13 @@ const WidgetCard = ({
         )}
       </div>
       <div className="p-t-md p-x-sm">
-        <Typography className="text-sm font-medium" variant="text">
+        <Typography className="text-sm font-medium">
           {startCase(widget.name)}
         </Typography>
         <Typography
+          as="p"
           className="widget-desc m-t-xs text-xs font-regular"
-          data-testid="widget-description"
-          variant="paragraph">
+          data-testid="widget-description">
           {widget.description ?? t('message.no-description-available')}
         </Typography>
       </div>

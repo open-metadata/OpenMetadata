@@ -121,16 +121,15 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             direction="vertical"
             size={0}>
             <Typography
+              as="p"
               className="m-0"
-              style={{ color: '#37352F', marginBottom: 0 }}
-              variant="paragraph">
+              style={{ color: '#37352F', marginBottom: 0 }}>
               <>{createdBy}</>
               {isMentionNotification ? mentionContent : taskContent}
             </Typography>
             <Typography
               style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
-              title={formatDateTime(timestamp)}
-              variant="text">
+              title={formatDateTime(timestamp)}>
               {getRelativeTime(timestamp)}
             </Typography>
           </Space>

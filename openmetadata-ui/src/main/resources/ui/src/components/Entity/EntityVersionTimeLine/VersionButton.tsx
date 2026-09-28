@@ -77,8 +77,7 @@ export const VersionButton = forwardRef<
           <Typography
             className={classNames('d-flex font-medium', {
               'text-primary': selected,
-            })}
-            variant="text">
+            })}>
             <span>{versionText}</span>
             {isMajorVersion ? (
               <span

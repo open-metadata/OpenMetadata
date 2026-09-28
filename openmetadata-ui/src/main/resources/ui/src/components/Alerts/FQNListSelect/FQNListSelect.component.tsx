@@ -111,9 +111,7 @@ const FQNListSelect = ({
         title={label}
         onClose={onClose}
         onMouseDown={onPreventMouseDown}>
-        <Typography className="break-all" variant="text">
-          {label}
-        </Typography>
+        <Typography className="break-all">{label}</Typography>
       </Tag>
     );
   };

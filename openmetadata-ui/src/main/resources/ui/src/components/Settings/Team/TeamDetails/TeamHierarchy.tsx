@@ -148,7 +148,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               paragraph={{ rows: 0 }}
             />
           ) : (
-            <Typography data-testid="team-asset-count" variant="text">
+            <Typography data-testid="team-asset-count">
               {teamAssetCounts?.[fullyQualifiedName] ?? 0}
             </Typography>
           ),
@@ -334,9 +334,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
                   data-testid="show-deleted"
                   onClick={onShowDeletedTeamChange}
                 />
-                <Typography className="m-l-xs" variant="text">
-                  {t('label.deleted')}
-                </Typography>
+                <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
 
               {createTeamPermission && !isTeamDeleted && (

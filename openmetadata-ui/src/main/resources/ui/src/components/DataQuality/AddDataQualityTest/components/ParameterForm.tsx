@@ -320,9 +320,7 @@ const buildStringField = ({
           <div className="ant-form-item-label">
             {/* eslint-disable-next-line jsx-a11y/label-has-for -- editor caption, not a form control */}
             <label className="d-flex align-items-center">
-              <Typography className="form-label-title" variant="text">
-                {label}
-              </Typography>
+              <Typography className="form-label-title">{label}</Typography>
               <Tooltip title={data.description}>
                 <QuestionCircleOutlined className="ant-form-item-tooltip" />
               </Tooltip>
@@ -528,9 +526,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         <Form.Item {...commonFormItemProps} className="m-b-0">
           {Field}
         </Form.Item>
-        <Typography className="font-medium" variant="text">
-          {label}
-        </Typography>
+        <Typography className="font-medium">{label}</Typography>
       </div>
     ) : (
       <Form.Item

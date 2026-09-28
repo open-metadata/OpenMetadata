@@ -34,7 +34,7 @@ const AttachmentPlaceholder: FC<AttachmentPlaceholderProps> = ({
       contentEditable={false}
       data-testid="image-placeholder">
       <Icon component={FileIcon} />
-      <Typography as="article" variant="text">
+      <Typography as="article" className="image-placeholder-text">
         {t('label.add-an-file-type', {
           fileType: t(`label.${fileType}`),
         })}

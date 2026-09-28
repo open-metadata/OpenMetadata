@@ -84,7 +84,7 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
           <ErrorPlaceHolder
             className="m-t-lg"
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography className="w-max-500" variant="paragraph">
+            <Typography as="p" className="w-max-500">
               {t('message.app-mode-not-available')}
             </Typography>
           </ErrorPlaceHolder>
@@ -112,7 +112,7 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
 
           <Col span={24}>
             <Card bordered={false} title={t('label.app-mode')}>
-              <Typography color="secondary" variant="paragraph">
+              <Typography as="p" color="secondary">
                 {t('message.app-mode-description')}
               </Typography>
 

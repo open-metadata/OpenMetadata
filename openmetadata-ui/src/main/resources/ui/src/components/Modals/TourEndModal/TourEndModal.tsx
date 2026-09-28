@@ -52,8 +52,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
           <Typography
             as="article"
             className="text-base mt-5"
-            data-testid="tour-complete-message"
-            variant="text">
+            data-testid="tour-complete-message">
             {t('message.successfully-completed-the-tour')}
             <br />
             {t('message.get-started-with-open-metadata')}

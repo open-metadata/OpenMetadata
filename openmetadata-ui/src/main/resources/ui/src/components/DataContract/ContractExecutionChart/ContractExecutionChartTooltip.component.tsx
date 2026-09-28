@@ -35,7 +35,7 @@ const ContractExecutionChartTooltip = (
   return (
     <Card
       title={
-        <Typography level={5} variant="title">
+        <Typography as="h5" size="text-md" weight="semibold">
           {formatDateTimeLong(timestamp)}
         </Typography>
       }>

@@ -91,8 +91,7 @@ const UserProfilePersonas = ({
           <div className="d-flex justify-between w-full">
             <Typography
               className="text-sm font-medium"
-              data-testid="persona-list"
-              variant="text">
+              data-testid="persona-list">
               {t('label.default-persona')}
             </Typography>
             <PersonaSelectableList
@@ -140,8 +139,7 @@ const UserProfilePersonas = ({
         <div className="d-flex justify-between w-full">
           <Typography
             className="text-sm font-medium"
-            data-testid="persona-list"
-            variant="text">
+            data-testid="persona-list">
             {t('label.persona')}
           </Typography>
           <PersonaSelectableList

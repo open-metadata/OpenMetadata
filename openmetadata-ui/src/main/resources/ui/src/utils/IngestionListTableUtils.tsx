@@ -37,8 +37,7 @@ export const renderNameField =
     (
       <Typography
         className="m-b-0 d-block break-word"
-        data-testid="pipeline-name"
-        variant="text">
+        data-testid="pipeline-name">
         {renderHighlightedText(
           highlightSearchText(getEntityName(record), searchText)
         )}
@@ -55,8 +54,7 @@ export const renderTypeField =
     return (
       <Typography
         className="m-b-0 d-block break-word"
-        data-testid="pipeline-type"
-        variant="text">
+        data-testid="pipeline-type">
         {renderHighlightedText(highlightSearchText(typeText, searchText))}
       </Typography>
     );
@@ -97,8 +95,7 @@ const ScheduleFieldCell = ({
             <Typography
               className="font-medium"
               data-testid="schedule-primary-details"
-              ellipsis={{ tooltip: descriptionFirstPart }}
-              variant="text">
+              ellipsis={{ tooltip: descriptionFirstPart }}>
               {descriptionFirstPart}
             </Typography>
           </Col>
@@ -106,8 +103,7 @@ const ScheduleFieldCell = ({
             <Typography
               className="text-xs text-grey-muted"
               data-testid="schedule-secondary-details"
-              ellipsis={{ tooltip: descriptionSecondPart }}
-              variant="text">
+              ellipsis={{ tooltip: descriptionSecondPart }}>
               {descriptionSecondPart}
             </Typography>
           </Col>
@@ -120,7 +116,7 @@ const ScheduleFieldCell = ({
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {
     return (
-      <Typography data-testid="scheduler-no-data" variant="text">
+      <Typography data-testid="scheduler-no-data">
         {NO_DATA_PLACEHOLDER}
       </Typography>
     );

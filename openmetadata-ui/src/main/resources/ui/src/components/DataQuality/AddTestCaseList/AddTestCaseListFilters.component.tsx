@@ -59,7 +59,7 @@ const AddTestCaseListFilters = ({
 
   return (
     <Space size={8}>
-      <Typography variant="text">{t('label.filter-plural')}:</Typography>
+      <Typography>{t('label.filter-plural')}:</Typography>
       {filtersToShow.map((filter) => (
         <FilterSelectDropdown
           hideCounts

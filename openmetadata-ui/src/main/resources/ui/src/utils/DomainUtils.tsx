@@ -124,12 +124,10 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography className="tw:text-primary_on-brand" variant="text">{`${t(
+          <Typography className="tw:text-primary_on-brand">{`${t(
             type
           )} :`}</Typography>
-          <Typography
-            className="m-0 tw:text-primary_on-brand"
-            variant="paragraph">
+          <Typography as="p" className="m-0 tw:text-primary_on-brand">
             {t(description)}
           </Typography>
         </Space>
@@ -167,8 +165,7 @@ export const renderDomainLink = (
         {trimLink ? (
           <Typography
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}
-            variant="text">
+            ellipsis={{ tooltip: false }}>
             {displayName}
           </Typography>
         ) : (
@@ -218,9 +215,7 @@ export const convertDomainsToTreeOptions = (
             />
           )}
 
-          <Typography ellipsis variant="text">
-            {getEntityName(option)}
-          </Typography>
+          <Typography ellipsis>{getEntityName(option)}</Typography>
         </div>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,

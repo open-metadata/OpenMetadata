@@ -124,15 +124,11 @@ export const PopoverContent: React.FC<{
   }
 
   if (isForbidden) {
-    return (
-      <Typography variant="text">
-        {t('message.no-permission-to-view')}
-      </Typography>
-    );
+    return <Typography>{t('message.no-permission-to-view')}</Typography>;
   }
 
   if (isUndefined(entityData)) {
-    return <Typography variant="text">{t('label.no-data-found')}</Typography>;
+    return <Typography>{t('label.no-data-found')}</Typography>;
   }
 
   return (

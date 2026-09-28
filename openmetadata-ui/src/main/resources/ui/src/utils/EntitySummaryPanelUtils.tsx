@@ -167,8 +167,7 @@ export const getTitle = (
         <Typography
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
-          ellipsis={{ tooltip: true }}
-          variant="text">
+          ellipsis={{ tooltip: true }}>
           {title}
         </Typography>
       </Link>
@@ -181,8 +180,7 @@ export const getTitle = (
         <Typography
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
-          ellipsis={{ tooltip: true }}
-          variant="text">
+          ellipsis={{ tooltip: true }}>
           {title}
         </Typography>
         <Icon component={IconExternalLink} style={ICON_DIMENSION} />
@@ -192,8 +190,7 @@ export const getTitle = (
     <Typography
       className="entity-title"
       data-testid="entity-title"
-      ellipsis={{ tooltip: true }}
-      variant="text">
+      ellipsis={{ tooltip: true }}>
       {title}
     </Typography>
   );
@@ -321,8 +318,8 @@ const getChildComponentDetails = (
       childComponent: isEmpty(
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
-        <Typography data-testid="no-data-message" variant="text">
-          <Typography className="no-data-chip-placeholder" variant="text">
+        <Typography data-testid="no-data-message">
+          <Typography className="no-data-chip-placeholder">
             {t('message.no-data-available')}
           </Typography>
         </Typography>
@@ -499,8 +496,7 @@ const getDashboardSummary = (
         <Col span={24}>
           <Typography
             className="summary-panel-section-title"
-            data-testid="charts-header"
-            variant="text">
+            data-testid="charts-header">
             {t('label.chart-plural')}
           </Typography>
         </Col>
@@ -518,8 +514,7 @@ const getDashboardSummary = (
         <Col span={24}>
           <Typography
             className="summary-panel-section-title"
-            data-testid="data-model-header"
-            variant="text">
+            data-testid="data-model-header">
             {t('label.data-model-plural')}
           </Typography>
         </Col>
@@ -613,8 +608,7 @@ export const getEntityChildDetails = (
         <Col span={24}>
           <Typography
             className="summary-panel-section-title"
-            data-testid={childDetails.headingTestId}
-            variant="text">
+            data-testid={childDetails.headingTestId}>
             {childDetails.heading}
           </Typography>
         </Col>

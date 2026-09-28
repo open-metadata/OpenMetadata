@@ -101,9 +101,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'entityType',
         width: 140,
         render: (entityType: string) => (
-          <Typography variant="text">
-            {entityType || NO_DATA_PLACEHOLDER}
-          </Typography>
+          <Typography>{entityType || NO_DATA_PLACEHOLDER}</Typography>
         ),
       },
       {
@@ -114,8 +112,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         render: (entityFqn: string) => (
           <Typography
             ellipsis={{ tooltip: entityFqn }}
-            style={{ maxWidth: 300 }}
-            variant="text">
+            style={{ maxWidth: 300 }}>
             {entityFqn || NO_DATA_PLACEHOLDER}
           </Typography>
         ),
@@ -138,9 +135,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         dataIndex: 'retryCount',
         key: 'retryCount',
         width: 120,
-        render: (count: number) => (
-          <Typography variant="text">{count}</Typography>
-        ),
+        render: (count: number) => <Typography>{count}</Typography>,
       },
       {
         title: t('label.failure-reason'),
@@ -148,10 +143,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'failureReason',
         ellipsis: true,
         render: (reason: string) => (
-          <Typography
-            ellipsis={{ tooltip: reason }}
-            style={{ maxWidth: 300 }}
-            variant="text">
+          <Typography ellipsis={{ tooltip: reason }} style={{ maxWidth: 300 }}>
             {reason || NO_DATA_PLACEHOLDER}
           </Typography>
         ),
@@ -170,7 +162,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       locale={{
         emptyText: (
           <div className="tw:py-8 tw:text-center">
-            <Typography className="tw:text-text-secondary" variant="text">
+            <Typography className="tw:text-text-secondary">
               {t('message.no-retry-queue-records')}
             </Typography>
           </div>

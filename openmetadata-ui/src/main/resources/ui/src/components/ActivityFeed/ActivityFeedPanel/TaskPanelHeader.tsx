@@ -44,12 +44,12 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
     <div className={classNames('feed-panel-header', className)}>
       <Space className="w-full justify-between">
         <Space direction="vertical" size={0}>
-          <Typography className="font-semibold text-md" variant="text">
+          <Typography className="font-semibold text-md">
             {`#${getTaskDisplayId(task.taskId)} `}
             {t(taskTypeLabel)}
           </Typography>
           {task.about && (
-            <Typography className="text-grey-muted text-sm" variant="text">
+            <Typography className="text-grey-muted text-sm">
               {getEntityName(task.about)}
             </Typography>
           )}
@@ -60,8 +60,7 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
               open: isOpen,
               granted: isGranted,
               closed: !isOpen && !isGranted,
-            })}
-            variant="text">
+            })}>
             {task.status}
           </Typography>
           {onCancel && (

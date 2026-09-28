@@ -46,8 +46,10 @@ export const VersionExtraInfoLink = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <div className="d-flex items-center text-xs">
-      <Typography href={href} style={{ fontSize: '12px' }} variant="link">
-        {stringToHTML(value)}
+      <Typography>
+        <a href={href} style={{ fontSize: '12px' }}>
+          {stringToHTML(value)}
+        </a>
       </Typography>
     </div>
   </>
@@ -65,17 +67,13 @@ export const VersionExtraInfoLabel = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <Space align="center" data-testid={dataTestId}>
-      <Typography
-        className="self-center text-xs whitespace-nowrap"
-        variant="text">
+      <Typography className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
           <span className="text-grey-muted">{`${label}: `}</span>
         )}
       </Typography>
 
-      <Typography
-        className="self-center text-xs whitespace-nowrap font-medium"
-        variant="text">
+      <Typography className="self-center text-xs whitespace-nowrap font-medium">
         {stringToHTML(value)}
       </Typography>
     </Space>
@@ -108,11 +106,10 @@ export const getExtraInfoSourceUrl = (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
           <div className="d-flex items-center text-xs">
-            <Typography
-              href={pipelineDetails.sourceUrl}
-              style={{ fontSize: '12px' }}
-              variant="link">
-              {getEntityName(pipelineDetails)}{' '}
+            <Typography>
+              <a href={pipelineDetails.sourceUrl} style={{ fontSize: '12px' }}>
+                {getEntityName(pipelineDetails)}{' '}
+              </a>
             </Typography>
             <Icon
               className="m-l-xss"

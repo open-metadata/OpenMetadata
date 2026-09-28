@@ -134,8 +134,7 @@ const RecentlyViewedCarousel = ({
             </div>
             <Typography
               className="text-sm font-medium text-white"
-              ellipsis={{ tooltip: true }}
-              variant="text">
+              ellipsis={{ tooltip: true }}>
               {data.name}
             </Typography>
           </div>

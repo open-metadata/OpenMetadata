@@ -32,10 +32,11 @@ const PageHeader = ({
     <div className="page-header-container" data-testid="page-header-container">
       <Space align="center" size={4}>
         <Typography
+          as="h5"
           className="heading m-b-0"
           data-testid="heading"
-          level={5}
-          variant="title"
+          size="text-md"
+          weight="semibold"
           {...titleProps}>
           {header}
 
@@ -53,9 +54,9 @@ const PageHeader = ({
         )}
       </Space>
       <Typography
+        as="p"
         className="sub-heading"
         data-testid="sub-heading"
-        variant="paragraph"
         {...subHeaderProps}>
         {subHeader}
       </Typography>

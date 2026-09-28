@@ -144,7 +144,7 @@ const AuthMechanism: FC<Props> = ({
       <div className="flex justify-between mt-4">
         <div className="flex  gap-8">
           <div className="flex flex-col gap-2">
-            <Typography className="created-by-label" variant="text">
+            <Typography className="created-by-label">
               {t('label.created-by')}
             </Typography>
             <div className="flex items-center gap-2 mt-1">
@@ -157,11 +157,11 @@ const AuthMechanism: FC<Props> = ({
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Typography className="created-on-label" variant="text">
+            <Typography className="created-on-label">
               {t('label.created-on')}
             </Typography>
 
-            <Typography className="created-on-value" variant="text">
+            <Typography className="created-on-value">
               {tokenCreatedOnLabel}
             </Typography>
           </div>
@@ -174,19 +174,17 @@ const AuthMechanism: FC<Props> = ({
       <Space className="w-full justify-between">
         {isSCIMBot ? (
           <div className="flex flex-col gap-2">
-            <Typography
-              className="card-title m-t-0 m-b-2 text-md"
-              variant="text">
+            <Typography className="card-title m-t-0 m-b-2 text-md">
               {t('message.automate-provisioning-with-scim')}
             </Typography>
-            <Typography className="m-b-0 card-description" variant="paragraph">
+            <Typography as="p" className="m-b-0 card-description">
               {t(
                 'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
               )}
             </Typography>
           </div>
         ) : (
-          <Typography className="text-base" variant="text">
+          <Typography className="text-base">
             {isBot
               ? t('label.om-jwt-token')
               : t('message.personal-access-token')}
@@ -219,13 +217,9 @@ const AuthMechanism: FC<Props> = ({
       </Space>
       <Divider className={isSCIMBot ? 'scim-divider' : ''} />
 
-      {!isSCIMBot && (
-        <Typography variant="paragraph">{t('message.jwt-token')}</Typography>
-      )}
+      {!isSCIMBot && <Typography as="p">{t('message.jwt-token')}</Typography>}
       {isSCIMBot && (
-        <Typography className="token-label" variant="text">
-          {t('label.scim-token')}
-        </Typography>
+        <Typography className="token-label">{t('label.scim-token')}</Typography>
       )}
 
       {renderTokenSection()}

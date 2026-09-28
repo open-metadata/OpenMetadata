@@ -66,7 +66,7 @@ function AlertFormSourceItem({
         bodyStyle={{ padding: 0 }}
         className="source-dropdown-card"
         data-testid="drop-down-menu">
-        <Typography className="p-l-md text-grey-muted" variant="text">
+        <Typography className="p-l-md text-grey-muted">
           {t('label.data-asset-plural')}
         </Typography>
         <div className="p-t-xss">{menuNode}</div>

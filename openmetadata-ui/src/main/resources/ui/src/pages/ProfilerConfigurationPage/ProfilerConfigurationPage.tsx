@@ -338,12 +338,10 @@ const ProfilerConfigurationPage = () => {
                   <Col span={24}>
                     <Row align="middle" justify="space-between" wrap={false}>
                       <Col flex="auto">
-                        <Typography strong variant="text">
+                        <Typography weight="semibold">
                           {t('label.enable-storing-of-sample-data')}
                         </Typography>
-                        <Typography
-                          className="text-grey-muted m-b-0"
-                          variant="paragraph">
+                        <Typography as="p" className="text-grey-muted m-b-0">
                           {t('message.enable-storing-sample-data-description')}
                         </Typography>
                       </Col>
@@ -369,12 +367,10 @@ const ProfilerConfigurationPage = () => {
                   <Col span={24}>
                     <Row align="middle" justify="space-between" wrap={false}>
                       <Col flex="auto">
-                        <Typography strong variant="text">
+                        <Typography weight="semibold">
                           {t('label.enable-reading-of-sample-data')}
                         </Typography>
-                        <Typography
-                          className="text-grey-muted m-b-0"
-                          variant="paragraph">
+                        <Typography as="p" className="text-grey-muted m-b-0">
                           {t('message.enable-reading-sample-data-description')}
                         </Typography>
                       </Col>

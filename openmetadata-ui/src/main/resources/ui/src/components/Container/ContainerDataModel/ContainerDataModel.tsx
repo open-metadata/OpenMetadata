@@ -199,7 +199,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-              <Typography className="text-link-color" variant="text">
+              <Typography className="text-link-color">
                 {getEntityName(record)}
               </Typography>
             </Tooltip>
@@ -232,7 +232,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
                 textAlign: 'center',
               }}
               title={toLower(dataTypeDisplay)}>
-              <Typography ellipsis className="cursor-pointer" variant="text">
+              <Typography ellipsis className="cursor-pointer">
                 {dataTypeDisplay ?? record.dataType}
               </Typography>
             </Tooltip>

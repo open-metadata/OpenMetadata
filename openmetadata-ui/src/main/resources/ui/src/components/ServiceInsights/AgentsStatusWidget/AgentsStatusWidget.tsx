@@ -46,18 +46,19 @@ const renderAgentStatusExpandIcon = (
             data-testid={`agent-status-summary-item-${key}`}
             key={key}>
             {getIconFromStatus(key)}
-            <Typography data-testid="pipeline-count" variant="text">
+            <Typography
+              className="agent-status-summary-text"
+              data-testid="pipeline-count">
               {value}
             </Typography>
-            <Typography variant="text">{key}</Typography>
+            <Typography className="agent-status-summary-text">{key}</Typography>
           </div>
         ))}
       </div>
     )}
     <Typography
       className="text-primary"
-      data-testid="agent-status-widget-view-more"
-      variant="text">
+      data-testid="agent-status-widget-view-more">
       {t('label.view-more')}
     </Typography>
     <ArrowSvg className="text-primary" height={14} width={14} />
@@ -97,7 +98,7 @@ function AgentsStatusWidget({
         header={
           <div className="flex justify-between items-center">
             <div className="flex flex-col gap-1">
-              <Typography className="font-medium text-lg" variant="text">
+              <Typography className="font-medium text-lg">
                 {t('label.entity-status', {
                   entity: t('label.agent-plural'),
                 })}
@@ -139,7 +140,7 @@ function AgentsStatusWidget({
                     data-testid={`agent-status-card-${agent.label}`}>
                     <Space align="center" size={8}>
                       {agent.agentIcon}
-                      <Typography variant="text">{agent.label}</Typography>
+                      <Typography>{agent.label}</Typography>
                     </Space>
                     {getIconFromStatus(agent.status)}
                   </Card>

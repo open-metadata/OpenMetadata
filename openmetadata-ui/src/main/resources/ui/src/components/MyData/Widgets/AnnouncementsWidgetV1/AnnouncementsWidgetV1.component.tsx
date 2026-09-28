@@ -77,10 +77,11 @@ const AnnouncementsWidgetV1 = ({
               <MegaphoneIcon />
             </div>
             <Typography
+              as="h5"
               className="header-title"
               data-testid="announcements-widget-v1-title"
-              level={5}
-              variant="title">
+              size="text-md"
+              weight="semibold">
               {t('label.recent-announcement-plural')}
             </Typography>
             <Badge

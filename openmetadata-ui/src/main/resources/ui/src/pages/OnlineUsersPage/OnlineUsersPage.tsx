@@ -193,11 +193,7 @@ const OnlineUsersPage = () => {
         const activityTime = lastActivityTime || record.lastLoginTime;
 
         if (!activityTime) {
-          return (
-            <Typography color="secondary" variant="text">
-              {t('label.never')}
-            </Typography>
-          );
+          return <Typography color="secondary">{t('label.never')}</Typography>;
         }
 
         const lastActivityMoment = moment(activityTime);
@@ -225,13 +221,8 @@ const OnlineUsersPage = () => {
 
         return (
           <Space direction="vertical" size={0}>
-            <Typography style={{ color: statusColor }} variant="text">
-              {statusText}
-            </Typography>
-            <Typography
-              color="secondary"
-              style={{ fontSize: '12px' }}
-              variant="text">
+            <Typography style={{ color: statusColor }}>{statusText}</Typography>
+            <Typography color="secondary" style={{ fontSize: '12px' }}>
               {formatDateTime(activityTime)}
             </Typography>
           </Space>
@@ -275,9 +266,7 @@ const OnlineUsersPage = () => {
             dataSource={userList}
             extraTableFilters={
               <Space>
-                <Typography variant="text">
-                  {t('label.time-window')}:
-                </Typography>
+                <Typography>{t('label.time-window')}:</Typography>
                 <Select
                   data-testid="time-window-select"
                   options={TIME_WINDOWS}

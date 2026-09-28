@@ -118,11 +118,7 @@ export const ModalWithCustomPropertyEditor = ({
       }
       maskClosable={false}
       open={visible}
-      title={
-        <Typography data-testid="header" variant="text">
-          {header}
-        </Typography>
-      }
+      title={<Typography data-testid="header">{header}</Typography>}
       width={650}
       onCancel={onCancel}>
       <KeyDownStopPropagationWrapper>

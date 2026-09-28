@@ -369,8 +369,7 @@ const CuratedAssetsWidgetContent = ({
               <div className="flex items-center gap-1">
                 <Typography
                   className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}
-                  variant="text">
+                  ellipsis={{ tooltip: true }}>
                   {title}
                 </Typography>
                 {certification && (
@@ -382,8 +381,7 @@ const CuratedAssetsWidgetContent = ({
               {description && (
                 <Typography
                   className="max-two-lines entity-list-item-description text-grey-muted"
-                  ellipsis={{ tooltip: true }}
-                  variant="text">
+                  ellipsis={{ tooltip: true }}>
                   {getTextFromHtmlString(description)}
                 </Typography>
               )}
@@ -444,8 +442,7 @@ const CuratedAssetsWidgetContent = ({
             className={
               isFullSize ? 'widget-title-full-size' : 'widget-title-half-size'
             }
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             {title || t('label.curated-asset-plural')}
           </Typography>
         }

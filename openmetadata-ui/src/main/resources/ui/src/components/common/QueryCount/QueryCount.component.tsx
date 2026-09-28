@@ -60,13 +60,13 @@ const QueryCount = ({ tableId }: { tableId: string }) => {
 
   if (queryCount.count === 0) {
     return (
-      <Typography variant="text">
+      <Typography>
         {t('label.no-entity', { entity: t('label.query-plural') })}
       </Typography>
     );
   } else {
     return (
-      <Typography variant="text">
+      <Typography>
         {`${queryCount.count} ${t(
           queryCount.count === 1 ? 'label.query' : 'label.query-plural'
         )}`}

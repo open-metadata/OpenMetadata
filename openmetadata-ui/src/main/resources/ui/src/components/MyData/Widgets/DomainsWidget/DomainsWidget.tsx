@@ -191,11 +191,10 @@ const DomainsWidget = ({
                   <div className="domain-card-full-content">
                     <div className="domain-card-full-title-row">
                       <Typography
-                        className="font-semibold"
+                        className="domain-card-full-name font-semibold"
                         ellipsis={{
                           tooltip: true,
-                        }}
-                        variant="text">
+                        }}>
                         {domain.displayName || domain.name}
                       </Typography>
                       <span className="domain-card-full-count">
@@ -215,8 +214,7 @@ const DomainsWidget = ({
                       </div>
                       <Typography
                         className="domain-card-name"
-                        ellipsis={{ tooltip: true }}
-                        variant="text">
+                        ellipsis={{ tooltip: true }}>
                         {domain.displayName || domain.name}
                       </Typography>
                     </span>

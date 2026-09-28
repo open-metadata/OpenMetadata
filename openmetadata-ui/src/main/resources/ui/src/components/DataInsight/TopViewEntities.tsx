@@ -87,9 +87,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         title: t('label.data-asset-type'),
         dataIndex: 'entityType',
         key: 'entityType',
-        render: (entityType: string) => (
-          <Typography variant="text">{entityType}</Typography>
-        ),
+        render: (entityType: string) => <Typography>{entityType}</Typography>,
       },
       {
         title: t('label.owner'),
@@ -99,7 +97,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           owner ? (
             <UserPopOverCard showUserName profileWidth={24} userName={owner} />
           ) : (
-            <Typography variant="text">--</Typography>
+            <Typography>--</Typography>
           ),
       },
       {
@@ -108,9 +106,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         }),
         dataIndex: 'pageViews',
         key: 'totalViews',
-        render: (pageViews: number) => (
-          <Typography variant="text">{pageViews}</Typography>
-        ),
+        render: (pageViews: number) => <Typography>{pageViews}</Typography>,
       },
     ],
     []

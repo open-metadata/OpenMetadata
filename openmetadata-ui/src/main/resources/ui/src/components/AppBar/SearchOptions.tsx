@@ -53,7 +53,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
         to={getExplorePath({ search: searchText })}
         onClick={() => setIsOpen(false)}>
         {searchText}
-        <Typography variant="text">{t('label.in-open-metadata')}</Typography>
+        <Typography>{t('label.in-open-metadata')}</Typography>
       </Link>
       {options.map((option) => (
         <Button
@@ -66,7 +66,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
             setIsOpen(false);
           }}>
           {searchText}
-          <Typography variant="text">{option}</Typography>
+          <Typography>{option}</Typography>
         </Button>
       ))}
     </div>

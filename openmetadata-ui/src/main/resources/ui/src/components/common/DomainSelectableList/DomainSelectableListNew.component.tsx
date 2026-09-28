@@ -76,9 +76,7 @@ const DomainSelectableListNew = ({
                 <DomainIcon height={16} />
               </div>
 
-              <Typography
-                className="user-profile-edit-popover-card-title"
-                variant="text">
+              <Typography className="user-profile-edit-popover-card-title">
                 {t('label.domain-plural')}
               </Typography>
             </div>

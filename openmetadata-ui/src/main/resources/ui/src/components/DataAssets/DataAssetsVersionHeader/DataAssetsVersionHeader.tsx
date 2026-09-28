@@ -136,7 +136,7 @@ function DataAssetsVersionHeader({
                 data-testid="version-button"
                 icon={<Icon component={VersionIcon} />}
                 onClick={onVersionClick}>
-                <Typography variant="text">{version}</Typography>
+                <Typography>{version}</Typography>
               </Button>
             </Tooltip>
           </Col>

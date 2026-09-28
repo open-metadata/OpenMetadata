@@ -35,7 +35,9 @@ const GoalCompleted = () => {
   return (
     <div className="goal-completed-container">
       <CheckIcon />
-      <Typography variant="text">{t('label.goal-completed')}</Typography>
+      <Typography className="goal-status-text">
+        {t('label.goal-completed')}
+      </Typography>
     </div>
   );
 };
@@ -46,7 +48,9 @@ const GoalMissed = () => {
   return (
     <div className="goal-missed-container">
       <WarningOutlined />
-      <Typography variant="text">{t('label.goal-missed')}</Typography>
+      <Typography className="goal-status-text">
+        {t('label.goal-missed')}
+      </Typography>
     </div>
   );
 };
@@ -84,9 +88,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
           centerContent = <GoalMissed />;
         } else {
           centerContent = (
-            <Typography
-              className="text-xss font-semibold kpi-legend-days-left text-center"
-              variant="text">
+            <Typography className="text-xss font-semibold kpi-legend-days-left text-center">
               {daysLeft <= 0 ? 0 : daysLeft}{' '}
               {t('label.days-left').toUpperCase()}
             </Typography>
@@ -99,8 +101,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
               <div className="kpi-legend-header">
                 <Typography
                   className="kpi-legend-title"
-                  ellipsis={{ tooltip: true }}
-                  variant="text">
+                  ellipsis={{ tooltip: true }}>
                   {resultData.displayName}
                 </Typography>
 
@@ -124,18 +125,14 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
               <div className="kpi-legend-bottom-row">
                 <div className="kpi-legend-value-section">
-                  <Typography
-                    className="text-xss kpi-legend-value"
-                    variant="text">
+                  <Typography className="text-xss kpi-legend-value">
                     {current.toFixed(0)}
                     {suffix}
                   </Typography>
                 </div>
                 <div className="kpi-legend-center-section">{centerContent}</div>
                 <div className="kpi-legend-value-section">
-                  <Typography
-                    className="text-xss kpi-legend-value"
-                    variant="text">
+                  <Typography className="text-xss kpi-legend-value">
                     {target.toFixed(0)}
                     {suffix}
                   </Typography>
@@ -152,13 +149,10 @@ const KPILegend: React.FC<KPILegendProps> = ({
               className="legend-dot h-3 w-3 m-r-xss"
               style={{ backgroundColor: color }}
             />
-            <Typography strong className="text-xs font-semibold" variant="text">
+            <Typography className="text-xs font-semibold" weight="semibold">
               {`${resultData.displayName}:`}
             </Typography>
-            <Typography
-              className="text-xs font-normal"
-              color="secondary"
-              variant="text">
+            <Typography className="text-xs font-normal" color="secondary">
               {daysLeft <= 0 ? 0 : daysLeft} {t('label.days-left')}
             </Typography>
           </div>

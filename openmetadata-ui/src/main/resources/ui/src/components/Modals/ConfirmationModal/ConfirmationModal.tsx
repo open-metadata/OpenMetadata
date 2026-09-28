@@ -75,18 +75,15 @@ const ConfirmationModal = ({
       open={visible}
       title={
         <Typography
-          strong
           className={headerClassName}
           data-testid="modal-header"
-          variant="text">
+          weight="semibold">
           {header}
         </Typography>
       }
       onCancel={onCancel}>
       <div className={classNames('h-20', bodyClassName)}>
-        <Typography data-testid="body-text" variant="text">
-          {bodyText}
-        </Typography>
+        <Typography data-testid="body-text">{bodyText}</Typography>
       </div>
     </Modal>
   );

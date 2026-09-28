@@ -462,8 +462,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   <Typography
                     className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
                     data-testid={`service-name-${service.name}`}
-                    title={getEntityName(service)}
-                    variant="text">
+                    title={getEntityName(service)}>
                     {getEntityName(service)}
                   </Typography>
                 </Link>

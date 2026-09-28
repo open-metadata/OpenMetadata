@@ -608,10 +608,7 @@ const NavBar = () => {
                         name="domain"
                         width={20}
                       />
-                      <Typography
-                        ellipsis
-                        className="domain-text"
-                        variant="text">
+                      <Typography ellipsis className="domain-text">
                         {domainDisplayName}
                       </Typography>
                       {!isSingleDomainUser && <DropDownIcon width={12} />}

@@ -257,8 +257,7 @@ export const EntityImport = ({
                   size={16}>
                   <Typography
                     className="text-center"
-                    data-testid="abort-reason"
-                    variant="text">
+                    data-testid="abort-reason">
                     <strong className="d-block">{t('label.aborted')}</strong>{' '}
                     {csvImportResult.abortReason}
                   </Typography>
@@ -319,7 +318,7 @@ export const EntityImport = ({
                 size={16}>
                 <SuccessBadgeIcon data-testid="success-badge" width={36} />
 
-                <Typography variant="text">
+                <Typography>
                   <strong data-testid="file-name">{fileName}</strong>{' '}
                   {`${t('label.successfully-uploaded')}.`}
                 </Typography>

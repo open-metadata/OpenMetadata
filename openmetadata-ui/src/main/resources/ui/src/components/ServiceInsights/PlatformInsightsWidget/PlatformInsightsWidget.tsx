@@ -33,9 +33,7 @@ const renderViewMoreExpandIcon = (
   t: ReturnType<typeof useTranslation>['t']
 ) => (
   <div className="expand-icon-container">
-    <Typography className="text-primary" variant="text">
-      {t('label.view-more')}
-    </Typography>
+    <Typography className="text-primary">{t('label.view-more')}</Typography>
     <ArrowSvg className="text-primary" height={14} width={14} />
   </div>
 );
@@ -76,12 +74,12 @@ function PlatformInsightsWidget({
       <Collapse.Panel
         header={
           <div className="flex flex-col gap-1">
-            <Typography className="font-medium text-lg" variant="text">
+            <Typography className="font-medium text-lg">
               {t('label.entity-insight-plural', {
                 entity: t('label.platform'),
               })}
             </Typography>
-            <Typography className="tw:text-tertiary text-sm" variant="text">
+            <Typography className="tw:text-tertiary text-sm">
               {t('message.platform-insight-description')}
             </Typography>
           </div>
@@ -122,16 +120,12 @@ function PlatformInsightsWidget({
                     <Card
                       className="widget-info-card other-charts-card"
                       key={chart.chartType}>
-                      <Typography
-                        className="font-semibold text-sm"
-                        variant="text">
+                      <Typography className="font-semibold text-sm">
                         {getTitleByChartType(chart.chartType)}
                       </Typography>
                       <Row align="top" className="m-t-xs" gutter={8}>
                         <Col span={12}>
-                          <Typography
-                            className="current-percentage"
-                            variant="text">
+                          <Typography className="current-percentage">
                             {`${getReadableCountString(
                               chart.currentPercentage
                             )}%`}
@@ -147,16 +141,13 @@ function PlatformInsightsWidget({
                                 className="font-medium text-xs"
                                 style={{
                                   color: chart.isIncreased ? GREEN_1 : RED_1,
-                                }}
-                                variant="text">
+                                }}>
                                 {`${getReadableCountString(
                                   chart.percentageChange
                                 )}%`}
                               </Typography>
                             </div>
-                            <Typography
-                              className="font-small text-grey-muted text-xs text-no-wrap"
-                              variant="text">
+                            <Typography className="font-small text-grey-muted text-xs text-no-wrap">
                               {chart.numberOfDays === 1
                                 ? t('label.in-the-last-day')
                                 : t('label.in-last-number-of-days', {

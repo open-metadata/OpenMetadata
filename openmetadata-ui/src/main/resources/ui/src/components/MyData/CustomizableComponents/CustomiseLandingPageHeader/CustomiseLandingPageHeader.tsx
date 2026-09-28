@@ -293,7 +293,7 @@ const CustomiseLandingPageHeader = ({
             className={classNames('d-flex items-center gap-4 mb-5', {
               'justify-center': !showAnnouncements,
             })}>
-            <Typography className="welcome-user" variant="text">
+            <Typography className="welcome-user">
               {t('label.welcome', {
                 name: currentUser?.displayName || currentUser?.name,
               })}

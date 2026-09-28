@@ -66,7 +66,7 @@ const LineageSearchSelect = () => {
               src={serviceUtilClassBase.getServiceTypeLogo(node)}
               width="16px"
             />
-            <Typography variant="text">{getEntityName(node)}</Typography>
+            <Typography>{getEntityName(node)}</Typography>
           </Space>
         ),
         value: node.fullyQualifiedName,
@@ -97,7 +97,7 @@ const LineageSearchSelect = () => {
                   src={serviceUtilClassBase.getServiceTypeLogo(node)}
                   width="16px"
                 />
-                <Typography className="text-grey-muted text-xs" variant="text">
+                <Typography className="text-grey-muted text-xs">
                   {getEntityName(node)}
                 </Typography>
                 <RightOutlined className="text-grey-muted text-xss" />
@@ -107,7 +107,7 @@ const LineageSearchSelect = () => {
                   node.entityType ?? '',
                   EntityIconSize.Size14
                 )}
-                <Typography variant="text">{getEntityName(column)}</Typography>
+                <Typography>{getEntityName(column)}</Typography>
               </div>
             </div>
           ),

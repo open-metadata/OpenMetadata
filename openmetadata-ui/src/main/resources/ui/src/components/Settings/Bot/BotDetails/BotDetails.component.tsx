@@ -174,13 +174,14 @@ const BotDetails: FC<BotsDetailProps> = ({
                       {displayName ? (
                         <Typography
                           ellipsis
+                          as="h5"
                           className="m-0"
-                          level={5}
-                          variant="title">
+                          size="text-md"
+                          weight="semibold">
                           {displayName}
                         </Typography>
                       ) : (
-                        <Typography className="text-grey-muted" variant="text">
+                        <Typography className="text-grey-muted">
                           {t('label.add-entity', {
                             entity: t('label.display-name'),
                           })}
@@ -283,10 +284,10 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">
-            <Typography className="mb-2 text-lg" variant="text">
+            <Typography className="mb-2 text-lg">
               {t('label.token-security')}
             </Typography>
-            <Typography className="mb-2" variant="text">
+            <Typography className="mb-2">
               {t('message.token-security-description')}
             </Typography>
           </div>

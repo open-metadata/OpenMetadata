@@ -277,7 +277,7 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'runType',
           key: 'runType',
           render: (runType, record) => (
-            <Typography variant="text">
+            <Typography>
               {record.isSynthetic
                 ? NO_DATA_PLACEHOLDER
                 : runType ?? NO_DATA_PLACEHOLDER}
@@ -548,7 +548,7 @@ const AppRunsHistory = forwardRef(
           maskClosable={false}
           open={showConfigModal}
           title={
-            <Typography variant="text">
+            <Typography>
               {t('label.entity-configuration', {
                 entity: getEntityName(appData) ?? t('label.application'),
               })}

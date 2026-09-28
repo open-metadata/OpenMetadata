@@ -150,7 +150,7 @@ export const IngestionRecentRuns = <
   return (
     <Space className={classNames} size={5}>
       {isEmpty(recentRunStatus) ? (
-        <Typography data-testid="pipeline-status" variant="text">
+        <Typography data-testid="pipeline-status">
           {NO_DATA_PLACEHOLDER}
         </Typography>
       ) : (

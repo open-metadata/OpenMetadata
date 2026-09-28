@@ -54,8 +54,7 @@ const Chip = ({
         {icon}
         <Typography
           className="text-left chip-tag-link chip-name"
-          ellipsis={{ tooltip: getEntityName(item) }}
-          variant="text">
+          ellipsis={{ tooltip: getEntityName(item) }}>
           {getEntityName(item)}
         </Typography>
       </Link>
@@ -68,9 +67,7 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography
-        className="m-t-xs text-sm no-data-chip-placeholder"
-        variant="paragraph">
+      <Typography as="p" className="m-t-xs text-sm no-data-chip-placeholder">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography>
     );

@@ -60,12 +60,10 @@ export const ContractTermsOfService: React.FC<{
     <>
       <Card className="container bg-grey p-box">
         <div className="m-b-sm">
-          <Typography className="contract-detail-form-tab-title" variant="text">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.terms-of-service')}
           </Typography>
-          <Typography
-            className="contract-detail-form-tab-description"
-            variant="paragraph">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-terms-of-service-description')}
           </Typography>
         </div>

@@ -88,7 +88,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   return (
     <Tooltip
       title={
-        <Typography className="text-white" variant="text">
+        <Typography className="text-white">
           {tooltipText}
           {node.type && (
             <span className="text-grey-400">{` (${node.type})`}</span>
@@ -103,8 +103,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
           className={classNames({
             'm-l-xss': node.data?.isRoot,
           })}
-          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}
-          variant="text">
+          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
           {node.title}
         </Typography>
         {!isUndefined(node.count) && (
@@ -790,15 +789,15 @@ const ExploreTree = ({
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography
+          as="p"
           className="font-medium"
-          style={{ marginBottom: '0' }}
-          variant="paragraph">
+          style={{ marginBottom: '0' }}>
           {t('message.no-data-yet')}
         </Typography>
-        <Typography style={{ marginBottom: '0' }} variant="paragraph">
+        <Typography as="p" style={{ marginBottom: '0' }}>
           {t('message.add-service-and-data-assets')}
         </Typography>
-        <Typography variant="paragraph">
+        <Typography as="p">
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={

@@ -197,11 +197,7 @@ const renderFieldActionHeader = (field: string, action: string): ReactNode => (
   <Transi18next
     i18nKey="message.feed-field-action-entity-header"
     renderElement={
-      <Typography
-        className="font-bold"
-        style={{ fontSize: '14px' }}
-        variant="text"
-      />
+      <Typography className="font-bold" style={{ fontSize: '14px' }} />
     }
     values={{ field, action }}
   />
@@ -211,22 +207,22 @@ const ACTIVITY_EVENT_HEADER_RENDERERS: Partial<
   Record<ActivityEventType, () => ReactNode>
 > = {
   [ActivityEventType.EntityCreated]: () => (
-    <Typography className="font-bold" variant="text">
+    <Typography className="font-bold">
       {t('label.created-lowercase')}
     </Typography>
   ),
   [ActivityEventType.EntityDeleted]: () => (
-    <Typography className="font-bold" variant="text">
+    <Typography className="font-bold">
       {t('label.deleted-lowercase')}
     </Typography>
   ),
   [ActivityEventType.EntitySoftDeleted]: () => (
-    <Typography className="font-bold" variant="text">
+    <Typography className="font-bold">
       {t('label.deleted-lowercase')}
     </Typography>
   ),
   [ActivityEventType.EntityRestored]: () => (
-    <Typography className="font-bold" variant="text">
+    <Typography className="font-bold">
       {t('label.restored-lowercase')}
     </Typography>
   ),
@@ -253,17 +249,17 @@ const ACTIVITY_EVENT_HEADER_RENDERERS: Partial<
   [ActivityEventType.CustomPropertyUpdated]: () => (
     <Transi18next
       i18nKey="message.feed-custom-property-header"
-      renderElement={<Typography className="font-bold" variant="text" />}
+      renderElement={<Typography className="font-bold" />}
     />
   ),
   [ActivityEventType.TestCaseStatusChanged]: () => (
     <Transi18next
       i18nKey="message.feed-test-case-header"
-      renderElement={<Typography className="font-bold" variant="text" />}
+      renderElement={<Typography className="font-bold" />}
     />
   ),
   [ActivityEventType.PipelineStatusChanged]: () => (
-    <Typography className="font-bold" variant="text">
+    <Typography className="font-bold">
       {t('label.pipeline-status-changed')}
     </Typography>
   ),
@@ -285,14 +281,14 @@ export const getActivityEventHeaderText = (
 
   if (fieldName) {
     return (
-      <Typography className="font-bold" variant="text">
+      <Typography className="font-bold">
         {t('label.updated-field-for-lowercase', { field: fieldName })}
       </Typography>
     );
   }
 
   return (
-    <Typography className="font-bold" variant="text">
+    <Typography className="font-bold">
       {t('label.updated-lowercase')}
     </Typography>
   );

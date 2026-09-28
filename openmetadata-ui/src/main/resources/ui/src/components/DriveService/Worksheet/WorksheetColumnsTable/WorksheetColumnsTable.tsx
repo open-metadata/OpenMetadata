@@ -195,8 +195,7 @@ function WorksheetColumnsTable() {
                   className={classNames(
                     'm-b-0 d-block break-word text-link-color'
                   )}
-                  data-testid="column-name"
-                  variant="text">
+                  data-testid="column-name">
                   {name}
                 </Typography>
                 {record.fullyQualifiedName && (
@@ -209,8 +208,7 @@ function WorksheetColumnsTable() {
               {isEmpty(displayName) ? null : (
                 <Typography
                   className="m-b-0 d-block break-word"
-                  data-testid="column-display-name"
-                  variant="text">
+                  data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography>
               )}
@@ -237,7 +235,7 @@ function WorksheetColumnsTable() {
                 textAlign: 'center',
               }}
               title={toLower(dataTypeDisplay)}>
-              <Typography ellipsis className="cursor-pointer" variant="text">
+              <Typography ellipsis className="cursor-pointer">
                 {dataTypeDisplay ?? record.dataType}
               </Typography>
             </Tooltip>

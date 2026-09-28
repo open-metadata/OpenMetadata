@@ -224,12 +224,10 @@ export const ContractQualityFormTab: React.FC<{
     <Card className="contract-quality-form-tab-container container bg-grey p-box">
       <div className="d-flex justify-between">
         <div>
-          <Typography className="contract-detail-form-tab-title" variant="text">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.quality')}
           </Typography>
-          <Typography
-            className="contract-detail-form-tab-description"
-            variant="text">
+          <Typography className="contract-detail-form-tab-description">
             {t('message.quality-contract-description')}
           </Typography>
         </div>

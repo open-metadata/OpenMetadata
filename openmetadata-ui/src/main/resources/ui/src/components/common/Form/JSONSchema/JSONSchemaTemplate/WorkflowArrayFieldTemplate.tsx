@@ -116,9 +116,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
         {/* Display field title only if uniqueItems is not true to remove duplicate title set
          automatically due to an unknown behavior */}
         {props.schema.uniqueItems !== true && (
-          <Typography as="article" variant="text">
-            {startCase(props.name)}
-          </Typography>
+          <Typography as="article">{startCase(props.name)}</Typography>
         )}
       </Col>
       <Col className="select-container" span={24}>

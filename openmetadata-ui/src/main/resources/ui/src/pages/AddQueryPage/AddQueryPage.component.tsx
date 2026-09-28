@@ -234,10 +234,7 @@ const AddQueryPage = () => {
           <div>
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />
             <div className="m-t-md">
-              <Typography
-                className="text-base"
-                data-testid="form-title"
-                variant="paragraph">
+              <Typography as="p" className="text-base" data-testid="form-title">
                 {t('label.add-new-entity', {
                   entity: t('label.query'),
                 })}
@@ -321,14 +318,12 @@ const AddQueryPage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography className="text-base font-medium" variant="paragraph">
+            <Typography as="p" className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.query'),
               })}
             </Typography>
-            <Typography variant="text">
-              {t('message.add-query-helper-message')}
-            </Typography>
+            <Typography>{t('message.add-query-helper-message')}</Typography>
           </>
         ),
         className: 'content-resizable-panel-container',

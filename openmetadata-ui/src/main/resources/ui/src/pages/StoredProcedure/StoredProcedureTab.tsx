@@ -274,9 +274,7 @@ const StoredProcedureTab = () => {
             data-testid="show-deleted-stored-procedure"
             onClick={handleShowDeletedStoredProcedures}
           />
-          <Typography className="m-l-xs" variant="text">
-            {t('label.deleted')}
-          </Typography>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}

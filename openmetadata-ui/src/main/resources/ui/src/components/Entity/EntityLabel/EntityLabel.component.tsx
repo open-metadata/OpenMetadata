@@ -23,10 +23,10 @@ interface EntityLabelProps {
 
 const EntityLabel = (entity: EntityLabelProps): JSX.Element => (
   <Space className="w-full whitespace-normal" direction="vertical" size={0}>
-    <Typography className="m-b-0" variant="paragraph">
+    <Typography as="p" className="m-b-0">
       {getEntityName(entity)}
     </Typography>
-    <Typography className="text-grey-muted text-xs" variant="paragraph">
+    <Typography as="p" className="text-grey-muted text-xs">
       {entity?.fullyQualifiedName}
     </Typography>
   </Space>

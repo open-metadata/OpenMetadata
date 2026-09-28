@@ -92,19 +92,17 @@ const WhatsNewAlert = () => {
             <Row gutter={0} wrap={false}>
               <Col className="whats-new-alert-left" flex="210px">
                 <RocketIcon className="whats-new-alert-rocket-icon" />
-                <Typography className="whats-new-alert-version" variant="text">
+                <Typography className="whats-new-alert-version">
                   {t('label.version-number', {
                     version: appVersion ?? '',
                   })}
                 </Typography>
               </Col>
               <Col className="whats-new-alert-right" flex="auto">
-                <Typography className="text-md font-semibold" variant="text">
+                <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography>
-                <Typography
-                  className="whats-new-alert-subtext"
-                  variant="paragraph">
+                <Typography as="p" className="whats-new-alert-subtext">
                   {t('label.to-learn-more-please-check-out')}
                 </Typography>
                 <div className="whats-new-alert-links">

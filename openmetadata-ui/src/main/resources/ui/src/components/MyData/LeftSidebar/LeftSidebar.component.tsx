@@ -176,10 +176,10 @@ const LeftSidebar = () => {
           open={isConfirmLogoutModalOpen}
           width={360}
           onCancel={hideConfirmLogoutModal}>
-          <Typography level={5} variant="title">
+          <Typography as="h5" size="text-md" weight="semibold">
             {t('label.logout')}
           </Typography>
-          <Typography className="text-grey-muted" variant="text">
+          <Typography className="text-grey-muted">
             {t('message.logout-confirmation')}
           </Typography>
 

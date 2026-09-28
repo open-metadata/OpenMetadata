@@ -42,7 +42,7 @@ const renderFooter = (
   t: (key: string) => string
 ) => (
   <div className="d-flex justify-between">
-    <Typography color="secondary" variant="text">
+    <Typography color="secondary">
       {failedStatus?.numberOfRowsFailed &&
         `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
     </Typography>
@@ -75,9 +75,7 @@ const renderFailedContent = (
       title: t('label.failure-reason'),
       dataIndex: 'message',
       key: 'message',
-      render: (error: string) => (
-        <Typography variant="paragraph">{error}</Typography>
-      ),
+      render: (error: string) => <Typography as="p">{error}</Typography>,
     },
   ];
 
@@ -179,10 +177,10 @@ export const GlossaryUpdateConfirmationModal = ({
                 component={ExclamationIcon}
                 style={{ fontSize: '60px' }}
               />
-              <Typography level={5} variant="title">
+              <Typography as="h5" size="text-md" weight="semibold">
                 {t('message.tag-update-confirmation')}
               </Typography>
-              <Typography className="text-center" variant="text">
+              <Typography className="text-center">
                 {t('message.glossary-tag-update-description')}{' '}
                 <span className="font-medium">
                   {getEntityName(glossaryTerm)}

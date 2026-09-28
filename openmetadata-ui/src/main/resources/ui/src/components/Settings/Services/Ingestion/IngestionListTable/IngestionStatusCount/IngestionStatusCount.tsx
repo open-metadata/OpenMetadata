@@ -38,12 +38,8 @@ function IngestionStatusCount({
       {records.map((record) => (
         <Col key={`${record.label}-${runId}`}>
           <div className={classNames('status-count', record.type)}>
-            <Typography className="record-count" variant="text">
-              {record.value}
-            </Typography>
-            <Typography className="record-label" variant="text">
-              {record.label}
-            </Typography>
+            <Typography className="record-count">{record.value}</Typography>
+            <Typography className="record-label">{record.label}</Typography>
           </div>
         </Col>
       ))}

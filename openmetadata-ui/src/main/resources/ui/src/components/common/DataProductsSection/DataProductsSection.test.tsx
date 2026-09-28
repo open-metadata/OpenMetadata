@@ -243,9 +243,8 @@ describe('DataProductsSection', () => {
     it('renders with data products', () => {
       const { container } = render(<DataProductsSection {...defaultProps} />);
 
-      expect(screen.getByText('label.data-product-plural')).toHaveAttribute(
-        'data-typography',
-        'text'
+      expect(screen.getByText('label.data-product-plural').tagName).toBe(
+        'SPAN'
       );
 
       // display list

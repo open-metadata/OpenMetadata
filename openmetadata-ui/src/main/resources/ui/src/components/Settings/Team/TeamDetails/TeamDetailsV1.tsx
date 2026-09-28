@@ -632,8 +632,7 @@ const TeamDetailsV1 = ({
                       <Col span={21}>
                         <Typography
                           className="font-medium"
-                          data-testid="open-group-label"
-                          variant="text">
+                          data-testid="open-group-label">
                           {t('label.public-team')}
                         </Typography>
                       </Col>
@@ -694,12 +693,12 @@ const TeamDetailsV1 = ({
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography style={{ marginBottom: '0' }} variant="paragraph">
+        <Typography as="p" style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.team'),
           })}
         </Typography>
-        <Typography variant="paragraph">
+        <Typography as="p">
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
@@ -1323,7 +1322,7 @@ const TeamDetailsV1 = ({
               );
               setSelectedEntity(undefined);
             }}>
-            <Typography variant="text">
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: getEntityName(currentTeam),

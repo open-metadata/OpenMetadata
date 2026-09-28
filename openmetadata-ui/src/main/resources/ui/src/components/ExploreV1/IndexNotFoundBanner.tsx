@@ -39,10 +39,10 @@ export const IndexNotFoundBanner = () => {
             }}
           />
           <div className="d-flex flex-col gap-2">
-            <Typography className="font-semibold text-xs" variant="text">
+            <Typography className="font-semibold text-xs">
               {t('server.indexing-error')}
             </Typography>
-            <Typography className="m-b-0 text-xs" variant="paragraph">
+            <Typography as="p" className="m-b-0 text-xs">
               <Transi18next
                 i18nKey="message.configure-search-re-index"
                 renderElement={

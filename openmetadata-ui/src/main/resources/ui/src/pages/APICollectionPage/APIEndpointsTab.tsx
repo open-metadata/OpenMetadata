@@ -189,9 +189,7 @@ function APIEndpointsTab({
         key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return (
-            <Typography variant="text">{requestMethod ?? NO_DATA}</Typography>
-          );
+          return <Typography>{requestMethod ?? NO_DATA}</Typography>;
         },
       },
       ...descriptionTableObject(),
@@ -299,9 +297,7 @@ function APIEndpointsTab({
               data-testid="show-deleted"
               onClick={handleDeleteAction}
             />
-            <Typography className="m-l-xs" variant="text">
-              {t('label.deleted')}
-            </Typography>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>{' '}
           </span>
         )
       }

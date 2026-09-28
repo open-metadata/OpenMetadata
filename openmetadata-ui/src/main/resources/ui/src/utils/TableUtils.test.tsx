@@ -1214,7 +1214,7 @@ describe('TableUtils', () => {
 
       expect(stringifyResult).toContain('label.dbt-source-project:');
       expect(stringifyResult).toContain(
-        '{"data-testid":"dbt-source-project-id","variant":"text","children":"jaffle_shop"}'
+        '{"data-testid":"dbt-source-project-id","children":"jaffle_shop"}'
       );
     });
 
@@ -1230,7 +1230,7 @@ describe('TableUtils', () => {
 
       expect(stringifyResult).toContain('label.dbt-source-project:');
       expect(stringifyResult).toContain(
-        '{"data-testid":"dbt-source-project-id","variant":"text","children":"--"}'
+        '{"data-testid":"dbt-source-project-id","children":"--"}'
       );
     });
   });

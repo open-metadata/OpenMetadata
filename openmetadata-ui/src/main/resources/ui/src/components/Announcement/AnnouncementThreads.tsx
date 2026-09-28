@@ -77,8 +77,7 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
         <div className="d-flex flex-column items-end m-y-xlg">
           <Typography
             className="text-announcement"
-            data-testid="inActive-announcements"
-            variant="text">
+            data-testid="inActive-announcements">
             <strong>{inActiveAnnouncements.length}</strong>{' '}
             {t('label.inactive-announcement-plural')}
           </Typography>

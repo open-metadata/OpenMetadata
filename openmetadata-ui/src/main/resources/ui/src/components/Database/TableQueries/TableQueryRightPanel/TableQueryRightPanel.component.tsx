@@ -94,7 +94,7 @@ const TableQueryRightPanel = ({
               cardProps={{
                 title: (
                   <Space align="center" className="w-full" size={0}>
-                    <Typography className="right-panel-label" variant="text">
+                    <Typography className="right-panel-label">
                       {t('label.owner-plural')}
                     </Typography>
 
@@ -155,10 +155,7 @@ const TableQueryRightPanel = ({
             <ExpandableCard
               cardProps={{
                 title: (
-                  <Typography
-                    className="right-panel-label"
-                    data-testid="users"
-                    variant="text">
+                  <Typography className="right-panel-label" data-testid="users">
                     {t('label.user-plural')}
                   </Typography>
                 ),
@@ -179,9 +176,7 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography
-                  className="m-b-0 text-grey-muted"
-                  variant="paragraph">
+                <Typography as="p" className="m-b-0 text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.user-plural'),
                   })}
@@ -195,8 +190,7 @@ const TableQueryRightPanel = ({
                 title: (
                   <Typography
                     className="right-panel-label"
-                    data-testid="used-by"
-                    variant="text">
+                    data-testid="used-by">
                     {t('label.used-by')}
                   </Typography>
                 ),
@@ -211,9 +205,7 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography
-                  className="m-b-0 text-grey-muted"
-                  variant="paragraph">
+                <Typography as="p" className="m-b-0 text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.used-by'),
                   })}

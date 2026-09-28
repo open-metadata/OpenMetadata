@@ -67,7 +67,7 @@ const FeedsFilterPopover = ({
           </Space>
         }
         header={
-          <Typography className="font-medium" variant="text">
+          <Typography className="font-medium">
             {t('label.feed-filter-plural')}
           </Typography>
         }
@@ -80,10 +80,8 @@ const FeedsFilterPopover = ({
             <Space align="start">
               <Checkbox checked={selectedFilter === item.key} />
               <Space direction="vertical" size={0}>
-                <Typography className="font-medium" variant="text">
-                  {item.title}
-                </Typography>
-                <Typography className="text-muted text-xs" variant="text">
+                <Typography className="font-medium">{item.title}</Typography>
+                <Typography className="text-muted text-xs">
                   {item.description}
                 </Typography>
               </Space>

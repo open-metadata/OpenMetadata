@@ -100,8 +100,8 @@ const APIEndpointSummary = ({
       </Col>
       <Col span={24}>
         {isEmpty(activeSchema?.schemaFields) ? (
-          <Typography data-testid="no-data-message" variant="text">
-            <Typography className="text-grey-body" variant="text">
+          <Typography data-testid="no-data-message">
+            <Typography className="text-grey-body">
               {t('message.no-data-available')}
             </Typography>
           </Typography>

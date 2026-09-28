@@ -76,11 +76,11 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
         <Space className="w-full justify-between items-start">
           <div data-testid="data-insight-header">
             <div className="flex gap-2 items-center">
-              <Typography level={5} variant="title">
+              <Typography as="h5" size="text-md" weight="semibold">
                 {t('label.data-insight-plural')}
               </Typography>
             </div>
-            <Typography className="data-insight-label-text" variant="text">
+            <Typography className="data-insight-label-text">
               {t('message.data-insight-subtitle')}
             </Typography>
           </div>
@@ -127,8 +127,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
           <Space>
             <Typography
               as="article"
-              className="data-insight-label-text text-xs"
-              variant="text">
+              className="data-insight-label-text text-xs">
               {`${formatDate(chartFilter.startTs)} - ${formatDate(
                 chartFilter.endTs
               )}`}

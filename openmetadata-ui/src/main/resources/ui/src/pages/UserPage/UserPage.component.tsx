@@ -96,10 +96,7 @@ const UserPage = () => {
       <div
         className="d-flex items-center justify-center h-full"
         data-testid="error">
-        <Typography
-          className="text-base"
-          data-testid="error-message"
-          variant="paragraph">
+        <Typography as="p" className="text-base" data-testid="error-message">
           <Transi18next
             i18nKey="message.no-username-available"
             renderElement={<strong data-testid="username" />}

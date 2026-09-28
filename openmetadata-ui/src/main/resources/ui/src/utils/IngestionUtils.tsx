@@ -189,11 +189,9 @@ export const getSuccessMessage = (
       });
 
   return (
-    <CoreTypography variant="text">
-      <CoreTypography
-        className="font-medium break-word"
-        variant="text">{`"${ingestionName}"`}</CoreTypography>
-      <CoreTypography variant="text">
+    <CoreTypography>
+      <CoreTypography className="font-medium break-word">{`"${ingestionName}"`}</CoreTypography>
+      <CoreTypography>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
       </CoreTypography>
     </CoreTypography>

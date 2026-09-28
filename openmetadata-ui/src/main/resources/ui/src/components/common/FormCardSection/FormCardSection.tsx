@@ -30,12 +30,10 @@ function FormCardSection({
       data-testid={`${heading}-container`}>
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography className="font-medium" variant="text">
-            {heading}
-          </Typography>
+          <Typography className="font-medium">{heading}</Typography>
         </Col>
         <Col span={24}>
-          <Typography className="text-xs text-grey-muted" variant="text">
+          <Typography className="text-xs text-grey-muted">
             {subHeading}
           </Typography>
         </Col>

@@ -39,8 +39,7 @@ export const getTestCaseResultCount = (
     data-testid={`test-${status}`}>
     <Typography
       className="font-medium text-md"
-      data-testid={`test-${status}-value`}
-      variant="text">
+      data-testid={`test-${status}-value`}>
       {count}
     </Typography>
   </div>

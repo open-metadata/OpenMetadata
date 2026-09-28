@@ -46,7 +46,7 @@ const AnnouncementEntityLinkLabel = ({
   }
 
   return (
-    <Typography className="text-grey-muted text-xs" variant="text">
+    <Typography className="text-grey-muted text-xs">
       {entityLink ? (
         <Link to={entityLink}>{entityFQN.split('.').pop()}</Link>
       ) : (
@@ -150,16 +150,16 @@ const AnnouncementFeedCardBody = ({
       data-testid="main-message">
       <div className="d-flex justify-between gap-4">
         <div className="d-flex flex-column gap-2 flex-1">
-          <Typography className="text-base font-medium" variant="text">
+          <Typography className="text-base font-medium">
             {announcementTitle}
           </Typography>
           <Space wrap size={8}>
             {announcement.createdBy && (
-              <Typography className="text-grey-muted text-xs" variant="text">
+              <Typography className="text-grey-muted text-xs">
                 {t('label.by-entity', { entity: announcement.createdBy })}
               </Typography>
             )}
-            <Typography className="text-grey-muted text-xs" variant="text">
+            <Typography className="text-grey-muted text-xs">
               {formatDateTime(announcement.updatedAt ?? announcement.createdAt)}
             </Typography>
             <AnnouncementEntityLinkLabel
@@ -189,10 +189,10 @@ const AnnouncementFeedCardBody = ({
       )}
 
       <Space wrap className="m-t-sm" size={16}>
-        <Typography className="text-grey-muted text-xs" variant="text">
+        <Typography className="text-grey-muted text-xs">
           {`${t('label.start-date')}: ${formatDateTime(details.startTime)}`}
         </Typography>
-        <Typography className="text-grey-muted text-xs" variant="text">
+        <Typography className="text-grey-muted text-xs">
           {`${t('label.end-date')}: ${formatDateTime(details.endTime)}`}
         </Typography>
       </Space>

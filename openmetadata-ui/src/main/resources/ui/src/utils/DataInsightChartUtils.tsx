@@ -118,10 +118,11 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         style={cardStyles}
         title={
           <Typography
+            as="h5"
             className="custom-data-insight-tooltip-title"
-            level={5}
+            size="text-md"
             style={titleStyles}
-            variant="title">
+            weight="semibold">
             {timestamp}
           </Typography>
         }>

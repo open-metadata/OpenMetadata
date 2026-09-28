@@ -46,9 +46,9 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
         />
         <Typography
           ellipsis
+          as="p"
           className="announcement-title"
-          data-testid="announcement-title"
-          variant="paragraph">
+          data-testid="announcement-title">
           {title}
         </Typography>
       </Space>

@@ -609,7 +609,7 @@ export const getAlertRecentEventsFilterOptions = () => {
     const label = getAlertEventsFilterLabels(status);
 
     return {
-      label: <Typography variant="text">{label}</Typography>,
+      label: <Typography>{label}</Typography>,
       key: status,
     };
   });

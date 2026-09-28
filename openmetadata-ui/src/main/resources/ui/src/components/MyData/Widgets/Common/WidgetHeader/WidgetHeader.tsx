@@ -104,10 +104,10 @@ const WidgetHeader = ({
           <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
         )}
         <Typography
+          as="p"
           className="widget-title cursor-pointer"
           data-testid="widget-title"
           ellipsis={{ tooltip: true }}
-          variant="paragraph"
           onClick={onTitleClick}>
           {title}
         </Typography>

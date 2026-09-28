@@ -82,16 +82,14 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         title: t('label.team'),
         dataIndex: 'team',
         key: 'team',
-        render: (team: string) => (
-          <Typography variant="text">{team ?? '--'}</Typography>
-        ),
+        render: (team: string) => <Typography>{team ?? '--'}</Typography>,
       },
       {
         title: t('label.most-recent-session'),
         dataIndex: 'lastSession',
         key: 'lastSession',
         render: (lastSession: number) => (
-          <Typography variant="text">{formatDateTime(lastSession)}</Typography>
+          <Typography>{formatDateTime(lastSession)}</Typography>
         ),
       },
       {
@@ -100,16 +98,14 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         }),
         dataIndex: 'sessions',
         key: 'sessions',
-        render: (sessions: number) => (
-          <Typography variant="text">{sessions}</Typography>
-        ),
+        render: (sessions: number) => <Typography>{sessions}</Typography>,
       },
       {
         title: t('label.average-session'),
         dataIndex: 'avgSessionDuration',
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
-          <Typography variant="text">
+          <Typography>
             {formatTimeDurationFromSeconds(avgSessionDuration)}
           </Typography>
         ),

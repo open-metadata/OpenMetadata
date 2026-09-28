@@ -83,20 +83,24 @@ export const AlertDetailsComponent = ({
       <Col span={24}>
         <Card>
           <Space direction="vertical" size={8}>
-            <Typography className="m-0" level={5} variant="title">
+            <Typography
+              as="h5"
+              className="m-0"
+              size="text-md"
+              weight="semibold">
               {t('label.trigger')}
             </Typography>
-            <Typography data-testid="display-name-entities" variant="text">
+            <Typography data-testid="display-name-entities">
               {alerts?.filteringRules?.resources
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
             </Typography>
           </Space>
           <Divider />
-          <Typography level={5} variant="title">
+          <Typography as="h5" size="text-md" weight="semibold">
             {t('label.filter-plural')}
           </Typography>
-          <Typography variant="paragraph">
+          <Typography as="p">
             {alerts?.filteringRules?.rules?.map((filter) => {
               const conditions = isArray(filter.condition)
                 ? filter.condition.join(', ')
@@ -108,8 +112,8 @@ export const AlertDetailsComponent = ({
 
               return (
                 <Fragment key={filter.name}>
-                  <Typography code variant="text">
-                    {`${conditionName} ${effect} ${conditions}`}
+                  <Typography>
+                    <code>{`${conditionName} ${effect} ${conditions}`}</code>
                   </Typography>
                   <br />
                 </Fragment>
@@ -117,7 +121,7 @@ export const AlertDetailsComponent = ({
             })}
           </Typography>
           <Divider />
-          <Typography level={5} variant="title">
+          <Typography as="h5" size="text-md" weight="semibold">
             {t('label.destination')}
           </Typography>
           <Row gutter={[16, 16]} />

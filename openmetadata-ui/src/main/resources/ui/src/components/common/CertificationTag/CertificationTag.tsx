@@ -76,8 +76,7 @@ const CertificationTag = ({
               className={classNames('text-sm font-medium certification-text', {
                 [`${actualName.toLowerCase()}`]: Boolean(actualName),
               })}
-              ellipsis={{ tooltip: true }}
-              variant="text">
+              ellipsis={{ tooltip: true }}>
               {name}
             </Typography>
           )}

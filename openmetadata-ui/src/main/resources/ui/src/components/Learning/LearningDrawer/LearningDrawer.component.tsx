@@ -146,9 +146,10 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         title={
           <div className="learning-drawer-header">
             <Typography
+              as="h5"
               className="learning-drawer-title"
-              level={5}
-              variant="title">
+              size="text-md"
+              weight="semibold">
               {t('label.entity-resource', { entity: getPageTitle() })}
             </Typography>
             <CloseOutlined

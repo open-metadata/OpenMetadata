@@ -72,12 +72,10 @@ const ContractSemantics: React.FC<{
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">
-                  <Typography className="rule-name" variant="text">
-                    {item.name}
-                  </Typography>
+                  <Typography className="rule-name">{item.name}</Typography>
                   {inheritedIcon}
                 </div>
-                <Typography className="rule-description" variant="text">
+                <Typography className="rule-description">
                   <RichTextEditorPreviewerNew
                     enableSeeMoreVariant
                     markdown={item.description}
@@ -91,9 +89,12 @@ const ContractSemantics: React.FC<{
       </div>
       {contractStatus && (
         <div className="contract-status-container">
-          <Typography variant="text">{`${t('label.entity-status', {
-            entity: t('label.semantic-plural'),
-          })} :`}</Typography>
+          <Typography className="contract-status-label">{`${t(
+            'label.entity-status',
+            {
+              entity: t('label.semantic-plural'),
+            }
+          )} :`}</Typography>
           <StatusBadgeV2
             dataTestId="contract-status-card-item-semantics-status"
             label={contractStatus}

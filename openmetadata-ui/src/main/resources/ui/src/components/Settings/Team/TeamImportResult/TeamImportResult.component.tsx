@@ -80,7 +80,7 @@ export const TeamImportResult = ({
         fixed: true,
         render: (name: TeamCSVRecord['name*']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {name}
             </Typography>
           );
@@ -92,7 +92,7 @@ export const TeamImportResult = ({
         key: 'displayName',
         render: (displayName: TeamCSVRecord['displayName']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {displayName || '--'}
             </Typography>
           );
@@ -120,7 +120,7 @@ export const TeamImportResult = ({
         key: 'parent',
         render: (type: TeamCSVRecord['teamType*']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {type || '--'}
             </Typography>
           );
@@ -132,7 +132,7 @@ export const TeamImportResult = ({
         key: 'parent',
         render: (parent: TeamCSVRecord['parents*']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {parent || '--'}
             </Typography>
           );
@@ -144,7 +144,7 @@ export const TeamImportResult = ({
         key: 'Owner',
         render: (owner: TeamCSVRecord['Owner']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {owner || '--'}
             </Typography>
           );
@@ -156,7 +156,7 @@ export const TeamImportResult = ({
         key: 'isJoinable',
         render: (isJoinable: TeamCSVRecord['isJoinable']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {isJoinable || '--'}
             </Typography>
           );
@@ -168,7 +168,7 @@ export const TeamImportResult = ({
         key: 'defaultRoles',
         render: (role: TeamCSVRecord['defaultRoles']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {role || '--'}
             </Typography>
           );
@@ -180,7 +180,7 @@ export const TeamImportResult = ({
         key: 'policies',
         render: (policy: TeamCSVRecord['policies']) => {
           return (
-            <Typography style={{ width: 200 }} variant="paragraph">
+            <Typography as="p" style={{ width: 200 }}>
               {policy || '--'}
             </Typography>
           );

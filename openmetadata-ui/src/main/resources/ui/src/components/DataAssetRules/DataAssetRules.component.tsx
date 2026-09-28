@@ -394,7 +394,7 @@ export const useSemanticsRuleList = ({
             height={SIZE.MEDIUM}
             width={SIZE.MEDIUM}
           />
-          <Typography variant="text">
+          <Typography>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: t('label.data-asset-rules'),
             })}

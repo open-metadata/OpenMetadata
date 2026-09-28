@@ -35,8 +35,7 @@ export const mockTextBasedSummaryTitleResponse = (
   <Typography
     className="entity-title"
     data-testid="entity-title"
-    ellipsis={{ tooltip: true }}
-    variant="text">
+    ellipsis={{ tooltip: true }}>
     <span className="text-highlighter">title2</span>
   </Typography>
 );
@@ -49,8 +48,7 @@ export const mockLinkBasedSummaryTitleResponse = (
       <Typography
         className="entity-title text-link-color font-medium m-r-xss"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-        variant="text">
+        ellipsis={{ tooltip: true }}>
         dim_address Task
       </Typography>
       <Icon component={IconExternalLink} style={ICON_DIMENSION} />
@@ -63,8 +61,7 @@ export const mockLinkBasedSummaryTitleDashboardResponse = (
     <Typography
       className="entity-title text-link-color font-medium m-r-xss"
       data-testid="entity-title"
-      ellipsis={{ tooltip: true }}
-      variant="text">
+      ellipsis={{ tooltip: true }}>
       deck.gl Demo
     </Typography>
   </Link>
@@ -177,8 +174,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
           <Typography
             className="entity-title text-link-color font-medium m-r-xss"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             Assert Table Exists
           </Typography>
           <Icon component={IconExternalLink} style={ICON_DIMENSION} />
@@ -284,8 +280,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       <Typography
         className="entity-title"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-        variant="text">
+        ellipsis={{ tooltip: true }}>
         api_client_id
       </Typography>
     ),
@@ -303,8 +298,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       <Typography
         className="entity-title"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-        variant="text">
+        ellipsis={{ tooltip: true }}>
         Customer
       </Typography>
     ),
@@ -321,8 +315,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Typography
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             id
           </Typography>
         ),
@@ -339,8 +332,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Typography
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             first_name
           </Typography>
         ),
@@ -357,8 +349,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Typography
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             last_name
           </Typography>
         ),
@@ -375,8 +366,7 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
           <Typography
             className="entity-title"
             data-testid="entity-title"
-            ellipsis={{ tooltip: true }}
-            variant="text">
+            ellipsis={{ tooltip: true }}>
             email
           </Typography>
         ),
@@ -403,8 +393,7 @@ export const mockInvalidDataResponse = [
       <Typography
         className="entity-title"
         data-testid="entity-title"
-        ellipsis={{ tooltip: true }}
-        variant="text">
+        ellipsis={{ tooltip: true }}>
         --
       </Typography>
     ),

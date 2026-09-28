@@ -65,7 +65,7 @@ const SampleDataWithMessages: FC<{
         className="border-default border-radius-sm p-y-lg"
         data-testid="no-data">
         <ErrorPlaceHolder>
-          <Typography variant="paragraph">
+          <Typography as="p">
             <Transi18next
               i18nKey="message.view-sample-data-entity"
               renderElement={

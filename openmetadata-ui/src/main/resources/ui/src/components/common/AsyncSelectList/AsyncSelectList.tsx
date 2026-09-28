@@ -131,16 +131,10 @@ const AsyncSelectList: FC<
         label: tag.label,
         displayName: (
           <Space className="w-full" direction="vertical" size={0}>
-            <Typography
-              ellipsis
-              className="text-grey-muted m-0 p-0"
-              variant="paragraph">
+            <Typography ellipsis as="p" className="text-grey-muted m-0 p-0">
               {parts.join(FQN_SEPARATOR_CHAR)}
             </Typography>
-            <Typography
-              ellipsis
-              style={{ color: tag.data?.style?.color }}
-              variant="text">
+            <Typography ellipsis style={{ color: tag.data?.style?.color }}>
               {lastPartOfTag}
             </Typography>
           </Space>

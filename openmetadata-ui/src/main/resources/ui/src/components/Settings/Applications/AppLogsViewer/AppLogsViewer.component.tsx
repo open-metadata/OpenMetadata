@@ -255,7 +255,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           {
             title: (
               <div className="d-flex items-center">
-                <Typography variant="text">
+                <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.total'),
                   })}{' '}
@@ -269,15 +269,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'totalRecords',
             key: 'totalRecords',
             render: (text: string) => (
-              <Typography className="text-primary" variant="text">
-                {text}
-              </Typography>
+              <Typography className="text-primary">{text}</Typography>
             ),
           },
           {
             title: (
               <div className="d-flex items-center">
-                <Typography variant="text">
+                <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.success'),
                   })}{' '}
@@ -291,15 +289,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'successRecords',
             key: 'successRecords',
             render: (text: string) => (
-              <Typography className="text-success" variant="text">
-                {text}
-              </Typography>
+              <Typography className="text-success">{text}</Typography>
             ),
           },
           {
             title: (
               <div className="d-flex items-center">
-                <Typography variant="text">
+                <Typography>
                   {t('label.entity-record-plural', {
                     entity: t('label.failed'),
                   })}{' '}
@@ -313,9 +309,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'failedRecords',
             key: 'failedRecords',
             render: (text: string) => (
-              <Typography className="text-failure" variant="text">
-                {text}
-              </Typography>
+              <Typography className="text-failure">{text}</Typography>
             ),
           },
           ...(successContext?.stats?.vectorStats?.totalRecords
@@ -326,8 +320,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   key: 'vectorEmbeddings',
                   render: (value: number | null) => (
                     <Typography
-                      className={value !== null ? 'text-primary' : ''}
-                      variant="text">
+                      className={value !== null ? 'text-primary' : ''}>
                       {value !== null ? value : '-'}
                     </Typography>
                   ),
@@ -339,9 +332,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'readerAvgMs',
             key: 'readerAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-reader-avg" variant="text">
-                {value}
-              </Typography>
+              <Typography data-testid="entity-reader-avg">{value}</Typography>
             ),
           },
           {
@@ -349,9 +340,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'processAvgMs',
             key: 'processAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-process-avg" variant="text">
-                {value}
-              </Typography>
+              <Typography data-testid="entity-process-avg">{value}</Typography>
             ),
           },
           {
@@ -359,9 +348,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'sinkAvgMs',
             key: 'sinkAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-sink-avg" variant="text">
-                {value}
-              </Typography>
+              <Typography data-testid="entity-sink-avg">{value}</Typography>
             ),
           },
           ...(successContext?.stats?.vectorStats?.totalRecords
@@ -371,7 +358,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   dataIndex: 'vectorAvgMs',
                   key: 'vectorAvgMs',
                   render: (value: string) => (
-                    <Typography data-testid="entity-vector-avg" variant="text">
+                    <Typography data-testid="entity-vector-avg">
                       {value}
                     </Typography>
                   ),
@@ -442,15 +429,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'name',
         key: 'name',
         render: (text: string) => (
-          <Typography className="font-medium" variant="text">
-            {text}
-          </Typography>
+          <Typography className="font-medium">{text}</Typography>
         ),
       },
       {
         title: (
           <div className="d-flex items-center">
-            <Typography variant="text">
+            <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.processed'),
               })}{' '}
@@ -464,15 +449,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'processedRecords',
         key: 'processedRecords',
         render: (text: number) => (
-          <Typography className="text-primary" variant="text">
-            {text}
-          </Typography>
+          <Typography className="text-primary">{text}</Typography>
         ),
       },
       {
         title: (
           <div className="d-flex items-center">
-            <Typography variant="text">
+            <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.success'),
               })}{' '}
@@ -486,15 +469,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'successRecords',
         key: 'successRecords',
         render: (text: number) => (
-          <Typography className="text-success" variant="text">
-            {text}
-          </Typography>
+          <Typography className="text-success">{text}</Typography>
         ),
       },
       {
         title: (
           <div className="d-flex items-center">
-            <Typography variant="text">
+            <Typography>
               {t('label.entity-record-plural', {
                 entity: t('label.failed'),
               })}{' '}
@@ -508,18 +489,14 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'failedRecords',
         key: 'failedRecords',
         render: (text: number) => (
-          <Typography className="text-failure" variant="text">
-            {text}
-          </Typography>
+          <Typography className="text-failure">{text}</Typography>
         ),
       },
       {
         title: t('label.partition-plural'),
         dataIndex: 'partitions',
         key: 'partitions',
-        render: (text: string) => (
-          <Typography variant="text">{text}</Typography>
-        ),
+        render: (text: string) => <Typography>{text}</Typography>,
       },
     ];
   }, [serverStatsData]);

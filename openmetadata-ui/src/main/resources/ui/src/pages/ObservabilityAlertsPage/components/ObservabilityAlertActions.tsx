@@ -43,11 +43,7 @@ function ObservabilityAlertActions({
     isUndefined(alertPermission) ||
     (!alertPermission.edit && !alertPermission.delete)
   ) {
-    return (
-      <Typography className="p-l-xs" variant="text">
-        {NO_DATA_PLACEHOLDER}
-      </Typography>
-    );
+    return <Typography className="p-l-xs">{NO_DATA_PLACEHOLDER}</Typography>;
   }
 
   const editButton = (

@@ -150,11 +150,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
         name: column,
         title: (
           <div className="d-flex flex-column">
-            <Typography variant="text"> {column}</Typography>
+            <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography
-                className="text-grey-muted text-xs font-normal"
-                variant="text">{`(${lowerCase(
+              <Typography className="text-grey-muted text-xs font-normal">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
               )})`}</Typography>
             )}
@@ -295,7 +293,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
       <ErrorPlaceHolder className="error-placeholder">
-        <Typography variant="paragraph">
+        <Typography as="p">
           <Transi18next
             i18nKey="message.view-sample-data-entity"
             renderElement={
@@ -325,7 +323,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       id="sampleDataDetails">
       <Space className="m-y-xss justify-between w-full">
         <Space>
-          <Typography className="text-grey-muted" variant="text">
+          <Typography className="text-grey-muted">
             {t('label.row-limit')}:
           </Typography>
           <Select

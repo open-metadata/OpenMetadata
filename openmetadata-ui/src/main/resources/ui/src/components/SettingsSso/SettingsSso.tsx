@@ -141,11 +141,11 @@ const SettingsSso = () => {
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
                 <Typography
-                  className="enable-self-signup-header m-b-xs"
-                  variant="title">
+                  as="h1"
+                  className="enable-self-signup-header m-b-xs">
                   {t('label.enable-sso')}
                 </Typography>
-                <Typography className="enable-self-signup-desc" variant="text">
+                <Typography className="enable-self-signup-desc">
                   {t('message.allow-user-to-login-via-sso')}
                 </Typography>
               </div>
@@ -383,9 +383,7 @@ const SettingsSso = () => {
                     />
                   )}
                 </div>
-                <Typography
-                  className="m-0 sso-form-header text-md"
-                  variant="title">
+                <Typography as="h1" className="m-0 sso-form-header text-md">
                   {getProviderDisplayName(currentProvider)}
                 </Typography>
               </div>

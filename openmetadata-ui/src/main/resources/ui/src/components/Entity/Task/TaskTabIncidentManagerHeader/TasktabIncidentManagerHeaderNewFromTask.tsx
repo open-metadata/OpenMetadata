@@ -51,7 +51,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       switch (status.testCaseResolutionStatusType) {
         case TestCaseResolutionStatusTypes.ACK:
           details = status.updatedBy ? (
-            <Typography className="text-grey-muted text-xss" variant="text">
+            <Typography className="text-grey-muted text-xss">
               {`By ${getEntityName(status.updatedBy)} on `}
             </Typography>
           ) : null;
@@ -59,7 +59,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
           break;
         case TestCaseResolutionStatusTypes.Assigned:
           details = status.testCaseResolutionStatusDetails?.assignee ? (
-            <Typography className="text-grey-muted text-xss" variant="text">
+            <Typography className="text-grey-muted text-xss">
               {`To ${getEntityName(
                 status.testCaseResolutionStatusDetails?.assignee
               )} on `}
@@ -69,7 +69,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
           break;
         case TestCaseResolutionStatusTypes.Resolved:
           details = status.testCaseResolutionStatusDetails?.resolvedBy ? (
-            <Typography className="text-grey-muted text-xss" variant="text">
+            <Typography className="text-grey-muted text-xss">
               {`By ${getEntityName(
                 status.testCaseResolutionStatusDetails.resolvedBy
               )} on `}
@@ -86,13 +86,13 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
         className: toLower(status.testCaseResolutionStatusType),
         title: (
           <div>
-            <Typography className="m-b-0" variant="paragraph">
+            <Typography as="p" className="m-b-0">
               {status.testCaseResolutionStatusType}
             </Typography>
-            <Typography className="m-b-0" variant="paragraph">
+            <Typography as="p" className="m-b-0">
               {details}
               {status.updatedAt && (
-                <Typography className="text-grey-muted text-xss" variant="text">
+                <Typography className="text-grey-muted text-xss">
                   {formatDateTime(status.updatedAt)}
                 </Typography>
               )}
@@ -130,7 +130,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       <Col span={24}>
         <Space className="justify-between w-full">
           <div className="gap-2 flex-center">
-            <Typography className="text-grey-muted" variant="text">
+            <Typography className="text-grey-muted">
               {`${t('label.assignee')}: `}
             </Typography>
             {isUndefined(task.assignees) || isEmpty(task.assignees) ? (
@@ -140,7 +140,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
             )}
           </div>
           <div className="gap-2 flex-center">
-            <Typography className="text-grey-muted" variant="text">
+            <Typography className="text-grey-muted">
               {`${t('label.created-by')}: `}
             </Typography>
             {task.createdBy ? (
@@ -154,14 +154,14 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       <Col span={24}>
         <Space className="justify-between w-full">
           <div className="gap-2 flex-center">
-            <Typography className="text-grey-muted" variant="text">
+            <Typography className="text-grey-muted">
               {`${t('label.severity')}: `}
             </Typography>
             <Severity severity={latestTestCaseResolutionStatus?.severity} />
           </div>
           {isResolved && (
             <div className="gap-2 flex-center" data-testid="failure-reason">
-              <Typography className="text-grey-muted" variant="text">
+              <Typography className="text-grey-muted">
                 {`${t('label.failure-reason')}: `}
               </Typography>
               {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
@@ -172,7 +172,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       </Col>
       {isResolved && (
         <Col span={24}>
-          <Typography className="text-grey-muted" variant="text">
+          <Typography className="text-grey-muted">
             {`${t('label.failure-comment')}: `}
           </Typography>
           <RichTextEditorPreviewerV1

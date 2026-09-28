@@ -40,29 +40,29 @@ const SsoTestLoginModal = ({
         className="sso-test-login-details"
         data-testid="sso-test-login-details">
         {result.resolvedPrincipal && (
-          <Typography className="m-b-0" variant="paragraph">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.user')}:</strong> {result.resolvedPrincipal}
           </Typography>
         )}
         {result.resolvedEmail && (
-          <Typography className="m-b-0" variant="paragraph">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.email')}:</strong> {result.resolvedEmail}
           </Typography>
         )}
         {!isEmpty(result.mappedRoles) && (
-          <Typography className="m-b-0" variant="paragraph">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.role-plural')}:</strong>{' '}
             {result.mappedRoles?.join(', ')}
           </Typography>
         )}
         {!isEmpty(result.mappedTeams) && (
-          <Typography className="m-b-0" variant="paragraph">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.team-plural')}:</strong>{' '}
             {result.mappedTeams?.join(', ')}
           </Typography>
         )}
         {result.domainCheck?.enforced && (
-          <Typography className="m-b-0" variant="paragraph">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.domain')}:</strong>{' '}
             {result.domainCheck.resolvedDomain}{' '}
             {result.domainCheck.passed
@@ -111,9 +111,7 @@ const SsoTestLoginModal = ({
           className="d-flex flex-col items-center gap-3 p-md"
           data-testid="sso-test-login-loading">
           <Loader size="small" />
-          <Typography variant="text">
-            {t('message.sso-test-login-waiting')}
-          </Typography>
+          <Typography>{t('message.sso-test-login-waiting')}</Typography>
         </div>
       );
     }
@@ -139,7 +137,7 @@ const SsoTestLoginModal = ({
       open={open}
       title={t('label.test-login')}
       onCancel={onClose}>
-      <Typography className="text-grey-muted" variant="paragraph">
+      <Typography as="p" className="text-grey-muted">
         {t('message.sso-test-login-description')}
       </Typography>
       {body}

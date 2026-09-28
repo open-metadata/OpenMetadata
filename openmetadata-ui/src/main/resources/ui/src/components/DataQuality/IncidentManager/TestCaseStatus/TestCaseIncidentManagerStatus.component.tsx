@@ -76,9 +76,7 @@ const TestCaseIncidentManagerStatus = ({
   const onCancel = useCallback(() => setIsEditStatus(false), []);
 
   if (!statusType) {
-    return (
-      <CoreTypography variant="text">{NO_DATA_PLACEHOLDER}</CoreTypography>
-    );
+    return <CoreTypography>{NO_DATA_PLACEHOLDER}</CoreTypography>;
   }
 
   if (headerName) {

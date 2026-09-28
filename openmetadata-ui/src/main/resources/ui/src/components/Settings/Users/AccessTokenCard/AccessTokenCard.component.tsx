@@ -75,14 +75,10 @@ const AccessTokenRevokeModal = ({
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <Typography
-                className="scim-modal-delete-title text-md"
-                variant="text">
+              <Typography className="scim-modal-delete-title text-md">
                 {t('message.delete-scim-token')}
               </Typography>
-              <Typography
-                className="scim-modal-delete-desc text-sm"
-                variant="text">
+              <Typography className="scim-modal-delete-desc text-sm">
                 {t('message.are-you-sure-to-delete-scim-token')}
               </Typography>
             </div>

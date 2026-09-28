@@ -205,12 +205,9 @@ describe('NavbarUtils test', () => {
         const item = helpDropdownItems.find((item) => item.key === key);
         const labelContent = item?.label.props.children;
         const secondColumn = labelContent.props.children[1];
-
-        // Should be core Typography text variant
         const textElement = secondColumn.props.children[0];
 
         expect(textElement.type).toBe(Typography);
-        expect(textElement.props.variant).toBe('text');
         expect(textElement.props.className).toBe('text-base-color');
       });
     });

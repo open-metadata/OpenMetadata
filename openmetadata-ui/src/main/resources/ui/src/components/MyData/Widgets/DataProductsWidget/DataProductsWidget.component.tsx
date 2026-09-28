@@ -172,12 +172,11 @@ const DataProductsWidget = ({
                   <div className="data-product-card-full-content">
                     <div className="data-product-card-full-title-row">
                       <Typography
-                        className="font-semibold"
+                        className="data-product-card-full-name font-semibold"
                         data-testid="data-product-name"
                         ellipsis={{
                           tooltip: true,
-                        }}
-                        variant="text">
+                        }}>
                         {dataProduct.displayName || dataProduct.name}
                       </Typography>
                       <span
@@ -203,8 +202,7 @@ const DataProductsWidget = ({
                       <Typography
                         className="data-product-card-name"
                         data-testid="data-product-name"
-                        ellipsis={{ tooltip: true }}
-                        variant="text">
+                        ellipsis={{ tooltip: true }}>
                         {dataProduct.displayName || dataProduct.name}
                       </Typography>
                     </span>

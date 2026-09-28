@@ -705,14 +705,12 @@ const EntitySearchSettings = () => {
         key={stageKey}>
         <Row align="middle" className="m-b-xs" gutter={[12, 12]}>
           <Col flex="auto">
-            <Typography className="ranking-stage-title" variant="text">
+            <Typography className="ranking-stage-title">
               {stageName ? startCase(stageName) : t('label.no-data')}
             </Typography>
           </Col>
           <Col className="ranking-number-control">
-            <Typography
-              className="text-grey-muted text-xs font-normal"
-              variant="text">
+            <Typography className="text-grey-muted text-xs font-normal">
               {t('label.weight')}
             </Typography>
             <InputNumber
@@ -728,25 +726,21 @@ const EntitySearchSettings = () => {
           </Col>
         </Row>
         {stage.purpose && (
-          <Typography className="ranking-stage-purpose" variant="paragraph">
+          <Typography as="p" className="ranking-stage-purpose">
             {stage.purpose}
           </Typography>
         )}
         <Row className="ranking-stage-meta" gutter={[12, 12]}>
           <Col span={12}>
-            <Typography
-              className="text-grey-muted text-xs font-normal"
-              variant="text">
+            <Typography className="text-grey-muted text-xs font-normal">
               {t('label.match-type')}
             </Typography>
-            <Typography className="ranking-stage-value" variant="paragraph">
+            <Typography as="p" className="ranking-stage-value">
               {matchType}
             </Typography>
           </Col>
           <Col span={12}>
-            <Typography
-              className="text-grey-muted text-xs font-normal"
-              variant="text">
+            <Typography className="text-grey-muted text-xs font-normal">
               {t('label.field-plural')}
             </Typography>
             {renderRankingFields(stage.fields)}
@@ -761,7 +755,7 @@ const EntitySearchSettings = () => {
 
     if (!ranking) {
       return (
-        <Typography className="text-grey-muted" variant="text">
+        <Typography className="text-grey-muted">
           {t('message.no-data-available')}
         </Typography>
       );
@@ -774,21 +768,17 @@ const EntitySearchSettings = () => {
         <div className="ranking-settings-card">
           <Row align="middle" gutter={[12, 12]}>
             <Col span={16}>
-              <Typography
-                className="text-grey-muted text-xs font-normal"
-                variant="text">
+              <Typography className="text-grey-muted text-xs font-normal">
                 {t('label.algorithm')}
               </Typography>
-              <Typography className="m-0" variant="paragraph">
+              <Typography as="p" className="m-0">
                 {ranking.algorithm
                   ? startCase(ranking.algorithm)
                   : t('label.no-data')}
               </Typography>
             </Col>
             <Col className="ranking-enabled-control" span={8}>
-              <Typography
-                className="text-grey-muted text-xs font-normal"
-                variant="text">
+              <Typography className="text-grey-muted text-xs font-normal">
                 {t('label.enabled')}
               </Typography>
               <Switch
@@ -805,20 +795,16 @@ const EntitySearchSettings = () => {
         {signals && (
           <div className="ranking-settings-card" data-testid="ranking-signals">
             {signals.purpose && (
-              <Typography
-                className="text-grey-muted m-b-xs"
-                variant="paragraph">
+              <Typography as="p" className="text-grey-muted m-b-xs">
                 {signals.purpose}
               </Typography>
             )}
-            <Typography className="text-grey-muted m-b-sm" variant="paragraph">
+            <Typography as="p" className="text-grey-muted m-b-sm">
               {t('message.search-ranking-signals-explanation')}
             </Typography>
             <Row gutter={[12, 12]}>
               <Col span={12}>
-                <Typography
-                  className="text-grey-muted text-xs font-normal"
-                  variant="text">
+                <Typography className="text-grey-muted text-xs font-normal">
                   {t('label.boost-mode')}
                 </Typography>
                 <Select
@@ -830,9 +816,7 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col span={12}>
-                <Typography
-                  className="text-grey-muted text-xs font-normal"
-                  variant="text">
+                <Typography className="text-grey-muted text-xs font-normal">
                   {t('label.score-mode')}
                 </Typography>
                 <Select
@@ -844,9 +828,7 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col className="ranking-number-control" span={12}>
-                <Typography
-                  className="text-grey-muted text-xs font-normal"
-                  variant="text">
+                <Typography className="text-grey-muted text-xs font-normal">
                   {t('label.max')}
                 </Typography>
                 <InputNumber
@@ -861,9 +843,7 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col span={12}>
-                <Typography
-                  className="text-grey-muted text-xs font-normal"
-                  variant="text">
+                <Typography className="text-grey-muted text-xs font-normal">
                   {t('label.field-plural')}
                 </Typography>
                 {renderRankingFields(signals.fields)}
@@ -893,16 +873,17 @@ const EntitySearchSettings = () => {
             className="page-header-container"
             data-testid="page-header-container">
             <Typography
+              as="h5"
               className="heading"
               data-testid="heading"
-              level={5}
-              variant="title">
+              size="text-md"
+              weight="semibold">
               {entityData?.label}
             </Typography>
             <Typography
+              as="p"
               className="sub-heading"
-              data-testid="sub-heading"
-              variant="paragraph">
+              data-testid="sub-heading">
               {entityData?.description}
             </Typography>
           </div>
@@ -920,7 +901,7 @@ const EntitySearchSettings = () => {
             onChange={handleCollapseChange}>
             <Collapse.Panel
               header={
-                <Typography className="text-md font-semibold" variant="text">
+                <Typography className="text-md font-semibold">
                   {t('label.ranking-detail-plural')}
                 </Typography>
               }
@@ -968,9 +949,7 @@ const EntitySearchSettings = () => {
                   {/* Score Mode and Boost Mode Section */}
                   <Col className="flex flex-col w-full">
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography
-                        className="text-grey-muted text-xs font-normal"
-                        variant="text">
+                      <Typography className="text-grey-muted text-xs font-normal">
                         {t('label.score-mode')}
                       </Typography>
                       <Select
@@ -985,9 +964,7 @@ const EntitySearchSettings = () => {
                       />
                     </div>
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography
-                        className="text-grey-muted text-xs font-normal"
-                        variant="text">
+                      <Typography className="text-grey-muted text-xs font-normal">
                         {t('label.boost-mode')}
                       </Typography>
                       <Select

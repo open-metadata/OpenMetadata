@@ -167,10 +167,7 @@ const EditRulePage = () => {
       pageTitle={t('label.edit-entity', { entity: t('label.rule') })}>
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
-        <Typography
-          className="text-base"
-          data-testid="edit-rule-title"
-          variant="paragraph">
+        <Typography as="p" className="text-base" data-testid="edit-rule-title">
           {t('label.edit-entity', { entity: t('label.rule') })}{' '}
           {`"${ruleName}"`}
         </Typography>

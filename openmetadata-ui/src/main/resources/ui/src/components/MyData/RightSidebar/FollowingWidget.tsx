@@ -212,15 +212,13 @@ function FollowingWidget({
                         {'serviceType' in item && item.serviceType && (
                           <Typography
                             className="text-left text-sm font-regular text-grey-600"
-                            ellipsis={{ tooltip: true }}
-                            variant="text">
+                            ellipsis={{ tooltip: true }}>
                             {item.serviceType}
                           </Typography>
                         )}
                         <Typography
                           className="text-left text-sm font-regular text-grey-800"
-                          ellipsis={{ tooltip: true }}
-                          variant="text">
+                          ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography>
                       </div>

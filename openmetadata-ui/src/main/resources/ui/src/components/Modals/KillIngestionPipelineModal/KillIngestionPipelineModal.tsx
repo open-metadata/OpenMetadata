@@ -64,7 +64,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       title={`${t('label.kill')} ${pipelineName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
-      <Typography data-testid="kill-modal-body" variant="text">
+      <Typography data-testid="kill-modal-body">
         {t('message.kill-ingestion-warning')}
       </Typography>
     </Modal>

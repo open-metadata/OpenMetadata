@@ -92,6 +92,15 @@ describe('ReindexFailures', () => {
     expect(await screen.findByText('search failure')).toBeInTheDocument();
   });
 
+  it('should offer copying the entity id and the error message', async () => {
+    await act(async () => {
+      render(<ReindexFailures visible onClose={jest.fn()} />);
+    });
+
+    expect(await screen.findByText('abc')).toBeInTheDocument();
+    expect(screen.getAllByTestId('copy-secret')).toHaveLength(2);
+  });
+
   it('should default to search failures when no app name is provided', async () => {
     await act(async () => {
       render(<ReindexFailures visible onClose={jest.fn()} />);

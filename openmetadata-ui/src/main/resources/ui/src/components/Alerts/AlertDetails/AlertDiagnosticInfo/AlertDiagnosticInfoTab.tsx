@@ -66,13 +66,8 @@ function AlertDiagnosticInfoTab() {
             <Col key={item.key} span={12}>
               <Row align="middle">
                 <Col className="d-flex items-center" span={12}>
-                  <Typography
-                    className="d-flex items-center gap-1"
-                    variant="text">
-                    <Typography
-                      className="m-0"
-                      color="secondary"
-                      variant="text">
+                  <Typography className="d-flex items-center gap-1">
+                    <Typography className="m-0" color="secondary">
                       {`${item.key}:`}
                     </Typography>
                     <Tooltip placement="bottom" title={item.description}>
@@ -84,9 +79,7 @@ function AlertDiagnosticInfoTab() {
                   </Typography>
                 </Col>
                 <Col span={12}>
-                  <Typography variant="text">
-                    {formatValue(item.value)}
-                  </Typography>
+                  <Typography>{formatValue(item.value)}</Typography>
                 </Col>
               </Row>
             </Col>

@@ -359,8 +359,7 @@ const PoliciesDetailPage = () => {
                     direction="horizontal">
                     <Typography
                       className="font-medium text-base text-grey-body"
-                      data-testid="rule-name"
-                      variant="text">
+                      data-testid="rule-name">
                       {rule.name}
                     </Typography>
                     {getRuleActionElement(rule)}
@@ -370,9 +369,7 @@ const PoliciesDetailPage = () => {
                     {rule.description && (
                       <Row data-testid="description">
                         <Col span={2}>
-                          <Typography
-                            className="text-grey-muted"
-                            variant="text">
+                          <Typography className="text-grey-muted">
                             {`${t('label.description')}:`}
                           </Typography>
                         </Col>
@@ -386,14 +383,12 @@ const PoliciesDetailPage = () => {
 
                     <Row data-testid="resources">
                       <Col span={2}>
-                        <Typography
-                          className="text-grey-muted m-b-0"
-                          variant="text">
+                        <Typography className="text-grey-muted m-b-0">
                           {`${t('label.resource-plural')}:`}
                         </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography className="text-grey-body" variant="text">
+                        <Typography className="text-grey-body">
                           {rule.resources
                             ?.map((resource) => startCase(resource))
                             ?.join(', ')}
@@ -403,24 +398,24 @@ const PoliciesDetailPage = () => {
 
                     <Row data-testid="operations">
                       <Col span={2}>
-                        <Typography className="text-grey-muted" variant="text">
+                        <Typography className="text-grey-muted">
                           {`${t('label.operation-plural')}:`}
                         </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography className="text-grey-body" variant="text">
+                        <Typography className="text-grey-body">
                           {rule.operations?.join(', ')}
                         </Typography>
                       </Col>
                     </Row>
                     <Row data-testid="effect">
                       <Col span={2}>
-                        <Typography className="text-grey-muted" variant="text">
+                        <Typography className="text-grey-muted">
                           {`${t('label.effect')}:`}
                         </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography className="text-grey-body" variant="text">
+                        <Typography className="text-grey-body">
                           {startCase(rule.effect)}
                         </Typography>
                       </Col>
@@ -428,9 +423,7 @@ const PoliciesDetailPage = () => {
                     {rule.condition && (
                       <Row data-testid="condition">
                         <Col span={2}>
-                          <Typography
-                            className="text-grey-muted"
-                            variant="text">
+                          <Typography className="text-grey-muted">
                             {`${t('label.condition')}:`}
                           </Typography>
                         </Col>
@@ -611,7 +604,7 @@ const PoliciesDetailPage = () => {
               );
               setEntity(undefined);
             }}>
-            <Typography variant="text">
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: policyName,

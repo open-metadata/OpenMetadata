@@ -106,7 +106,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
       okText={t('label.save')}
       open={open}
       title={
-        <Typography strong variant="text">
+        <Typography weight="semibold">
           {selectedBoost
             ? t('label.edit-entity', { entity: t('label.field-value-boost') })
             : t('label.add-entity', { entity: t('label.field-value-boost') })}
@@ -147,11 +147,10 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
 
         <Form.Item>
           <div className="d-flex items-center justify-between m-b-md">
-            <Typography variant="text">{t('label.impact')}</Typography>
+            <Typography>{t('label.impact')}</Typography>
             <Typography
               className="font-semibold boost-value"
-              data-testid="field-boost-value"
-              variant="text">
+              data-testid="field-boost-value">
               {factor}
             </Typography>
           </div>
@@ -181,10 +180,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
           <Input data-testid="missing-value-input" min={1} type="number" />
         </Form.Item>
 
-        <Typography
-          className="m-b-sm d-block"
-          data-testid="range-condition"
-          variant="text">
+        <Typography className="m-b-sm d-block" data-testid="range-condition">
           {t('label.range-condition')}
         </Typography>
         <div className="range-inputs d-flex flex-col gap-1">

@@ -32,7 +32,7 @@ const DomainLink: React.FC<{
       className="no-underline"
       data-testid="domain-link"
       to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
-      <Typography className="text-sm text-primary" variant="text">
+      <Typography className="text-sm text-primary">
         {getEntityName(domain)}
       </Typography>
     </Link>
@@ -61,7 +61,7 @@ export const DomainDisplay = ({
           <Link
             className="no-underline"
             to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
-            <Typography className="text-sm text-primary" variant="text">
+            <Typography className="text-sm text-primary">
               {getEntityName(domain)}
             </Typography>
           </Link>
@@ -96,8 +96,7 @@ export const DomainDisplay = ({
                 remainingCount <= 9 ? 'h-6 w-6' : ''
               }`}
               color="secondary"
-              data-testid="domain-count-button"
-              variant="text">
+              data-testid="domain-count-button">
               <span className="domain-count-label">{`+${remainingCount}`}</span>
             </Typography>
           </Dropdown>

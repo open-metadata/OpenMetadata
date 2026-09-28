@@ -413,7 +413,7 @@ const Suggestions = ({
 
     return (
       <div data-testid="ai-query-suggestions">
-        <Typography strong className="m-b-sm d-block" variant="text">
+        <Typography className="m-b-sm d-block" weight="semibold">
           {t('label.ai-queries')}
         </Typography>
         {aiQueries.map((query) => (
@@ -447,7 +447,7 @@ const Suggestions = ({
 
   if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
     return (
-      <Typography variant="text">
+      <Typography>
         <Transi18next
           i18nKey="message.please-enter-to-find-data-assets"
           renderElement={<strong />}

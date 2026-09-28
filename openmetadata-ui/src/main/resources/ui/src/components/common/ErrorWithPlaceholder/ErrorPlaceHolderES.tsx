@@ -128,7 +128,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
           className="border-none"
           size={size}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography style={{ marginBottom: '0' }} variant="paragraph">
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.no-data-available-entity"
               renderElement={<b />}
@@ -137,7 +137,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
               }}
             />
           </Typography>
-          <Typography style={{ marginBottom: '0' }} variant="paragraph">
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.add-data-asset-domain"
               renderElement={<b />}
@@ -146,7 +146,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
               }}
             />
           </Typography>
-          <Typography variant="paragraph">
+          <Typography as="p">
             <Transi18next
               i18nKey="message.refer-to-our-doc"
               renderElement={

@@ -412,7 +412,7 @@ export const ContractSchemaFormTab: React.FC<{
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         render: (_, record: Column) => (
-          <Typography className="schema-table-name" variant="text">
+          <Typography className="schema-table-name">
             {getEntityName(record)}
           </Typography>
         ),
@@ -533,12 +533,10 @@ export const ContractSchemaFormTab: React.FC<{
     <>
       <Card className="container bg-grey p-box">
         <div className="m-b-sm">
-          <Typography className="contract-detail-form-tab-title" variant="text">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.schema')}
           </Typography>
-          <Typography
-            className="contract-detail-form-tab-description"
-            variant="paragraph">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-schema-description')}
           </Typography>
         </div>

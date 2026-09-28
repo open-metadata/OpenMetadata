@@ -257,10 +257,7 @@ const UpdateTag = () => {
               ]}
             />
             <div className="m-t-0 request-tags" key="update-tags">
-              <Typography
-                className="text-base"
-                data-testid="form-title"
-                variant="paragraph">
+              <Typography as="p" className="text-base" data-testid="form-title">
                 {t('label.create-entity', {
                   entity: t('label.task'),
                 })}

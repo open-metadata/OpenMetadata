@@ -120,7 +120,7 @@ const UserProfileTeams = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography className="text-sm font-medium p-l-xss" variant="text">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.team-plural')}
           </Typography>
 
@@ -137,9 +137,7 @@ const UserProfileTeams = ({
                     <IconTeamsGrey height={16} />
                   </div>
 
-                  <Typography
-                    className="user-profile-edit-popover-card-title"
-                    variant="text">
+                  <Typography className="user-profile-edit-popover-card-title">
                     {t('label.team-plural')}
                   </Typography>
                 </div>

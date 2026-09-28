@@ -39,8 +39,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           <Typography
             className="summary-panel-section-title"
-            data-testid="tags-header"
-            variant="text">
+            data-testid="tags-header">
             {t('label.tag-plural')}
           </Typography>
         </Col>
@@ -52,9 +51,7 @@ const SummaryTagsDescription = ({
               tags={tags}
             />
           ) : (
-            <Typography
-              className="text-sm no-data-chip-placeholder"
-              variant="text">
+            <Typography className="text-sm no-data-chip-placeholder">
               {t('label.no-tags-added')}
             </Typography>
           )}
@@ -67,8 +64,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           <Typography
             className="summary-panel-section-title"
-            data-testid="description-header"
-            variant="text">
+            data-testid="description-header">
             {t('label.description')}
           </Typography>
         </Col>
@@ -80,10 +76,7 @@ const SummaryTagsDescription = ({
                 maxLength={200}
               />
             ) : (
-              <Typography
-                as="article"
-                className="no-data-chip-placeholder"
-                variant="text">
+              <Typography as="article" className="no-data-chip-placeholder">
                 {t('label.no-data-found')}
               </Typography>
             )}

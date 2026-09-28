@@ -796,7 +796,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   !isLastItem,
               })}
               title={getEntityName(breadcrumb)}
-              variant="text"
               onClick={
                 isLastItem ? undefined : () => handleBreadcrumbClick(breadcrumb)
               }>
@@ -857,8 +856,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       <Typography
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
-        ellipsis={{ tooltip: true }}
-        variant="text">
+        ellipsis={{ tooltip: true }}>
         {renderHighlightedText(activeColumn.name || '')}
       </Typography>
     );
@@ -925,8 +923,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     <Typography
                       ellipsis
                       className="entity-title-link"
-                      data-testid="entity-link"
-                      variant="text">
+                      data-testid="entity-link">
                       {renderHighlightedText(
                         (activeColumn as { displayName?: string })
                           .displayName ||
@@ -998,9 +995,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography
-        className="pagination-header-text tw:font-medium"
-        variant="text">
+      <Typography className="pagination-header-text tw:font-medium">
         {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
         {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
       </Typography>

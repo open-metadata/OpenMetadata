@@ -110,7 +110,7 @@ function ActivityOwnersFeed({
                     name={owner.name ?? ''}
                     width="24"
                   />
-                  <Typography className="owner-chip-text" variant="text">
+                  <Typography className="owner-chip-text">
                     {owner.displayName}
                   </Typography>
                 </div>
@@ -160,7 +160,7 @@ function ActivityOwnersFeed({
           <Row wrap align="middle">
             <Row align="middle">
               <AddIcon className="text-success-hover" height={16} width={16} />
-              <Typography className="owners-label" variant="text">
+              <Typography className="owners-label">
                 {t('label.owner-plural-with-colon')}
               </Typography>
             </Row>
@@ -175,7 +175,7 @@ function ActivityOwnersFeed({
             <Col>
               <Row align="middle">
                 <DeletedIcon className="text-error" height={14} width={14} />
-                <Typography className="owners-label" variant="text">
+                <Typography className="owners-label">
                   {t('label.owner-plural-with-colon')}
                 </Typography>
               </Row>

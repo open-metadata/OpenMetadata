@@ -16,32 +16,28 @@
 .entity-stats {
   width: max-content;
 
-  .ant-typography,
-  [data-typography] {
+  .app-badge-label {
     font-weight: var(--om-font-weight-medium);
   }
 
   &.total {
     background-color: @primary-1;
     border: 1px solid @primary-color;
-    .ant-typography,
-    [data-typography] {
+    .app-badge-label {
       color: @primary-color;
     }
   }
   &.success {
     background-color: @green-2;
     border: 1px solid @success-color;
-    .ant-typography,
-    [data-typography] {
+    .app-badge-label {
       color: @success-color;
     }
   }
   &.failure {
     background-color: @error-light-color;
     border: 1px solid @failed-color;
-    .ant-typography,
-    [data-typography] {
+    .app-badge-label {
       color: @failed-color;
     }
   }

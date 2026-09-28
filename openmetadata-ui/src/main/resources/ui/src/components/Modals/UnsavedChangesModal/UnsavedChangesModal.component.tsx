@@ -50,16 +50,16 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
 
           <div className="unsaved-changes-modal-content">
             <Typography
+              as="h5"
               className="unsaved-changes-modal-title"
               data-testid="unsaved-changes-modal-title"
-              level={5}
-              variant="title">
+              size="text-md"
+              weight="semibold">
               {title || t('message.unsaved-changes')}
             </Typography>
             <Typography
               className="unsaved-changes-modal-description"
-              data-testid="unsaved-changes-modal-description"
-              variant="text">
+              data-testid="unsaved-changes-modal-description">
               {description || t('message.unsaved-changes-description')}
             </Typography>
           </div>

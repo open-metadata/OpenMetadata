@@ -56,7 +56,7 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
                 markdown={persona.description ?? ''}
               />
             ) : (
-              <Typography className="text-grey-muted" variant="text">
+              <Typography className="text-grey-muted">
                 {t('label.no-description')}
               </Typography>
             )
@@ -64,7 +64,7 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
           title={
             <div className="d-flex justify-between w-full">
               <div>
-                <Typography ellipsis={{ tooltip: true }} variant="text">
+                <Typography ellipsis={{ tooltip: true }}>
                   {getEntityName(persona)}
                 </Typography>
               </div>

@@ -322,7 +322,6 @@ const AssetsFilterBar = ({
             {quickFilterQuery && (
               <Typography
                 className="text-primary self-center cursor-pointer"
-                variant="text"
                 onClick={onClearFilters}>
                 {t('label.clear-entity', {
                   entity: '',
@@ -365,7 +364,7 @@ const BulkDeleteNotification = ({
         visible: selectedItemsCount > 0,
       })}>
       <div className="d-flex items-center justify-between">
-        <Typography className="text-white" variant="text">
+        <Typography className="text-white">
           {selectedItemsCount} {t('label.items-selected-lowercase')}
         </Typography>
         <Button
@@ -684,7 +683,7 @@ const AssetsTabs = forwardRef(
 
         return (
           <>
-            <Typography variant="text">{baseMessage}</Typography>
+            <Typography>{baseMessage}</Typography>
             <Alert
               showIcon
               className="m-t-sm"
@@ -907,16 +906,14 @@ const AssetsTabs = forwardRef(
             }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
-                <Typography variant="paragraph">
+                <Typography as="p">
                   {t('label.no-matching-data-asset')}
                 </Typography>
               </div>
             )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
-                <Typography variant="paragraph">
-                  {noDataPlaceholder.message}
-                </Typography>
+                <Typography as="p">{noDataPlaceholder.message}</Typography>
               </div>
             )}
           </ErrorPlaceHolderNew>

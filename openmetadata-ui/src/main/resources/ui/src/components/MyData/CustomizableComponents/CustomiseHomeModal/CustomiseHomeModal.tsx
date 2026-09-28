@@ -297,9 +297,7 @@ const CustomiseHomeModal = ({
       title={
         <div className="customise-home-modal-header p-box d-flex items-center gap-3">
           <Icon className="add-icon" component={AddIcon} />
-          <Typography
-            className="text-xl font-semibold text-white"
-            variant="text">
+          <Typography className="text-xl font-semibold text-white">
             {t('label.customize-entity', {
               entity: t('label.home'),
             })}

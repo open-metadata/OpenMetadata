@@ -140,7 +140,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           // If config is an array and not empty
           if (isArray(config) && !isEmpty(config)) {
             return (
-              <Typography data-testid={`${record.name}-config`} variant="text">
+              <Typography data-testid={`${record.name}-config`}>
                 {JSON.stringify(config ?? [])}
               </Typography>
             );
@@ -153,7 +153,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                 <div
                   className="w-full d-flex gap-2 flex-column"
                   data-testid="table-config">
-                  <Typography variant="text">
+                  <Typography>
                     <span className="font-medium">{`${t(
                       'label.column-plural'
                     )}:`}</span>
@@ -171,10 +171,8 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               <div
                 className="w-full d-flex gap-2 flex-column"
                 data-testid="enum-config">
-                <Typography variant="text">
-                  {JSON.stringify(config?.values ?? [])}
-                </Typography>
-                <Typography variant="text">
+                <Typography>{JSON.stringify(config?.values ?? [])}</Typography>
+                <Typography>
                   {t('label.multi-select')}:{' '}
                   {config?.multiSelect ? t('label.yes') : t('label.no')}
                 </Typography>
@@ -183,7 +181,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           }
 
           // else it is a string
-          return <Typography variant="text">{config}</Typography>;
+          return <Typography>{config}</Typography>;
         },
       },
       ...descriptionTableObject<CustomProperty>({ width: 300 }),

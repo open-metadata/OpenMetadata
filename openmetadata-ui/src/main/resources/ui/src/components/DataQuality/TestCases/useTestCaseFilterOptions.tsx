@@ -57,14 +57,8 @@ const withName = (option: { label: string; value: string }): FetchedOption => ({
 
 const optionLabel = (name: string, fqn?: string, testId?: string) => (
   <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
-    {fqn && (
-      <Typography className="text-xs text-grey-muted" variant="text">
-        {fqn}
-      </Typography>
-    )}
-    <Typography className="text-sm" variant="text">
-      {name}
-    </Typography>
+    {fqn && <Typography className="text-xs text-grey-muted">{fqn}</Typography>}
+    <Typography className="text-sm">{name}</Typography>
   </Space>
 );
 

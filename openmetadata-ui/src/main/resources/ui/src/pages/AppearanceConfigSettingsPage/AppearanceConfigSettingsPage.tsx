@@ -484,11 +484,7 @@ const AppearanceConfigSettingsPage = () => {
               </Card>
               <Card
                 className="white-label-config-card"
-                title={
-                  <Typography variant="text">
-                    {t('label.custom-theme')}
-                  </Typography>
-                }>
+                title={<Typography>{t('label.custom-theme')}</Typography>}>
                 <Row className="w-full" gutter={[16, 16]}>
                   {themeFormFields.map((field) => {
                     const currentColor =

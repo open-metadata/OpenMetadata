@@ -177,14 +177,10 @@ export const ContractSemanticFormTab: React.FC<{
       <Card className="contract-semantic-form-container container bg-grey p-box">
         <div className="d-flex justify-between items-center">
           <div>
-            <Typography
-              className="contract-detail-form-tab-title"
-              variant="text">
+            <Typography className="contract-detail-form-tab-title">
               {t('label.semantic-plural')}
             </Typography>
-            <Typography
-              className="contract-detail-form-tab-description"
-              variant="text">
+            <Typography className="contract-detail-form-tab-description">
               {t('message.semantics-description')}
             </Typography>
           </div>
@@ -233,16 +229,13 @@ export const ContractSemanticFormTab: React.FC<{
                                 </Form.Item>
 
                                 <div className="d-flex flex-column">
-                                  <Typography
-                                    className="semantic-form-item-title"
-                                    variant="text">
+                                  <Typography className="semantic-form-item-title">
                                     {semanticsFormData?.[field.key]?.name ||
                                       t('label.untitled')}
                                   </Typography>
                                   <Typography
                                     ellipsis
-                                    className="semantic-form-item-description"
-                                    variant="text">
+                                    className="semantic-form-item-description">
                                     {semanticsFormData?.[field.key]
                                       ?.description ||
                                       t('label.no-description')}

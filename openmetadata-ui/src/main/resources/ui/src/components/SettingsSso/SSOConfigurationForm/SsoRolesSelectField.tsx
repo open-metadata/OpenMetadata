@@ -112,8 +112,7 @@ const SsoRolesSelectField = (props: FieldProps) => {
           as="article"
           className={`array-field-label ${
             props.required ? 'required-field' : ''
-          }`}
-          variant="text">
+          }`}>
           {startCase(props.name)}
         </Typography>
       </Col>

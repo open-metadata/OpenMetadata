@@ -104,16 +104,14 @@ function InlineAlert({
         <div className="d-flex items-start gap-3">
           {alertIcon}
           <div className="d-flex flex-col gap-2">
-            <Typography className="font-semibold text-sm" variant="text">
-              {heading}
-            </Typography>
+            <Typography className="font-semibold text-sm">{heading}</Typography>
             <Typography
+              as="p"
               className={classNames('m-b-0 text-sm', {
                 'truncated-text': !showMore,
                 'expanded-text': showMore,
               })}
-              data-testid="inline-alert-description"
-              variant="paragraph">
+              data-testid="inline-alert-description">
               {description}
               {subDescription && (
                 <>

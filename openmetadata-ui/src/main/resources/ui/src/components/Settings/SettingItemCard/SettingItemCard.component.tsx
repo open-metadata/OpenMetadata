@@ -49,13 +49,13 @@ const SettingItemCard = ({
         )}
       </div>
       <div className="setting-card-content">
-        <Typography className="font-semibold" variant="text">
+        <Typography className="setting-card-title font-semibold">
           {data.category ?? data.label}
         </Typography>
         <Typography
-          className="font-normal text-sm"
-          ellipsis={{ rows: 2 }}
-          variant="paragraph">
+          as="p"
+          className="setting-card-description font-normal text-sm"
+          ellipsis={{ rows: 2 }}>
           {data.description}
         </Typography>
       </div>

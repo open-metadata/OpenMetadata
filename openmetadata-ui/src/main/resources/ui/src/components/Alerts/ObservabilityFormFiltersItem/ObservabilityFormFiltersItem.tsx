@@ -128,11 +128,7 @@ function ObservabilityFormFiltersItem({
                       )}
                     </div>
                     <Form.Item
-                      label={
-                        <Typography variant="text">
-                          {t('label.include')}
-                        </Typography>
-                      }
+                      label={<Typography>{t('label.include')}</Typography>}
                       name={[name, 'effect']}
                       normalize={(value) =>
                         value ? Effect.Include : Effect.Exclude

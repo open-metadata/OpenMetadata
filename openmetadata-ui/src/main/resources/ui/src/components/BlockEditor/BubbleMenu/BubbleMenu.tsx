@@ -148,7 +148,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
                 command();
               }}>
               {isString(Icon) ? (
-                <Typography as="article" variant="text">
+                <Typography as="article" className="format-label">
                   {Icon}
                 </Typography>
               ) : (

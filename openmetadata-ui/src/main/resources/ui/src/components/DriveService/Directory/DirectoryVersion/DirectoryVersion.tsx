@@ -144,9 +144,7 @@ const DirectoryVersion = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (_, record) => (
-          <Typography variant="text">{getEntityName(record)}</Typography>
-        ),
+        render: (_, record) => <Typography>{getEntityName(record)}</Typography>,
       },
       {
         title: t('label.type'),

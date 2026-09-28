@@ -50,26 +50,20 @@ const AppScheduleSummary = ({
   return (
     <>
       <div className="d-flex items-center gap-2">
-        <Typography className="right-panel-label" variant="text">
+        <Typography className="right-panel-label">
           {t('label.schedule-type')}
         </Typography>
-        <Typography
-          className="font-medium"
-          data-testid="schedule-type"
-          variant="text">
+        <Typography className="font-medium" data-testid="schedule-type">
           {(appSchedule as AppScheduleClass).scheduleTimeline ?? ''}
         </Typography>
       </div>
 
       {!isEmpty(cronString) && (
         <div className="d-flex items-center gap-2">
-          <Typography className="right-panel-label" variant="text">
+          <Typography className="right-panel-label">
             {t('label.schedule-interval')}
           </Typography>
-          <Typography
-            className="font-medium"
-            data-testid="cron-string"
-            variant="text">
+          <Typography className="font-medium" data-testid="cron-string">
             {cronString}
           </Typography>
         </div>
@@ -204,17 +198,13 @@ const AppSchedule = ({
 
     if (isAppDisabled) {
       return (
-        <Typography variant="text">
+        <Typography>
           {disabledReason ?? t('message.application-disabled-message')}
         </Typography>
       );
     }
 
-    return (
-      <Typography variant="text">
-        {t('message.no-ingestion-pipeline-found')}
-      </Typography>
-    );
+    return <Typography>{t('message.no-ingestion-pipeline-found')}</Typography>;
   }, [
     appData,
     disabledReason,

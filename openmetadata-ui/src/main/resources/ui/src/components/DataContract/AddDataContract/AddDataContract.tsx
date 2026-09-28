@@ -538,12 +538,10 @@ const AddDataContract: React.FC<{
     return (
       <div className="add-contract-card-header d-flex items-center justify-between">
         <div>
-          <Typography className="add-contract-card-title" variant="text">
+          <Typography className="add-contract-card-title">
             {t('label.add-contract-detail-plural')}
           </Typography>
-          <Typography
-            className="add-contract-card-description"
-            variant="paragraph">
+          <Typography as="p" className="add-contract-card-description">
             {t('message.add-contract-detail-description')}
           </Typography>
         </div>

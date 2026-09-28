@@ -154,8 +154,7 @@ const AnnouncementCardV1Content = ({
             }}
             style={{
               color: currentBackgroundColor ?? 'inherit',
-            }}
-            variant="text">
+            }}>
             <Link
               className={classNames(
                 'announcement-entity-name',
@@ -179,8 +178,7 @@ const AnnouncementCardV1Content = ({
             ellipsis={{ tooltip: true }}
             style={{
               color: currentBackgroundColor ?? 'inherit',
-            }}
-            variant="text">
+            }}>
             {entityName}
           </Typography>
         )}
@@ -188,8 +186,7 @@ const AnnouncementCardV1Content = ({
     ) : (
       <Typography
         className="announcement-header"
-        style={announcementTitleStyle}
-        variant="text">
+        style={announcementTitleStyle}>
         {title}
       </Typography>
     );
@@ -205,10 +202,7 @@ const AnnouncementCardV1Content = ({
           )}
           style={announcementTitleSectionStyle}>
           {renderHeaderContent()}
-          <Typography
-            className="timestamp"
-            style={timeStampStyle}
-            variant="text">
+          <Typography className="timestamp" style={timeStampStyle}>
             {getShortRelativeTime(timestamp)}
           </Typography>
         </div>
@@ -216,12 +210,12 @@ const AnnouncementCardV1Content = ({
 
       {(userName || entityName) && title && (
         <Typography
+          as="p"
           className={classNames('announcement-title', variantConfig.title)}
-          ellipsis={{ tooltip: true, rows: 2 }}
-          variant="paragraph">
+          ellipsis={{ tooltip: true, rows: 2 }}>
           {title}
           {columnName && (
-            <Typography variant="text">
+            <Typography>
               {`${t('label.column-name')}: ${columnName}`}
             </Typography>
           )}

@@ -53,8 +53,7 @@ const DomainSummary = ({
           <Col span={24}>
             <Typography
               className="summary-panel-section-title"
-              data-testid="owner-header"
-              variant="text">
+              data-testid="owner-header">
               {t('label.owner-plural')}
             </Typography>
           </Col>
@@ -73,8 +72,7 @@ const DomainSummary = ({
           <Col span={24}>
             <Typography
               className="summary-panel-section-title"
-              data-testid="expert-header"
-              variant="text">
+              data-testid="expert-header">
               {t('label.expert-plural')}
             </Typography>
           </Col>
@@ -84,8 +82,7 @@ const DomainSummary = ({
             ) : (
               <Typography
                 className="text-grey-body"
-                data-testid="no-expert-header"
-                variant="text">
+                data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}

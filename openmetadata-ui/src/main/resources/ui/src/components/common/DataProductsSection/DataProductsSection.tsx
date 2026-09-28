@@ -220,7 +220,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       (!displayActiveDomains || displayActiveDomains.length === 0)
     ) {
       return (
-        <Typography className="no-data-placeholder" variant="text">
+        <Typography className="no-data-placeholder">
           {t('message.select-domain-to-add-data-product')}
         </Typography>
       );
@@ -303,7 +303,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return (
       <div className="data-products-section">
         <div className="data-products-header">
-          <Typography className="data-products-title" variant="text">
+          <Typography className="data-products-title">
             {t('label.data-product-plural')}
           </Typography>
           {canShowEditButton && (
@@ -328,7 +328,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   return (
     <div className="data-products-section">
       <div className="data-products-header">
-        <Typography className="data-products-title" variant="text">
+        <Typography className="data-products-title">
           {t('label.data-product-plural')}
         </Typography>
         {canShowEditButton && (

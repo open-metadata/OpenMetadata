@@ -591,9 +591,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <Typography variant="paragraph">
-            {t('message.enable-column-profile')}
-          </Typography>
+          <Typography as="p">{t('message.enable-column-profile')}</Typography>
           <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
             allowClear

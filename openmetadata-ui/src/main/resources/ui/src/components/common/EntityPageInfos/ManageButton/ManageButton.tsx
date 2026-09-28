@@ -420,7 +420,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               setShowReactiveModal(false);
             }}
             onOk={handleRestore}>
-            <Typography data-testid="restore-modal-body" variant="text">
+            <Typography data-testid="restore-modal-body">
               {t('message.are-you-want-to-restore', {
                 entity: entityName,
               })}

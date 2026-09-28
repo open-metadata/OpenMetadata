@@ -32,9 +32,7 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
     <div className={`section-with-edit ${className}`}>
       <div className={`section-header ${titleClassName}`}>
         {typeof title === 'string' ? (
-          <Typography className="section-title" variant="text">
-            {title}
-          </Typography>
+          <Typography className="section-title">{title}</Typography>
         ) : (
           title
         )}

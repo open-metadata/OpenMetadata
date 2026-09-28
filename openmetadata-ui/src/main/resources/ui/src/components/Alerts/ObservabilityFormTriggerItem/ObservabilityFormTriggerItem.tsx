@@ -123,11 +123,7 @@ function ObservabilityFormTriggerItem({
                       )}
                     </div>
                     <Form.Item
-                      label={
-                        <Typography variant="text">
-                          {t('label.include')}
-                        </Typography>
-                      }
+                      label={<Typography>{t('label.include')}</Typography>}
                       labelAlign="left"
                       labelCol={{ span: 6 }}
                       name={[name, 'effect']}

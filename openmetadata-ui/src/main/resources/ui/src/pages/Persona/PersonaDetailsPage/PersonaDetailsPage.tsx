@@ -445,7 +445,7 @@ export const PersonaDetailsPage = () => {
         }
         onCancel={handleCancelSetAsDefault}
         onOk={handleConfirmDefaultAction}>
-        <Typography variant="text">
+        <Typography>
           {personaDetails?.default
             ? t('message.remove-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),

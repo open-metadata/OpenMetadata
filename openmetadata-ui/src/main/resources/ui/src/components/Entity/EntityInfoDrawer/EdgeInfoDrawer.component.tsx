@@ -337,10 +337,7 @@ const EdgeInfoDrawer = ({
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
           }}>
-          <Typography
-            className="m-b-0"
-            data-testid="sql-function"
-            variant="text">
+          <Typography className="m-b-0" data-testid="sql-function">
             {functionValue ?? NO_DATA_PLACEHOLDER}
           </Typography>
         </SectionWithEdit>
@@ -365,7 +362,7 @@ const EdgeInfoDrawer = ({
               value={mysqlQuery}
             />
           ) : (
-            <Typography className="m-b-0" variant="paragraph">
+            <Typography as="p" className="m-b-0">
               {t('server.no-query-available')}
             </Typography>
           )}
@@ -374,7 +371,7 @@ const EdgeInfoDrawer = ({
           className="summary-panel-card"
           showEditButton={false}
           title={t('label.lineage-source')}>
-          <Typography className="lineage-source-text" variant="text">
+          <Typography className="lineage-source-text">
             {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
           </Typography>
         </SectionWithEdit>
@@ -460,8 +457,7 @@ const EdgeInfoDrawer = ({
                     </span>
                     <Typography
                       className="edge-info-drawer-title"
-                      data-testid="edge-header-title"
-                      variant="text">
+                      data-testid="edge-header-title">
                       {t('label.edge-information')}
                     </Typography>
                   </div>

@@ -65,10 +65,10 @@ const QueryUsedByOtherTable = ({
 
   const tableNames = useMemo(
     () => (
-      <Typography variant="text">
+      <Typography>
         {topThreeTable.length
           ? topThreeTable.map((table, index) => (
-              <Typography className="m-r-xss" key={table.name} variant="text">
+              <Typography className="m-r-xss" key={table.name}>
                 <Link
                   to={getEntityDetailsPath(
                     EntityType.TABLE,
@@ -82,7 +82,7 @@ const QueryUsedByOtherTable = ({
           : '--'}
         {remainingTable.length ? (
           <>
-            <Typography className="m-r-xss" variant="text">
+            <Typography className="m-r-xss">
               {t('label.and-lowercase')}
             </Typography>
             <Popover
@@ -102,10 +102,7 @@ const QueryUsedByOtherTable = ({
               }
               placement="bottom"
               trigger="click">
-              <Typography
-                className="show-more"
-                data-testid="show-more"
-                variant="text">
+              <Typography className="show-more" data-testid="show-more">
                 {`${remainingTable.length} ${t('label.more-lowercase')}`}
               </Typography>
             </Popover>
@@ -199,9 +196,7 @@ const QueryUsedByOtherTable = ({
   return (
     <Row wrap data-testid="para-container">
       <Col flex="200px">
-        <Typography variant="text">{`${t(
-          'message.query-used-by-other-tables'
-        )}:`}</Typography>
+        <Typography>{`${t('message.query-used-by-other-tables')}:`}</Typography>
       </Col>
       <Col>{isEditMode ? selectList : tableNames}</Col>
     </Row>

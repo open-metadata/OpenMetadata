@@ -43,7 +43,7 @@ export default function SummaryList({
       locale={{
         emptyText: (
           <div>
-            <Typography className="no-data-chip-placeholder" variant="text">
+            <Typography className="no-data-chip-placeholder">
               {emptyPlaceholderText ?? t('message.no-data-available')}
             </Typography>
           </div>

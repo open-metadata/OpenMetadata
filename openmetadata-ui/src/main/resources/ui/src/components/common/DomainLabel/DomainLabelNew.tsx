@@ -145,7 +145,6 @@ export const DomainLabelNew = ({
             <Typography
               className="text-primary text-xs cursor-pointer"
               data-testid="show-all-domains"
-              variant="text"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowAll(!showAll);
@@ -159,8 +158,7 @@ export const DomainLabelNew = ({
       return (
         <Typography
           className={classNames('text-sm no-data-chip-placeholder')}
-          data-testid="no-domain-text"
-          variant="text">
+          data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain-plural') })}
         </Typography>
       );
@@ -204,7 +202,7 @@ export const DomainLabelNew = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography className="text-sm font-medium p-l-xss" variant="text">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.domain-plural')}
           </Typography>
           {selectableList}

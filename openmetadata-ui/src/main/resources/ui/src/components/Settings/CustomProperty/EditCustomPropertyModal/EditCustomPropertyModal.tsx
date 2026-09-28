@@ -196,8 +196,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   const note = (
     <Typography
       className="text-grey-muted"
-      style={{ display: 'block', marginTop: '-18px' }}
-      variant="text">
+      style={{ display: 'block', marginTop: '-18px' }}>
       {`Note: ${t(
         'message.updating-existing-not-possible-can-add-new-values'
       )}`}
@@ -229,7 +228,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       okText={t('label.save')}
       open={visible}
       title={
-        <Typography variant="text">
+        <Typography>
           {t('label.edit-entity-name', {
             entityType: t('label.property'),
             entityName: customProperty.name,

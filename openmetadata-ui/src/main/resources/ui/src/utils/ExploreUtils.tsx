@@ -128,8 +128,7 @@ export const generateTabItems = (
             </span>
             <Typography
               className={tabSearchIndex === searchIndex ? 'text-primary' : ''}
-              ellipsis={{ tooltip: true }}
-              variant="text">
+              ellipsis={{ tooltip: true }}>
               {tabDetail.label}
             </Typography>
           </div>

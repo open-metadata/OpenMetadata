@@ -279,7 +279,7 @@ const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
             <UserPopOverCard userName={assignee.name ?? ''}>
               <ProfilePicture name={assignee.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography variant="text">{getEntityName(assignee)}</Typography>
+            <Typography>{getEntityName(assignee)}</Typography>
           </div>
         ))}
       </div>
@@ -661,7 +661,7 @@ export const TaskTabNew = ({
   const taskColumnName = useMemo(() => {
     if (taskColumnLabel) {
       return (
-        <Typography className="p-r-xss" variant="text">
+        <Typography className="p-r-xss">
           {taskColumnLabel} {t('label.in-lowercase')}
         </Typography>
       );
@@ -705,7 +705,7 @@ export const TaskTabNew = ({
             <UserPopOverCard userName={task.createdBy?.name ?? ''}>
               <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography variant="text">{task.createdBy?.name}</Typography>
+            <Typography>{task.createdBy?.name}</Typography>
           </Link>
         ),
       },
@@ -780,11 +780,9 @@ export const TaskTabNew = ({
             data-testid="task-title"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography
-              className="p-0 task-id text-sm task-details-id"
-              variant="text">{`#${taskDisplayId} `}</Typography>
+            <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
-            <Typography className="p-xss task-details" variant="text">
+            <Typography className="p-xss task-details">
               {t(TASK_ENTITY_TYPES[task.type])}
             </Typography>
 
@@ -792,14 +790,11 @@ export const TaskTabNew = ({
 
             <Typography
               className="break-all text-sm entity-link header-link whitespace-normal"
-              data-testid="entity-link"
-              variant="text">
+              data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography>
 
-            <Typography
-              className="p-l-xss entity-type header-link whitespace-normal"
-              variant="text">{`(${entityType})`}</Typography>
+            <Typography className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -1643,9 +1638,7 @@ export const TaskTabNew = ({
               span={8}
               style={{ paddingLeft: 0 }}>
               <UserIcon height={16} />
-              <Typography
-                className="incident-manager-details-label"
-                variant="text">
+              <Typography className="incident-manager-details-label">
                 {t('label.created-by')}
               </Typography>
             </Col>
@@ -1662,7 +1655,7 @@ export const TaskTabNew = ({
                   </div>
                 </UserPopOverCard>
 
-                <Typography variant="text">{task.createdBy?.name}</Typography>
+                <Typography>{task.createdBy?.name}</Typography>
               </Link>
             </Col>
 
@@ -1721,9 +1714,7 @@ export const TaskTabNew = ({
                   span={8}
                   style={{ paddingLeft: 0 }}>
                   <AssigneesIcon height={16} />
-                  <Typography
-                    className="incident-manager-details-label @grey-8"
-                    variant="text">
+                  <Typography className="incident-manager-details-label @grey-8">
                     {t('label.assignee-plural')}
                   </Typography>
                 </Col>
@@ -1741,7 +1732,7 @@ export const TaskTabNew = ({
                           />
                         </div>
                       </UserPopOverCard>
-                      <Typography className="text-grey-body" variant="text">
+                      <Typography className="text-grey-body">
                         {getEntityName(task?.assignees[0])}
                       </Typography>
                       {editAssigneeButton}
@@ -1786,7 +1777,7 @@ export const TaskTabNew = ({
     return (
       <div className="action-required-card d-flex flex-wrap justify-between items-center">
         <Col>
-          <Typography className="action-required-text" variant="text">
+          <Typography className="action-required-text">
             {t('label.action-required')}
           </Typography>
         </Col>
@@ -1908,7 +1899,7 @@ export const TaskTabNew = ({
     return (
       <Col span={24}>
         <div className="task-proposed-changes">
-          <Typography className="task-proposed-changes-title" variant="text">
+          <Typography className="task-proposed-changes-title">
             {t('label.proposed-change-plural')}
           </Typography>
           <div className="task-proposed-changes-fields">
@@ -1918,9 +1909,7 @@ export const TaskTabNew = ({
 
                 return (
                   <div className="task-proposed-changes-field-row" key={field}>
-                    <Typography
-                      className="task-proposed-changes-field-name"
-                      variant="text">
+                    <Typography className="task-proposed-changes-field-name">
                       {startCase(field)}
                     </Typography>
                     <div className="task-proposed-changes-chips">
@@ -2028,7 +2017,7 @@ export const TaskTabNew = ({
     return (
       <Col span={24}>
         <div className="activity-feed-comments-container d-flex flex-col">
-          <Typography className={commentsTitleClassName} variant="text">
+          <Typography className={commentsTitleClassName}>
             {t('label.comment-plural')}
           </Typography>
 

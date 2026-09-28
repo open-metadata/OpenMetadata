@@ -611,12 +611,14 @@ const AppDetails = () => {
     return (
       <div className="flex-center gap-2">
         <Icon component={IconExternalLink} style={ICON_DIMENSION} />
-        <Typography
-          className="text-xs"
-          href={appData?.developerUrl}
-          target="_blank"
-          variant="link">
-          <Space>{t('label.visit-developer-website')}</Space>
+        <Typography>
+          <a
+            className="text-xs"
+            href={appData?.developerUrl}
+            rel="noopener noreferrer"
+            target="_blank">
+            <Space>{t('label.visit-developer-website')}</Space>
+          </a>
         </Typography>
       </div>
     );
@@ -666,7 +668,7 @@ const AppDetails = () => {
             size="small"
             type="text"
             onClick={onBrowseAppsClick}>
-            <Typography className="font-medium" variant="text">
+            <Typography className="font-medium">
               {t('label.browse-app-plural')}
             </Typography>
           </Button>
@@ -709,17 +711,13 @@ const AppDetails = () => {
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
-              <Typography level={4} variant="title">
-                {getEntityName(appData)}
-              </Typography>
+              <Typography as="h4">{getEntityName(appData)}</Typography>
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>
                   <ClockCircleOutlined />
-                  <Typography
-                    className="text-xs text-grey-muted"
-                    variant="text">
+                  <Typography className="text-xs text-grey-muted">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
@@ -728,9 +726,7 @@ const AppDetails = () => {
 
                 <Space size={8}>
                   <UserOutlined />
-                  <Typography
-                    className="text-xs text-grey-muted"
-                    variant="text">
+                  <Typography className="text-xs text-grey-muted">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}

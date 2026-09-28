@@ -131,10 +131,7 @@ const AddPolicyPage = () => {
           <div data-testid="add-policy-container">
             <TitleBreadcrumb titleLinks={translatedAddPolicyBreadcrumb} />
             <div className="m-t-md">
-              <Typography
-                className="text-base"
-                data-testid="form-title"
-                variant="paragraph">
+              <Typography as="p" className="text-base" data-testid="form-title">
                 {t('label.add-new-entity', {
                   entity: t('label.policy'),
                 })}
@@ -196,14 +193,12 @@ const AddPolicyPage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography className="text-base font-medium" variant="paragraph">
+            <Typography as="p" className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.policy'),
               })}
             </Typography>
-            <Typography variant="text">
-              {t('message.add-policy-message')}
-            </Typography>
+            <Typography>{t('message.add-policy-message')}</Typography>
           </>
         ),
         className: 'content-resizable-panel-container',

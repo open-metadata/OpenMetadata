@@ -160,7 +160,7 @@ const ManifestJsonWidget = ({
           showIcon
           className="m-t-xs"
           message={
-            <Typography variant="text">
+            <Typography>
               {t('label.valid-manifest-entry-count', {
                 count: validation.entryCount,
               })}

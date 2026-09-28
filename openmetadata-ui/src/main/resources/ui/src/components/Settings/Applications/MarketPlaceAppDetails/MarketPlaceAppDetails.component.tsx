@@ -160,7 +160,7 @@ const MarketPlaceAppDetails = () => {
           size="small"
           type="text"
           onClick={onBrowseAppsClick}>
-          <Typography className="font-medium" variant="text">
+          <Typography className="font-medium">
             {t('label.browse-app-plural')}
           </Typography>
         </Button>
@@ -184,12 +184,12 @@ const MarketPlaceAppDetails = () => {
             className="m-t-md text-xs d-flex items-start p-xs"
             message={
               isCacheWarmupDisabled ? (
-                <Typography variant="text">
+                <Typography>
                   {t('message.cache-service-not-configured-message')}
                 </Typography>
               ) : (
                 <>
-                  <Typography variant="text">
+                  <Typography>
                     <Transi18next
                       i18nKey="message.paid-addon-description"
                       renderElement={
@@ -204,7 +204,7 @@ const MarketPlaceAppDetails = () => {
                     />
                   </Typography>
 
-                  <Typography className="d-block" variant="text">
+                  <Typography className="d-block">
                     {t('message.please-contact-us')}
                   </Typography>
                 </>
@@ -215,37 +215,41 @@ const MarketPlaceAppDetails = () => {
         )}
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
-          <Typography
-            className="text-xs font-medium text-grey-muted"
-            variant="text">
+          <Typography className="text-xs font-medium text-grey-muted">
             {t('message.marketplace-verify-msg')}
           </Typography>
         </div>
         <Space className="p-t-lg" direction="vertical" size={8}>
-          <Typography variant="text">
+          <Typography>
             {appData?.supportEmail && (
-              <Typography
-                data-testid="app-support-email"
-                href={`mailto:${appData?.supportEmail}`}
-                target="_blank"
-                variant="link">
-                <Space>{t('label.get-app-support')}</Space>
+              <Typography>
+                <a
+                  data-testid="app-support-email"
+                  href={`mailto:${appData?.supportEmail}`}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Space>{t('label.get-app-support')}</Space>
+                </a>
               </Typography>
             )}
             {appData?.developerUrl && (
-              <Typography
-                href={appData?.developerUrl}
-                target="_blank"
-                variant="link">
-                <Space>{t('label.visit-developer-website')}</Space>
+              <Typography>
+                <a
+                  href={appData?.developerUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Space>{t('label.visit-developer-website')}</Space>
+                </a>
               </Typography>
             )}
             {appData?.privacyPolicyUrl && (
-              <Typography
-                href={appData?.privacyPolicyUrl}
-                target="_blank"
-                variant="link">
-                <Space>{t('label.privacy-policy')}</Space>
+              <Typography>
+                <a
+                  href={appData?.privacyPolicyUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Space>{t('label.privacy-policy')}</Space>
+                </a>
               </Typography>
             )}
           </Typography>
@@ -270,7 +274,7 @@ const MarketPlaceAppDetails = () => {
       pageTitle={getEntityName(appData) || t('label.application-plural')}>
       <Row>
         <Col span={24}>
-          <Typography className="p-md m-0 p-t-xss" level={2} variant="title">
+          <Typography as="h2" className="p-md m-0 p-t-xss">
             {getEntityName(appData)}
           </Typography>
         </Col>

@@ -260,7 +260,7 @@ const UserProfileRoles = ({
           <RoleIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography className="text-sm font-medium" variant="text">
+          <Typography className="text-sm font-medium">
             {t('label.role-plural')}
           </Typography>
           <Popover
@@ -276,9 +276,7 @@ const UserProfileRoles = ({
                   <div className="d-flex flex-start items-center">
                     <RoleIcon height={16} />
                   </div>
-                  <Typography
-                    className="user-profile-edit-popover-card-title"
-                    variant="text">
+                  <Typography className="user-profile-edit-popover-card-title">
                     {t('label.role-plural')}
                   </Typography>
                 </div>

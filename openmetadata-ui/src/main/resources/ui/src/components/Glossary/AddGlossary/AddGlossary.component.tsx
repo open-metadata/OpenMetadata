@@ -114,12 +114,12 @@ const AddGlossary = ({
 
   const rightPanel = (
     <div data-testid="right-panel">
-      <Typography level={5} variant="title">
+      <Typography as="h5" size="text-md" weight="semibold">
         {t('label.configure-entity', {
           entity: t('label.glossary'),
         })}
       </Typography>
-      <Typography className="mb-5" variant="text">
+      <Typography className="mb-5">
         {t('message.create-new-glossary-guide')}
       </Typography>
     </div>
@@ -307,10 +307,11 @@ const AddGlossary = ({
           <>
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography
+              as="h5"
               className="m-t-md"
               data-testid="form-heading"
-              level={5}
-              variant="title">
+              size="text-md"
+              weight="semibold">
               {header}
             </Typography>
             <div className="add-glossary" data-testid="add-glossary">

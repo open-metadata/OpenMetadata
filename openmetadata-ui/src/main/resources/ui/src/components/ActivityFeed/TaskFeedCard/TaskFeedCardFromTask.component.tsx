@@ -174,7 +174,7 @@ const TaskFeedCardFromTask = ({
 
     if (columnName) {
       return (
-        <CoreTypography className="p-r-xss column-name" variant="text">
+        <CoreTypography className="p-r-xss column-name">
           {columnName} {t('label.in-lowercase')}
         </CoreTypography>
       );
@@ -201,13 +201,9 @@ const TaskFeedCardFromTask = ({
             data-testid="redirect-task-button-link"
             type="link"
             onClick={handleTaskLinkClick}>
-            <CoreTypography
-              className="m-r-xss task-details-id"
-              variant="text">{`#${taskDisplayId} `}</CoreTypography>
+            <CoreTypography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</CoreTypography>
 
-            <CoreTypography
-              className="m-r-xss  m-r-xss task-details-entity-link"
-              variant="text">
+            <CoreTypography className="m-r-xss  m-r-xss task-details-entity-link">
               {t(TASK_ENTITY_TYPES[task.type] ?? 'label.task')}
             </CoreTypography>
 
@@ -215,14 +211,11 @@ const TaskFeedCardFromTask = ({
 
             <CoreTypography
               className="break-all header-link text-sm"
-              data-testid="entity-link"
-              variant="text">
+              data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </CoreTypography>
 
-            <CoreTypography
-              className="p-l-xss text-sm entity-type"
-              variant="text">{`(${entityType})`}</CoreTypography>
+            <CoreTypography className="p-l-xss text-sm entity-type">{`(${entityType})`}</CoreTypography>
           </Button>
         </EntityPopOverCard>
       ) : null,

@@ -70,7 +70,7 @@ const ErrorPlaceHolderIngestion = ({
               direction="vertical"
               size={16}>
               <IconCollateSupport height={100} width={100} />
-              <Typography as="article" variant="text">
+              <Typography as="article">
                 {t('message.pipeline-scheduler-message')}
               </Typography>
             </Space>

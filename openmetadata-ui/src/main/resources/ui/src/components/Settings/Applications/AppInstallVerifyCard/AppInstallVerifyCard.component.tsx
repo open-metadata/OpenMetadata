@@ -60,7 +60,7 @@ const AppInstallVerifyCard = ({
           size={100}
         />
       </Space>
-      <Typography className="m-t-md" level={5} variant="title">
+      <Typography as="h5" className="m-t-md" size="text-md" weight="semibold">
         {t('label.authorize-app', {
           app: getEntityName(appData),
         })}
@@ -72,7 +72,7 @@ const AppInstallVerifyCard = ({
             userName={currentUser?.name ?? ''}
           />
           <div className="d-flex flex-col">
-            <Typography className="font-medium" variant="text">
+            <Typography className="font-medium">
               <Transi18next
                 i18nKey="label.application-by-developer"
                 renderElement={
@@ -90,7 +90,7 @@ const AppInstallVerifyCard = ({
                 }}
               />
             </Typography>
-            <Typography className="text-grey-muted text-xs" variant="text">
+            <Typography className="text-grey-muted text-xs">
               {t('label.wants-to-access-your-account', {
                 username: currentUser?.displayName ?? currentUser?.name,
               })}
@@ -126,7 +126,7 @@ const AppInstallVerifyCard = ({
         <div className="d-flex items-center justify-between">
           <Space size={8}>
             <UserOutlined />
-            <Typography className="text-xs text-grey-muted" variant="text">
+            <Typography className="text-xs text-grey-muted">
               {t('label.developed-by-developer', {
                 developer: appData?.developer,
               })}
@@ -134,7 +134,7 @@ const AppInstallVerifyCard = ({
           </Space>
           <Space size={8}>
             <ClockCircleOutlined />
-            <Typography className="text-xs text-grey-muted" variant="text">
+            <Typography className="text-xs text-grey-muted">
               {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
             </Typography>
           </Space>

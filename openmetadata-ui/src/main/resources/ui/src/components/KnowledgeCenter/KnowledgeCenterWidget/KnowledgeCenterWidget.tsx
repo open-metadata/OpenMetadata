@@ -153,8 +153,7 @@ const KnowledgeCenterWidget = ({
                     }>
                     <Typography
                       className="article-header text-sm font-regular text-left cursor-pointer ellipsis-text"
-                      ellipsis={{ tooltip: true }}
-                      variant="text">
+                      ellipsis={{ tooltip: true }}>
                       {getEntityName(knowledgePage)}
                     </Typography>
                   </Link>

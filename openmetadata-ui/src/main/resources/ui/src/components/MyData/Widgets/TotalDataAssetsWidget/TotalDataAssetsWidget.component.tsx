@@ -285,7 +285,7 @@ const TotalDataAssetsWidget = ({
                         pieChartColors[index % pieChartColors.length],
                     }}
                   />
-                  <Typography ellipsis={{ tooltip: true }} variant="text">
+                  <Typography ellipsis={{ tooltip: true }}>
                     {startCase(label)}
                   </Typography>
                   <span

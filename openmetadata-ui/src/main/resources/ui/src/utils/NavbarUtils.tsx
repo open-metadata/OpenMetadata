@@ -34,7 +34,7 @@ const getHelpDropdownLabelContentRenderer = (
         />
       </Col>
       <Col className="flex items-center" span={20}>
-        <Typography className="text-base-color" variant="text">
+        <Typography className="text-base-color">
           {t(item.label)}{' '}
           {item.key === HELP_ITEMS_ENUM.VERSION && (version ?? '?')}
         </Typography>

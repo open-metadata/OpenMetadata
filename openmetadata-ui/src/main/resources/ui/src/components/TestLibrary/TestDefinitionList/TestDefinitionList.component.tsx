@@ -116,7 +116,11 @@ const TestDefinitionList = () => {
             <Row justify="space-between">
               <Col>
                 <div className="flex gap-2 items-center m-b-xss">
-                  <Typography className="m-b-0" level={5} variant="title">
+                  <Typography
+                    as="h5"
+                    className="m-b-0"
+                    size="text-md"
+                    weight="semibold">
                     {t('label.data-quality-rule-plural')}
                   </Typography>
                   <LearningIcon
@@ -124,7 +128,7 @@ const TestDefinitionList = () => {
                     title={t('label.data-quality-rule-plural')}
                   />
                 </div>
-                <Typography color="secondary" variant="text">
+                <Typography color="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
                 </Typography>
               </Col>

@@ -57,7 +57,11 @@ const ApplicationCard = ({
         </div>
         <div className="application-info">
           <div className="d-flex gap-2">
-            <Typography className="m-0" level={5} variant="title">
+            <Typography
+              as="h5"
+              className="m-0"
+              size="text-md"
+              weight="semibold">
               {title}
             </Typography>
             {isUnavailable && (

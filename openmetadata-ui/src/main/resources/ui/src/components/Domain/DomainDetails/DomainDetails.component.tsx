@@ -1093,8 +1093,7 @@ const DomainDetails = ({
                         <Typography
                           className={classNames('', {
                             'text-primary': version,
-                          })}
-                          variant="text">
+                          })}>
                           {toString(domain.version)}
                         </Typography>
                       </Button>

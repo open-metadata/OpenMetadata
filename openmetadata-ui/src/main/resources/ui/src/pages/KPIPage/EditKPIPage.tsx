@@ -226,10 +226,7 @@ const EditKPIPage = () => {
         children: (
           <div data-testid="edit-kpi-container">
             <TitleBreadcrumb className="m-t-0 my-4" titleLinks={breadcrumb} />
-            <Typography
-              className="text-base"
-              data-testid="form-title"
-              variant="paragraph">
+            <Typography as="p" className="text-base" data-testid="form-title">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
@@ -439,14 +436,12 @@ const EditKPIPage = () => {
       secondPanel={{
         children: (
           <div data-testid="right-panel">
-            <Typography className="text-base font-medium" variant="paragraph">
+            <Typography as="p" className="text-base font-medium">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
             </Typography>
-            <Typography variant="text">
-              {t('message.add-kpi-message')}
-            </Typography>
+            <Typography>{t('message.add-kpi-message')}</Typography>
           </div>
         ),
         className: 'content-resizable-panel-container',

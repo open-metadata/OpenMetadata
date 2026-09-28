@@ -60,16 +60,16 @@ export const SummaryCard = ({
         <Space align="center" size={8}>
           {titleIcon}
           <Typography
+            as="p"
             className="summary-card-title"
-            data-testid="summary-card-title"
-            variant="paragraph">
+            data-testid="summary-card-title">
             {title}
           </Typography>
         </Space>
         <Typography
+          as="p"
           className="summary-card-description"
-          data-testid="summary-card-description"
-          variant="paragraph">
+          data-testid="summary-card-description">
           {isNumber(value) ? formatNumberWithComma(value) : value}
         </Typography>
       </div>

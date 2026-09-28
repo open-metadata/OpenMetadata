@@ -286,9 +286,7 @@ const NotificationListPage = () => {
             (!alertPermission.edit && !alertPermission.delete)
           ) {
             return (
-              <Typography className="p-l-xs" variant="text">
-                {NO_DATA_PLACEHOLDER}
-              </Typography>
+              <Typography className="p-l-xs">{NO_DATA_PLACEHOLDER}</Typography>
             );
           }
 

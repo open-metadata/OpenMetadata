@@ -81,8 +81,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
         <Col span={24}>
           <Typography
             className="summary-panel-section-title"
-            data-testid="usage-header"
-            variant="text">
+            data-testid="usage-header">
             {t('label.usage')}
           </Typography>
         </Col>
@@ -92,8 +91,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
           ) : (
             <Typography
               className="text-grey-body"
-              data-testid="no-reference-available"
-              variant="text">
+              data-testid="no-reference-available">
               {t('label.no-entity', {
                 entity: t('label.usage'),
               })}

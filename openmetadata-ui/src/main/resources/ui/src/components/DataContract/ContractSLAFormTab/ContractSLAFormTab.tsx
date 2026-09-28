@@ -159,12 +159,10 @@ export const ContractSLAFormTab: React.FC<{
     <>
       <Card className="sla-container container bg-grey p-box">
         <div>
-          <Typography className="contract-detail-form-tab-title" variant="text">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.sla')}
           </Typography>
-          <Typography
-            className="contract-detail-form-tab-description"
-            variant="paragraph">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-sla-description')}
           </Typography>
         </div>
@@ -177,12 +175,10 @@ export const ContractSLAFormTab: React.FC<{
           <Row gutter={[12, 12]}>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography className="sla-form-card-title" variant="text">
+                <Typography className="sla-form-card-title">
                   {t('label.refresh-frequency')}
                 </Typography>
-                <Typography
-                  className="sla-form-card-description"
-                  variant="text">
+                <Typography className="sla-form-card-description">
                   {t('message.refresh-frequency-contract-description')}
                 </Typography>
                 <Row gutter={12}>
@@ -229,12 +225,10 @@ export const ContractSLAFormTab: React.FC<{
             </Col>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography className="sla-form-card-title" variant="text">
+                <Typography className="sla-form-card-title">
                   {t('label.max-latency')}
                 </Typography>
-                <Typography
-                  className="sla-form-card-description"
-                  variant="text">
+                <Typography className="sla-form-card-description">
                   {t('message.max-latency-contract-description')}
                 </Typography>
                 <Row gutter={24}>
@@ -281,18 +275,13 @@ export const ContractSLAFormTab: React.FC<{
             </Col>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography className="sla-form-card-title" variant="text">
+                <Typography className="sla-form-card-title">
                   {t('label.availability-time')}
                 </Typography>
-                <Typography
-                  className="sla-form-card-description"
-                  variant="text">
+                <Typography className="sla-form-card-description">
                   {t('message.availability-time-contract-description')}
                 </Typography>
-                <Typography
-                  className="text-grey-muted text-xs m-b-xs"
-                  variant="text"
-                />
+                <Typography className="text-grey-muted text-xs m-b-xs" />
 
                 <Row gutter={24}>
                   <Col span={12}>
@@ -337,12 +326,10 @@ export const ContractSLAFormTab: React.FC<{
             </Col>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography className="sla-form-card-title" variant="text">
+                <Typography className="sla-form-card-title">
                   {t('label.retention')}
                 </Typography>
-                <Typography
-                  className="sla-form-card-description"
-                  variant="text">
+                <Typography className="sla-form-card-description">
                   {t('message.time-line-data-retention-description')}
                 </Typography>
                 <Row gutter={24}>
@@ -390,12 +377,10 @@ export const ContractSLAFormTab: React.FC<{
 
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography className="sla-form-card-title" variant="text">
+                <Typography className="sla-form-card-title">
                   {t('label.column')}
                 </Typography>
-                <Typography
-                  className="sla-form-card-description"
-                  variant="text">
+                <Typography className="sla-form-card-description">
                   {t('message.contract-sla-column-name-description')}
                 </Typography>
 

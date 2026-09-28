@@ -207,10 +207,10 @@ function MetadataAgentsWidget({
             <MetadataAgentIcon height={16} width={16} />
           </div>
           <div className="flex flex-col gap-1">
-            <Typography className="font-medium text-md" variant="text">
+            <Typography className="font-medium text-md">
               {t('label.metadata-agent-plural')}
             </Typography>
-            <Typography className="text-grey-muted text-sm" variant="text">
+            <Typography className="text-grey-muted text-sm">
               {t('message.metadata-agents-table-description')}
             </Typography>
           </div>

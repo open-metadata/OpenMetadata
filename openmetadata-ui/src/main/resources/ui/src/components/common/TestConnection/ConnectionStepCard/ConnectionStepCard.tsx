@@ -75,7 +75,7 @@ const ConnectionStepStatusBadge = ({
 
   if (isTestingConnection) {
     return (
-      <Typography className="awaiting-status" variant="text">
+      <Typography className="awaiting-status">
         {`${t('label.awaiting-status')}...`}
       </Typography>
     );
@@ -84,7 +84,7 @@ const ConnectionStepStatusBadge = ({
   if (success) {
     return (
       <div className="d-flex gap-2 align-center">
-        <Typography className="success-status" variant="text">
+        <Typography className="success-status">
           {`${t('label.success')}`}
         </Typography>
         <Icon
@@ -99,7 +99,7 @@ const ConnectionStepStatusBadge = ({
   if (isMandatoryStepsFailing) {
     return (
       <div className="d-flex gap-2 align-center">
-        <Typography className="failure-status" variant="text">
+        <Typography className="failure-status">
           {`${t('label.failed')}`}
         </Typography>
         <Icon
@@ -114,7 +114,7 @@ const ConnectionStepStatusBadge = ({
   if (isNonMandatoryStepsFailing) {
     return (
       <div className="d-flex gap-2 align-center">
-        <Typography className="warning-status" variant="text">
+        <Typography className="warning-status">
           {`${t('label.attention')}`}
         </Typography>
         <Icon
@@ -128,9 +128,7 @@ const ConnectionStepStatusBadge = ({
 
   if (isSkipped) {
     return (
-      <Typography className="skipped-status" variant="text">
-        {t('label.skipped')}
-      </Typography>
+      <Typography className="skipped-status">{t('label.skipped')}</Typography>
     );
   }
 
@@ -179,7 +177,7 @@ const ConnectionStepCard = ({
         })}>
         <Space className="w-full justify-between">
           <Space>
-            <Typography className="text-body text-600" variant="text">
+            <Typography className="text-body text-600">
               {testConnectionStep.mandatory
                 ? requiredField(testConnectionStep.name, true)
                 : testConnectionStep.name}
@@ -204,7 +202,7 @@ const ConnectionStepCard = ({
         isNonMandatoryStepsFailing ||
         testConnectionStepResult?.message) && (
         <div className="connection-step-card-content">
-          <Typography className="text-body" variant="text">
+          <Typography className="text-body">
             {testConnectionStepResult?.message}
           </Typography>
           {testConnectionStepResult?.errorLog && (

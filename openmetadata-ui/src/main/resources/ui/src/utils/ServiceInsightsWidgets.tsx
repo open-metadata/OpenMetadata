@@ -229,7 +229,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
       icon={<Icon className={iconClassName} height={height} width={width} />}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography className="w-max-350" variant="paragraph">
+      <Typography as="p" className="w-max-350">
         <Tooltip title={t('label.learn-more')}>
           <span>
             <Transi18next

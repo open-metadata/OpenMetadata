@@ -58,7 +58,7 @@ function AnnouncementsWidget({
               />
             }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography variant="paragraph">
+            <Typography as="p">
               {t('message.no-entity-data-available', {
                 entity: t('label.announcement-lowercase'),
               })}
@@ -80,14 +80,10 @@ function AnnouncementsWidget({
                   className="right-panel-announcement"
                   description={
                     <>
-                      <Typography
-                        className="d-block text-sm font-medium"
-                        variant="text">
+                      <Typography className="d-block text-sm font-medium">
                         {item.displayName ?? item.name}
                       </Typography>
-                      <Typography
-                        className="d-block text-grey-muted text-xs m-t-xs"
-                        variant="text">
+                      <Typography className="d-block text-grey-muted text-xs m-t-xs">
                         {formatDateTime(item.updatedAt ?? item.createdAt)}
                       </Typography>
                       <RichTextEditorPreviewerV1
@@ -122,7 +118,7 @@ function AnnouncementsWidget({
       data-testid="announcement-container">
       <Row justify="space-between">
         <Col>
-          <Typography className="font-medium m-b-sm" variant="paragraph">
+          <Typography as="p" className="font-medium m-b-sm">
             {t('label.recent-announcement-plural')}
           </Typography>
         </Col>

@@ -74,8 +74,7 @@ const FilterPattern = ({
             {includePatternExtraInfo && (
               <Typography
                 className="text-grey-muted m-t-xss m-b-xss"
-                data-testid="filter-pattern-include-info"
-                variant="text">
+                data-testid="filter-pattern-include-info">
                 {includePatternExtraInfo}
               </Typography>
             )}

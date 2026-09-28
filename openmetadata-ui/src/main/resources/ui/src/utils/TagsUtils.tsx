@@ -172,8 +172,8 @@ export const tagRender = (customTagProps: CustomTagProps) => {
         title={getTagTooltip(label as string)}
         trigger="hover">
         <Typography
-          className="m-0 d-inline-block break-all whitespace-normal"
-          variant="paragraph">
+          as="p"
+          className="m-0 d-inline-block break-all whitespace-normal">
           {tagLabel}
         </Typography>
       </Tooltip>
@@ -218,7 +218,7 @@ export const TagListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       <ClassificationIcon className="d-block'" height={22} width={16} />
-      <Typography variant="text">{getEntityName(props)}</Typography>
+      <Typography>{getEntityName(props)}</Typography>
     </Space>
   );
 };
