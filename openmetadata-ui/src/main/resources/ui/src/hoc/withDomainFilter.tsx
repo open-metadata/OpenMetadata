@@ -119,12 +119,10 @@ export const withDomainFilter = (
         ...config.params,
         query_filter: JSON.stringify(filter),
       };
-    } else {
-      config.params = {
-        ...config.params,
-        domain: activeDomain,
-      };
     }
+    // REST list views are not decorated: the selection is persisted on the user and the server
+    // applies it (including sub-domains). An explicit ?domain= would take precedence and narrow
+    // the list to the exact domain only.
   }
 
   return config;

@@ -113,37 +113,18 @@ describe('withDomainFilter', () => {
   });
 
   describe('regular GET requests', () => {
-    it('should add domain parameter for regular GET requests with active domain', () => {
+    it('should not add a domain parameter: the server applies the persisted selection', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/tables'
+        '/glossary'
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/api/tables');
-      const result = withDomainFilter(config);
-
-      expect(result.params).toEqual({
-        domain: 'engineering',
-      });
-    });
-
-    it('should preserve existing params when adding domain parameter', () => {
-      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/tables'
-      );
-      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
-
-      const config = createMockConfig('get', '/api/tables', {
-        limit: 10,
-        offset: 0,
+      const config = createMockConfig('get', '/api/v1/glossaries', {
+        limit: 50,
       });
       const result = withDomainFilter(config);
 
-      expect(result.params).toEqual({
-        limit: 10,
-        offset: 0,
-        domain: 'engineering',
-      });
+      expect(result.params).toEqual({ limit: 50 });
     });
   });
 
@@ -474,9 +455,7 @@ describe('withDomainFilter', () => {
       const config = createMockConfig('get', '/api/tables');
       const result = withDomainFilter(config);
 
-      expect(result.params).toEqual({
-        domain: 'engineering.backend.services',
-      });
+      expect(result.params).toBeUndefined();
     });
 
     it('should add should filter with nested domain for search queries', () => {
