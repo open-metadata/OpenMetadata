@@ -95,8 +95,9 @@ jest.mock('../../common/CertificationTag/CertificationTag', () =>
   ))
 );
 
-jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
-  DomainDisplay: jest
+jest.mock('../../common/DomainTags/DomainTags', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
@@ -184,7 +185,7 @@ describe('ExploreSearchCard - Domain section', () => {
     jest.clearAllMocks();
   });
 
-  it('renders  DomainDisplay component', () => {
+  it('renders the domain chips', () => {
     renderCard({
       domains: [{ id: '1', fullyQualifiedName: 'domain.test', type: 'domain' }],
     });
