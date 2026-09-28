@@ -21,14 +21,14 @@ import { clickAndWaitFor } from '../../../utils/waitHelpers';
 import { withAppConfigLock } from '../../Utils/appConfigMutex';
 import { expect, test } from './fixtures';
 
-// Admin UI page under Settings → Preferences → App Mode (the OSS
-// `DefaultAppModePage`). Route + testids: the category "Preferences" and the
-// "App Mode" item are both OSS (`GlobalSettingsMenuCategory.PREFERENCES`,
-// `GlobalSettingOptions.APP_MODE = 'appMode'`), so the resolved path and the
-// settings-card testid are both `preferences.appMode`.
-const APP_MODE_SETTINGS_URL = '/settings/preferences/appMode';
+// Admin UI page under Settings → Preferences → General Preferences (the OSS
+// `GeneralPreferencesPage`, which now also hosts the App Mode section — see
+// `GlobalSettingOptions.GENERAL_PREFERENCES = 'general-preferences'`). Route +
+// testid are both derived from that option, so the resolved path and the
+// settings-card testid are `preferences.general-preferences`.
+const APP_MODE_SETTINGS_URL = '/settings/preferences/general-preferences';
 const APP_MODE_PREFERENCES_URL = '/settings/preferences';
-const APP_MODE_MENU_TESTID = 'preferences.appMode';
+const APP_MODE_MENU_TESTID = 'preferences.general-preferences';
 
 // Matches only the `PUT /api/v1/system/settings` write — the boot-time
 // `GET /system/settings/appConfiguration` has a trailing segment the `($|?)`
@@ -140,7 +140,7 @@ const stubSettingsRoundTrip = async (
 };
 
 test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
-  test('Admin sees the "App Mode" entry under Settings → Preferences', async ({
+  test('Admin sees the "General Preferences" entry under Settings → Preferences', async ({
     page,
   }) => {
     await page.goto(APP_MODE_PREFERENCES_URL, {
@@ -152,15 +152,15 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
 
     await expect(menuEntry).toBeVisible();
     // Match the entry's label only, not the description below it — an exact
-    // match on the OSS label ("Default App Mode") resolves to the single label
-    // node, never the description string, keeping Playwright's strict-mode
-    // single-match invariant.
+    // match on the OSS label ("General Preferences") resolves to the single
+    // label node, never the description string, keeping Playwright's
+    // strict-mode single-match invariant.
     await expect(
-      menuEntry.getByText('Default App Mode', { exact: true })
+      menuEntry.getByText('General Preferences', { exact: true })
     ).toBeVisible();
   });
 
-  test('Non-admin does not see the "App Mode" entry under Settings → Preferences', async ({
+  test('Non-admin does not see the "General Preferences" entry under Settings → Preferences', async ({
     dataConsumerPage,
   }) => {
     await dataConsumerPage.goto(APP_MODE_PREFERENCES_URL, {
@@ -173,7 +173,7 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
     ).toHaveCount(0);
   });
 
-  test('Non-admin hitting the App Mode route directly is blocked', async ({
+  test('Non-admin hitting the General Preferences route directly is blocked', async ({
     dataConsumerPage,
   }) => {
     await dataConsumerPage.goto(APP_MODE_SETTINGS_URL, {
@@ -181,9 +181,10 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
     });
     await waitForAllLoadersToDisappear(dataConsumerPage);
 
-    // `AdminProtectedRoute` wraps `DefaultAppModePage` with no `hasPermission`
-    // prop, so a non-admin falls into the `PermissionErrorPlaceholder` branch
-    // (403-equivalent view), not a redirect to sign-in.
+    // `AdminProtectedRoute` wraps `GeneralPreferencesPage` with no
+    // `hasPermission` prop, so a non-admin falls into the
+    // `PermissionErrorPlaceholder` branch (403-equivalent view), not a
+    // redirect to sign-in.
     await expect(
       dataConsumerPage.getByTestId('permission-error-placeholder')
     ).toBeVisible();
