@@ -101,7 +101,7 @@ const WidgetDomainLabel = (props: Record<string, unknown>) => {
   return <DomainLabel {...domainProps} {...props} variant="widget" />;
 };
 
-describe('DomainLabel (widget variant) heading label', () => {
+describe('useGenericDomainLabel + DomainLabel widget heading', () => {
   it('renders singular "Domain" heading when multiple is false', () => {
     render(<WidgetDomainLabel showDomainHeading multiple={false} />);
 
@@ -122,7 +122,7 @@ describe('DomainLabel (widget variant) heading label', () => {
   });
 });
 
-describe('DomainLabel (widget variant) picker trigger', () => {
+describe('useGenericDomainLabel + DomainLabel widget picker trigger', () => {
   beforeEach(() => jest.clearAllMocks());
 
   // The widget re-renders while a PATCH settles; a re-render that replaces the

@@ -197,7 +197,7 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
 
       <div className="ask-rail__profile">
         <div className="ask-rail__domain" data-testid="ask-rail-domain-scope">
-          <DomainScopeControl variant="rail" />
+          <DomainScopeControl variant="icon" />
         </div>
         {footerSlots.length > 0 ? (
           footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)

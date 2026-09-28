@@ -32,13 +32,13 @@ const DomainSelectableList = withSuspenseFallback(
 
 export interface DomainScopeControlProps {
   /**
-   * `panel` is the expanded AI-sidebar card (globe + caption + domain name);
-   * `rail` is the collapsed icon-only trigger with a tooltip; `landing` is the
+   * `card` is the expanded AI-sidebar card (globe + caption + domain name);
+   * `icon` is the collapsed icon-only trigger with a tooltip; `pill` is the
    * pill on the customisable landing-page header. All three open the same menu
    * and write the same global scope.
    */
-  variant?: 'panel' | 'rail' | 'landing';
-  /** `landing` only — the header renders it inert while not on the home page. */
+  variant?: 'card' | 'icon' | 'pill';
+  /** * `pill` only — the header renders it inert while not on the home page. */
   disabled?: boolean;
 }
 
@@ -54,25 +54,25 @@ export interface DomainScopeControlProps {
  * restriction — mirroring the navbar's disabled selector.
  */
 const RestrictedScopeAffordance = ({
-  isRail,
+  isIconOnly,
   cardClassName,
   children,
 }: {
-  isRail: boolean;
+  isIconOnly: boolean;
   cardClassName: string;
   children: React.ReactNode;
 }) => {
   const { t } = useTranslation();
   const restrictedMessage = t('message.domain-access-restricted');
 
-  if (isRail) {
+  if (isIconOnly) {
     return (
       <ButtonUtility
         isDisabled
         aria-label={t('label.domain-scope')}
-        className="ask-domain-scope__rail-btn"
+        className="ask-domain-scope__icon-btn"
         color="tertiary"
-        data-testid="ask-domain-scope-rail"
+        data-testid="ask-domain-scope-icon"
         icon={DomainIcon}
         size="sm"
         tooltip={restrictedMessage}
@@ -97,7 +97,7 @@ const RestrictedScopeAffordance = ({
 };
 
 const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
-  variant = 'panel',
+  variant = 'card',
   disabled,
 }) => {
   const { t } = useTranslation();
@@ -171,10 +171,10 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     </>
   );
 
-  // Landing is checked first: a single-domain user on the landing header must
+  // The pill is checked first: a single-domain user on the landing header must
   // still get the pill, not the AI-sidebar card. The pill renders disabled for
   // them, since there is no other scope to switch to.
-  if (variant === 'landing') {
+  if (variant === 'pill') {
     const isLocked = Boolean(disabled) || isSingleDomainUser;
 
     const landingTrigger = (
@@ -211,9 +211,15 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     return (
       <DomainSelectableList
         hasPermission
-        disabled={disabled}
+        // `isLocked`, not `disabled`: a disabled <button> still receives
+        // pointerdown, and DomainSelectTrigger opens on capture-phase
+        // pointerdown — so a locked pill would still open the picker.
+        disabled={isLocked}
+        popoverProps={{ open: isOpen, onOpenChange: setIsOpen }}
+        restrictedDomains={restrictedDomains}
         selectedDomain={activeDomainEntityRef}
         showAllDomains={showAllDomains}
+        onCancel={() => setIsOpen(false)}
         onUpdate={handleUpdate}>
         {landingTrigger}
       </DomainSelectableList>
@@ -224,23 +230,23 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     return (
       <RestrictedScopeAffordance
         cardClassName={cardClassName}
-        isRail={variant === 'rail'}>
+        isIconOnly={variant === 'icon'}>
         {cardInner}
       </RestrictedScopeAffordance>
     );
   }
 
   const trigger =
-    variant === 'rail' ? (
+    variant === 'icon' ? (
       <ButtonUtility
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={t('label.domain-scope')}
-        className={classNames('ask-domain-scope__rail-btn', {
-          'ask-domain-scope__rail-btn--active': isActiveScope,
+        className={classNames('ask-domain-scope__icon-btn', {
+          'ask-domain-scope__icon-btn--active': isActiveScope,
         })}
         color="tertiary"
-        data-testid="ask-domain-scope-rail"
+        data-testid="ask-domain-scope-icon"
         icon={DomainIcon}
         size="sm"
         tooltip={domainDisplayName}
@@ -262,8 +268,8 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   return (
     <DomainSelectableList
       hasPermission
-      className={variant === 'rail' ? undefined : 'tw:w-full'}
-      fullWidthTrigger={variant !== 'rail'}
+      className={variant === 'icon' ? undefined : 'tw:w-full'}
+      fullWidthTrigger={variant !== 'icon'}
       popoverProps={{
         open: isOpen,
         onOpenChange: setIsOpen,

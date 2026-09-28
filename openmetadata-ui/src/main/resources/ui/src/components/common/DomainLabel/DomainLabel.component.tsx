@@ -232,7 +232,7 @@ export const DomainLabel = ({
       );
     }
 
-    if (variant === 'profile-card') {
+    if (variant === 'card') {
       return (
         <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
           <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">

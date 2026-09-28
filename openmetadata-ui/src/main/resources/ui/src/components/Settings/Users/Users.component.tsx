@@ -402,7 +402,7 @@ const Users = ({
               hasPermission={Boolean(isAdminUser) && !userData.deleted}
               textClassName="text-sm text-grey-muted"
               userData={userData}
-              variant="profile-card"
+              variant="card"
             />
             <UserProfileTeams
               isDeletedUser={userData.deleted}

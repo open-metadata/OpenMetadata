@@ -306,7 +306,7 @@ const CustomiseLandingPageHeader = ({
             <div className="d-flex items-center gap-4 mb-9">
               <CustomiseSearchBar disabled={!onHomePage} />
               <Suspense fallback={<DomainSelectorPlaceholder />}>
-                <DomainScopeControl disabled={!onHomePage} variant="landing" />
+                <DomainScopeControl disabled={!onHomePage} variant="pill" />
               </Suspense>
             </div>
             <LandingPageRecentlyViewed
