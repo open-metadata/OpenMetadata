@@ -203,11 +203,11 @@ const DataProductListPage = ({
       placeholder={t('label.search-for-type', {
         type: t('label.data-product-plural'),
       })}
-      searchCriteria={SearchIndex.DATA_PRODUCT}
       results={{
         dataProducts: dataProductListing.entities,
         isSearching: dataProductListing.loading,
       }}
+      searchCriteria={SearchIndex.DATA_PRODUCT}
       searchQuery={dataProductListing.urlState.searchQuery}
       onSearchChange={dataProductListing.handleSearchChange}
     />

@@ -120,11 +120,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       placeholder={t('label.search-for-type', {
         type: t('label.domain-plural'),
       })}
-      searchCriteria={SearchIndex.DOMAIN}
       results={{
         domains: domainListing.entities,
         isSearching: domainListing.loading,
       }}
+      searchCriteria={SearchIndex.DOMAIN}
       searchQuery={domainListing.urlState.searchQuery}
       onSearchChange={domainListing.handleSearchChange}
     />
