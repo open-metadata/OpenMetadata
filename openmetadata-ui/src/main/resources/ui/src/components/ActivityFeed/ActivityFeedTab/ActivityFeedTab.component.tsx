@@ -403,7 +403,7 @@ const ActivityFeedTabRightPanel = ({
 
   return (
     <>
-      {isThreePanel && <Divider orientation="vertical" />}
+      {isThreePanel && <Divider color="primary" orientation="vertical" />}
 
       <div
         className={classNames('right-container', {
