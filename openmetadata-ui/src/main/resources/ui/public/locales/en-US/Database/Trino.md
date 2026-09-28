@@ -17,6 +17,14 @@ Executing the profiler Workflow or data quality tests, will require the user to 
 
 You can find further information on the Trino connector in the <a href="https://docs.open-metadata.org/connectors/database/trino" target="_blank">docs</a>.
 
+## Table Types
+
+Tables read through a catalog whose connector is `delta_lake` are ingested as `DeltaLake`, and tables in an `iceberg` catalog as `Iceberg`. Everything else is ingested as `Regular`.
+
+The type comes from the catalog's connector, not from the table itself, so on a metastore shared by several catalogs a table takes the type of the catalog it is read through. A Hive table visible through a `delta_lake` catalog is typed `DeltaLake`, and its columns cannot be read (Trino rejects the read with `is not a Delta Lake table`). Point the service at the catalog that owns the tables, and exclude foreign schemas with the schema filter pattern.
+
+Partitioned tables are ingested as `Partitioned`, which replaces `DeltaLake` and `Iceberg`.
+
 ## Connection Details
 
 $$section

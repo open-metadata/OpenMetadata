@@ -6,6 +6,16 @@ In this section, we provide guides and references to use the StarRocks connector
 
 You can find further information on the StarRocks connector in the [docs](https://docs.open-metadata.org/connectors/database/starrocks).
 
+## Table Types
+
+Tables in an external catalog report their catalog type in `INFORMATION_SCHEMA.tables.ENGINE`, and that decides the ingested table type: `DELTALAKE` gives `DeltaLake`, `ICEBERG` gives `Iceberg`, `HIVE` and `JDBC` give `External`, and internal tables give `Regular`.
+
+`ENGINE` describes the catalog a table is read through, not the table's storage format, so on a metastore shared by several catalogs a table takes the type of the catalog it is read through. A Hive table visible through a `deltalake` catalog is typed `DeltaLake`, and its columns cannot be read. Use one service per catalog, and exclude foreign schemas with the schema filter pattern.
+
+Partitioned tables are ingested as `Partitioned`, which replaces `DeltaLake` and `Iceberg`.
+
+An external catalog is selected per session, so reaching one needs `connectionArguments` with `init_command: SET CATALOG <catalog>`; leave **Database Schema** empty, because it is sent as the connection's database and the catalog's schemas are not visible until the catalog is set.
+
 ## Connection Details
 
 $$section
