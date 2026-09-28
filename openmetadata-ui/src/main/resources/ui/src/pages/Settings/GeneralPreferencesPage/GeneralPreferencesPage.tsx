@@ -22,9 +22,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { Key, useEffect, useState } from 'react';
+import { Key, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   DefaultAppMode,
   DefaultViewMode,
@@ -38,6 +40,7 @@ import {
   getAppConfiguration,
   patchAppConfiguration,
 } from '../../../rest/settingConfigAPI';
+import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ViewModeRow } from './GeneralPreferencesPage.types';
 import {
@@ -73,6 +76,18 @@ const GeneralPreferencesPage: React.FC = () => {
   const { t } = useTranslation();
   const { setDefaultViewModes } = useApplicationStore();
   const pageTitle = t('label.general-preferences');
+
+  const breadcrumbs = useMemo(
+    () => [
+      { name: t('label.setting-plural'), url: getSettingPath() },
+      {
+        name: t('label.preference-plural'),
+        url: getSettingPath(GlobalSettingsMenuCategory.PREFERENCES),
+      },
+      { name: pageTitle, url: '' },
+    ],
+    [t, pageTitle]
+  );
 
   const [initialAppMode, setInitialAppMode] =
     useState<string>(NO_DEFAULT_VALUE);
@@ -242,10 +257,16 @@ const GeneralPreferencesPage: React.FC = () => {
       data-testid="general-preferences-page"
       direction="col">
       <DocumentTitle title={pageTitle} />
+      <Box className="tw:mb-2 tw:shrink-0">
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+      </Box>
       <Typography
         as="h1"
         className="not-prose tw:text-lg tw:font-semibold tw:mb-2">
         {pageTitle}
+      </Typography>
+      <Typography as="p" className="not-prose tw:text-secondary tw:mb-6">
+        {t('message.general-preferences-description')}
       </Typography>
 
       <Typography
@@ -291,7 +312,7 @@ const GeneralPreferencesPage: React.FC = () => {
         {t('label.default-view-per-page')}
       </Typography>
       <Typography as="p" className="not-prose tw:text-secondary tw:mb-6">
-        {t('message.general-preferences-description')}
+        {t('message.default-view-per-page-description')}
       </Typography>
       <Card>
         <Card.Content>
