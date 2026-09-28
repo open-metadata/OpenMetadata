@@ -2405,6 +2405,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertFalse(Boolean.TRUE.equals(Users.get(target.getId().toString()).getDeleted()));
   }
 
+  private User createRegularUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    return createEntity(
+        new CreateUser().withName(localPart).withEmail(localPart + "@open-metadata.org"));
+  }
+
+  /** A client authenticated as {@code user} with a harness-signed JWT, like the shared clients. */
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
   private User createDataSteward(TestNamespace ns) {
     String localPart = "steward" + ns.shortPrefix();
     return createEntity(
