@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkAll;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.Filter;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -61,7 +62,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.limits.Limits;
@@ -1251,6 +1251,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     BundleSuiteBulkAddRequestBulkAll bulkAll =
         JsonUtils.convertValue(
             bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkAll.class);
+    Filter filter = bulkAll.getFilter();
+    if (hasSearchCriteria(filter)) {
+      return addFilteredTestCasesToBundleSuite(testSuite, filter).toResponse();
+    }
     return repository
         .addAllTestCasesToLogicalTestSuite(testSuite, getExcludedIdsFromSelection(bulkAll))
         .toResponse();
@@ -1410,7 +1414,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   protected static ResourceContextInterface getResourceContext(
-      String entityLink, Filter<?> filter) {
+      String entityLink, org.openmetadata.service.jdbi3.Filter<?> filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);
@@ -1597,8 +1601,68 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       return List.of();
     }
 
-    org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
+    Filter filter = bulkAll.getFilter();
     return filter.getExcludeIds();
+  }
+
+  private static final String TEST_CASE_TYPE_ALL = "all";
+
+  private boolean hasSearchCriteria(Filter filter) {
+    if (filter == null) {
+      return false;
+    }
+    String type = filter.getTestCaseType();
+    return !nullOrEmpty(filter.getQ())
+        || filter.getTestCaseStatus() != null
+        || (!nullOrEmpty(type) && !TEST_CASE_TYPE_ALL.equals(type))
+        || !nullOrEmpty(filter.getEntityLink())
+        || !nullOrEmpty(filter.getColumnName());
+  }
+
+  private PutResponse<TestSuite> addFilteredTestCasesToBundleSuite(
+      TestSuite testSuite, Filter filter) {
+    SearchListFilter searchListFilter = buildBulkSearchListFilter(filter);
+    // Deep-pagination search expects a full query body ({"query": {...}}); getFilterQuery()
+    // returns only the inner bool clause, which listWithDeepPagination silently drops (adds all).
+    String searchFilter = searchListFilter.getCondition(Entity.TEST_CASE);
+    List<UUID> excludeIds =
+        nullOrEmpty(filter.getExcludeIds()) ? List.of() : filter.getExcludeIds();
+    return repository.addMatchingTestCasesToLogicalTestSuite(
+        testSuite, searchFilter, filter.getQ(), excludeIds);
+  }
+
+  private SearchListFilter buildBulkSearchListFilter(Filter filter) {
+    String status = filter.getTestCaseStatus() == null ? null : filter.getTestCaseStatus().value();
+    String type =
+        nullOrEmpty(filter.getTestCaseType()) ? TEST_CASE_TYPE_ALL : filter.getTestCaseType();
+    boolean includeAllTests = Boolean.TRUE.equals(filter.getIncludeAllTests());
+    SearchListFilter searchListFilter =
+        buildSearchListFilter(
+            Include.NON_DELETED,
+            null,
+            includeAllTests,
+            status,
+            type,
+            null,
+            null,
+            filter.getQ(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            filter.getColumnName(),
+            null);
+    if (!nullOrEmpty(filter.getEntityLink())) {
+      searchListFilter.addQueryParam(
+          "entityFQN", EntityLink.parse(filter.getEntityLink()).getFullyQualifiedFieldValue());
+    }
+    return searchListFilter;
   }
 
   @Override
