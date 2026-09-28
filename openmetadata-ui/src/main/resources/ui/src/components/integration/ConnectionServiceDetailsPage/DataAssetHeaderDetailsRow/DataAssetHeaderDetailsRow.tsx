@@ -178,13 +178,11 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
       {/* Tier */}
       <TierCard
         currentTier={tier?.tagFQN}
-        popoverProps={{
-          open: tierPopoverOpen,
-          onOpenChange: setTierPopoverOpen,
-        }}
-        updateTier={onUpdateTier}>
+        open={tierPopoverOpen}
+        updateTier={onUpdateTier}
+        onOpenChange={setTierPopoverOpen}>
         <div
-          className="tw:flex tw:cursor-pointer tw:items-center tw:gap-2"
+          className="tw:flex tw:items-center tw:gap-2"
           data-testid="tier-container">
           <Tooltip
             arrow
@@ -201,6 +199,8 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
           </Typography>
           {hasEditPermission && onUpdateTier && (
             <ButtonUtility
+              aria-expanded={tierPopoverOpen}
+              aria-haspopup="dialog"
               className="tw:h-5.5 tw:w-5.5 tw:p-1"
               color="tertiary"
               data-testid="edit-tier-button"

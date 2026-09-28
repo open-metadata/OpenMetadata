@@ -114,6 +114,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final Integer ELASTIC_SOCKET_TIMEOUT = 60;
   private static final Integer ELASTIC_KEEP_ALIVE_TIMEOUT = 600;
   private static final Integer ELASTIC_BATCH_SIZE = 10;
+  // The pool sizes conf/openmetadata.yaml ships. Left unset, the server runs on the schema defaults
+  // (10 connections to the single search host), and the parallel lane's bursts queue past
+  // connectionRequestTimeoutSecs, failing requests with "error while performing request".
+  private static final Integer ELASTIC_MAX_CONN_TOTAL = 100;
+  private static final Integer ELASTIC_MAX_CONN_PER_ROUTE = 50;
   private static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
       IndexMappingLanguage.EN;
   private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
@@ -773,6 +778,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withConnectionTimeoutSecs(ELASTIC_CONNECT_TIMEOUT)
         .withSocketTimeoutSecs(ELASTIC_SOCKET_TIMEOUT)
         .withKeepAliveTimeoutSecs(ELASTIC_KEEP_ALIVE_TIMEOUT)
+        .withMaxConnTotal(ELASTIC_MAX_CONN_TOTAL)
+        .withMaxConnPerRoute(ELASTIC_MAX_CONN_PER_ROUTE)
         .withBatchSize(ELASTIC_BATCH_SIZE)
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)

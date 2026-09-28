@@ -44,10 +44,12 @@ export const settleAll = async (operations: Iterable<unknown>) => {
 // 401 during teardown means the JWT expired mid-test — the fixture may
 // leak, but failing the whole test on a cleanup auth error is worse than
 // warning and moving on (the same reason main's bare apiContext.delete
-// tolerated it silently). 404 is already-gone. Everything else surfaces.
-// 403 stays a hard fail: it means the token is valid but the caller lacks
-// permission, which is a real test-setup bug.
-const CLEANUP_TOLERATED_STATUSES = new Set([401, 404]);
+// tolerated it silently). 404 is already-gone. 400 covers protected
+// "system entity" classifications the server refuses to hard-delete —
+// same class: fixture leak, not a test-correctness issue. Everything
+// else surfaces. 403 stays a hard fail: it means the token is valid but
+// the caller lacks permission, which is a real test-setup bug.
+const CLEANUP_TOLERATED_STATUSES = new Set([400, 401, 404]);
 
 /** Cleanup is idempotent, but a real HTTP error must not silently leak a fixture. */
 export const deleteFixtureEntity = async (
@@ -62,11 +64,12 @@ export const deleteFixtureEntity = async (
       `Fixture DELETE ${url}: HTTP ${status}: ${await response.text()}`
     );
   }
-  // 401 is tolerated so a JWT expiry doesn't fail the test, but it leaks
-  // the fixture — surface it so cleanup regressions don't hide in green runs.
-  if (status === 401) {
+  // 401 (JWT expired) and 400 (protected/system entity) are tolerated so
+  // the test doesn't fail on a cleanup issue, but the fixture leaks —
+  // surface it so cleanup regressions don't hide in green runs.
+  if (status === 401 || status === 400) {
     console.warn(
-      `Fixture DELETE ${url}: HTTP 401 during cleanup; fixture may leak`
+      `Fixture DELETE ${url}: HTTP ${status} during cleanup; fixture may leak`
     );
   }
   return response;
