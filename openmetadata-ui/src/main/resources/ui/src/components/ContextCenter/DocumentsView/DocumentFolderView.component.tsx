@@ -24,6 +24,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import {
   ForwardedRef,
   forwardRef,
@@ -38,7 +39,10 @@ import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/tr
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
+import {
+  FOLDER_FILES_PAGE_SIZE,
+  PANEL_ICON_BOX_CLASS,
+} from '../../../constants/ContextCenter.constants';
 import type { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { queryClient } from '../../../queryClient';
@@ -197,8 +201,13 @@ const FolderEmptyRow = ({
         className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
         showExpandIcon={false}>
         <div className="tw:flex tw:flex-1 tw:items-center tw:gap-3 tw:py-2">
-          <div className="tw:p-2 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0 tw:shrink-0">
-            <UploadIcon className="tw:text-quaternary" height={14} width={14} />
+          <div
+            className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-2 tw:shrink-0')}>
+            <UploadIcon
+              className="tw:text-fg-quaternary"
+              height={14}
+              width={14}
+            />
           </div>
           <div className="tw:min-w-0 tw:flex-1">
             <Typography ellipsis size="text-sm" weight="medium">
@@ -318,7 +327,7 @@ const FolderTreeItem = ({
 
   return (
     <Tree.Item
-      className={isSelected ? 'tw:bg-utility-blue-50 tw:rounded-lg' : ''}
+      className={isSelected ? 'tw:bg-brand-primary tw:rounded-lg' : ''}
       id={folder.id}
       textValue={folder.displayName ?? folder.name}>
       <FolderRowContent
@@ -607,9 +616,9 @@ const DocumentFolderView = (
       <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col tw:min-w-70">
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5 tw:shrink-0">
           <div className="tw:flex tw:items-center tw:gap-3">
-            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+            <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
               <FolderIcon
-                className="tw:text-quaternary"
+                className="tw:text-fg-quaternary"
                 height={20}
                 width={20}
               />
