@@ -81,7 +81,12 @@ class PageContextProcessingEngineTest {
 
     verify(jobDao)
         .enqueuePageMemoryJob(
-            eq(pageId.toString()), anyString(), eq(Entity.ADMIN_USER_NAME), anyLong(), anyLong());
+            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            anyLong(),
+            anyLong());
   }
 
   @Test
@@ -91,8 +96,8 @@ class PageContextProcessingEngineTest {
     verify(jobDao)
         .cancelPendingPageMemoryJobs(
             eq(BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name()),
-            eq(PageMemoryExtractionJobHandler.class.getSimpleName()),
-            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.class.getSimpleName()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
             anyLong());
   }
 
@@ -105,7 +110,12 @@ class PageContextProcessingEngineTest {
     verify(extractor, never()).derive(any(), any(), any());
     verify(jobDao)
         .enqueuePageMemoryJob(
-            eq(pageId.toString()), anyString(), eq(Entity.ADMIN_USER_NAME), anyLong(), anyLong());
+            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            anyLong(),
+            anyLong());
   }
 
   @Test

@@ -71,14 +71,14 @@ public interface JobDAO {
   // background_jobs table without a memory-specific column or index, even across server nodes.
   @Transaction
   default void enqueuePageMemoryJob(
-      String pageId, String jobArgs, String createdBy, long runAt, long updatedAt) {
+      String pageId, String jobKey, String jobArgs, String createdBy, long runAt, long updatedAt) {
     if (lockPageForMemoryQueue(pageId) == null) {
       return;
     }
-    if (reschedulePendingPageMemoryJob(pageId, runAt, updatedAt) == 0) {
+    if (reschedulePendingMemoryJob(jobKey, runAt, updatedAt) == 0) {
       insertJobInternal(
           BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
-          "PageMemoryExtractionJobHandler",
+          "ContextMemoryExtractionJobHandler",
           jobArgs,
           createdBy,
           runAt);
@@ -88,38 +88,75 @@ public interface JobDAO {
   @SqlQuery("SELECT id FROM knowledge_center WHERE id = :pageId FOR UPDATE")
   String lockPageForMemoryQueue(@Bind("pageId") String pageId);
 
+  // The file row also serializes startup recovery on multiple servers. A retry may enqueue while
+  // its current job is RUNNING, but ordinary recovery only enqueues when no job is in flight.
+  @Transaction
+  default void enqueueFileMemoryJob(
+      String fileId, String jobKey, String jobArgs, String createdBy, boolean includeRunning) {
+    if (lockFileForMemoryQueue(fileId) == null
+        || countInFlightMemoryJobs(jobKey, includeRunning) > 0) {
+      return;
+    }
+    insertJobInternal(
+        BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+        "ContextMemoryExtractionJobHandler",
+        jobArgs,
+        createdBy,
+        null);
+  }
+
+  @SqlQuery("SELECT id FROM context_file WHERE id = :fileId FOR UPDATE")
+  String lockFileForMemoryQueue(@Bind("fileId") String fileId);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' "
+              + "AND methodName = 'ContextMemoryExtractionJobHandler' "
+              + "AND (status = 'PENDING' OR (:includeRunning = true AND status = 'RUNNING')) "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.jobKey')) = :jobKey",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' "
+              + "AND methodName = 'ContextMemoryExtractionJobHandler' "
+              + "AND (status = 'PENDING' OR (:includeRunning = true AND status = 'RUNNING')) "
+              + "AND jobArgs->>'jobKey' = :jobKey",
+      connectionType = POSTGRES)
+  int countInFlightMemoryJobs(
+      @Bind("jobKey") String jobKey, @Bind("includeRunning") boolean includeRunning);
+
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET runAt = :runAt, updatedAt = GREATEST(updatedAt + 1, :updatedAt) "
-              + "WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' AND methodName = 'PageMemoryExtractionJobHandler' "
+              + "WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' AND methodName = 'ContextMemoryExtractionJobHandler' "
               + "AND status = 'PENDING' "
-              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.pageId')) = :pageId",
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.jobKey')) = :jobKey",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET runAt = :runAt, updatedAt = GREATEST(updatedAt + 1, :updatedAt) "
-              + "WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' AND methodName = 'PageMemoryExtractionJobHandler' "
-              + "AND status = 'PENDING' AND jobArgs->>'pageId' = :pageId",
+              + "WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' AND methodName = 'ContextMemoryExtractionJobHandler' "
+              + "AND status = 'PENDING' AND jobArgs->>'jobKey' = :jobKey",
       connectionType = POSTGRES)
-  int reschedulePendingPageMemoryJob(
-      @Bind("pageId") String pageId, @Bind("runAt") long runAt, @Bind("updatedAt") long updatedAt);
+  int reschedulePendingMemoryJob(
+      @Bind("jobKey") String jobKey, @Bind("runAt") long runAt, @Bind("updatedAt") long updatedAt);
 
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET status = 'CANCELLED', updatedAt = :updatedAt, completedAt = :updatedAt "
               + "WHERE jobType = :jobType AND methodName = :methodName AND status = 'PENDING' "
-              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.pageId')) = :pageId",
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.jobKey')) = :jobKey",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET status = 'CANCELLED', updatedAt = :updatedAt, completedAt = :updatedAt "
               + "WHERE jobType = :jobType AND methodName = :methodName AND status = 'PENDING' "
-              + "AND jobArgs->>'pageId' = :pageId",
+              + "AND jobArgs->>'jobKey' = :jobKey",
       connectionType = POSTGRES)
   int cancelPendingPageMemoryJobs(
       @Bind("jobType") String jobType,
       @Bind("methodName") String methodName,
-      @Bind("pageId") String pageId,
+      @Bind("jobKey") String jobKey,
       @Bind("updatedAt") long updatedAt);
 
   @ConnectionAwareSqlUpdate(
@@ -333,8 +370,8 @@ public interface JobDAO {
               + "WHERE status = 'RUNNING' AND id = (SELECT id FROM (SELECT running.id "
               + "FROM background_jobs running LEFT JOIN background_jobs pending "
               + "ON pending.jobType = 'CONTEXT_MEMORY_EXTRACTION' AND pending.status = 'PENDING' "
-              + "AND JSON_UNQUOTE(JSON_EXTRACT(pending.jobArgs, '$.pageId')) = "
-              + "JSON_UNQUOTE(JSON_EXTRACT(running.jobArgs, '$.pageId')) "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(pending.jobArgs, '$.jobKey')) = "
+              + "JSON_UNQUOTE(JSON_EXTRACT(running.jobArgs, '$.jobKey')) "
               + "WHERE running.jobType = 'CONTEXT_MEMORY_EXTRACTION' AND running.status = 'RUNNING' "
               + "AND running.updatedAt < :staleBefore AND pending.id IS NULL "
               + "ORDER BY running.id LIMIT 1) candidate)",
@@ -347,20 +384,20 @@ public interface JobDAO {
               + "AND running.updatedAt < :staleBefore "
               + "AND NOT EXISTS (SELECT 1 FROM background_jobs pending "
               + "WHERE pending.jobType = 'CONTEXT_MEMORY_EXTRACTION' AND pending.status = 'PENDING' "
-              + "AND pending.jobArgs->>'pageId' = running.jobArgs->>'pageId') "
+              + "AND pending.jobArgs->>'jobKey' = running.jobArgs->>'jobKey') "
               + "ORDER BY running.id LIMIT 1)",
       connectionType = POSTGRES)
   int requeueStaleMemoryJobs(
       @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);
 
-  // A newer PENDING job already covers this page, so an interrupted older run does not need to
+  // A newer PENDING job already covers this source, so an interrupted older run does not need to
   // be requeued. Retire it instead of leaving a stale RUNNING row behind forever.
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs running JOIN background_jobs pending "
               + "ON pending.jobType = 'CONTEXT_MEMORY_EXTRACTION' AND pending.status = 'PENDING' "
-              + "AND JSON_UNQUOTE(JSON_EXTRACT(pending.jobArgs, '$.pageId')) = "
-              + "JSON_UNQUOTE(JSON_EXTRACT(running.jobArgs, '$.pageId')) "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(pending.jobArgs, '$.jobKey')) = "
+              + "JSON_UNQUOTE(JSON_EXTRACT(running.jobArgs, '$.jobKey')) "
               + "SET running.status = 'CANCELLED', running.updatedAt = :updatedAt, "
               + "running.completedAt = :updatedAt "
               + "WHERE running.jobType = 'CONTEXT_MEMORY_EXTRACTION' AND running.status = 'RUNNING' "
@@ -373,7 +410,7 @@ public interface JobDAO {
               + "WHERE running.jobType = 'CONTEXT_MEMORY_EXTRACTION' AND running.status = 'RUNNING' "
               + "AND running.updatedAt < :staleBefore "
               + "AND pending.jobType = 'CONTEXT_MEMORY_EXTRACTION' AND pending.status = 'PENDING' "
-              + "AND pending.jobArgs->>'pageId' = running.jobArgs->>'pageId'",
+              + "AND pending.jobArgs->>'jobKey' = running.jobArgs->>'jobKey'",
       connectionType = POSTGRES)
   int cancelStaleMemoryJobsWithPending(
       @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);

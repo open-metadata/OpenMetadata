@@ -60,16 +60,23 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
 
   private void scheduleAt(UUID pageId, long runAt) {
     long now = System.currentTimeMillis();
-    String args = JsonUtils.pojoToJson(new PageMemoryExtractionJobHandler.Args(pageId));
-    jobDao.enqueuePageMemoryJob(pageId.toString(), args, Entity.ADMIN_USER_NAME, runAt, now);
+    ContextMemoryExtractionJobHandler.Args jobArgs =
+        ContextMemoryExtractionJobHandler.Args.page(pageId);
+    jobDao.enqueuePageMemoryJob(
+        pageId.toString(),
+        jobArgs.jobKey(),
+        JsonUtils.pojoToJson(jobArgs),
+        Entity.ADMIN_USER_NAME,
+        runAt,
+        now);
   }
 
   /** Cancels work whose source has been deleted. A claimed job will skip the missing page. */
   public void cancel(UUID pageId) {
     jobDao.cancelPendingPageMemoryJobs(
         BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
-        PageMemoryExtractionJobHandler.class.getSimpleName(),
-        pageId.toString(),
+        ContextMemoryExtractionJobHandler.class.getSimpleName(),
+        ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey(),
         System.currentTimeMillis());
   }
 
