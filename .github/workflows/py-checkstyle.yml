@@ -43,6 +43,7 @@ jobs:
           filters: |
             python:
               - 'ingestion/**'
+              - 'openmetadata-airflow-apis/**'
               - 'openmetadata-spec/**'
 
       - name: Resolve Python check scope

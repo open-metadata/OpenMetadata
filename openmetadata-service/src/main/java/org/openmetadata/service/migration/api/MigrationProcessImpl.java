@@ -20,6 +20,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationOps;
+import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
@@ -151,6 +152,20 @@ public class MigrationProcessImpl implements MigrationProcess {
 
   @Override
   public void runDataMigration() {}
+
+  @Override
+  public String getDataMigrationIdentity() {
+    return overridesDataMigration() ? MigrationCodeFingerprint.of(getClass()) : null;
+  }
+
+  private boolean overridesDataMigration() {
+    try {
+      return getClass().getMethod("runDataMigration").getDeclaringClass()
+          != MigrationProcessImpl.class;
+    } catch (NoSuchMethodException e) {
+      return false;
+    }
+  }
 
   @Override
   public Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration) {
