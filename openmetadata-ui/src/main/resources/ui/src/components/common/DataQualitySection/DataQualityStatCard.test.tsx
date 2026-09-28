@@ -10,26 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { DataQualityStatCard } from './DataQualityStatCard';
-
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
 
 describe('DataQualityStatCard', () => {
   const mockOnClick = jest.fn();
@@ -146,10 +128,7 @@ describe('DataQualityStatCard', () => {
       />
     );
 
-    const button = container.querySelector('button');
-    if (button) {
-      button.click();
-    }
+    fireEvent.click(container.querySelector('button') as HTMLButtonElement);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
   });
