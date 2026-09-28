@@ -498,6 +498,14 @@ describe('TasksTab', () => {
       expect(headers[1]).toHaveTextContent('label.tag');
     });
 
+    // The server lists the tag task first, but grouping puts the incident on
+    // top; opening the server's first task selected a row mid-list on reload.
+    it('opens the top row of the grouped list, not the server’s first task', () => {
+      renderTab();
+
+      expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+    });
+
     it('drops the group headers when grouping is turned off', () => {
       renderTab();
 

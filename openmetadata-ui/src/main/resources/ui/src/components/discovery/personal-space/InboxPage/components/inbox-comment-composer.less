@@ -28,14 +28,18 @@
     background-color: @composer-bg;
   }
 
+  // Quill's snow theme sets 13px on the container; comments read at 14px.
   .ql-container.ql-snow {
     border: none;
     background: transparent;
+    font-size: 14px;
   }
 
-  // Markdown and @mentions work by typing, so the format bar only adds noise.
+  // The format bar sits in the same box as the text, split by a hairline.
   .ql-toolbar.ql-snow {
-    display: none;
+    padding: 4px 8px;
+    border: none;
+    border-bottom: 1px solid var(--om-color-border-secondary);
   }
 
   .ql-editor,
@@ -44,6 +48,37 @@
     padding: 12px 48px 12px 14px;
     background-color: transparent;
     border-radius: 10px;
+  }
+
+  // The @/# suggestion list, in the core Dropdown's style: a padded overlay
+  // with inset rounded rows instead of the legacy flat full-bleed list.
+  .ql-mention-list-container {
+    width: 248px;
+    padding: 4px 0;
+    border: none;
+    border-radius: var(--om-radius-lg);
+    outline: 1px solid var(--om-color-border-subtle);
+    outline-offset: -1px;
+    background-color: var(--om-color-bg-overlay-surface);
+    // --om-shadow-raised is an empty alias in plain CSS; -lg carries the same values.
+    box-shadow: var(--om-shadow-lg);
+  }
+
+  .ql-mention-list-item {
+    margin: 1px 6px;
+    padding: 8px 10px;
+    border-radius: var(--om-radius-md);
+    font-size: 14px;
+    color: var(--om-color-text-secondary);
+
+    &.selected {
+      background-color: var(--om-color-bg-primary-hover);
+    }
+
+    &.disabled {
+      cursor: default;
+      color: var(--om-color-text-tertiary);
+    }
   }
 
   // FeedEditor hard-codes the "Use @mention…" placeholder; swap in the design

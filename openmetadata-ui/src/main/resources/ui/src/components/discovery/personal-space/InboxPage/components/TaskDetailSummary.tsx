@@ -15,6 +15,7 @@ import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   Clock,
+  Columns02,
   Key01,
   Stars01,
   Tag01,
@@ -44,6 +45,7 @@ export interface TaskDetailSummaryProps {
 const ROW_ICON: Record<TaskDetailRowIcon, typeof User01> = {
   calendar: Calendar,
   clock: Clock,
+  columns: Columns02,
   owner: Users01,
   shield: Key01,
   source: Stars01,
@@ -71,6 +73,7 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
           {value.refs.map((ref) => (
             <Box align="center" gap={1} key={ref.id}>
               <ProfilePicture
+                matchRingToFill
                 displayName={getEntityName(ref)}
                 name={ref.name ?? ''}
                 width="20"

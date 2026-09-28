@@ -140,6 +140,7 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
     return (
       <Box align="start" className="tw:min-w-0" gap={3}>
         <ProfilePicture
+          matchRingToFill
           displayName={getEntityName(entry.comment.author)}
           name={entry.comment.author?.name ?? ''}
           width="24"

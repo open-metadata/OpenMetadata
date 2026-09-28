@@ -32,6 +32,7 @@ import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 export type TaskDetailRowIcon =
   | 'calendar'
   | 'clock'
+  | 'columns'
   | 'owner'
   | 'shield'
   | 'source'

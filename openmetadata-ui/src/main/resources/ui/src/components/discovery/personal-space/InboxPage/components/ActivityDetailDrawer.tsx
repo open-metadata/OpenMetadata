@@ -275,6 +275,7 @@ const CommentRow: React.FC<CommentRowProps> = ({
       <Box align="center" className="tw:justify-between" gap={2}>
         <Box align="center" gap={2}>
           <ProfilePicture
+            matchRingToFill
             displayName={authorName}
             name={authorLogin}
             width="26"
@@ -546,6 +547,7 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             className="tw:min-w-0 tw:flex-1 tw:overflow-hidden"
             gap={2}>
             <ProfilePicture
+              matchRingToFill
               displayName={authorName}
               name={actorName}
               width="28"

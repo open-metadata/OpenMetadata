@@ -56,11 +56,14 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
 
   return (
     <Box
-      align="start"
+      align="end"
       className="inbox-comment-composer"
       data-testid="inbox-comment-composer"
       gap={2}>
+      {/* Centred on the 44px text row, not the toolbar above it. */}
       <ProfilePicture
+        matchRingToFill
+        className="tw:mb-2.5"
         displayName={currentUser?.displayName ?? currentUser?.name}
         name={currentUser?.name ?? ''}
         width="24"
@@ -79,7 +82,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
           editAction={
             <Button
               aria-label={t('label.send')}
-              className="tw:absolute tw:top-1/2 tw:right-2 tw:-translate-y-1/2"
+              className="tw:absolute tw:right-2 tw:bottom-1.5"
               color="primary"
               data-testid="send-button"
               iconLeading={<ArrowRight className="tw:size-4" />}
@@ -87,6 +90,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
               onClick={handleSend}
             />
           }
+          emptyMentionText={t('message.no-match-found')}
           placeHolder={placeholderText}
           ref={editorRef}
           onSave={onSave}
