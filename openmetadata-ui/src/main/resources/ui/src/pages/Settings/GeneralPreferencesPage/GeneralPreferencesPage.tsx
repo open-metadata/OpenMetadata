@@ -18,7 +18,7 @@ import {
   SelectItem,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, PlusCircle } from '@openmetadata/ui-core-components/icons';
+import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Key, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +48,7 @@ const GeneralPreferencesPage: React.FC = () => {
   const [initialRows, setInitialRows] = useState<ViewModeRow[]>([]);
   const [rows, setRows] = useState<ViewModeRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const [isSavingViewModes, setIsSavingViewModes] = useState(false);
 
   useEffect(() => {
@@ -62,7 +63,16 @@ const GeneralPreferencesPage: React.FC = () => {
         setInitialRows(viewModeRows);
         setRows(viewModeRows);
       })
-      .catch((error: AxiosError) => showErrorToast(error))
+      .catch((error: AxiosError) => {
+        // A failed load leaves `rows` empty — saving from that state would
+        // replace the server's whole `defaultViewModes` map with whatever
+        // was added since, wiping every previously-saved page default.
+        // Block Save until a real config (even an empty one) has loaded.
+        if (isMounted) {
+          setHasLoadError(true);
+        }
+        showErrorToast(error);
+      })
       .finally(() => {
         if (isMounted) {
           setIsLoading(false);
@@ -84,6 +94,9 @@ const GeneralPreferencesPage: React.FC = () => {
   const hasIncompleteRow = rows.some(
     (row) => Boolean(row.page) !== Boolean(row.view)
   );
+  const isRowsInvalid = hasIncompleteRow || hasLoadError;
+  const isSaveDisabled =
+    !isViewModesDirty || isRowsInvalid || isLoading || isSavingViewModes;
 
   const handleAddRow = () => {
     setRows((prev) => [
@@ -225,7 +238,7 @@ const GeneralPreferencesPage: React.FC = () => {
               <Button
                 color="secondary"
                 data-testid="add-view-mode-row"
-                iconLeading={PlusCircle}
+                iconLeading={Plus}
                 isDisabled={rows.length >= PAGE_OPTIONS.length}
                 size="xs"
                 onPress={handleAddRow}>
@@ -238,12 +251,7 @@ const GeneralPreferencesPage: React.FC = () => {
           <Button
             color="primary"
             data-testid="save-view-modes-settings"
-            isDisabled={
-              !isViewModesDirty ||
-              hasIncompleteRow ||
-              isLoading ||
-              isSavingViewModes
-            }
+            isDisabled={isSaveDisabled}
             isLoading={isSavingViewModes}
             onPress={handleSaveViewModes}>
             {t('label.save')}

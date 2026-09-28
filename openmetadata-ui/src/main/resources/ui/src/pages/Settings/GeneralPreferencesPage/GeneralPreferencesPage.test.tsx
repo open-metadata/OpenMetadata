@@ -244,4 +244,28 @@ describe('GeneralPreferencesPage', () => {
 
     expect(viewModesSaveButton).toBeEnabled();
   });
+
+  it('keeps Save disabled when the initial config load fails, even after adding a row', async () => {
+    mockGetAppConfiguration.mockRejectedValue(new Error('network error'));
+
+    await renderPage();
+
+    const viewModesSaveButton = screen.getByTestId('save-view-modes-settings');
+
+    expect(viewModesSaveButton).toBeDisabled();
+
+    // Without the load-error guard this would look like a legitimate empty
+    // form: adding and completing a row would enable Save, and submitting
+    // it would replace the server's whole `defaultViewModes` map with just
+    // this one entry — wiping every page default that failed to load.
+    fireEvent.click(screen.getByTestId('add-view-mode-row'));
+    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+      target: { value: 'domains' },
+    });
+    fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
+      target: { value: 'grid' },
+    });
+
+    expect(viewModesSaveButton).toBeDisabled();
+  });
 });
