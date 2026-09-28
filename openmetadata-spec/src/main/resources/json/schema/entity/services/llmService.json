@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/llmService.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LLMService",
   "description": "LLM Service Entity for managing Large Language Model providers such as OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, etc.",
   "type": "object",
@@ -126,6 +126,10 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "serviceAttributes": {
+      "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+      "$ref": "./serviceAttributes.json"
     },
     "owners": {
       "description": "Owners of this LLM service",

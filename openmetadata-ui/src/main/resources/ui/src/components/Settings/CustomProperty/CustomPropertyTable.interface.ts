@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { Type } from '../../../generated/entity/type';
 import { CustomProperty } from '../../../generated/type/customProperty';
+import { CustomPropertyChanges } from '../../../rest/metadataTypeAPI';
 
 export interface CustomPropertyTableProp {
   hasAccess: boolean;
   customProperties: CustomProperty[];
-  updateEntityType: (
-    customProperties: Type['customProperties']
+  onDeleteProperty: (propertyName: string) => Promise<void>;
+  onUpdateProperty: (
+    propertyName: string,
+    changes: CustomPropertyChanges
   ) => Promise<void>;
   isLoading: boolean;
   isButtonLoading: boolean;

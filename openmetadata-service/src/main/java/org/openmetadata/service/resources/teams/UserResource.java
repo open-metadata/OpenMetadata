@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
@@ -29,6 +30,7 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DEFAULT_BOT_ROLE;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -220,7 +222,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     tokenRepository = Entity.getTokenRepository();
     roleRepository = Entity.getRoleRepository();
     preferencesRepository = new UserPreferencesRepository();
-    UserTokenCache.initialize();
     authHandler = authenticatorHandler;
   }
 
@@ -833,9 +834,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Privileged fields are admin only whoever the target is. This has to be checked before the
     // ownership branch below, otherwise a principal holding EDIT on users would be able to grant
     // roles to somebody else through PUT while PATCH refuses the same change.
-    if (Boolean.TRUE.equals(create.getIsAdmin())
-        || Boolean.TRUE.equals(create.getIsBot())
-        || hasRoleElevation(existingUser, user)) {
+    if (grantsPrivileges(create, existingUser, user)) {
       authorizeAdminForPrivilegedFields(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
@@ -898,10 +897,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
-
-    // Invalidate cached token for bot user
-    BotTokenCache.invalidateToken(user.getName());
+    BotTokenCache.mutateToken(
+        user.getName(),
+        () ->
+            repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName()));
 
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
@@ -963,13 +962,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
-
-    // Invalidate any cached token for this user
     if (isBotUser) {
-      BotTokenCache.invalidateToken(user.getName());
+      BotTokenCache.mutateToken(
+          user.getName(),
+          () ->
+              repository.createOrUpdate(
+                  uriInfo, user, securityContext.getUserPrincipal().getName()));
     } else {
-      UserTokenCache.invalidateToken(user.getName());
+      UserTokenCache.mutateToken(
+          user.getName(),
+          () ->
+              repository.createOrUpdate(
+                  uriInfo, user, securityContext.getUserPrincipal().getName()));
     }
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
@@ -1005,10 +1009,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        BotTokenCache.mutateToken(
+            user.getName(),
+            () ->
+                repository.createOrUpdate(
+                    uriInfo, user, securityContext.getUserPrincipal().getName()));
     addHref(uriInfo, response.getEntity());
-    // Invalidate Bot Token in Cache
-    BotTokenCache.invalidateToken(user.getName());
     return response.toResponse();
   }
 
@@ -1108,6 +1114,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    boolean isSelf = getSubjectContext(securityContext).user().getId().equals(id);
+    // Editing another user needs EDIT_ALL on that user, as PUT requires, so broad grants on all
+    // resources (e.g. DataConsumer's EditDescription) only ever reach the caller's own profile.
+    if (!isSelf) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+          getResourceContextById(id));
+    }
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (!patchOpObject.containsKey("path")) {
@@ -1120,13 +1135,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       if (patchOpObject.containsKey("value")) {
         // Check if updating personaPreferences - users can only update their own
-        if (path.startsWith("/personaPreferences")) {
-          String authenticatedUserName = securityContext.getUserPrincipal().getName();
-          User authenticatedUser =
-              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
-          if (!authenticatedUser.getId().equals(id)) {
-            throw new AuthorizationException("Users can only update their own persona preferences");
-          }
+        if (path.startsWith("/personaPreferences") && !isSelf) {
+          throw new AuthorizationException("Users can only update their own persona preferences");
         }
         // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
@@ -1154,6 +1164,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
   private static final String IS_BOT_PATCH_PATH = "/isBot";
   private static final String ROLES_FIELD = "roles";
+  private static final String TEAMS_FIELD = "teams";
+  private static final String PRIVILEGED_FIELDS = ROLES_FIELD + "," + TEAMS_FIELD;
   private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
 
   // A root-level operation (path "") replaces the whole user document, so it covers the same
@@ -1165,28 +1177,68 @@ public class UserResource extends EntityResource<User, UserRepository> {
         || path.contains(ROLES_PATCH_PATH_SEGMENT);
   }
 
-  // True when the request asks for a role the user does not already hold. A null existingUser
-  // means the user is being created, so every requested role is a new one.
-  private boolean hasRoleElevation(User existingUser, User updatedUser) {
-    Set<UUID> updatedRoleIds = roleIds(updatedUser.getRoles());
+  // Fields on an update that only an admin may set, whoever the user being changed is. The teams
+  // are read from the request rather than from updatedUser: prepareInternal() substitutes the
+  // organization for an absent team list, and that default is the server's doing, not something
+  // the caller asked for.
+  private boolean grantsPrivileges(CreateUser create, User existingUser, User updatedUser) {
+    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
+      return true;
+    }
+    if (nullOrEmpty(updatedUser.getRoles()) && nullOrEmpty(create.getTeams())) {
+      return false;
+    }
+    // Reading back what the user already holds only pays off once the request names a role or a
+    // team - nothing else can be an elevation.
+    User currentUser = loadPrivilegedFields(existingUser);
+    return hasRoleElevation(currentUser, updatedUser)
+        || joinsClosedTeam(currentUser, create.getTeams());
+  }
+
+  // findByNameOrNull() sets core fields only, so the roles and teams the user already holds have to
+  // be loaded before the request can be compared against them. A null existingUser means the user
+  // is being created, so everything the request asks for is new.
+  private User loadPrivilegedFields(User existingUser) {
+    if (existingUser == null) {
+      return null;
+    }
+    return repository.get(null, existingUser.getId(), getFields(PRIVILEGED_FIELDS), ALL, false);
+  }
+
+  // True when the request asks for a role the user does not already hold.
+  private boolean hasRoleElevation(User currentUser, User updatedUser) {
+    Set<UUID> updatedRoleIds = entityIds(updatedUser.getRoles());
     if (updatedRoleIds.isEmpty()) {
       return false;
     }
-    if (existingUser == null) {
+    if (currentUser == null) {
       return true;
     }
-    // existingUser comes from findByNameOrNull(), which sets core fields only, so its roles are
-    // always null - they have to be loaded before they can be compared against.
-    List<EntityReference> currentRoles =
-        repository.get(null, existingUser.getId(), getFields(ROLES_FIELD), ALL, false).getRoles();
-    return !roleIds(currentRoles).containsAll(updatedRoleIds);
+    return !entityIds(currentUser.getRoles()).containsAll(updatedRoleIds);
   }
 
-  // Fields on CreateUser that only an admin may set, whoever the user being created is.
+  // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
+  // policies, so joining a team that is not open to everyone grants privileges the same way naming
+  // a role does. PATCH has always required an admin for it. Teams the user is already in are
+  // dropped first so the joinable lookup only runs for the ones actually being added.
+  private boolean joinsClosedTeam(User currentUser, List<UUID> requestedTeamIds) {
+    Set<UUID> currentTeamIds = currentUser == null ? Set.of() : entityIds(currentUser.getTeams());
+    return listOrEmpty(requestedTeamIds).stream()
+        .filter(teamId -> !currentTeamIds.contains(teamId))
+        .anyMatch(this::isClosedTeam);
+  }
+
+  private boolean isClosedTeam(UUID teamId) {
+    return !repository.isTeamJoinable(teamId.toString());
+  }
+
+  // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
+  // named on a create request is one the user is not a member of yet.
   private boolean grantsPrivileges(CreateUser create) {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
-        || grantsRolesFromRequestBody(create);
+        || grantsRolesFromRequestBody(create)
+        || joinsClosedTeam(null, create.getTeams());
   }
 
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
@@ -1207,11 +1259,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private static Set<UUID> roleIds(List<EntityReference> roles) {
-    if (nullOrEmpty(roles)) {
+  private static Set<UUID> entityIds(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
       return Set.of();
     }
-    return roles.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    return references.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   /** Preference {@code type} discriminator -> the concrete POJO it deserializes to. */
@@ -1851,15 +1903,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
       userName = securityContext.getUserPrincipal().getName();
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
-    if (removeAll) {
-      tokenRepository.deleteTokenByUserAndType(
-          user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
-    } else {
-      List<String> ids =
-          request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
-      tokenRepository.deleteAllToken(ids);
-    }
-    UserTokenCache.invalidateToken(user.getName());
+    UserTokenCache.mutateToken(
+        user.getName(),
+        () -> {
+          if (removeAll) {
+            tokenRepository.deleteTokenByUserAndType(
+                user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+          } else {
+            List<String> ids =
+                request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
+            tokenRepository.deleteAllToken(ids);
+          }
+          return null;
+        });
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1908,8 +1964,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   null);
       PersonalAccessToken personalAccessToken =
           TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
-      tokenRepository.insertToken(personalAccessToken);
-      UserTokenCache.invalidateToken(user.getName());
+      UserTokenCache.mutateToken(
+          user.getName(),
+          () -> {
+            tokenRepository.insertToken(personalAccessToken);
+            return null;
+          });
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
     throw new CustomExceptionMessage(
@@ -2099,7 +2159,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        BotTokenCache.mutateToken(
+            user.getName(),
+            () ->
+                repository.createOrUpdate(
+                    uriInfo, user, securityContext.getUserPrincipal().getName()));
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }

@@ -34,6 +34,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String ANNOUNCEMENT_TABLE = "announcement_entity";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
@@ -110,6 +111,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getActiveCondition(tableName));
+    conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -447,7 +449,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getActiveCondition(String tableName) {
     String active = queryParams.get("active");
-    if (active == null || !"announcement_entity".equals(tableName)) {
+    if (active == null || !ANNOUNCEMENT_TABLE.equals(tableName)) {
       return "";
     }
 
@@ -458,6 +460,11 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return String.format("(startTime > %d OR endTime < %d)", now, now);
+  }
+
+  private String getAnnouncementTypeCondition() {
+    String announcementType = queryParams.get("announcementType");
+    return announcementType == null ? "" : "type = :announcementType";
   }
 
   private String getEntityStatusCondition(String tableName) {
@@ -1618,10 +1625,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskType);
-    return tableName == null
-        ? String.format("type = '%s'", safeType)
-        : String.format("%s.type = '%s'", tableName, safeType);
+    return tableName == null ? "type = :taskType" : String.format("%s.type = :taskType", tableName);
   }
 
   private String getTaskFormTypeCondition(String tableName) {
@@ -1629,10 +1633,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskFormType);
     return tableName == null
-        ? String.format("taskType = '%s'", safeType)
-        : String.format("%s.taskType = '%s'", tableName, safeType);
+        ? "taskType = :taskFormType"
+        : String.format("%s.taskType = :taskFormType", tableName);
   }
 
   private String getTaskFormCategoryCondition(String tableName) {
@@ -1640,10 +1643,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormCategory == null) {
       return "";
     }
-    String safeCategory = escapeApostrophe(taskFormCategory);
     return tableName == null
-        ? String.format("taskCategory = '%s'", safeCategory)
-        : String.format("%s.taskCategory = '%s'", tableName, safeCategory);
+        ? "taskCategory = :taskFormCategory"
+        : String.format("%s.taskCategory = :taskFormCategory", tableName);
   }
 
   private String getTaskPriorityCondition(String tableName) {
@@ -1651,9 +1653,8 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskPriority == null) {
       return "";
     }
-    String safePriority = escapeApostrophe(taskPriority);
     return tableName == null
-        ? String.format("priority = '%s'", safePriority)
-        : String.format("%s.priority = '%s'", tableName, safePriority);
+        ? "priority = :taskPriority"
+        : String.format("%s.priority = :taskPriority", tableName);
   }
 }

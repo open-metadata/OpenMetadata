@@ -20,7 +20,12 @@ import {
 } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { buildFqn, okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  buildFqn,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -442,7 +447,8 @@ export class TableClass extends EntityClass {
 
   async createTestSuiteAndPipelines(
     apiContext: APIRequestContext,
-    testSuite?: TestSuiteData
+    testSuite?: TestSuiteData,
+    scheduleInterval?: string | null
   ) {
     if (isEmpty(this.entityResponseData)) {
       await this.create(apiContext);
@@ -461,7 +467,11 @@ export class TableClass extends EntityClass {
 
     this.testSuiteResponseData = testSuiteData;
 
-    const pipeline = await this.createTestSuitePipeline(apiContext);
+    const pipeline = await this.createTestSuitePipeline(
+      apiContext,
+      undefined,
+      scheduleInterval
+    );
 
     return {
       testSuiteData,
@@ -471,14 +481,13 @@ export class TableClass extends EntityClass {
 
   async createTestSuitePipeline(
     apiContext: APIRequestContext,
-    testCases?: string[]
+    testCases?: string[],
+    scheduleInterval: string | null = '0 * * * *'
   ) {
     const pipelineData = await apiContext
       .post(`/api/v1/services/ingestionPipelines`, {
         data: {
-          airflowConfig: {
-            scheduleInterval: '0 * * * *',
-          },
+          airflowConfig: scheduleInterval === null ? {} : { scheduleInterval },
           name: `pw-test-suite-pipeline-${uuid()}`,
           loggerLevel: 'INFO',
           pipelineType: 'TestSuite',
@@ -632,7 +641,8 @@ export class TableClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext, hardDelete = true) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=${hardDelete}`
@@ -645,7 +655,8 @@ export class TableClass extends EntityClass {
   }
 
   async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
-    const tableResponse = await apiContext.delete(
+    const tableResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
     );
 

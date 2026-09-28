@@ -12,8 +12,16 @@ from typing import Any
 
 KNOWN_STATUSES = {"expected", "unexpected", "flaky", "skipped"}
 HANG_EXIT_CODES = {124}
+# Artifact directory names have the shape:
+#   playwright-results-json-<shardId>[-a<runAttempt>][-retry]
+# `-a<runAttempt>` is added by playwright-e2e-reusable.yml so a workflow
+# re-run gets its own artifact namespace and cannot inherit a prior
+# attempt's stale ci-status.json (see run 35650435023). `-retry` is a
+# fallback name used when the primary upload's FinalizeArtifact 403s
+# and leaves a ghost reservation. Both suffixes are stripped here so
+# the recovered shard id matches matrix.shardId exactly.
 ARTIFACT_SHARD_PATTERN = re.compile(
-    r"(?:playwright|sso)-results-json-(?P<shard>[^/]+)$"
+    r"(?:playwright|sso)-results-json-(?P<shard>.+?)(?:-a\d+)?(?:-retry)?$"
 )
 
 

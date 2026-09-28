@@ -252,6 +252,7 @@ const InnerAutocomplete = ({
           ) : (
             <BadgeWithButton
               color="gray"
+              data-testid="autocomplete-selected-item"
               isDisabled={isDisabled}
               key={item.id}
               size="lg"
@@ -281,7 +282,7 @@ const InnerAutocomplete = ({
           !multiple && !isSelectionEmpty && 'tw:hidden'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onBlur={(event) => {
             const inputValue = event.target.value.trim();
@@ -448,8 +449,30 @@ export const AutocompleteBase = ({
     [onItemCleared]
   );
 
+  // react-aria commits the focused option on blur/Tab, and the listbox focuses
+  // whatever the pointer last passed over — so leaving the field inserted an
+  // option the user never picked. Only a press or Enter adds a value.
+  const isLeavingRef = useRef(false);
+  const suppressCommit = useCallback(() => {
+    isLeavingRef.current = true;
+    queueMicrotask(() => {
+      isLeavingRef.current = false;
+    });
+  }, []);
+  const onKeyDownCapture = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        suppressCommit();
+      }
+    },
+    [suppressCommit]
+  );
+
   const onSelectionChange = (id: Key | null) => {
     if (!id) {
+      return;
+    }
+    if (multiple && isLeavingRef.current) {
       return;
     }
     if (!multiple && internalSelected.length >= 1) {
@@ -564,7 +587,10 @@ export const AutocompleteBase = ({
           onSelectionChange={onSelectionChange}
           {...props}>
           {(state) => (
-            <div className="tw:flex tw:flex-col tw:gap-1.5">
+            <div
+              className="tw:flex tw:flex-col tw:gap-1.5"
+              onBlurCapture={suppressCommit}
+              onKeyDownCapture={onKeyDownCapture}>
               {label && (
                 <Label isRequired={state.isRequired} tooltip={tooltip}>
                   {label}

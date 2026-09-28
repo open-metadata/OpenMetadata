@@ -13,20 +13,18 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface ExpandableBannerTextProps {
   className?: string;
   dataTestId: string;
-  prefix?: ReactNode;
   text: string;
 }
 
 const ExpandableBannerText = ({
   className,
   dataTestId,
-  prefix,
   text,
 }: ExpandableBannerTextProps) => {
   const { t } = useTranslation();
@@ -78,7 +76,6 @@ const ExpandableBannerText = ({
         )}
         data-testid={`${dataTestId}-content`}
         ref={textRef}>
-        {prefix}
         {text}
       </span>
       {!expanded && hasOverflow && (

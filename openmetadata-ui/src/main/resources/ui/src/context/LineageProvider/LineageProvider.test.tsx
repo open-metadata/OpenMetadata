@@ -13,10 +13,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { Edge } from 'reactflow';
-import { LineageNodeType } from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
+import { LineageNodeType } from '../../interface/lineage.interface';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,

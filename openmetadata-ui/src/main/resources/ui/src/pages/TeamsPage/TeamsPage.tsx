@@ -22,9 +22,9 @@ import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -524,10 +524,11 @@ const TeamsPage = () => {
   // manages isPageLoading internally via its own try/finally, matching the granted-view path
   // exactly. The denied-view path needs the separate effect below since nothing else would
   // otherwise flip isPageLoading back to false.
+  // Sequenced, not parallel: fetchTeamBasicDetails replaces selectedTeam wholesale, so if it
+  // resolved after fetchTeamAdvancedDetails it would drop the `users` that call merged in.
   useEffect(() => {
     if (hasViewPermission) {
-      fetchTeamBasicDetails(fqn, true);
-      loadAdvancedDetails();
+      fetchTeamBasicDetails(fqn, true).then(loadAdvancedDetails);
     }
   }, [hasViewPermission, fqn]);
 

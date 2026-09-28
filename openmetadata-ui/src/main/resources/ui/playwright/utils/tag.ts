@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
@@ -31,7 +31,11 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -45,7 +49,7 @@ export const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#C11574',
+  color: '#F14C75',
   icon: 'Cube01',
 };
 
@@ -62,24 +66,25 @@ export const visitClassificationPage = async (
   );
   await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
+  const response = await fetchTags;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+
+  const tagsContainer = page.getByTestId('tags-container');
   await expect(
-    page
-      .getByTestId('tags-container')
-      .locator('.table-container')
-      .getByTestId('loader')
+    tagsContainer
+      .getByTestId('table')
+      .or(tagsContainer.getByText('Add the first tag'))
+  ).toBeVisible();
+
+  await expect(
+    tagsContainer.locator('.table-container').getByTestId('loader')
   ).toHaveCount(0, { timeout: 30000 });
 
-  await expect(page.locator('.activeCategory')).toContainText(
+  await expect(tagsContainer.getByTestId('header')).toContainText(
     classificationDisplayName
   );
-
-  await fetchTags;
-  await expect(
-    page
-      .getByTestId('tags-container')
-      .locator('.table-container')
-      .getByTestId('loader')
-  ).toHaveCount(0, { timeout: 30000 });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
@@ -324,23 +329,29 @@ export const addTagToTableColumn = async (
     rowName: string;
   }
 ) => {
-  await page.click(
+  const trigger: Locator = page.locator(
     `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
   );
-  await page.fill('[data-testid="tag-selector"] input', tagName);
-  await page.click(`[data-testid="tag-${tagFqn}"]`);
 
-  await expect(
-    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-  ).toContainText(tagDisplayName);
+  await openClassificationTagPicker(page, trigger);
 
+  const searchTagResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tagName)
+    )}*`
+  );
+  await page.getByTestId('classification-tag-picker-search').fill(tagName);
+  await searchTagResponse;
+
+  await page.getByTestId(`tree-node-${tagFqn}`).click();
+
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
   const saveAssociatedTag = page.waitForResponse(`/api/v1/columns/name/**`);
-  await page.click('[data-testid="saveAssociatedTag"]');
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
   await saveAssociatedTag;
 
-  await page.locator('.ant-select-dropdown').first().waitFor({
-    state: 'detached',
-  });
+  await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
   await expect(
     page.getByRole('row', { name: rowName }).getByTestId('tags-container')
@@ -641,14 +652,13 @@ export const selectTagInTagSuggestion = async (
   {
     searchTerm,
     tagFqn,
+    triggerTestId = 'tags-input',
   }: {
     searchTerm: string;
     tagFqn: string;
+    triggerTestId?: string;
   }
 ) => {
-  const tagInput = page.getByRole('combobox', { name: 'Tags' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
-
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
     return (
@@ -658,11 +668,10 @@ export const selectTagInTagSuggestion = async (
     );
   });
 
-  await tagInput.click();
-  await tagInput.fill(searchTerm);
+  await page.getByTestId(triggerTestId).click();
+  await page.getByTestId('search-input').fill(searchTerm);
   await tagSearchResponse;
 
-  await tagOption.click();
+  await page.getByTestId(tagFqn).click();
   await page.keyboard.press('Escape');
-  await tagOption.waitFor({ state: 'hidden' });
 };

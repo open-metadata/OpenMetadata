@@ -24,12 +24,14 @@ import { EntityTagProps } from './tag.types';
 
 /**
  * Brand-colored chip for auto-classified (LabelType.Generated) tags.
- * Visually distinct from manually applied classification tags — uses
- * the utility-brand palette with an AutomatedTag icon. Sizing/typography
- * matches ClassificationTag and its siblings via SIZE_CLASS/ICON_PX. The
- * close-icon tint is computed in CSS via color-mix() off the --tag-color
- * custom property — see styles/globals.css. Has no `color`/`icon` props: the
- * brand identity and icon are fixed, unlike the other four tag variants.
+ * Visually distinct from manually applied classification tags via the
+ * AutomatedTag icon and fixed brand color. Uses the same `tag-tinted`
+ * border/background treatment as ClassificationTag (color-mix() off the
+ * --tag-color custom property — see styles/globals.css) so both chips render
+ * at the same height; Badge's default outline border is layout-neutral but
+ * `tag-tinted` replaces it with a real 1px border, so both variants must
+ * apply it consistently. Has no `color`/`icon` props: the brand identity and
+ * icon are fixed, unlike the other four tag variants.
  */
 export const AutoClassificationTag: FC<
   Omit<EntityTagProps, 'color' | 'icon'>
@@ -67,7 +69,7 @@ export const AutoClassificationTag: FC<
   const sharedProps = {
     ...otherProps,
     className: cx(
-      'tw:cursor-pointer ',
+      'tag-tinted',
       disabled && 'tw:cursor-not-allowed tw:opacity-50',
       className
     ),
@@ -95,7 +97,7 @@ export const AutoClassificationTag: FC<
   }
 
   return (
-    <Badge {...sharedProps} href={href}>
+    <Badge {...sharedProps} href={href} style={tagColorStyle}>
       {content}
     </Badge>
   );

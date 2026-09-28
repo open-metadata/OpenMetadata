@@ -20,16 +20,7 @@ import {
   isNode,
   Position,
 } from 'reactflow';
-import type {
-  EntityChildren,
-  Flatten,
-} from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
-import type {
-  EdgeDetails,
-  LineageEntityReference,
-  LineageNodeType,
-} from '../components/Lineage/Lineage.interface';
-import type { LineagePagingInfo } from '../components/LineageTable/LineageTable.interface';
+import type { LineageEntityReference } from '../components/Lineage/Lineage.interface';
 import {
   DATATYPES_HAVING_SUBFIELDS,
   NODE_HEIGHT,
@@ -44,6 +35,13 @@ import type { SearchIndex } from '../generated/entity/data/searchIndex';
 import type { Table } from '../generated/entity/data/table';
 import type { Topic } from '../generated/entity/data/topic';
 import type { EntityReference } from '../generated/type/entityReference';
+import type {
+  EdgeDetails,
+  EntityChildren,
+  Flatten,
+  LineageNodeType,
+  LineagePagingInfo,
+} from '../interface/lineage.interface';
 import { getEntityName } from './EntityNameUtils';
 import { isDeleted } from './EntityStatusUtils';
 import { t } from './i18next/LocalUtil';
@@ -257,6 +255,24 @@ const getTracedNode = (
   return nodes.filter((n) => tracedEdgeIds.has(n.id));
 };
 
+// Appends every newly visited node to the caller's accumulator. Kept separate
+// from the traversal so each stays a single, readable loop.
+const collectTracedNodes = (
+  visitedNodeIds: Set<string>,
+  nodes: Node[],
+  prevTraced: Node[]
+) => {
+  for (const nodeId of visitedNodeIds) {
+    if (prevTraced.some((n) => n.id === nodeId)) {
+      continue;
+    }
+    const tracedNode = nodes.find((n) => n.id === nodeId);
+    if (tracedNode) {
+      prevTraced.push(tracedNode);
+    }
+  }
+};
+
 export const getAllTracedNodes = (
   node: Node,
   nodes: Node[],
@@ -289,14 +305,7 @@ export const getAllTracedNodes = (
     }
   }
 
-  for (const nodeId of visitedNodeIds) {
-    if (!prevTraced.some((n) => n.id === nodeId)) {
-      const tracedNode = nodes.find((n) => n.id === nodeId);
-      if (tracedNode) {
-        prevTraced.push(tracedNode);
-      }
-    }
-  }
+  collectTracedNodes(visitedNodeIds, nodes, prevTraced);
 
   return result;
 };

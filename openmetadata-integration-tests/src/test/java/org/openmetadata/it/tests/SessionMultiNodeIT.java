@@ -35,6 +35,7 @@ import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
 
 @Tag("session")
+@Tag("multi-node")
 @ExtendWith(TestNamespaceExtension.class)
 // Gated to DB-backed sessions. The assertions here read directly from the user_session table
 // (sessionCountForUser, loadSession, persistSession), which produce no rows when SessionService

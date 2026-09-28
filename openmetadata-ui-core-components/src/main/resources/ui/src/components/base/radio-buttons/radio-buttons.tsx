@@ -63,12 +63,15 @@ interface RadioButtonProps extends AriaRadioProps {
   label?: ReactNode;
   hint?: ReactNode;
   ref?: Ref<HTMLLabelElement>;
+  /** Extra classes for the circular indicator (e.g. a brand-coloured ring). */
+  indicatorClassName?: string;
 }
 
 export const RadioButton = ({
   label,
   hint,
   className,
+  indicatorClassName,
   size = 'sm',
   ...ariaRadioProps
 }: RadioButtonProps) => {
@@ -105,7 +108,7 @@ export const RadioButton = ({
       {({ isSelected, isDisabled, isFocusVisible }) => (
         <>
           <RadioButtonBase
-            className={label || hint ? 'tw:mt-0.5' : ''}
+            className={cx((label || hint) && 'tw:mt-0.5', indicatorClassName)}
             isDisabled={isDisabled}
             isFocusVisible={isFocusVisible}
             isSelected={isSelected}

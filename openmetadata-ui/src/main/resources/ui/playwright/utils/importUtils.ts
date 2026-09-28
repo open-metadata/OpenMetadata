@@ -29,6 +29,7 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
+import { CODE_EDITOR_CONTENT } from './codeEditor';
 import {
   clickOutside,
   descriptionBox,
@@ -43,7 +44,11 @@ import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
 } from './customProperty';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  waitForAllLoadersToDisappear,
+} from './entity';
+import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
@@ -679,7 +684,9 @@ export const fillTagDetails = async (page: Page, tag: string) => {
   await tagSelectorInput.waitFor({ state: 'visible' });
 
   const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
   await page.keyboard.type(tag);
   await waitForQueryResponse;
@@ -692,28 +699,26 @@ export const fillGlossaryTermDetails = async (
   page: Page,
   glossary: { parent: string; name: string }
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
   await waitForAllLoadersToDisappear(page);
 
-  await page
-    .locator('.async-tree-select-list-dropdown')
-    .waitFor({ state: 'visible' });
+  const picker = page.getByTestId('csv-glossary-terms-picker');
+  // A forced cell click can select without focusing, so a bare Enter may not open it.
+  await openActiveCellPopover(page, picker, undefined);
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  // The search box lives in the popover; clicking the trigger would close the cell.
+  await searchGlossaryPicker(page, glossary.name, picker);
 
-  const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=**&index=glossaryTerm&**`
+  const row = page.getByTestId(
+    `tree-node-"${glossary.parent}"."${glossary.name}"`
   );
-  await page.keyboard.type(glossary.name);
-  await searchResponse;
+  await expect(row).toBeVisible();
+  await row.click();
 
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
-  await clickAssociatedTagSave(page);
+  // No save button: each toggle is already on the row, so dismissing commits.
+  await page.keyboard.press('Escape');
+  await page
+    .locator('.glossary-term-picker-popover')
+    .waitFor({ state: 'detached' });
 };
 
 export const fillDomainDetails = async (
@@ -722,23 +727,19 @@ export const fillDomainDetails = async (
 ) => {
   await page.keyboard.press('Enter');
 
-  await page.click(
-    '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
-  );
+  await page.click('[data-testid="domain-selectable-tree-search"]');
 
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
   );
 
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domains.name);
+  await page.getByTestId('domain-selectable-tree-search').fill(domains.name);
 
   await searchDomain;
 
-  await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
-  await clickAssociatedTagSave(page);
+  await page.getByTestId(`tree-node-${domains.fullyQualifiedName}`).click();
+  // Multi-select picker: commit the staged selection via the Apply footer.
+  await page.getByTestId('update-btn').click();
 };
 
 const getActiveCellPopoverOpenActions = (page: Page) => {
@@ -912,7 +913,7 @@ const editGlossaryCustomProperty = async (
     await page.getByTestId('inline-save-btn').click();
 
     await expect(
-      page.getByTestId(propertyName).locator('.CodeMirror-lines')
+      page.getByTestId(propertyName).locator(CODE_EDITOR_CONTENT)
     ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
   }
 
@@ -1038,6 +1039,10 @@ export const fillGlossaryRowDetails = async (
   propertyListName?: Record<string, string>,
   isBulkEdit?: boolean
 ) => {
+  // csvAsyncJobs is per-user and every worker is admin, so another worker's job
+  // finishing re-expands the tray over this grid mid-fill.
+  await suppressCsvJobsTray(page);
+
   await selectActiveRowCellByColumn(page, 'name');
   if (isBulkEdit) {
     await expect(

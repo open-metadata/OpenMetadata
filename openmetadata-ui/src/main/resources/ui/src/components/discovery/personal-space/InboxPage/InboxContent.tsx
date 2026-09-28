@@ -114,7 +114,7 @@ const InboxContent: React.FC = () => {
       direction="col">
       <Box
         align="center"
-        className="tw:shrink-0 tw:justify-between tw:gap-3 tw:px-1"
+        className="tw:shrink-0 tw:justify-between tw:gap-3"
         direction="row">
         <Tabs
           className="tw:w-fit"

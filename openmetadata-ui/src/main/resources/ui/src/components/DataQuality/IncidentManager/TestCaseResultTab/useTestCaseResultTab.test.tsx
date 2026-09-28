@@ -141,6 +141,19 @@ describe('useTestCaseResultTab', () => {
     expect(result.current.hasEditGlossaryTermsPermission).toBe(true);
   });
 
+  it('should let a denied field permission beat EditAll', () => {
+    mockUseTestCaseStore.testCasePermission = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditAll: true,
+      EditDescription: false,
+    };
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.hasEditPermission).toBe(true);
+    expect(result.current.hasEditDescriptionPermission).toBe(false);
+  });
+
   it('should disable edit permissions without permission', () => {
     mockUseTestCaseStore.testCasePermission = DEFAULT_ENTITY_PERMISSION;
 

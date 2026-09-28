@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Select } from '@openmetadata/ui-core-components';
+import { Box, Button, Input, Select } from '@openmetadata/ui-core-components';
 import { XCircle } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 
 /**
  * `label.all` is the Select's placeholder, which is only rendered while nothing
@@ -26,25 +27,48 @@ const ALL_OPTION_ID = '__all__';
 interface TestDefinitionFilterBarProps {
   filterValues: Record<string, string[]>;
   hasActiveFilters: boolean;
+  searchQuery: string;
   onFilterChange: (key: string, value?: string) => void;
+  onSearchChange: (value: string) => void;
   onClearAll: () => void;
 }
 
 /**
- * App-mode filter bar for the Test Library — label-on-top untitled-ui selects
- * (Entity Type, Test Platform) per the 2.0 design. State lives in
- * useTestDefinitionListPage; this only renders the controls.
+ * App-mode filter bar for the Test Library — a search box over the rule names
+ * plus label-on-top untitled-ui selects (Entity Type, Test Platform) per the
+ * 2.0 design. State lives in useTestDefinitionListPage; this only renders the
+ * controls.
  */
 const TestDefinitionFilterBar = ({
   filterValues,
   hasActiveFilters,
+  searchQuery,
   onFilterChange,
+  onSearchChange,
   onClearAll,
 }: TestDefinitionFilterBarProps) => {
   const { t } = useTranslation();
 
+  const { searchInputProps } = useListSearchInput({
+    searchQuery,
+    onSearchChange,
+  });
+
+  const searchLabel = t('label.search-entity', {
+    entity: t('label.test-definition-plural'),
+  });
+
   return (
     <Box align="end" className="tw:w-full" gap={4}>
+      <Input
+        {...searchInputProps}
+        aria-label={searchLabel}
+        className="tw:w-72"
+        inputDataTestId="test-definition-search"
+        placeholder={searchLabel}
+        size="sm"
+      />
+
       {TEST_DEFINITION_FILTERS.map((filter) => {
         const items = [
           { id: ALL_OPTION_ID, label: t('label.all') },

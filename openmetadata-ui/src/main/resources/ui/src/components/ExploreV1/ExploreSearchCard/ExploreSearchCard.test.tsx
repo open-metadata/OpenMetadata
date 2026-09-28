@@ -53,6 +53,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 }));
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
       return source;
@@ -88,8 +89,9 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
-  DomainDisplay: jest
+jest.mock('../../common/DomainTags/DomainTags', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
@@ -98,6 +100,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
 
   return {
+    // StatusBadge renders the core Badge; keep the real one (a plain span).
+    Badge: actual.Badge,
     Breadcrumbs: jest.fn(({ items = [] }) => (
       <nav data-testid="breadcrumbs">
         {items.map(
@@ -175,7 +179,7 @@ describe('ExploreSearchCard - Domain section', () => {
     jest.clearAllMocks();
   });
 
-  it('renders  DomainDisplay component', () => {
+  it('renders the domain chips', () => {
     renderCard({
       domains: [{ id: '1', fullyQualifiedName: 'domain.test', type: 'domain' }],
     });

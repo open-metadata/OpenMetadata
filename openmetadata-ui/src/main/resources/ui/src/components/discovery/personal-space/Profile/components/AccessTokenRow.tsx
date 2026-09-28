@@ -42,7 +42,7 @@ import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
 import { JWTTokenExpiry } from '../../../../../generated/entity/teams/user';
-import APIClient from '../../../../../rest/index';
+import APIClient from '../../../../../rest/axiosClient';
 import {
   getUserAccessToken,
   updateUserAccessToken,
