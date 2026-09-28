@@ -557,12 +557,12 @@ test('domain filter spans asset types and ANDs with an asset-type filter', async
 
 test('certification union shows assets certified with either level', async ({
   page,
+  browser,
 }) => {
   test.slow();
 
-  const goldKey = lowercaseKey(
-    goldCertification.responseData.fullyQualifiedName
-  );
+  const goldFqn = goldCertification.responseData.fullyQualifiedName;
+  const goldKey = lowercaseKey(goldFqn);
   const silverKey = lowercaseKey(
     silverCertification.responseData.fullyQualifiedName
   );
@@ -577,6 +577,13 @@ test('certification union shows assets certified with either level', async ({
     await page.keyboard.press('Escape');
 
     await searchAndExpectEntityVisible(page, tierOneTable);
+    await expect(
+      page
+        .getByTestId(
+          `table-data-card_${tierOneTable.entityResponseData.fullyQualifiedName}`
+        )
+        .getByTestId(`certification-${goldFqn}`)
+    ).toBeVisible();
     await searchAndExpectEntityVisible(page, tierTwoTopic);
     await searchAndExpectEntityNotVisible(page, tierOneDashboard);
   });
@@ -623,5 +630,55 @@ test('certification union shows assets certified with either level', async ({
     await searchAndExpectEntityVisible(page, tierTwoTopic);
     await searchAndExpectEntityVisible(page, tierOneDashboard);
     await searchAndExpectEntityNotVisible(page, tierTwoTable);
+  });
+
+  await test.step('A column of a certified table does not show the table certification', async () => {
+    const columnName = tierOneTable.columnsName[0];
+    const columnFqn = `${tierOneTable.entityResponseData.fullyQualifiedName}.${columnName}`;
+
+    // Column search docs inherit the table's certification asynchronously;
+    // wait until it lands so the badge-absent assertion below is not vacuous.
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            `/api/v1/search/query?q=${encodeURIComponent(
+              `"${columnFqn}"`
+            )}&index=tableColumn&from=0&size=1`
+          );
+
+          if (!response.ok()) {
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
+          }
+
+          const data = await response.json();
+
+          return data?.hits?.hits?.[0]?._source?.certification?.tagLabel
+            ?.tagFQN;
+        },
+        { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+      )
+      .toBe(goldFqn);
+    await afterAction();
+
+    const columnSearch = page.waitForResponse(
+      '/api/v1/search/query?*index=tableColumn*'
+    );
+    await page.goto(
+      `/explore/columns?search=${encodeURIComponent(columnName)}`,
+      { waitUntil: 'domcontentloaded' }
+    );
+    expect((await columnSearch).status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+
+    const columnCard = page.getByTestId(`table-data-card_${columnFqn}`);
+
+    await expect(columnCard).toBeVisible();
+    await expect(
+      columnCard.getByTestId(`certification-${goldFqn}`)
+    ).not.toBeVisible();
   });
 });

@@ -330,15 +330,17 @@ const EntityTitleColumn = ({
           </Typography.Text>
         </Link>
 
-        {!isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
-          <div className="tw:ml-1.5">
-            <CertificationTag
-              certification={
-                (source as Table).certification as AssetCertification
-              }
-            />
-          </div>
-        )}
+        {/* Column docs carry the parent table's certification; a column isn't certified itself */}
+        {source.entityType !== EntityType.TABLE_COLUMN &&
+          !isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
+            <div className="tw:ml-1.5">
+              <CertificationTag
+                certification={
+                  (source as Table).certification as AssetCertification
+                }
+              />
+            </div>
+          )}
 
         {hasGlossaryTermStatus && (
           <EntityStatusBadge
