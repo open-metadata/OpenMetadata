@@ -28,6 +28,8 @@ const mockPatchReply = jest.fn();
 const mockDeleteReply = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockGetResourcePermission = jest.fn();
+const mockListActivityReplies = jest.fn();
+const mockCreateActivityReply = jest.fn();
 
 let mockCurrentUser: { name?: string; isAdmin?: boolean } = { name: 'bob' };
 
@@ -36,6 +38,11 @@ jest.mock('rest/conversationsAPI', () => ({
   createConversationReply: (...a: unknown[]) => mockCreateReply(...a),
   patchConversationReply: (...a: unknown[]) => mockPatchReply(...a),
   deleteConversationReply: (...a: unknown[]) => mockDeleteReply(...a),
+}));
+
+jest.mock('rest/activityAPI', () => ({
+  listActivityReplies: (...a: unknown[]) => mockListActivityReplies(...a),
+  createActivityReply: (...a: unknown[]) => mockCreateActivityReply(...a),
 }));
 
 jest.mock('rest/permissionAPI', () => ({
@@ -299,25 +306,90 @@ describe('ActivityDetailDrawer', () => {
     mockGetResourcePermission.mockResolvedValue(allow('conditionalAllow'));
   });
 
-  describe('read-only activities (upstream parity)', () => {
-    it('renders an activity without composer or comment thread', async () => {
+  // An activity's replies live in a conversation whose id is the activity id
+  // (open-metadata/OpenMetadata#30909).
+  describe('activity thread', () => {
+    const bobReply = {
+      id: 'r1',
+      conversationId: 'A',
+      author: { id: 'bob', name: 'bob', displayName: 'bob', type: 'user' },
+      message: 'reply one',
+      createdAt: 1,
+    };
+
+    it('loads the replies of the activity', async () => {
+      mockListActivityReplies.mockResolvedValue({ data: [bobReply] });
+
       await act(async () => {
         renderDrawer({ activity: activityA });
       });
 
-      expect(screen.getByText('msg A')).toBeInTheDocument();
-      expect(screen.queryByTestId('add-comment')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('feed-reply-card')).not.toBeInTheDocument();
+      expect(mockListActivityReplies).toHaveBeenCalledWith('A', { limit: 100 });
       expect(mockListReplies).not.toHaveBeenCalled();
-      expect(mockCreateReply).not.toHaveBeenCalled();
+
+      await waitFor(() =>
+        expect(screen.getByText('reply one')).toBeInTheDocument()
+      );
     });
 
-    it('does not preflight the conversation permission for an activity', async () => {
+    it('replies to the activity without refreshing the list', async () => {
+      mockListActivityReplies.mockResolvedValue({ data: [] });
+      mockCreateActivityReply.mockResolvedValue({});
+      const onPosted = jest.fn();
+
+      await act(async () => {
+        renderDrawer({ activity: activityA, onPosted });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('add-comment'));
+      });
+
+      expect(mockCreateActivityReply).toHaveBeenCalledWith('A', {
+        message: 'hello',
+      });
+      expect(mockCreateReply).not.toHaveBeenCalled();
+      // Re-read after posting; an activity card shows no count to refresh.
+      expect(mockListActivityReplies).toHaveBeenCalledTimes(2);
+      expect(onPosted).not.toHaveBeenCalled();
+    });
+
+    it('edits an activity reply through its conversation', async () => {
+      mockListActivityReplies.mockResolvedValue({ data: [bobReply] });
+      mockPatchReply.mockResolvedValue({});
+
       await act(async () => {
         renderDrawer({ activity: activityA });
       });
+      await waitFor(() =>
+        expect(screen.getByText('reply one')).toBeInTheDocument()
+      );
+      fireEvent.mouseEnter(screen.getByTestId('feed-reply-card'));
+      fireEvent.click(screen.getByTestId('edit-message'));
+      await act(async () => {
+        fireEvent.click(
+          within(screen.getByTestId('edit-message-editor')).getByTestId(
+            'add-comment'
+          )
+        );
+      });
 
-      expect(mockGetResourcePermission).not.toHaveBeenCalled();
+      expect(mockPatchReply).toHaveBeenCalledWith('A', 'r1', expect.anything());
+    });
+
+    // The server refuses a reply once the activity's target is gone.
+    it('shows an error toast when the reply is refused', async () => {
+      mockListActivityReplies.mockResolvedValue({ data: [] });
+      const err = new Error('Replies are read-only');
+      mockCreateActivityReply.mockRejectedValue(err);
+
+      await act(async () => {
+        renderDrawer({ activity: activityA });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('add-comment'));
+      });
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(err);
     });
   });
 

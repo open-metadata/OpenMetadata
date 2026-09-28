@@ -40,6 +40,10 @@ import { Access } from '../../../../../generated/entity/policies/accessControl/r
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../../../hooks/user-profile/useUserProfile';
 import {
+  createActivityReply,
+  listActivityReplies,
+} from '../../../../../rest/activityAPI';
+import {
   createConversationReply,
   deleteConversationReply,
   listConversationReplies,
@@ -67,7 +71,8 @@ export interface ActivityDetailDrawerProps {
   feed?: Conversation;
   open: boolean;
   onClose: () => void;
-  // Notify the parent that a comment was added so it can refresh counts.
+  // Notify the parent that a conversation's comments changed so it can refresh
+  // its count. Activity events carry no count, so their replies do not notify.
   onPosted?: (conversationId: string) => void;
 }
 
@@ -92,7 +97,7 @@ interface CommentRowProps {
   // Evaluated `feed` Delete access, preflighted once at drawer level
   // (undefined while loading, on failure, or for admins who skip the fetch).
   deleteAccess?: Access;
-  // Reload the conversation's replies after an edit or delete.
+  // Reload the thread's replies after an edit or delete.
   onChanged: () => void;
 }
 
@@ -369,10 +374,27 @@ const getDrawerTimestamp = (
 const getDrawerPanelWidth = (isExpanded: boolean) =>
   isExpanded ? '100%' : '45%';
 
+// An activity's replies live in a conversation whose id is the activity id
+// (open-metadata/OpenMetadata#30909), so once a reply exists, editing and
+// deleting it go through the same conversation endpoints as any comment.
+const listThreadReplies = (activityId?: string, conversationId?: string) =>
+  activityId
+    ? listActivityReplies(activityId, { limit: 100 })
+    : listConversationReplies(conversationId ?? '');
+
+const createThreadReply = (
+  message: string,
+  activityId?: string,
+  conversationId?: string
+) =>
+  activityId
+    ? createActivityReply(activityId, { message })
+    : createConversationReply(conversationId ?? '', { message });
+
 /**
- * Right-anchored side modal showing a single activity or conversation.
- * Conversations carry a comment thread and composer; change-event activities
- * are read-only (upstream parity, open-metadata/OpenMetadata#30879).
+ * Right-anchored side modal showing a single activity or conversation, each
+ * with its comment thread and composer. An activity's thread starts with its
+ * first reply (open-metadata/OpenMetadata#30909).
  */
 const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   activity,
@@ -397,22 +419,26 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     actorName
   );
 
+  const activityId = activity?.id;
+  const conversationId = feed?.id;
+  const threadId = conversationId ?? activityId;
+
   // Replies are their own resource in Conversation V2 rather than a field on
   // the root, so refreshing the list is a reply read, not a re-read of the
-  // conversation.
+  // conversation or activity.
   // Skeleton on the first read only: swapping the mounted list for it on a
   // refresh unmounts every CommentRow, dropping the hover state its edit and
   // delete actions live behind.
   const loadReplies = useCallback(
     async (showSkeleton = false) => {
-      if (!feed?.id) {
+      if (!threadId) {
         return;
       }
       if (showSkeleton) {
         setIsLoading(true);
       }
       try {
-        const res = await listConversationReplies(feed.id);
+        const res = await listThreadReplies(activityId, conversationId);
         setReplies(res.data ?? []);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -422,44 +448,47 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
         }
       }
     },
-    [feed?.id]
+    [threadId, activityId, conversationId]
   );
 
-  // Only conversations carry replies; change-event activities are read-only
-  // (open-metadata/OpenMetadata#30879).
   useEffect(() => {
     setReplies([]);
-    if (open && feed?.id) {
+    if (open && threadId) {
       loadReplies(true);
     }
-  }, [open, feed?.id, loadReplies]);
+  }, [open, threadId, loadReplies]);
+
+  // Only a conversation shows a comment count in the list, so only its
+  // changes refresh the parent.
+  const notifyParent = useCallback(() => {
+    if (conversationId) {
+      onPosted?.(conversationId);
+    }
+  }, [conversationId, onPosted]);
 
   const handleSave = useCallback(
     async (message: string) => {
-      if (!message || !feed?.id) {
+      if (!message || !threadId) {
         return;
       }
       try {
-        await createConversationReply(feed.id, { message });
+        await createThreadReply(message, activityId, conversationId);
         await loadReplies();
-        onPosted?.(feed.id);
+        notifyParent();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [feed?.id, loadReplies, onPosted]
+    [threadId, activityId, conversationId, loadReplies, notifyParent]
   );
 
   // Reload replies and the parent's comment count after an edit or delete.
   const handleCommentChanged = useCallback(() => {
-    if (feed?.id) {
-      loadReplies();
-      onPosted?.(feed.id);
-    }
-  }, [loadReplies, onPosted, feed?.id]);
+    loadReplies();
+    notifyParent();
+  }, [loadReplies, notifyParent]);
 
-  // Read-only activities never comment, so only conversations preflight.
-  const canComment = Boolean(feed?.id);
+  const canComment = Boolean(threadId);
   const feedDeleteAccess = useFeedDeleteAccess(open && canComment);
   // Guard: the drawer renders even when nothing is selected (both undefined).
   const actionLabel = getDrawerActionLabel(activity, feed, t);
@@ -505,7 +534,7 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     isExpanded ? t('label.collapse') : t('label.expand');
 
   const renderReplies = () => {
-    if (isLoading || !feed?.id || replies.length === 0) {
+    if (isLoading || !threadId || replies.length === 0) {
       return null;
     }
 
@@ -513,7 +542,7 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
       <Box direction="col" gap={4}>
         {replies.map((reply) => (
           <CommentRow
-            conversationId={feed.id}
+            conversationId={threadId}
             deleteAccess={feedDeleteAccess}
             key={reply.id}
             reply={reply}
