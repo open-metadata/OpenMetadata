@@ -2498,7 +2498,6 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
       <DomainSelectableList
         hasPermission
         multiple
-        getPopupContainer={() => document.body}
         popoverProps={{ open: true }}
         selectedDomain={domains}
         onUpdate={(domain) => handleChange(domain as EntityReference[])}>

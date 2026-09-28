@@ -266,9 +266,11 @@ export const TreeSelect = <T = unknown,>({
   // Parents already opened for this search, so a later result never reopens one.
   const autoExpandedRef = useRef<Set<Key>>(new Set());
   const lastSearchRef = useRef('');
-  // defaultExpandedKeys is applied once the referenced nodes exist; afterwards
-  // the user is free to collapse them.
-  const appliedDefaultExpandRef = useRef(false);
+  // Which defaultExpandedKeys have been applied. Per-key, not a single boolean:
+  // the keys form an ancestor chain and a lazy tree only reveals one level per
+  // fetch, so deeper keys do not exist yet on the pass that applies the root.
+  // Each key is still applied at most once, so a later user collapse sticks.
+  const appliedDefaultExpandRef = useRef<Set<Key>>(new Set());
   // Stable root IDs captured before any search replaces treeData, so
   // displayedSelectedCount is not zeroed out while the user is searching.
   const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
@@ -358,26 +360,39 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [treeData, searchTerm]);
 
-  // Expand the defaultExpandedKeys nodes once they first appear in the tree.
-  // Async data can arrive after mount, so seeding the initial expanded set is
-  // not enough on its own. Runs once, so a later user collapse is respected.
+  // Expand each defaultExpandedKeys node as it first appears in the tree, and
+  // fetch its children when it loads lazily. Both halves are needed to reveal a
+  // selection nested more than one level deep: expanding an ancestor is what
+  // makes the next key materialise, and without the fetch that ancestor opens
+  // empty, so the chain stops at the first lazy node.
   useEffect(() => {
-    if (appliedDefaultExpandRef.current || !defaultExpandedKeys?.length) {
+    if (!defaultExpandedKeys?.length) {
       return;
     }
-    const present = defaultExpandedKeys.filter((key) =>
-      findNode(treeData, key)
+    const pending = defaultExpandedKeys.filter(
+      (key) =>
+        !appliedDefaultExpandRef.current.has(key) && findNode(treeData, key)
     );
-    if (present.length > 0) {
-      appliedDefaultExpandRef.current = true;
-      setExpandedKeys((prev) => {
-        const next = new Set(prev);
-        present.forEach((key) => next.add(key));
-
-        return next;
-      });
+    if (pending.length === 0) {
+      return;
     }
-  }, [treeData, defaultExpandedKeys]);
+    pending.forEach((key) => appliedDefaultExpandRef.current.add(key));
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      pending.forEach((key) => next.add(key));
+
+      return next;
+    });
+    pending.forEach((key) => {
+      const id = String(key);
+      if (
+        shouldLazyLoad(findNode(treeData, id), lazyLoad) &&
+        !loadingNodes.has(id)
+      ) {
+        loadChildren(id);
+      }
+    });
+  }, [treeData, defaultExpandedKeys, lazyLoad, loadingNodes, loadChildren]);
 
   // Each parent opens once as it appears; clearing the search restores the old set.
   useEffect(() => {
