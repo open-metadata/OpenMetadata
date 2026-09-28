@@ -21,7 +21,7 @@ INFORMIX_GET_DRIVER_UNFRIENDLY_COLUMNS.
 
 import traceback
 
-from sqlalchemy import cast, inspect, text
+from sqlalchemy import Table, cast, inspect, text
 from sqlalchemy.types import UserDefinedType
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -52,6 +52,9 @@ class InformixSampler(SQASampler):
         # One table per sampler, so this holds at most one lookup's worth.
         self._driver_unfriendly: dict[str, bool] | None = None
 
+    def _sqa_table(self) -> Table | None:
+        return None if self.raw_dataset is None else self.raw_dataset.__table__
+
     def driver_unfriendly_columns(self) -> dict[str, bool]:
         """Column name -> whether a cast to LVARCHAR can recover it.
 
@@ -61,7 +64,9 @@ class InformixSampler(SQASampler):
         if self._driver_unfriendly is not None:
             return self._driver_unfriendly
 
-        table = self.raw_dataset.__table__
+        table = self._sqa_table()
+        if table is None:
+            return {}
         try:
             with self.connection.connect() as conn:
                 rows = conn.execute(
@@ -85,15 +90,18 @@ class InformixSampler(SQASampler):
         if not dropped:
             return columns
 
-        table = self.raw_dataset.__table__
+        table = self._sqa_table()
+        name = f"{table.schema}.{table.name}" if table is not None else "the table"
         logger.info(
-            f"Leaving out of the sample for {table.schema}.{table.name} the columns whose type the "
+            f"Leaving out of the sample for {name} the columns whose type the "
             f"Informix JDBC driver cannot convert and that cannot be cast to text: {', '.join(sorted(dropped))}"
         )
         return [column for column in columns if column.name not in dropped]
 
     def fetch_sample_data(self, columns=None) -> TableData:
         """Read the sample, casting the opaque columns to text on the way out."""
+        if self.sample_query:
+            return self._fetch_sample_data_from_user_query()
         castable = {name for name, ok in self.driver_unfriendly_columns().items() if ok}
         if not castable:
             return super().fetch_sample_data(columns)
@@ -102,7 +110,7 @@ class InformixSampler(SQASampler):
         wanted = None if not columns else {column.name for column in columns}
         sqa_columns = [
             column
-            for column in inspect(dataset).c
+            for column in inspect(dataset).c  # pyright: ignore[reportOptionalMemberAccess]
             if column.name != RANDOM_LABEL and (wanted is None or column.name in wanted)
         ]
         selected = [

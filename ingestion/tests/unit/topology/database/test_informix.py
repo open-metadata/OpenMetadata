@@ -417,11 +417,12 @@ class TestProfilerInterface:
         assert result is None
 
 
-def build_sampler(unfriendly, *, raises=False):
+def build_sampler(unfriendly, *, raises=False, sample_query=None):
     """A sampler whose catalogue lookup returns (column, castable) pairs."""
     sampler = InformixSampler.__new__(InformixSampler)
     sampler._table = SimpleNamespace(__table__=SimpleNamespace(name="t", schema="informix"))
     sampler._driver_unfriendly = None
+    sampler.sample_query = sample_query
 
     connection = MagicMock()
     if raises:
@@ -489,6 +490,16 @@ class TestSampler:
         with patch.object(SQASampler, "fetch_sample_data", return_value="base") as base:
             assert sampler.fetch_sample_data(None) == "base"
         base.assert_called_once()
+
+    def test_user_sample_query_wins_over_the_cast_path(self):
+        """A custom sample query often exists to filter sensitive rows out, so a
+        castable column must not route around it and sample the whole table."""
+        sampler = build_sampler([("d_tagged", True)], sample_query="SELECT * FROM t WHERE public = 't'")
+
+        with patch.object(SQASampler, "_fetch_sample_data_from_user_query", return_value="user") as user_query:
+            assert sampler.fetch_sample_data(None) == "user"
+        user_query.assert_called_once()
+        sampler.connection.connect.assert_not_called()
 
     def test_cast_renders_as_lvarchar(self):
         """The cast has to name a type Informix accepts, or every sample fails."""
