@@ -22,11 +22,18 @@ import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
 const PAGE_SIZE = 5;
 
 /**
- * Domains and data products matching a marketplace query, through NLQ when the
- * toggle is on and plain ES otherwise. The marketplace pages have no list to
- * fall back on, so these results are what the search shows.
+ * Entities matching a marketplace query, through NLQ when the toggle is on and
+ * plain ES otherwise. Scoped to the caller's index: a list page searches only
+ * what its own list holds, the overview spans both.
  */
-export const useMarketplaceEntitySearch = (query: string) => {
+export const useMarketplaceEntitySearch = (
+  query: string,
+  searchIndex: SearchIndex = SearchIndex.MARKETPLACE
+) => {
+  const spansBoth = searchIndex === SearchIndex.MARKETPLACE;
+  const wantsDataProducts =
+    spansBoth || searchIndex === SearchIndex.DATA_PRODUCT;
+  const wantsDomains = spansBoth || searchIndex === SearchIndex.DOMAIN;
   const { isNLPEnabled, isNLPActive } = useSearchStore();
   const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -53,7 +60,7 @@ export const useMarketplaceEntitySearch = (query: string) => {
             query: value,
             pageNumber: INITIAL_PAGING_VALUE,
             pageSize: PAGE_SIZE * 2,
-            searchIndex: SearchIndex.MARKETPLACE,
+            searchIndex,
           });
           if (isStale()) {
             return;
@@ -64,39 +71,47 @@ export const useMarketplaceEntitySearch = (query: string) => {
           const hits = res.hits.hits.map(
             (hit) => hit._source as unknown as { entityType?: string }
           );
+          // Only a combined index needs splitting by type; a scoped one returns
+          // that type alone, and filtering it would depend on a discriminator
+          // the response need not carry.
+          const ofType = (entityType: SearchIndex) =>
+            (spansBoth
+              ? hits.filter((hit) => hit.entityType === entityType)
+              : hits
+            ).slice(0, PAGE_SIZE);
+
           setDataProducts(
-            hits
-              .filter((hit) => hit.entityType === SearchIndex.DATA_PRODUCT)
-              .slice(0, PAGE_SIZE) as unknown as DataProduct[]
+            wantsDataProducts
+              ? (ofType(SearchIndex.DATA_PRODUCT) as unknown as DataProduct[])
+              : []
           );
           setDomains(
-            hits
-              .filter((hit) => hit.entityType === SearchIndex.DOMAIN)
-              .slice(0, PAGE_SIZE) as unknown as Domain[]
+            wantsDomains
+              ? (ofType(SearchIndex.DOMAIN) as unknown as Domain[])
+              : []
           );
         } else {
+          const run = (index: SearchIndex) =>
+            searchQuery({
+              query: value,
+              pageNumber: INITIAL_PAGING_VALUE,
+              pageSize: PAGE_SIZE,
+              searchIndex: index,
+            });
           const [dpRes, domainRes] = await Promise.all([
-            searchQuery({
-              query: value,
-              pageNumber: INITIAL_PAGING_VALUE,
-              pageSize: PAGE_SIZE,
-              searchIndex: SearchIndex.DATA_PRODUCT,
-            }),
-            searchQuery({
-              query: value,
-              pageNumber: INITIAL_PAGING_VALUE,
-              pageSize: PAGE_SIZE,
-              searchIndex: SearchIndex.DOMAIN,
-            }),
+            wantsDataProducts ? run(SearchIndex.DATA_PRODUCT) : undefined,
+            wantsDomains ? run(SearchIndex.DOMAIN) : undefined,
           ]);
           if (isStale()) {
             return;
           }
 
           setDataProducts(
-            dpRes.hits.hits.map((hit) => hit._source) as DataProduct[]
+            (dpRes?.hits.hits.map((hit) => hit._source) ?? []) as DataProduct[]
           );
-          setDomains(domainRes.hits.hits.map((hit) => hit._source) as Domain[]);
+          setDomains(
+            (domainRes?.hits.hits.map((hit) => hit._source) ?? []) as Domain[]
+          );
         }
       } catch {
         if (isStale()) {
@@ -110,7 +125,7 @@ export const useMarketplaceEntitySearch = (query: string) => {
         }
       }
     },
-    [isNLPEnabled, isNLPActive]
+    [isNLPEnabled, isNLPActive, searchIndex, spansBoth, wantsDataProducts, wantsDomains]
   );
 
   useEffect(() => {

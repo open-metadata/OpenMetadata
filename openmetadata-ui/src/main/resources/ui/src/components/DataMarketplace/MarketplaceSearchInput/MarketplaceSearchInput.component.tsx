@@ -26,7 +26,6 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { useSearchStore } from '../../../hooks/useSearchStore';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
 import { ExploreSearchInput } from '../../discovery/explore/ExploreHeader/ExploreSearchInput';
@@ -50,11 +49,21 @@ interface MarketplaceSearchInputProps {
   /** Placeholder text. Defaults to Explore's. */
   placeholder?: string;
   /**
-   * Render matching domains and data products in the popover instead of
-   * Explore's suggestions, so a query can be previewed across both before it is
-   * applied.
+   * Render matching entities in the popover instead of Explore's suggestions,
+   * whose canned prompts are about tables and dashboards and mean nothing here.
    */
   showEntityResults?: boolean;
+  /**
+   * Results the page has already fetched. Supplying them keeps the popover and
+   * the list identical and costs no extra request — they ask the same index the
+   * same question. Without them the popover fetches its own, which is what the
+   * overview does, having no list.
+   */
+  results?: {
+    dataProducts?: DataProduct[];
+    domains?: Domain[];
+    isSearching?: boolean;
+  };
 }
 
 /**
@@ -67,6 +76,7 @@ const MarketplaceSearchInput = ({
   onSearchChange,
   placeholder,
   showEntityResults,
+  results,
 }: MarketplaceSearchInputProps) => {
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
@@ -81,9 +91,15 @@ const MarketplaceSearchInput = ({
     initNLP();
   }, [initNLP]);
 
+  // Held in a ref so the debounce below is built once. The prop chains down to
+  // react-router's `setSearchParams`, whose identity changes on every URL
+  // change - rebuilding the debounce there would cancel it mid-flight.
+  const onSearchChangeRef = useRef(onSearchChange);
+  onSearchChangeRef.current = onSearchChange;
+
   const pushSearch = useCallback(
-    (value: string) => onSearchChange?.(value),
-    [onSearchChange]
+    (value: string) => onSearchChangeRef.current?.(value),
+    []
   );
 
   const debouncedSearch = useMemo(
@@ -106,11 +122,14 @@ const MarketplaceSearchInput = ({
   }, [searchQuery, debouncedSearch]);
 
   useEffect(() => {
-    return () => {
-      debouncedSearch.cancel();
-      debouncedSuggestionSearch.cancel();
-    };
-  }, [debouncedSearch, debouncedSuggestionSearch]);
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
+
+  // Separate from the one above: a shared cleanup would cancel this timer
+  // whenever the other debounce was rebuilt, killing the popover's query.
+  useEffect(() => {
+    return () => debouncedSuggestionSearch.cancel();
+  }, [debouncedSuggestionSearch]);
 
   const handleSearchChange = useCallback(
     (value: string) => {
@@ -157,48 +176,42 @@ const MarketplaceSearchInput = ({
     [isNLPActive, setNLPActive]
   );
 
-  const { dataProducts, domains, isSearching } = useMarketplaceEntitySearch(
-    showEntityResults ? suggestionSearch : ''
+  // Skipped entirely when the page supplies its own results.
+  const fetched = useMarketplaceEntitySearch(
+    showEntityResults && !results ? suggestionSearch : '',
+    searchCriteria
   );
+  const dataProducts = results
+    ? results.dataProducts ?? []
+    : fetched.dataProducts;
+  const domains = results ? results.domains ?? [] : fetched.domains;
+  const isSearching = results
+    ? Boolean(results.isSearching)
+    : fetched.isSearching;
 
-  // Show the pick in the list, but only where the list can hold it: the page
-  // searches one index, so pushing the other type's name there matches nothing
-  // and empties the list instead of taking the user to what they clicked.
-  const applyOrOpen = useCallback(
-    (name: string, path: string, index: SearchIndex) => {
+  // Picking a result opens it, as it does on Explore.
+  const openEntity = useCallback(
+    (path: string) => {
       setIsSearchBoxOpen(false);
-      if (onSearchChange && index === searchCriteria) {
-        debouncedSearch.cancel();
-        setSearchValue(name);
-        onSearchChange(name);
-
-        return;
-      }
       navigate(path, { state: { fromMarketplace: true } });
     },
-    [onSearchChange, searchCriteria, debouncedSearch, navigate]
+    [navigate]
   );
 
   const handleDataProductClick = useCallback(
     (dataProduct: DataProduct) =>
-      applyOrOpen(
-        getEntityName(dataProduct),
+      openEntity(
         `${dataProductBasePath}/${getEncodedFqn(
           dataProduct.fullyQualifiedName ?? ''
-        )}`,
-        SearchIndex.DATA_PRODUCT
+        )}`
       ),
-    [applyOrOpen, dataProductBasePath]
+    [openEntity, dataProductBasePath]
   );
 
   const handleDomainClick = useCallback(
     (domain: Domain) =>
-      applyOrOpen(
-        getEntityName(domain),
-        getDomainDetailsPath(domain.fullyQualifiedName ?? ''),
-        SearchIndex.DOMAIN
-      ),
-    [applyOrOpen]
+      openEntity(getDomainDetailsPath(domain.fullyQualifiedName ?? '')),
+    [openEntity]
   );
 
   return (

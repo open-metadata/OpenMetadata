@@ -204,6 +204,10 @@ const DataProductListPage = ({
         type: t('label.data-product-plural'),
       })}
       searchCriteria={SearchIndex.DATA_PRODUCT}
+      results={{
+        dataProducts: dataProductListing.entities,
+        isSearching: dataProductListing.loading,
+      }}
       searchQuery={dataProductListing.urlState.searchQuery}
       onSearchChange={dataProductListing.handleSearchChange}
     />

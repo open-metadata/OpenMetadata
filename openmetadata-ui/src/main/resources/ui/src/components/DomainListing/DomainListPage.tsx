@@ -121,6 +121,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         type: t('label.domain-plural'),
       })}
       searchCriteria={SearchIndex.DOMAIN}
+      results={{
+        domains: domainListing.entities,
+        isSearching: domainListing.loading,
+      }}
       searchQuery={domainListing.urlState.searchQuery}
       onSearchChange={domainListing.handleSearchChange}
     />

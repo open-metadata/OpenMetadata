@@ -111,28 +111,17 @@ const renderInput = (props: {
 describe('MarketplaceSearchInput', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('shows a same-type pick in the page list instead of navigating', () => {
+  it('opens a pick rather than filtering the page list, as Explore does', () => {
     const onSearchChange = jest.fn();
     renderInput({ searchCriteria: SearchIndex.DOMAIN, onSearchChange });
 
     fireEvent.click(screen.getByTestId('pick-domain'));
 
-    expect(onSearchChange).toHaveBeenCalledWith('Finance');
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('opens a pick the page list cannot hold rather than emptying it', () => {
-    const onSearchChange = jest.fn();
-    renderInput({ searchCriteria: SearchIndex.DOMAIN, onSearchChange });
-
-    // A data product name can never match the domain index behind this list.
-    fireEvent.click(screen.getByTestId('pick-data-product'));
-
-    expect(onSearchChange).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/dataProduct/dp.c360',
+      '/domain/Finance',
       expect.objectContaining({ state: { fromMarketplace: true } })
     );
+    expect(onSearchChange).not.toHaveBeenCalled();
   });
 
   it('opens every pick on a page with no list', () => {

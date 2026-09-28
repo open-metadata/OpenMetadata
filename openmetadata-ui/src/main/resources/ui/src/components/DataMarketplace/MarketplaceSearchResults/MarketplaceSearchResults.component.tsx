@@ -17,6 +17,9 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
+// The classes below live with the search bar these rows were extracted from;
+// they only applied where that component happened to be loaded.
+import '../MarketplaceSearchBar/marketplace-search-bar.less';
 
 interface MarketplaceSearchResultsProps {
   dataProducts: DataProduct[];
