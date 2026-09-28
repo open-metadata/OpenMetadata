@@ -41,11 +41,12 @@ public final class FlowableCharsetMigration {
             AND (
               candidate_table.TABLE_COLLATION <> '%s'
               OR candidate_column.CHARACTER_SET_NAME IN ('utf8', 'utf8mb3')
+              OR candidate_column.COLLATION_NAME <> '%s'
             )
         )
       ORDER BY flowable_table.TABLE_NAME
       """
-          .formatted(FLOWABLE_COLLATION);
+          .formatted(FLOWABLE_COLLATION, FLOWABLE_COLLATION);
   private static final String READ_FOREIGN_KEY_CHECKS = "SELECT @@SESSION.FOREIGN_KEY_CHECKS";
   private static final String DISABLE_FOREIGN_KEY_CHECKS = "SET SESSION FOREIGN_KEY_CHECKS = 0";
   private static final String CONVERT_TABLE_SUFFIX =

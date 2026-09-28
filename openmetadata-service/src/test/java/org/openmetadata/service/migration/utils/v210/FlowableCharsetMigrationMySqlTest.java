@@ -86,6 +86,7 @@ class FlowableCharsetMigrationMySqlTest {
   private static void assertConvertedSchema(final Handle handle) {
     assertEquals(List.of(TARGET_COLLATION), flowableTableCollations(handle));
     assertEquals(List.of("utf8mb4"), flowableColumnCharsets(handle));
+    assertEquals(List.of(TARGET_COLLATION), flowableColumnCollations(handle));
     assertEquals(TARGET_COLLATION, currentDatabaseCollation(handle));
     assertEquals("utf8mb3_general_ci", applicationTableCollation(handle));
     assertEquals(
@@ -115,6 +116,21 @@ class FlowableCharsetMigrationMySqlTest {
               AND LEFT(UPPER(TABLE_NAME), 4) = 'ACT_'
               AND CHARACTER_SET_NAME IS NOT NULL
             ORDER BY CHARACTER_SET_NAME
+            """)
+        .mapTo(String.class)
+        .list();
+  }
+
+  private static List<String> flowableColumnCollations(final Handle handle) {
+    return handle
+        .createQuery(
+            """
+            SELECT DISTINCT COLLATION_NAME
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND LEFT(UPPER(TABLE_NAME), 4) = 'ACT_'
+              AND COLLATION_NAME IS NOT NULL
+            ORDER BY COLLATION_NAME
             """)
         .mapTo(String.class)
         .list();
@@ -169,7 +185,10 @@ class FlowableCharsetMigrationMySqlTest {
   private static void assertReplayAndRepair(final Handle handle) {
     assertEquals(0, FlowableCharsetMigration.alignFlowableTableCharsets(handle));
     handle.execute(
-        "ALTER TABLE ACT_HI_PROCINST CONVERT TO CHARACTER SET utf8mb4 COLLATE " + DRIFT_COLLATION);
+        "ALTER TABLE ACT_HI_PROCINST MODIFY ID_ VARCHAR(64) "
+            + "CHARACTER SET utf8mb4 COLLATE "
+            + DRIFT_COLLATION);
+    assertEquals(List.of(DRIFT_COLLATION, TARGET_COLLATION), flowableColumnCollations(handle));
 
     assertEquals(4, FlowableCharsetMigration.alignFlowableTableCharsets(handle));
     assertConvertedSchema(handle);
