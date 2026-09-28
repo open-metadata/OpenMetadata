@@ -89,6 +89,16 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
+jest.mock(
+  '../../common/RichTextEditor/RichTextEditorPreviewerV1',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ markdown }) => (
+        <span data-testid="previewer">{markdown}</span>
+      ))
+);
+
 jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
   DomainDisplay: jest
     .fn()
@@ -735,6 +745,28 @@ describe('ExploreSearchCard - Highlight functionality', () => {
     );
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ExploreSearchCard - Description markdown stripping', () => {
+  it('strips markdown syntax from description before rendering', () => {
+    renderCard({
+      description: '**bold text** and `code` and [link](http://example.com)',
+    });
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('bold text and code and link');
+    expect(body).not.toHaveTextContent('**bold text**');
+    expect(body).not.toHaveTextContent('`code`');
+  });
+
+  it('renders plain text description as-is', () => {
+    renderCard({ description: 'Simple plain text description' });
+
+    expect(screen.getByTestId('table-body')).toHaveTextContent(
+      'Simple plain text description'
+    );
   });
 });
 

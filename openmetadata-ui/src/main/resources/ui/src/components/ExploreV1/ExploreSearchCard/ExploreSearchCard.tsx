@@ -48,6 +48,7 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -918,7 +919,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         <div className="p-t-sm">
           <TableDataCardBody
-            description={source.description ?? ''}
+            description={stripMarkdown(source.description ?? '')}
             extraInfo={otherDetails}
             tags={showTags ? source.tags : []}
           />
