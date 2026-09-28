@@ -22,8 +22,6 @@ import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
-import java.sql.SQLException;
-import org.jdbi.v3.core.transaction.TransactionException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.rdf.AgentSparqlError;
@@ -68,35 +66,6 @@ class CatalogGenericExceptionMapperTest {
     assertEquals(400, response.getStatus());
     assertTrue(
         response.getEntity() instanceof ErrorMessage, "Neighboring endpoints keep ErrorMessage");
-  }
-
-  @Test
-  void aDatabaseLockConflictIsATemporaryFailureTheCallerCanRetry() {
-    CatalogGenericExceptionMapper mapper = new CatalogGenericExceptionMapper();
-    SQLException deadlock =
-        new SQLException(
-            "Deadlock found when trying to get lock; try restarting transaction", "40001", 1213);
-    SQLException lockWaitTimeout =
-        new SQLException("Lock wait timeout exceeded; try restarting transaction", "40001", 1205);
-
-    assertRetryableConflict(
-        mapper.toResponse(new RuntimeException(deadlock.getMessage(), deadlock)), "Deadlock");
-    assertRetryableConflict(
-        mapper.toResponse(new RuntimeException(lockWaitTimeout.getMessage(), lockWaitTimeout)),
-        "Lock wait timeout");
-    assertRetryableConflict(
-        mapper.toResponse(
-            new TransactionException("rolled back: " + deadlock.getMessage(), deadlock)),
-        "Deadlock");
-  }
-
-  private static void assertRetryableConflict(Response response, String expectedMessage) {
-    assertEquals(503, response.getStatus());
-    assertEquals("1", String.valueOf(response.getHeaderString("Retry-After")));
-    ErrorMessage error = (ErrorMessage) response.getEntity();
-    assertTrue(
-        error.getMessage().contains(expectedMessage),
-        "the database's message must reach the caller");
   }
 
   private static CatalogGenericExceptionMapper mapperForAgentPath() {

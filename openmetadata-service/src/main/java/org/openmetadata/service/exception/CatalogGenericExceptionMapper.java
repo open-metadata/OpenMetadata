@@ -19,7 +19,6 @@ import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.Family;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
@@ -29,7 +28,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.ExceptionMapper;
@@ -38,7 +36,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.sdk.exception.WebServiceException;
-import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.resources.rdf.AgentSparqlTransport;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.security.AuthenticationException;
@@ -49,8 +46,6 @@ import org.slf4j.LoggerFactory;
 
 @Slf4j
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
-  private static final int LOCK_CONFLICT_RETRY_AFTER_SECONDS = 1;
-
   @Context private UriInfo uriInfo;
 
   @Override
@@ -61,9 +56,6 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     // endpoint ever needs this, introduce a mapper extension point instead of a second branch.
     if (AgentSparqlTransport.isAgentSparqlRequest(uriInfo)) {
       return AgentSparqlTransport.errorResponse(ex);
-    }
-    if (DeadlockRetry.isDeadlock(ex)) {
-      return getLockConflictResponse(ex);
     }
     if (ex instanceof RuleValidationException) {
       return getRuleViolationResponse(ex);
@@ -134,19 +126,6 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       builder.header("WWW-Authenticate", "om-auth");
     }
     return builder.build();
-  }
-
-  /**
-   * A deadlock or lock wait timeout is temporary: the database gave up on this request's work to
-   * resolve a lock conflict. 503 with Retry-After tells clients to try again, which the ingestion
-   * client does on its own.
-   */
-  private static Response getLockConflictResponse(Throwable ex) {
-    return Response.status(SERVICE_UNAVAILABLE)
-        .type(APPLICATION_JSON_TYPE)
-        .header(HttpHeaders.RETRY_AFTER, LOCK_CONFLICT_RETRY_AFTER_SECONDS)
-        .entity(new ErrorMessage(SERVICE_UNAVAILABLE.getStatusCode(), ex.getMessage()))
-        .build();
   }
 
   private Response getRuleViolationResponse(Throwable ex) {

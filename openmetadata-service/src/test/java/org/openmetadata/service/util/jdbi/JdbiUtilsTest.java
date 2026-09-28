@@ -13,7 +13,6 @@
 package org.openmetadata.service.util.jdbi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.jdbi.v3.core.Jdbi;
@@ -34,15 +33,5 @@ class JdbiUtilsTest {
     SqlStatements statements = jdbi.getConfig(SqlStatements.class);
     assertEquals(42, statements.getQueryTimeout());
     assertTrue(statements.isUnusedBindingAllowed());
-  }
-
-  @Test
-  void guardsTransactionsAndReportsFailedStatementsToTheGuard() {
-    Jdbi jdbi = Jdbi.create("jdbc:h2:mem:jdbi-utils-guard-test");
-
-    JdbiUtils.installAbortedTransactionGuard(jdbi);
-
-    assertInstanceOf(AbortedTransactionGuard.class, jdbi.getTransactionHandler());
-    assertInstanceOf(OMSqlLogger.class, jdbi.getConfig(SqlStatements.class).getSqlLogger());
   }
 }

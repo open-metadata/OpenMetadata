@@ -127,22 +127,27 @@ class DeadlockRetryTest {
   }
 
   @Test
-  void onlyAWholeTransactionRollbackCountsAsRolledBack() {
-    assertTrue(DeadlockRetry.isTransactionRolledBack(deadlock()), "MySQL deadlock, errno 1213");
+  void onlyAStatementWhoseOwnErrorRolledBackTheTransactionCounts() {
+    SQLException postgresDeadlock = new SQLException("deadlock detected", "40P01");
+    SQLException lockWaitTimeout = new SQLException("Lock wait timeout exceeded", "40001", 1205);
+    SQLException rejectedAfterDeadlock =
+        new SQLException("current transaction is aborted", "25P02", postgresDeadlock);
+
     assertTrue(
-        DeadlockRetry.isTransactionRolledBack(new SQLException("deadlock detected", "40P01")),
-        "Postgres deadlock");
+        DeadlockRetry.rollsBackTransaction((SQLException) deadlock().getCause()),
+        "MySQL deadlock, errno 1213");
+    assertTrue(DeadlockRetry.rollsBackTransaction(postgresDeadlock), "Postgres deadlock");
     assertTrue(
-        DeadlockRetry.isTransactionRolledBack(
-            new SQLException("could not serialize access", "40001")),
+        DeadlockRetry.rollsBackTransaction(new SQLException("could not serialize", "40001")),
         "Postgres serialization failure");
     assertFalse(
-        DeadlockRetry.isTransactionRolledBack(
-            new SQLException("Lock wait timeout exceeded", "40001", 1205)),
+        DeadlockRetry.rollsBackTransaction(lockWaitTimeout),
         "a MySQL lock wait timeout rolls back only its statement, although Connector/J reports"
             + " it as 40001");
     assertFalse(
-        DeadlockRetry.isTransactionRolledBack(new IllegalStateException("unrelated")),
-        "not a database failure");
+        DeadlockRetry.rollsBackTransaction(rejectedAfterDeadlock),
+        "the Postgres driver chains the deadlock into every statement it rejects afterwards");
+    assertTrue(DeadlockRetry.isLockWaitTimeout(lockWaitTimeout), "MySQL errno 1205");
+    assertFalse(DeadlockRetry.isLockWaitTimeout(postgresDeadlock), "not a lock wait timeout");
   }
 }
