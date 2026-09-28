@@ -49,10 +49,10 @@ import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
-  const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const domainListing = useDomainListingData({ enableNlq: isAiMode });
   const { permissions } = usePermissionProvider();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
@@ -107,14 +107,19 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const showHeaderSearch = isAiMode;
 
-  const { searchInputProps } = useListSearchInput({
+  const { searchInputProps, renderSearchInput } = useListSearchInput({
     searchQuery: domainListing.urlState.searchQuery,
     onSearchChange: domainListing.handleSearchChange,
+    enableNlq: isAiMode,
   });
 
-  const headerSearch = showHeaderSearch ? (
-    <Input className="tw:w-72" {...searchInputProps} />
-  ) : undefined;
+  // The centred slot stretches its child; the classic actions row does not.
+  const centeredHeaderSearch = showHeaderSearch
+    ? renderSearchInput()
+    : undefined;
+  const headerSearch = showHeaderSearch
+    ? renderSearchInput('tw:w-72')
+    : undefined;
 
   const canCreateDomain = permissions.domain?.Create || false;
 
@@ -308,7 +313,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             createPermission: canCreateDomain,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
-            search: headerSearch,
+            search: centeredHeaderSearch,
           })
         : pageHeader}
 

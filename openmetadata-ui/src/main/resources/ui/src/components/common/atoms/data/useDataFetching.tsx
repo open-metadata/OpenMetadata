@@ -18,7 +18,7 @@ import {
   Aggregations,
   SearchResponse,
 } from '../../../../interface/search.interface';
-import { searchQuery } from '../../../../rest/searchAPI';
+import { nlqSearch, searchQuery } from '../../../../rest/searchAPI';
 import { domainBuildESQuery } from '../../../../utils/DomainFilterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
@@ -27,6 +27,8 @@ export interface DataFetchingConfig<T> {
   baseFilter?: string;
   pageSize?: number;
   transform?: (data: SearchResponse<SearchIndex>) => T[];
+  /** Use the NLQ endpoint instead of plain ES. Ignored for an empty term. */
+  useNlq?: boolean;
 }
 
 export interface DataFetchingResult<T> {
@@ -52,7 +54,13 @@ export const useDataFetching = <T extends { id: string }>(
   const [totalEntities, setTotalEntities] = useState(0);
   const [aggregations, setAggregations] = useState<Aggregations | null>(null);
 
-  const { searchIndex, baseFilter = '', pageSize = 10, transform } = config;
+  const {
+    searchIndex,
+    baseFilter = '',
+    pageSize = 10,
+    transform,
+    useNlq = false,
+  } = config;
 
   // Default transform function
   const defaultTransform = useCallback(
@@ -85,7 +93,9 @@ export const useDataFetching = <T extends { id: string }>(
         // Build Elasticsearch query with filters
         const esQuery = buildESQuery(filters);
 
-        const response = await searchQuery({
+        const searchRequest = useNlq && searchTerm ? nlqSearch : searchQuery;
+
+        const response = await searchRequest({
           query: searchTerm || '',
           pageNumber: validPage,
           pageSize,
@@ -102,7 +112,8 @@ export const useDataFetching = <T extends { id: string }>(
         // Update state
         setEntities(transformedEntities);
         setTotalEntities(total);
-        setAggregations(responseAggregations);
+        // NLQ may omit aggregations; dropping them would empty the filters.
+        setAggregations((previous) => responseAggregations ?? previous);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Search failed'));
@@ -114,7 +125,7 @@ export const useDataFetching = <T extends { id: string }>(
         setLoading(false);
       }
     },
-    [searchIndex, pageSize, transformData, buildESQuery]
+    [searchIndex, pageSize, transformData, buildESQuery, useNlq]
   );
 
   // Refetch function

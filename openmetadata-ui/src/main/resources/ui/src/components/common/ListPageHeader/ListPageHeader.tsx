@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, PageLayout } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  PageLayout,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,17 +43,43 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
     </Button>
   ) : null;
 
+  // Search centres in the space the title leaves; 35vw matches Explore.
+  const centeredHeaderLayout = (
+    <div
+      className="tw:flex tw:w-full tw:items-center tw:gap-4"
+      data-testid="list-page-header-layout">
+      <div className="tw:shrink-0" data-testid="list-page-header-title">
+        <Typography as="h3" size="text-xl" weight="semibold">
+          {t(titleKey)}
+        </Typography>
+        {subtitleKey && (
+          <Typography
+            className="tw:whitespace-nowrap"
+            color="secondary"
+            size="text-sm">
+            {t(subtitleKey)}
+          </Typography>
+        )}
+      </div>
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4">
+        <div
+          className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
+          data-testid="list-page-header-search">
+          {search}
+        </div>
+      </div>
+      <div className="tw:shrink-0" data-testid="list-page-header-actions-group">
+        {addButton}
+      </div>
+    </div>
+  );
+
   return (
     <PageLayout.PageHeader
       actions={
         // PageLayout.PageHeader renders its actions box on any truthy value, so keep this
         // undefined when there is nothing to show rather than passing a fragment.
-        search || addButton ? (
-          <>
-            {search}
-            {addButton}
-          </>
-        ) : undefined
+        !search && addButton ? addButton : undefined
       }
       breadcrumb={
         <HeaderBreadcrumb
@@ -68,8 +98,8 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
       }
       className="tw:mb-4"
       data-testid="list-page-header"
-      subtitle={subtitleKey ? t(subtitleKey) : undefined}
-      title={t(titleKey)}
+      subtitle={search || !subtitleKey ? undefined : t(subtitleKey)}
+      title={search ? centeredHeaderLayout : t(titleKey)}
       variant="gradient"
     />
   );

@@ -45,7 +45,7 @@ const MarketplaceSearchBar = ({
   compact,
 }: {
   isEditView?: boolean;
-  /** Header-embedded sizing: 36px control height, no bottom margin. */
+  /** Header-embedded sizing: 44px control height, no bottom margin. */
   compact?: boolean;
 }) => {
   const { t } = useTranslation();
@@ -324,7 +324,7 @@ const MarketplaceSearchBar = ({
           autoComplete="off"
           data-testid="marketplace-search-input"
           fontSize="sm"
-          inputClassName="tw:!pl-11"
+          inputClassName={`tw:!pl-11${compact ? ' tw:!py-3' : ''}`}
           isDisabled={isEditView}
           placeholder={t('label.search-for-type', {
             type:

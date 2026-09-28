@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, PageLayout, Typography } from '@openmetadata/ui-core-components';
+import { PageLayout, Typography } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
@@ -31,32 +31,33 @@ import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
 export const MarketplaceOverviewHeader: FC = () => {
   const { t } = useTranslation();
 
-  // PageHeader's title slot owns the full content width. Keeping the text and
-  // controls in one row mirrors Explore and lets the search center correctly.
+  // Same row as the marketplace list-page headers (`ListPageHeader`).
   const headerLayout = (
-    <Box
-      align="start"
-      className="tw:w-full tw:min-w-0 tw:flex-1"
-      data-testid="marketplace-header-layout"
-      direction="row"
-      gap={4}>
-      <div className="tw:shrink-0">
+    <div
+      className="tw:flex tw:w-full tw:items-center tw:gap-4"
+      data-testid="marketplace-header-layout">
+      <div className="tw:shrink-0" data-testid="marketplace-header-title">
         <Typography as="h3" size="text-xl" weight="semibold">
           {t('label.data-marketplace')}
         </Typography>
-        <Typography className="tw:text-secondary" size="text-sm">
+        <Typography
+          className="tw:whitespace-nowrap"
+          color="secondary"
+          size="text-sm">
           {t('message.discover-data-products-subtitle')}
         </Typography>
       </div>
-      <div
-        className="tw:mx-auto tw:flex tw:w-full tw:max-w-5xl tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4 tw:px-8"
-        data-testid="marketplace-actions-group">
-        <div className="tw:w-full tw:min-w-0 tw:flex-1">
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4">
+        <div
+          className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
+          data-testid="marketplace-header-search">
           <MarketplaceSearchBar compact />
         </div>
+      </div>
+      <div className="tw:shrink-0" data-testid="marketplace-actions-group">
         <AddNewMenu />
       </div>
-    </Box>
+    </div>
   );
 
   return (

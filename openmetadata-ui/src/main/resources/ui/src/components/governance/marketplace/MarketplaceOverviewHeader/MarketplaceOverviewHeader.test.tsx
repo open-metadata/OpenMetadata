@@ -109,35 +109,24 @@ describe('MarketplaceOverviewHeader', () => {
     expect(screen.getByTestId('hs-actions')).toBeEmptyDOMElement();
   });
 
-  it('centers the search and Add New button in one constrained group', () => {
+  it('lays the row out like the marketplace list-page headers', () => {
     render(<MarketplaceOverviewHeader />);
 
-    const actionsGroup = screen.getByTestId('marketplace-actions-group');
-    const searchBar = screen.getByTestId('marketplace-search-bar');
-    const addNewMenu = screen.getByTestId('add-new-menu');
+    const searchSlot = screen.getByTestId('marketplace-header-search');
 
-    expect(screen.getByTestId('marketplace-header-layout')).toHaveClass(
-      'tw:w-full',
-      'tw:min-w-0',
-      'tw:flex-1'
+    expect(searchSlot).toContainElement(
+      screen.getByTestId('marketplace-search-bar')
     );
-    expect(actionsGroup).toContainElement(searchBar);
-    expect(actionsGroup).toContainElement(addNewMenu);
-    expect(actionsGroup).toHaveClass(
-      'tw:flex',
-      'tw:w-full',
-      'tw:max-w-5xl',
-      'tw:min-w-0',
-      'tw:flex-1',
-      'tw:items-center',
-      'tw:gap-4',
-      'tw:mx-auto',
-      'tw:px-8'
+    expect(searchSlot).toHaveClass('tw:mx-auto', 'tw:max-w-[35vw]');
+    expect(screen.getByTestId('marketplace-actions-group')).toContainElement(
+      screen.getByTestId('add-new-menu')
     );
-    expect(searchBar.parentElement).toHaveClass(
-      'tw:w-full',
-      'tw:min-w-0',
-      'tw:flex-1'
+    expect(
+      screen.getByTestId('marketplace-actions-group')
+    ).not.toContainElement(screen.getByTestId('marketplace-search-bar'));
+    // shrink-0 keeps the subtitle on one line.
+    expect(screen.getByTestId('marketplace-header-title')).toHaveClass(
+      'tw:shrink-0'
     );
   });
 });

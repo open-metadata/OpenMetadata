@@ -141,10 +141,10 @@ const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
-  const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -190,14 +190,19 @@ const DataProductListPage = ({
 
   const showHeaderSearch = isAiMode;
 
-  const { searchInputProps } = useListSearchInput({
+  const { searchInputProps, renderSearchInput } = useListSearchInput({
     searchQuery: dataProductListing.urlState.searchQuery,
     onSearchChange: dataProductListing.handleSearchChange,
+    enableNlq: isAiMode,
   });
 
-  const headerSearch = showHeaderSearch ? (
-    <Input className="tw:w-72" {...searchInputProps} />
-  ) : undefined;
+  // The centred slot stretches its child; the classic actions row does not.
+  const centeredHeaderSearch = showHeaderSearch
+    ? renderSearchInput()
+    : undefined;
+  const headerSearch = showHeaderSearch
+    ? renderSearchInput('tw:w-72')
+    : undefined;
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
@@ -404,7 +409,7 @@ const DataProductListPage = ({
             createPermission: permissions.dataProduct?.Create || false,
             count: dataProductListing.totalEntities,
             breadcrumb: headerBreadcrumb,
-            search: headerSearch,
+            search: centeredHeaderSearch,
           })
         : pageHeader}
     </>
