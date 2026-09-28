@@ -37,11 +37,11 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 class FlowableCharsetMigrationTest {
   private static final String OPENMETADATA_DATABASE_DDL =
-      "CREATE DATABASE openmetadata_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;";
+      "CREATE DATABASE openmetadata_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;";
   private static final String IDEMPOTENT_OPENMETADATA_DATABASE_DDL =
-      "CREATE DATABASE IF NOT EXISTS openmetadata_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;";
+      "CREATE DATABASE IF NOT EXISTS openmetadata_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;";
   private static final String ALTER_CURRENT_DATABASE =
-      "ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+      "ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci";
 
   @Test
   void mysqlBootstrapUsesAnExplicitUtf8mb4Default() throws IOException {
@@ -119,7 +119,7 @@ class FlowableCharsetMigrationTest {
   private static String conversionStatement(final String tableName) {
     return "ALTER TABLE `"
         + tableName
-        + "` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+        + "` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci";
   }
 
   private static void assertContains(final Path path, final String expected) throws IOException {

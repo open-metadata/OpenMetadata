@@ -30,8 +30,8 @@ import org.testcontainers.utility.DockerImageName;
 class FlowableCharsetMigrationMySqlTest {
   private static final String DATABASE = "legacy_openmetadata";
   private static final String PASSWORD = "flowable-test";
-  private static final String TARGET_COLLATION = "utf8mb4_unicode_ci";
-  private static final String DRIFT_COLLATION = "utf8mb4_0900_ai_ci";
+  private static final String TARGET_COLLATION = "utf8mb4_0900_ai_ci";
+  private static final String DRIFT_COLLATION = "utf8mb4_unicode_ci";
 
   @Container
   static final GenericContainer<?> MYSQL =
@@ -188,7 +188,7 @@ class FlowableCharsetMigrationMySqlTest {
         "ALTER TABLE ACT_HI_PROCINST MODIFY ID_ VARCHAR(64) "
             + "CHARACTER SET utf8mb4 COLLATE "
             + DRIFT_COLLATION);
-    assertEquals(List.of(DRIFT_COLLATION, TARGET_COLLATION), flowableColumnCollations(handle));
+    assertEquals(List.of(TARGET_COLLATION, DRIFT_COLLATION), flowableColumnCollations(handle));
 
     assertEquals(4, FlowableCharsetMigration.alignFlowableTableCharsets(handle));
     assertConvertedSchema(handle);
