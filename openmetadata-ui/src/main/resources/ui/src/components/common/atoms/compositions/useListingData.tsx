@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useQuickFilterLabels } from '../../../../hooks/useQuickFilterLabels';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
@@ -112,7 +113,31 @@ export const useListingData = <
     onCustomAddClick,
   });
 
+  // Keep-alive keeps a visited listing mounted while another is on screen, and
+  // every listing reads the same `q` param — so without this a hidden page
+  // re-queries its own index on each keystroke and throws the answer away.
+  const isRouteVisible = useIsRouteVisible();
+  const lastFetchedRef = useRef<string>('');
+
   useEffect(() => {
+    if (!isRouteVisible) {
+      return;
+    }
+    // Becoming visible must not refetch what is already on screen, so compare
+    // against what was actually last fetched rather than just reacting to the
+    // visibility flip.
+    const signature = JSON.stringify([
+      urlState.currentPage,
+      urlState.searchQuery,
+      urlState.filters,
+      urlState.pageSize,
+      useNlq,
+    ]);
+    if (signature === lastFetchedRef.current) {
+      return;
+    }
+    lastFetchedRef.current = signature;
+
     dataFetching.searchEntities(
       urlState.currentPage,
       urlState.searchQuery,
@@ -124,6 +149,7 @@ export const useListingData = <
     urlState.filters,
     urlState.pageSize,
     useNlq,
+    isRouteVisible,
     // Note: dataFetching.searchEntities intentionally excluded - we always want the latest version
   ]);
 
