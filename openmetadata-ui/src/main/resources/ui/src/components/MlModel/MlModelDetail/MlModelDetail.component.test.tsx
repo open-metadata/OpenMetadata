@@ -19,11 +19,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Paging } from '../../../generated/type/paging';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';

@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Empty,
-  Popover,
-  Radio,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
+import { Button, Empty, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import {
   lazy,
@@ -283,29 +275,32 @@ const Certification = ({
       content={
         <FocusTrapWithContainer active={popoverProps?.open || false}>
           <Card
-            bordered={false}
-            className="certification-card"
-            data-testid="certification-cards"
-            title={
-              <Space className="w-full justify-between">
-                <div className="flex gap-2 items-center w-full">
-                  <CertificationIcon height={18} width={18} />
-                  <Typography.Text className="m-b-0 font-semibold text-sm">
-                    {t('label.edit-entity', {
-                      entity: t('label.certification'),
-                    })}
+            className="certification-card tw:overflow-visible tw:border-0 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
+            data-testid="certification-cards">
+            <div className="tw:-mb-px tw:flex tw:min-h-12 tw:w-full tw:items-center tw:text-base tw:leading-[1.5715] tw:font-medium tw:text-black/85 tw:dark:text-primary">
+              <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
+                <Space className="w-full justify-between">
+                  <div className="flex gap-2 items-center w-full">
+                    <CertificationIcon height={18} width={18} />
+                    <Typography.Text className="m-b-0 font-semibold text-sm">
+                      {t('label.edit-entity', {
+                        entity: t('label.certification'),
+                      })}
+                    </Typography.Text>
+                  </div>
+                  <Typography.Text
+                    className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
+                    data-testid="clear-certification"
+                    tabIndex={0}
+                    onClick={() => updateCertificationData()}
+                    onKeyDown={handleKeyboardActivation(
+                      updateCertificationData
+                    )}>
+                    {t('label.clear')}
                   </Typography.Text>
-                </div>
-                <Typography.Text
-                  className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
-                  data-testid="clear-certification"
-                  tabIndex={0}
-                  onClick={() => updateCertificationData()}
-                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
-                  {t('label.clear')}
-                </Typography.Text>
-              </Space>
-            }>
+                </Space>
+              </div>
+            </div>
             <Spin
               indicator={<Loader size="small" />}
               spinning={isLoadingCertificationData}>

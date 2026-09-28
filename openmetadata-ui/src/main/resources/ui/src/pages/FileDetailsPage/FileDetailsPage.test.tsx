@@ -17,12 +17,10 @@ import { MemoryRouter, useNavigate } from 'react-router-dom';
 
 import { act } from 'react';
 import { ROUTES } from '../../constants/constants';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { File } from '../../generated/entity/data/file';
 import { DriveServiceType } from '../../generated/entity/services/driveService';
 import { useApplicationStore } from '../../hooks/useApplicationStore';

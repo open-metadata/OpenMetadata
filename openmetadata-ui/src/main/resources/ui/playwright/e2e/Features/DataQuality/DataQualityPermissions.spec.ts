@@ -314,6 +314,16 @@ test.describe(
         permissionsPromise,
         tablePermissionsPromise,
       ]);
+
+      // The list response resolving is not the same as its rows being on
+      // screen. Most tests below reach straight for `action-dropdown-<name>`,
+      // which exists only once that row has rendered, so gate it here instead
+      // of leaving each of them to race the render. Every caller is a user who
+      // can see the test case; the negative cases are about the controls on
+      // the row, never the row itself.
+      await expect(
+        page.getByTestId(table.testCasesResponseData[0].name)
+      ).toBeVisible();
     };
 
     test.describe('Standard Roles (Negative Scenarios)', () => {
@@ -596,7 +606,8 @@ test.describe(
         const testCaseDetailsPromise =
           waitForTestCaseDetailsResponse(viewBasicPage);
         await viewBasicPage.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}`
+          `/test-case/${encodeURIComponent(testCaseFqn)}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetailsPromise;
         await verifyTestCaseLastRunBanner(viewBasicPage, 'not-run-yet');
