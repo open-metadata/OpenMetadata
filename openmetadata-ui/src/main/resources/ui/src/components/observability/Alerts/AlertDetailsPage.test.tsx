@@ -33,7 +33,7 @@ import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockNavigate = jest.fn();
 const mockUseAlertDetailsData = jest.fn();
-const mockUseObservabilityAlertForm = jest.fn();
+const mockUseAlertFormData = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
 
 jest.mock('./NotificationTemplateUtils', () => ({
@@ -56,13 +56,9 @@ jest.mock('../../../hooks/observability/alerts/useAlertDetailsData', () => ({
   useAlertDetailsData: (params: unknown) => mockUseAlertDetailsData(params),
 }));
 
-jest.mock(
-  '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm',
-  () => ({
-    useObservabilityAlertForm: (params: unknown) =>
-      mockUseObservabilityAlertForm(params),
-  })
-);
+jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+  useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
+}));
 
 jest.mock('../../../utils/AlertsClassBase', () => ({
   __esModule: true,
@@ -438,7 +434,7 @@ describe('AlertDetailsPage', () => {
     });
     mockGetModifiedAlertDataForForm.mockReturnValue(modifiedAlert);
     mockUseAlertDetailsData.mockReturnValue(getDetailsState());
-    mockUseObservabilityAlertForm.mockReturnValue(getFormState());
+    mockUseAlertFormData.mockReturnValue(getFormState());
   });
 
   afterEach(() => queryClient.clear());
@@ -614,7 +610,7 @@ describe('AlertDetailsPage', () => {
     it('loads the alert as a notification alert', () => {
       renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
 
-      expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith(
+      expect(mockUseAlertFormData).toHaveBeenCalledWith(
         expect.objectContaining({ alertType: AlertType.Notification })
       );
     });
@@ -664,7 +660,7 @@ describe('AlertDetailsPage', () => {
   });
 
   it('shows the template section when a template widget is registered', () => {
-    mockUseObservabilityAlertForm.mockReturnValue({
+    mockUseAlertFormData.mockReturnValue({
       ...getFormState(),
       extraFormWidgets: { NotificationTemplate: () => null },
     });
