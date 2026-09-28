@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy import types as sqltypes
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -31,6 +31,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     search_cache,
     search_table_entities,
 )
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.starrocks.lineage import (
     StarRocksLineageSource,
 )
@@ -188,7 +189,7 @@ class TestStarRocksIcebergMapping(TestCase):
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
 
 
-class TestStarRocksDeltaLakeMapping(TestCase):
+class TestStarRocksDeltaLakeDetection:
     """`ENGINE` for an external catalog table is the catalog type, upper-cased.
 
     Verified on StarRocks 3.2.16 against a `deltalake` external catalog:
@@ -196,26 +197,29 @@ class TestStarRocksDeltaLakeMapping(TestCase):
     `DELTALAKE` / `44454C54414C414B45`.
     """
 
-    def test_delta_lake_relkind_mapping(self):
-        from metadata.generated.schema.entity.data.table import TableType
-        from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
+    @staticmethod
+    def _source(rows):
+        source = Mock()
+        source.connection.execute.return_value = rows
+        return source
 
-        assert RELKIND_MAP["DELTALAKE"] == TableType.DeltaLake
+    @pytest.mark.parametrize(
+        "engine, expected",
+        [
+            ("DELTALAKE", TableType.DeltaLake),
+            # StarRocks emits upper case; anything else must fall through to the default
+            ("DeltaLake", TableType.Regular),
+            ("ICEBERG", TableType.Iceberg),
+            ("HIVE", TableType.External),
+            ("TABLE", TableType.Regular),
+        ],
+    )
+    def test_engine_decides_the_table_type(self, engine, expected):
+        source = self._source([("delta_sales", engine)])
 
-    def test_delta_lake_key_is_upper_case_only(self):
-        """StarRocks emits `DELTALAKE`; a mixed-case lookup must not resolve."""
-        from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
+        result = StarRocksSource.query_table_names_and_types(source, "delta_schema")
 
-        assert "DeltaLake" not in RELKIND_MAP
-        assert "deltalake" not in RELKIND_MAP
-
-    def test_delta_lake_does_not_disturb_existing_mappings(self):
-        from metadata.generated.schema.entity.data.table import TableType
-        from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
-
-        assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
-        assert RELKIND_MAP["HIVE"] == TableType.External
-        assert RELKIND_MAP["TABLE"] == TableType.Regular
+        assert result == [TableNameAndType(name="delta_sales", type_=expected)]
 
 
 mock_starrocks_lineage_config = {
