@@ -667,6 +667,7 @@ class SnowflakeSource(
                         tag_name=row[1],
                         classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                         tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                        entity_fqn=entity_fqn,
                     )
                     if tag is not None:
                         self.attach_tag(entity_fqn=entity_fqn, tag=tag)
@@ -690,6 +691,7 @@ class SnowflakeSource(
                             tag_name=tag_info["tag_value"],
                             classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                             tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                            entity_fqn=schema_fqn,
                         )
                         if tag is not None:
                             self.attach_tag(entity_fqn=schema_fqn, tag=tag)
@@ -728,6 +730,7 @@ class SnowflakeSource(
                     tag_name=tag_info["tag_value"],
                     classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                     tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                    entity_fqn=database_fqn,
                 )
                 if tag is not None:
                     self.attach_tag(entity_fqn=database_fqn, tag=tag)
