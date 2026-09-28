@@ -43,7 +43,7 @@ const test = base.extend<{
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -52,7 +52,7 @@ const test = base.extend<{
   userAPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userA.login(page);
+      await userA.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -61,7 +61,7 @@ const test = base.extend<{
   userBPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userB.login(page);
+      await userB.signIn(page);
       await use(page);
     } finally {
       await page.close();
