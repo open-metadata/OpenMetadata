@@ -359,11 +359,12 @@ class OracleUnitTest(TestCase):
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = '{schema}'"))
+        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = :schema"))
 
         executed_query = str(mock_conn.execute.call_args[0][0])
-        assert "SAMPLE_SCHEMA" in executed_query
-        assert "sample_schema" not in executed_query
+        parameters = mock_conn.execute.call_args.args[1]
+        assert "SAMPLE_SCHEMA" not in executed_query
+        assert parameters == {"schema": "SAMPLE_SCHEMA"}
 
 
 class TestOraclePreserveIdentifierCase:
@@ -410,11 +411,30 @@ class TestOraclePreserveIdentifierCase:
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = '{schema}'"))
+        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = :schema"))
 
         executed_query = str(mock_conn.execute.call_args[0][0])
-        assert "sample_Schema" in executed_query
-        assert "SAMPLE_SCHEMA" not in executed_query
+        parameters = mock_conn.execute.call_args.args[1]
+        assert "sample_Schema" not in executed_query
+        assert parameters == {"schema": "sample_Schema"}
+
+    def test_stored_procedure_schema_is_bound(self):
+        schema = "sample' OR 1=1 --"
+        self.oracle.context.get().__dict__["database_schema"] = schema
+        mock_engine = MagicMock()
+        self.oracle.engine = mock_engine
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        list(self.oracle._get_stored_procedures_internal(ORACLE_GET_STORED_PROCEDURES))
+
+        statement, parameters = mock_conn.execute.call_args.args
+        assert schema not in str(statement)
+        assert parameters == {"schema": schema}
 
     def test_get_indexes_preserve_case_uppercase_row_keys(self):
         """get_indexes_preserve_case handles thick-mode UPPERCASE result row keys (e.g. INDEX_NAME)."""

@@ -26,6 +26,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
@@ -50,13 +51,8 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   handleRelatedEntitiesUpdate,
 }) => {
   const { t } = useTranslation();
-  const {
-    entityRules,
-    isRulesLoaded,
-    data,
-    onUpdate,
-    permissions: genericPermissions,
-  } = useGenericContext<KnowledgePage>();
+  const { entityRules, isRulesLoaded, data, onUpdate } =
+    useGenericContext<KnowledgePage>();
 
   const handleDataProductsSave = useCallback(
     async (selectedDataProducts: DataProduct[]) => {
@@ -78,9 +74,20 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
     [data, onUpdate]
   );
 
-  const hasDataProductsPermission = useMemo(() => {
-    return genericPermissions?.EditAll && !data?.deleted;
-  }, [genericPermissions?.EditAll, data?.deleted]);
+  // Named-flag derivation (Task 8 sweep): the `permissions` prop and useGenericContext()'s own
+  // `permissions` are the same object here — this component's sole caller
+  // (KnowledgePageDetailComponent.tsx) passes the identical `permissions` value to both
+  // GenericProvider and this component — so one derivation off the prop covers both the old
+  // `genericPermissions?.EditAll` (now `canEditAll`) and the old `permissions.EditAll ||
+  // permissions.EditTags` reads (now `canEditTags`, the same explicit-deny-wins fix as the
+  // sanctioned canViewBasic precedent, Task 6 Finding 1). `deleted` comes from `data?.deleted`
+  // (context), matching the one old usage that did gate on it (`hasDataProductsPermission`);
+  // the tags/related-assets reads gain the same deleted-gating for consistency, matching the
+  // hook's "soft-deleted entity is read-only" design intent.
+  const { canEditAll, canEditTags } = useMemo(
+    () => getDerivedPermissionFlags(permissions, data?.deleted),
+    [permissions, data?.deleted]
+  );
 
   return (
     <Card
@@ -92,8 +99,8 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
             newLook
             activeDomains={data?.domains ?? []}
             dataProducts={data?.dataProducts ?? []}
-            hasPermission={hasDataProductsPermission}
-            multiple={entityRules?.canAddMultipleDataProducts}
+            hasPermission={canEditAll}
+            multiple={isRulesLoaded && entityRules?.canAddMultipleDataProducts}
             requireDomainForDataProduct={
               !isRulesLoaded || entityRules?.requireDomainForDataProduct
             }
@@ -105,7 +112,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
         <TagsContainerV2
           newLook
           displayType={DisplayType.POPOVER}
-          permission={permissions.EditAll || permissions.EditTags}
+          permission={canEditTags}
           selectedTags={tags}
           showTaskHandler={false}
           tagType={TagSource.Classification}
@@ -115,7 +122,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
         <TagsContainerV2
           newLook
           displayType={DisplayType.POPOVER}
-          permission={permissions.EditAll || permissions.EditTags}
+          permission={canEditTags}
           selectedTags={tags}
           showTaskHandler={false}
           tagType={TagSource.Glossary}
@@ -123,7 +130,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
         />
 
         <RelatedDataAssets
-          hasPermission={permissions.EditAll}
+          hasPermission={canEditAll}
           relatedDataAssets={knowledgePage?.['relatedEntities']}
           onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
         />

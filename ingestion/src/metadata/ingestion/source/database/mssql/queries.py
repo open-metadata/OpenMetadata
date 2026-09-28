@@ -33,8 +33,8 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
-          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
           AND p.objtype != 'Prepared'
           {filters}
       ORDER BY s.last_execution_time DESC
@@ -64,8 +64,8 @@ MSSQL_SQL_STATEMENT_CURRENT_DB = textwrap.dedent(
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
           AND t.dbid = DB_ID()
-          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
           AND p.objtype != 'Prepared'
           {filters}
       ORDER BY s.last_execution_time DESC
@@ -110,8 +110,8 @@ MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
           AND rs.last_execution_time BETWEEN '{start_time}' AND '{end_time}'
         GROUP BY q.query_id, qt.query_sql_text
       ) AS t
-      WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      WHERE t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+        AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
         {filters}
       ORDER BY t.start_time DESC
 """
@@ -120,7 +120,9 @@ MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
 MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT obj.name AS table_name,
-        ep.value AS table_comment,
+        /* sql_variant, which FreeTDS hands back as bytes: the cast the other
+           comment queries already carry is what keeps pymssql returning text. */
+        CAST(ep.value AS NVARCHAR(MAX)) AS table_comment,
         s.name AS "schema"
 FROM sys.objects AS obj
 LEFT JOIN sys.extended_properties AS ep
@@ -345,7 +347,8 @@ SELECT
   ROUTINE_BODY AS language,
   l.definition AS definition
 FROM INFORMATION_SCHEMA.ROUTINES r
-JOIN sys.procedures p ON p.name = r.ROUTINE_NAME 
+JOIN sys.procedures p ON p.name = r.ROUTINE_NAME
+JOIN sys.schemas sch ON p.schema_id = sch.schema_id AND sch.name = r.ROUTINE_SCHEMA
 JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
@@ -398,8 +401,8 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
   CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
   INNER JOIN sys.databases db
     ON db.database_id = t.dbid
-  WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  WHERE t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+    AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
     AND p.objtype NOT IN ('Prepared', 'Proc')
     AND t.dbid = DB_ID()
     AND s.last_execution_time > '{start_date}'
@@ -425,6 +428,20 @@ JOIN Q_HISTORY Q
 order by PROCEDURE_START_TIME desc
 ;
     """  # noqa: W291
+)
+
+MSSQL_GET_INDEXED_VIEWS = textwrap.dedent(
+    """
+SELECT v.name AS view_name
+FROM sys.views v
+JOIN sys.schemas s
+    ON s.schema_id = v.schema_id
+JOIN sys.indexes i
+    ON i.object_id = v.object_id
+WHERE s.name = :schema_name
+  AND i.type = 1
+  AND i.is_unique = 1
+"""
 )
 
 MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state, readonly_reason FROM sys.database_query_store_options"

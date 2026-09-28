@@ -13,12 +13,19 @@ Hive source methods.
 """
 
 import traceback
+from typing import cast
 
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
+from sqlalchemy.engine.interfaces import ReflectedColumn
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -41,6 +48,7 @@ from metadata.ingestion.source.database.hive.utils import (
     get_view_names_older_versions,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 
 logger = ingestion_logger()
 
@@ -49,6 +57,7 @@ HiveDialect.get_table_comment = get_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
+_RAW_COLUMNS_CACHE_MAX = 512
 
 
 class HiveSource(CommonDbSourceService):
@@ -66,6 +75,40 @@ class HiveSource(CommonDbSourceService):
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
+
+    def _columns_cache(self) -> "LRUCache[list[ReflectedColumn]]":
+        # Bounded + thread-safe (table processing is multi-threaded). Lazily
+        # created so callers work even without prepare() (e.g. unit tests).
+        if getattr(self, "_raw_hive_columns", None) is None:
+            self._raw_hive_columns: LRUCache[list[ReflectedColumn]] = LRUCache(_RAW_COLUMNS_CACHE_MAX)
+        return self._raw_hive_columns
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType | None = None,
+    ) -> list[ReflectedColumn]:
+        """
+        Cache raw dialect column dicts (including ``is_partition``) so
+        ``get_table_partition_details`` can reuse them without a second DESCRIBE.
+        """
+        cache = self._columns_cache()
+        key = f"{schema_name}.{table_name}"
+        try:
+            # Read in one locked operation: a check-then-get would let a concurrent
+            # eviction drop the key in between and raise on the read.
+            return cache.get(key)
+        except KeyError:
+            pass
+        columns = cast(
+            "list[ReflectedColumn]",
+            inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name),
+        )
+        cache.put(key, columns)
+        return columns
 
     def _parse_version(self, version: str) -> tuple:
         if "-" in version:
@@ -94,6 +137,7 @@ class HiveSource(CommonDbSourceService):
                 HiveDialect.get_view_names = get_view_names_older_versions
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
+        self._columns_cache()
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -118,3 +162,46 @@ class HiveSource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> tuple[bool, TablePartition | None]:
+        """
+        Return Hive partition keys from DESCRIBE's Partition Information section.
+
+        Prefer raw column dicts cached by ``_get_columns_internal`` (already flagged
+        with ``is_partition``) so yield_table does not DESCRIBE twice per table.
+        """
+        try:
+            cache = self._columns_cache()
+            key = f"{schema_name}.{table_name}"
+            try:
+                # Single locked read: a check-then-get would let a concurrent
+                # eviction drop the key between the check and the read.
+                columns = cache.get(key)
+            except KeyError:
+                columns = cast(
+                    "list[ReflectedColumn]",
+                    inspector.get_columns(table_name=table_name, schema=schema_name),
+                )
+                cache.put(key, columns)
+
+            partition_columns = [col for col in columns if isinstance(col, dict) and col.get("is_partition")]
+            if not partition_columns:
+                return False, None
+            partition_details = TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=col["name"],
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                    for col in partition_columns
+                ]
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch partition details for %s.%s: %s", schema_name, table_name, exc)
+            return False, None
+        else:
+            return True, partition_details

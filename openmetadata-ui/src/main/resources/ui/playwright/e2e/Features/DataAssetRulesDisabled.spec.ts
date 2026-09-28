@@ -117,6 +117,7 @@ const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  createdDataProducts.length = 0;
   test.slow(true);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -221,10 +222,9 @@ test.describe(
         await teamsSearchBar.fill(teamName);
         await searchUser;
 
-        const ownerItem = page.getByRole('listitem', {
-          name: teamName,
-          exact: true,
-        });
+        const ownerItem = page
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: teamName });
 
         await ownerItem.waitFor({ state: 'visible' });
         await ownerItem.click();
@@ -232,7 +232,7 @@ test.describe(
           `/api/v1/${entity.endpoint}/*`
         );
         await page
-          .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+          .locator('[data-testid="owner-select-teams-panel"]')
           .getByTestId('selectable-list-update-btn')
           .click();
         await patchRequest;
@@ -412,7 +412,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
@@ -557,7 +557,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         await page.getByTestId('column-display-name').click();
@@ -708,7 +708,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
@@ -771,7 +771,8 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             testGlossaryTerm.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
         // Wait for page to be fully loaded

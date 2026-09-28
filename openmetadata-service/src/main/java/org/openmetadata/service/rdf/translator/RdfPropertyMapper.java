@@ -19,6 +19,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
@@ -61,26 +63,37 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties skipped by the generic field-mapping loop. Three reasons:
+  // Properties that never belong in the graph, for three reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
-  //   2. Handled by a dedicated structured-emission step elsewhere in this class, so they must not
-  //      also be written as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
-  //      parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper DQV
-  //      measurements), pipelineStatus (RdfActivityMapper prov:Activity), usageSummary
-  //      (RdfUsageMapper usage-count triples).
-  //   3. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
+  //   2. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
   //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
   //      testCaseResult inline; serializing it would push per-run test-result time-series into the
   //      graph on every reindex/update.
+  //   3. Authentication material, which must not become SPARQL-queryable metadata:
+  //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
+  //      provider identity. It carries no discovery value and is an identity correlator. Contrast
+  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
+  //
+  // These must not be fetched at all — see isIndexableEntityField.
+  private static final Set<String> NON_GRAPH_PROPERTIES =
+      Set.of("changeDescription", "votes", "testCaseResult", "identityProviderSubject");
+
+  // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
+  // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
+  // also write them as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
+  // parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper DQV measurements),
+  // pipelineStatus (RdfActivityMapper prov:Activity), usageSummary (RdfUsageMapper usage-count
+  // triples).
+  //
+  // Skipping the generic loop is NOT a reason to skip fetching them: the dedicated mappers read the
+  // same entity JSON, so a field that is not loaded silently emits nothing.
+  private static final Set<String> DEDICATED_MAPPER_PROPERTIES =
+      Set.of("tableConstraints", "profile", "pipelineStatus", "usageSummary");
+
+  // The generic field-mapping loop skips both groups, for the two different reasons above.
   private static final Set<String> IGNORED_PROPERTIES =
-      Set.of(
-          "changeDescription",
-          "votes",
-          "tableConstraints",
-          "profile",
-          "pipelineStatus",
-          "usageSummary",
-          "testCaseResult");
+      Stream.concat(NON_GRAPH_PROPERTIES.stream(), DEDICATED_MAPPER_PROPERTIES.stream())
+          .collect(Collectors.toUnmodifiableSet());
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
@@ -162,6 +175,19 @@ public class RdfPropertyMapper {
 
   public static boolean isIgnoredEntityField(String fieldName) {
     return IGNORED_PROPERTIES.contains(fieldName);
+  }
+
+  /**
+   * Whether a field must be loaded onto the entity before it is translated to RDF.
+   *
+   * <p>Deliberately not the negation of {@link #isIgnoredEntityField(String)}: that answers "does
+   * the generic field loop emit this as a JSON literal", and the dedicated-mapper fields answer no
+   * to it while still needing to be fetched. Selecting index fields with the wrong predicate
+   * starves {@code emitStructuredProperties} and silently drops table constraints, profiles,
+   * pipeline status and usage from the graph.
+   */
+  public static boolean isIndexableEntityField(String fieldName) {
+    return !NON_GRAPH_PROPERTIES.contains(fieldName);
   }
 
   /**

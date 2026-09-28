@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -137,6 +138,19 @@ public final class SearchIndexUtils {
           size);
     }
     return json;
+  }
+
+  /**
+   * The document a scripted update stores when its target doc is missing. It must hold plain values:
+   * the {@code JsonData}-wrapped script params serialize as {@code {}} per field when used as the
+   * upsert, and scripts that preserve existing fields (e.g. a logical test suite's {@code tests})
+   * then keep those empty objects (#33492).
+   */
+  public static Map<String, Object> toUpsertDocument(Map<String, Object> doc) {
+    Map<String, Object> upsert = JsonUtils.getMap(doc);
+    upsert.values().removeIf(Objects::isNull);
+    upsert.remove(SearchClient.FIELDS_TO_REMOVE);
+    return upsert;
   }
 
   public static Map<String, Object> stripDocMapIfOversized(

@@ -55,7 +55,13 @@ jest.mock('../../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn(() => 'Jan 1, 2026'),
+}));
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest.fn(() => <div data-testid="classification-tag" />),
 }));
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
@@ -65,11 +71,6 @@ jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
 jest.mock(
   '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList',
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
-);
-
-jest.mock(
-  '../../../components/Tag/TagsSelectForm/TagsSelectForm.component',
-  () => jest.fn(() => <div data-testid="tag-select-form" />)
 );
 
 jest.mock('antd', () => ({

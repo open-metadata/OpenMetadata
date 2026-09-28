@@ -34,9 +34,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
-import { getEmptyJsonTree } from '../../../utils/AdvancedSearchPureUtils';
 import {
   getTreeConfig,
   processEntityTypeFields,
@@ -45,11 +45,12 @@ import {
   getExploreClearQueryFilterSearchParams,
   getExploreResetFiltersSearchParams,
 } from '../../../utils/ExplorePureUtils';
+import { getEmptyJsonTree } from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
-import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
+import { UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
@@ -106,10 +107,15 @@ export const AdvanceSearchProvider = ({
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
+      // Re-selecting the index the provider is already on must not enter the updating state.
+      if (isEqual(searchIndex, index)) {
+        return;
+      }
+
       setIsUpdating(true);
       setSearchIndex(index);
     },
-    []
+    [searchIndex]
   );
 
   const [config, setConfig] = useState<Config>(
@@ -271,8 +277,8 @@ export const AdvanceSearchProvider = ({
       actualConfig.fields.extension.subfields = extensionSubField;
     }
 
-    // Update field type if field override is provided
-    // For example type of extension is group but it is required as struct in some cases
+    // Update field type if field override is provided For example type of extension is group but it is required as
+    // struct in some cases
     fieldOverrides.forEach((fieldOverride: { field: string; type: string }) => {
       if (actualConfig.fields[fieldOverride.field]) {
         actualConfig.fields[fieldOverride.field].type = fieldOverride.type;

@@ -220,7 +220,9 @@ test.describe(
       await redirectToHomePage(viewOnlyPage);
 
       // Navigate to Test Library
-      await viewOnlyPage.goto('/test-library');
+      await viewOnlyPage.goto('/test-library', {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Wait for table to load
       await viewOnlyPage
@@ -247,7 +249,9 @@ test.describe(
       await redirectToHomePage(dataConsumerPage);
 
       // Navigate to Test Library
-      await dataConsumerPage.goto('/test-library');
+      await dataConsumerPage.goto('/test-library', {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Wait for table to load
       await dataConsumerPage
@@ -315,7 +319,9 @@ test.describe(
       await redirectToHomePage(dataStewardPage);
 
       // Navigate to Test Library
-      await dataStewardPage.goto('/test-library');
+      await dataStewardPage.goto('/test-library', {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Wait for table to load
       await dataStewardPage
@@ -380,7 +386,7 @@ test.describe(
       ).toBeDisabled();
     });
 
-    test('should not be able to edit system test definitions', async ({
+    test('should be able to edit only the dimension of system test definitions', async ({
       dataStewardPage,
     }) => {
       await redirectToHomePage(dataStewardPage);
@@ -391,12 +397,32 @@ test.describe(
         throw new Error('System test definition not found');
       }
 
-      // Verify edit button does not exist for system test definition
+      // The form opens for a system test definition because its data quality dimension can be
+      // reclassified; every other field in it stays read-only.
       const editButton = dataStewardPage.getByTestId(
         `edit-test-definition-${systemTestDef.name}`
       );
 
-      await expect(editButton).toBeDisabled();
+      await expect(editButton).toBeEnabled();
+
+      // An enabled edit button on its own says nothing about what the form lets through, so
+      // open it and check that a field other than the dimension is still read-only.
+      await editButton.click();
+      await dataStewardPage
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
+
+      await expect(
+        dataStewardPage.locator('[id="root/entityType"]')
+      ).toBeDisabled();
+      await expect(
+        dataStewardPage.getByTestId('data-quality-dimension')
+      ).not.toBeDisabled();
+
+      await dataStewardPage.getByRole('button', { name: /Cancel/i }).click();
+      await expect(
+        dataStewardPage.getByTestId('test-definition-form-body')
+      ).not.toBeVisible();
 
       // Verify enabled switch exists and can be toggled
       const enabledSwitch = dataStewardPage.getByTestId(

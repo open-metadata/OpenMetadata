@@ -52,28 +52,37 @@ test.describe('Advanced Search Suggestions', () => {
       await waitForAllLoadersToDisappear(page);
       await showAdvancedSearchDialog(page);
 
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         field.label,
         true
       );
 
-      await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-operator-select'),
+        '=='
+      );
 
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       const searchText = toLower(
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
       );
 
-      const suggestionOption = page
-        .locator('[role="listbox"]:visible [role="option"]')
-        .filter({ hasText: searchText });
+      // Match the option by its value as well as its label. Tag-like fields
+      // (Tags, Certification, Tier) render the display name -- `Tier1` --
+      // while the search text is the FQN `Tier.Tier1`. react-aria exposes the
+      // value on `data-key`, which does not move when the label does.
+      const listbox = page.locator('[role="listbox"]:visible');
+      const suggestionOption = listbox
+        .locator(`[role="option"][data-key="${searchText}" i]`)
+        .or(listbox.locator('[role="option"]').filter({ hasText: searchText }));
 
       // The ComboBox popover re-mounts under load and the isMounting gate can
       // drop the aggregate request — the listbox then opens empty. Retry the

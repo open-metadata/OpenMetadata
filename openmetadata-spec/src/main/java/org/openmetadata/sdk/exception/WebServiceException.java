@@ -22,6 +22,10 @@ public class WebServiceException extends RuntimeException {
     this.message = message;
   }
 
+  public String getErrorType() {
+    return errorType;
+  }
+
   public Response getResponse() {
     return Response.status(status)
         .type(jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE)

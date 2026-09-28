@@ -107,16 +107,16 @@ const fillSemanticsForm = async (
   await page.fill('#semantics_0_name', semanticsData.name);
   await page.fill('#semantics_0_description', semanticsData.description);
 
-  const ruleLocator = page.locator('.group').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
   await selectOption(
     page,
-    ruleLocator.locator('.group--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     semanticsData.rules[0].field,
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     semanticsData.rules[0].operator
   );
 
@@ -825,7 +825,7 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Verify asset now has its own SLA (no inherited icon)', async () => {
       // Reload to get fresh data
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify SLA section exists using the correct test ID
@@ -1364,7 +1364,7 @@ test.describe('Data Contract Inheritance', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Refresh the page to ensure we get the latest contract state
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract from Data Product is now displayed

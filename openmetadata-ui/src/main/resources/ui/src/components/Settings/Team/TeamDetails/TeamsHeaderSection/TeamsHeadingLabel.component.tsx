@@ -26,6 +26,7 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { hasEditAccess } from '../../../../../utils/EntityPermissionUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
@@ -49,16 +50,18 @@ const TeamsHeadingLabel = ({
     [owners, currentUser]
   );
 
-  const { hasEditDisplayNamePermission, hasAccess } = useMemo(
-    () => ({
-      hasEditPermission: entityPermissions.EditAll,
-      hasEditDisplayNamePermission:
-        entityPermissions.EditDisplayName || entityPermissions.EditAll,
-      hasAccess: isAdminUser,
-    }),
-
+  // Consumer via the `entityPermissions: OperationPermission` prop (raw contract kept per
+  // Task 8 rule 2). The old object literal also computed a `hasEditPermission` field (bare
+  // `entityPermissions.EditAll`) that was never destructured/consumed — dropped as dead code
+  // (Task 7/8 precedent). hasEditDisplayNamePermission's raw `EditDisplayName || EditAll` ->
+  // canEditDisplayName: explicit-deny-wins fix (Task 6 Finding 1). No `deleted` argument — the
+  // old expression never gated on currentTeam.deleted itself (that check is applied
+  // separately, externally, in the JSX render condition below).
+  const { canEditDisplayName: hasEditDisplayNamePermission } = useMemo(
+    () => getDerivedPermissionFlags(entityPermissions),
     [entityPermissions]
   );
+  const hasAccess = isAdminUser;
 
   const onHeadingSave = async (): Promise<void> => {
     if (isEmpty(heading)) {

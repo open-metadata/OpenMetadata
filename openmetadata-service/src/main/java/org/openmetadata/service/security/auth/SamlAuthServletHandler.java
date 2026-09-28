@@ -20,7 +20,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,6 +46,9 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
+import org.openmetadata.service.security.EmailFirstUserProvisioner;
+import org.openmetadata.service.security.SamlIdentityResolver;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
@@ -60,6 +62,7 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String MCP_RELAY_STATE_PREFIX = "mcp:";
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
@@ -173,12 +176,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (callbackUrl == null) {
         callbackUrl = req.getParameter("redirectUri");
       }
-      if (callbackUrl == null) {
-        callbackUrl = defaultSamlRedirectUri();
-      }
-      callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              callbackUrl, trustedSamlRedirects());
+      callbackUrl = requireSamlRedirectUri(callbackUrl);
       UserSession pendingSession =
           sessionService.createPendingSession(
               req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
@@ -230,10 +228,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
    * flow and has been handled (the caller must stop processing); false for normal web SAML logins.
    */
   private boolean tryHandleMcpSamlCallback(
-      HttpServletRequest req, HttpServletResponse resp, String username, String email)
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      String username,
+      String email,
+      String relayState)
       throws Exception {
-    String relayState = req.getParameter("RelayState");
-    if (relayState == null || !relayState.startsWith("mcp:")) {
+    if (!isMcpSamlCallback(relayState)) {
       return false; // normal web SAML login — not an MCP OAuth flow
     }
     // This IS an MCP OAuth login. If the MCP bridge is not registered (MCP disabled, init failure,
@@ -258,6 +259,16 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   @Override
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      String relayState = req.getParameter("RelayState");
+      boolean mcpCallback = isMcpSamlCallback(relayState);
+      UserSession pendingSession = mcpCallback ? null : resolvePendingSession(req, resp);
+      if (!mcpCallback && pendingSession == null) {
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
+        return;
+      }
+      String callbackUrl =
+          mcpCallback ? null : requireSamlRedirectUri(pendingSession.getRedirectUri());
+
       // This handles the SAML response from IDP (ACS - Assertion Consumer Service)
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
@@ -278,33 +289,27 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Extract user information from SAML response
-      String nameId = auth.getNameId();
-      String email = nameId;
-      String username;
-
-      if (nameId.contains("@")) {
-        username = nameId.split("@")[0];
-      } else {
-        username = nameId;
-        email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
-      }
+      SamlIdentityResolver.ResolvedSamlIdentity identity = resolveSamlIdentity(auth);
+      String email = identity.email();
+      // The MCP bridge needs a username before provisioning. In the email-first flow the stored
+      // username is authoritative, so resolve it by email and fail closed when the email-derived
+      // candidate is already owned by a different account.
+      String username =
+          identity.emailFirstFlow() ? UserUtil.resolveUserNameForEmail(email) : identity.userName();
 
       // If this login was initiated by an MCP OAuth client (RelayState = "mcp:{authRequestId}"),
       // hand the authenticated identity to the MCP flow instead of the normal web JWT redirect.
       // This fires before getOrCreateUser so MCP keeps the deny-unknown-user semantics of the
       // OIDC MCP path (handleSSOCallbackWithDbState serves the "Access Denied" page).
-      if (tryHandleMcpSamlCallback(req, resp, username, email)) {
-        return;
-      }
-
-      UserSession pendingSession = resolvePendingSession(req, resp);
-      if (pendingSession == null) {
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
+      if (tryHandleMcpSamlCallback(req, resp, username, email, relayState)) {
         return;
       }
 
       // Extract display name from SAML attributes (name, given_name, family_name)
-      String displayName = extractDisplayNameFromSamlAttributes(auth);
+      String displayName =
+          identity.displayName() != null
+              ? identity.displayName()
+              : extractDisplayNameFromSamlAttributes(auth);
 
       // Extract team/group attributes from SAML response (supports multi-valued attributes)
       List<String> teamsFromClaim = new ArrayList<>();
@@ -326,7 +331,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Get or create user
-      User user = getOrCreateUser(username, email, displayName, teamsFromClaim);
+      User user =
+          identity.emailFirstFlow()
+              ? getOrCreateEmailFirstSamlUser(email, displayName, teamsFromClaim)
+              : getOrCreateUser(username, email, displayName, teamsFromClaim);
 
       // Generate refresh token
       RefreshToken refreshToken = TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
@@ -348,20 +356,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
       }
 
-      String redirectUri = pendingSession.getRedirectUri();
-      LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
+      LOG.debug("SAML Callback - redirectUri from session: {}", callbackUrl);
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
 
-      String callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              redirectUri == null ? defaultSamlRedirectUri() : redirectUri, trustedSamlRedirects());
-      callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
-              callbackUrl,
-              jwtAuthMechanism.getJWTToken(),
-              email,
-              displayName == null ? "" : displayName);
-      resp.sendRedirect(callbackUrl);
+      SecurityUtil.sendRedirectWithToken(
+          resp,
+          callbackUrl,
+          jwtAuthMechanism.getJWTToken(),
+          email,
+          displayName == null ? "" : displayName);
 
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI in callback", e);
@@ -390,6 +393,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
     }
     return pendingSession;
+  }
+
+  private boolean isMcpSamlCallback(String relayState) {
+    return relayState != null && relayState.startsWith(MCP_RELAY_STATE_PREFIX);
   }
 
   @Override
@@ -577,6 +584,44 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
+  private SamlIdentityResolver.ResolvedSamlIdentity resolveSamlIdentity(Auth auth) {
+    return new SamlIdentityResolver(
+            authConfig,
+            authorizerConfig,
+            assertionAccessor -> extractDisplayNameFromSamlAttributes(auth),
+            () -> SamlSettingsHolder.getInstance().getDomain())
+        .resolve(
+            new SamlIdentityResolver.SamlAssertionAccessor() {
+              @Override
+              public Collection<String> getAttribute(String attributeName) {
+                return auth.getAttribute(attributeName);
+              }
+
+              @Override
+              public String getNameId() {
+                return auth.getNameId();
+              }
+            });
+  }
+
+  private User getOrCreateEmailFirstSamlUser(
+      String email, String displayName, List<String> teamsFromClaim) {
+    return EmailFirstUserProvisioner.forProvider(
+            "SAML",
+            authorizerConfig,
+            Entity.getUserRepository(),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+        // No subject binding: a SAML NameID is only stable for persistent formats, and a
+        // transient NameID rotates on every login, which would lock users out.
+        .getOrCreate(
+            email, displayName, null, Boolean.TRUE.equals(authConfig.getEnableSelfSignup()));
+  }
+
+  private boolean isUserAdmin(String email, String username) {
+    return UserUtil.isConfiguredAdmin(authorizerConfig, email, username);
+  }
+
   private User getOrCreateUser(
       String username, String email, String displayName, List<String> teamsFromClaim) {
     try {
@@ -585,7 +630,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
           Entity.getEntityByName(
               Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(username);
+      boolean shouldBeAdmin = isUserAdmin(email, username);
       boolean needsUpdate = false;
 
       LOG.debug(
@@ -627,7 +672,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       LOG.debug("User not found, creating new user: {}", username);
       if (authConfig.getEnableSelfSignup()) {
-        boolean isAdmin = getAdminPrincipals().contains(username);
+        boolean isAdmin = isUserAdmin(email, username);
         User newUser =
             UserUtil.getUser(
                     username, new CreateUser().withName(username).withEmail(email).withIsBot(false))
@@ -648,17 +693,17 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private Set<String> getAdminPrincipals() {
-    AuthorizerConfiguration authorizerConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-    return new HashSet<>(authorizerConfig.getAdminPrincipals());
-  }
-
   private Set<String> trustedSamlRedirects() {
     Set<String> trusted =
-        org.openmetadata.service.security.SecurityUtil.trustedRedirects(
+        SecurityUtil.trustedRedirects(
             authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
     trusted.addAll(listOrEmpty(authConfig.getAdditionalTrustedRedirectUris()));
     return trusted;
+  }
+
+  private String requireSamlRedirectUri(String redirectUri) {
+    String targetRedirectUri = nullOrEmpty(redirectUri) ? defaultSamlRedirectUri() : redirectUri;
+    return SecurityUtil.validateRedirectUri(targetRedirectUri, trustedSamlRedirects());
   }
 
   private ServiceProviderConfig samlSp() {

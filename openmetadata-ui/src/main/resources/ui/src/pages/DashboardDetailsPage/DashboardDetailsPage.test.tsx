@@ -12,9 +12,10 @@
  */
 import { act, screen, waitFor } from '@testing-library/react';
 import { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { getDashboardByFqn } from '../../rest/dashboardAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import DashboardDetailsPage from './DashboardDetailsPage.component';
 
 // Mock the required dependencies
@@ -28,7 +29,6 @@ jest.mock('react-i18next', () => ({
   Trans: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-jest.mock('../../context/PermissionProvider/PermissionProvider');
 jest.mock('../../rest/dashboardAPI');
 jest.mock(
   '../../components/Dashboard/DashboardDetails/DashboardDetails.component',
@@ -38,6 +38,33 @@ jest.mock(
       .mockImplementation(() => <div>Dashboard Details Component</div>);
   }
 );
+
+// Permissions now come from useEntityPermissions (Task 8 Batch 10) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly, mirroring DataModelPage.test.tsx's approach.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockDashboard = {
   id: '123',
@@ -52,19 +79,17 @@ describe('DashboardDetailsPage', () => {
     // Reset all mocks before each test
     jest.clearAllMocks();
 
-    // Mock the permission provider
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewAll: true,
-        ViewBasic: true,
-      }),
-    });
+    setMockPermissions({ ViewAll: true, ViewBasic: true });
   });
 
   it('should render loading state initially', async () => {
     (getDashboardByFqn as jest.Mock).mockImplementation(() =>
       Promise.resolve(mockDashboard)
     );
+    // The mocked hook otherwise resolves synchronously on first render (no microtask
+    // gap the way the old imperative fetch had) — force isLoading so this still
+    // observes a genuine "still loading" render, per the Batch 7 TeamsPage precedent.
+    setMockPermissions({ ViewAll: true, ViewBasic: true }, { isLoading: true });
 
     renderWithQueryClient(<DashboardDetailsPage />);
 
@@ -97,12 +122,7 @@ describe('DashboardDetailsPage', () => {
         })
       )
     );
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewAll: true,
-        ViewBasic: true,
-      }),
-    });
+    setMockPermissions({ ViewAll: true, ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(<DashboardDetailsPage />);
@@ -121,12 +141,7 @@ describe('DashboardDetailsPage', () => {
   });
 
   it('should show permission error when user lacks view permissions', async () => {
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewAll: false,
-        ViewBasic: false,
-      }),
-    });
+    setMockPermissions({ ViewAll: false, ViewBasic: false });
 
     await act(async () => {
       renderWithQueryClient(<DashboardDetailsPage />);

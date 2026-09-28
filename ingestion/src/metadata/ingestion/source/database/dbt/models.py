@@ -40,6 +40,7 @@ class DbtFilteredModel(BaseModel):
 class DbtMetaOpenmetadata(BaseModel):
     tier: str | None = None
     domain: str | None = None
+    dataProducts: list[str] | None = None  # noqa: N815
     glossary: list[str] | None = None
     customProperties: dict[str, Any] | None = None  # noqa: N815
     tags: list[str] | None = None

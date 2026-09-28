@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SapHanaConnection",
   "description": "Sap Hana Database Connection Config",
   "type": "object",
@@ -47,7 +46,6 @@
       "description": "Choose between Database connection or HDB User Store connection.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SapHanaSQLConnection",
           "description": "Sap Hana Database SQL Connection Config",
           "type": "object",
@@ -88,7 +86,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SapHanaHDBConnection",
           "description": "Sap Hana Database HDB User Store Connection Config",
           "type": "object",
@@ -267,7 +264,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -297,7 +293,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",

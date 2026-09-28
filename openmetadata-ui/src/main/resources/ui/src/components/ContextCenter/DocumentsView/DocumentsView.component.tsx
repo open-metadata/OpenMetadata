@@ -24,6 +24,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Eye } from '@openmetadata/ui-core-components/icons';
 import { Check, ChevronRight } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -43,6 +44,8 @@ import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
+import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
@@ -84,7 +87,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
 
   if (folders.length === 0) {
     return (
-      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-utility-gray-400">
+      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-quaternary">
         {t('label.no-entity', { entity: t('label.folder-plural') })}
       </Typography>
     );
@@ -100,7 +103,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
 
         return (
           <Dropdown.Item
-            className={isCurrent ? 'tw:[&>div]:bg-utility-blue-50' : undefined}
+            className={isCurrent ? 'tw:[&>div]:bg-brand-primary' : undefined}
             data-testid={`move-to-folder-${folder.id}`}
             id={folder.id}
             key={folder.id}
@@ -338,10 +341,10 @@ const ListHeader: FC<ListHeaderProps> = ({
     return (
       <Box
         align="center"
-        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-utility-blue-100 tw:bg-utility-blue-50"
+        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-brand-primary"
         gap={2}>
         <Typography
-          className="tw:text-utility-blue-700"
+          className="tw:text-brand-secondary"
           size="text-sm"
           weight="semibold">
           {selectedCount} {t('label.selected-lowercase')}
@@ -410,7 +413,7 @@ const ListHeader: FC<ListHeaderProps> = ({
   return (
     <Box
       align="center"
-      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
+      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary">
       <Typography
         className="tw:text-quaternary"
         data-testid="documents-view-file-count"
@@ -444,36 +447,47 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onOpenPreview,
   onPreview,
   onSelectFile,
   onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
 
-  const { folderName, fileName, formattedFileSize, relativeTime, rowUrl } =
-    useMemo(() => {
-      const params = new URLSearchParams(window.location.search);
-      params.set('document', file.id);
-      const url = `${window.location.origin}${
-        window.location.pathname
-      }?${params.toString()}`;
+  const {
+    folderName,
+    fileName,
+    formattedFileSize,
+    relativeTime,
+    rowUrl,
+    isPreviewSupported,
+  } = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('document', file.id);
+    const url = `${window.location.origin}${
+      window.location.pathname
+    }?${params.toString()}`;
 
-      return {
-        folderName: getEntityName(file.folder),
-        fileName: getEntityName(file),
-        formattedFileSize: formatBytes(file.fileSize),
-        relativeTime: getShortRelativeTime(file.updatedAt),
-        rowUrl: url,
-      };
-    }, [file]);
+    return {
+      folderName: getEntityName(file.folder),
+      fileName: getEntityName(file),
+      formattedFileSize: formatBytes(file.fileSize),
+      relativeTime: getShortRelativeTime(file.updatedAt),
+      rowUrl: url,
+      isPreviewSupported:
+        resolveRenderer({
+          fileExtension: file.fileExtension,
+          fileType: file.fileType,
+          mimeType: file.contentType,
+        }) !== PreviewRendererId.Unsupported,
+    };
+  }, [file]);
 
   return (
     <Box
       align="center"
       className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
-        isActive
-          ? 'tw:bg-utility-blue-50'
-          : 'tw:bg-primary hover:tw:bg-secondary_subtle'
+        isActive ? 'tw:bg-brand-primary' : 'tw:hover:bg-primary_hover'
       }`}
       data-testid={`document-row-${file.id}`}
       gap={4}
@@ -574,7 +588,16 @@ const FileRow: FC<FileRowProps> = ({
           status={file.processingStatus}
         />
         <ButtonUtility
-          className="tw:ml-1.5"
+          className={`tw:ml-1.5${
+            isPreviewSupported ? '' : ' tw:invisible tw:pointer-events-none'
+          }`}
+          color="tertiary"
+          data-testid="preview-btn"
+          icon={<Eye height={20} width={20} />}
+          tooltip={t('label.preview')}
+          onClick={isPreviewSupported ? () => onOpenPreview?.(file) : undefined}
+        />
+        <ButtonUtility
           color="tertiary"
           data-testid="download-btn"
           icon={<DownloadIcon height={20} width={20} />}
@@ -630,6 +653,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onOpenPreview,
   onPreview,
   onSelectFile,
   onScrollEnd,
@@ -738,6 +762,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
                     onLoadMoreFolders={onLoadMoreFolders}
+                    onOpenPreview={onOpenPreview}
                     onPreview={onPreview}
                     onSelectFile={onSelectFile}
                   />

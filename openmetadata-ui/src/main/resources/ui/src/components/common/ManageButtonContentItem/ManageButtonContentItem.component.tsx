@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { noop } from 'lodash';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
 export const ManageButtonItemLabel = ({
   name,
-  onClick,
   icon,
   description,
   id,
@@ -27,32 +25,36 @@ export const ManageButtonItemLabel = ({
   const Icon = icon;
 
   return (
-    <Row
-      className={classNames({
-        'cursor-pointer': !disabled,
-        'cursor-not-allowed': disabled,
-        'opacity-50': disabled,
+    <div
+      className={classNames('tw:flex tw:items-start tw:gap-3', {
+        'tw:cursor-pointer': !disabled,
+        'tw:cursor-not-allowed tw:opacity-50': disabled,
       })}
-      data-testid={id}
-      onClick={disabled ? noop : onClick}>
-      <Col className="self-center" data-testid={`${id}-icon`} span={3}>
+      data-testid={id}>
+      <div
+        className="tw:flex tw:shrink-0 tw:self-center tw:text-fg-quaternary"
+        data-testid={`${id}-icon`}>
         <Icon width="18px" />
-      </Col>
-      <Col
-        className="text-left"
-        data-testid={`${id}-details-container`}
-        span={21}>
-        <Typography.Paragraph
-          className="font-medium m-b-0"
-          data-testid={`${id}-title`}>
+      </div>
+      <div
+        className="tw:min-w-0 tw:flex-1 tw:text-left"
+        data-testid={`${id}-details-container`}>
+        <Typography
+          as="p"
+          className="tw:text-primary"
+          data-testid={`${id}-title`}
+          size="text-sm"
+          weight="medium">
           {name}
-        </Typography.Paragraph>
-        <Typography.Paragraph
-          className="text-grey-muted text-xs m-b-0 break-word"
-          data-testid={`${id}-description`}>
+        </Typography>
+        <Typography
+          as="p"
+          className="tw:break-words tw:text-tertiary"
+          data-testid={`${id}-description`}
+          size="text-xs">
           {description}
-        </Typography.Paragraph>
-      </Col>
-    </Row>
+        </Typography>
+      </div>
+    </div>
   );
 };

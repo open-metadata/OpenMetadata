@@ -233,14 +233,12 @@ jobs:
       - name: Auto-commit + push (same-repo PRs only)
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Not GITHUB_TOKEN: pushes made with it never trigger workflow runs,
+          # so every required check stays pending and the PR can't merge.
+          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
           HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref }}
         run: |
-          # `[skip ci]` prevents the push from re-triggering this same workflow
-          # (which would find a clean tree and pass anyway, wasting a run).
-          # PR CI's other checks still re-fire because they gate on push events,
-          # not on this workflow.
-          git commit -m "chore(playwright): auto-refresh impact-map.generated.json [skip ci]"
+          git commit -m "chore(playwright): auto-refresh impact-map.generated.json"
           # persist-credentials: false above, so re-attach the token to origin.
           # Bare URL would break --force-with-lease (no remote-tracking ref to
           # lease against).

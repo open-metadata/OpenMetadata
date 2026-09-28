@@ -13,13 +13,12 @@
 import {
   Alert,
   Badge,
-  BadgeWithButton,
   Box,
   Button,
   ButtonUtility,
   Card,
+  ClassificationTag,
   Dialog,
-  Dot,
   FieldProp,
   FieldTypes,
   FormField,
@@ -46,12 +45,10 @@ import {
   X,
 } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import {
   Dispatch,
   FC,
-  lazy,
   SetStateAction,
   useCallback,
   useEffect,
@@ -80,12 +77,9 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
-  LabelType,
   MemoryType,
   ShareVisibility,
-  State,
   TagLabel,
-  TagSource,
 } from '../../../generated/entity/context/contextMemory';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
@@ -96,10 +90,9 @@ import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
-import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
   LinkedAssetsSectionProps,
@@ -117,13 +110,6 @@ import {
   submitMemoryCreate,
   submitMemoryUpdate,
 } from './CreateMemoryModal.utils';
-
-const TagSelectForm = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../../../components/Tag/TagsSelectForm/TagsSelectForm.component')
-  )
-);
 
 // ─── Form types ───────────────────────────────────────────────────────────────
 
@@ -478,13 +464,7 @@ interface MemoryMetadataSectionProps {
   showTagForm: boolean;
   setShowTagForm: Dispatch<SetStateAction<boolean>>;
   handleRemoveTag: (tagFQN: string) => void;
-  fetchTagOptions: (
-    searchText: string,
-    page: number
-  ) => ReturnType<typeof tagClassBase.getTags>;
-  handleTagSave: (
-    tags: DefaultOptionType | DefaultOptionType[]
-  ) => Promise<void>;
+  handleTagSave: (tags: TagLabel[]) => void;
   t: TFunc;
 }
 
@@ -589,13 +569,7 @@ const MemoryTagsRow: FC<{
   showTagForm: boolean;
   setShowTagForm: Dispatch<SetStateAction<boolean>>;
   handleRemoveTag: (tagFQN: string) => void;
-  fetchTagOptions: (
-    searchText: string,
-    page: number
-  ) => ReturnType<typeof tagClassBase.getTags>;
-  handleTagSave: (
-    tags: DefaultOptionType | DefaultOptionType[]
-  ) => Promise<void>;
+  handleTagSave: (tags: TagLabel[]) => void;
   t: TFunc;
 }> = ({
   isViewOnly,
@@ -603,89 +577,59 @@ const MemoryTagsRow: FC<{
   showTagForm,
   setShowTagForm,
   handleRemoveTag,
-  fetchTagOptions,
   handleTagSave,
   t,
 }) => (
-  <div className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-3">
-    <div className="tw:flex tw:items-center tw:gap-3">
-      <div className="tw:basis-[30%]">
-        <Typography
-          className="tw:text-quaternary tw:w-28 tw:shrink-0"
-          size="text-sm">
-          {t('label.tag-plural')}
-        </Typography>
-      </div>
-      <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
-        {isViewOnly && selectedTags.length === 0 && <EmptyTags />}
-        {selectedTags.map((tag) =>
-          isViewOnly ? (
-            <Badge
-              className="tw:max-w-40 tw:min-w-0"
-              key={String(tag.tagFQN ?? '')}
-              size="sm"
-              type="modern">
-              {tag.style?.color && (
-                <div className="tw:shrink-0">
-                  <Dot
-                    size="sm"
-                    style={{ color: tag.style?.color, marginRight: '6px' }}
-                  />
-                </div>
-              )}
-              <Typography ellipsis className="tw:text-secondary" size="text-xs">
-                {tag.tagFQN}
-              </Typography>
-            </Badge>
-          ) : (
-            <BadgeWithButton
-              color="gray"
-              key={tag.tagFQN}
-              type="modern"
-              onButtonClick={() => handleRemoveTag(tag.tagFQN)}>
-              <div className="tw:max-w-40 tw:flex tw:items-center">
-                {tag.style?.color && (
-                  <div className="tw:shrink-0">
-                    <Dot
-                      size="sm"
-                      style={{ color: tag.style?.color, marginRight: '6px' }}
-                    />
-                  </div>
-                )}
-                <Typography
-                  ellipsis
-                  className="tw:text-secondary"
-                  size="text-xs">
-                  {tag.tagFQN}
-                </Typography>
-              </div>
-            </BadgeWithButton>
-          )
-        )}
-        {!isViewOnly && (
-          <Button
-            color="link-color"
-            iconLeading={Plus}
-            size="sm"
-            onClick={() => setShowTagForm((v) => !v)}>
-            {t('label.add-entity', { entity: t('label.tag') })}
-          </Button>
-        )}
-      </div>
+  <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+    <div className="tw:basis-[30%]">
+      <Typography
+        className="tw:text-quaternary tw:w-28 tw:shrink-0"
+        size="text-sm">
+        {t('label.tag-plural')}
+      </Typography>
     </div>
-
-    {showTagForm && !isViewOnly && (
-      <TagSelectForm
-        defaultValue={selectedTags.map((tag) => tag.tagFQN)}
-        fetchApi={fetchTagOptions}
-        placeholder={t('label.search-entity', {
-          entity: t('label.tag-plural'),
-        })}
-        tagType={TagSource.Classification}
-        onCancel={() => setShowTagForm(false)}
-        onSubmit={handleTagSave}
-      />
-    )}
+    <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
+      {isViewOnly && selectedTags.length === 0 && !showTagForm && <EmptyTags />}
+      {!showTagForm &&
+        selectedTags.map((tag) => (
+          <ClassificationTag
+            color={tag.style?.color}
+            icon={tag.style?.iconURL}
+            key={String(tag.tagFQN ?? '')}
+            label={tag.tagFQN ?? ''}
+            maxWidth={160}
+            size="sm"
+            onDelete={
+              isViewOnly ? undefined : () => handleRemoveTag(tag.tagFQN)
+            }
+          />
+        ))}
+      {!isViewOnly && !showTagForm && (
+        <Button
+          color="link-color"
+          iconLeading={Plus}
+          size="sm"
+          onClick={() => setShowTagForm((v) => !v)}>
+          {t('label.add-entity', { entity: t('label.tag') })}
+        </Button>
+      )}
+      {showTagForm && !isViewOnly && (
+        <TagSelector
+          isOpen
+          className="tw:w-full"
+          commitMode="staged"
+          value={selectedTags}
+          onChange={(tags) => {
+            handleTagSave(tags);
+          }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowTagForm(false);
+            }
+          }}
+        />
+      )}
+    </div>
   </div>
 );
 
@@ -739,7 +683,6 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
   showTagForm,
   setShowTagForm,
   handleRemoveTag,
-  fetchTagOptions,
   handleTagSave,
   t,
 }) => (
@@ -761,7 +704,6 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
 
       {/* Tags row */}
       <MemoryTagsRow
-        fetchTagOptions={fetchTagOptions}
         handleRemoveTag={handleRemoveTag}
         handleTagSave={handleTagSave}
         isViewOnly={isViewOnly}
@@ -910,31 +852,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     []
   );
 
-  const handleTagSave = useCallback(
-    async (tags: DefaultOptionType | DefaultOptionType[]) => {
-      const tagArray = Array.isArray(tags) ? tags : [tags];
-      const newTags: TagLabel[] = tagArray.map((tag) => ({
-        tagFQN: typeof tag === 'string' ? tag : String(tag.value ?? ''),
-        source: TagSource.Classification,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-        style: tag.data.style,
-      }));
-      setSelectedTags(newTags);
-      setShowTagForm(false);
-    },
-    []
-  );
+  const handleTagSave = useCallback((tags: TagLabel[]) => {
+    setSelectedTags(tags);
+  }, []);
 
   const handleRemoveTag = useCallback((tagFQN: string) => {
     setSelectedTags((prev) => prev.filter((tag) => tag.tagFQN !== tagFQN));
   }, []);
-
-  const fetchTagOptions = useCallback(
-    (searchText: string, page: number) =>
-      tagClassBase.getTags(searchText, page),
-    []
-  );
 
   const handleSubmit = async (values: MemoryFormValues) => {
     setModalError('');
@@ -1081,7 +1005,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
         <Dialog showCloseButton title="" width={600} onClose={handleClose}>
-          <Dialog.Content className="tw:p-0!">
+          <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
             <div ref={modalContainerRef}>
               <ConfigProvider
                 getPopupContainer={() =>
@@ -1198,7 +1122,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     {/* Section 5: Metadata */}
                     <MemoryMetadataSection
                       control={form.control}
-                      fetchTagOptions={fetchTagOptions}
                       handleRemoveTag={handleRemoveTag}
                       handleTagSave={handleTagSave}
                       isEditingVisibility={isEditingVisibility}

@@ -6,7 +6,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -15,6 +16,7 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
+            "asciifolding",
             "om_stemmer",
             "om_plural_stemmer"
           ]
@@ -33,7 +35,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -41,6 +44,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -293,7 +297,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
-        "index_options": "docs"
+        "index_options": "positions"
       },
       "expression": {
         "properties": {
@@ -521,6 +525,67 @@
             "type": "text"
           }
         }
+      },
+      "parent": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "metricGroup": {
+        "properties": {
+          "id": { "type": "keyword" },
+          "type": { "type": "keyword" },
+          "name": { "type": "keyword" },
+          "displayName": { "type": "keyword" },
+          "fullyQualifiedName": { "type": "keyword" },
+          "description": { "type": "text" },
+          "deleted": { "type": "boolean" },
+          "href": { "type": "text" }
+        }
+      },
+      "childrenCount": {
+        "type": "integer"
       },
       "usageCount": {
         "type": "integer"

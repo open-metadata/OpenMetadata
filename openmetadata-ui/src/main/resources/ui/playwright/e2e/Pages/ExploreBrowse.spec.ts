@@ -110,7 +110,7 @@ const selectDataAssetType = async (page: Page, optionKey: string) => {
   const applyRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId(`${optionKey}-checkbox`).check();
+  await page.getByTestId('drop-down-menu').getByTestId(optionKey).click();
   await applyRes;
   await page.keyboard.press('Escape');
   await waitForAllLoadersToDisappear(page);
@@ -339,20 +339,13 @@ test.describe(
           `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
 
-        // The browse rebuild collapses the tree and can detach the row
-        // mid-click; retry expand → click until the chip confirms the select.
-        await expect(async () => {
-          if (!(await serviceTitle.isVisible())) {
-            await expandTreeNode(page, 'Databases');
-          }
-          await expect(serviceTitle).toBeVisible({ timeout: 10_000 });
-          await serviceTitle.click({ timeout: 10_000 });
-          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
-            {
-              timeout: 5000,
-            }
-          );
-        }).toPass({ timeout: 60000 });
+        await waitForAllLoadersToDisappear(page);
+        if (!(await serviceTitle.isVisible())) {
+          await expandTreeNode(page, 'Databases');
+        }
+        await expect(serviceTitle).toBeVisible();
+        await serviceTitle.click();
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
 
         await waitForAllLoadersToDisappear(page);
 

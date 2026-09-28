@@ -31,21 +31,28 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PersonaAIContextIT extends McpTestBase {
+  private static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
   private static Persona persona;
   private static Table table;
+  private static Metric metric;
   private static String directMemberToken;
   private static String inheritedMemberToken;
   private static String nonMemberToken;
@@ -56,6 +63,7 @@ class PersonaAIContextIT extends McpTestBase {
     initAuth();
     String suffix = UUID.randomUUID().toString().substring(0, 8);
     table = createServiceDatabaseSchemaTable("persona_context_" + suffix);
+    metric = createMetricWithAsset(suffix);
 
     User directMember = createUser("persona_direct_" + suffix);
     User inheritedMember = createUser("persona_inherited_" + suffix);
@@ -93,6 +101,41 @@ class PersonaAIContextIT extends McpTestBase {
             .withCacheTtlMinutes(30),
         PersonaContextDefinition.class);
     post(contextPath() + "/rules", tableRule("Baseline tables"), PersonaContextDefinition.class);
+  }
+
+  @Test
+  void metricKnowledgeRuleRendersAssetsFromTheBoundedRelationshipRepository() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Persona metricPersona =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("metric_persona_context_" + suffix)
+                .withDescription("Metric asset persona context integration test"),
+            Persona.class);
+    String metricContextPath = "personas/" + metricPersona.getId() + "/aiContext";
+    put(
+        metricContextPath,
+        new PersonaContextDefinition().withEnabled(true).withCharacterBudget(400_000),
+        PersonaContextDefinition.class);
+    ContextRule requested = metricRule("Revenue metric assets");
+    PersonaContextDefinition created =
+        post(metricContextPath + "/rules", requested, PersonaContextDefinition.class);
+    ContextRule createdRule =
+        created.getRules().stream()
+            .filter(rule -> requested.getName().equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+
+    try {
+      JsonNode document = post(metricContextPath + "/document:refresh", Map.of(), JsonNode.class);
+      assertThat(document.path("markdown").asText())
+          .contains(metric.getFullyQualifiedName())
+          .contains("### Related Assets")
+          .contains(table.getFullyQualifiedName());
+    } finally {
+      deleteResponse(metricContextPath + "/rules/" + createdRule.getId());
+    }
   }
 
   @Test
@@ -323,6 +366,104 @@ class PersonaAIContextIT extends McpTestBase {
     }
   }
 
+  @Test
+  void mcpSearchAppliesPersonaScopeByDefaultAndCanExplicitlyBypassIt() throws Exception {
+    String suffix = shortId();
+    Table selected = createServiceDatabaseSchemaTable("persona_mcp_selected_" + suffix);
+    Table excluded = createServiceDatabaseSchemaTable("persona_mcp_excluded_" + suffix);
+    User member = createUser("persona_mcp_member_" + suffix);
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_mcp_" + suffix)
+                .withDescription("MCP persona search scope integration test")
+                .withUsers(List.of(member.getId())),
+            Persona.class);
+    String contextPath = "personas/" + owned.getId() + "/aiContext";
+    String token = tokenFor(member);
+
+    try {
+      put(
+          contextPath,
+          new PersonaContextDefinition().withEnabled(true),
+          PersonaContextDefinition.class);
+      post(
+          contextPath + "/rules",
+          scopedFqnRule("MCP scope", selected.getFullyQualifiedName()),
+          PersonaContextDefinition.class);
+
+      Awaitility.await("MCP search consumes the active persona scope")
+          .atMost(Duration.ofSeconds(60))
+          .pollDelay(Duration.ofSeconds(1))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                JsonNode scoped =
+                    searchMetadataWithPersona(owned, token, selected, excluded, false);
+                assertThat(resultFqns(scoped)).containsExactly(selected.getFullyQualifiedName());
+                assertThat(scoped.path("personaScopeApplied").asBoolean()).isTrue();
+
+                JsonNode unscoped =
+                    searchMetadataWithPersona(owned, token, selected, excluded, true);
+                assertThat(resultFqns(unscoped))
+                    .containsExactlyInAnyOrder(
+                        selected.getFullyQualifiedName(), excluded.getFullyQualifiedName());
+                assertThat(unscoped.has("personaScopeApplied")).isFalse();
+              });
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  private JsonNode searchMetadataWithPersona(
+      Persona activePersona, String token, Table first, Table second, boolean ignoreScope)
+      throws Exception {
+    String queryFilter =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of(
+                "bool",
+                Map.of(
+                    "filter",
+                    List.of(
+                        Map.of("term", Map.of("entityType", Entity.TABLE)),
+                        Map.of(
+                            "terms",
+                            Map.of(
+                                "fullyQualifiedName",
+                                List.of(
+                                    first.getFullyQualifiedName(),
+                                    second.getFullyQualifiedName())))))));
+    Map<String, Object> arguments =
+        Map.of(
+            "query",
+            "*",
+            "entityType",
+            Entity.TABLE,
+            "queryFilter",
+            queryFilter,
+            "size",
+            10,
+            "ignorePersonaScope",
+            ignoreScope);
+    JsonNode response =
+        executeMcp(
+            McpTestUtils.createToolCallRequest("search_metadata", arguments),
+            token,
+            activePersona.getFullyQualifiedName());
+    JsonNode toolResult = response.path("result");
+    assertThat(toolResult.path("isError").asBoolean(false)).isFalse();
+    return OBJECT_MAPPER.readTree(toolResult.path("content").get(0).path("text").asText());
+  }
+
+  private static Set<String> resultFqns(JsonNode response) {
+    Set<String> fqns = new HashSet<>();
+    response
+        .path("results")
+        .forEach(result -> fqns.add(result.path("fullyQualifiedName").asText()));
+    return fqns;
+  }
+
   /** Polls until the served scope includes selected assets and excludes unscoped assets. */
   private static void awaitScopeIncludes(
       Persona owner, Set<String> selectedAssets, Set<String> excludedAssets) {
@@ -462,7 +603,12 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   private JsonNode executeMcp(Map<String, Object> requestBody, String token) throws Exception {
-    HttpRequest request =
+    return executeMcp(requestBody, token, null);
+  }
+
+  private JsonNode executeMcp(Map<String, Object> requestBody, String token, String activePersona)
+      throws Exception {
+    HttpRequest.Builder request =
         HttpRequest.newBuilder()
             .uri(URI.create(getMcpUrl("/mcp")))
             .header("Content-Type", "application/json")
@@ -470,9 +616,12 @@ class PersonaAIContextIT extends McpTestBase {
             .header("Authorization", token)
             .POST(
                 HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(requestBody)))
-            .timeout(Duration.ofSeconds(30))
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            .timeout(Duration.ofSeconds(30));
+    if (activePersona != null) {
+      request.header(ACTIVE_PERSONA_HEADER, activePersona);
+    }
+    HttpResponse<String> response =
+        HTTP_CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
     assertThat(response.statusCode()).isEqualTo(200);
     return OBJECT_MAPPER.readTree(extractJsonFromResponse(response.body()));
   }
@@ -480,6 +629,23 @@ class PersonaAIContextIT extends McpTestBase {
   private static User createUser(String name) throws Exception {
     return post(
         "users", new CreateUser().withName(name).withEmail(name + "@example.com"), User.class);
+  }
+
+  private static Metric createMetricWithAsset(String suffix) throws Exception {
+    Metric created =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("persona_context_metric_" + suffix)
+                .withDescription("Revenue metric used by persona context"),
+            Metric.class);
+    put(
+        "metrics/" + created.getName() + "/assets/add",
+        new BulkAssets()
+            .withAssets(
+                List.of(new EntityReference().withId(table.getId()).withType(Entity.TABLE))),
+        BulkOperationResult.class);
+    return created;
   }
 
   private static String tokenFor(User user) {
@@ -499,6 +665,19 @@ class PersonaAIContextIT extends McpTestBase {
         .withMaxAssets(1)
         .withEnabled(true)
         .withFilteredInSearch(false);
+  }
+
+  private static ContextRule metricRule(String name) {
+    return new ContextRule()
+        .withName(name)
+        .withEntityType(Entity.METRIC)
+        .withQueryFilter(
+            "{\"query\":{\"term\":{\"fullyQualifiedName\":\""
+                + metric.getFullyQualifiedName()
+                + "\"}}}")
+        .withSections(Set.of(ContextSection.RELATED_ASSETS))
+        .withMaxAssets(1)
+        .withEnabled(true);
   }
 
   private static String contextPath() {

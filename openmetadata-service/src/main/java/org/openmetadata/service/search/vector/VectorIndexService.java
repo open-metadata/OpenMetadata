@@ -79,6 +79,22 @@ public interface VectorIndexService {
       String preference,
       SubjectContext subjectContext);
 
+  /** Search with a compiled query filter in addition to the structured vector filters. */
+  default VectorSearchResponse search(VectorSearchParameters parameters) {
+    if (parameters.queryFilter() != null && !parameters.queryFilter().isBlank()) {
+      throw new UnsupportedOperationException("Compiled vector query filters are not supported");
+    }
+    return search(
+        parameters.query(),
+        parameters.filters(),
+        parameters.size(),
+        parameters.from(),
+        parameters.k(),
+        parameters.threshold(),
+        parameters.preference(),
+        parameters.subjectContext());
+  }
+
   String getExistingFingerprint(String indexName, String entityId);
 
   Map<String, String> getExistingFingerprintsBatch(String indexName, List<String> entityIds);

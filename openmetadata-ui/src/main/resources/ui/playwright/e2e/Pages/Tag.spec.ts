@@ -40,6 +40,7 @@ import {
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -93,7 +94,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.describe('Tag Page with Admin Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -134,12 +135,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('entity-name-modal')).toBeVisible();
 
     await adminPage
       .getByPlaceholder('Enter display name')
@@ -149,7 +150,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('save-button').click();
     await updateName;
 
-    await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('entity-header-display-name')
+    ).toHaveText('TestDisplayName');
   });
 
   test('Restyle Tag', async ({ adminPage }) => {
@@ -159,19 +162,19 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Style' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('icon-color-modal')).toBeVisible();
 
     await adminPage.getByTestId('icon-picker-btn').click();
     await adminPage
       .getByRole('button', { name: 'Cube01', exact: true })
       .click();
     await adminPage
-      .getByRole('button', { name: 'Select color #F14C75' })
+      .getByRole('button', { name: 'Select color #1470EF' })
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
@@ -191,12 +194,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('delete-modal')).toBeVisible();
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();
@@ -232,7 +235,8 @@ test.describe('Tag Page with Admin Roles', () => {
       `/tags/${encodeURIComponent(
         classification.responseData.fullyQualifiedName ??
           classification.responseData.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -252,11 +256,12 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await fillTagForm(adminPage, domain);
 
-    const createTagResponse = adminPage.waitForResponse(
+    const createTagResponse = waitForResponseWithStatus(
+      adminPage,
       (response) =>
         response.url().includes('/api/v1/tags') &&
-        response.request().method() === 'POST' &&
-        response.ok()
+        response.request().method() === 'POST',
+      'ok'
     );
 
     await submitForm(adminPage);
@@ -267,7 +272,8 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.goto(
       `/tag/${encodeURIComponent(
         createdTagData.fullyQualifiedName ?? NEW_TAG.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -382,9 +388,11 @@ test.describe('Tag Page with Admin Roles', () => {
         .first();
       await expect(classificationEntry).toBeVisible({ timeout: 30000 });
       await classificationEntry.click();
-      await expect(adminPage.locator('.activeCategory')).toContainText(
-        classification1.responseData.displayName
-      );
+      await expect(
+        adminPage.locator(
+          '[data-testid="tags-left-panel"] [aria-current="page"]'
+        )
+      ).toContainText(classification1.responseData.displayName);
     };
 
     await openClassification();
@@ -415,7 +423,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
@@ -440,7 +448,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
@@ -456,7 +464,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
 test.describe('Tag Page with Data Consumer Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -533,7 +541,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 
 test.describe('Tag Page with Data Steward Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -586,7 +594,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
 test.describe('Tag Page with Limited EditTag Permission', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({

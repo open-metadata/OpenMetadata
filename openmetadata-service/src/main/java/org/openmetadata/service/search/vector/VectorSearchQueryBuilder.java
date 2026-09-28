@@ -2,12 +2,14 @@ package org.openmetadata.service.search.vector;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -54,15 +56,30 @@ public class VectorSearchQueryBuilder {
       Map<String, List<String>> filters,
       double threshold,
       SubjectContext subjectContext) {
+    return build(
+        vector,
+        new VectorSearchParameters(
+            null, filters, size, from, k, threshold, null, subjectContext, null));
+  }
+
+  /** Build an OpenSearch request that also applies a compiled query filter. */
+  public static String build(float[] vector, VectorSearchParameters parameters) {
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
-            .append(size)
+            .append(parameters.size())
             .append(",\"from\":")
-            .append(from)
+            .append(parameters.from())
             .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
             .append(",\"query\":");
-    appendKnnQuery(sb, vector, k, filters, threshold, subjectContext);
+    appendKnnQuery(
+        sb,
+        vector,
+        parameters.k(),
+        parameters.filters(),
+        parameters.threshold(),
+        parameters.subjectContext(),
+        parameters.queryFilter());
     sb.append('}');
     return sb.toString();
   }
@@ -97,6 +114,17 @@ public class VectorSearchQueryBuilder {
       Map<String, List<String>> filters,
       double threshold,
       SubjectContext subjectContext) {
+    appendKnnQuery(sb, vector, k, filters, threshold, subjectContext, null);
+  }
+
+  private static void appendKnnQuery(
+      StringBuilder sb,
+      float[] vector,
+      int k,
+      Map<String, List<String>> filters,
+      double threshold,
+      SubjectContext subjectContext,
+      String queryFilter) {
     sb.append("{\"knn\":{\"embedding\":{\"vector\":").append(Arrays.toString(vector));
 
     // OpenSearch KNN supports either min_score or k, not both. When min_score is set,
@@ -110,7 +138,7 @@ public class VectorSearchQueryBuilder {
 
     // Build filter inside knn for efficient k-NN filtering
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
-    appendFilterMustClauses(sb, filters);
+    appendFilterMustClauses(sb, filters, queryFilter);
     sb.append("]"); // close must array
     appendMemoryVisibilityFilter(sb, subjectContext);
     sb.append("}}"); // close bool and filter
@@ -147,33 +175,40 @@ public class VectorSearchQueryBuilder {
       Map<String, List<String>> filters,
       int numCandidatesMultiplier,
       SubjectContext subjectContext) {
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(null, filters, size, from, k, 0.0, null, subjectContext, null);
+    return buildNativeESQuery(vector, parameters, numCandidatesMultiplier);
+  }
+
+  /** Build an Elasticsearch request that also applies a compiled query filter. */
+  public static String buildNativeESQuery(
+      float[] vector, VectorSearchParameters parameters, int numCandidatesMultiplier) {
     // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
     // Integer.MAX_VALUE; clamp to Integer.MAX_VALUE so num_candidates is always positive.
-    long candidatesLong = (long) k * (long) numCandidatesMultiplier;
+    long candidatesLong = (long) parameters.k() * (long) numCandidatesMultiplier;
     int numCandidates = (int) Math.max(100, Math.min(candidatesLong, (long) Integer.MAX_VALUE));
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
-            .append(size)
+            .append(parameters.size())
             .append(",\"from\":")
-            .append(from)
+            .append(parameters.from())
             .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
             .append(",\"knn\":{")
             .append("\"field\":\"embedding\"")
             .append(",\"query_vector\":")
             .append(Arrays.toString(vector))
             .append(",\"k\":")
-            .append(k)
+            .append(parameters.k())
             .append(",\"num_candidates\":")
             .append(numCandidates);
 
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
-    appendFilterMustClauses(sb, filters);
-    sb.append("]"); // close must array
-    appendMemoryVisibilityFilter(sb, subjectContext);
-    sb.append("}}"); // close bool and filter
-
-    sb.append("}}"); // close knn object
+    appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
+    sb.append("]");
+    appendMemoryVisibilityFilter(sb, parameters.subjectContext());
+    sb.append("}}");
+    sb.append("}}");
     return sb.toString();
   }
 
@@ -251,6 +286,11 @@ public class VectorSearchQueryBuilder {
   }
 
   private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
+    appendFilterMustClauses(sb, filters, null);
+  }
+
+  private static void appendFilterMustClauses(
+      StringBuilder sb, Map<String, List<String>> filters, String queryFilter) {
     sb.append("{\"term\":{\"deleted\":false}}");
     Map<String, List<String>> safeFilters = filters == null ? Map.of() : filters;
     for (var e : safeFilters.entrySet()) {
@@ -348,6 +388,19 @@ public class VectorSearchQueryBuilder {
         }
       }
     }
+    appendQueryFilter(sb, queryFilter);
+  }
+
+  private static void appendQueryFilter(StringBuilder sb, String queryFilter) {
+    if (nullOrEmpty(queryFilter)) {
+      return;
+    }
+    JsonNode root = JsonUtils.readTree(queryFilter);
+    JsonNode query = root != null && root.has("query") ? root.get("query") : root;
+    if (query == null || !query.isObject() || query.isEmpty()) {
+      throw new IllegalArgumentException("Vector queryFilter must contain a query object");
+    }
+    sb.append(',').append(JsonUtils.pojoToJson(query));
   }
 
   private static void appendFlat(StringBuilder sb, String field, List<String> vals) {

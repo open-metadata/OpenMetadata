@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
 import React, { useState } from 'react';
 import type { Key } from 'react-aria-components';
@@ -28,7 +28,9 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
   onExportJsonLd,
   onExportTurtle,
   onExportRdfXml,
+  onExportCsv,
   supportedExports,
+  description,
   'data-testid': testId = 'ontology-export-graph',
 }) => {
   const { t } = useTranslation();
@@ -49,6 +51,7 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
     ...(onExportRdfXml
       ? [{ id: ExportFormat.RDFXML, label: t('label.owl-rdf-xml') }]
       : []),
+    ...(onExportCsv ? [{ id: ExportFormat.CSV, label: t('label.csv') }] : []),
   ];
 
   const menuItems =
@@ -69,6 +72,8 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
         await onExportTurtle?.();
       } else if (key === ExportFormat.RDFXML) {
         await onExportRdfXml?.();
+      } else if (key === ExportFormat.CSV) {
+        await onExportCsv?.();
       }
       setOpen(false);
     } catch (error) {
@@ -90,6 +95,13 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
         {t('label.export-graph')}
       </Button>
       <Dropdown.Popover aria-label={t('label.export-graph')} placement="top">
+        {description && (
+          <Typography
+            className="tw:px-3 tw:py-2 tw:text-tertiary"
+            size="text-xs">
+            {description}
+          </Typography>
+        )}
         <Dropdown.Menu items={menuItems} onAction={handleAction}>
           {(item) => <Dropdown.Item id={item.id} label={item.label} />}
         </Dropdown.Menu>

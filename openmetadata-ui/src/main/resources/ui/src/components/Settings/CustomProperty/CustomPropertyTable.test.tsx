@@ -28,7 +28,8 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
 });
 
-const mockUpdateEntityType = jest.fn();
+const mockOnDeleteProperty = jest.fn();
+const mockOnUpdateProperty = jest.fn();
 const mockProperties = [
   {
     name: 'tableCreatedBy',
@@ -61,7 +62,8 @@ const mockProperties = [
 const mockProp = {
   hasAccess: true,
   customProperties: mockProperties,
-  updateEntityType: mockUpdateEntityType,
+  onDeleteProperty: mockOnDeleteProperty,
+  onUpdateProperty: mockOnUpdateProperty,
   isLoading: false,
   isButtonLoading: false,
 };
@@ -129,8 +131,8 @@ describe('Test CustomField Table Component', () => {
 
     fireEvent.click(confirmButton);
 
-    // update type callback should get called on click of confirm button
-    expect(mockUpdateEntityType).toHaveBeenCalled();
+    // the delete is reported by name, so the page can remove exactly that property
+    expect(mockOnDeleteProperty).toHaveBeenCalledWith(mockProperties[0].name);
   });
 
   it('Should render no data row if there is no custom properties', async () => {

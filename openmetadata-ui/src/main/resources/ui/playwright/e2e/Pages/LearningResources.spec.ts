@@ -24,13 +24,14 @@ import {
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { dismissLineageMapOnboarding } from '../../utils/lineage';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 async function goToLearningResourcesAdmin(page: Page) {
   const admin = new AdminClass();
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
 
   if (page.url().includes('/signin')) {
@@ -38,7 +39,8 @@ async function goToLearningResourcesAdmin(page: Page) {
   }
 
   await page.waitForURL(
-    (url) => url.pathname === '/' || url.pathname === '/my-data'
+    (url) => url.pathname === '/' || url.pathname === '/my-data',
+    { waitUntil: 'domcontentloaded' }
   );
   await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
   await waitForAllLoadersToDisappear(page);
@@ -285,12 +287,11 @@ test.describe(
       await resource.create(apiContext);
 
       await test.step('Navigate to lineage page', async () => {
-        const lineageRes = page.waitForResponse(
-          '/api/v1/lineage/getPlatformLineage?view=service*'
-        );
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await sidebarClick(page, SidebarItem.LINEAGE);
         await lineageRes;
         await waitForAllLoadersToDisappear(page);
+        await dismissLineageMapOnboarding(page);
       });
 
       await test.step('Open learning drawer and verify resource', async () => {

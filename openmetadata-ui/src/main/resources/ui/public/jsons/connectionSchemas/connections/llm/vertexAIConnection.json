@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "VertexAIConnection",
   "description": "Google Cloud Vertex AI LLM Service Connection Config",
   "type": "object",
@@ -39,7 +38,11 @@
       "title": "GCP Credentials",
       "description": "GCP service account credentials JSON",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "accept": [
+        ".json"
+      ],
+      "uiFieldType": "fileOrInput"
     },
     "timeout": {
       "title": "Timeout",

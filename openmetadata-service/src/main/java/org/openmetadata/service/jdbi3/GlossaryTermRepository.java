@@ -170,6 +170,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
   private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
   private static final int MAX_ONTOLOGY_RELATION_CANDIDATES = 2500;
+  private static final Comparator<TermRelation> TERM_RELATION_ORDER =
+      Comparator.comparing((TermRelation relation) -> relation.getTerm().getFullyQualifiedName())
+          .thenComparing(TermRelation::getRelationType);
 
   private final TermRelationMetadataCodec termRelationMetadataCodec =
       new TermRelationMetadataCodec();
@@ -879,7 +882,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (EntityRelationshipRecord record : toRecords) {
       relations.add(buildTermRelation(record));
     }
-    relations.sort(Comparator.comparing(tr -> tr.getTerm().getFullyQualifiedName()));
+    relations.sort(TERM_RELATION_ORDER);
     return relations;
   }
 
@@ -1898,6 +1901,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -1911,6 +1915,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
 
       searchRepository.updateEntity(term.getEntityReference());
+      RdfUpdater.updateEntity(term);
     }
 
     // Add Failed And Suceess Request
@@ -1970,6 +1975,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -2178,6 +2184,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -2217,6 +2224,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
   }
 
@@ -2577,7 +2585,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     for (List<TermRelation> relations : relatedTermsMap.values()) {
-      relations.sort(Comparator.comparing(tr -> tr.getTerm().getFullyQualifiedName()));
+      relations.sort(TERM_RELATION_ORDER);
     }
 
     if (!relatedTermsMap.isEmpty()) {

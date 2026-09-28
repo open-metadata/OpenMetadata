@@ -53,15 +53,53 @@ public class SdkClients {
 
   // Mutable so UI test harnesses (containerized server, ephemeral port) can override at
   // runtime via overrideBaseUrl(...) — that path also flushes the cached per-role clients.
-  private static volatile String BASE_URL =
-      System.getProperty(
-          "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
+  //
+  // OM_URL is read here, not just by UiTestServer, because a test that talks to the server
+  // directly (HttpClient + getServerUrl()) rather than through a harness has nothing to trigger
+  // overrideBaseUrl. In external mode that left BASE_URL on localhost until some *other* class
+  // happened to boot the harness first, so the suite passed or failed on test order:
+  // HighlightFieldSaveValidationIT died with ConnectException in 0.006s whenever it sorted early.
+  private static volatile String BASE_URL = resolveBaseUrl(lookup("IT_BASE_URL"), lookup("OM_URL"));
+
+  /** Package-private and pure so {@link SdkClientsBaseUrlTest} can pin the /api convention. */
+  static String resolveBaseUrl(final String itBaseUrl, final String omUrl) {
+    if (itBaseUrl != null) {
+      return stripTrailingSlash(itBaseUrl);
+    }
+    // External mode's signal, exported alongside OM_ADMIN_TOKEN by the CI login script.
+    //
+    // OM_URL is the bare host; BASE_URL carries the /api suffix. Both other producers append it —
+    // TestSuiteBootstrap sets IT_BASE_URL to "http://localhost:<port>/api" and ExternalServer
+    // builds OM_URL + "/api" — because the server's rootPath is /api/* in every config. Seeding
+    // OM_URL verbatim reached the right host but sent /v1/... to the UI, which answers any
+    // unmatched route with index.html, so callers died on `Unexpected character ('<')`.
+    return omUrl != null ? stripTrailingSlash(omUrl) + "/api" : "http://localhost:8585";
+  }
+
+  private static String stripTrailingSlash(final String url) {
+    return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+  }
+
+  /** Env first, then system property — the order {@code OssTestServer} uses for the same names. */
+  private static String lookup(final String name) {
+    final String env = System.getenv(name);
+    if (env != null && !env.isBlank()) {
+      return env;
+    }
+    final String prop = System.getProperty(name);
+    return (prop != null && !prop.isBlank()) ? prop : null;
+  }
 
   // When an admin token is supplied out-of-band (external mode's OM_ADMIN_TOKEN, or the
   // containerized TokenRefresher), adminClient() must keep using THAT token and never self-mint a
   // replacement with the harness key — an external cluster doesn't trust the harness keyId and
   // would reject the minted token with SigningKeyNotFoundException once the 15-min cache expired.
-  private static volatile String OVERRIDDEN_ADMIN_TOKEN;
+  //
+  // Seeded from OM_ADMIN_TOKEN at init for the same reason BASE_URL is seeded from OM_URL: a test
+  // that calls getAdminToken() directly, rather than through a harness that would have called
+  // overrideAdminToken(), otherwise self-mints a harness-signed JWT the deployed cluster does not
+  // trust. Latent until now — the requests were not reaching the API to be authenticated.
+  private static volatile String OVERRIDDEN_ADMIN_TOKEN = lookup("OM_ADMIN_TOKEN");
 
   public static String baseUrl() {
     return BASE_URL;
