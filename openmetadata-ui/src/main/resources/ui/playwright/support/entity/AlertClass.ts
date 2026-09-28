@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { createOrFetch } from '../../utils/apiResponse';
+import { createOrFetch, deleteFixtureEntity } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 interface AlertConfig {
@@ -99,7 +99,8 @@ export class AlertClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/events/subscriptions/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 

@@ -16,6 +16,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineStatus,
 )
 from metadata.utils.helpers import datetime_to_ts
+from openmetadata_managed_apis.utils.pipeline_run_id import pipeline_run_id
 
 
 class ApiResponse:
@@ -81,7 +82,7 @@ class ResponseFormat:
         logical_date = getattr(dag_run, "logical_date", None) or getattr(dag_run, "execution_date", None)
         return PipelineStatus(
             pipelineState=dag_run.get_state(),
-            runId=dag_run.run_id,
+            runId=str(pipeline_run_id(dag_run.dag_id, dag_run.run_id)),
             startDate=datetime_to_ts(dag_run.start_date),
             endDate=datetime_to_ts(dag_run.end_date),
             timestamp=datetime_to_ts(logical_date),

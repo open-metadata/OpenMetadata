@@ -902,14 +902,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         );
         await propertyCard.getByTestId('edit-icon').click();
 
-        const enumSelect = page.locator('[data-testid="enum-select"]');
+        const enumSelect = page.getByTestId('enum-select');
         await expect(enumSelect).toBeVisible();
-        await enumSelect.click();
-
-        await page
-          .locator('.ant-select-item-option-content')
-          .getByText('medium', { exact: true })
-          .click();
+        await enumSelect.getByRole('button', { name: /Enum Values/ }).click();
+        await page.getByRole('option', { name: 'medium', exact: true }).click();
+        await clickOutside(page);
 
         const saveButton = page.locator('[data-testid="inline-save-btn"]');
         const patchValue1 = page.waitForResponse(
@@ -925,16 +922,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         );
 
         await propertyCard.locator('[data-testid="edit-icon"]').click();
-        await enumSelect.hover();
-
-        const clearIcon = enumSelect.locator('.ant-select-clear');
-        if (await clearIcon.isVisible()) {
-          await clearIcon.click();
-        } else {
-          const enumInput = page.locator('#enumValues');
-          await enumInput.click();
-          await enumInput.fill('');
-        }
+        await enumSelect.getByRole('button', { name: 'Clear all' }).click();
 
         const patchValue2 = page.waitForResponse(
           (resp) =>
@@ -1373,9 +1361,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await page
           .locator('[data-testid="hyperlink-url-input"]')
           .fill('javascript:alert("XSS")');
+        await page.getByTestId('inline-save-btn').click();
 
         await expect(
-          page.locator('.ant-form-item-explain-error')
+          page.getByTestId('hyperlink-url-input-error')
         ).toContainText('URL must use http or https protocol');
 
         await page.locator('[data-testid="inline-cancel-btn"]').click();
@@ -3355,9 +3344,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await page.getByTestId('custom_properties').click();
           await customPropertyResponse;
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,
@@ -3368,6 +3359,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await page.reload();
+          await waitForAllLoadersToDisappear(page);
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();
@@ -3399,6 +3391,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3411,7 +3404,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 20);
+          await setSliderValue(
+            page,
+            'field-weight-slider',
+            20,
+            0,
+            100,
+            'field-weight-value'
+          );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
@@ -3445,6 +3445,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await searchInput.fill(dashboardPropertyValue);
           await searchInput.press('Enter');
 
+          await page
+            .getByTestId('dashboards-tab')
+            .waitFor({ state: 'visible' });
           await page.getByTestId('dashboards-tab').click();
 
           await waitForAllLoadersToDisappear(page);
@@ -3501,9 +3504,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await page.getByTestId('custom_properties').click();
           await customPropertyResponse;
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,
@@ -3535,6 +3540,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`
@@ -3547,7 +3553,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 12);
+          await setSliderValue(
+            page,
+            'field-weight-slider',
+            12,
+            0,
+            100,
+            'field-weight-value'
+          );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();

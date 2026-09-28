@@ -425,7 +425,7 @@ const getChildComponentDetails = (
           permissions={{} as OperationPermission}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
-          <MetricExpression />
+          <MetricExpression metric={entityInfo as Metric} />
         </GenericProvider>
       ),
       headingTestId: 'schema-header',

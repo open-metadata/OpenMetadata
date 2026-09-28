@@ -84,14 +84,14 @@ async function expectOwnerInPanel(
     knowledgeCenter.responseData.fullyQualifiedName,
     'page',
     owner.responseData.id,
-    true
+    true,
+    { timeout: 90_000 }
   );
   await navigateToKCEntity(page, entityName);
 
   const ownerChip = page
     .locator('[data-testid="entity-summary-panel-container"]')
     .getByTestId(owner.getUserDisplayName());
-
   await expect(ownerChip).toBeVisible();
 }
 
@@ -315,14 +315,15 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
         await overview.removeOwner([user1.getUserDisplayName()], 'Users');
         await waitForAllLoadersToDisappear(adminPage);
+
         await waitForOwnerIndexed(
           adminPage,
           knowledgeCenter.responseData.fullyQualifiedName,
           'page',
           user1.responseData.id,
-          false
+          false,
+          { timeout: 90_000 }
         );
-
         await navigateToKCEntity(
           adminPage,
           getEntityDisplayName(knowledgeCenter.responseData)

@@ -193,14 +193,66 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_checked_in_baseline_augments_downloaded_history(tmp_path):
+    planner = load_script("build_playwright_shards")
+    downloaded = tmp_path / "downloaded.json"
+    baseline = tmp_path / "timing-baseline.json"
+    downloaded.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "title": "existing test",
+                        "durationMs": 100,
+                    }
+                ],
+            }
+        )
+    )
+    baseline.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "title": "existing test",
+                        "durationMs": 900,
+                    },
+                    {
+                        "id": "new-test",
+                        "file": "Features/New.spec.ts",
+                        "title": "new test",
+                        "durationMs": 200,
+                    }
+                ],
+            }
+        )
+    )
+
+    weights, identity_weights = planner.load_history_with_baseline(
+        [downloaded], baseline
+    )
+
+    assert weights == {"existing-test": 100, "new-test": 200}
+    assert identity_weights[("Features/Existing.spec.ts", "existing test")] == 100
+    assert identity_weights[("Features/New.spec.ts", "new test")] == 200
+    assert planner.load_history_with_baseline([downloaded, baseline], baseline) == (
+        weights,
+        identity_weights,
+    )
+
+
 def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
-    tmp_path, monkeypatch
+    tmp_path,
 ):
     planner = load_script("build_playwright_shards")
     history = tmp_path / "history.json"
-    baseline = tmp_path / planner.CHECKED_IN_BASELINE
-    baseline.parent.mkdir(parents=True)
-    monkeypatch.setattr(planner, "SPEC_ROOT_CANDIDATES", (tmp_path,))
+    baseline = tmp_path / "timing-baseline.json"
     history.write_text(
         json.dumps(
             {
@@ -238,9 +290,8 @@ def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
         )
     )
 
-    weights, identity_weights = planner.load_history([history])
-    planner.backfill_from_checked_in_baseline(
-        [history], weights, identity_weights
+    weights, identity_weights = planner.load_history_with_baseline(
+        [history], baseline
     )
 
     assert weights == {"existing-test": 200, "new-test": 700}
@@ -1128,6 +1179,60 @@ def test_import_export_runs_in_its_own_lane_with_two_workers():
     assert planner.LANE_WORKERS["import-export"] == 2
     assert planner.lane_bounds("import-export", "full") == (1, 8)
     assert planner.lane_bounds("import-export", "targeted") == (1, 2)
+
+
+def test_targeted_side_lane_grows_past_its_starting_cap_to_meet_the_budget():
+    # A targeted PR that touches helpers nearly every spec imports (e.g.
+    # playwright/utils/common.ts) selects a whole side lane. The targeted cap
+    # of 2 is where such a lane starts, not a ceiling: growing to the
+    # full-mode bound beats failing the plan, which is what blocked #33902
+    # ("Lane import-export needs more than 2 shards ... predicted at 21.2m").
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "ImportExport", f"ie-{index}.spec.ts", str(index), weight_ms=60_000
+        )
+        for index in range(150)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "import-export", "targeted")
+
+    workers = planner.LANE_WORKERS["import-export"]
+    assert 2 < len(shards) <= planner.lane_bounds("import-export", "full")[1]
+    assert all(
+        planner.predicted_execution_ms(shard, workers) <= planner.TARGET_MS
+        for shard in shards
+    )
+
+
+def test_targeted_side_lane_still_starts_at_its_targeted_cap():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "ImportExport", f"ie-{index}.spec.ts", str(index), weight_ms=60_000
+        )
+        for index in range(20)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "import-export", "targeted")
+
+    assert len(shards) <= planner.lane_bounds("import-export", "targeted")[1]
+
+
+def test_targeted_side_lane_reports_a_lane_the_full_ceiling_cannot_hold():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "ImportExport",
+            f"huge-{index}.spec.ts",
+            str(index),
+            weight_ms=19 * 60 * 1000,
+        )
+        for index in range(40)
+    ]
+
+    with pytest.raises(SystemExit, match=r"needs more than 8 shards"):
+        planner.assign_lane_within_budget(units, "import-export", "targeted")
 
 
 def test_source_glob_matching_is_explicit():

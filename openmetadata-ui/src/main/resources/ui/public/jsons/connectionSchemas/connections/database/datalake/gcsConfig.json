@@ -149,8 +149,7 @@
                 "privateKeyId": {
                   "title": "Private Key ID",
                   "description": "Google Cloud private key id.",
-                  "type": "string",
-                  "format": "password"
+                  "type": "string"
                 },
                 "privateKey": {
                   "title": "Private Key",

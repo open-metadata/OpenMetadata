@@ -93,6 +93,10 @@
       },
       "default": []
     },
+    "serviceAttributes": {
+      "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+      "$ref": "./serviceAttributes.json"
+    },
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"

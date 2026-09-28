@@ -18,6 +18,7 @@ import shutil
 import traceback
 import zipfile
 from collections import defaultdict
+from contextlib import suppress
 from functools import singledispatch
 from pathlib import Path
 
@@ -61,6 +62,12 @@ def get_prefix_config(config) -> tuple[str | None, str | None]:
             config.prefixConfig.objectPrefix,
         )
     return None, None
+
+
+def _ensure_extract_dir(path: str | None) -> None:
+    if path is None:
+        raise PowerBIFileConfigException("PowerBI .pbit extraction directory is not configured")
+    Path(path).mkdir(parents=True, exist_ok=True)
 
 
 def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
@@ -185,6 +192,7 @@ def get_pbit_files(config):
 @get_pbit_files.register
 def _(config: S3Config):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AWSClient(config.securityConfig).get_client(service_name="s3")
@@ -219,6 +227,7 @@ def _(config: S3Config):
 @get_pbit_files.register
 def _(config: AzureConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AzureClient(config.securityConfig).create_blob_client()
@@ -248,12 +257,15 @@ def _(config: AzureConfig):
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise PowerBIFileConfigException(f"Error fetching .pbit files from Azure: {exc}")  # noqa: B904
+        raise PowerBIFileConfigException(  # noqa: B904
+            f"Error fetching .pbit files from Azure: {exc}"
+        )
 
 
 @get_pbit_files.register
 def _(config: GCSConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
@@ -321,4 +333,8 @@ class PowerBiFileClient:
         """
         Method to remove the files after ingestion is completed
         """
-        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir)
+        source = self.config.pbitFilesSource
+        extract_dir = source.pbitFilesExtractDir if source is not None else None
+        if extract_dir is not None:
+            with suppress(FileNotFoundError):
+                shutil.rmtree(extract_dir)
