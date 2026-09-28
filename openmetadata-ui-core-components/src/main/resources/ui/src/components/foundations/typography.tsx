@@ -260,6 +260,10 @@ const VariantTypography = ({
 
   const elementProps = {
     ...otherProps,
+    // antd Typography.Link parity: new-tab links never leak the opener or referrer.
+    rel:
+      otherProps.rel ??
+      (otherProps.target === '_blank' ? 'noopener noreferrer' : undefined),
     className: cx(
       'not-prose',
       size && sizeClasses[size],
