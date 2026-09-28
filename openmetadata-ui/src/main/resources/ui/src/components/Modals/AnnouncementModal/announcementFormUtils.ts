@@ -28,18 +28,31 @@ export const toDateInputValue = (timestamp?: number | null): string =>
     : DateTime.fromMillis(timestamp).toFormat(DATE_INPUT_FORMAT);
 
 /**
- * The date input's value -> epoch millis at the start of that day. A cleared or
- * half-typed field reads back as `undefined` rather than a NaN timestamp, which
- * is also what makes the field fail its `required` rule and keeps submit
- * disabled until a real date is picked.
+ * The date input's value -> epoch millis.
+ *
+ * The end date resolves to the *end* of the chosen day, not its start. Both
+ * dates are days, but the window is a half-open range in millis: anchoring the
+ * end at 00:00 would stop the announcement as the chosen day begins, so an end
+ * date of Friday would never show on Friday, and a one-day announcement
+ * (start = end) would be impossible because `startTime >= endTime`.
+ *
+ * A cleared or half-typed field reads back as `null` rather than a NaN
+ * timestamp, which is what makes it fail its required rule and keeps submit
+ * disabled until a real date is picked. `null`, not `undefined`: react-hook-form
+ * treats an `undefined` from `field.onChange` as "no change" and would keep the
+ * previous value, so clearing the input would silently do nothing.
  */
-export const fromDateInputValue = (value: string): number | null => {
+export const fromDateInputValue = (
+  value: string,
+  boundary: 'start' | 'end' = 'start'
+): number | null => {
   const parsed = DateTime.fromFormat(value, DATE_INPUT_FORMAT);
 
-  // `null`, not `undefined`: react-hook-form treats an `undefined` from
-  // `field.onChange` as "no change" and keeps the previous value, so clearing
-  // the input would silently do nothing.
-  return parsed.isValid ? parsed.toMillis() : null;
+  if (!parsed.isValid) {
+    return null;
+  }
+
+  return (boundary === 'end' ? parsed.endOf('day') : parsed).toMillis();
 };
 
 /**

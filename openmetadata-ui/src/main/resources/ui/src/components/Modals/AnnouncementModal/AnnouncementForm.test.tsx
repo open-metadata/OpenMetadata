@@ -18,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { DateTime } from 'luxon';
 import { useForm } from 'react-hook-form';
 import {
   AnnouncementColor,
@@ -260,6 +261,32 @@ describe('AnnouncementForm', () => {
     // Markup with no content does not satisfy the requirement.
     expect(screen.getByTestId('announcement-submit')).toBeDisabled();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('should include the chosen end day, so a one-day announcement is possible', async () => {
+    const onSubmit = jest.fn();
+    render(<Harness onSubmit={onSubmit} />);
+
+    // Same day in both fields — the window must still be non-empty.
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('startTime'), {
+        target: { value: '2026-10-01' },
+      });
+      fireEvent.change(screen.getByTestId('endTime'), {
+        target: { value: '2026-10-01' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('announcement-submit'));
+    });
+
+    const { startTime, endTime } = onSubmit.mock.calls[0][0];
+
+    expect(endTime).toBeGreaterThan(startTime);
+    // The end is the last instant of the chosen day, not the first.
+    expect(DateTime.fromMillis(endTime).toFormat('yyyy-MM-dd HH:mm')).toBe(
+      '2026-10-01 23:59'
+    );
   });
 
   it('should offer the five Custom colours, plus a stored one it no longer offers', () => {

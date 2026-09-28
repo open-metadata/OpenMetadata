@@ -75,11 +75,14 @@ const DATE_INPUT_CLASS = [
 ].join(' ');
 
 const DateField = ({
+  boundary = 'start',
   id,
   label,
   value,
   onChange,
 }: {
+  /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
+  boundary?: 'start' | 'end';
   id: string;
   label: string;
   value?: number | null;
@@ -106,7 +109,7 @@ const DateField = ({
         id={id}
         type="date"
         value={toDateInputValue(value)}
-        onChange={(e) => onChange(fromDateInputValue(e.target.value))}
+        onChange={(e) => onChange(fromDateInputValue(e.target.value, boundary))}
       />
     </div>
   </div>
@@ -327,6 +330,7 @@ const AnnouncementForm = ({
                   }}>
                   {({ field }) => (
                     <DateField
+                      boundary="end"
                       id="endTime"
                       label={t('label.end-date')}
                       value={field.value}
