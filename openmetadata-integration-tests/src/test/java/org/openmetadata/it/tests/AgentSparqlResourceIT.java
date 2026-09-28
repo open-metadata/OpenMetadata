@@ -83,8 +83,6 @@ public class AgentSparqlResourceIT {
   private static final String RDF_INDEX_APP = "RdfIndexApp";
   private static final long TOKEN_TTL_SECONDS = 3600;
   private static final int FIXTURE_BATCH_ROWS = 400;
-  private static final HttpClient HTTP =
-      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
   private static final Deque<Runnable> CLEANUP = new ArrayDeque<>();
   private static final Deque<UUID> APP_RUN_IDS = new ArrayDeque<>();
 
@@ -474,7 +472,10 @@ public class AgentSparqlResourceIT {
     if (impersonate != null) {
       request.header(IMPERSONATE_HEADER, impersonate);
     }
-    return HTTP.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    try (HttpClient client =
+        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build()) {
+      return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
   }
 
   private static void adminUpdate(String sparql) throws Exception {

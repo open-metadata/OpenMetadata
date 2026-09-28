@@ -283,6 +283,11 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       await waitForAllLoadersToDisappear(page);
     });
 
+    await test.step('Verify the grid survived the load', async () => {
+      // A render crash swaps the page for the error boundary, so assert the grid is still mounted.
+      await expect(page.getByTestId('column-grid-container')).toBeVisible();
+    });
+
     await test.step('Verify filter chip is restored', async () => {
       const metadataStatusChip = page.getByTestId('filter-chip-metadataStatus');
 
