@@ -226,6 +226,25 @@ describe('PlatformInsightsWidget', () => {
       expect(screen.getByText('75%')).toBeInTheDocument();
       expect(screen.getByText('90%')).toBeInTheDocument();
     });
+
+    it('should render healthy data assets as a count, without a percent sign', () => {
+      renderComponent({
+        chartsData: [
+          {
+            chartType: SystemChartType.HealthyDataAssets,
+            currentPercentage: 12,
+            percentageChange: 3,
+            isIncreased: true,
+            numberOfDays: 6,
+          },
+        ],
+      });
+
+      expect(screen.getByText('12')).toBeInTheDocument();
+      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.queryByText('12%')).not.toBeInTheDocument();
+      expect(screen.queryByText('3%')).not.toBeInTheDocument();
+    });
   });
 
   describe('Percentage Change Display', () => {

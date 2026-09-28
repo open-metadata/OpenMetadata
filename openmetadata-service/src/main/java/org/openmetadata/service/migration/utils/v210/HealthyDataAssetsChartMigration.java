@@ -28,7 +28,7 @@ import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
  *
  * <p>The v190 chart was a single definition serving both the polled (Data Insights index) and the
  * live (search index) request. It grouped by service instead of by day, counted unhealthy tables
- * instead of a healthy percentage, and referenced {@code table.id.keyword} / {@code
+ * instead of healthy ones, and referenced {@code table.id.keyword} / {@code
  * testCaseStatus.keyword}, sub-fields that do not exist in the test-case-result index, so the polled
  * request matched nothing. As with the other Platform Insights cards, the polled and live requests
  * now read separate charts.
@@ -39,13 +39,12 @@ public final class HealthyDataAssetsChartMigration {
   public static final String HEALTHY_DATA_ASSETS_LIVE = "healthy_data_assets_live";
 
   /**
-   * Per day, over test-case-result documents: tables whose runs that day all passed, as a share of
-   * tables that ran tests that day.
+   * Per day, over test-case-result documents: tables that ran tests that day, less those with a
+   * failed or aborted run that day.
    */
   static final String DAILY_FORMULA =
-      "((unique(k='table.id',q='testCaseStatus: *')"
-          + "-unique(k='table.id',q='testCaseStatus: Failed OR testCaseStatus: Aborted'))"
-          + "/unique(k='table.id',q='testCaseStatus: *'))*100";
+      "unique(k='table.id',q='testCaseStatus: *')"
+          + "-unique(k='table.id',q='testCaseStatus: Failed OR testCaseStatus: Aborted')";
 
   /**
    * Over test-case documents, matching the Data Quality page: entities with tests, less those
@@ -53,10 +52,9 @@ public final class HealthyDataAssetsChartMigration {
    * not its latest result; {@code testCaseResult.testCaseStatus} is.
    */
   static final String LIVE_FORMULA =
-      "((unique(k='originEntityFQN')"
+      "unique(k='originEntityFQN')"
           + "-unique(k='originEntityFQN',q='testCaseResult.testCaseStatus: Failed"
-          + " OR testCaseResult.testCaseStatus: Aborted'))"
-          + "/unique(k='originEntityFQN'))*100";
+          + " OR testCaseResult.testCaseStatus: Aborted')";
 
   private HealthyDataAssetsChartMigration() {}
 
