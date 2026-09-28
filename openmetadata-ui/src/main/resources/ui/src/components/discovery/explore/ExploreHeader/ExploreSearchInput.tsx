@@ -42,8 +42,8 @@ export interface ExploreSearchInputProps {
   isNLPActive: boolean;
   isNLPEnabled: boolean;
   searchCriteria?: SearchIndex;
-  /** i18n key for the placeholder. Defaults to Explore's own. */
-  placeholderKey?: string;
+  /** Placeholder text. Defaults to Explore's own. */
+  placeholder?: string;
   searchContainerRef: RefObject<HTMLFormElement>;
   onSearchChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -126,7 +126,7 @@ export const ExploreSearchInput = ({
   isNLPActive,
   isNLPEnabled,
   searchCriteria,
-  placeholderKey,
+  placeholder,
   searchContainerRef,
   onSearchChange,
   onSubmit,
@@ -139,7 +139,7 @@ export const ExploreSearchInput = ({
   const isSearchPopoverOpen =
     isSearchBoxOpen && (Boolean(searchValue) || isNLPActive);
   const searchShortcutLabel = getSearchShortcutLabel();
-  const placeholder = t(placeholderKey ?? SEARCH_PLACEHOLDER_KEY);
+  const placeholderText = placeholder ?? t(SEARCH_PLACEHOLDER_KEY);
 
   return (
     <Box className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3">
@@ -150,7 +150,7 @@ export const ExploreSearchInput = ({
         itself, not synthetic interactivity added to a non-interactive element.
       */}
       <form
-        aria-label={placeholder}
+        aria-label={placeholderText}
         className="tw:relative tw:w-full tw:min-w-0"
         data-testid="explore-search-form"
         ref={searchContainerRef}
@@ -205,7 +205,7 @@ export const ExploreSearchInput = ({
             icon={SearchMd}
             iconClassName="tw:size-4 tw:text-brand-600"
             inputClassName={INPUT_CLASS}
-            placeholder={placeholder}
+            placeholder={placeholderText}
             value={searchValue}
             wrapperClassName={INPUT_WRAPPER_CLASS}
             onChange={onSearchChange}
@@ -231,7 +231,7 @@ export const ExploreSearchInput = ({
             />
           )}
           <kbd
-            aria-label={`${placeholder} (${searchShortcutLabel})`}
+            aria-label={`${placeholderText} (${searchShortcutLabel})`}
             className={SEARCH_SHORTCUT_CLASS}
             data-testid="explore-search-shortcut">
             {searchShortcutLabel}

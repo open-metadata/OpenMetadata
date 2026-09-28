@@ -52,10 +52,10 @@ jest.mock(
 );
 
 jest.mock(
-  'components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component',
+  'components/DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="marketplace-search-bar" />,
+    default: () => <div data-testid="marketplace-search-input" />,
   })
 );
 
@@ -103,7 +103,7 @@ describe('MarketplaceOverviewHeader', () => {
     const headerLayout = screen.getByTestId('marketplace-header-layout');
 
     expect(headerLayout).toContainElement(
-      screen.getByTestId('marketplace-search-bar')
+      screen.getByTestId('marketplace-search-input')
     );
     expect(headerLayout).toContainElement(screen.getByTestId('add-new-menu'));
     expect(screen.getByTestId('hs-actions')).toBeEmptyDOMElement();
@@ -115,7 +115,7 @@ describe('MarketplaceOverviewHeader', () => {
     const searchSlot = screen.getByTestId('marketplace-header-search');
 
     expect(searchSlot).toContainElement(
-      screen.getByTestId('marketplace-search-bar')
+      screen.getByTestId('marketplace-search-input')
     );
     expect(searchSlot).toHaveClass('tw:mx-auto', 'tw:max-w-[35vw]');
     expect(screen.getByTestId('marketplace-actions-group')).toContainElement(
@@ -123,7 +123,7 @@ describe('MarketplaceOverviewHeader', () => {
     );
     expect(
       screen.getByTestId('marketplace-actions-group')
-    ).not.toContainElement(screen.getByTestId('marketplace-search-bar'));
+    ).not.toContainElement(screen.getByTestId('marketplace-search-input'));
     // shrink-0 keeps the subtitle on one line.
     expect(screen.getByTestId('marketplace-header-title')).toHaveClass(
       'tw:shrink-0'

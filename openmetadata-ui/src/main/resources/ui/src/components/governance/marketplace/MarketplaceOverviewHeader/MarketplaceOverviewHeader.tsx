@@ -16,8 +16,9 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
 import { ROUTES } from '../../../../constants/constants';
+import { SearchIndex } from '../../../../enums/search.enum';
 import HeaderBreadcrumb from '../../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import MarketplaceSearchBar from '../../../DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
+import MarketplaceSearchInput from '../../../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
 
 /**
@@ -54,7 +55,14 @@ export const MarketplaceOverviewHeader: FC = () => {
         <div
           className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
           data-testid="marketplace-header-search">
-          <MarketplaceSearchBar compact />
+          <MarketplaceSearchInput
+            placeholder={t('label.search-for-type', {
+              type: `${t('label.data-product-plural')}, ${t(
+                'label.domain-plural'
+              )}`,
+            })}
+            searchCriteria={SearchIndex.MARKETPLACE}
+          />
         </div>
       </div>
       <div className="tw:shrink-0" data-testid="marketplace-actions-group">

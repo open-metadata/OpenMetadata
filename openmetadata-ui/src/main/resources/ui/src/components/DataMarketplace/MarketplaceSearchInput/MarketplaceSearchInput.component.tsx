@@ -32,10 +32,14 @@ interface MarketplaceSearchInputProps {
   searchCriteria: SearchIndex;
   /** Current query, as the page holds it (usually mirrored from the URL). */
   searchQuery?: string;
-  /** Push a new query to the page. Debounced while typing, immediate on clear. */
-  onSearchChange: (value: string) => void;
-  /** i18n key for the placeholder. Defaults to Explore's. */
-  placeholderKey?: string;
+  /**
+   * Push a new query to the page. Debounced while typing, immediate on clear.
+   * Omitted on a page with no list of its own - the overview, where the
+   * suggestions themselves are the result.
+   */
+  onSearchChange?: (value: string) => void;
+  /** Placeholder text. Defaults to Explore's. */
+  placeholder?: string;
 }
 
 /**
@@ -46,7 +50,7 @@ const MarketplaceSearchInput = ({
   searchCriteria,
   searchQuery,
   onSearchChange,
-  placeholderKey,
+  placeholder,
 }: MarketplaceSearchInputProps) => {
   const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const [searchValue, setSearchValue] = useState(searchQuery ?? '');
@@ -59,9 +63,14 @@ const MarketplaceSearchInput = ({
     initNLP();
   }, [initNLP]);
 
-  const debouncedSearch = useMemo(
-    () => debounce(onSearchChange, SEARCH_DEBOUNCE_MS),
+  const pushSearch = useCallback(
+    (value: string) => onSearchChange?.(value),
     [onSearchChange]
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(pushSearch, SEARCH_DEBOUNCE_MS),
+    [pushSearch]
   );
 
   const debouncedSuggestionSearch = useMemo(
@@ -100,10 +109,10 @@ const MarketplaceSearchInput = ({
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       debouncedSearch.cancel();
-      onSearchChange(searchValue);
+      pushSearch(searchValue);
       setIsSearchBoxOpen(false);
     },
-    [debouncedSearch, onSearchChange, searchValue]
+    [debouncedSearch, pushSearch, searchValue]
   );
 
   const handleClearSearch = useCallback(() => {
@@ -112,17 +121,17 @@ const MarketplaceSearchInput = ({
     setSearchValue('');
     setSuggestionSearch('');
     setIsSearchBoxOpen(false);
-    onSearchChange('');
-  }, [debouncedSearch, debouncedSuggestionSearch, onSearchChange]);
+    pushSearch('');
+  }, [debouncedSearch, debouncedSuggestionSearch, pushSearch]);
 
   const handleSuggestionSelect = useCallback(
     (value: string) => {
       debouncedSearch.cancel();
       setSearchValue(value);
       setIsSearchBoxOpen(false);
-      onSearchChange(value);
+      pushSearch(value);
     },
-    [debouncedSearch, onSearchChange]
+    [debouncedSearch, pushSearch]
   );
 
   const handleNLPToggle = useCallback(
@@ -135,7 +144,7 @@ const MarketplaceSearchInput = ({
       isNLPActive={isNLPActive}
       isNLPEnabled={isNLPEnabled}
       isSearchBoxOpen={isSearchBoxOpen}
-      placeholderKey={placeholderKey}
+      placeholder={placeholder}
       searchContainerRef={searchContainerRef}
       searchCriteria={searchCriteria}
       searchValue={searchValue}

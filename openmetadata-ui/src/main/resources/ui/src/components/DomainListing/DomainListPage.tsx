@@ -116,6 +116,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const headerSearch = showHeaderSearch ? (
     <MarketplaceSearchInput
+      placeholder={t('label.search-for-type', {
+        type: t('label.domain-plural'),
+      })}
       searchCriteria={SearchIndex.DOMAIN}
       searchQuery={domainListing.urlState.searchQuery}
       onSearchChange={domainListing.handleSearchChange}
