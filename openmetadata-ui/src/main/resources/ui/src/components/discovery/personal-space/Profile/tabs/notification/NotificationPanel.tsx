@@ -276,10 +276,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       }
 
       return canAddAlert ? (
-        <NotificationAlertForm
-          showHint={showHint}
-          onNavigate={onNavigate}
-        />
+        <NotificationAlertForm showHint={showHint} onNavigate={onNavigate} />
       ) : null;
     }
 

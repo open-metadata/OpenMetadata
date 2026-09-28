@@ -17,12 +17,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
+import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import {
   NotificationTemplate,
   ProviderType as TemplateProviderType,
@@ -93,9 +93,8 @@ const alertToFormValues = (
   name: alert.name ?? '',
   provider: alert.provider ?? ProviderType.User,
   readTimeout: alert.readTimeout ?? DEFAULT_READ_TIMEOUT,
-  resources: (
-    alert as unknown as { filteringRules?: { resources?: string[] } }
-  ).filteringRules?.resources,
+  resources: (alert as unknown as { filteringRules?: { resources?: string[] } })
+    .filteringRules?.resources,
   timeout: alert.timeout ?? ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
 });
 
@@ -117,9 +116,8 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   >([]);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
-  const [formData, setFormData] = useState<ModifiedCreateEventSubscription>(
-    getEmptyFormValues
-  );
+  const [formData, setFormData] =
+    useState<ModifiedCreateEventSubscription>(getEmptyFormValues);
 
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [_templateResourcePermission, setTemplateResourcePermission] =
@@ -270,39 +268,41 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     <Box className="tw:flex tw:flex-col tw:h-full" direction="col">
       <Box className="tw:flex-1 tw:overflow-y-auto tw:px-8" direction="col">
         <Box className="tw:w-1/2" direction="col">
-        <AlertAiForm
-          alert={alert}
-          containerEntities={resourceDescriptor?.containerEntities}
-          fieldDocDisplay="popover"
-          filterResources={
-            filterResources as Parameters<typeof AlertAiForm>[0]['filterResources']
-          }
-          formId={ALERT_AI_FORM_MODAL_ID}
-          inlineAlert={
-            inlineAlertDetails
-              ? {
-                  heading: inlineAlertDetails.heading,
-                  description: inlineAlertDetails.description,
-                  type: inlineAlertDetails.type,
-                  onClose: inlineAlertDetails.onClose,
-                }
-              : undefined
-          }
-          mode={isEditMode ? 'edit' : 'add'}
-          shouldShowActionsSection={false}
-          shouldShowFiltersSection={shouldShowFiltersSection}
-          shouldShowTemplateSection={!isEmpty(extraFormWidgets)}
-          showHint={showHint}
-          supportedFilters={
-            resourceDescriptor?.supportedFilters as Parameters<
-              typeof AlertAiForm
-            >[0]['supportedFilters']
-          }
-          templates={templates}
-          value={formData}
-          onChange={setFormData}
-          onSubmit={handleSave}
-        />
+          <AlertAiForm
+            alert={alert}
+            containerEntities={resourceDescriptor?.containerEntities}
+            fieldDocDisplay="popover"
+            filterResources={
+              filterResources as Parameters<
+                typeof AlertAiForm
+              >[0]['filterResources']
+            }
+            formId={ALERT_AI_FORM_MODAL_ID}
+            inlineAlert={
+              inlineAlertDetails
+                ? {
+                    heading: inlineAlertDetails.heading,
+                    description: inlineAlertDetails.description,
+                    type: inlineAlertDetails.type,
+                    onClose: inlineAlertDetails.onClose,
+                  }
+                : undefined
+            }
+            mode={isEditMode ? 'edit' : 'add'}
+            shouldShowActionsSection={false}
+            shouldShowFiltersSection={shouldShowFiltersSection}
+            shouldShowTemplateSection={!isEmpty(extraFormWidgets)}
+            showHint={showHint}
+            supportedFilters={
+              resourceDescriptor?.supportedFilters as Parameters<
+                typeof AlertAiForm
+              >[0]['supportedFilters']
+            }
+            templates={templates}
+            value={formData}
+            onChange={setFormData}
+            onSubmit={handleSave}
+          />
         </Box>
       </Box>
 

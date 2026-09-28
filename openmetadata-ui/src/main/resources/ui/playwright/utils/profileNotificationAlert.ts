@@ -589,9 +589,10 @@ const findPageWithAlert = async (
   await waitForAllLoadersToDisappear(page);
 
   const container = page.getByTestId('alerts-list-container');
-  await expect(
-    container.locator('[data-testid^="alert-"]')
-  ).not.toHaveCount(0, { timeout: 10_000 });
+  await expect(container.locator('[data-testid^="alert-"]')).not.toHaveCount(
+    0,
+    { timeout: 10_000 }
+  );
 
   const alertRow = page.getByTestId(
     `alert-${getEntityDisplayName(alertDetails)}`

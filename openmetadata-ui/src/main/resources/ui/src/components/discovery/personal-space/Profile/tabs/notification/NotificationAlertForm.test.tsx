@@ -131,13 +131,10 @@ jest.mock('../../../../../common/Loader/Loader', () =>
   jest.fn(() => <div data-testid="loader" />)
 );
 
-jest.mock(
-  '../../../../../observability/Alerts/AlertAiForm.component',
-  () => ({
-    __esModule: true,
-    default: jest.fn(() => <div data-testid="alert-ai-form" />),
-  })
-);
+jest.mock('../../../../../observability/Alerts/AlertAiForm.component', () => ({
+  __esModule: true,
+  default: jest.fn(() => <div data-testid="alert-ai-form" />),
+}));
 
 jest.mock(
   '../../../../../observability/Alerts/AlertAiFormFields.constants',
