@@ -49,6 +49,7 @@ import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
@@ -444,4 +445,4 @@ const PipelineDetailsPage = () => {
   );
 };
 
-export default PipelineDetailsPage;
+export default withSuggestions(PipelineDetailsPage);

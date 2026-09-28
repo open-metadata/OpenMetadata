@@ -93,6 +93,7 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -914,4 +915,4 @@ const ContainerPage = () => {
   );
 };
 
-export default withActivityFeed(ContainerPage);
+export default withSuggestions(withActivityFeed(ContainerPage));

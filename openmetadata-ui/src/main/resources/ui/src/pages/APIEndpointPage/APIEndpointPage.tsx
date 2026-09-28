@@ -48,6 +48,7 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 
 const APIEndpointPage = () => {
   const { t } = useTranslation();
@@ -373,4 +374,4 @@ const APIEndpointPage = () => {
   );
 };
 
-export default APIEndpointPage;
+export default withSuggestions(APIEndpointPage);

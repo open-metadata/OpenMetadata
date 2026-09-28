@@ -81,6 +81,7 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 
 function SearchIndexDetailsPage() {
   const { tab: activeTab = EntityTabs.FIELDS } = useRequiredParams<{
@@ -701,4 +702,4 @@ function SearchIndexDetailsPage() {
   );
 }
 
-export default withActivityFeed(SearchIndexDetailsPage);
+export default withSuggestions(withActivityFeed(SearchIndexDetailsPage));

@@ -48,6 +48,7 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -364,4 +365,4 @@ const TopicDetailsPage: FunctionComponent = () => {
   );
 };
 
-export default TopicDetailsPage;
+export default withSuggestions(TopicDetailsPage);

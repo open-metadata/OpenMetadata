@@ -48,6 +48,7 @@ import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 
 const MlModelPage = () => {
   const { t } = useTranslation();
@@ -421,4 +422,4 @@ const MlModelPage = () => {
   );
 };
 
-export default MlModelPage;
+export default withSuggestions(MlModelPage);
