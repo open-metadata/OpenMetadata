@@ -12,18 +12,10 @@
  */
 
 import { GridDotsOuter } from '@untitledui/icons';
-import { Col, Divider, Row, Skeleton } from 'antd';
+import { Col, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import {
-  Fragment,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { lazy, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
@@ -31,13 +23,8 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  CustomProperty,
-  Type,
-} from '../../../generated/entity/type';
-import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { buildUpdatedExtension } from '../../../utils/CustomProperty.utils';
+import { ChangeDescription } from '../../../generated/entity/type';
+import { useEntityTypeCustomProperties } from '../../../hooks/useEntityTypeCustomProperties';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
@@ -47,16 +34,22 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
-import WidgetCard from '../WidgetCard/WidgetCard';
 import './custom-property-table.less';
+import { CustomPropertiesRightPanel } from './CustomPropertiesWidget/CustomPropertiesRightPanel';
+import {
+  parsePropertyLayout,
+  selectWidgetProperties,
+} from './CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { CustomPropertyCardList } from './CustomPropertyCard/CustomPropertyCardList';
 import {
   CustomPropertyProps,
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from './CustomPropertyTable.interface';
+import { useCustomPropertyValueSave } from './useCustomPropertyValueSave';
 
 const PropertyValue = withSuspenseFallback(
   lazy(() =>
@@ -71,42 +64,37 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
+  widgetSettings,
+  widgetKey = DetailPageWidgetKeys.CUSTOM_PROPERTIES,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const {
     data: entityDetails,
-    onUpdate,
     filterWidgets,
+    layout,
   } = useGenericContext<ExtentionEntities[T]>();
-  const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
-  const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
-    useState<boolean>(true);
-
-  const onExtensionUpdate = useCallback(
-    async (updatedExtension?: Record<string, unknown>) => {
-      if (!isUndefined(onUpdate) && entityDetails) {
-        const updatedData = {
-          ...entityDetails,
-          extension: updatedExtension,
-        };
-        await onUpdate(updatedData, 'extension' as keyof ExtentionEntities[T]);
-      }
-    },
-    [entityDetails, onUpdate]
-  );
-
-  const onPropertyValueSave = useCallback(
-    (property: CustomProperty, value: unknown) =>
-      onExtensionUpdate(
-        buildUpdatedExtension(
-          entityDetails?.extension,
-          property.name,
-          property.propertyType.name ?? '',
-          value
-        )
+  const tabPropertyLayout = useMemo(
+    () =>
+      parsePropertyLayout(
+        layout?.find((widget) =>
+          resolveWidgetKey(widget.i, [DetailPageWidgetKeys.CUSTOM_PROPERTIES])
+        )?.config?.propertyLayout
       ),
-    [entityDetails?.extension, onExtensionUpdate]
+    [layout]
   );
+  const {
+    customProperties,
+    isLoading: entityTypeDetailLoading,
+    error: entityTypeDetailError,
+  } = useEntityTypeCustomProperties(entityType);
+  const { onExtensionUpdate, onPropertyValueSave } =
+    useCustomPropertyValueSave<ExtentionEntities[T]>();
+
+  useEffect(() => {
+    if (entityTypeDetailError) {
+      showErrorToast(entityTypeDetailError as AxiosError);
+    }
+  }, [entityTypeDetailError]);
 
   const extensionObject: {
     extensionObject?: Record<string, unknown>;
@@ -139,14 +127,27 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return { extensionObject: entityDetails?.extension };
   }, [isVersionView, entityDetails?.extension]);
 
-  const viewAllBtn = useMemo(() => {
-    const customProp = entityTypeDetail.customProperties ?? [];
+  const { dataSource, dataSourceColumns } = useMemo(() => {
+    const dataSource =
+      isRenderedInRightPanel && widgetSettings
+        ? selectWidgetProperties(customProperties, widgetSettings)
+        : customProperties.slice(0, maxDataCap);
 
-    if (
-      maxDataCap &&
-      customProp.length >= maxDataCap &&
-      entityDetails?.fullyQualifiedName
-    ) {
+    // Split dataSource into three equal parts
+    const columnCount = 3;
+    const columns = Array.from({ length: columnCount }, (_, i) =>
+      dataSource.filter((_, index) => index % columnCount === i)
+    );
+
+    return { dataSource, dataSourceColumns: columns };
+  }, [maxDataCap, customProperties, isRenderedInRightPanel, widgetSettings]);
+
+  const viewAllBtn = useMemo(() => {
+    const hasHiddenProperties = widgetSettings
+      ? dataSource.length < customProperties.length
+      : Boolean(maxDataCap && customProperties.length >= maxDataCap);
+
+    if (hasHiddenProperties && entityDetails?.fullyQualifiedName) {
       return (
         <Link
           className="text-sm"
@@ -162,58 +163,33 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
     return null;
   }, [
-    entityTypeDetail.customProperties,
+    customProperties,
+    dataSource,
     entityType,
     entityDetails,
     maxDataCap,
+    widgetSettings,
   ]);
 
-  const { dataSource, dataSourceColumns } = useMemo(() => {
-    const customProperties = entityTypeDetail?.customProperties ?? [];
-
-    const dataSource = Array.isArray(customProperties)
-      ? customProperties.slice(0, maxDataCap)
-      : [];
-
-    // Split dataSource into three equal parts
-    const columnCount = 3;
-    const columns = Array.from({ length: columnCount }, (_, i) =>
-      dataSource.filter((_, index) => index % columnCount === i)
-    );
-
-    return { dataSource, dataSourceColumns: columns };
-  }, [maxDataCap, entityTypeDetail?.customProperties]);
-
   useEffect(() => {
+    const hasNothingToShow = widgetSettings
+      ? isEmpty(dataSource)
+      : isEmpty(customProperties) && isUndefined(entityDetails?.extension);
+
     if (
       isRenderedInRightPanel &&
       !entityTypeDetailLoading &&
-      isEmpty(entityTypeDetail.customProperties) &&
-      isUndefined(entityDetails?.extension)
+      hasNothingToShow
     ) {
-      filterWidgets?.([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
+      filterWidgets?.([widgetKey]);
     }
   }, [
     isRenderedInRightPanel,
-    entityTypeDetail.customProperties,
+    customProperties,
+    dataSource,
     entityTypeDetailLoading,
+    widgetKey,
   ]);
-
-  const initCustomPropertyTable = useCallback(async () => {
-    setEntityTypeDetailLoading(true);
-    try {
-      const res = await getTypeByFQN(entityType);
-      setEntityTypeDetail(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setEntityTypeDetailLoading(false);
-    }
-  }, [entityType]);
-
-  useEffect(() => {
-    initCustomPropertyTable();
-  }, [entityType]);
 
   if (entityTypeDetailLoading) {
     return (
@@ -238,7 +214,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   if (
-    isEmpty(entityTypeDetail.customProperties) &&
+    isEmpty(customProperties) &&
     isUndefined(entityDetails?.extension) &&
     // in case of right panel, we don't want to show the placeholder
     !isRenderedInRightPanel
@@ -267,51 +243,27 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   if (isRenderedInRightPanel) {
-    const headerTitle = t('label.custom-property-plural');
-    const headerExtra = viewAllBtn;
-    const propertyList = (
-      <div className="custom-property-right-panel-container">
-        {dataSource.map((record, index) => (
-          <Fragment key={record.name}>
-            <div
-              className={classNames('custom-property-right-panel-card', {
-                'top-border-radius': index === 0,
-                'bottom-border-radius': index === dataSource.length - 1,
-              })}
-              key={record.name}>
-              <PropertyValue
-                extension={extensionObject.extensionObject}
-                hasEditPermissions={hasEditAccess}
-                isRenderedInRightPanel={isRenderedInRightPanel}
-                isVersionView={isVersionView}
-                key={record.name}
-                property={record}
-                versionDataKeys={extensionObject.addedKeysList}
-                onExtensionUpdate={onExtensionUpdate}
-              />
-            </div>
-            {index !== dataSource.length - 1 && <Divider className="m-y-0" />}
-          </Fragment>
-        ))}
-      </div>
-    );
-
-    if (isEmpty(entityTypeDetail.customProperties)) {
-      // Noting should be shown in case of no properties
+    // dataSource is empty exactly when there is nothing to list
+    if (isEmpty(dataSource)) {
       return null;
     }
 
     return (
-      <WidgetCard
-        className="no-scrollbar"
-        headerExtra={headerExtra}
-        title={headerTitle}>
-        {propertyList}
-      </WidgetCard>
+      <CustomPropertiesRightPanel
+        extension={extensionObject.extensionObject}
+        hasEditPermissions={hasEditAccess}
+        headerExtra={viewAllBtn}
+        isVersionView={isVersionView}
+        properties={dataSource}
+        versionDataKeys={extensionObject.addedKeysList}
+        widgetSettings={widgetSettings}
+        onExtensionUpdate={onExtensionUpdate}
+        onValueSave={onPropertyValueSave}
+      />
     );
   }
 
-  if (isEmpty(entityTypeDetail.customProperties)) {
+  if (isEmpty(customProperties)) {
     return null;
   }
 
@@ -321,6 +273,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         extension={extensionObject.extensionObject}
         hasEditPermissions={hasEditAccess}
         properties={dataSource}
+        propertyLayout={tabPropertyLayout}
         onValueSave={onPropertyValueSave}
       />
     );

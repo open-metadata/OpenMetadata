@@ -11,25 +11,54 @@
  *  limitations under the License.
  */
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Settings } from '@openmetadata/ui-core-components/icons';
 import { Button, Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
-import { useLayoutEffect, useMemo } from 'react';
-import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { useLayoutEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import type { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
+import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getGlossaryChildTermsForCustomization } from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermPureUtils';
 import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { CustomPropertiesWidgetSettings } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
+import { getCustomPropertiesWidgetSettings } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
+import { CustomPropertiesWidgetPreview } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetPreview';
+import { CustomPropertiesWidgetSettingsModal } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetSettingsModal';
+import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 import type { EntityUnion } from '../../Explore/ExplorePage.interface';
 import { useGlossaryStore } from '../../Glossary/useGlossary.store';
 import { GenericProvider } from '../GenericProvider/GenericProvider';
 import './generic-widget.less';
 
+const CONFIGURABLE_WIDGET_KEYS = [DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+
 export const GenericWidget = (props: WidgetCommonProps) => {
+  const { t } = useTranslation();
   const { currentPageType } = useCustomizeStore();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const isCustomPropertiesWidget = Boolean(
+    resolveWidgetKey(props.widgetKey, CONFIGURABLE_WIDGET_KEYS)
+  );
+  const isConfigurable =
+    isCustomPropertiesWidget && Boolean(props.handleWidgetConfigChange);
+
+  const handleSettingsSave = (settings: CustomPropertiesWidgetSettings) => {
+    props.handleWidgetConfigChange?.(props.widgetKey, {
+      ...props.widgetConfig?.config,
+      ...settings,
+    });
+    setIsSettingsOpen(false);
+  };
   const handleRemoveClick = () => {
     if (props.handleRemoveWidget) {
       props.handleRemoveWidget(props.widgetKey);
@@ -79,14 +108,26 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     <Card
       className="generic-widget-card"
       extra={
-        props.handleRemoveWidget ? (
-          <Button
-            data-testid="remove-widget-button"
-            icon={<MinusCircleOutlined size={16} />}
-            size="small"
-            onClick={handleRemoveClick}
-          />
-        ) : undefined
+        <Space size={4}>
+          {isConfigurable && (
+            <ButtonUtility
+              color="tertiary"
+              data-testid="widget-settings-button"
+              icon={Settings}
+              size="xs"
+              tooltip={t('label.configure-entity', { entity: widgetName })}
+              onClick={() => setIsSettingsOpen(true)}
+            />
+          )}
+          {props.handleRemoveWidget && (
+            <Button
+              data-testid="remove-widget-button"
+              icon={<MinusCircleOutlined size={16} />}
+              size="small"
+              onClick={handleRemoveClick}
+            />
+          )}
+        </Space>
       }
       title={
         <Space>
@@ -100,7 +141,24 @@ export const GenericWidget = (props: WidgetCommonProps) => {
         </Space>
       }
       type="inner">
-      {cardContent}
+      {isCustomPropertiesWidget ? (
+        <CustomPropertiesWidgetPreview
+          config={props.widgetConfig?.config}
+          entityType={getEntityTypeFromPageType(currentPageType)}
+        />
+      ) : (
+        cardContent
+      )}
+      {isSettingsOpen && (
+        <CustomPropertiesWidgetSettingsModal
+          entityType={getEntityTypeFromPageType(currentPageType)}
+          settings={getCustomPropertiesWidgetSettings(
+            props.widgetConfig?.config
+          )}
+          onCancel={() => setIsSettingsOpen(false)}
+          onSave={handleSettingsSave}
+        />
+      )}
     </Card>
   );
 };

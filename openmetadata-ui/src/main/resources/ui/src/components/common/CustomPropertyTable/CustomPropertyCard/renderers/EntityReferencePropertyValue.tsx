@@ -32,7 +32,6 @@ import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferen
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { CollapsibleChipList } from '../CollapsibleChipList';
-import { ENTITY_REFERENCE_VISIBLE_COUNT } from '../CustomPropertyCard.constants';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
@@ -82,7 +81,6 @@ const EntityReferencePropertyView = ({
     getKey={(reference) => reference.id}
     items={toReferenceList(value)}
     renderItem={(reference) => <EntityReferenceChip reference={reference} />}
-    visibleCount={ENTITY_REFERENCE_VISIBLE_COUNT}
   />
 );
 

@@ -20,7 +20,6 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
 import { CollapsibleChipList } from '../CollapsibleChipList';
-import { ENUM_VISIBLE_COUNT } from '../CustomPropertyCard.constants';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
@@ -43,7 +42,6 @@ const EnumPropertyView = ({ value }: PropertyViewProps) => (
         {option}
       </PropertyValueChip>
     )}
-    visibleCount={ENUM_VISIBLE_COUNT}
   />
 );
 

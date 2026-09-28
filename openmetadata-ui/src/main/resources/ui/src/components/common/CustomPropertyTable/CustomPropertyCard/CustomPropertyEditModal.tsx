@@ -15,7 +15,6 @@ import {
   Dialog,
   Modal,
   ModalOverlay,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,19 +59,10 @@ export const CustomPropertyEditModal = ({
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
         <Dialog
-          aria-label={title}
           data-testid="custom-property-edit-modal"
           width={isWide ? WIDE_MODAL_WIDTH : MODAL_WIDTH}
           onClose={onCancel}>
-          <Dialog.Header>
-            <Typography
-              as="h3"
-              className="tw:text-primary"
-              size="text-lg"
-              weight="semibold">
-              {title}
-            </Typography>
-          </Dialog.Header>
+          <Dialog.Header title={title} />
           <Dialog.Content>
             <Edit
               formId={formId}

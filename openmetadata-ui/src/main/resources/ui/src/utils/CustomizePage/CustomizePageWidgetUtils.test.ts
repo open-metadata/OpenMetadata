@@ -63,6 +63,35 @@ describe('getAddWidgetHandler', () => {
   });
 });
 
+describe('getAddWidgetHandler with widget config', () => {
+  it('stores the extra config next to the picked size', () => {
+    const [widget] = getAddWidgetHandler(
+      descriptionWidget,
+      'other-widget',
+      WidgetWidths.large,
+      PageType.Table,
+      { propertyNames: ['slaTier'] }
+    )([]);
+
+    expect(widget.config).toEqual({
+      propertyNames: ['slaTier'],
+      size: 'large',
+    });
+  });
+
+  it('keeps the picked size when the extra config carries its own size', () => {
+    const [widget] = getAddWidgetHandler(
+      descriptionWidget,
+      'other-widget',
+      WidgetWidths.small,
+      PageType.Table,
+      { size: 'large' }
+    )([]);
+
+    expect(widget.config).toEqual({ size: 'small' });
+  });
+});
+
 describe('mergeGridLayout', () => {
   it('keeps widget meta while taking the grid position from react-grid-layout', () => {
     const child = { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 1, h: 1 };

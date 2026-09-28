@@ -79,9 +79,14 @@ const TEXT_FIELD_CONFIG: Record<string, TextFieldConfig> = {
 const getTextFieldConfig = (typeName?: string) =>
   TEXT_FIELD_CONFIG[typeName ?? ''] ?? DEFAULT_TEXT_CONFIG;
 
-const TextPropertyView = ({ property, value }: PropertyViewProps) => (
+const TextPropertyView = ({
+  property,
+  value,
+  isCompact,
+}: PropertyViewProps) => (
   <PropertyValueChip
-    icon={getPropertyTypeMeta(property.propertyType.name).icon}>
+    icon={getPropertyTypeMeta(property.propertyType.name).icon}
+    isTruncated={isCompact}>
     {String(value)}
   </PropertyValueChip>
 );

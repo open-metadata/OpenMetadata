@@ -25,34 +25,61 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.types';
+import {
+  applyPropertyLayout,
+  getTabDefaultWidth,
+} from '../CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { CustomPropertyCard } from './CustomPropertyCard';
 import { SORT_OPTIONS } from './CustomPropertyCard.constants';
 import {
   CustomPropertyCardListProps,
   CustomPropertySortMode,
 } from './CustomPropertyCard.types';
-import {
-  filterAndSortProperties,
-  getPropertyTypeMeta,
-} from './CustomPropertyCard.utils';
+import { filterAndSortProperties } from './CustomPropertyCard.utils';
+
+const EMPTY_LAYOUT: CustomPropertyLayoutItem[] = [];
+
+type CardListSortMode = CustomPropertySortMode | 'layout';
+
+const LAYOUT_SORT_OPTION = { id: 'layout', labelKey: 'label.default' } as const;
 
 export const CustomPropertyCardList = ({
   properties,
+  propertyLayout = EMPTY_LAYOUT,
   extension,
   hasEditPermissions,
   onValueSave,
 }: CustomPropertyCardListProps) => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
-  const [sortMode, setSortMode] = useState<CustomPropertySortMode>('name');
+  const hasLayout = propertyLayout.length > 0;
+  const [sortMode, setSortMode] = useState<CardListSortMode>(
+    hasLayout ? 'layout' : 'name'
+  );
+  const sortOptions = hasLayout
+    ? [LAYOUT_SORT_OPTION, ...SORT_OPTIONS]
+    : SORT_OPTIONS;
 
   const activeSort =
-    SORT_OPTIONS.find((option) => option.id === sortMode) ?? SORT_OPTIONS[0];
+    sortOptions.find((option) => option.id === sortMode) ?? sortOptions[0];
 
-  const visibleProperties = useMemo(
-    () => filterAndSortProperties(properties, extension, searchText, sortMode),
-    [properties, extension, searchText, sortMode]
-  );
+  const visibleProperties = useMemo(() => {
+    if (sortMode === 'layout') {
+      return applyPropertyLayout(
+        filterAndSortProperties(properties, extension, searchText, 'name'),
+        propertyLayout,
+        getTabDefaultWidth
+      );
+    }
+
+    return filterAndSortProperties(
+      properties,
+      extension,
+      searchText,
+      sortMode
+    ).map((property) => ({ property, width: getTabDefaultWidth(property) }));
+  }, [properties, extension, searchText, sortMode, propertyLayout]);
 
   return (
     <Card className="tw:p-4" data-testid="custom-properties-card">
@@ -88,12 +115,12 @@ export const CustomPropertyCardList = ({
                 selectedKeys={[sortMode]}
                 selectionMode="single"
                 onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys as Set<CustomPropertySortMode>);
+                  const [key] = Array.from(keys as Set<CardListSortMode>);
                   if (key) {
                     setSortMode(key);
                   }
                 }}>
-                {SORT_OPTIONS.map((option) => (
+                {sortOptions.map((option) => (
                   <Dropdown.Item
                     id={option.id}
                     key={option.id}
@@ -109,17 +136,19 @@ export const CustomPropertyCardList = ({
           // Raw grid instead of core Grid: Grid.Item spans are inline styles and
           // cannot collapse to one column on narrow screens. Dense flow backfills
           // the gap a full-width card would otherwise leave beside a half card.
-          <div className="tw:grid tw:grid-flow-row-dense tw:grid-cols-1 tw:gap-4 tw:lg:grid-cols-2">
-            {visibleProperties.map((property) => (
+          // items-start: expanding one card grows only that card, not its row.
+          <div className="tw:grid tw:grid-flow-row-dense tw:grid-cols-1 tw:items-start tw:gap-4 tw:lg:grid-cols-2">
+            {visibleProperties.map(({ property, width }) => (
               <div
                 className={
-                  getPropertyTypeMeta(property.propertyType.name).isWide
+                  width === 'full'
                     ? 'tw:min-w-0 tw:lg:col-span-2'
                     : 'tw:min-w-0'
                 }
                 key={property.name}>
                 <CustomPropertyCard
                   hasEditPermissions={hasEditPermissions}
+                  isCompact={width === 'half'}
                   property={property}
                   value={extension?.[property.name]}
                   onValueSave={onValueSave}

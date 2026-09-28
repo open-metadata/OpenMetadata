@@ -79,20 +79,30 @@ const getPropertyLabel = (property: CustomProperty) =>
 const compareByLabel = (a: CustomProperty, b: CustomProperty) =>
   getPropertyLabel(a).localeCompare(getPropertyLabel(b));
 
+/** Case-insensitive match of a search query on name, display name or description. */
+export const matchesPropertySearch = (
+  property: CustomProperty,
+  searchText: string
+): boolean => {
+  const query = searchText.trim().toLowerCase();
+
+  return (
+    !query ||
+    [property.name, property.displayName, property.description].some((text) =>
+      text?.toLowerCase().includes(query)
+    )
+  );
+};
+
 export const filterAndSortProperties = (
   properties: CustomProperty[],
   extension: Record<string, unknown> | undefined,
   searchText: string,
   sortMode: CustomPropertySortMode
 ): CustomProperty[] => {
-  const query = searchText.trim().toLowerCase();
-  const filtered = query
-    ? properties.filter((property) =>
-        [property.name, property.displayName, property.description].some(
-          (text) => text?.toLowerCase().includes(query)
-        )
-      )
-    : [...properties];
+  const filtered = properties.filter((property) =>
+    matchesPropertySearch(property, searchText)
+  );
 
   const hasValue = (property: CustomProperty) =>
     !isPropertyValueEmpty(

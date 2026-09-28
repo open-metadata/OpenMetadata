@@ -22,7 +22,7 @@ import {
   PropertyViewProps,
 } from '../CustomPropertyCard.types';
 
-const HyperlinkPropertyView = ({ value }: PropertyViewProps) => {
+const HyperlinkPropertyView = ({ value, isCompact }: PropertyViewProps) => {
   const hyperlink = value as Hyperlink;
   // Stored values are user input; never render a javascript:/data: href.
   const href = getHyperlinkUrlValidationErrorKey(hyperlink.url)
@@ -37,7 +37,9 @@ const HyperlinkPropertyView = ({ value }: PropertyViewProps) => {
       rel="noopener noreferrer"
       target="_blank">
       <Link01 aria-hidden className="tw:size-3.5 tw:shrink-0" />
-      {hyperlink.displayText || hyperlink.url}
+      <span className={isCompact ? 'tw:min-w-0 tw:truncate' : undefined}>
+        {hyperlink.displayText || hyperlink.url}
+      </span>
     </a>
   );
 };

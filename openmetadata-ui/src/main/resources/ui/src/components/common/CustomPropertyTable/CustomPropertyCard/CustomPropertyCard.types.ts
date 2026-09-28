@@ -14,10 +14,13 @@ import { BadgeColors } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { CustomProperty } from '../../../../generated/type/customProperty';
+import type { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.types';
 
 export interface PropertyViewProps {
   property: CustomProperty;
   value: unknown;
+  /** Half-width card: keep the value on one line so card heights match. */
+  isCompact?: boolean;
 }
 
 /**
@@ -61,13 +64,14 @@ export interface CustomPropertyTypeMeta {
   icon: FC<{ className?: string }>;
   color: CustomPropertyTypeColor;
   labelKey: string;
-  emptyActionKey: string;
   isWide?: boolean;
 }
 
 export type CustomPropertySortMode = 'name' | 'type' | 'value';
 
 export interface CustomPropertyCardProps {
+  /** Half-width card: fixed collapsed height, one-line description and value. */
+  isCompact?: boolean;
   property: CustomProperty;
   value: unknown;
   hasEditPermissions: boolean;
@@ -76,6 +80,8 @@ export interface CustomPropertyCardProps {
 
 export interface CustomPropertyCardListProps {
   properties: CustomProperty[];
+  /** Persona arrangement of the tab; empty keeps the built-in sort. */
+  propertyLayout?: CustomPropertyLayoutItem[];
   extension?: Record<string, unknown>;
   hasEditPermissions: boolean;
   onValueSave: (property: CustomProperty, value: unknown) => Promise<void>;

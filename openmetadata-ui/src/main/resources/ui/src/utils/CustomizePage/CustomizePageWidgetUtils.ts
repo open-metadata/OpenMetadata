@@ -61,7 +61,8 @@ export const getAddWidgetHandler =
     newWidgetData: CommonWidgetType,
     placeholderWidgetKey: string,
     widgetWidth: number,
-    pageType: PageType
+    pageType: PageType,
+    extraConfig?: WidgetConfig['config']
   ) =>
   (currentLayout: Array<WidgetConfig>): WidgetConfig[] => {
     const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
@@ -72,6 +73,7 @@ export const getAddWidgetHandler =
     // Height is measured from content (DynamicHeightWidget), so the picked size is
     // kept as explicit meta for widgets to render against. Only small/large exist.
     const config = {
+      ...extraConfig,
       size: widgetWidth === WidgetWidths.large ? 'large' : 'small',
     };
 

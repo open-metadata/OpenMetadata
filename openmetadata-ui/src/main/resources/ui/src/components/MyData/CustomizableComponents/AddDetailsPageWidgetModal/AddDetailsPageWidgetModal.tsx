@@ -22,13 +22,18 @@ import {
 } from '../../../../constants/CustomizeWidgets.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
+import { DetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
+import type { WidgetConfig } from '../../../../interface/customization.interface';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
 import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { WidgetSizeInfo } from '../AddWidgetModal/AddWidgetModal.interface';
 import AddWidgetTabContent from '../AddWidgetModal/AddWidgetTabContent';
+import { AddCustomPropertiesWidgetTabContent } from './AddCustomPropertiesWidgetTabContent';
+
 interface Props {
+  entityType?: string;
   open: boolean;
   maxGridSizeSupport: number;
   placeholderWidgetKey: string;
@@ -36,12 +41,14 @@ interface Props {
   handleAddWidget: (
     widget: CommonWidgetType,
     widgetKey: string,
-    widgetSize: number
+    widgetSize: number,
+    extraConfig?: WidgetConfig['config']
   ) => void;
   widgetsList: Array<CommonWidgetType>;
 }
 
 function AddDetailsPageWidgetModal({
+  entityType,
   open,
   widgetsList,
   handleCloseAddWidgetModal,
@@ -58,6 +65,15 @@ function AddDetailsPageWidgetModal({
         placeholderWidgetKey,
         widgetSize
       ),
+    [handleAddWidget, placeholderWidgetKey]
+  );
+
+  const handleAddConfiguredWidget = useCallback(
+    (
+      widget: CommonWidgetType,
+      widgetSize: number,
+      extraConfig: WidgetConfig['config']
+    ) => handleAddWidget(widget, placeholderWidgetKey, widgetSize, extraConfig),
     [handleAddWidget, placeholderWidgetKey]
   );
 
@@ -79,17 +95,34 @@ function AddDetailsPageWidgetModal({
             <span data-testid={`${widget.name}-widget`}>{widget.name}</span>
           ),
           key: widget.fullyQualifiedName,
-          children: (
-            <AddWidgetTabContent
-              getAddWidgetHandler={getAddWidgetHandler}
-              maxGridSizeSupport={maxGridSizeSupport}
-              widget={widget as unknown as Document}
-              widgetSizeOptions={widgetSizeOptions}
-            />
-          ),
+          children:
+            widget.fullyQualifiedName ===
+            DetailPageWidgetKeys.CUSTOM_PROPERTIES ? (
+              <AddCustomPropertiesWidgetTabContent
+                entityType={entityType}
+                maxGridSizeSupport={maxGridSizeSupport}
+                widget={widget}
+                onAdd={(widget, size, settings) =>
+                  handleAddConfiguredWidget(widget, size, { ...settings })
+                }
+              />
+            ) : (
+              <AddWidgetTabContent
+                getAddWidgetHandler={getAddWidgetHandler}
+                maxGridSizeSupport={maxGridSizeSupport}
+                widget={widget as unknown as Document}
+                widgetSizeOptions={widgetSizeOptions}
+              />
+            ),
         };
       }),
-    [widgetsList, getAddWidgetHandler, maxGridSizeSupport]
+    [
+      widgetsList,
+      getAddWidgetHandler,
+      handleAddConfiguredWidget,
+      maxGridSizeSupport,
+      entityType,
+    ]
   );
 
   const widgetsInfo = useMemo(() => {

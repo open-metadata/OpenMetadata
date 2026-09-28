@@ -97,6 +97,18 @@ const createProperty = (
       }),
 });
 
+// jsdom has no layout, so CollapsibleChipList would fit every chip on one
+// line. Report any child past the first three (two chips + the toggle) as
+// wrapped to the next line.
+const simulateTwoChipsPerLine = () =>
+  jest
+    .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
+    .mockImplementation(function (this: HTMLElement) {
+      const siblings = Array.from(this.parentElement?.children ?? []);
+
+      return siblings.indexOf(this) > 2 ? 24 : 0;
+    });
+
 const renderCard = (property: CustomProperty, value: unknown) => {
   const onValueSave = jest.fn().mockResolvedValue(undefined);
 
@@ -122,6 +134,10 @@ const references = Array.from({ length: 4 }, (_, index) => ({
 }));
 
 describe('Custom property renderers', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('date', () => {
     it('shows the stored value and re-saves it unchanged', async () => {
       const { onValueSave } = renderCard(
@@ -197,6 +213,7 @@ describe('Custom property renderers', () => {
 
     it('collapses long selections behind "+N more" and expands them back', async () => {
       const values = ['CC-1', 'CC-2', 'CC-3', 'CC-4', 'CC-5', 'CC-6'];
+      simulateTwoChipsPerLine();
       renderCard(createProperty('enum', { values, multiSelect: true }), values);
 
       expect(screen.queryByTestId('enum-option-CC-5')).not.toBeInTheDocument();
@@ -285,6 +302,7 @@ describe('Custom property renderers', () => {
 
   describe('entity reference', () => {
     it('shows two references and expands the rest', async () => {
+      simulateTwoChipsPerLine();
       renderCard(createProperty('entityReferenceList', ['table']), references);
 
       expect(screen.getByTestId('table_0')).toBeInTheDocument();

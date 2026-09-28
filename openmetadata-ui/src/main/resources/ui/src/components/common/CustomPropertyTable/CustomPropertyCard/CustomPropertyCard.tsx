@@ -10,21 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Edit05, Plus } from '@openmetadata/ui-core-components/icons';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
 import { TYPE_ICON_TILE_CLASS } from './CustomPropertyCard.constants';
 import { CustomPropertyCardProps } from './CustomPropertyCard.types';
 import {
@@ -35,17 +29,37 @@ import {
 import { CustomPropertyEditModal } from './CustomPropertyEditModal';
 import { getPropertyRenderer } from './CustomPropertyRenderers';
 
+// Half-width ("compact") cards keep title, description and value on one line
+// and share one minimum height (icon row 40px + one-line value or empty state
+// 38px + padding and border), so collapsed cards line up across a row.
+const CARD_STYLES = {
+  compact: {
+    card: 'tw:px-5 tw:py-4 tw:min-h-32',
+    titleRow: 'nowrap',
+    title: 'tw:min-w-0 tw:truncate',
+    description: 'tw:line-clamp-1',
+  },
+  regular: {
+    card: 'tw:px-5 tw:py-4',
+    titleRow: 'wrap',
+    title: '',
+    description: 'tw:line-clamp-2',
+  },
+} as const;
+
 // Design spec: 20px tall header badges (18px line + 1px border each side).
 const HEADER_BADGE_CLASS =
   'tw:py-px tw:px-[7px] tw:leading-[18px] tw:font-medium';
 
 export const CustomPropertyCard = ({
+  isCompact = false,
   property,
   value,
   hasEditPermissions,
   onValueSave,
 }: CustomPropertyCardProps) => {
   const { t } = useTranslation();
+  const styles = CARD_STYLES[isCompact ? 'compact' : 'regular'];
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -80,37 +94,25 @@ export const CustomPropertyCard = ({
       const hint = getEmptyHint?.(property, t);
 
       return (
-        <Box align="center" data-testid="no-data" gap={3} justify="between">
-          <Box direction="col">
-            <Typography className="tw:text-secondary" size="text-sm">
-              {t('label.no-value-yet')}
+        <Box data-testid="no-data" direction="col">
+          <Typography className="tw:text-secondary" size="text-sm">
+            {t('label.no-value-yet')}
+          </Typography>
+          {hint && (
+            <Typography className="tw:text-tertiary" size="text-xs">
+              {hint}
             </Typography>
-            {hint && (
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {hint}
-              </Typography>
-            )}
-          </Box>
-          {hasEditPermissions && (
-            <Button
-              color="secondary"
-              data-testid="edit-icon"
-              iconLeading={Plus}
-              size="sm"
-              onPress={startEditing}>
-              {t(meta.emptyActionKey)}
-            </Button>
           )}
         </Box>
       );
     }
 
-    return <View property={property} value={value} />;
+    return <View isCompact={isCompact} property={property} value={value} />;
   };
 
   return (
     <Card
-      className="tw:h-full tw:px-5 tw:py-4"
+      className={styles.card}
       data-testid={`custom-property-${property.name}-card`}>
       <Box
         className="tw:h-full"
@@ -127,10 +129,17 @@ export const CustomPropertyCard = ({
           </span>
           {/* Title (20px) + 2px + subtitle (18px) matches the 40px icon tile. */}
           <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
-            <Box align="center" className="tw:min-h-5" gap={2} wrap="wrap">
+            <Box
+              align="center"
+              className="tw:min-h-5"
+              gap={2}
+              wrap={styles.titleRow}>
               {/* Plain heading: Typography's prose styles size h3 at 20px. */}
               <h3
-                className="tw:m-0 tw:text-sm tw:leading-5 tw:font-semibold tw:text-primary"
+                className={classNames(
+                  'tw:m-0 tw:text-sm tw:leading-5 tw:font-semibold tw:text-primary',
+                  styles.title
+                )}
                 data-testid="property-name">
                 {propertyLabel}
               </h3>
@@ -158,20 +167,20 @@ export const CustomPropertyCard = ({
             </Box>
             {description && (
               <Typography
-                className="tw:line-clamp-2 tw:text-left tw:leading-[18px] tw:text-tertiary"
+                className={classNames(
+                  'tw:text-left tw:leading-[18px] tw:text-tertiary',
+                  styles.description
+                )}
                 size="text-xs"
                 title={description}>
                 {description}
               </Typography>
             )}
           </Box>
-          {hasEditPermissions && !isEmptyValue && (
-            <ButtonUtility
-              color="secondary"
+          {hasEditPermissions && (
+            <WidgetEditButton
               data-testid="edit-icon"
-              icon={Edit05}
-              size="xs"
-              tooltip={t('label.edit-entity', { entity: propertyLabel })}
+              title={t('label.edit-entity', { entity: propertyLabel })}
               onClick={startEditing}
             />
           )}

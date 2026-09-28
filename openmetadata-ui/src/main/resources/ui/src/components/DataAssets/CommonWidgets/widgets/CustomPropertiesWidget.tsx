@@ -14,6 +14,7 @@ import { lazy, useMemo } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { getCustomPropertiesWidgetSettings } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
@@ -39,8 +40,13 @@ const CustomPropertyTable = withSuspenseFallback(
 
 export const CustomPropertiesWidget: CommonWidgetComponent = ({
   entityType,
+  widgetConfig,
 }) => {
   const { data, permissions } = useGenericContext<GenericEntity>();
+  const widgetSettings = useMemo(
+    () => getCustomPropertiesWidgetSettings(widgetConfig.config),
+    [widgetConfig.config]
+  );
   const { canEditCustomFields, canViewCustomFields } = useMemo(
     () => getDerivedPermissionFlags(permissions, data.deleted),
     [permissions, data.deleted]
@@ -52,7 +58,8 @@ export const CustomPropertiesWidget: CommonWidgetComponent = ({
       entityType={entityType as EntityType.TABLE}
       hasEditAccess={Boolean(canEditCustomFields)}
       hasPermission={canViewCustomFields}
-      maxDataCap={5}
+      widgetKey={widgetConfig.i}
+      widgetSettings={widgetSettings}
     />
   );
 };

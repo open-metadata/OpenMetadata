@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 import { Badge } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 
 interface PropertyValueChipProps {
   icon?: FC<{ className?: string }>;
+  /** Single line with an ellipsis instead of wrapping. */
+  isTruncated?: boolean;
   children: ReactNode;
   'data-testid'?: string;
 }
@@ -25,11 +28,15 @@ interface PropertyValueChipProps {
  */
 export const PropertyValueChip = ({
   icon: Icon,
+  isTruncated = false,
   children,
   'data-testid': dataTestId = 'value',
 }: PropertyValueChipProps) => (
   <Badge
-    className="tw:max-w-full tw:gap-1.5 tw:whitespace-normal tw:break-all tw:py-[3px] tw:pr-2.5 tw:pl-2 tw:text-left tw:font-normal tw:text-secondary"
+    className={classNames(
+      'tw:max-w-full tw:gap-1.5 tw:py-[3px] tw:pr-2.5 tw:pl-2 tw:text-left tw:font-normal tw:text-secondary',
+      isTruncated ? 'tw:whitespace-nowrap' : 'tw:whitespace-normal tw:break-all'
+    )}
     color="gray"
     data-testid={dataTestId}
     size="md"
@@ -40,6 +47,8 @@ export const PropertyValueChip = ({
         className="tw:size-4 tw:shrink-0 tw:text-fg-secondary"
       />
     )}
-    <span className="tw:min-w-0">{children}</span>
+    <span className={classNames('tw:min-w-0', { 'tw:truncate': isTruncated })}>
+      {children}
+    </span>
   </Badge>
 );

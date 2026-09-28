@@ -117,14 +117,14 @@ describe('CustomPropertyCard', () => {
     expect(screen.getByTestId('value-input')).toBeInTheDocument();
   });
 
-  it('shows the empty state with an add action when there is no value', async () => {
+  it('shows the empty state with the edit icon when there is no value', async () => {
     const { onValueSave } = renderCard({ value: undefined });
 
     expect(screen.getByTestId('no-data')).toHaveTextContent(
       'label.no-value-yet'
     );
-    expect(screen.getByTestId('edit-icon')).toHaveTextContent(
-      'label.set-value'
+    expect(screen.getByTestId('property-value')).not.toContainElement(
+      screen.getByTestId('edit-icon')
     );
 
     await user.click(screen.getByTestId('edit-icon'));

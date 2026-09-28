@@ -12,7 +12,6 @@
  */
 
 import {
-  render,
   screen,
   waitFor,
   waitForElementToBeRemoved,
@@ -22,6 +21,7 @@ import { act } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
@@ -152,7 +152,7 @@ describe('Test CustomProperty Table Component', () => {
 
   it("Should render permission placeholder if doesn't have permission", async () => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           {...mockProp}
           entityType={EntityType.TABLE}
@@ -169,7 +169,7 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Should render table component', async () => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
@@ -184,7 +184,7 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Should render the legacy property values in version view', async () => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           {...mockProp}
           isVersionView
@@ -206,7 +206,7 @@ describe('Test CustomProperty Table Component', () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
@@ -230,7 +230,7 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
@@ -246,7 +246,7 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           {...mockProp}
           isRenderedInRightPanel
@@ -260,7 +260,9 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Loader should be shown while loading the custom properties', async () => {
     (getTypeByFQN as jest.Mock).mockResolvedValueOnce(Promise.resolve({}));
-    render(<CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />);
+    renderWithQueryClient(
+      <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+    );
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
     await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
@@ -277,7 +279,7 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: mockCustomProperties })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });

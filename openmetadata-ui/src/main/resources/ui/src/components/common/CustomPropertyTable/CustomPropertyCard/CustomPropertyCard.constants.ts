@@ -38,7 +38,6 @@ export const DEFAULT_PROPERTY_TYPE_META: CustomPropertyTypeMeta = {
   icon: Type01,
   color: 'gray',
   labelKey: 'label.value',
-  emptyActionKey: 'label.set-value',
 };
 
 export const CUSTOM_PROPERTY_TYPE_META: Record<string, CustomPropertyTypeMeta> =
@@ -47,106 +46,89 @@ export const CUSTOM_PROPERTY_TYPE_META: Record<string, CustomPropertyTypeMeta> =
       icon: Type01,
       color: 'gray-blue',
       labelKey: 'label.string',
-      emptyActionKey: 'label.set-value',
     },
     integer: {
       icon: Hash02,
       color: 'blue-light',
       labelKey: 'label.integer',
-      emptyActionKey: 'label.set-value',
     },
     number: {
       icon: Hash02,
       color: 'blue-light',
       labelKey: 'label.number',
-      emptyActionKey: 'label.set-value',
     },
     email: {
       icon: Mail01,
       color: 'pink',
       labelKey: 'label.email',
-      emptyActionKey: 'label.set-email',
     },
     'date-cp': {
       icon: Calendar,
       color: 'orange',
       labelKey: 'label.date',
-      emptyActionKey: 'label.set-date',
     },
     'dateTime-cp': {
       icon: Calendar,
       color: 'orange',
       labelKey: 'label.date-and-time',
-      emptyActionKey: 'label.set-date-and-time',
     },
     'time-cp': {
       icon: Clock,
       color: 'orange',
       labelKey: 'label.time',
-      emptyActionKey: 'label.set-time',
     },
     timestamp: {
       icon: Clock,
       color: 'warning',
       labelKey: 'label.timestamp',
-      emptyActionKey: 'label.set-timestamp',
     },
     duration: {
       icon: Hourglass01,
       color: 'warning',
       labelKey: 'label.duration',
-      emptyActionKey: 'label.set-duration',
     },
     enum: {
       icon: List,
       color: 'purple',
       labelKey: 'label.enum',
-      emptyActionKey: 'label.select-value',
     },
     [HYPERLINK_TYPE_CUSTOM_PROPERTY]: {
       icon: Link01,
       color: 'blue',
       labelKey: 'label.hyperlink',
-      emptyActionKey: 'label.add-link',
     },
     entityReference: {
       icon: Database01,
       color: 'indigo',
       labelKey: 'label.entity-ref',
-      emptyActionKey: 'label.select-asset',
     },
     entityReferenceList: {
       icon: Database01,
       color: 'indigo',
       labelKey: 'label.entity-ref-list',
-      emptyActionKey: 'label.select-asset-plural',
     },
     timeInterval: {
       icon: Clock,
       color: 'brand',
       labelKey: 'label.time-interval',
-      emptyActionKey: 'label.set-time-range',
       isWide: true,
     },
     [TABLE_TYPE_CUSTOM_PROPERTY]: {
       icon: Table,
       color: 'error',
       labelKey: 'label.table',
-      emptyActionKey: 'label.add-row',
       isWide: true,
     },
     sqlQuery: {
       icon: Code01,
       color: 'success',
       labelKey: 'label.sql-uppercase',
-      emptyActionKey: 'label.add-query',
       isWide: true,
     },
     markdown: {
       icon: AlignLeft,
       color: 'gray',
       labelKey: 'label.markdown',
-      emptyActionKey: 'label.add-note-plural',
       isWide: true,
     },
   };
@@ -177,8 +159,6 @@ export const TYPE_ICON_TILE_CLASS: Record<CustomPropertyTypeColor, string> = {
 };
 
 // Chips shown before a "+N more" toggle; entity chips are wider than enum ones.
-export const ENTITY_REFERENCE_VISIBLE_COUNT = 2;
-export const ENUM_VISIBLE_COUNT = 4;
 
 export const SORT_OPTIONS: { id: CustomPropertySortMode; labelKey: string }[] =
   [

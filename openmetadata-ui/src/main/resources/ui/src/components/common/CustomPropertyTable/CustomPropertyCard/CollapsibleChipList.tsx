@@ -10,44 +10,88 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button } from '@openmetadata/ui-core-components';
-import { ReactNode, useState } from 'react';
+import { Button } from '@openmetadata/ui-core-components';
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface CollapsibleChipListProps<T> {
   items: T[];
-  visibleCount: number;
+  /** Upper bound on chips shown while collapsed. */
+  visibleCount?: number;
   getKey: (item: T) => string;
   renderItem: (item: T) => ReactNode;
   'data-testid'?: string;
 }
 
 /**
- * Wrapping chips that collapse to the first `visibleCount`, with a "+N more"
- * toggle that expands to every chip and a "Show less" toggle that collapses.
+ * Chips that collapse to a single line: as many as fit, then a "+N more"
+ * toggle on that same line. Expanding wraps every chip and grows only the
+ * card that holds the list.
  */
 export const CollapsibleChipList = <T,>({
   items,
-  visibleCount,
+  visibleCount = items.length,
   getKey,
   renderItem,
   'data-testid': dataTestId,
 }: CollapsibleChipListProps<T>) => {
   const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const hiddenCount = items.length - visibleCount;
-  const visibleItems = isExpanded ? items : items.slice(0, visibleCount);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const maxCollapsed = Math.min(visibleCount, items.length);
+  const [fitCount, setFitCount] = useState(maxCollapsed);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) =>
+      setContainerWidth(Math.round(entry.contentRect.width))
+    );
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Start from the most chips allowed whenever the room or the data changes;
+  // the effect below then drops chips until the line stops wrapping.
+  useLayoutEffect(() => {
+    setFitCount(maxCollapsed);
+  }, [maxCollapsed, containerWidth]);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (isExpanded || !container || fitCount <= 1) {
+      return;
+    }
+    const children = Array.from(container.children) as HTMLElement[];
+    const firstTop = children[0]?.offsetTop ?? 0;
+    if (children.some((child) => child.offsetTop > firstTop)) {
+      setFitCount((count) => count - 1);
+    }
+  });
+
+  const shownCount = isExpanded ? items.length : fitCount;
+  const hiddenCount = items.length - fitCount;
 
   return (
-    <Box align="center" data-testid={dataTestId} gap={2} wrap="wrap">
-      {visibleItems.map((item) => (
-        <span className="tw:inline-flex tw:max-w-full" key={getKey(item)}>
+    <div
+      className="tw:flex tw:flex-wrap tw:items-center tw:gap-2"
+      data-testid={dataTestId}
+      ref={containerRef}>
+      {items.slice(0, shownCount).map((item) => (
+        <span
+          className="tw:inline-flex tw:min-w-0 tw:max-w-full"
+          key={getKey(item)}>
           {renderItem(item)}
         </span>
       ))}
       {hiddenCount > 0 && (
         <Button
           aria-expanded={isExpanded}
+          className="tw:shrink-0"
           color="link-color"
           data-testid="toggle-collapsed-values"
           size="sm"
@@ -57,6 +101,6 @@ export const CollapsibleChipList = <T,>({
             : t('label.plus-count-more', { count: hiddenCount })}
         </Button>
       )}
-    </Box>
+    </div>
   );
 };
