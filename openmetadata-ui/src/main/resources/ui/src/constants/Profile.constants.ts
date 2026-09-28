@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,4 +11,12 @@
  *  limitations under the License.
  */
 
-export type { AddAlertPageLoadingState } from '../../utils/AlertsClassBase.interface';
+export const PROFILE_NAV_IDS = new Set([
+  'profile',
+  'permissions',
+  'access-token',
+  'my-connections',
+  'access-control',
+  'custom-properties',
+  'notification',
+]);
