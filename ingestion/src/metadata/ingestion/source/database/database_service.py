@@ -267,13 +267,14 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             return None
         if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag_name)):
             # Source systems allow names the server rejects, such as the JSON values Snowflake ML Feature Store
-            # sets. Such a tag can never be stored, so it is skipped rather than failing the run.
-            reason = (
-                f"Skipped tag [{classification_name}.{tag_name}]: classification and tag names cannot contain"
-                " '\"', '>', '::' or control characters"
+            # sets. The tag is skipped rather than failing the run: StatusWarningHandler counts the logged
+            # warning in the run status, not as a failure.
+            logger.warning(
+                "%sSkipped tag [%s.%s]: classification and tag names cannot contain '\"', '>', '::' or control characters",
+                f"{entity_fqn}: " if entity_fqn else "",
+                classification_name,
+                tag_name,
             )
-            logger.warning(f"{entity_fqn}: {reason}" if entity_fqn else reason)
-            self.status.warning(entity_fqn or f"{classification_name}.{tag_name}", reason)
             return None
         tag = self.tag_canonicalizer.resolve(
             classification_name=classification_name,
