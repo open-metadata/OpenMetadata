@@ -121,7 +121,9 @@ export const getGlossaryApprovalWorkflowSnapshot = async (
   );
 
   if (!instancesResponse.ok()) {
-    return { instancesHttpStatus: instancesResponse.status(), instances: [] };
+    throw new Error(
+      `Glossary workflow for ${glossaryTermFqn}: HTTP ${instancesResponse.status()} fetching instances`
+    );
   }
 
   const instancesBody = await instancesResponse.json();
@@ -135,9 +137,14 @@ export const getGlossaryApprovalWorkflowSnapshot = async (
     const statesResponse = await apiContext.get(
       `/api/v1/governance/workflowInstanceStates/${GLOSSARY_TERM_APPROVAL_WORKFLOW}/${instance.id}?startTs=${startTs}&endTs=${endTs}&limit=100`
     );
-    const statesBody = statesResponse.ok()
-      ? await statesResponse.json()
-      : undefined;
+    if (!statesResponse.ok()) {
+      throw new Error(
+        `Glossary workflow ${
+          instance.id
+        }: HTTP ${statesResponse.status()} fetching states`
+      );
+    }
+    const statesBody = await statesResponse.json();
 
     instances.push({
       id: instance.id,
