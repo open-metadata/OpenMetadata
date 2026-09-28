@@ -12,22 +12,22 @@
  */
 import { render } from '@testing-library/react';
 import {
-    highlightEntityNameAndDescription,
-    highlightSearchArrayElement,
-    highlightSearchText,
-    renderHighlightedText
+  highlightEntityNameAndDescription,
+  highlightSearchArrayElement,
+  highlightSearchText,
+  renderHighlightedText,
 } from './EntitySearchUtils';
 import {
-    entityWithMarkdownDescription,
-    entityWithoutNameAndDescHighlight,
-    highlightedEntityDescription,
-    highlightedEntityDisplayName,
-    highlightedMarkdownDescription,
-    mockHighlightedResult,
-    mockHighlights,
-    mockHighlightsWithMarkdown,
-    mockSearchText,
-    mockText
+  entityWithMarkdownDescription,
+  entityWithoutNameAndDescHighlight,
+  highlightedEntityDescription,
+  highlightedEntityDisplayName,
+  highlightedMarkdownDescription,
+  mockHighlightedResult,
+  mockHighlights,
+  mockHighlightsWithMarkdown,
+  mockSearchText,
+  mockText,
 } from './mocks/EntityUtils.mock';
 
 jest.mock('./StringUtils', () => ({

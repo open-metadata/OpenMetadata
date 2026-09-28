@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-    Breadcrumbs,
-    Card,
-    ClassificationTag,
-    Owner
+  Breadcrumbs,
+  Card,
+  ClassificationTag,
+  Owner,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
@@ -28,15 +28,15 @@ import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-    EntityStatus,
-    GlossaryTerm
+  EntityStatus,
+  GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import {
-    SearchExplanation,
-    TableColumnSearchSource
+  SearchExplanation,
+  TableColumnSearchSource,
 } from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
@@ -44,8 +44,8 @@ import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-    highlightEntityNameAndDescription,
-    renderHighlightedText
+  highlightEntityNameAndDescription,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stripMarkdown } from '../../../utils/StringUtils';
