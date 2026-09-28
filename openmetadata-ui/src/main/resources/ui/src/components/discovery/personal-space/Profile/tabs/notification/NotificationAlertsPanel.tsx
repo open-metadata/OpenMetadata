@@ -309,6 +309,8 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
 
     if (newPage > currentPage) {
       await navigateSequentially(newPage);
+    } else if (paging.before) {
+      fetchAlerts({ before: paging.before }, newPage);
     } else {
       setHashPage(1, undefined, undefined, pageSize);
       setCursorCache(new Map());

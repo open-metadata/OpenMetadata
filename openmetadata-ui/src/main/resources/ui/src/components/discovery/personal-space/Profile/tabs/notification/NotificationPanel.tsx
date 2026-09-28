@@ -12,7 +12,8 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Bell01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import type { Key } from 'react';
@@ -75,6 +76,17 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       permissionsLoaded &&
       checkPermission(
         Operation.Create,
+        ResourceEntity.EVENT_SUBSCRIPTION,
+        permissions
+      ),
+    [permissions, permissionsLoaded]
+  );
+
+  const canEditAlert = useMemo(
+    () =>
+      permissionsLoaded &&
+      checkPermission(
+        Operation.EditAll,
         ResourceEntity.EVENT_SUBSCRIPTION,
         permissions
       ),
@@ -246,6 +258,22 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     }
 
     if (view.type === 'edit') {
+      if (!permissionsLoaded) {
+        return <Loader />;
+      }
+
+      if (!canEditAlert) {
+        return (
+          <Box className="tw:relative tw:min-h-60">
+            <EmptyPlaceholder
+              icon={<Lock className="tw:text-secondary" />}
+              title={t('label.access-denied')}
+              variant="blank"
+            />
+          </Box>
+        );
+      }
+
       return <NotificationAlertForm fqn={view.fqn} onNavigate={onNavigate} />;
     }
 

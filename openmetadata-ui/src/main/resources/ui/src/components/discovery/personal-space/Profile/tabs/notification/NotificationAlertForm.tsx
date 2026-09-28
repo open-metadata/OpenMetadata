@@ -25,6 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import React, {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -34,7 +35,17 @@ import React, {
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NAME_FIELD_RULES } from '../../../../../../constants/Form.constants';
+import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
+import {
+  NotificationTemplate,
+  ProviderType as TemplateProviderType,
+} from '../../../../../../generated/entity/events/notificationTemplate';
 import {
   AlertType,
   EventFilterRule,
@@ -49,8 +60,12 @@ import {
   getResourceFunctions,
   updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
+import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
+import type { AddAlertFormWidgetProps } from '../../../../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -113,6 +128,21 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
+  const { getResourcePermission } = usePermissionProvider();
+
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [templateResourcePermission, setTemplateResourcePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
+  );
+  const extraFormButtons = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraButtons(),
+    []
+  );
+
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [entityFunctions, setEntityFunctions] = useState<
@@ -199,10 +229,28 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           t('server.entity-fetch-error', { entity: t('label.alert') })
         );
       }
+      if (!isEmpty(extraFormWidgets)) {
+        try {
+          const permission = await getResourcePermission(
+            ResourceEntity.NOTIFICATION_TEMPLATE
+          );
+          setTemplateResourcePermission(permission);
+          const { canViewAll } = getDerivedPermissionFlags(permission);
+          if (canViewAll) {
+            const { data } = await getAllNotificationTemplates({
+              limit: PAGE_SIZE_LARGE,
+              provider: TemplateProviderType.User,
+            });
+            setTemplates(data);
+          }
+        } catch {
+          // Templates are optional
+        }
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [fqn, form, t]);
+  }, [fqn, form, t, extraFormWidgets, getResourcePermission]);
 
   useEffect(() => {
     fetchData();
@@ -383,6 +431,23 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
                 }}
               />
 
+              {/* Extra widgets (Collate extension point) */}
+              {!isEmpty(extraFormWidgets) &&
+                Object.entries(extraFormWidgets).map(([name, Widget]) => (
+                  <Fragment key={name}>
+                    <Box className="tw:border-t tw:border-secondary" />
+                    <Widget
+                      alertDetails={alert}
+                      formRef={
+                        form as unknown as AddAlertFormWidgetProps['formRef']
+                      }
+                      loading={isLoading}
+                      templateResourcePermission={templateResourcePermission}
+                      templates={templates}
+                    />
+                  </Fragment>
+                ))}
+
               {/* Inline alert errors */}
               {inlineAlertDetails && (
                 <Alert
@@ -406,6 +471,18 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         direction="row"
         gap={3}
         justify="end">
+        {!isEmpty(extraFormButtons) &&
+          Object.entries(extraFormButtons).map(([name, ButtonComponent]) => (
+            <ButtonComponent
+              alertDetails={alert}
+              formRef={
+                form as unknown as AddAlertFormWidgetProps['formRef']
+              }
+              key={name}
+              templateResourcePermission={templateResourcePermission}
+              templates={templates}
+            />
+          ))}
         <Button
           color="tertiary"
           data-testid="cancel-btn"

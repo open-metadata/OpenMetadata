@@ -27,6 +27,7 @@ import { EventType } from '../../../../../../generated/type/changeEvent';
 import {
   getDataContractSuggestions,
   getDomainOptions,
+  getEntityByIdOptions,
   getFqnSearchIndexes,
   getOwnerOptions,
   getTableSuggestions,
@@ -360,7 +361,7 @@ export const getControlledArgumentFieldCoreUI = (
       ),
     entityIdList: () =>
       asyncField(
-        getEntityByFQN,
+        (search: string) => getEntityByIdOptions(search, selectedTrigger),
         'entity-id-select',
         t('label.search-by-type', { type: t('label.entity') })
       ),

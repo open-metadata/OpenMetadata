@@ -16,13 +16,14 @@ import { useSettingsHash } from './useSettingsHash';
 
 const mockNavigate = jest.fn();
 let mockHash = '';
+let mockSearch = '';
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useLocation: () => ({
     hash: mockHash,
     pathname: '/',
-    search: '',
+    search: mockSearch,
     state: null,
     key: 'default',
   }),
@@ -32,6 +33,7 @@ jest.mock('react-router-dom', () => ({
 describe('useSettingsHash', () => {
   beforeEach(() => {
     mockHash = '';
+    mockSearch = '';
     mockNavigate.mockClear();
   });
 
@@ -79,7 +81,7 @@ describe('useSettingsHash', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      { hash: 'notification/my-alert' },
+      { pathname: '/', search: '', hash: 'notification/my-alert' },
       { replace: true }
     );
   });
@@ -92,7 +94,21 @@ describe('useSettingsHash', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      { hash: 'notification?page=2' },
+      { pathname: '/', search: '', hash: 'notification?page=2' },
+      { replace: true }
+    );
+  });
+
+  it('should preserve query string when setting hash', () => {
+    mockSearch = '?search=foo&bar=1';
+    const { result } = renderHook(() => useSettingsHash());
+
+    act(() => {
+      result.current.setHash('notification');
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      { pathname: '/', search: '?search=foo&bar=1', hash: 'notification' },
       { replace: true }
     );
   });

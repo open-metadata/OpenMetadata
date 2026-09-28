@@ -129,10 +129,17 @@ export const useSettingsHash = () => {
       const next = buildHash(tab, subPath, params);
 
       if (window.location.hash !== next) {
-        navigate({ hash: next.slice(1) }, { replace: true });
+        navigate(
+          {
+            pathname: location.pathname,
+            search: location.search,
+            hash: next.slice(1),
+          },
+          { replace: true }
+        );
       }
     },
-    [navigate]
+    [navigate, location.pathname, location.search]
   );
 
   const clearHash = useCallback(() => {

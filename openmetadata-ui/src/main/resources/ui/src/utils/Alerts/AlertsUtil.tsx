@@ -245,6 +245,43 @@ export const getUserBotOptions = async (searchText: string) => {
   });
 };
 
+export const getEntityByIdOptions = async (
+  searchText: string,
+  selectedTrigger: string
+) => {
+  const searchIndexMapping =
+    searchClassBase.getEntityTypeSearchIndexMapping();
+  const trimmed = searchText.trim();
+  const isUuidInput = UUID_REGEX.test(trimmed);
+
+  try {
+    const response = await searchQuery({
+      query: trimmed,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE_LARGE,
+      queryFilter: isUuidInput ? getTermQuery({ id: trimmed }) : undefined,
+      searchIndex: searchIndexMapping[selectedTrigger],
+    });
+
+    return uniqBy(
+      response.hits.hits.map((d) => {
+        const id = d._source.id ?? '';
+        const fqn = d._source.fullyQualifiedName ?? '';
+
+        return { label: `${id} (${fqn})`, value: id };
+      }),
+      'value'
+    );
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', { entity: t('label.search') })
+    );
+
+    return [];
+  }
+};
+
 export const getSupportedFilterOptions = (
   selectedFilters: EventFilterRule[],
   supportedFilters?: EventFilterRule[]
