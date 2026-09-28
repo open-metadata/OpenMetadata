@@ -768,6 +768,30 @@ describe('ExploreSearchCard - Description markdown stripping', () => {
       'Simple plain text description'
     );
   });
+
+  it('preserves search highlight spans after stripping markdown', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            description: [
+              'bold text and <span class="text-highlighter">code</span> and link',
+            ],
+          }}
+          source={{
+            ...baseSource,
+            description: '**bold text** and `code` and [link](http://example.com)',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('code');
+    expect(body).not.toHaveTextContent('**bold text**');
+  });
 });
 
 describe('ExploreSearchCard - Prefetch on hover', () => {

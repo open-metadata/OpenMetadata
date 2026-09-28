@@ -554,9 +554,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const queryClient = useQueryClient();
 
     const source = useMemo(() => {
+      const stripped = {
+        ..._source,
+        description: stripMarkdown(_source.description ?? ''),
+      };
+
       return highlight
-        ? highlightEntityNameAndDescription(_source, highlight)
-        : _source;
+        ? highlightEntityNameAndDescription(stripped, highlight)
+        : stripped;
     }, [_source, highlight]);
 
     const rankingStages = useMemo(() => {
@@ -919,7 +924,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         <div className="p-t-sm">
           <TableDataCardBody
-            description={stripMarkdown(source.description ?? '')}
+            description={source.description ?? ''}
             extraInfo={otherDetails}
             tags={showTags ? source.tags : []}
           />
