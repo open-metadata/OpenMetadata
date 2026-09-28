@@ -49,10 +49,12 @@ jest.mock(
         (
           {
             onSave,
+            onTextChange,
             placeHolder,
             editAction,
           }: {
             onSave?: (m: string) => void;
+            onTextChange?: (m: string) => void;
             placeHolder?: string;
             editAction?: React.ReactNode;
           },
@@ -71,6 +73,11 @@ jest.mock(
                 data-testid="feed-editor"
                 onClick={() => onSave?.('hello')}
               />
+              <input
+                aria-label="draft"
+                data-testid="draft-input"
+                onChange={(event) => onTextChange?.(event.target.value)}
+              />
               {editAction}
             </>
           );
@@ -88,21 +95,30 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Button: ({
     onClick,
+    isDisabled,
     ...rest
   }: {
     onClick?: () => void;
+    isDisabled?: boolean;
     'aria-label'?: string;
     'data-testid'?: string;
   }) => (
     <button
       aria-label={rest['aria-label']}
       data-testid={rest['data-testid']}
+      disabled={isDisabled}
       onClick={onClick}
     />
   ),
 }));
 
 import InboxCommentComposer from './InboxCommentComposer';
+
+// Stands in for typing: the editor reports its markdown through onTextChange.
+const type = (text: string) =>
+  fireEvent.change(screen.getByTestId('draft-input'), {
+    target: { value: text },
+  });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -124,19 +140,49 @@ describe('InboxCommentComposer', () => {
     mockEditorContent = 'Looks right';
     render(<InboxCommentComposer onSave={mockOnSave} />);
 
+    type('Looks right');
     fireEvent.click(screen.getByTestId('send-button'));
 
     expect(mockOnSave).toHaveBeenCalledWith('Looks right');
     expect(mockClearEditor).toHaveBeenCalled();
   });
 
-  it('sends nothing for an empty draft', () => {
-    mockEditorContent = '';
+  it('keeps the send button disabled until something is typed', () => {
     render(<InboxCommentComposer onSave={mockOnSave} />);
 
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+
+    type('   ');
+
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+
+    type('Looks right');
+
+    expect(screen.getByTestId('send-button')).toBeEnabled();
+
+    type('');
+
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+  });
+
+  it('disables the send button again once the comment is sent', () => {
+    mockEditorContent = 'Looks right';
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    type('Looks right');
     fireEvent.click(screen.getByTestId('send-button'));
 
-    expect(mockOnSave).not.toHaveBeenCalled();
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+  });
+
+  it('disables the send button again after Enter sends the comment', () => {
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    type('hello');
+    fireEvent.click(screen.getByTestId('feed-editor'));
+
+    expect(mockOnSave).toHaveBeenCalledWith('hello');
+    expect(screen.getByTestId('send-button')).toBeDisabled();
   });
 
   it('forwards the editor save to onSave', () => {
