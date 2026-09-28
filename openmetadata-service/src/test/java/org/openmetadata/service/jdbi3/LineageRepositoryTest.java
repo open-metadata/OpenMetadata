@@ -700,9 +700,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -780,9 +781,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -798,8 +800,14 @@ class LineageRepositoryTest {
    * toService, three service-level edges must be created: fromService→toService,
    * fromService→pipelineService, and pipelineService→toService.
    */
+  /**
+   * A pipeline-annotated edge is projected as fromService → pipelineService → toService only. The
+   * direct fromService → toService edge must not also be created, or the service graph draws two
+   * parallel paths for the same flow of data.
+   */
   @Test
-  void testPipelineServiceEdges_WithDistinctPipelineService_CreatesBothEdges() throws Exception {
+  void testPipelineServiceEdges_WithDistinctPipelineService_RoutesThroughPipelineOnly()
+      throws Exception {
     UUID fromEntityId = UUID.randomUUID();
     UUID toEntityId = UUID.randomUUID();
     UUID fromServiceId = UUID.randomUUID();
@@ -861,25 +869,26 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
-    verify(relDAO, times(3))
+    verify(relDAO, times(2))
         .insert(fromCaptor.capture(), toCaptor.capture(), any(), any(), anyInt(), any());
 
     List<UUID> insertedFromIds = fromCaptor.getAllValues();
     List<UUID> insertedToIds = toCaptor.getAllValues();
 
     assertTrue(
-        edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
-        "fromService→toService edge must be created");
-    assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, fromServiceId, pipelineServiceId),
         "fromService→pipelineService edge must be created");
     assertTrue(
         edgePairExists(insertedFromIds, insertedToIds, pipelineServiceId, toServiceId),
         "pipelineService→toService edge must be created");
+    assertFalse(
+        edgePairExists(insertedFromIds, insertedToIds, fromServiceId, toServiceId),
+        "direct fromService→toService edge must NOT be created alongside the pipeline hops");
   }
 
   /**
@@ -934,11 +943,170 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO, times(1)).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  /**
+   * A service edge written straight through PUT /v1/lineage carries no assetEdges refcount. The
+   * first child edge rolled up into it has to be counted as its first contributor instead of
+   * failing the request.
+   */
+  @Test
+  void testServiceEdge_ExistingEdgeWithoutAssetEdges_CountsChildEdgeAsFirstContributor()
+      throws Exception {
+    EntityReference fromService = serviceRef("databaseService");
+    EntityReference toService = serviceRef("messagingService");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        rollUpChildEdge(fromService, toService, new LineageDetails(), new LineageDetails(), null);
+
+    assertEquals(1, storedAssetEdges(relDAO, fromService, toService));
+  }
+
+  /**
+   * Attaching a pipeline to an existing child edge releases the direct service edge it fed. A
+   * direct edge with no assetEdges refcount has no other contributor on record, so releasing it
+   * deletes it instead of failing the request.
+   */
+  @Test
+  void testServiceEdge_ReleasingDirectEdgeWithoutAssetEdges_DeletesIt() throws Exception {
+    EntityReference fromService = serviceRef("databaseService");
+    EntityReference toService = serviceRef("messagingService");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        rollUpChildEdge(
+            fromService, toService, new LineageDetails(), withPipeline(), new LineageDetails());
+
+    verify(relDAO)
+        .delete(
+            fromService.getId(),
+            fromService.getType(),
+            toService.getId(),
+            toService.getType(),
+            Relationship.UPSTREAM.ordinal());
+  }
+
+  @Test
+  void testServiceEdge_ReleasingDirectEdgeOtherChildrenStillFeed_DecrementsIt() throws Exception {
+    EntityReference fromService = serviceRef("databaseService");
+    EntityReference toService = serviceRef("messagingService");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        rollUpChildEdge(
+            fromService,
+            toService,
+            new LineageDetails().withAssetEdges(2),
+            withPipeline(),
+            new LineageDetails());
+
+    assertEquals(1, storedAssetEdges(relDAO, fromService, toService));
+  }
+
+  /**
+   * Rolls one table-to-table child edge up into service lineage while the direct edge between the
+   * two services is already stored as {@code storedServiceEdge}. A non-null {@code priorChildEdge}
+   * makes it an update of an existing child edge. Returns the DAO the rollup wrote through.
+   */
+  private CollectionDAO.EntityRelationshipDAO rollUpChildEdge(
+      EntityReference fromService,
+      EntityReference toService,
+      LineageDetails storedServiceEdge,
+      LineageDetails childEdge,
+      LineageDetails priorChildEdge)
+      throws Exception {
+    String entityType = "table";
+    EntityReference fromRef = new EntityReference().withId(UUID.randomUUID()).withType(entityType);
+    EntityReference toRef = new EntityReference().withId(UUID.randomUUID()).withType(entityType);
+
+    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    when(fromEntityMock.getService()).thenReturn(fromService);
+    when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
+    EntityInterface toEntityMock = mock(EntityInterface.class);
+    when(toEntityMock.getService()).thenReturn(toService);
+    when(toEntityMock.getEntityReference()).thenReturn(toRef);
+
+    CollectionDAO freshDao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(freshDao.relationshipDAO()).thenReturn(relDAO);
+    when(relDAO.getRecord(eq(fromService.getId()), eq(toService.getId()), anyInt()))
+        .thenReturn(
+            CollectionDAO.EntityRelationshipObject.builder()
+                .json(JsonUtils.pojoToJson(storedServiceEdge))
+                .build());
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(freshDao);
+    mockedEntity.when(() -> Entity.entityHasField(entityType, "service")).thenReturn(true);
+    mockedEntity.when(() -> Entity.entityHasField(entityType, "domains")).thenReturn(false);
+    mockedEntity.when(() -> Entity.entityHasField(entityType, "dataProducts")).thenReturn(false);
+    mockedEntity
+        .when(() -> Entity.getEntity(eq(entityType), eq(fromRef.getId()), any(), any()))
+        .thenReturn(fromEntityMock);
+    mockedEntity
+        .when(() -> Entity.getEntity(eq(entityType), eq(toRef.getId()), any(), any()))
+        .thenReturn(toEntityMock);
+    if (childEdge.getPipeline() != null) {
+      EntityInterface pipelineEntityMock = mock(EntityInterface.class);
+      when(pipelineEntityMock.getService()).thenReturn(serviceRef("pipelineService"));
+      mockedEntity.when(() -> Entity.entityHasField("pipeline", "service")).thenReturn(true);
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq("pipeline"), eq(childEdge.getPipeline().getId()), any(), any()))
+          .thenReturn(pipelineEntityMock);
+    }
+
+    Method buildExtendedLineage =
+        LineageRepository.class.getDeclaredMethod(
+            "buildExtendedLineage",
+            EntityReference.class,
+            EntityReference.class,
+            LineageDetails.class,
+            LineageDetails.class,
+            boolean.class);
+    buildExtendedLineage.setAccessible(true);
+    buildExtendedLineage.invoke(
+        new LineageRepository(), fromRef, toRef, childEdge, priorChildEdge, priorChildEdge != null);
+    return relDAO;
+  }
+
+  private static Integer storedAssetEdges(
+      CollectionDAO.EntityRelationshipDAO relDAO,
+      EntityReference fromService,
+      EntityReference toService) {
+    ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+    verify(relDAO)
+        .insert(
+            eq(fromService.getId()),
+            eq(toService.getId()),
+            any(),
+            any(),
+            anyInt(),
+            jsonCaptor.capture());
+    return JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class).getAssetEdges();
+  }
+
+  private static EntityReference serviceRef(String serviceType) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(serviceType);
+  }
+
+  private static LineageDetails withPipeline() {
+    return new LineageDetails()
+        .withPipeline(new EntityReference().withId(UUID.randomUUID()).withType("pipeline"));
+  }
+
+  @Test
+  void testPreserveAssetEdges_DirectWriteKeepsStoredRefcount() {
+    LineageDetails incoming = new LineageDetails().withAssetEdges(7);
+
+    LineageRepository.preserveAssetEdges(incoming, new LineageDetails().withAssetEdges(3));
+
+    assertEquals(3, incoming.getAssetEdges());
   }
 
   private boolean edgePairExists(

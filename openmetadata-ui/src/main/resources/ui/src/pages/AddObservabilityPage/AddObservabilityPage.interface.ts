@@ -14,13 +14,12 @@
 import type { FormInstance } from 'antd';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import type {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { ResourceEntity } from '../../enums/permissions.enum';
 import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
+  AlertType,
   Destination,
   EventFilterRule,
   EventSubscription,
@@ -28,6 +27,7 @@ import {
   SubscriptionType,
   Webhook,
 } from '../../generated/events/eventSubscription';
+import { EventType } from '../../generated/type/changeEvent';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
 
@@ -35,11 +35,15 @@ export interface ObservabilityFilterResourceDescriptor {
   containerEntities?: string[];
   name?: string;
   supportedActions?: EventFilterRule[];
+  /** Event types the source emits; narrows the event-type filter options. */
+  supportedEventTypes?: EventType[];
   supportedFilters?: EventFilterRule[];
 }
 
 export interface UseObservabilityAlertFormOptions {
   afterSaveAction?: (fqn: string) => Promise<void> | void;
+  /** Defaults to Observability; selects which resource catalogue to load. */
+  alertType?: AlertType;
   form?: FormInstance<ModifiedCreateEventSubscription>;
   fqn?: string;
   onCancel?: () => void;

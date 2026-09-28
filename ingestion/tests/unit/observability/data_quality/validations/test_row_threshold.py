@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 
-from metadata.data_quality.validations.base_test_handler import RowThreshold, ThresholdUnit
+from metadata.data_quality.validations.base_test_handler import FailureThreshold, ThresholdUnit
 from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeInSet import (
     ColumnValuesToBeInSetValidator,
 )
@@ -213,32 +213,32 @@ def test_in_set_without_match_enum_ignores_the_threshold():
 @pytest.mark.parametrize(
     "parameter_values,expected",
     [
-        ([], RowThreshold(value=0.0, unit=ThresholdUnit.ABSOLUTE)),
-        (threshold_params(5), RowThreshold(value=5.0, unit=ThresholdUnit.ABSOLUTE)),
-        (threshold_params(5, "PERCENTAGE"), RowThreshold(value=5.0, unit=ThresholdUnit.PERCENTAGE)),
-        (threshold_params(5, "percentage"), RowThreshold(value=5.0, unit=ThresholdUnit.PERCENTAGE)),
+        ([], FailureThreshold(value=0.0, unit=ThresholdUnit.ABSOLUTE)),
+        (threshold_params(5), FailureThreshold(value=5.0, unit=ThresholdUnit.ABSOLUTE)),
+        (threshold_params(5, "PERCENTAGE"), FailureThreshold(value=5.0, unit=ThresholdUnit.PERCENTAGE)),
+        (threshold_params(5, "percentage"), FailureThreshold(value=5.0, unit=ThresholdUnit.PERCENTAGE)),
         # An unreadable threshold or unit falls back to the safest reading rather than raising
-        (threshold_params(5, "RATIO"), RowThreshold(value=5.0, unit=ThresholdUnit.ABSOLUTE)),
-        (threshold_params("abc", "PERCENTAGE"), RowThreshold(value=0.0, unit=ThresholdUnit.ABSOLUTE)),
-        (threshold_params(0, "PERCENTAGE"), RowThreshold(value=0.0, unit=ThresholdUnit.PERCENTAGE)),
+        (threshold_params(5, "RATIO"), FailureThreshold(value=5.0, unit=ThresholdUnit.ABSOLUTE)),
+        (threshold_params("abc", "PERCENTAGE"), FailureThreshold(value=0.0, unit=ThresholdUnit.ABSOLUTE)),
+        (threshold_params(0, "PERCENTAGE"), FailureThreshold(value=0.0, unit=ThresholdUnit.PERCENTAGE)),
     ],
 )
-def test_get_row_threshold(parameter_values, expected):
+def test_get_failure_threshold(parameter_values, expected):
     validator = build_validator(ColumnValuesToBeNotNullValidator, parameter_values)
 
-    assert validator.get_row_threshold() == expected
+    assert validator.get_failure_threshold() == expected
 
 
-def test_get_row_threshold_is_read_once(monkeypatch):
+def test_get_failure_threshold_is_read_once(monkeypatch):
     """The parameters cannot change mid run, so a misconfigured test case warns once"""
     validator = build_validator(ColumnValuesToBeNotNullValidator, threshold_params(5, "PERCENTAGE"))
 
     readings = []
-    original = validator._read_row_threshold
-    monkeypatch.setattr(validator, "_read_row_threshold", lambda: readings.append(1) or original())
+    original = validator._read_failure_threshold
+    monkeypatch.setattr(validator, "_read_failure_threshold", lambda: readings.append(1) or original())
 
-    assert validator.get_row_threshold() == validator.get_row_threshold()
-    assert validator.get_row_threshold().unit is ThresholdUnit.PERCENTAGE
+    assert validator.get_failure_threshold() == validator.get_failure_threshold()
+    assert validator.get_failure_threshold().unit is ThresholdUnit.PERCENTAGE
     assert len(readings) == 1
 
 

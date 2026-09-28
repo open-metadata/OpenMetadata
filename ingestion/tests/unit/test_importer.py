@@ -29,6 +29,7 @@ from metadata.utils.importer import (
     import_processor_class,
     import_sink_class,
     import_stage_class,
+    import_table_reference_normalizer,
 )
 from metadata.utils.service_spec.service_spec import import_source_class
 
@@ -115,3 +116,12 @@ def test_import_from_module_does_not_wrap_module_level_attribute_error() -> None
         pytest.raises(AttributeError, match="boom inside the module"),
     ):
         import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSource")
+
+
+def test_broken_naming_hook_does_not_silently_use_default_names():
+    error = ModuleNotFoundError("missing naming dependency", name="naming_dependency")
+    with (
+        patch("importlib.import_module", side_effect=error),
+        pytest.raises(ModuleNotFoundError, match="missing naming dependency"),
+    ):
+        import_table_reference_normalizer(ServiceType.Database, "Clickhouse")

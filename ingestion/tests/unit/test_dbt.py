@@ -3,6 +3,7 @@ Test dbt
 """
 
 import json
+import logging
 import uuid
 from copy import deepcopy
 from datetime import datetime
@@ -20,6 +21,7 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.domains.domain import Domain
@@ -1843,8 +1845,6 @@ class DbtUnitTest(TestCase):
         self.dbt_source_obj.extracted_domains = {"service.db.schema.table1": "NonExistentDomain"}
 
         self.dbt_source_obj.process_dbt_domain(data_model_link)
-
-    # Test Custom Properties processing functionality
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
     def test_process_dbt_custom_properties_success(self, mock_patch_custom_properties):
@@ -4650,19 +4650,8 @@ class TestAddDbtSourceFreshnessResults:
         )
 
 
-class TestDbtV12MetricIngest(TestCase):
+class TestDbtV12MetricIngest:
     """Unit tests for dbt 1.12+ inline metric spec (measure-less semantic models)."""
-
-    def setUp(self):
-        from metadata.generated.schema.entity.data.metric import (
-            Language,
-            MetricExpression,
-            MetricMeasure,
-        )
-
-        self.Language = Language
-        self.MetricExpression = MetricExpression
-        self.MetricMeasure = MetricMeasure
 
     # ------------------------------------------------------------------
     # _simple_metric_expression
@@ -4688,7 +4677,7 @@ class TestDbtV12MetricIngest(TestCase):
         assert related is None
         assert expr is not None
         assert expr.code == "user_id"
-        assert expr.language == self.Language.SQL
+        assert expr.language == Language.SQL
 
     def test_simple_metric_expression_dbt_v12_no_measure_no_expr_returns_none(self):
         """Both measure and expr absent → no expression emitted (no crash)."""
@@ -4817,7 +4806,7 @@ class TestDbtV12MetricIngest(TestCase):
         assert result == []
 
 
-class TestDbtV12MetricAggregationAndCumulative(TestCase):
+class TestDbtV12MetricAggregationAndCumulative:
     """dbt 1.12+ inline metrics: aggregation carried onto the measure, and cumulative
     metrics resolved from cumulative_type_params.metric. The pre-1.12 (measure-based)
     paths must stay byte-for-byte unchanged, so each new behaviour is guarded on the
@@ -4981,3 +4970,77 @@ class TestDbtV12MetricAggregationAndCumulative(TestCase):
         )
         expression, _ = DbtSource._cumulative_metric_expression(type_params)
         assert expression is None
+
+
+class TestDbtDataProducts:
+    """process_dbt_data_products attaches tables to their dbt-declared Data Products,
+    resolving each through the API and degrading unknown or failed assignments to
+    bounded warnings."""
+
+    def _source(self):
+        source = MagicMock(spec=DbtSource)
+        source.extracted_data_products = {}
+        source.source_config = MagicMock(includeTags=False)
+        source.metadata = MagicMock()
+        return source
+
+    def _link(self, fqn="service.db.schema.table1"):
+        table_entity = MagicMock()
+        table_entity.fullyQualifiedName.root = fqn
+        table_entity.id = uuid.uuid4()
+        data_model_link = MagicMock()
+        data_model_link.table_entity = table_entity
+        return data_model_link
+
+    def test_meta_extraction_stores_products_per_table(self):
+        source = self._source()
+        manifest_meta = {"openmetadata": {"dataProducts": ["Marketing", "Domain.Sales"]}}
+
+        DbtSource.process_dbt_meta(source, manifest_meta, "service.db.schema.table1")
+
+        assert source.extracted_data_products == {"service.db.schema.table1": ["Marketing", "Domain.Sales"]}
+
+    def test_existing_products_are_attached_as_assets(self):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+        product = MagicMock()
+        product.fullyQualifiedName = "Marketing"
+        source.metadata.get_by_name.return_value = product
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.get_by_name.assert_called_once()
+        source.metadata.add_assets_to_data_product.assert_called_once()
+        assert source.metadata.add_assets_to_data_product.call_args.args[0] == "Marketing"
+
+    def test_no_products_declared_is_a_noop(self):
+        source = self._source()
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.get_by_name.assert_not_called()
+        source.metadata.add_assets_to_data_product.assert_not_called()
+
+    def test_unknown_product_is_skipped_never_created(self):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Ghost"]}
+        source.metadata.get_by_name.return_value = None
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.add_assets_to_data_product.assert_not_called()
+
+    def test_assignment_failure_is_a_bounded_warning(self, caplog):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+        product = MagicMock()
+        product.fullyQualifiedName = "Marketing"
+        source.metadata.get_by_name.return_value = product
+        source.metadata.add_assets_to_data_product.side_effect = Exception("400 Client Error: Bad Request")
+
+        with caplog.at_level(logging.WARNING):
+            DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.add_assets_to_data_product.assert_called_once()
+        assert "Marketing" in caplog.text
+        assert "domain" in caplog.text.lower()

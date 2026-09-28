@@ -11,8 +11,6 @@
 
 """Athena source module"""
 
-import hashlib
-import re
 import traceback
 from collections.abc import Iterable
 from typing import cast
@@ -22,9 +20,6 @@ from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.api.data.createCustomProperty import (
-    CreateCustomPropertyRequest,
-)
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -43,13 +38,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.custom_properties import (
-    CustomPropertyDataTypes,
-    OMetaCustomProperties,
-)
 from metadata.ingestion.models.lf_tags_model import TagItem
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -63,6 +53,9 @@ from metadata.ingestion.source.database.athena.utils import (
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    CustomPropertyExtensionMixin,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -86,9 +79,6 @@ ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ICEBERG_TABLE_TYPE = "ICEBERG"
-PROPERTY_NAME_INVALID_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9_.\-]")
-PROPERTY_NAME_REPLACEMENT = "__"
-PROPERTY_NAME_MAX_LENGTH = 256
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -101,7 +91,7 @@ ATHENA_INTERVAL_TYPE_MAP = {
 }
 
 
-class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
+class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Athena Source
@@ -125,8 +115,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         self.external_location_map = {}
         self.schema_description_map = {}
         self.glue_client = None
-        self._processed_prop: set[str] = set()
-        self._string_property_type_ref = None
+        self._init_custom_properties()
 
     def prepare(self):
         """
@@ -147,11 +136,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         except Exception as exc:
             logger.warning(f"Error preparing Athena source: {exc}")
             logger.debug(traceback.format_exc())
-        try:
-            self._string_property_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.STRING)
-        except Exception as exc:
-            logger.warning(f"Failed to fetch string property type ref: {exc}")
-            logger.debug(traceback.format_exc())
+        self._load_string_property_type_ref()
 
     def get_schema_description(self, schema_name: str) -> str | None:
         return self.schema_description_map.get(schema_name)
@@ -376,46 +361,17 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         )
 
     def get_table_extensions(self, table_name: str, table_type: TableType | None = None) -> dict[str, str] | None:
-        if not getattr(self.source_config, "includeCustomProperties", False):
+        if not self.custom_properties_enabled:
             return None
         if not self._string_property_type_ref:
             return None
         if table_type != TableType.Iceberg:
             return None
         schema_name: str = getattr(self.context.get(), "database_schema", "")
-        tbl_properties = self._fetch_iceberg_properties(schema_name, table_name)
-        if not tbl_properties:
-            return None
-        registered_properties = {}
-        for prop_name, prop_value in tbl_properties.items():
-            if not prop_value:
-                continue
-            sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(PROPERTY_NAME_REPLACEMENT, prop_name)
-            if len(sanitized_name) > PROPERTY_NAME_MAX_LENGTH:
-                sanitized_name = hashlib.md5(prop_name.encode("utf-8"), usedforsecurity=False).hexdigest()
-            if sanitized_name not in self._processed_prop:
-                try:
-                    self.metadata.create_or_update_custom_property(  # pyright: ignore[reportUnknownMemberType, reportUnusedCallResult]
-                        OMetaCustomProperties(
-                            entity_type=Table,
-                            createCustomPropertyRequest=CreateCustomPropertyRequest(
-                                name=EntityName(sanitized_name),
-                                displayName=prop_name,
-                                description=Markdown(prop_name),
-                                propertyType=self._string_property_type_ref,
-                                customPropertyConfig=None,
-                            ),
-                        )
-                    )
-                    self._processed_prop.add(sanitized_name)
-                except Exception as exc:
-                    logger.warning(
-                        f"Failed to register custom property [{prop_name}] for Athena table properties: {exc}"
-                    )
-                    logger.debug(traceback.format_exc())
-                    continue
-            registered_properties[sanitized_name] = prop_value
-        return registered_properties or None
+        return self.build_entity_extension(
+            self._fetch_iceberg_properties(schema_name, table_name),
+            source_label="Athena table properties",
+        )
 
     def _fetch_iceberg_properties(self, schema_name: str, table_name: str) -> dict[str, str]:
         """Read Iceberg native properties from Athena's `<table>$properties` metatable."""

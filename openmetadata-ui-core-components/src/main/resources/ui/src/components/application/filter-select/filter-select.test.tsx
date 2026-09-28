@@ -132,6 +132,55 @@ describe('FilterSelect', () => {
     expect(onChange).toHaveBeenCalledWith(['snowflake']);
   });
 
+  it('keeps a staged click when selectedValues is re-derived while open', () => {
+    // Consumers pass `selectedValues` as a memo over server-fetched options, so
+    // a late suggestions response hands over a new array holding the same
+    // values. Re-syncing on that would discard the row just clicked.
+    const onChange = vi.fn();
+    const props = {
+      commitMode: 'staged' as const,
+      isOpen: true,
+      label: 'Service',
+      options: OPTIONS,
+      onChange,
+    };
+    const { rerender } = render(
+      <FilterSelect {...props} selectedValues={['redshift']} />
+    );
+
+    fireEvent.click(screen.getByText('Snowflake'));
+
+    // The late fetch resolves: same values, brand new array identity.
+    rerender(<FilterSelect {...props} selectedValues={['redshift']} />);
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining(['redshift', 'snowflake'])
+    );
+  });
+
+  it('applies an external selectedValues change that arrives while open', () => {
+    // Explore quick filters stay mounted and open across query-string-only
+    // navigation, so a filter cleared that way must reach the staged set —
+    // otherwise Apply writes the stale value back.
+    const onChange = vi.fn();
+    const props = {
+      commitMode: 'staged' as const,
+      isOpen: true,
+      label: 'Service',
+      options: OPTIONS,
+      onChange,
+    };
+    const { rerender } = render(
+      <FilterSelect {...props} selectedValues={['redshift']} />
+    );
+
+    rerender(<FilterSelect {...props} selectedValues={[]} />);
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
   it('does not commit staged toggles on cancel', () => {
     const { onChange } = renderFilter({ commitMode: 'staged' });
 
@@ -214,7 +263,7 @@ describe('FilterSelect', () => {
     expect(screen.getByText('MYSQL')).toBeInTheDocument();
   });
 
-  it('single select marks the chosen row brand-blue with no tick icon', () => {
+  it('single select marks the chosen row like the sidebar selected item with no tick icon', () => {
     renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
 
     const row = screen.getByTestId('snowflake');
@@ -222,10 +271,10 @@ describe('FilterSelect', () => {
     // No check glyph any more: these options carry no icons, so the selected
     // row must contain no svg at all (the tick used to render one).
     expect(row.querySelector('svg')).toBeNull();
-    expect(row.className).toContain('bg-utility-brand-50');
+    expect(row.querySelector('div')?.className).toContain('bg-brand-primary');
     expect(
       screen.getByTitle('Snowflake').parentElement?.className ?? ''
-    ).toContain('text-fg-brand-primary');
+    ).toContain('text-brand-secondary');
   });
 
   it('single select brands the icon and count pill of the chosen row', () => {
@@ -245,16 +294,16 @@ describe('FilterSelect', () => {
     const other = screen.getByTestId('bigquery');
 
     // The row-level override recolors the option's svg on selection…
-    expect(selected.className).toContain('[&_svg]:text-fg-brand-primary');
-    expect(other.className).not.toContain('[&_svg]:text-fg-brand-primary');
+    expect(selected.className).toContain('[&_svg]:text-fg-brand-secondary_alt');
+    expect(other.className).not.toContain('[&_svg]:text-fg-brand');
     // …and the count pill flips to the brand border and text.
     const selectedPill = within(selected).getByTestId('filter-count');
     const otherPill = within(other).getByTestId('filter-count');
 
     expect(selectedPill.className).toContain('border-utility-brand-200');
-    expect(selectedPill.className).toContain('text-fg-brand-primary');
+    expect(selectedPill.className).toContain('text-brand-secondary');
     expect(otherPill.className).toContain('border-secondary');
-    expect(otherPill.className).not.toContain('text-fg-brand-primary');
+    expect(otherPill.className).not.toContain('text-brand-secondary');
   });
 
   it('single select applies the clicked value and reports one value', () => {
@@ -370,6 +419,25 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('trigger-test').className).toContain(
       'shadow-xs-skeuomorphic'
     );
+  });
+
+  it('keeps the button trigger neutral once a value is selected', () => {
+    render(
+      <FilterSelect
+        bordered
+        data-testid="trigger-test"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={['snowflake']}
+        triggerVariant="button"
+        onChange={() => undefined}
+      />
+    );
+
+    const { className } = screen.getByTestId('trigger-test');
+
+    expect(className).not.toContain('after:outline-brand');
+    expect(className).not.toContain('text-fg-brand');
   });
 
   it('exposes the label-keyed trigger test id as well as the key-keyed one', () => {

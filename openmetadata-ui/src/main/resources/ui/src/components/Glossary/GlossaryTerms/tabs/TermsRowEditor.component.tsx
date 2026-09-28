@@ -11,27 +11,46 @@
  *  limitations under the License.
  */
 
-import { Autocomplete, Button, Select } from '@openmetadata/ui-core-components';
+import { Button, Select } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 
-import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
+import { TagSource } from '../../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../../../generated/entity/type';
-import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
+import { GlossaryPickerValue } from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   TermItem,
-  TermSelectItem,
   TermsRowEditorProps,
   TermsRowProps,
 } from './RelatedTerms.interface';
 
-const NO_RESULTS_KEY = '__no_results__';
+// A seeded row knows its reference; a picked term carries the fetched entity.
+const termItemToPickerValue = (term: TermItem): GlossaryPickerValue =>
+  ({
+    tagFQN: term.value,
+    name: term.label,
+    source: TagSource.Glossary,
+  } as GlossaryPickerValue);
+
+const pickerValueToTermItem = (
+  term: GlossaryPickerValue,
+  initialTerms: TermItem[]
+): TermItem => ({
+  value: term.tagFQN,
+  label: term.name ?? term.tagFQN,
+  entity: term.entity
+    ? getEntityReferenceFromEntity(
+        term.entity as GlossaryTerm,
+        EntityType.GLOSSARY_TERM
+      )
+    : initialTerms.find((i) => i.value === term.tagFQN)?.entity,
+});
 
 const TermsRow: React.FC<TermsRowProps> = ({
   rowId,
@@ -39,65 +58,14 @@ const TermsRow: React.FC<TermsRowProps> = ({
   initialTerms,
   relationTypeOptions,
   excludeFQN,
-  preloadedTerms,
   onRelationTypeChange,
   onTermsChange,
   onRemove,
 }) => {
   const { t } = useTranslation();
   const [relationType, setRelationType] = useState(initialRelationType);
-  const [selectedTerms, setSelectedTerms] = useState<TermSelectItem[]>(
-    initialTerms.map((term) => ({ id: term.value, label: term.label }))
-  );
-  const [searchedTerms, setSearchedTerms] = useState<GlossaryTerm[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const isSearchActive = searchQuery.trim().length > 0;
-  const activeTerms = isSearchActive ? searchedTerms : preloadedTerms;
-
-  const termEntityMap = useMemo(() => {
-    const map: Record<string, EntityReference> = {};
-    [...preloadedTerms, ...searchedTerms].forEach((term) => {
-      if (term.fullyQualifiedName) {
-        map[term.fullyQualifiedName] = getEntityReferenceFromEntity(
-          term,
-          EntityType.GLOSSARY_TERM
-        );
-      }
-    });
-    initialTerms.forEach((term) => {
-      if (term.entity) {
-        map[term.value] = term.entity;
-      }
-    });
-
-    return map;
-  }, [preloadedTerms, searchedTerms, initialTerms]);
-
-  const dropdownItems = useMemo<TermSelectItem[]>(() => {
-    const items = activeTerms
-      .filter((term) => term.fullyQualifiedName !== excludeFQN)
-      .map((term) => ({
-        id: term.fullyQualifiedName ?? '',
-        label: getEntityName(term),
-      }));
-
-    if (isSearchActive && items.length === 0) {
-      return [{ id: NO_RESULTS_KEY, label: t('message.no-match-found') }];
-    }
-
-    return items;
-  }, [activeTerms, excludeFQN, isSearchActive, t]);
-
-  const toTermItems = useCallback(
-    (items: TermSelectItem[]): TermItem[] =>
-      items.map((i) => ({
-        entity: termEntityMap[i.id],
-        label: i.label ?? '',
-        value: i.id,
-      })),
-    [termEntityMap]
+  const [selectedTerms, setSelectedTerms] = useState<GlossaryPickerValue[]>(
+    () => initialTerms.map(termItemToPickerValue)
   );
 
   const handleRelationTypeChange = useCallback(
@@ -108,66 +76,15 @@ const TermsRow: React.FC<TermsRowProps> = ({
     [rowId, onRelationTypeChange]
   );
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-    if (!value.trim()) {
-      setSearchedTerms([]);
-
-      return;
-    }
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const result = await searchGlossaryTermsPaginated({
-          q: value,
-          limit: PAGE_SIZE_MEDIUM,
-          offset: 0,
-        });
-        setSearchedTerms(result.data);
-      } catch {
-        // silently handle
-      }
-    }, 300);
-  }, []);
-
-  const handleItemInserted = useCallback(
-    (key: Key) => {
-      if (key === NO_RESULTS_KEY) {
-        return;
-      }
-      const term = [...preloadedTerms, ...searchedTerms].find(
-        (t) => t.fullyQualifiedName === key
+  const handleTermsChange = useCallback(
+    (_selected: TagLabel[], terms: GlossaryPickerValue[]) => {
+      setSelectedTerms(terms);
+      onTermsChange(
+        rowId,
+        terms.map((term) => pickerValueToTermItem(term, initialTerms))
       );
-      if (term) {
-        const updated = [
-          ...selectedTerms,
-          { id: term.fullyQualifiedName ?? '', label: getEntityName(term) },
-        ];
-        setSelectedTerms(updated);
-        onTermsChange(rowId, toTermItems(updated));
-        setSearchQuery('');
-        setSearchedTerms([]);
-      }
     },
-    [
-      preloadedTerms,
-      searchedTerms,
-      selectedTerms,
-      rowId,
-      onTermsChange,
-      toTermItems,
-    ]
-  );
-
-  const handleItemCleared = useCallback(
-    (key: Key) => {
-      const updated = selectedTerms.filter((i) => i.id !== key);
-      setSelectedTerms(updated);
-      onTermsChange(rowId, toTermItems(updated));
-    },
-    [selectedTerms, rowId, onTermsChange, toTermItems]
+    [rowId, onTermsChange, initialTerms]
   );
 
   return (
@@ -188,26 +105,16 @@ const TermsRow: React.FC<TermsRowProps> = ({
         </Select>
       </div>
       <div className="tw:flex-1" data-testid={`term-autocomplete-${rowId}`}>
-        <Autocomplete
-          filterOption={() => true}
-          items={dropdownItems}
-          maxVisibleItems={3}
+        <GlossaryTermPicker
+          data-testid={`term-picker-${rowId}`}
+          // A term cannot be related to itself.
+          excludeFqns={[excludeFQN]}
           placeholder={t('label.add-entity', {
             entity: t('label.term-plural'),
           })}
-          selectedItems={selectedTerms}
-          onItemCleared={handleItemCleared}
-          onItemInserted={handleItemInserted}
-          onSearchChange={handleSearchChange}>
-          {(item) => (
-            <Autocomplete.Item
-              id={item.id}
-              isDisabled={item.id === NO_RESULTS_KEY}
-              key={item.id}
-              label={item.label}
-            />
-          )}
-        </Autocomplete>
+          value={selectedTerms}
+          onChange={handleTermsChange}
+        />
       </div>
       <Button
         color="tertiary-destructive"
@@ -223,7 +130,6 @@ const TermsRow: React.FC<TermsRowProps> = ({
 const TermsRowEditor: React.FC<TermsRowEditorProps> = ({
   rows,
   excludeFQN,
-  preloadedTerms,
   relationTypeOptions,
   onAddRow,
   onRelationTypeChange,
@@ -240,7 +146,6 @@ const TermsRowEditor: React.FC<TermsRowEditorProps> = ({
           initialRelationType={row.relationType}
           initialTerms={row.terms}
           key={row.id}
-          preloadedTerms={preloadedTerms}
           relationTypeOptions={relationTypeOptions}
           rowId={row.id}
           onRelationTypeChange={onRelationTypeChange}

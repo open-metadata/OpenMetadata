@@ -35,6 +35,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -42,6 +43,8 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.PersonalAccessToken;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -53,6 +56,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
@@ -63,6 +68,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for User entity operations.
@@ -77,9 +83,6 @@ import org.openmetadata.sdk.network.RequestOptions;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
-
-  private static final String DIRECT_USER_ASSIGNMENT_ERROR =
-      "Team is of type Department. Direct users can only be assigned to teams of type Group.";
 
   {
     // User CSV export/import is done through the Team endpoint, not User endpoint
@@ -460,16 +463,58 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withTeams(List.of(department.getId()));
 
-    Exception exception =
+    OpenMetadataException exception =
         assertThrows(
-            Exception.class,
+            OpenMetadataException.class,
             () ->
                 SdkClients.adminClient()
                     .getHttpClient()
                     .execute(HttpMethod.PUT, "/v1/users", create, User.class));
 
-    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+    assertEquals(400, exception.getStatusCode());
     assertThrows(Exception.class, () -> SdkClients.adminClient().users().getByName(name));
+  }
+
+  @Test
+  void test_putUpdateUserValidatesOnlyNewDepartmentTeam(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team department =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("legacyDepartment"))
+                    .withTeamType(CreateTeam.TeamType.DEPARTMENT));
+    String name = ns.prefix("legacyDepartmentUser");
+    User user = createEntity(new CreateUser().withName(name).withEmail(toValidEmail(name)));
+    CreateUser update =
+        new CreateUser()
+            .withName(user.getName())
+            .withEmail(user.getEmail())
+            .withTeams(List.of(department.getId()));
+
+    OpenMetadataException newMembershipException =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.getHttpClient().execute(HttpMethod.PUT, "/v1/users", update, User.class));
+    assertEquals(400, newMembershipException.getStatusCode());
+
+    seedLegacyTeamMembership(department, user);
+    String updatedDescription = "Updated without changing legacy team membership";
+    update.setDescription(updatedDescription);
+    User updated = client.getHttpClient().execute(HttpMethod.PUT, "/v1/users", update, User.class);
+
+    assertEquals(updatedDescription, updated.getDescription());
+    User fetched = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        fetched.getTeams().stream().anyMatch(team -> department.getId().equals(team.getId())),
+        "The existing legacy department membership must be retained");
+  }
+
+  private static void seedLegacyTeamMembership(Team team, User user) {
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .insert(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS.ordinal());
   }
 
   @Test
@@ -2408,6 +2453,196 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 "{\"tokenName\":\"" + ns.prefix("pat") + "\",\"JWTTokenExpiry\":\"OneHour\"}");
 
     assertTrue(response.contains("jwtToken"), "Regular users can create their own personal tokens");
+  }
+
+  // ===================================================================
+  // CREDENTIAL REVOCATION
+  // A revoked bot token or personal access token must fail on the very next request, while the
+  // JWT itself is still signed and unexpired (open-metadata/OpenMetadata#32052).
+  // ===================================================================
+
+  @Test
+  void test_revokeBotToken_rejectsTokenOnNextRequest(TestNamespace ns) {
+    User botUser = createBotUser(ns, "revokebot");
+    String botToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient botClient = clientWithToken(botToken);
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users/revokeToken", "{\"id\":\"" + botUser.getId() + "\"}");
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_regenerateBotToken_rejectsPreviousToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "rotatebot");
+    String firstToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient firstClient = clientWithToken(firstToken);
+    assertEquals(botUser.getId(), getLoggedInUser(firstClient).getId());
+
+    // JWT timestamps have second precision, so two tokens minted within the same second with the
+    // same expiry are byte-identical (and therefore both "current"). A different expiry makes the
+    // rotation observable without sleeping across a second boundary.
+    String secondToken = generateBotToken(botUser, JWTTokenExpiry.Thirty);
+    assertNotEquals(firstToken, secondToken);
+
+    assertUnauthorized(firstClient);
+    assertEquals(botUser.getId(), getLoggedInUser(clientWithToken(secondToken)).getId());
+  }
+
+  @Test
+  void test_deleteBotUser_rejectsBotToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "deletedbot");
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    deleteEntity(botUser.getId().toString());
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_deleteBotEntity_rejectsContainedUsersBotToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "cascadedeletedbot");
+    Bot bot =
+        SdkClients.adminClient()
+            .bots()
+            .create(
+                new CreateBot()
+                    .withName(ns.prefix("credential_cascade_bot"))
+                    .withBotUser(botUser.getName()));
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    SdkClients.adminClient().bots().delete(bot.getId().toString());
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_revokePersonalAccessToken_rejectsTokenOnNextRequest(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    PersonalAccessToken pat = createPersonalAccessToken(owner, ns.prefix("pat"));
+    OpenMetadataClient patClient = clientWithToken(pat.getJwtToken());
+    assertNotNull(getLoggedInUser(patClient));
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + pat.getToken() + "\"]}");
+
+    assertUnauthorized(patClient);
+  }
+
+  @Test
+  void test_revokeAllPersonalAccessTokens_rejectsEveryToken(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    OpenMetadataClient first =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat1")).getJwtToken());
+    OpenMetadataClient second =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat2")).getJwtToken());
+    assertNotNull(getLoggedInUser(first));
+    assertNotNull(getLoggedInUser(second));
+
+    owner
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, "/v1/users/security/token/revoke?removeAll=true", "{}");
+
+    assertUnauthorized(first);
+    assertUnauthorized(second);
+  }
+
+  @Test
+  void test_deleteUser_rejectsPersonalAccessToken(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patdeleted");
+    OpenMetadataClient patClient =
+        clientWithToken(
+            createPersonalAccessToken(clientFor(owner), ns.prefix("pat")).getJwtToken());
+    assertNotNull(getLoggedInUser(patClient));
+
+    deleteEntity(owner.getId().toString());
+
+    assertUnauthorized(patClient);
+  }
+
+  @Test
+  void test_restoreUser_acceptsPersonalAccessTokenAgain(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patrestored");
+    OpenMetadataClient patClient =
+        clientWithToken(
+            createPersonalAccessToken(clientFor(owner), ns.prefix("pat")).getJwtToken());
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+
+    deleteEntity(owner.getId().toString());
+    assertUnauthorized(patClient);
+
+    restoreEntity(owner.getId().toString());
+
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+  }
+
+  /**
+   * JwtFilter resolves a bot's username from the token's email local-part, so the bot's stored name
+   * must equal the local-part.
+   */
+  private User createBotUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    return createEntity(
+        new CreateUser()
+            .withName(localPart)
+            .withEmail(localPart + "@test.com")
+            .withIsBot(true)
+            .withAuthenticationMechanism(authMechanism));
+  }
+
+  private String generateBotToken(User botUser, JWTTokenExpiry expiry) {
+    return SdkClients.adminClient().users().generateToken(botUser.getId(), expiry).getJWTToken();
+  }
+
+  private User createRegularUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    return createEntity(
+        new CreateUser().withName(localPart).withEmail(localPart + "@open-metadata.org"));
+  }
+
+  /** A client authenticated as {@code user} with a harness-signed JWT, like the shared clients. */
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static OpenMetadataClient clientWithToken(String token) {
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.getServerUrl())
+            .accessToken(token)
+            .build());
+  }
+
+  private static PersonalAccessToken createPersonalAccessToken(
+      OpenMetadataClient owner, String tokenName) {
+    String response =
+        owner
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/security/token",
+                "{\"tokenName\":\"" + tokenName + "\",\"JWTTokenExpiry\":\"OneHour\"}");
+    return JsonUtils.readValue(response, PersonalAccessToken.class);
+  }
+
+  private void assertUnauthorized(OpenMetadataClient client) {
+    OpenMetadataException exception =
+        assertThrows(OpenMetadataException.class, () -> getLoggedInUser(client));
+    assertEquals(401, exception.getStatusCode(), exception.getMessage());
   }
 
   @Test

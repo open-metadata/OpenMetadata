@@ -168,7 +168,11 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
             data-testid="ask-rail-expand-btn"
             type="button"
             onClick={onToggle}>
-            <ExpandPanelIcon height={20} width={20} />
+            <ExpandPanelIcon
+              className="tw:text-fg-quaternary"
+              height={20}
+              width={20}
+            />
           </button>
         </div>
       </div>

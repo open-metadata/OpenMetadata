@@ -25,8 +25,14 @@ from metadata.ingestion.source.database.databricks.connection import (
 from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
+UC_DEPENDENCY_DOES_NOT_EXIST = "UC_DEPENDENCY_DOES_NOT_EXIST"
+
 
 class DatabricksSamplerInterface(SQASampler):
+    @classmethod
+    def is_skippable_sampling_error(cls, exc: Exception) -> bool:
+        return UC_DEPENDENCY_DOES_NOT_EXIST in str(exc).upper()
+
     def __init__(self, *args, **kwargs):
         """Initialize with a single Databricks connection"""
         super().__init__(*args, **kwargs)

@@ -96,6 +96,12 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
     '^.*/AppRouter/withSuspenseFallback$':
       '<rootDir>/src/test/unit/mocks/withSuspenseFallback.mock.tsx',
+    // `src/utils/isPlaywrightBuild.ts` reads `import.meta.env.PW_E2E_BUILD`,
+    // which ts-jest cannot parse under the default CJS transform. Redirect
+    // every consumer through the stub so the syntax stays out of the tree
+    // Jest walks. See the stub for how to flip the flag per-test.
+    '^.*/utils/isPlaywrightBuild$':
+      '<rootDir>/src/test/unit/mocks/isPlaywrightBuild.mock.ts',
     // Force every `require('react')` / `require('react-dom')` to resolve to the consumer's
     // copy. The `openmetadata-ui-core-components` package has its own `node_modules/react`
     // (for its own dev/test) — without these mappings the CJS bundle loaded from
@@ -108,7 +114,7 @@ module.exports = {
     '^react-dom/(.*)$': '<rootDir>/node_modules/react-dom/$1',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs))',
+    'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs|react-markdown|remark-.*|rehype-.*|unified|unist-util-.*|vfile.*|mdast-util-.*|micromark.*|hast-util-.*|property-information|space-separated-tokens|comma-separated-tokens|style-to-.*|html-url-attributes|decode-named-character-reference|character-entities.*|bail|is-plain-obj|trough|devlop|trim-lines|ccount|longest-streak|zwitch|markdown-table|escape-string-regexp|estree-util-is-identifier-name))',
   ],
 
   // TypeScript

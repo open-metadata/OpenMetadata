@@ -23,7 +23,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityTest } from '../../../common/DataQualitySection/DataQualitySection.interface';
 import DataQualityTab from './DataQualityTab';
-import { MockTabItem, TranslationOptions } from './DataQualityTab.interface';
+import { TranslationOptions } from './DataQualityTab.interface';
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -60,81 +60,8 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <div className={className} data-testid="card" {...props}>
-        {children}
-      </div>
-    )),
-    Col: jest
-      .fn()
-      .mockImplementation(({ children, span, className, ...props }) => (
-        <div
-          className={className}
-          data-span={span}
-          data-testid="col"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Row: jest
-      .fn()
-      .mockImplementation(({ children, className, gutter, ...props }) => (
-        <div
-          className={className}
-          data-gutter={gutter}
-          data-testid="row"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Tabs: jest
-      .fn()
-      .mockImplementation(({ items, activeKey, onChange, ...props }) => (
-        <div data-active-key={activeKey} data-testid="tabs" {...props}>
-          <div data-testid="tab-headers">
-            {items.map((item: MockTabItem) => (
-              <div data-testid={`tab-${item.key}`} key={item.key}>
-                {item.label}
-                <button onClick={() => onChange?.(item.key)}>change</button>
-              </div>
-            ))}
-          </div>
-          {items.find((item: MockTabItem) => item.key === activeKey)?.children}
-        </div>
-      )),
-    Typography: {
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ellipsis, ...props }) => (
-          <span
-            className={className}
-            data-ellipsis={ellipsis}
-            data-testid="typography-text"
-            {...props}>
-            {children}
-          </span>
-        )),
-      Paragraph: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <p
-            className={className}
-            data-testid="typography-paragraph"
-            {...props}>
-            {children}
-          </p>
-        )),
-    },
-  };
-});
-
 // Mock child components
-jest.mock('../../../common/DataQualitySection', () => {
+jest.mock('../../../common/DataQualitySection/DataQualitySection', () => {
   return jest
     .fn()
     .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
@@ -171,8 +98,12 @@ jest.mock('../../../common/Loader/Loader', () => {
 });
 
 jest.mock('../../../common/StatusBadge/StatusBadgeV2.component', () => {
-  return jest.fn().mockImplementation(({ label, status }) => (
-    <div data-label={label} data-status={status} data-testid="status-badge">
+  return jest.fn().mockImplementation(({ className, label, status }) => (
+    <div
+      className={className}
+      data-label={label}
+      data-status={status}
+      data-testid="status-badge">
       {label}
     </div>
   ));
@@ -628,6 +559,12 @@ describe('DataQualityTab', () => {
       expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
       expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
       expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+
+      const abortedBadge = screen
+        .getAllByTestId('status-badge')
+        .find((badge) => badge.dataset.status === 'aborted');
+
+      expect(abortedBadge).toBeInTheDocument();
     });
 
     it('should show no test cases message when filter has no results', async () => {
@@ -703,8 +640,12 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('tab-data-quality')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-incidents')).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /label.data-quality/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /label.incident-plural/ })
+      ).toBeInTheDocument();
     });
 
     it('should switch to incidents tab', async () => {
@@ -712,9 +653,9 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
       expect(
@@ -727,14 +668,14 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
-      const dataQualityTab = screen
-        .getByTestId('tab-data-quality')
-        .querySelector('button') as HTMLElement;
+      const dataQualityTab = screen.getByRole('tab', {
+        name: /label.data-quality/,
+      });
       fireEvent.click(dataQualityTab);
 
       expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
@@ -760,9 +701,9 @@ describe('DataQualityTab', () => {
         screen.getByTestId('data-quality-section');
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
     });
 
@@ -999,9 +940,9 @@ describe('DataQualityTab', () => {
       render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
-        const incidentsTab = screen
-          .getByTestId('tab-incidents')
-          .querySelector('button') as HTMLElement;
+        const incidentsTab = screen.getByRole('tab', {
+          name: /label.incident-plural/,
+        });
         fireEvent.click(incidentsTab);
 
         const assignedButton = screen.getByRole('button', {
@@ -1035,9 +976,9 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
       // Verify incidents tab content is displayed

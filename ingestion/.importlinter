@@ -43,6 +43,7 @@ layers =
     workflow : cli : automations : applications : sdk
     ingestion.source
     profiler : data_quality : sampler : pii : readers : parsers : great_expectations : ingestion.api : ingestion.lineage : ingestion.sink : ingestion.stage : ingestion.bulksink : ingestion.processor : ingestion.progress
+    entity_resolution
     ingestion.ometa : ingestion.connections : ingestion.diagnostics : core : clients : config : utils : antlr : models : mixins : timer : domain
     generated
 ignore_imports =

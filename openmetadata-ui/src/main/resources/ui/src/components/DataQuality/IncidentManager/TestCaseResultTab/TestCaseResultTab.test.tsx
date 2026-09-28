@@ -48,6 +48,15 @@ const mockTestCaseData: TestCase = {
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.testSuite',
   },
+  testSuites: [
+    {
+      id: 'fe44ef1a-1b83-4872-bef6-fbd1885986b8',
+      name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      basic: true,
+    },
+  ],
   parameterValues: [
     {
       name: 'columnCount',
@@ -166,6 +175,15 @@ jest.mock('../../../../rest/testAPI', () => ({
     column: 'column',
   },
 }));
+
+const mockTestSuitesCard = jest.fn();
+jest.mock('./TestCaseTestSuitesCard/TestCaseTestSuitesCard', () => {
+  return jest.fn().mockImplementation((props) => {
+    mockTestSuitesCard(props);
+
+    return <div data-testid="test-suites-container">TestSuitesCard</div>;
+  });
+});
 
 // Mock TagsContainerV2 to capture props
 const mockTagsContainerV2 = jest.fn();
@@ -769,6 +787,30 @@ describe('TestCaseResultTab', () => {
       expect(
         screen.queryByTestId('test-case-configuration-card')
       ).not.toBeInTheDocument();
+    });
+
+    it('lists the test suites in the rail, between the description and the tags', async () => {
+      render(<TestCaseResultTab />);
+
+      const rail = await screen.findByTestId('test-case-rail');
+      const testSuites = await screen.findByTestId('test-suites-container');
+      const description = await screen.findByText('Description');
+      const tags = await screen.findByTestId('tags-container-Classification');
+
+      expect(rail).toContainElement(testSuites);
+      expect(
+        description.compareDocumentPosition(testSuites) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(
+        testSuites.compareDocumentPosition(tags) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(mockTestSuitesCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          testSuites: mockUseTestCaseStore.testCase.testSuites,
+        })
+      );
     });
 
     it('renders the description in the rail, not the main column', async () => {

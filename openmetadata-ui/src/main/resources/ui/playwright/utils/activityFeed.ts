@@ -64,7 +64,7 @@ export const checkDescriptionInEditModal = async (
 
   await expect(
     taskDescriptionTabs
-      .locator('.ant-tabs-content-holder')
+      .getByRole('tabpanel')
       .getByTestId('markdown-parser')
       .first()
   ).toContainText(taskValue.oldDescription ?? '');

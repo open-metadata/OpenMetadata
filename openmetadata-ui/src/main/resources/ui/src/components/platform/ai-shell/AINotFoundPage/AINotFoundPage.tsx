@@ -40,8 +40,8 @@ const LineageNode: FC<LineageNodeProps> = ({
   positionClassName,
 }) => (
   <Box
-    className={`tw:absolute tw:items-center tw:gap-2 tw:w-42.5 tw:px-3 tw:py-1.5 tw:rounded-[10px] tw:bg-primary tw:border tw:border-secondary tw:shadow-xs ${positionClassName}`}>
-    <Box className="tw:shrink-0 tw:items-center tw:justify-center tw:w-7 tw:h-7 tw:rounded-full tw:bg-primary tw:border tw:border-secondary tw:shadow-xs">
+    className={`tw:absolute tw:items-center tw:gap-2 tw:w-42.5 tw:px-3 tw:py-1.5 tw:rounded-[10px] tw:bg-surface tw:border tw:border-subtle tw:shadow-xs ${positionClassName}`}>
+    <Box className="tw:shrink-0 tw:items-center tw:justify-center tw:w-7 tw:h-7 tw:rounded-full tw:bg-surface tw:border tw:border-subtle tw:shadow-xs">
       <Box className="tw:w-4 tw:h-4">{logo}</Box>
     </Box>
     <Box className="tw:flex-col tw:min-w-0">
@@ -141,9 +141,9 @@ const AINotFoundPage: FC = () => {
               'tw:absolute tw:top-1/2 tw:left-53.75 tw:-translate-y-1/2 tw:flex-col',
               'tw:items-center tw:justify-center tw:gap-1.25 tw:w-42.5 tw:min-h-19.5',
               'tw:px-2.5 tw:py-1 tw:rounded-[10px] tw:bg-secondary',
-              'tw:border-[1.5px] tw:border-dashed tw:border-secondary'
+              'tw:border-[1.5px] tw:border-dashed tw:border-subtle'
             )}>
-            <Box className="tw:items-center tw:justify-center tw:w-7 tw:h-7 tw:rounded-full tw:bg-primary tw:border tw:border-secondary">
+            <Box className="tw:items-center tw:justify-center tw:w-7 tw:h-7 tw:rounded-full tw:bg-surface tw:border tw:border-subtle">
               <Link02 className="tw:w-4 tw:h-4 tw:text-fg-quaternary" />
             </Box>
             <Typography

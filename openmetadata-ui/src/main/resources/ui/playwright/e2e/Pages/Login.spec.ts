@@ -78,7 +78,7 @@ test.describe(
     );
 
     test('Signup and Login with signed up credentials', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       await expect(page).toHaveURL(`/signin`);
 
@@ -86,28 +86,34 @@ test.describe(
       await page.locator('[data-testid="signup"]').click();
 
       // Enter credentials
-      await page.locator('#firstName').fill(CREDENTIALS.firstName);
+      await page.locator('input[name="firstName"]').fill(CREDENTIALS.firstName);
 
-      await expect(page.locator('#firstName')).toHaveValue(
+      await expect(page.locator('input[name="firstName"]')).toHaveValue(
         CREDENTIALS.firstName
       );
 
-      await page.locator('#lastName').fill(CREDENTIALS.lastName);
+      await page.locator('input[name="lastName"]').fill(CREDENTIALS.lastName);
 
-      await expect(page.locator('#lastName')).toHaveValue(CREDENTIALS.lastName);
+      await expect(page.locator('input[name="lastName"]')).toHaveValue(
+        CREDENTIALS.lastName
+      );
 
-      await page.locator('#email').fill(CREDENTIALS.email);
+      await page.locator('input[name="email"]').fill(CREDENTIALS.email);
 
-      await expect(page.locator('#email')).toHaveValue(CREDENTIALS.email);
+      await expect(page.locator('input[name="email"]')).toHaveValue(
+        CREDENTIALS.email
+      );
 
-      await page.locator('#password').fill(CREDENTIALS.password);
+      await page.locator('input[name="password"]').fill(CREDENTIALS.password);
 
-      await expect(page.locator('#password')).toHaveAttribute(
+      await expect(page.locator('input[name="password"]')).toHaveAttribute(
         'type',
         'password'
       );
 
-      await page.locator('#confirmPassword').fill(CREDENTIALS.password);
+      await page
+        .locator('input[name="confirmPassword"]')
+        .fill(CREDENTIALS.password);
 
       const createUserResponse = page.waitForResponse(`/api/v1/users/signup`);
       // Click on create account button
@@ -117,15 +123,15 @@ test.describe(
       await expect(page).toHaveURL(`/signin`);
 
       // Login with the created user
-      await page.fill('#email', CREDENTIALS.email);
-      await page.fill('#password', CREDENTIALS.password);
+      await page.fill('input[name="email"]', CREDENTIALS.email);
+      await page.fill('input[name="password"]', CREDENTIALS.password);
       const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
 
-      await expect(page).toHaveURL(
-        (url) => url.pathname === '/' || url.pathname === '/my-data'
-      );
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toMatch(/^\/(?:my-data)?$/);
 
       // Verify user profile
       await page.locator('[data-testid="dropdown-profile"]').click();
@@ -156,9 +162,9 @@ test.describe(
         await nonAsciiUser.create(apiContext);
         await nonAsciiUser.login(page);
 
-        await expect(page).toHaveURL(
-          (url) => !url.pathname.includes('/signin')
-        );
+        await expect
+          .poll(() => new URL(page.url()).pathname)
+          .not.toContain('/signin');
 
         await page.getByTestId('dropdown-profile').click();
 
@@ -172,10 +178,10 @@ test.describe(
     });
 
     test('Signin using invalid credentials', async ({ page }) => {
-      await page.goto(`/signin`);
+      await page.goto(`/signin`, { waitUntil: 'domcontentloaded' });
       // Login with invalid email
-      await page.fill('#email', invalidEmail);
-      await page.fill('#password', CREDENTIALS.password);
+      await page.fill('input[name="email"]', invalidEmail);
+      await page.fill('input[name="password"]', CREDENTIALS.password);
       const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
@@ -183,8 +189,8 @@ test.describe(
       await toastNotification(page, LOGIN_ERROR_MESSAGE);
 
       // Login with invalid password
-      await page.fill('#email', CREDENTIALS.email);
-      await page.fill('#password', invalidPassword);
+      await page.fill('input[name="email"]', CREDENTIALS.email);
+      await page.fill('input[name="password"]', invalidPassword);
       const loginResponse2 = page.waitForResponse(`/api/v1/auth/login`);
       await page.locator('[data-testid="login"]').click();
       await loginResponse2;
@@ -193,24 +199,20 @@ test.describe(
     });
 
     test('Forgot password and login with new password', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       // Click on Forgot button
       await page.locator('[data-testid="forgot-password"]').click();
 
       await expect(page).toHaveURL(`/forgot-password`);
 
       // Enter email
-      await page.locator('#email').fill(CREDENTIALS.email);
+      await page.locator('input[name="email"]').fill(CREDENTIALS.email);
       // Click on Forgot button
       await page.getByRole('button', { name: 'Send Login Link' }).click();
       await page.locator('[data-testid="go-back-button"]').click();
     });
 
     test.describe('Token renewal', () => {
-      test.describe.configure({
-        retries: process.env.PLAYWRIGHT_IS_OSS ? 0 : 2,
-      });
-
       test('Refresh should work', async ({ page: page1, browser }) => {
         test.slow();
 
@@ -232,7 +234,7 @@ test.describe(
           await waitForAllLoadersToDisappear(page1);
           await redirectToHomePage(page2);
           await waitForAllLoadersToDisappear(page2);
-          await page2.reload();
+          await page2.reload({ waitUntil: 'domcontentloaded' });
 
           // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
           await page1.waitForTimeout(2 * 61 * 1000);

@@ -120,6 +120,9 @@ jest.mock('../../../utils/MetricEntityUtils/MetricDetailsClassBase', () => ({
 
 jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
+  getRenderedActiveTab: jest.requireActual(
+    '../../../utils/CustomizePage/CustomizePageEntityTabUtils'
+  ).getRenderedActiveTab,
   getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
 }));

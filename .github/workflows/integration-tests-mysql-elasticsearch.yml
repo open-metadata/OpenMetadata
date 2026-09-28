@@ -30,6 +30,7 @@ on:
       - "pom.xml"
       - "Makefile"
       - "bootstrap/**"
+      - "docker/rdf-store/**"
       - ".github/scripts/classify_test_outcome.py"
       - ".github/workflows/integration-tests-mysql-elasticsearch.yml"
   pull_request_target:
@@ -87,6 +88,7 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - 'bootstrap/**'
+              - 'docker/rdf-store/**'
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/integration-tests-mysql-elasticsearch.yml'
 
@@ -224,6 +226,7 @@ jobs:
           - name: global-state
           - name: multi-node
           - name: retry-queue
+          - name: rdf
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main

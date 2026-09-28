@@ -35,7 +35,29 @@ import {
 
 const VISIBLE_ITEM_COUNT = 5;
 
+type MetricSemanticContextProps = Pick<
+  MetricSemanticListProps<MetricSemanticItem>,
+  'metric' | 'onUpdate' | 'permissions'
+>;
+
+const useResolvedMetricContext = ({
+  metric,
+  permissions,
+  onUpdate,
+}: MetricSemanticContextProps) => {
+  const context = useGenericContext<Metric>();
+
+  return {
+    metricDetails: metric ?? context.data,
+    onUpdate: onUpdate ?? context.onUpdate,
+    permissions: permissions ?? context.permissions,
+  };
+};
+
 const MetricSemanticList = <T extends MetricSemanticItem>({
+  metric: metricProp,
+  permissions: permissionsProp,
+  onUpdate: onUpdateProp,
   items,
   title,
   fieldKey,
@@ -48,11 +70,11 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
   const [isShowMore, setIsShowMore] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
 
-  const {
-    data: metricDetails,
-    onUpdate,
-    permissions,
-  } = useGenericContext<Metric>();
+  const { metricDetails, onUpdate, permissions } = useResolvedMetricContext({
+    metric: metricProp,
+    onUpdate: onUpdateProp,
+    permissions: permissionsProp,
+  });
 
   // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
   // MetricDetailsPage, Task 8 Batch 6). Explicit-deny-wins fix: the old raw

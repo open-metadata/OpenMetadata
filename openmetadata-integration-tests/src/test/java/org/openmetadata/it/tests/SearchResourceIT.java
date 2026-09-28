@@ -11,9 +11,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -46,6 +50,7 @@ import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
  * Integration tests for Search functionality using fluent API.
@@ -1770,23 +1775,29 @@ public class SearchResourceIT {
   // SEARCH EDGE CASES AND ERROR HANDLING
   // ===================================================================
 
+  /**
+   * A malformed {@code queryFilter} used to be logged and dropped, so the search came back 200 with
+   * every row the filter was meant to exclude. Silently widening the result set is worse than
+   * failing, so it is now rejected — see #27990.
+   */
   @Test
-  void testSearchWithMalformedQueryFilter(TestNamespace ns) throws Exception {
+  void testSearchWithMalformedQueryFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String malformedFilter = "{\"query\": {\"invalid_syntax";
 
-    assertDoesNotThrow(
-        () -> {
-          String response =
-              client
-                  .search()
-                  .query("*")
-                  .index("table_search_index")
-                  .queryFilter(malformedFilter)
-                  .execute();
-          assertNotNull(response);
-        });
+    InvalidRequestException thrown =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .search()
+                    .query("*")
+                    .index("table_search_index")
+                    .queryFilter(malformedFilter)
+                    .execute());
+
+    assertTrue(thrown.getMessage().contains("queryFilter"), thrown.getMessage());
   }
 
   @Test
@@ -1805,9 +1816,11 @@ public class SearchResourceIT {
   void testSearchWithNegativeOffset(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Negative offset is invalid - Elasticsearch rejects it
+    // Negative offset is invalid - the search engine rejects it. That rejection is the caller's
+    // error, so it now arrives as a 400 rather than the 500 the engine's status used to be
+    // flattened into (#27990).
     assertThrows(
-        org.openmetadata.sdk.exceptions.ApiException.class,
+        InvalidRequestException.class,
         () -> client.search().query("*").index("table_search_index").from(-1).size(10).execute());
   }
 
@@ -2058,5 +2071,77 @@ public class SearchResourceIT {
             .build();
 
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  // ===================================================================
+  // MALFORMED INPUT IS THE CALLER'S ERROR, NOT A SERVER FAULT (#27990)
+  // ===================================================================
+
+  private HttpResponse<String> httpGetSearch(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * Explore replays whatever {@code q} sits in the URL. A half-typed phrase carries Lucene syntax
+   * but cannot be parsed, and used to fail the whole search with {@code all shards failed}.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "revenue%20(draft",
+        "%22quoted%20phrase",
+        "%3Afoo*",
+        "name%3A(foo",
+        "foo%20AND",
+        "foo%5E"
+      })
+  void testUnparseableQueryStillReturnsResults(String encodedQuery) throws Exception {
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=" + encodedQuery + "&index=table_search_index");
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "unparseable q must be searched as text, got: " + response.body());
+  }
+
+  /**
+   * A {@code queryFilter} that is valid JSON but not query DSL is the caller's mistake. It used to
+   * reach the engine and come back as a 500; silently dropping it instead would widen the result
+   * set past what the caller asked for, so it is rejected.
+   */
+  @Test
+  void testMalformedQueryFilterIsRejectedAsBadRequest() throws Exception {
+    String malformedFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[[{\"term\":{\"entityType\":\"table\"}}]]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch(
+            "/v1/search/query?q=*&index=table_search_index&query_filter=" + malformedFilter);
+
+    assertEquals(400, response.statusCode(), "expected a client error, got: " + response.body());
+  }
+
+  @Test
+  void testValidQueryFilterStillApplies() throws Exception {
+    String validFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=*&index=table_search_index&query_filter=" + validFilter);
+
+    assertEquals(200, response.statusCode(), response.body());
   }
 }

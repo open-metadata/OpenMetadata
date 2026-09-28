@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/starrocksConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "StarRocksConnection",
   "description": "StarRocks Database Connection Config",
   "type": "object",

@@ -513,6 +513,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         throw new TechnicalException("Bad authentication response");
       }
 
+      String redirectUri = requireRedirectUriOrDefault(pendingSession.getRedirectUri());
       LOG.debug("Authentication response successful");
       AuthenticationSuccessResponse successResponse = (AuthenticationSuccessResponse) response;
 
@@ -591,8 +592,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       UserSession activeSession = maybeActiveSession.get();
 
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
-      sendRedirectWithToken(
-          resp, pendingSession.getRedirectUri(), user, jwtAuthMechanism.getJWTToken());
+      sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -951,12 +951,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private void sendRedirectWithToken(
       HttpServletResponse response, String redirectUri, User user, String accessToken)
       throws IOException {
-    String targetRedirectUri =
-        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
-    String validatedRedirectUri = requireRedirectUri(targetRedirectUri);
-    response.sendRedirect(
-        org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
-            validatedRedirectUri, accessToken, user.getEmail(), user.getName()));
+    String validatedRedirectUri = requireRedirectUriOrDefault(redirectUri);
+    SecurityUtil.sendRedirectWithToken(
+        response, validatedRedirectUri, accessToken, user.getEmail(), user.getName());
   }
 
   private OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(
@@ -1201,7 +1198,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             serverUrl + "/auth/callback",
             serverUrl + "/mcp/callback");
     trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
-    return org.openmetadata.service.security.SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+  }
+
+  private String requireRedirectUriOrDefault(String redirectUri) {
+    String targetRedirectUri =
+        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
+    return requireRedirectUri(targetRedirectUri);
   }
 
   private User getSessionUser(UserSession session) {

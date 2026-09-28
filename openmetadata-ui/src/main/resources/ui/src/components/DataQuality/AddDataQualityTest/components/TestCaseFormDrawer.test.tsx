@@ -47,7 +47,19 @@ import {
   TestCaseFormDrawerProps,
   TestLevel,
 } from './TestCaseFormV1.interface';
-import { buildEditDefaults } from './transformTestCaseFormData';
+import {
+  buildEditDefaults,
+  buildTestSuitePipelinePayload,
+} from './transformTestCaseFormData';
+
+// The pipeline-payload builder is stubbed module-wide below so the unrelated
+// submit tests can assert on a fixed payload. The FQN regression test restores
+// the real implementation for a single call so it can assert on the request
+// body that actually reaches addIngestionPipeline.
+const { buildTestSuitePipelinePayload: actualBuildTestSuitePipelinePayload } =
+  jest.requireActual<typeof import('./transformTestCaseFormData')>(
+    './transformTestCaseFormData'
+  );
 
 const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 
@@ -133,6 +145,20 @@ const mockContextWithPipeline: TestCaseFormContext = {
     name: 'table',
     fullyQualifiedName: 'service.db.schema.table',
   } as Table,
+  selectedTableFqn: 'service.db.schema.table',
+  selectedColumn: undefined,
+  selectedTestLevel: TestLevel.TABLE,
+  generateName: () => 'generated-name',
+  canCreatePipeline: true,
+};
+
+// `canCreatePipeline` is gated on the raw form FQN, not on the asynchronously
+// fetched table, so the form can be submitted while `selectedTableData` is
+// still in flight (or after its fetch failed).
+const mockContextPipelineTableUnresolved: TestCaseFormContext = {
+  selectedDefinition: undefined,
+  selectedTableData: undefined,
+  selectedTableFqn: 'service.db.schema.table',
   selectedColumn: undefined,
   selectedTestLevel: TestLevel.TABLE,
   generateName: () => 'generated-name',
@@ -457,6 +483,50 @@ describe('TestCaseFormDrawer', () => {
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('should create the pipeline against the selected table FQN when the table entity has not resolved', async () => {
+    (buildTestSuitePipelinePayload as jest.Mock).mockImplementationOnce(
+      actualBuildTestSuitePipelinePayload
+    );
+    mockCreateTestCase.mockResolvedValue({
+      name: 'transformed-test-case',
+      id: 'created-id',
+      testSuite: { id: 'suite-id', name: 'test-suite' },
+    });
+
+    // No `table` prop: the drawer is opened from the Test Library, where the
+    // table comes from the form field alone. Otherwise the payload builder's
+    // `table` fallback would hide a missing FQN.
+    renderDrawer({
+      table: undefined,
+      onFormSubmit: jest.fn(),
+      onClose: jest.fn(),
+    });
+
+    await screen.findByTestId('test-case-form-body');
+
+    await act(async () => {
+      emitContextFn?.(mockContextPipelineTableUnresolved);
+    });
+
+    const submitBtn = await screen.findByTestId('create-btn');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(mockAddIngestionPipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceConfig: {
+            config: expect.objectContaining({
+              entityFullyQualifiedName: 'service.db.schema.table',
+            }),
+          },
+        })
+      );
     });
   });
 

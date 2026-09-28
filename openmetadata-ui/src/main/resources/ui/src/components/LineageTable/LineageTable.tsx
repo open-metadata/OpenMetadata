@@ -53,6 +53,10 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import {
+  EdgeFromToData,
+  LineageNodeType,
+} from '../../interface/lineage.interface';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -62,7 +66,10 @@ import {
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
@@ -73,7 +80,6 @@ import {
 } from '../../utils/Lineage/LineagePureUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
@@ -85,11 +91,7 @@ import TableV2 from '../common/Table/TableV2';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import {
-  EdgeFromToData,
-  LineageNode,
-  LineageNodeType,
-} from '../Lineage/Lineage.interface';
+import { LineageNode } from '../Lineage/Lineage.interface';
 import {
   SearchedDataProps,
   SourceType,
@@ -710,7 +712,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             record.entityType as EntityType,
             record
           )}>
-          {stringToHTML(
+          {renderHighlightedText(
             highlightSearchText(getEntityName(record), searchValue)
           )}
         </Link>
@@ -844,7 +846,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <span>
           {isEmpty(prunedColumnName)
             ? NO_DATA
-            : stringToHTML(highlightSearchText(prunedColumnName, searchValue))}
+            : renderHighlightedText(
+                highlightSearchText(prunedColumnName, searchValue)
+              )}
         </span>
       );
     },
@@ -864,7 +868,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue
@@ -889,7 +893,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue
