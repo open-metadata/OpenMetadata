@@ -1841,6 +1841,7 @@
     "metric-for": "Metric For",
     "metric-group": "Metric Group",
     "metric-hierarchy": "Metric Hierarchy",
+    "metric-lowercase": "metric",
     "metric-plural": "Metrics",
     "metric-type": "Metric Type",
     "metric-value": "Metric Value",

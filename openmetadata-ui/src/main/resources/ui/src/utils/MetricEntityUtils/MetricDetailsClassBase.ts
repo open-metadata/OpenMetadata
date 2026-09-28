@@ -50,6 +50,10 @@ export interface MetricDetailPageTabProps {
   labelMap: Record<EntityTabs, string>;
   /** Permissions the Assets tab needs to decide whether assets can be linked or unlinked. */
   metricPermissions?: OperationPermission;
+  assetIds?: string[];
+  isAssetsLoading?: boolean;
+  onAddAsset?: () => void;
+  onAssetsUpdate?: () => void;
 }
 
 type MetricWidgetKeys =
@@ -89,6 +93,7 @@ class MetricDetailsClassBase {
   public getMetricDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.OVERVIEW,
+      EntityTabs.ASSETS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
       EntityTabs.CUSTOM_PROPERTIES,

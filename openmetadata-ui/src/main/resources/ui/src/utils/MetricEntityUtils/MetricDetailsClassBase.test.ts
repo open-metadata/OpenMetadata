@@ -22,11 +22,12 @@ jest.mock('./MetricUtils', () => ({
 describe('MetricDetailsClassBase', () => {
   const metricDetails = new MetricDetailsClassBase();
 
-  it('exposes exactly the four primary Metric tabs', () => {
+  it('exposes exactly the five primary Metric tabs', () => {
     const tabs = metricDetails.getMetricDetailPageTabsIds();
 
     expect(tabs.map(({ id }) => id)).toEqual([
       EntityTabs.OVERVIEW,
+      EntityTabs.ASSETS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
       EntityTabs.CUSTOM_PROPERTIES,
