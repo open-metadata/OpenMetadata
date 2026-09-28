@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -37,6 +38,7 @@ import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 
 @ExtendWith(TestNamespaceExtension.class)
+@Isolated("Owns the global retry queue and application worker lifecycle")
 @Execution(ExecutionMode.SAME_THREAD)
 class SearchIndexRetryQueueIT {
 
@@ -46,7 +48,7 @@ class SearchIndexRetryQueueIT {
   private static SearchIndexRetryWorker applicationRetryWorker;
 
   @BeforeAll
-  static void setupAll() {
+  static void setupAll() throws Exception {
     SdkClients.adminClient();
     collectionDAO = Entity.getCollectionDAO();
     retryQueueDAO = collectionDAO.searchIndexRetryQueueDAO();
@@ -132,6 +134,28 @@ class SearchIndexRetryQueueIT {
     assertNull(record.getClaimedAt());
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
+  void testPendingRecordIsStableWithoutAWorker(TestNamespace ns) {
+    final String entityId = UUID.randomUUID().toString();
+    final String entityFqn = ns.prefix("unclaimed");
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "pending", SearchIndexRetryQueue.STATUS_PENDING, "table");
+    try {
+      Awaitility.await("DAO tests own the retry queue until they start a worker")
+          .during(Duration.ofSeconds(6))
+          .atMost(Duration.ofSeconds(8))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      retryQueueDAO
+                          .findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000)
+                          .stream()
+                          .anyMatch(record -> record.getEntityId().equals(entityId))));
+    } finally {
+      retryQueueDAO.deleteByEntity(entityId, entityFqn);
+    }
   }
 
   @Test

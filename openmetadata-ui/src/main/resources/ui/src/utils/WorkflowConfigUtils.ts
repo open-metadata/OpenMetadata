@@ -14,6 +14,7 @@
 import { EntityType } from '../enums/entity.enum';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
+import { t } from './i18next/LocalUtil';
 
 const getEntityTypesFromDataAssets = (
   config: NodeConfig
@@ -165,4 +166,61 @@ export const filterExcludeFields = (
 
     return true;
   });
+};
+
+export const EXTENSION_FIELD_PREFIX = 'extension.';
+
+// Custom properties are addressed as extension.<name> everywhere in the workflow builder.
+export const withExtensionPrefix = (name: string): string =>
+  `${EXTENSION_FIELD_PREFIX}${name}`;
+
+// Inverse of withExtensionPrefix: the bare name shown to the user.
+export const getFieldLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? value.slice(EXTENSION_FIELD_PREFIX.length)
+    : value;
+
+// Display label for a workflow field option: the bare name, with custom properties
+// marked so a custom property and a same-named standard field stay distinguishable.
+export const getFieldDisplayLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? `${getFieldLabel(value)} (${t('label.custom-property')})`
+    : getFieldLabel(value);
+
+/**
+ * Builds the de-duplicated field-option list for a workflow field picker.
+ *
+ * Custom properties are stored under `extension.<name>` and workflow nodes resolve a field path
+ * against the entity, where a custom property is only reachable at that path. The fields API returns
+ * custom properties by their bare name, so prefix those (and only those) with `extension.`, matching
+ * how the trigger/filter field lists are built (see NodeConfigSidebar). Standard fields are left
+ * as-is. The prefix is applied after {@link filterExcludeFields} so the added dot does not exclude
+ * the property.
+ *
+ * Call this per entity type (each type's own custom properties) and merge the results, so a custom
+ * property on one type does not prefix a standard field of the same name on another type.
+ */
+export const buildFieldOptions = (
+  fields: Array<{ name?: string }>,
+  customPropertyNames: Set<string>
+): string[] => {
+  const seen = new Set<string>();
+  const options: string[] = [];
+
+  filterExcludeFields(fields).forEach(({ name }) => {
+    if (!name) {
+      return;
+    }
+
+    const value = customPropertyNames.has(name)
+      ? withExtensionPrefix(name)
+      : name;
+
+    if (!seen.has(value)) {
+      seen.add(value);
+      options.push(value);
+    }
+  });
+
+  return options;
 };

@@ -245,7 +245,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'enum': {
-      const enumInput = container
+      const enumInput = editModal
         .getByTestId('enum-select')
         .getByRole('combobox');
       await enumInput.fill(value);
@@ -325,7 +325,7 @@ export const setValueForProperty = async (data: {
         const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
           val
         )}*`;
-        const referenceInput = container
+        const referenceInput = editModal
           .getByTestId('asset-select-list')
           .getByRole('combobox');
         await page.route(searchApi, (route) => route.continue());
@@ -359,7 +359,7 @@ export const setValueForProperty = async (data: {
       ).toBeVisible();
       await editModal.locator('[data-testid="hyperlink-url-input"]').fill(url);
       if (displayText) {
-        await container
+        await editModal
           .locator('[data-testid="hyperlink-display-text-input"]')
           .fill(displayText);
       }
@@ -1188,11 +1188,7 @@ export const editColumnCustomProperty = async (
   } else if (propertyType === 'email') {
     await page.getByTestId('email-input').fill(testValue);
   } else if (propertyType === 'enum') {
-    await page.getByTestId('enum-select').click();
-    await page
-      .locator('.ant-select-item-option-content')
-      .getByText(testValue, { exact: true })
-      .click();
+    await selectEnumOption(page, page.locator('body'), testValue);
   } else if (propertyType === 'table-cp') {
     await addTablePropertyRow(page);
 
@@ -1234,13 +1230,12 @@ export const editColumnCustomProperty = async (
       await page.keyboard.press('Escape');
     }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
-    // Ant Design Pickers
-    const picker = page.getByTestId(
-      propertyType === 'time-cp' ? 'time-picker' : 'date-time-picker'
+    await fillCoreDateTimePicker(
+      page,
+      page.locator('body'),
+      propertyType,
+      testValue
     );
-    await picker.click();
-    await page.keyboard.type(testValue);
-    await page.keyboard.press('Enter');
   } else if (['string', 'integer', 'number'].includes(propertyType)) {
     const valueInput = page.getByTestId('value-input');
     await expect(valueInput).toBeVisible();
@@ -1505,19 +1500,18 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
       break;
 
-    case 'enum':
-      await page.click('#enumValues');
-      while (
-        (await page.locator('.ant-select-selection-item-remove').count()) > 0
-      ) {
-        await page.locator('.ant-select-selection-item-remove').first().click();
+    case 'enum': {
+      const clearAll = container
+        .getByTestId('enum-select')
+        .getByRole('button', { name: 'Clear all' });
+      if (await clearAll.isVisible()) {
+        await clearAll.click();
       }
-      await page.fill('#enumValues', value);
-      await page.locator(`.ant-select-item-option[title="${value}"]`).click();
-      await clickOutside(page);
+      await selectEnumOption(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
+    }
 
     case 'timestamp':
       await expect(
@@ -1527,16 +1521,6 @@ export const updateCustomPropertyInRightPanel = async (data: {
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
-
-    case 'time-cp': {
-      await expect(page.locator('[data-testid="time-picker"]')).toBeVisible();
-      await page.locator('[data-testid="time-picker"]').click();
-      await page.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
@@ -1549,14 +1533,10 @@ export const updateCustomPropertyInRightPanel = async (data: {
       break;
     }
 
+    case 'time-cp':
     case 'date-cp':
     case 'dateTime-cp': {
-      await expect(
-        page.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await page.locator('[data-testid="date-time-picker"]').click();
-      await page.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.locator('[data-testid="date-time-picker"]').press('Enter');
+      await fillCoreDateTimePicker(page, container, propertyType, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;

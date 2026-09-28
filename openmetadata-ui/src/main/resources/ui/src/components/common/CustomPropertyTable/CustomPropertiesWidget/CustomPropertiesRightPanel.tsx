@@ -12,11 +12,11 @@
  */
 import {
   ButtonUtility,
+  Divider,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchLg, XClose } from '@openmetadata/ui-core-components/icons';
-import { Divider } from 'antd';
 import classNames from 'classnames';
 import {
   Fragment,
@@ -128,7 +128,7 @@ export const CustomPropertiesRightPanel = ({
           {properties.map((record, index) => (
             <Fragment key={record.name}>
               <div
-                className={classNames('custom-property-right-panel-card', {
+                className={classNames('custom-property-right-panel-card tw:py-3.5', {
                   'top-border-radius': index === 0,
                   'bottom-border-radius': index === properties.length - 1,
                 })}>
@@ -142,7 +142,7 @@ export const CustomPropertiesRightPanel = ({
                   onExtensionUpdate={onExtensionUpdate}
                 />
               </div>
-              {index !== properties.length - 1 && <Divider className="m-y-0" />}
+              {index !== properties.length - 1 && <Divider />}
             </Fragment>
           ))}
         </div>

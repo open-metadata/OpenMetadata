@@ -1390,22 +1390,18 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await editButton.scrollIntoViewIfNeeded();
         await editButton.click();
 
-        const card = page.getByTestId(`custom-property-${propertyName}-card`);
-        await page
-          .getByTestId('custom-property-edit-modal')
+        // The edit modal portals to document.body, outside the card.
+        const editModal = page.getByTestId('custom-property-edit-modal');
+        await editModal
           .getByTestId('hyperlink-url-input')
           .fill('javascript:alert("XSS")');
-        await page
-          .getByTestId('custom-property-edit-modal')
-          .getByTestId('inline-save-btn')
-          .click();
+        await editModal.getByTestId('inline-save-btn').click();
 
-        await expect(card).toContainText('URL must use http or https protocol');
+        await expect(editModal).toContainText(
+          'URL must use http or https protocol'
+        );
 
-        await page
-          .getByTestId('custom-property-edit-modal')
-          .getByTestId('inline-cancel-btn')
-          .click();
+        await editModal.getByTestId('inline-cancel-btn').click();
       });
 
       test('should accept valid http and https URLs', async ({ page }) => {

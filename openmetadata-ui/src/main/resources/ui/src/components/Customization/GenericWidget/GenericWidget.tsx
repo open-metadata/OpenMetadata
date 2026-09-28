@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
 import { Settings } from '@openmetadata/ui-core-components/icons';
-import { Button, Card, Space } from 'antd';
+import { Button, Space } from 'antd';
 import { noop, startCase } from 'lodash';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +38,6 @@ import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.u
 import type { EntityUnion } from '../../Explore/ExplorePage.interface';
 import { useGlossaryStore } from '../../Glossary/useGlossary.store';
 import { GenericProvider } from '../GenericProvider/GenericProvider';
-import './generic-widget.less';
 
 const CONFIGURABLE_WIDGET_KEYS = [DetailPageWidgetKeys.CUSTOM_PROPERTIES];
 
@@ -105,50 +104,53 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   }, [props.widgetKey]);
 
   return (
-    <Card
-      className="generic-widget-card"
-      extra={
-        <Space size={4}>
-          {isConfigurable && (
-            <ButtonUtility
-              color="tertiary"
-              data-testid="widget-settings-button"
-              icon={Settings}
-              size="xs"
-              tooltip={t('label.configure-entity', { entity: widgetName })}
-              onClick={() => setIsSettingsOpen(true)}
-            />
-          )}
-          {props.handleRemoveWidget && (
+    // Light values reproduce the antd inner Card this replaced.
+    <Card className="tw:h-full tw:overflow-visible tw:border-utility-gray-blue-100 tw:pb-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle">
+      <div className="tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-utility-gray-100 tw:px-6 tw:font-medium tw:text-black/85 tw:dark:text-primary">
+        <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-3 tw:text-sm tw:leading-[1.5715]">
+          <Space>
             <Button
-              data-testid="remove-widget-button"
-              icon={<MinusCircleOutlined size={16} />}
+              className="drag-widget-icon"
+              data-testid="drag-widget-button"
+              icon={<HolderOutlined size={16} />}
               size="small"
-              onClick={handleRemoveClick}
             />
-          )}
-        </Space>
-      }
-      title={
-        <Space>
-          <Button
-            className="drag-widget-icon"
-            data-testid="drag-widget-button"
-            icon={<HolderOutlined size={16} />}
-            size="small"
+            {widgetName}
+          </Space>
+        </div>
+        {(isConfigurable || props.handleRemoveWidget) && (
+          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-1 tw:py-[13.5px] tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary">
+            {isConfigurable && (
+              <ButtonUtility
+                color="tertiary"
+                data-testid="widget-settings-button"
+                icon={Settings}
+                size="xs"
+                tooltip={t('label.configure-entity', { entity: widgetName })}
+                onClick={() => setIsSettingsOpen(true)}
+              />
+            )}
+            {props.handleRemoveWidget && (
+              <Button
+                data-testid="remove-widget-button"
+                icon={<MinusCircleOutlined size={16} />}
+                size="small"
+                onClick={handleRemoveClick}
+              />
+            )}
+          </div>
+        )}
+      </div>
+      <div className="tw:pointer-events-none tw:max-h-[calc(100%-48px)] tw:overflow-y-auto tw:px-6 tw:py-4">
+        {isCustomPropertiesWidget ? (
+          <CustomPropertiesWidgetPreview
+            config={props.widgetConfig?.config}
+            entityType={getEntityTypeFromPageType(currentPageType)}
           />
-          {widgetName}
-        </Space>
-      }
-      type="inner">
-      {isCustomPropertiesWidget ? (
-        <CustomPropertiesWidgetPreview
-          config={props.widgetConfig?.config}
-          entityType={getEntityTypeFromPageType(currentPageType)}
-        />
-      ) : (
-        cardContent
-      )}
+        ) : (
+          cardContent
+        )}
+      </div>
       {isSettingsOpen && (
         <CustomPropertiesWidgetSettingsModal
           entityType={getEntityTypeFromPageType(currentPageType)}

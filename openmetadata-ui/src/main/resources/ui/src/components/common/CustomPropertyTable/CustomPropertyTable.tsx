@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
+import {
+  Card,
+  Grid,
+  GridItem,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import { GridDotsOuter } from '@untitledui/icons';
-import { Col, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { lazy, useEffect, useMemo } from 'react';
@@ -37,7 +42,6 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
-import './custom-property-table.less';
 import { CustomPropertiesRightPanel } from './CustomPropertiesWidget/CustomPropertiesRightPanel';
 import {
   parsePropertyLayout,
@@ -193,8 +197,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (entityTypeDetailLoading) {
     return (
-      <div className="p-lg border-default border-radius-sm">
-        <Skeleton active />
+      <div
+        className="p-lg border-default border-radius-sm"
+        data-testid="custom-property-table-loader">
+        <SkeletonParagraph className="tw:mb-3.5" />
       </div>
     );
   }
@@ -280,13 +286,13 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return (
-    <div className="custom-properties-card">
-      <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+    <Card className="custom-properties-card tw:p-5">
+      <Grid data-testid="custom-properties-card" gap="4">
         {dataSourceColumns.map((columns, colIndex) => (
           // eslint-disable-next-line react/no-array-index-key -- static grid-layout column partition, fixed order
-          <Col key={colIndex} span={8}>
+          <GridItem key={colIndex} span={8}>
             {columns.map((record) => (
-              <div key={record.name} style={{ marginBottom: '16px' }}>
+              <div className="tw:mb-4" key={record.name}>
                 <PropertyValue
                   extension={extensionObject.extensionObject}
                   hasEditPermissions={hasEditAccess}
@@ -298,9 +304,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
                 />
               </div>
             ))}
-          </Col>
+          </GridItem>
         ))}
-      </Row>
-    </div>
+      </Grid>
+    </Card>
   );
 };

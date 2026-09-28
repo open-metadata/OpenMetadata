@@ -29,6 +29,7 @@ import { expect, test } from '../../../support/fixtures/base';
 import { authenticateAdminPage } from '../../../utils/admin';
 import { getApiContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 type TaskFormSchema = {
   id?: string;
@@ -393,7 +394,9 @@ test.describe.serial(
               );
 
               if (!resolvedSchemaResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${resolvedSchemaResponse.status()} querying ${resolvedSchemaResponse.url()}`
+                );
               }
 
               const resolvedSchemaPayload = await resolvedSchemaResponse.json();
@@ -433,7 +436,10 @@ test.describe.serial(
         await table.visitEntityPage(page);
         await page.getByTestId('activity_feed').click();
         await waitForAllLoadersToDisappear(page);
-        await page.getByRole('menuitem', { name: /tasks/i }).click();
+        await page
+          .getByTestId('global-setting-left-panel')
+          .getByRole('button', { name: /tasks/i })
+          .click();
         await waitForAllLoadersToDisappear(page);
         await expect(
           page.locator('[data-testid="task-feed-card"]').first()
@@ -480,11 +486,12 @@ test.describe.serial(
         await proposedTextField.fill(updatedDescription);
         await reviewNotesField.fill(updatedReviewNotes);
 
-        const resolveTaskResponse = page.waitForResponse(
+        const resolveTaskResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes(`/api/v1/tasks/${taskId}/resolve`) &&
-            response.request().method() === 'POST' &&
-            response.ok()
+            response.request().method() === 'POST',
+          'ok'
         );
 
         await visibleModal.getByRole('button', { name: /^ok$/i }).click();
@@ -498,7 +505,9 @@ test.describe.serial(
               );
 
               if (!updatedTableResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${updatedTableResponse.status()} querying ${updatedTableResponse.url()}`
+                );
               }
 
               const updatedTable = await updatedTableResponse.json();

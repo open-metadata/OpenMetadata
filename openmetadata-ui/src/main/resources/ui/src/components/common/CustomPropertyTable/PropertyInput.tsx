@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
-import { ChangeEvent, FC, useState } from 'react';
+import { Input } from '@openmetadata/ui-core-components';
+import { isNil } from 'lodash';
+import { FC, useState } from 'react';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 
 export interface PropertyInputProps {
@@ -32,13 +33,9 @@ export const PropertyInput: FC<PropertyInputProps> = ({
   onSave,
   isLoading,
 }: PropertyInputProps) => {
-  const [inputValue, setInputValue] = useState<string | number>(value);
-
-  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { value: updatedValue } = e.target;
-
-    setInputValue(updatedValue);
-  };
+  const [inputValue, setInputValue] = useState<string>(
+    isNil(value) ? '' : String(value)
+  );
 
   const handleSave = async () => {
     await onSave(inputValue);
@@ -47,15 +44,14 @@ export const PropertyInput: FC<PropertyInputProps> = ({
   return (
     <InlineEdit isLoading={isLoading} onCancel={onCancel} onSave={handleSave}>
       <Input
-        allowClear
-        className="w-full"
-        data-testid="value-input"
         id="value"
+        inputDataTestId="value-input"
+        isDisabled={isLoading}
         name={propertyName}
         placeholder="value"
         type={type}
         value={inputValue}
-        onChange={onChange}
+        onChange={setInputValue}
       />
     </InlineEdit>
   );

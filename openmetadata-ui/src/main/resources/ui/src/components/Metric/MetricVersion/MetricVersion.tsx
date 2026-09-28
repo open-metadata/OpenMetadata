@@ -67,17 +67,22 @@ const MetricVersion: FC<MetricVersionProp> = ({
     );
   }, [currentVersionData]);
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const tags = useMemo(
     () => getEntityVersionTags(currentVersionData, changeDescription),
@@ -215,6 +220,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
               deleted={Boolean(currentVersionData.deleted)}
               displayName={displayName}
               domainDisplayName={domainDisplayName}
+              domains={domainRef}
               entityType={EntityType.METRIC}
               ownerDisplayName={ownerDisplayName}
               ownerRef={ownerRef}
