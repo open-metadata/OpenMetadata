@@ -15,6 +15,7 @@ import { getDescriptionBox, waitForAntdModalToSettle } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const REACTION_EMOJIS = ['🚀', '😕', '👀', '❤️', '🎉', '😄', '👎', '👍'];
 
@@ -317,5 +318,3 @@ export const postActivityComment = async (page: Page, commentText: string) => {
   // Verify comment appears
   await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
 };
-
-import { waitForResponseWithStatus } from './waitHelpers';

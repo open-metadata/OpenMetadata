@@ -44,6 +44,7 @@ import {
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -1039,5 +1040,3 @@ test.describe('Data Product Name in Entity Name Cell', () => {
     }
   });
 });
-
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';

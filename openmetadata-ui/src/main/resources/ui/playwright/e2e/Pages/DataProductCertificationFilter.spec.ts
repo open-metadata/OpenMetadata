@@ -21,6 +21,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -395,5 +396,3 @@ test.describe('Data Products - quick filters', { tag: '@Governance' }, () => {
     });
   });
 });
-
-import { waitForSearchIndexed } from '../../utils/polling';

@@ -39,6 +39,7 @@ import {
   verifyAlertDetails,
   visitAlertDetailsPage,
 } from '../../utils/alert';
+import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
 import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -51,6 +52,7 @@ import {
   visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
 import { waitForSearchIndexed } from '../../utils/polling';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import {
   clearCapturedWebhookRequests,
   findWebhookDelivery,
@@ -699,6 +701,3 @@ test('Alert operations for a user with and without permissions', async ({
     }
   }
 });
-
-import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
-import { waitForResponseWithStatus } from '../../utils/waitHelpers';

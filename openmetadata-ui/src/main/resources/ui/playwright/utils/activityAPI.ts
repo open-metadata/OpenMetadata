@@ -17,6 +17,7 @@ import { clickFeedReaction, waitForReactionResponse } from './activityFeed';
 import { createAdminApiContext } from './admin';
 import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const ACTIVITY_EVENT_TIMEOUT = 200_000;
 export const ACTIVITY_TEST_TIMEOUT = ACTIVITY_EVENT_TIMEOUT + 60_000;
@@ -402,5 +403,3 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   expect(response.ok()).toBeTruthy();
   await waitForAllLoadersToDisappear(page);
 };
-
-import { waitForResponseWithStatus } from './waitHelpers';

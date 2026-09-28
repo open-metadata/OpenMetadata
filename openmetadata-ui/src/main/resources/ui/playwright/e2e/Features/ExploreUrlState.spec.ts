@@ -23,6 +23,7 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -424,5 +425,3 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     await searchAndExpectEntityVisible(page, tier1Table);
   });
 });
-
-import { waitForSearchIndexed } from '../../utils/polling';

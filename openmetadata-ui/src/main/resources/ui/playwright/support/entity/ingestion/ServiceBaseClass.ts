@@ -19,7 +19,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { startCase } from 'lodash';
-import { okJson } from '../../../utils/apiResponse';
+import { deleteFixtureEntity, okJson } from '../../../utils/apiResponse';
 import { descriptionBox, getApiContext } from '../../../utils/common';
 import {
   visitEntityPage,
@@ -622,5 +622,3 @@ class ServiceBaseClass {
 }
 
 export default ServiceBaseClass;
-
-import { deleteFixtureEntity } from '../../../utils/apiResponse';

@@ -32,6 +32,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
   waitForToastToDisappear,
 } from '../../../utils/common';
 import {
@@ -60,6 +61,7 @@ import {
   visitDataQualityTab,
   waitForTestCaseDetailsResponse,
 } from '../../../utils/testCases';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
 
 // Test data for tags and glossary terms
@@ -1762,6 +1764,3 @@ test.describe(
     });
   }
 );
-
-import { waitForAntdPopupToSettle } from '../../../utils/common';
-import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

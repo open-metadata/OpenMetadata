@@ -27,6 +27,7 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -624,5 +625,3 @@ test('certification union shows assets certified with either level', async ({
     await searchAndExpectEntityNotVisible(page, tierTwoTable);
   });
 });
-
-import { waitForSearchIndexed } from '../../utils/polling';
