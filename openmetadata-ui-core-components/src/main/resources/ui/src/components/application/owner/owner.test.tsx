@@ -160,4 +160,26 @@ describe('Owner href resolver (in-app profile link)', () => {
     // owner-link wrapper still present, but it is a span (no href).
     expect(screen.getByTestId('owner-link')).not.toHaveAttribute('href');
   });
+
+  // Two or more owners take the stacked AvatarGroup path instead of OwnerChip.
+  // That branch resolved its href separately and went unlinked once `Owner`
+  // started stripping incoming hrefs, leaving multi-owner entities with avatars
+  // that could not be clicked at all.
+  it('links every owner in a stacked group using the registered resolver', () => {
+    setOwnerHrefResolver((o) => `/users/${o.name}`);
+    const second = {
+      id: 'u2',
+      name: 'user2',
+      displayName: 'User Two',
+      type: 'user' as const,
+    };
+
+    render(
+      <Owner isCompactView={false} owners={[owner, second]} showLabel={false} />
+    );
+
+    expect(
+      screen.getAllByTestId('owner-link').map((el) => el.getAttribute('href'))
+    ).toEqual(['/users/user1', '/users/user2']);
+  });
 });

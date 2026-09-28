@@ -13,11 +13,11 @@
 
 import {
   DataAssetRuleValidation,
-  EntityRule,
   ParsedRule,
   RuleType,
 } from '../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
 import { EntityType } from '../enums/entity.enum';
+import { EntityRule } from '../interface/platform/ruleEnforcement.interface';
 
 /**
  * Parse a rule string into a structured object

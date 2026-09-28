@@ -108,7 +108,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
 
         {!readonly && (
           <Button
-            className="tw:self-start"
+            className="tw:self-start tw:*:data-icon:size-4"
             color="link-color"
             data-testid={preset.testIds.addRule}
             iconLeading={Expand}

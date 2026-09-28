@@ -22,11 +22,11 @@ import {
   type LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
 import type { LineageDetails } from '../../../generated/type/entityLineage';
-import { getUpdatedColumnsFromEdge } from '../../../utils/EntityLineageEdgeUtils';
 import type {
   EdgeDetails,
   EdgeFromToData,
-} from '../../Lineage/Lineage.interface';
+} from '../../../interface/lineage.interface';
+import { getUpdatedColumnsFromEdge } from '../../../utils/EntityLineageEdgeUtils';
 
 export const FIELD_SEPARATOR = '::field::';
 
