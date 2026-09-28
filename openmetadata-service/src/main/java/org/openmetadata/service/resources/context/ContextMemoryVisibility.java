@@ -14,12 +14,15 @@
 package org.openmetadata.service.resources.context;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
@@ -36,10 +39,19 @@ import org.slf4j.LoggerFactory;
  * through this check so a non-admin user cannot read another user's PRIVATE memory via the public
  * API. Visibility is independent of the OSS policy/authorizer model because it is driven by the
  * per-memory {@code shareConfig} (visibility + sharedWith) rather than role/policy.
+ *
+ * <p>Because it sits outside the policy model, no {@code authorizer.authorize(...)} call can ever
+ * enforce it: a read path that authorizes and fetches is not yet a read path that is allowed to
+ * answer. Callers that reach a memory without knowing they have (the MCP entity tools read any
+ * type by name) use the type-blind {@link #enforceVisibility(EntityInterface, SecurityContext)}
+ * together with {@link #guardFields(String, String)}.
  */
 public final class ContextMemoryVisibility {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContextMemoryVisibility.class);
+
+  /** The field selection that already asks for every allowed field, owners included. */
+  private static final String ALL_FIELDS = "*";
 
   private ContextMemoryVisibility() {}
 
@@ -70,11 +82,45 @@ public final class ContextMemoryVisibility {
   }
 
   public static void enforceVisibility(ContextMemory memory, SecurityContext securityContext) {
-    if (memory == null || securityContext == null || securityContext.getUserPrincipal() == null) {
-      return;
+    if (memory != null) {
+      enforceVisibility(memory, callerName(securityContext), isAdmin(securityContext));
     }
-    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    enforceVisibility(memory, securityContext.getUserPrincipal().getName(), subject.isAdmin());
+  }
+
+  /**
+   * The type-blind guard, for read paths that hold an entity without knowing its type. Applies the
+   * rule when {@code entity} is a memory and does nothing for every other entity type, so a caller
+   * needs no per-type knowledge to be safe.
+   */
+  public static void enforceVisibility(EntityInterface entity, SecurityContext securityContext) {
+    if (entity instanceof ContextMemory memory) {
+      enforceVisibility(memory, securityContext);
+    }
+  }
+
+  /** Whether reads of {@code entityType} are governed by a per-entity visibility rule. */
+  public static boolean hasVisibilityRules(String entityType) {
+    return Entity.CONTEXT_MEMORY.equals(entityType);
+  }
+
+  /**
+   * Merges the fields the decision reads into a caller's field selection. Owners is a relationship
+   * field, null unless the fetch asked for it, so a read that omits it hands the guard an ownerless
+   * memory - denying the owner their own private memory. Field selections that already cover owners
+   * ({@code *}, or an explicit {@code owners}) are returned unchanged.
+   */
+  public static String guardFields(String entityType, String requestedFields) {
+    String fields = requestedFields;
+    if (hasVisibilityRules(entityType) && !ALL_FIELDS.equals(requestedFields)) {
+      Set<String> requested = new LinkedHashSet<>(splitFields(requestedFields));
+      requested.add(Entity.FIELD_OWNERS);
+      fields = String.join(",", requested);
+    }
+    return fields;
+  }
+
+  private static List<String> splitFields(String fields) {
+    return nullOrEmpty(fields) ? List.of() : List.of(fields.split(","));
   }
 
   public static List<ContextMemory> filterByVisibility(
@@ -87,12 +133,28 @@ public final class ContextMemoryVisibility {
     if (memories == null || memories.isEmpty()) {
       return memories;
     }
-    if (securityContext == null || securityContext.getUserPrincipal() == null) {
-      return memories;
+    return filterByVisibility(memories, callerName(securityContext), isAdmin(securityContext));
+  }
+
+  /**
+   * A caller too anonymous to decide from is treated as one, not waved through: {@link
+   * #isVisibleToUser} then matches no owner and no shared principal, leaving the org-wide ({@code
+   * ENTITY}) memories - the same fallback {@code ContextMemorySearchVisibility} applies to an
+   * unresolvable search subject.
+   */
+  private static String callerName(SecurityContext securityContext) {
+    return securityContext == null || securityContext.getUserPrincipal() == null
+        ? null
+        : securityContext.getUserPrincipal().getName();
+  }
+
+  private static boolean isAdmin(SecurityContext securityContext) {
+    boolean admin = false;
+    if (callerName(securityContext) != null) {
+      SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+      admin = subject != null && subject.isAdmin();
     }
-    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    return filterByVisibility(
-        memories, securityContext.getUserPrincipal().getName(), subject.isAdmin());
+    return admin;
   }
 
   public static boolean isOwnedBy(ContextMemory memory, String userName) {

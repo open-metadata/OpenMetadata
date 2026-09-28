@@ -15,10 +15,11 @@ This module contains comprehensive tests for lineage processing functions
 including query, view, and stored procedure processors.
 """
 
+import inspect
 import unittest
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import networkx as nx
 
@@ -37,6 +38,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.topology import Queue as TopologyQueue
 from metadata.ingestion.source.database.lineage_processors import (
     ProcedureAndQuery,
@@ -46,6 +48,9 @@ from metadata.ingestion.source.database.lineage_processors import (
     process_chunk_in_subprocess,
     query_lineage_processor,
     view_lineage_processor,
+)
+from metadata.ingestion.source.database.lineage_source import (
+    LineageSource as LineageSourceBase,
 )
 from metadata.ingestion.source.models import TableView
 
@@ -316,6 +321,111 @@ class TestViewLineageProcessor(unittest.TestCase):
                 results = list(self.mock_queue.process())
                 self.assertGreater(len(results), 0)
                 # The OMetaLineageRequest should have override_lineage=True
+
+
+class TestViewLineageProcessorArgs(unittest.TestCase):
+    """
+    `yield_view_lineage` hands the processor a positional args tuple. Nothing else binds
+    the two together, so pin the contract: the tuple has to keep matching the processor
+    signature, extension included.
+    """
+
+    def test_args_bind_to_the_processor_signature(self):
+        source = MagicMock()
+        extension = Mock(name="view_lineage_extension")
+        source.get_view_lineage_extension.return_value = extension
+        source.generate_lineage_with_processes.return_value = []
+
+        list(LineageSourceBase.yield_view_lineage(source))
+
+        # generate_lineage_with_processes(producer_fn, processor_fn, args, ...)
+        _, processor_fn, args = source.generate_lineage_with_processes.call_args.args
+        self.assertIs(processor_fn, view_lineage_processor)
+
+        # the framework calls processor_fn(chunk, queue, *args)
+        bound = inspect.signature(view_lineage_processor).bind([], None, *args)
+        self.assertIs(bound.arguments["extension"], extension)
+
+    def test_sources_without_an_extension_pass_none(self):
+        self.assertIsNone(LineageSourceBase.get_view_lineage_extension(object()))
+
+
+class TestViewLineageOverrideScope(unittest.TestCase):
+    """
+    `overrideViewLineage` drops the existing view lineage of the entity an edge points
+    at, so it must only be honoured while the edge points at the view being processed.
+    """
+
+    VIEW_FQN = "test_service.db1.schema1.view1"
+
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_metadata = Mock()
+        self.mock_queue = TopologyQueue()
+        self.view = TableView(
+            table_name="view1",
+            db_name="db1",
+            schema_name="schema1",
+            view_definition="CREATE MATERIALIZED VIEW schema1.view1 TO schema1.target AS SELECT * FROM schema1.table1",
+        )
+
+    def _process(self, to_entity_fqn: str, override_view_lineage: bool = True, view_fqn: str = "") -> bool:
+        """Run the processor on a single edge and return the resulting override flag"""
+        view_fqn = self.VIEW_FQN if view_fqn == "" else view_fqn
+        lineage = Either(
+            right=OMetaFQNLineageRequest(
+                from_entity_fqn="test_service.db1.schema1.table1",
+                from_entity_type="table",
+                to_entity_fqn=to_entity_fqn,
+                to_entity_type="table",
+                lineage_details=LineageDetails(source=LineageSource.ViewLineage),
+            )
+        )
+
+        with patch(  # noqa: SIM117
+            "metadata.ingestion.source.database.lineage_processors.get_view_lineage",
+            return_value=[lineage],
+        ):
+            with patch("metadata.utils.fqn.build", return_value=view_fqn):
+                view_lineage_processor(
+                    views=[self.view],
+                    queue=self.mock_queue,
+                    metadata=self.mock_metadata,
+                    service_name="test_service",
+                    connectionType="clickhouse",
+                    processCrossDatabaseLineage=False,
+                    crossDatabaseServiceNames=[],
+                    parsingTimeoutLimit=10,
+                    overrideViewLineage=override_view_lineage,
+                    parser_type=QueryParserType.Auto,
+                )
+
+        results = list(self.mock_queue.process())
+        self.assertEqual(len(results), 1)
+        return results[0].right.override_lineage
+
+    def test_edge_into_the_view_is_overridden(self):
+        """The upstream edge of the view keeps replacing the previous view lineage"""
+        self.assertTrue(self._process(to_entity_fqn=self.VIEW_FQN))
+
+    def test_edge_into_the_view_is_matched_case_insensitively(self):
+        """Entity FQNs are not necessarily cased like the ingested view name"""
+        self.assertTrue(self._process(to_entity_fqn=self.VIEW_FQN.upper()))
+
+    def test_edge_into_another_table_is_not_overridden(self):
+        """
+        A materialized view writing into its `TO` target must not drop the lineage the
+        sibling views writing into that same table created.
+        """
+        self.assertFalse(self._process(to_entity_fqn="test_service.db1.schema1.target"))
+
+    def test_override_disabled_stays_disabled(self):
+        """The flag is never turned on by the edge itself"""
+        self.assertFalse(self._process(to_entity_fqn=self.VIEW_FQN, override_view_lineage=False))
+
+    def test_a_view_without_an_fqn_keeps_the_flag(self):
+        """`fqn.build` is optional-typed: an unknown view FQN decides nothing"""
+        self.assertTrue(self._process(to_entity_fqn="test_service.db1.schema1.target", view_fqn=None))
 
 
 class TestProcedureLineageProcessor(unittest.TestCase):

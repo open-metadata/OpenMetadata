@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -91,7 +92,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -115,7 +117,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -139,7 +142,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -162,7 +166,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -186,7 +191,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -210,7 +216,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.goto(
       `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -232,9 +239,22 @@ test.describe('Explore Assets Discovery', () => {
 
     await page.getByTestId('delete-modal').waitFor();
 
-    await page.getByTestId('confirm-button').click();
+    // Wait for the soft delete to land before reloading. Reloading straight
+    // after the click races the request: if the server has not applied the
+    // delete yet, the reloaded page renders the table as live, no deleted-badge
+    // is ever mounted, and the assertion below burns its full timeout. Passes
+    // locally where the delete returns in milliseconds; loses the race under
+    // merge-queue load.
+    const softDelete = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        response.url().includes(`/api/v1/${EntityTypeEndpoint.Table}/`)
+    );
 
-    await page.reload();
+    await page.getByTestId('confirm-button').click();
+    await softDelete;
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 

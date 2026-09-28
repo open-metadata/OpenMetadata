@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
@@ -40,18 +40,14 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def create_session(self):
-        super().create_session()
-        self.set_session_tag(self.session)
-
     def _compute_system_metrics(
         self,
         metrics: type[System],
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:  # noqa: UP006
-        self.system_metrics_class = cast(Type[SnowflakeSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
+    ) -> list[SystemProfile]:
+        self.system_metrics_class = cast(type[SnowflakeSystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,

@@ -68,6 +68,10 @@ jest.mock('../../../hooks/useLineageStore', () => {
 });
 
 describe('Custom Node Utils', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
     const result = getColumnHandle(
       EntityLineageNodeType.NOT_CONNECTED,
@@ -141,6 +145,24 @@ describe('Custom Node Utils', () => {
       fireEvent.click(collapseHandle);
 
       expect(onClickHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not bubble the click to the React Flow node', () => {
+      const onClickHandler = jest.fn();
+      const onNodeClick = jest.fn();
+
+      const { getByTestId } = render(
+        <div role="presentation" onClick={onNodeClick}>
+          {getCollapseHandle(LineageDirection.Downstream, onClickHandler)}
+        </div>
+      );
+
+      const collapseHandle = getByTestId('downstream-collapse-handle');
+      fireEvent.click(collapseHandle);
+
+      expect(collapseHandle).toHaveClass('nodrag', 'nopan');
+      expect(onClickHandler).toHaveBeenCalledTimes(1);
+      expect(onNodeClick).not.toHaveBeenCalled();
     });
   });
 
@@ -247,6 +269,31 @@ describe('Custom Node Utils', () => {
       fireEvent.click(getByTestId('column-test.column'));
 
       expect(mockSetSelectedColumn).toHaveBeenCalledWith('test.column');
+    });
+
+    it('should call scene column callbacks on hover and click', () => {
+      const onColumnHover = jest.fn();
+      const onColumnSelect = jest.fn();
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            isConnectable
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+            onColumnHover={onColumnHover}
+            onColumnSelect={onColumnSelect}
+          />
+        </ReactFlowProvider>
+      );
+
+      fireEvent.mouseEnter(getByTestId('column-test.column'));
+      fireEvent.mouseLeave(getByTestId('column-test.column'));
+      fireEvent.click(getByTestId('column-test.column'));
+
+      expect(onColumnHover).toHaveBeenCalledWith('test.column');
+      expect(onColumnHover).toHaveBeenCalledWith(undefined);
+      expect(onColumnSelect).toHaveBeenCalledWith('test.column');
     });
   });
 });

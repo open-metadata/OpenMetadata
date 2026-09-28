@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
@@ -39,8 +39,8 @@ class SageMakerConnection(BaseConnection[SageMakerConnectionConfig, Any]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

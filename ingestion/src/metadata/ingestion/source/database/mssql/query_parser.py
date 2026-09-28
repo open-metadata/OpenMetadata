@@ -13,8 +13,8 @@ MSSQL usage module
 """
 
 from abc import ABC
+from collections.abc import Iterator
 from copy import deepcopy
-from typing import Iterator, Optional  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -48,13 +48,13 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
 
     filters: str
     engine: Engine
-    _query_store_enabled: Optional[bool] = None  # noqa: UP045
+    _query_store_enabled: bool | None = None
     # Query Store state of the engine currently being iterated in the ingest-all
     # per-database path. None means the single-engine path (use the global decision).
-    _active_query_store: Optional[bool] = None  # noqa: UP045
+    _active_query_store: bool | None = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MssqlConnection = config.serviceConnection.root.config

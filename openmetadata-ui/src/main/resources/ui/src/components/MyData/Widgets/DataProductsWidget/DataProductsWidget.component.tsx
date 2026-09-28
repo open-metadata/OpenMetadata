@@ -13,7 +13,7 @@
 import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductNoDataPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
@@ -272,25 +272,30 @@ const DataProductsWidget = ({
     ]
   );
 
+  let widgetContent: ReactNode;
+  if (error) {
+    widgetContent = (
+      <ErrorPlaceHolder
+        className="data-products-widget-error border-none"
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        {error}
+      </ErrorPlaceHolder>
+    );
+  } else if (isEmpty(dataProducts)) {
+    widgetContent = (
+      <div data-testid="data-products-empty-state">{emptyState}</div>
+    );
+  } else {
+    widgetContent = dataProductsList;
+  }
+
   return (
     <WidgetWrapper
       dataTestId="KnowledgePanel.DataProducts"
       header={widgetHeader}
       loading={loading}>
       <div className="data-products-widget-container">
-        <div className="widget-content flex-1">
-          {error ? (
-            <ErrorPlaceHolder
-              className="data-products-widget-error border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              {error}
-            </ErrorPlaceHolder>
-          ) : isEmpty(dataProducts) ? (
-            <div data-testid="data-products-empty-state">{emptyState}</div>
-          ) : (
-            dataProductsList
-          )}
-        </div>
+        <div className="widget-content flex-1">{widgetContent}</div>
         {!isEmpty(dataProducts) && footer}
       </div>
     </WidgetWrapper>

@@ -13,7 +13,6 @@ S3 custom pydantic models
 """
 
 from datetime import datetime
-from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -31,12 +30,12 @@ class S3BucketResponse(BaseModel):
     """
 
     name: str = Field(..., description="Bucket name", alias="Name")
-    creation_date: Optional[datetime] = Field(  # noqa: UP045
+    creation_date: datetime | None = Field(
         None,
         description="Timestamp of Bucket creation in ISO format",
         alias="CreationDate",
     )
-    bucket_arn: Optional[str] = Field(  # noqa: UP045
+    bucket_arn: str | None = Field(
         None,
         description="ARN of the bucket",
         alias="BucketArn",
@@ -53,7 +52,7 @@ class S3TagResponse(BaseModel):
     Class modelling a response received from s3_client.get_bucket_tagging operation
     """
 
-    TagSet: List[S3Tag] = Field([], description="List of tags")  # noqa: UP006
+    TagSet: list[S3Tag] = Field([], description="List of tags")
 
 
 class S3ContainerDetails(BaseModel):
@@ -66,34 +65,34 @@ class S3ContainerDetails(BaseModel):
     )
 
     leaf_container: bool = Field(False, description="Leaf container")
-    container_fqn: Optional[str] = Field(None, description="Fully qualified name of the container")  # noqa: UP045
+    container_fqn: str | None = Field(None, description="Fully qualified name of the container")
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
-    number_of_objects: Optional[float] = Field(  # noqa: UP045
+    number_of_objects: float | None = Field(
         None,
         description="Total nr. of objects",
     )
-    size: Optional[float] = Field(  # noqa: UP045
+    size: float | None = Field(
         None,
         description="Total size in bytes of all objects",
         title="Total size(bytes) of objects",
     )
-    file_formats: Optional[List[FileFormat]] = Field(  # noqa: UP006, UP045
+    file_formats: list[FileFormat] | None = Field(
         None,
         description="File formats",
     )
-    data_model: Optional[ContainerDataModel] = Field(  # noqa: UP045
+    data_model: ContainerDataModel | None = Field(
         None,
         description="Data Model of the container",
     )
-    creation_date: Optional[str] = Field(  # noqa: UP045
+    creation_date: str | None = Field(
         None,
         description="Timestamp of Bucket creation in ISO format",
     )
-    parent: Optional[EntityReference] = Field(  # noqa: UP045
+    parent: EntityReference | None = Field(
         None,
         description="Reference to the parent container",
     )
-    sourceUrl: Optional[basic.SourceUrl] = Field(None, description="Source URL of the container.")  # noqa: N815, UP045
+    sourceUrl: basic.SourceUrl | None = Field(None, description="Source URL of the container.")  # noqa: N815
 
-    fullPath: Optional[str] = Field(None, description="Full path of the container/file.")  # noqa: N815, UP045
+    fullPath: str | None = Field(None, description="Full path of the container/file.")  # noqa: N815

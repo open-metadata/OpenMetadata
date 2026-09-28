@@ -62,13 +62,35 @@ class HighlightFieldSaveValidationIT {
     try {
       assertServesHighlightFlag("GET /settings/searchSettings", original);
       assertServesHighlightFlag("GET /settings", searchSettingsFromList());
-      assertServesHighlightFlag("PUT /settings", put("/v1/system/settings", original).body());
-      assertServesHighlightFlag("PATCH /settings/searchSettings", patchWithoutChange().body());
+      assertServesHighlightFlag(
+          "PUT /settings", servedBody("PUT /settings", put("/v1/system/settings", original)));
+      assertServesHighlightFlag(
+          "PATCH /settings/searchSettings",
+          servedBody("PATCH /settings/searchSettings", patchWithoutChange()));
       // Last: it discards whatever this cluster had stored, which the restore below then puts back.
-      assertServesHighlightFlag("PUT /settings/reset/searchSettings", resetToDefault().body());
+      assertServesHighlightFlag(
+          "PUT /settings/reset/searchSettings",
+          servedBody("PUT /settings/reset/searchSettings", resetToDefault()));
     } finally {
       put("/v1/system/settings", original);
     }
+  }
+
+  /**
+   * The body of a write that succeeded. Without this the endpoint's own failure arrives as "no
+   * allowedFields entry for table" off an error payload, which reads as a missing highlight flag —
+   * so an empty-bodied 400 from a malformed request looked exactly like the bug this test exists to
+   * catch, and the assertion pointed at the server rather than at the request.
+   */
+  private String servedBody(final String endpoint, final HttpResponse<String> response) {
+    assertTrue(
+        response.statusCode() >= 200 && response.statusCode() < 300,
+        endpoint
+            + " must succeed before its body can be asserted on. status="
+            + response.statusCode()
+            + " body="
+            + response.body());
+    return response.body();
   }
 
   /**
@@ -241,9 +263,11 @@ class HighlightFieldSaveValidationIT {
         "[{\"op\":\"replace\",\"path\":\"/globalSettings/maxAggregateSize\",\"value\":"
             + maxAggregateSize
             + "}]";
+    // setHeader, not header: header() appends to the application/json baseRequest already sets, and
+    // a request carrying two Content-Type values is rejected with an empty-bodied 400.
     final HttpRequest request =
         baseRequest("/v1/system/settings/" + SettingsType.SEARCH_SETTINGS.value())
-            .header("Content-Type", "application/json-patch+json")
+            .setHeader("Content-Type", "application/json-patch+json")
             .method("PATCH", HttpRequest.BodyPublishers.ofString(patch))
             .build();
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());

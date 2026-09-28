@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import {
   Category,
   CreateRelationshipType,
   PaletteKey,
 } from '../../../src/generated/api/data/createRelationshipType';
 import { RelationshipType } from '../../../src/generated/entity/data/relationshipType';
+import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';

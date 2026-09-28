@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,13 +29,18 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -473,7 +479,9 @@ class AbstractEventConsumerTest {
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(webhookId, emailId));
 
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .thenReturn(events);
       consumer.publishEvents(events);
     }
 
@@ -540,7 +548,9 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) -> when(mock.resolveRecipients(any(), anyList())).thenReturn(union))) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .thenReturn(events);
 
       consumer.publishEvents(events);
 
@@ -579,7 +589,9 @@ class AbstractEventConsumerTest {
                 RecipientResolver.class,
                 (mock, ctx) ->
                     when(mock.resolveRecipients(any(), anyList())).thenReturn(Set.of()))) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .thenReturn(events);
       consumer.publishEvents(events);
     }
 
@@ -605,7 +617,9 @@ class AbstractEventConsumerTest {
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .thenReturn(events);
       consumer.publishEvents(events);
 
       RecipientResolver resolver = resolverCtor.constructed().getFirst();
@@ -637,7 +651,9 @@ class AbstractEventConsumerTest {
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
-      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      alertUtil
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .thenReturn(events);
       consumer.publishEvents(events);
     }
 
@@ -676,6 +692,124 @@ class AbstractEventConsumerTest {
         "alertMetrics",
         new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
     return consumer;
+  }
+
+  // A consumer that makes its own deliveries has no change_event offset to move, so the tick used
+  // to skip commit() and its metrics stayed at zero for the life of the subscription.
+  @Test
+  void testRecordDeliveryCountsTowardsTheAlertMetrics() throws Exception {
+    CommitCountingConsumer consumer = new CommitCountingConsumer(dependencies);
+    consumer.eventSubscription = eventSubscription;
+    setField(
+        consumer,
+        "alertMetrics",
+        new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
+
+    consumer.recordDelivery(2, 1);
+
+    AlertMetrics metrics = (AlertMetrics) getField(consumer, "alertMetrics");
+    assertEquals(3, metrics.getTotalEvents(), "total counts every attempt");
+    assertEquals(2, metrics.getSuccessEvents());
+    assertEquals(1, metrics.getFailedEvents());
+  }
+
+  @Test
+  void testATickThatPolledNothingStillCommitsARecordedDelivery() throws Exception {
+    CommitCountingConsumer consumer = newCommitCountingConsumer();
+
+    consumer.recordDelivery(1, 0);
+    persistTick(consumer);
+
+    assertEquals(1, consumer.commits, "a recorded delivery has to reach the subscription");
+    assertEquals(
+        Boolean.FALSE, getField(consumer, "metricsChanged"), "the flag is cleared by the commit");
+
+    persistTick(consumer);
+    assertEquals(1, consumer.commits, "and it must not commit again on the next idle tick");
+  }
+
+  @Test
+  void testAnIdleTickWithNothingRecordedDoesNotCommit() throws Exception {
+    CommitCountingConsumer consumer = newCommitCountingConsumer();
+
+    persistTick(consumer);
+
+    assertEquals(0, consumer.commits);
+  }
+
+  // handleFailedEvent keys its row by the change event's id and returns early without one, so a
+  // consumer producing its own events could never surface a failure at all.
+  @Test
+  void testRecordFailureWritesARowThatCarriesNoChangeEvent() throws Exception {
+    CommitCountingConsumer consumer = newCommitCountingConsumer();
+    when(eventSubscription.getId()).thenReturn(subscriptionId);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    EventSubscriptionDAOs.EventSubscriptionDAO subscriptionDAO =
+        mock(EventSubscriptionDAOs.EventSubscriptionDAO.class);
+    when(collectionDAO.eventSubscriptionDAO()).thenReturn(subscriptionDAO);
+    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> extension = ArgumentCaptor.forClass(String.class);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      consumer.recordFailure("smtp refused the message");
+      consumer.recordFailure("smtp refused it again");
+    }
+
+    verify(subscriptionDAO, times(2))
+        .upsertFailedEvent(
+            eq(subscriptionId.toString()), extension.capture(), json.capture(), anyString());
+    FailedEvent written = JsonUtils.readValue(json.getAllValues().getFirst(), FailedEvent.class);
+    assertNull(written.getChangeEvent(), "there is no change event behind this failure");
+    assertEquals("smtp refused the message", written.getReason());
+    assertEquals(subscriptionId, written.getFailingSubscriptionId());
+    assertNotNull(written.getTimestamp(), "the row has to date itself");
+    assertEquals(
+        extension.getAllValues().getFirst(),
+        extension.getAllValues().getLast(),
+        "one key per subscription, so repeated failures replace rather than accumulate");
+  }
+
+  private CommitCountingConsumer newCommitCountingConsumer() throws Exception {
+    CommitCountingConsumer consumer = new CommitCountingConsumer(dependencies);
+    consumer.eventSubscription = eventSubscription;
+    setField(
+        consumer,
+        "alertMetrics",
+        new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
+    return consumer;
+  }
+
+  private static void persistTick(AbstractEventConsumer consumer) throws Exception {
+    Method method =
+        AbstractEventConsumer.class.getDeclaredMethod("persistTick", JobExecutionContext.class);
+    method.setAccessible(true);
+    method.invoke(consumer, (JobExecutionContext) null);
+  }
+
+  /** Counts commits unconditionally, which is what the offset-versus-metrics branch decides. */
+  static class CommitCountingConsumer extends AbstractEventConsumer {
+    int commits;
+
+    CommitCountingConsumer(DIContainer dependencies) {
+      super(dependencies);
+    }
+
+    @Override
+    public void commit(JobExecutionContext jobExecutionContext) {
+      commits++;
+    }
+
+    @Override
+    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
+      return true;
+    }
+
+    @Override
+    public boolean getEnabled() {
+      return true;
+    }
   }
 
   private static void setField(Object target, String name, Object value) throws Exception {

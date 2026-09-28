@@ -20,7 +20,6 @@ import subprocess
 import tarfile
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / ".github" / "scripts"
 
@@ -75,9 +74,7 @@ def test_distribution_fingerprint_ignores_tests_but_tracks_runtime_and_bundle_mo
     )
     initialize_repository(tmp_path)
 
-    regular = fingerprints.fingerprint(
-        "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
-    )
+    regular = fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven")
     write(
         tmp_path,
         "openmetadata-ui/src/main/resources/ui/src/App.test.tsx",
@@ -93,30 +90,15 @@ def test_distribution_fingerprint_ignores_tests_but_tracks_runtime_and_bundle_mo
         "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
         "export default { retries: 1 };",
     )
-    assert (
-        fingerprints.fingerprint(
-            "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
-        )
-        == regular
-    )
+    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven") == regular
 
     write(
         tmp_path,
         "openmetadata-ui/src/main/resources/ui/src/App.tsx",
         "export const App = 2;",
     )
-    assert (
-        fingerprints.fingerprint(
-            "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
-        )
-        != regular
-    )
-    assert (
-        fingerprints.fingerprint(
-            "distribution", root=tmp_path, bundle_mode="coarse", toolchain="maven"
-        )
-        != regular
-    )
+    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven") != regular
+    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="coarse", toolchain="maven") != regular
 
 
 def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
@@ -162,6 +144,22 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
         assert fingerprints.fingerprint("fixture", root=tmp_path) != before
 
 
+def test_fixture_fingerprint_tracks_search_mappings(tmp_path: Path) -> None:
+    mapping = "openmetadata-spec/src/main/resources/elasticsearch/en/metric_index_mapping.json"
+    write(tmp_path, "pom.xml", "<project />")
+    write(tmp_path, mapping, '{"mappings":{"properties":{}}}')
+    initialize_repository(tmp_path)
+
+    initial = fingerprints.fingerprint("fixture", root=tmp_path)
+    write(
+        tmp_path,
+        mapping,
+        '{"mappings":{"properties":{"followers":{"type":"keyword"}}}}',
+    )
+
+    assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
+
+
 def test_fixture_typescript_dependency_scan_follows_dynamic_imports(
     tmp_path: Path,
 ) -> None:
@@ -186,23 +184,39 @@ def test_fixture_typescript_dependency_scan_appends_extension_to_dotted_basename
     assert dependencies == {entrypoint, helper}
 
 
+def test_fixture_fingerprint_ignores_playwright_config_but_tracks_setup_scripts(
+    tmp_path: Path,
+) -> None:
+    """Retry/shard/quarantine edits must not evict the golden fixture.
+
+    playwright.config.ts only reads the seeded auth state; auth.setup.ts writes
+    it. Hashing the config made every quarantine edit pay a fixture rebuild.
+    """
+    config = "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+    setup = "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts"
+    write(tmp_path, "pom.xml", "<version>1</version>")
+    write(tmp_path, config, "export default { retries: 1 };")
+    write(tmp_path, setup, "const adminFile = 'playwright/.auth/admin.json';")
+    initialize_repository(tmp_path)
+
+    initial = fingerprints.fingerprint("fixture", root=tmp_path)
+
+    write(tmp_path, config, "export default { retries: 2, grepInvert: /@quarantine/ };")
+    assert fingerprints.fingerprint("fixture", root=tmp_path) == initial
+
+    write(tmp_path, setup, "const adminFile = 'playwright/.auth/root.json';")
+    assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
+
+
 def test_fixture_fingerprint_tracks_ui_auth_storage_format(tmp_path: Path) -> None:
     storage_inputs = {
-        "openmetadata-ui/src/main/resources/ui/public/app-worker.js": (
-            "const DB_NAME = 'AppDataStore';"
-        ),
+        "openmetadata-ui/src/main/resources/ui/public/app-worker.js": ("const DB_NAME = 'AppDataStore';"),
         "openmetadata-ui/src/main/resources/ui/playwright/utils/tokenStorage.ts": (
             "export const DB_NAME = 'AppDataStore';"
         ),
-        "openmetadata-ui/src/main/resources/ui/src/utils/OidcTokenStorage.ts": (
-            "export const storage = {};"
-        ),
-        "openmetadata-ui/src/main/resources/ui/src/utils/SwMessenger.ts": (
-            "export const send = () => undefined;"
-        ),
-        "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorage.ts": (
-            "export const store = {};"
-        ),
+        "openmetadata-ui/src/main/resources/ui/src/utils/OidcTokenStorage.ts": ("export const storage = {};"),
+        "openmetadata-ui/src/main/resources/ui/src/utils/SwMessenger.ts": ("export const send = () => undefined;"),
+        "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorage.ts": ("export const store = {};"),
         "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorageUtils.ts": (
             "export const APP_STATE_KEY = 'app_state';"
         ),
@@ -265,11 +279,7 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
 
 def token(email: str, session_id: str, expiry: int = 4_000_000_000) -> str:
     payload = (
-        base64.urlsafe_b64encode(
-            json.dumps(
-                {"email": email, "sessionId": session_id, "exp": expiry}
-            ).encode()
-        )
+        base64.urlsafe_b64encode(json.dumps({"email": email, "sessionId": session_id, "exp": expiry}).encode())
         .decode()
         .rstrip("=")
     )
@@ -305,9 +315,7 @@ def storage_state(email: str) -> dict:
                                 "records": [
                                     {
                                         "key": "app_state",
-                                        "value": json.dumps(
-                                            {"primary": token(email, "expired")}
-                                        ),
+                                        "value": json.dumps({"primary": token(email, "expired")}),
                                     }
                                 ],
                                 "indexes": [],
@@ -320,9 +328,7 @@ def storage_state(email: str) -> dict:
     }
 
 
-def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(tmp_path: Path, monkeypatch) -> None:
     auth_dir = tmp_path / "auth"
     auth_dir.mkdir()
     states = {
@@ -341,9 +347,7 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
     monkeypatch.setattr(auth_rotation, "login", fake_login)
     admin_token = auth_rotation.rotate_auth_state(auth_dir, "https://localhost:8585")
 
-    assert json.loads((auth_dir / "admin-api-token.json").read_text()) == {
-        "token": admin_token
-    }
+    assert json.loads((auth_dir / "admin-api-token.json").read_text()) == {"token": admin_token}
     assert calls == [
         ("https://localhost:8585", auth_rotation.ADMIN_EMAIL, "admin"),
         (
@@ -354,14 +358,10 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
     ]
     for filename, email in states.items():
         state = json.loads((auth_dir / filename).read_text())
-        cookie = next(
-            cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION"
-        )
+        cookie = next(cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION")
         assert cookie["value"] == f"fresh-{email.split('@')[0]}"
         assert cookie["secure"] is True
-        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])[
-            "primary"
-        ]
+        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])["primary"]
         assert auth_rotation.decode_jwt_payload(fresh_token)["email"] == email
         assert oct(os.stat(auth_dir / filename).st_mode & 0o777) == "0o600"
 
@@ -381,18 +381,14 @@ def test_ingestion_sidecar_validator_rejects_archive_tampering(tmp_path: Path) -
     ).strip()
     manifest = {
         "version": 1,
-        "sourceSha": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-        ).strip(),
+        "sourceSha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "createdAt": "2026-07-22T00:00:00Z",
         "compatibilityHash": compatibility,
         "image": f"openmetadata-playwright-ingestion:{compatibility}",
         "imageId": f"sha256:{'1' * 64}",
         "archiveHash": hashlib.sha256(archive.read_bytes()).hexdigest(),
     }
-    archive.with_name("playwright-ingestion-image.manifest.json").write_text(
-        json.dumps(manifest)
-    )
+    archive.with_name("playwright-ingestion-image.manifest.json").write_text(json.dumps(manifest))
     validator = SCRIPTS / "validate_playwright_ingestion_image.sh"
     subprocess.run([validator, archive, compatibility], cwd=ROOT, check=True)
 
@@ -455,26 +451,17 @@ def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
 
 def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None:
     workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
-    assert (
-        "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]"
-        in workflow
-    )
+    assert "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]" in workflow
     assert "build:\n    needs: [check-changes, cache-keys]" in workflow
-    assert "actions/cache/restore@v5" in workflow
-    assert "actions/cache/save@v5" in workflow
+    assert "actions/cache/restore@v6" in workflow
+    assert "actions/cache/save@v6" in workflow
     assert "playwright-golden-fixture-v2-" in workflow
     assert "playwright-ingestion-image-v2-" in workflow
     assert "playwright-distribution-v2-" in workflow
     assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
     assert "npx playwright test --project=bundle-smoke --reporter=line" in workflow
-    assert (
-        "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}"
-        in workflow
-    )
-    assert (
-        "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}"
-        in workflow
-    )
+    assert "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}" in workflow
+    assert "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}" in workflow
     assert "compression-level: 0" in workflow
     # CACHE_KEYS_RESULT / FIXTURE_RESTORE_RESULT are consumed by the summary
     # job that now lives in the postgres PR caller. Confirm the reusable
@@ -483,30 +470,83 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "cache_keys_result:" in workflow
     assert "restore_playwright_fixture_result:" in workflow
 
-    restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split(
-        "  prepare-playwright-fixture:", 1
-    )[0]
-    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
-        "  playwright-ci:", 1
-    )[0]
+    restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split("  prepare-playwright-fixture:", 1)[0]
+    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  playwright-ci:", 1)[0]
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
     assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
-    assert (
-        "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}"
-        in prepare_job
-    )
-    assert (
-        "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'"
-        in prepare_job
-    )
+    assert "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}" in prepare_job
+    assert "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'" in prepare_job
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
-    assert (
-        workflow.count("npx playwright test --project=bundle-smoke --reporter=line")
-        == 2
-    )
+    assert workflow.count("npx playwright test --project=bundle-smoke --reporter=line") == 2
 
     fixture_start = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
-    assert (
-        'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
-    )
+    assert 'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
     assert "rotate_playwright_auth_state.py" in fixture_start
+
+
+def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
+    """Merge-queue refs are deleted on dequeue, so a save there helps nobody.
+
+    Actions scopes a cache to the ref that wrote it. gh-readonly-queue refs are
+    unique per entry and short-lived, so those saves are unreadable by every
+    future run while still consuming the repo's 10 GB LRU budget and evicting
+    the main-scoped copies runs actually restore. Measured before the guard:
+    0/13 golden-fixture hits on merge_group, ~17 min rebuilt every time.
+    """
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    guard = "github.event_name != 'merge_group'"
+
+    writers = workflow.count("uses: actions/cache/save@")
+    assert writers == 5, f"cache writer count changed to {writers}; guard each one"
+    cache_steps = [step for step in workflow.split("      - name:") if "uses: actions/cache/save@" in step]
+    assert len(cache_steps) == writers
+    assert all(guard in step for step in cache_steps)
+
+    # cache-ui-dist is the documented exception: it wraps `actions/cache`, whose
+    # save is a post-step, so a step-level `if:` would suppress the restore too
+    # and cost every queue entry the ~5 min frontend build.
+    ui_dist_step = workflow.split("- name: Restore openmetadata-ui dist cache", 1)[1].split(
+        "- name: Build with Maven", 1
+    )[0]
+    assert "uses: ./.github/actions/cache-ui-dist" in ui_dist_step
+    assert guard not in ui_dist_step
+
+    # populate-playwright-caches.yml is the SINGLE main-scoped writer that
+    # replaces them, and its warm job must stop before the shards.
+    warm = (ROOT / ".github/workflows/populate-playwright-caches.yml").read_text()
+    assert "warm_caches_only: true" in warm
+    assert "uses: ./.github/workflows/playwright-e2e-reusable.yml" in warm
+    assert "!inputs.warm_caches_only" in workflow
+
+    # The push trigger must stay unfiltered: the fixture and distribution
+    # fingerprints span far more than the apt/yarn/browser key inputs, and a
+    # skipped warm costs every queue entry ~17 min.
+    #
+    # Bound to the `on:` block first. `push:` is the LAST trigger, so slicing
+    # forward to a sibling key finds no terminator and silently runs to EOF —
+    # the assertions would then be inspecting the jobs, and a `paths:` added
+    # anywhere later in the file would trip the check for the wrong reason.
+    triggers = warm.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+    assert "jobs:" not in triggers
+    push_trigger = triggers.split("  push:", 1)[1]
+    assert "branches:\n      - main" in push_trigger
+    assert "paths:" not in push_trigger
+
+    # One writer, not two — a second warmer workflow is the drift the
+    # one-writer rule exists to prevent.
+    second_writer = ROOT / ".github/workflows/populate-playwright-fixture-cache.yml"
+    assert not second_writer.exists()
+
+
+def test_prune_workflow_only_deletes_caches_on_dead_queue_refs() -> None:
+    prune = (ROOT / ".github/workflows/prune-ephemeral-caches.yml").read_text()
+    assert "actions: write" in prune
+    # Deleting a cache whose ref is still live would force an in-flight queue
+    # entry to rebuild it.
+    assert 'grep -qxF "$ref" <<<"$live"' in prune
+    assert "kept=$((kept + 1))" in prune
+    assert "refs/heads/gh-readonly-queue/" in prune
+    # `set -e` must abort before the delete loop if the ref listing fails —
+    # an empty list must never read as "every queue ref is dead".
+    listing = prune.split("live=$(gh api", 1)[0]
+    assert "set -euo pipefail" in listing

@@ -23,7 +23,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import { fillDescriptionBox, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
@@ -71,7 +71,6 @@ const test = base.extend<{
 
 test.describe('Data Products', () => {
   test.describe.configure({ mode: 'serial' });
-  test.slow();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -126,6 +125,8 @@ test.describe('Data Products', () => {
   });
 
   test('Create Data Product and Manage Assets', async ({ page }) => {
+    // Add assets flow waits on the search API which can take >30s under CI load
+    test.slow();
     const dataProduct = new DataProduct([domain]);
     const table = new TableClass();
 
@@ -479,7 +480,7 @@ test.describe('Data Products', () => {
       await page
         .locator('#root\\/displayName')
         .fill(dataProduct.data.displayName);
-      await page.locator(descriptionBox).fill(dataProduct.data.description);
+      await fillDescriptionBox(page, dataProduct.data.description);
 
       const domainContainer = page.getByTestId('domain-select');
       await domainContainer.scrollIntoViewIfNeeded();
@@ -510,7 +511,7 @@ test.describe('Data Products', () => {
       await expect(
         page
           .getByTestId('add-domain-form')
-          .getByTestId('tags-container')
+          .getByTestId('filter-chip')
           .getByText(tag.data.displayName)
       ).toBeVisible();
     });
@@ -550,9 +551,15 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Navigate to data product details', async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      // The listing is not what this test covers; going straight to the
+      // details page avoids the sidebar click and the search-index lag.
+      await page.goto(
+        `/dataProduct/${encodeURIComponent(
+          dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
       await waitForAllLoadersToDisappear(page);
-      await selectDataProduct(page, dataProduct.data);
     });
 
     await test.step('Data Observability tab is visible on data product page', async () => {

@@ -14,7 +14,6 @@ Source connection handler
 """
 
 from functools import partial
-from typing import Optional
 
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -53,8 +52,8 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -64,11 +63,11 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
         service_connection = self.service_connection
 
         class SchemaHolder(BaseModel):
-            database: Optional[str] = None  # noqa: UP045
+            database: str | None = None
 
         holder = SchemaHolder()
 
-        def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None):  # noqa: UP045
+        def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: str | None = None):
             # If database name is provided, use it directly instead of listing all databases
             if database_name:
                 holder_.database = database_name

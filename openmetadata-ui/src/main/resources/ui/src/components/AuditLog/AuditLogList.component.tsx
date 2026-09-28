@@ -11,9 +11,23 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Space, Typography } from 'antd';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { compact, startCase } from 'lodash';
-import { FC, isValidElement, ReactNode, useCallback, useMemo } from 'react';
+import {
+  FC,
+  isValidElement,
+  lazy,
+  ReactNode,
+  Suspense,
+  useCallback,
+  useMemo,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
@@ -33,13 +47,15 @@ import {
   getUserPath,
 } from '../../utils/RouterUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
   AuditLogListItemProps,
   AuditLogListProps,
 } from './AuditLogList.interface';
-import './AuditLogList.less';
+
+const RichTextEditorPreviewerV1 = lazy(
+  () => import('../common/RichTextEditor/RichTextEditorPreviewerV1')
+);
 
 const getFieldLabel = (name?: string) => {
   if (!name) {
@@ -69,6 +85,15 @@ const parseValue = (value: unknown): unknown => {
   return value;
 };
 
+const formatObjectChangeValue = (parsed: object): string => {
+  const maybeEntity = parsed as { displayName?: string; name?: string };
+  if (maybeEntity.displayName || maybeEntity.name) {
+    return maybeEntity.displayName ?? maybeEntity.name ?? '';
+  }
+
+  return JSON.stringify(parsed);
+};
+
 const formatChangeValue = (value: unknown): string => {
   const parsed = parseValue(value);
   if (parsed === null || parsed === undefined) {
@@ -83,12 +108,7 @@ const formatChangeValue = (value: unknown): string => {
     return asText || parsed;
   }
   if (typeof parsed === 'object') {
-    const maybeEntity = parsed as { displayName?: string; name?: string };
-    if (maybeEntity.displayName || maybeEntity.name) {
-      return maybeEntity.displayName ?? maybeEntity.name ?? '';
-    }
-
-    return JSON.stringify(parsed);
+    return formatObjectChangeValue(parsed);
   }
 
   return String(parsed);
@@ -137,35 +157,34 @@ const extractEntityInfo = (value: unknown): EntityInfo[] => {
   );
 };
 
+const LINKABLE_FIELD_RESOLVERS: Record<string, (fqn: string) => string> = {
+  tags: getTagPath,
+  dataproducts: (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
+  teams: getTeamsWithFqnPath,
+  domain: getDomainPath,
+  owner: getUserPath,
+  reviewers: getUserPath,
+  experts: getUserPath,
+};
+
+const findLinkableFieldKey = (field: string): string | undefined =>
+  Object.keys(LINKABLE_FIELD_RESOLVERS).find(
+    (key) => field === key || field.endsWith(`.${key}`)
+  );
+
+const isDescriptionField = (fieldName: string): boolean =>
+  fieldName === 'description' || fieldName.endsWith('.description');
+
 const getEntityLinkForField = (
   fieldName: string,
   entityInfo: EntityInfo
 ): string | null => {
   const field = fieldName.toLowerCase();
+  const matchedKey = findLinkableFieldKey(field);
 
-  if (field === 'tags' || field.endsWith('.tags')) {
-    return getTagPath(entityInfo.fqn);
-  }
-  if (field === 'dataproducts' || field.endsWith('.dataproducts')) {
-    return getEntityLinkFromType(entityInfo.fqn, EntityType.DATA_PRODUCT);
-  }
-  if (field === 'teams' || field.endsWith('.teams')) {
-    return getTeamsWithFqnPath(entityInfo.fqn);
-  }
-  if (field === 'domain' || field.endsWith('.domain')) {
-    return getDomainPath(entityInfo.fqn);
-  }
-  if (field === 'owner' || field.endsWith('.owner')) {
-    return getUserPath(entityInfo.fqn);
-  }
-  if (field === 'reviewers' || field.endsWith('.reviewers')) {
-    return getUserPath(entityInfo.fqn);
-  }
-  if (field === 'experts' || field.endsWith('.experts')) {
-    return getUserPath(entityInfo.fqn);
-  }
-
-  return null;
+  return matchedKey
+    ? LINKABLE_FIELD_RESOLVERS[matchedKey](entityInfo.fqn)
+    : null;
 };
 
 const renderEntityLinks = (
@@ -187,7 +206,10 @@ const renderEntityLinks = (
 
     if (link) {
       return (
-        <Link className="change-entity-link" key={entityKey} to={link}>
+        <Link
+          className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
+          key={entityKey}
+          to={link}>
           {label}
         </Link>
       );
@@ -208,24 +230,222 @@ const resolveEntityType = (value?: string): EntityType | undefined => {
   );
 };
 
-const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
-  const { t } = useTranslation();
+const resolveEntityLabel = (
+  log: AuditLogListItemProps['log'],
+  entityFQN?: string
+): string | undefined => {
+  const entityNameLabel =
+    getEntityName(log.changeEvent?.entity) ||
+    (log.changeEvent?.entity as { name?: string })?.name;
+  const splitEntityFqn = entityFQN ? Fqn.split(entityFQN).pop() : undefined;
 
-  const userName = log.userName || t('label.system');
+  return (
+    entityNameLabel ||
+    splitEntityFqn ||
+    log.changeEvent?.entityFullyQualifiedName ||
+    log.entityId
+  );
+};
+
+const getAuditLogDisplayInfo = (
+  log: AuditLogListItemProps['log'],
+  systemUserLabel: string
+) => {
+  const userName = log.userName || systemUserLabel;
   const eventType = log.eventType ? startCase(log.eventType) : '';
   const entityType = log.entityType ?? log.changeEvent?.entityType;
   const entityFQN =
     log.entityFQN ??
     log.changeEvent?.entityFullyQualifiedName ??
     log.changeEvent?.entity?.fullyQualifiedName;
-  const entityLabel =
-    getEntityName(log.changeEvent?.entity) ||
-    (log.changeEvent?.entity as { name?: string })?.name ||
-    (entityFQN ? Fqn.split(entityFQN).pop() : undefined) ||
-    log.changeEvent?.entityFullyQualifiedName ||
-    log.entityId;
+  const entityLabel = resolveEntityLabel(log, entityFQN);
   const normalizedType = resolveEntityType(entityType);
-  const timestamp = log.eventTs;
+
+  return {
+    userName,
+    eventType,
+    entityType,
+    entityFQN,
+    entityLabel,
+    normalizedType,
+    timestamp: log.eventTs,
+  };
+};
+
+const getUserEntityLink = (
+  log: AuditLogListItemProps['log'],
+  entityLabel?: string
+): ReactNode | null => {
+  const userNameForLink =
+    log.changeEvent?.entity?.name ??
+    log.changeEvent?.entity?.fullyQualifiedName ??
+    log.userName ??
+    entityLabel;
+  if (!userNameForLink) {
+    return null;
+  }
+
+  return (
+    <Link
+      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
+      to={getUserPath(userNameForLink)}>
+      {entityLabel ?? userNameForLink}
+    </Link>
+  );
+};
+
+const getTypedEntityLink = (
+  entityFQN?: string,
+  normalizedType?: EntityType,
+  entityLabel?: string
+): ReactNode | null => {
+  if (!normalizedType || !entityFQN) {
+    return null;
+  }
+  const link = getEntityLinkFromType(entityFQN, normalizedType);
+  if (!link) {
+    return null;
+  }
+
+  return (
+    <Link
+      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
+      to={link}>
+      {entityLabel ?? entityFQN}
+    </Link>
+  );
+};
+
+interface AuditLogItemHeaderProps {
+  userLink: ReactNode;
+  eventType: string;
+  impersonatedBy?: string;
+}
+
+const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
+  userLink,
+  eventType,
+  impersonatedBy,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      align="center"
+      data-testid="item-header"
+      direction="row"
+      gap={1}
+      wrap="wrap">
+      {userLink}
+      <Typography className="tw:text-quaternary">–</Typography>
+      <Typography
+        className="tw:text-fg-brand-primary"
+        data-testid="event-type"
+        weight="medium">
+        {eventType}
+      </Typography>
+      {impersonatedBy && (
+        <>
+          <Typography className="tw:text-quaternary">–</Typography>
+          <Typography data-testid="impersonated-by">
+            {t('label.impersonated-by-with-colon')}
+          </Typography>{' '}
+          <Link
+            className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
+            to={getUserPath(impersonatedBy)}>
+            {impersonatedBy}
+          </Link>
+        </>
+      )}
+    </Box>
+  );
+};
+
+interface AuditLogItemDescriptionProps {
+  descriptionNodes: ReactNode[];
+  eventType: string;
+  entityLink: ReactNode;
+}
+
+const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
+  descriptionNodes,
+  eventType,
+  entityLink,
+}) => (
+  <div data-testid="description-content">
+    {descriptionNodes.length > 0 ? (
+      <div>
+        {descriptionNodes.map((node, idx) => (
+          <div key={isValidElement(node) ? node.key : undefined}>
+            {node}
+            {idx < descriptionNodes.length - 1 && (
+              <span className="tw:text-quaternary">; </span>
+            )}
+          </div>
+        ))}
+      </div>
+    ) : (
+      <Box align="center" direction="row" gap={1}>
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {eventType}
+        </Typography>
+        {entityLink}
+      </Box>
+    )}
+  </div>
+);
+
+interface AuditLogItemMetaProps {
+  entityType?: string;
+  timestamp?: number;
+}
+
+const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
+  entityType,
+  timestamp,
+}) => (
+  <Box
+    align="center"
+    className="tw:mt-1"
+    data-testid="item-meta"
+    direction="row"
+    gap={2}>
+    {entityType && (
+      <Typography
+        className="tw:text-fg-brand-primary"
+        data-testid="entity-type-badge"
+        size="text-xs">
+        {startCase(entityType)}
+      </Typography>
+    )}
+    {entityType && timestamp && (
+      <Typography className="tw:text-quaternary" size="text-xs">
+        |
+      </Typography>
+    )}
+    {timestamp && (
+      <Typography
+        className="tw:text-quaternary"
+        data-testid="timestamp"
+        size="text-xs">
+        {getRelativeTime(timestamp)}
+      </Typography>
+    )}
+  </Box>
+);
+
+const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
+  const { t } = useTranslation();
+
+  const {
+    userName,
+    eventType,
+    entityType,
+    entityFQN,
+    entityLabel,
+    normalizedType,
+    timestamp,
+  } = getAuditLogDisplayInfo(log, t('label.system'));
 
   const isLinkableField = useCallback((fieldName?: string): boolean => {
     if (!fieldName) {
@@ -269,17 +489,18 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           const showProfilePic = isUserField(fieldName);
 
           return (
-            <span className="change-value-links">
+            <span className="tw:inline">
               {links.map((link, idx) => {
                 const entities = extractEntityInfo(value);
                 const entity = entities[idx];
 
                 return (
                   <span
-                    className="change-value-item"
+                    className="tw:inline-flex tw:items-center tw:gap-1"
                     key={`${keyPrefix}-wrap-${entity?.fqn ?? entity?.name}`}>
                     {showProfilePic && entity && (
                       <ProfilePicture
+                        className="tw:align-middle"
                         displayName={entity.displayName ?? entity.name}
                         height="16"
                         name={entity.name}
@@ -294,6 +515,17 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             </span>
           );
         }
+      }
+
+      if (isDescriptionField(fieldName)) {
+        const markdown =
+          typeof value === 'string' ? value : formatChangeValue(value);
+
+        return (
+          <Suspense fallback={<span>{formatChangeValue(value)}</span>}>
+            <RichTextEditorPreviewerV1 markdown={markdown} />
+          </Suspense>
+        );
       }
 
       return <span>{formatChangeValue(value)}</span>;
@@ -322,9 +554,13 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         );
 
         details.push(
-          <span className="change-detail" key={`added-${change.name}`}>
-            <span className="change-action">{addedLabel}</span>{' '}
-            <span className="change-field">{label || fallbackField}</span>
+          <span key={`added-${change.name}`}>
+            <Typography as="span" className="tw:text-tertiary">
+              {addedLabel}
+            </Typography>{' '}
+            <Typography as="span" weight="medium">
+              {label || fallbackField}
+            </Typography>
             {valueNode && <>: {valueNode}</>}
           </span>
         );
@@ -344,12 +580,17 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             change.newValue,
             `updated-new-${change.name}`
           );
+          const hasValueChange = oldValueNode || newValueNode;
 
           details.push(
-            <span className="change-detail" key={`updated-${change.name}`}>
-              <span className="change-action">{updatedLabel}</span>{' '}
-              <span className="change-field">{label || fallbackField}</span>
-              {(oldValueNode || newValueNode) && (
+            <span key={`updated-${change.name}`}>
+              <Typography as="span" className="tw:text-tertiary">
+                {updatedLabel}
+              </Typography>{' '}
+              <Typography as="span" weight="medium">
+                {label || fallbackField}
+              </Typography>
+              {hasValueChange && (
                 <>
                   : {oldValueNode}
                   {oldValueNode && newValueNode && ' → '}
@@ -369,9 +610,13 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         );
 
         details.push(
-          <span className="change-detail" key={`deleted-${change.name}`}>
-            <span className="change-action">{removedLabel}</span>{' '}
-            <span className="change-field">{label || fallbackField}</span>
+          <span key={`deleted-${change.name}`}>
+            <Typography as="span" className="tw:text-tertiary">
+              {removedLabel}
+            </Typography>{' '}
+            <Typography as="span" weight="medium">
+              {label || fallbackField}
+            </Typography>
             {valueNode && <>: {valueNode}</>}
           </span>
         );
@@ -395,52 +640,47 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
   const entityLink = useMemo(() => {
     if (normalizedType === EntityType.USER) {
-      const userNameForLink =
-        log.changeEvent?.entity?.name ??
-        log.changeEvent?.entity?.fullyQualifiedName ??
-        log.userName ??
-        entityLabel;
-      if (userNameForLink) {
-        return (
-          <Link className="entity-link" to={getUserPath(userNameForLink)}>
-            {entityLabel ?? userNameForLink}
-          </Link>
-        );
-      }
-    }
-    if (normalizedType && entityFQN) {
-      const link = getEntityLinkFromType(entityFQN, normalizedType);
-      if (link) {
-        return (
-          <Link className="entity-link" to={link}>
-            {entityLabel ?? entityFQN}
-          </Link>
-        );
+      const userLinkNode = getUserEntityLink(log, entityLabel);
+      if (userLinkNode) {
+        return userLinkNode;
       }
     }
 
+    const typedLinkNode = getTypedEntityLink(
+      entityFQN,
+      normalizedType,
+      entityLabel
+    );
+    if (typedLinkNode) {
+      return typedLinkNode;
+    }
+
     return (
-      <Typography.Text className="entity-name">
-        {entityLabel ?? entityFQN ?? '--'}
-      </Typography.Text>
+      <Typography size="text-sm">{entityLabel ?? entityFQN ?? '--'}</Typography>
     );
   }, [normalizedType, entityFQN, entityLabel, log]);
 
   const userLink = useMemo(() => {
     if (log.userName) {
       return (
-        <Link className="user-link" to={getUserPath(log.userName)}>
+        <Link
+          className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
+          to={getUserPath(log.userName)}>
           {userName}
         </Link>
       );
     }
 
-    return <Typography.Text className="user-name">{userName}</Typography.Text>;
+    return <Typography weight="semibold">{userName}</Typography>;
   }, [log.userName, userName]);
 
   return (
-    <div className="audit-log-list-item" data-testid="audit-log-list-item">
-      <div className="item-avatar" data-testid="item-avatar">
+    <Box
+      className="tw:p-4 tw:border-b tw:border-primary tw:transition-colors tw:hover:bg-secondary tw:last:border-b-0"
+      data-testid="audit-log-list-item"
+      direction="row"
+      gap={2}>
+      <div className="tw:shrink-0" data-testid="item-avatar">
         <ProfilePicture
           displayName={userName}
           height="32"
@@ -448,91 +688,60 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           width="32"
         />
       </div>
-      <div className="item-content">
-        <div className="item-header" data-testid="item-header">
-          <Space size={4}>
-            {userLink}
-            <Typography.Text className="event-separator">–</Typography.Text>
-            <Typography.Text className="event-type" data-testid="event-type">
-              {eventType}
-            </Typography.Text>
-            {log.impersonatedBy && (
-              <>
-                <Typography.Text className="event-separator">–</Typography.Text>
-                <Typography.Text
-                  className="impersonated-by"
-                  data-testid="impersonated-by">
-                  {t('label.impersonated-by-with-colon')}
-                </Typography.Text>{' '}
-                <Link
-                  className="user-link"
-                  to={getUserPath(log.impersonatedBy)}>
-                  {log.impersonatedBy}
-                </Link>
-              </>
-            )}
-          </Space>
-        </div>
-        <div className="item-description">
-          {descriptionNodes.length > 0 ? (
-            <div className="description-content">
-              {descriptionNodes.map((node, idx) => (
-                <span
-                  className="description-item"
-                  key={isValidElement(node) ? node.key : undefined}>
-                  {node}
-                  {idx < descriptionNodes.length - 1 && (
-                    <span className="description-separator">; </span>
-                  )}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <Space size={4}>
-              <Typography.Text className="action-text">
-                {eventType}
-              </Typography.Text>
-              {entityLink}
-            </Space>
-          )}
-        </div>
-        <div className="item-meta" data-testid="item-meta">
-          <Space size={8} split={<span className="meta-separator">|</span>}>
-            {entityType && (
-              <Typography.Text
-                className="meta-item entity-type-badge"
-                data-testid="entity-type-badge">
-                {startCase(entityType)}
-              </Typography.Text>
-            )}
-            {timestamp && (
-              <Typography.Text
-                className="meta-item timestamp"
-                data-testid="timestamp">
-                {getRelativeTime(timestamp)}
-              </Typography.Text>
-            )}
-          </Space>
-        </div>
-      </div>
-    </div>
+      <Box
+        className="tw:flex-1 tw:min-w-0 tw:items-start"
+        direction="col"
+        gap={1}>
+        <AuditLogItemHeader
+          eventType={eventType}
+          impersonatedBy={log.impersonatedBy}
+          userLink={userLink}
+        />
+        <AuditLogItemDescription
+          descriptionNodes={descriptionNodes}
+          entityLink={entityLink}
+          eventType={eventType}
+        />
+        <AuditLogItemMeta entityType={entityType} timestamp={timestamp} />
+      </Box>
+    </Box>
   );
 };
 
-const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
+const AuditLogList: FC<AuditLogListProps> = ({
+  logs,
+  isLoading,
+  hasActiveSearch,
+  hasActiveFilters,
+  onClearFilters,
+}) => {
   const { t } = useTranslation();
 
   if (isLoading) {
     return (
-      <div className="audit-log-list-container" data-testid="audit-log-list">
-        <div className="audit-log-list-header">
-          <Skeleton.Input active size="small" style={{ width: 200 }} />
+      <div data-testid="audit-log-list">
+        <div className="tw:px-4 tw:py-2 tw:bg-secondary tw:border-b tw:border-primary">
+          <Skeleton variant="text" width={200} />
         </div>
-        <div className="audit-log-list">
+        <div>
           {[1, 2, 3, 4, 5].map((i) => (
-            <div className="audit-log-list-item skeleton-item" key={i}>
-              <Skeleton active avatar paragraph={{ rows: 2 }} />
-            </div>
+            <Box
+              className="tw:p-4 tw:border-b tw:border-primary tw:last:border-b-0"
+              direction="row"
+              gap={3}
+              key={i}>
+              <Skeleton
+                className="tw:shrink-0"
+                height={32}
+                variant="circular"
+                width={32}
+              />
+              <Box className="tw:flex-1" direction="col" gap={1}>
+                <Skeleton variant="text" width="60%" />
+                <Skeleton variant="text" width="100%" />
+                <Skeleton variant="text" width="75%" />
+              </Box>
+            </Box>
           ))}
         </div>
       </div>
@@ -540,23 +749,59 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
   }
 
   if (logs.length === 0) {
+    const clearAction = onClearFilters
+      ? [
+          {
+            color: 'primary' as const,
+            key: 'clear',
+            label: t('label.clear-entity', {
+              entity: t('label.all-lowercase'),
+            }),
+            onPress: onClearFilters,
+          },
+        ]
+      : undefined;
+
+    let emptyContent: React.ReactNode;
+
+    if (hasActiveSearch) {
+      emptyContent = (
+        <EmptyPlaceholder
+          actions={clearAction}
+          description={t('message.check-spelling-or-try-different-term')}
+          icon={<NoSearch className="tw:text-quaternary" />}
+          title={t('label.no-matching-results')}
+        />
+      );
+    } else if (hasActiveFilters) {
+      emptyContent = (
+        <EmptyPlaceholder
+          actions={clearAction}
+          description={t('message.no-results-for-filters-description')}
+          icon={<NoSearch className="tw:text-quaternary" />}
+          title={t('label.no-result-for-these-filter-plural')}
+        />
+      );
+    } else {
+      emptyContent = (
+        <EmptyPlaceholder
+          description={t('message.no-audit-logs-description')}
+          title={t('label.no-audit-logs-yet')}
+          variant="blank"
+        />
+      );
+    }
+
     return (
-      <div className="audit-log-list-container" data-testid="audit-log-list">
-        <div className="audit-log-list-header">
-          <Typography.Text className="header-text">
-            {t('label.event-plural')}
-          </Typography.Text>
-        </div>
-        <div className="audit-log-list empty">
-          <ErrorPlaceHolder />
-        </div>
+      <div data-testid="audit-log-list">
+        <div className="tw:p-8">{emptyContent}</div>
       </div>
     );
   }
 
   return (
-    <div className="audit-log-list-container" data-testid="audit-log-list">
-      <div className="audit-log-list">
+    <div className="tw:w-full" data-testid="audit-log-list">
+      <div>
         {logs.map((log, index) => (
           <AuditLogListItem
             key={log.id?.toString() ?? log.changeEventId ?? index.toString()}

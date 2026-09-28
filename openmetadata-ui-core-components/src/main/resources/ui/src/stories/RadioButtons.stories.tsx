@@ -90,13 +90,3 @@ export const WithDisabled: StoryObj = {
     </RadioGroup>
   ),
 };
-
-export const StandaloneButtons: StoryObj = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <RadioButton label="Standalone Radio A" value="a" />
-      <RadioButton label="Standalone Radio B" value="b" />
-      <RadioButton isDisabled label="Standalone Radio C (disabled)" value="c" />
-    </div>
-  ),
-};

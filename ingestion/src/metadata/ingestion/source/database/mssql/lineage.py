@@ -12,8 +12,8 @@
 MSSQL lineage module
 """
 
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Iterator  # noqa: UP035
 
 from sqlalchemy.engine import Engine
 

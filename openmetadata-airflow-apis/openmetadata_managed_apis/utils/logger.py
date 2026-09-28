@@ -1,7 +1,6 @@
 import logging
 from enum import Enum
 from logging.handlers import RotatingFileHandler
-from typing import Union
 
 from airflow.configuration import conf
 
@@ -60,7 +59,7 @@ def utils_logger():
     return build_logger(Loggers.UTILS.value)
 
 
-def set_operator_logger(workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig]) -> None:  # noqa: UP007
+def set_operator_logger(workflow_config: OpenMetadataWorkflowConfig | OpenMetadataApplicationConfig) -> None:
     """
     Handle logging for the Python Operator that
     will execute the ingestion

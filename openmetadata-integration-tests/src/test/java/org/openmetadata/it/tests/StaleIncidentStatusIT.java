@@ -13,7 +13,9 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -46,6 +48,7 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -59,6 +62,10 @@ import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
  * missing made {@code GET /dataQuality/testCases/testCaseIncidentStatus/stateId/{stateId}} fail with
  * {@code EntityRelationshipNotFoundException}, and deleting the rows left both the relationship and
  * the stale {@code incidentId} on the test case behind.
+ *
+ * <p>The by-id sibling has the same exposure from the other direction: an id with no row at all —
+ * from a stale {@code incidentId}, or from a caller passing a stateId where a record id belongs —
+ * must answer 404 rather than dereferencing a null record into a 500.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -179,6 +186,85 @@ public class StaleIncidentStatusIT {
     resolutionStatusRepository().deleteById(UUID.randomUUID(), true);
   }
 
+  @Test
+  void byIdEndpointReturnsNotFoundForUnknownId() {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().testCaseResolutionStatuses().get(UUID.randomUUID()));
+    assertEquals(
+        404, error.getStatusCode(), "an id with no row must be a 404, not a NullPointerException");
+  }
+
+  /**
+   * The production trigger: {@code TestCase.incidentId} carries the incident's stateId, so a client
+   * that feeds it to the by-id endpoint always misses the record table.
+   */
+  @Test
+  void byIdEndpointReturnsNotFoundForStateId(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "byIdState");
+    TestCase testCase = createTestCase(table, "byIdStateCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus incident = createIncidentRecord(testCase);
+
+    assertNotEquals(
+        incident.getId(), incident.getStateId(), "stateId and record id must be distinct ids");
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().testCaseResolutionStatuses().get(incident.getStateId()));
+    assertEquals(404, error.getStatusCode(), "a stateId is not a record id, so it must 404");
+  }
+
+  /** The not-found guard must not swallow a record that does exist. */
+  @Test
+  void byIdEndpointReturnsHealthyRecord(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "byIdOk");
+    TestCase testCase = createTestCase(table, "byIdOkCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus incident = createIncidentRecord(testCase);
+
+    TestCaseResolutionStatus fetched =
+        SdkClients.adminClient().testCaseResolutionStatuses().get(incident.getId());
+
+    assertEquals(incident.getId(), fetched.getId());
+    assertNotNull(fetched.getTestCaseReference(), "testCaseReference must be resolved");
+    assertEquals(testCase.getId(), fetched.getTestCaseReference().getId());
+  }
+
+  /**
+   * The write path shares the same guard, and regressing it would 500 rather than 404 exactly as the
+   * read path did. The record is resolved before the patch is applied, so an empty patch is enough.
+   */
+  @Test
+  void patchByIdReturnsNotFoundForUnknownId() {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .testCaseResolutionStatuses()
+                    .patch(UUID.randomUUID(), MAPPER.createArrayNode()));
+    assertEquals(
+        404, error.getStatusCode(), "an id with no row must be a 404, not a NullPointerException");
+  }
+
+  @Test
+  void patchByIdReturnsNotFoundForStateId(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "patchState");
+    TestCase testCase = createTestCase(table, "patchStateCase_" + ns.uniqueShortId());
+    TestCaseResolutionStatus incident = createIncidentRecord(testCase);
+
+    assertNotEquals(
+        incident.getId(), incident.getStateId(), "stateId and record id must be distinct ids");
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .testCaseResolutionStatuses()
+                    .patch(incident.getStateId(), MAPPER.createArrayNode()));
+    assertEquals(404, error.getStatusCode(), "a stateId is not a record id, so it must 404");
+  }
+
   private JsonNode readData(String response) throws Exception {
     assertNotNull(response, "endpoint must not fail");
     JsonNode data = MAPPER.readTree(response).get("data");
@@ -188,6 +274,11 @@ public class StaleIncidentStatusIT {
 
   /** Creates a real incident by ingesting a failing result, and returns its stateId. */
   private UUID createIncident(TestCase testCase) {
+    return createIncidentRecord(testCase).getStateId();
+  }
+
+  /** Creates a real incident by ingesting a failing result, and returns the opened record. */
+  private TestCaseResolutionStatus createIncidentRecord(TestCase testCase) {
     OpenMetadataClient client = SdkClients.adminClient();
     CreateTestCaseResult result =
         new CreateTestCaseResult()
@@ -199,8 +290,9 @@ public class StaleIncidentStatusIT {
     TestCaseResolutionStatus latest =
         resolutionStatusRepository().getLatestRecord(testCase.getFullyQualifiedName());
     assertNotNull(latest, "a failing result should have opened an incident");
+    assertNotNull(latest.getId());
     assertNotNull(latest.getStateId());
-    return latest.getStateId();
+    return latest;
   }
 
   /** Simulates the production corruption: rows survive but lose their parentOf relationship. */

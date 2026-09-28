@@ -21,7 +21,7 @@ import {
 } from '../generated/entity/feed/conversation';
 import { ConversationFilterType } from '../generated/type/conversationFilterType';
 import { ReactionType } from '../generated/type/reaction';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/conversations';
 

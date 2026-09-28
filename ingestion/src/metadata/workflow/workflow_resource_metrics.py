@@ -14,7 +14,6 @@ Module to capture resource metrics for workflow execution monitoring
 """
 
 import os
-from typing import Optional
 
 import psutil
 
@@ -22,7 +21,7 @@ import psutil
 class WorkflowResourceMetrics:
     """Captures CPU and memory metrics for a workflow process and all its children."""
 
-    def __init__(self, pid: Optional[int] = None):  # noqa: UP045
+    def __init__(self, pid: int | None = None):
         """Initialize metrics for the given process ID (defaults to current process)."""
         self.pid: int = pid or os.getpid()
         self._collect_metrics()

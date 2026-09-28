@@ -10,22 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
 import {
   addMultiOwner,
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
   removeOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -130,9 +133,14 @@ test('Classification Page', async ({ page }) => {
     ).toBeVisible();
     await expect(page.locator('[data-testid="table"]')).toBeVisible();
 
-    await expect(
-      page.locator('.ant-table-thead > tr > .ant-table-cell')
-    ).toHaveText(['Enabled', 'Tag', 'Display Name', 'Description', 'Actions']);
+    await expect(page.locator('thead > tr > th')).toHaveText([
+      'Enabled',
+      'Tag',
+      'Display Name',
+      'Usage',
+      'Description',
+      'Actions',
+    ]);
   });
 
   await test.step('Disabled system tags should not render', async () => {
@@ -184,34 +192,26 @@ test('Classification Page', async ({ page }) => {
     // Check if the disabled Classification tag is not visible in the table
     await table.visitEntityPage(page);
 
-    await page.click(
+    const disabledTrigger = page.locator(
       '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
     );
+    await openClassificationTagPicker(page, disabledTrigger);
 
     const tagResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
-        tag.responseData.displayName
-      )}***`
+        escapeESReservedCharacters(tag.responseData.displayName)
+      )}*`
     );
-    await page.fill(
-      '[data-testid="tag-selector"] input',
-      tag.responseData.displayName
-    );
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(tag.responseData.displayName);
     await tagResponse;
 
     await expect(
-      page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-    ).toContainText(tag.responseData.displayName);
-
-    await expect(
-      page.getByTestId(
-        `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
-      )
+      page.getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
     ).not.toBeVisible();
 
     await expect(page.getByText('No Tags are available')).toBeVisible();
-
-    await expect(page.getByTestId('saveAssociatedTag')).toBeDisabled();
 
     // Re-enable the disabled Classification
     await classification.visitPage(page);
@@ -280,7 +280,7 @@ test('Classification Page', async ({ page }) => {
       .getByTestId('displayName')
       .getByRole('textbox')
       .fill(NEW_CLASSIFICATION.displayName);
-    await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
+    await fillDescriptionBox(page, NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
     const createTagCategoryResponse = page.waitForResponse(
@@ -300,9 +300,9 @@ test('Classification Page', async ({ page }) => {
   await test.step('Create tag with validation checks', async () => {
     await page.click(`text=${NEW_CLASSIFICATION.displayName}`);
 
-    await expect(page.locator('.activeCategory')).toContainText(
-      NEW_CLASSIFICATION.displayName
-    );
+    await expect(
+      page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+    ).toContainText(NEW_CLASSIFICATION.displayName);
 
     await page.click('[data-testid="add-new-tag-button"]');
 
@@ -314,7 +314,7 @@ test('Classification Page', async ({ page }) => {
       .getByTestId('displayName')
       .getByRole('textbox')
       .fill(NEW_TAG.displayName);
-    await page.locator(descriptionBox).fill(NEW_TAG.description);
+    await fillDescriptionBox(page, NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
     await page.getByRole('button', { name: NEW_TAG.icon }).click();
     await page
@@ -429,16 +429,25 @@ test('Classification Page', async ({ page }) => {
       tag
     );
 
-    await page.click('[data-testid="edit-button"]');
+    await openClassificationTagPicker(page, page.getByTestId('edit-button'));
 
-    await page.click('[data-testid="remove-tags"]');
+    const searchRemove = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent('Personal')}*`
+    );
+    await page.getByTestId('classification-tag-picker-search').fill('Personal');
+    await searchRemove;
+
+    await page.getByTestId('tree-node-PersonalData.Personal').click();
+
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
     const removeTags = page.waitForResponse(
       (response) =>
         response.request().method() === 'PATCH' &&
         response.url().includes('/api/v1/databaseSchemas/')
     );
-    await page.click('[data-testid="saveAssociatedTag"]');
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await removeTags;
   });
 
@@ -455,9 +464,9 @@ test('Classification Page', async ({ page }) => {
       .click();
     await classificationResponse;
 
-    await expect(page.locator('.activeCategory')).toContainText(
-      NEW_CLASSIFICATION.displayName
-    );
+    await expect(
+      page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+    ).toContainText(NEW_CLASSIFICATION.displayName);
 
     await expect(page.locator('[data-testid="table"]')).toContainText(
       NEW_TAG.name
@@ -529,23 +538,31 @@ test('Search tag using classification display name should work', async ({
 
   await table.visitEntityPage(page);
 
-  const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
+  // The picker loads its tag list on first open, so this is the open's own request.
+  const initialQueryResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*index=tag*'
+  );
 
-  await page
+  const displayNameTrigger = page
     .getByTestId('KnowledgePanel.Tags')
     .getByTestId('tags-container')
     .getByTestId('add-tag')
-    .first()
-    .click();
+    .first();
 
-  await initialQueryResponse;
+  await openClassificationTagPicker(page, displayNameTrigger);
+
+  expect((await initialQueryResponse).status()).toBe(200);
 
   const tagSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(displayNameToSearch)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(displayNameToSearch)
+    )}*`
   );
 
   // Enter the display name in the search box
-  await page.fill('[data-testid="tag-selector"] input', displayNameToSearch);
+  await page
+    .getByTestId('classification-tag-picker-search')
+    .fill(displayNameToSearch);
 
   const response = await tagSearchResponse;
   const searchResults = await response.json();
@@ -555,17 +572,17 @@ test('Search tag using classification display name should work', async ({
 
   // Verify that the classification display name is shown in search input
   await expect(
-    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-  ).toContainText(displayNameToSearch);
+    page.getByTestId('classification-tag-picker-search')
+  ).toHaveValue(displayNameToSearch);
 
-  // Verify that the tag with matching display name is shown in dropdown
+  // Verify that the tag with matching display name is shown in the tree
   await expect(
-    page.locator('.ant-select-dropdown').getByText(tag.responseData.displayName)
+    page.getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
   ).toBeVisible();
 
-  // Verify the tag is selectable in the dropdown
+  // Verify the tag is selectable in the tree
   await expect(
-    page.getByTestId(`tag-${tag.responseData.fullyQualifiedName}`)
+    page.getByTestId(`tree-node-${tag.responseData.fullyQualifiedName}`)
   ).toBeVisible();
 });
 
@@ -762,27 +779,45 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     await expect(tagsPanel.getByTestId(`tag-${keptTagFqn}`)).toBeVisible();
     await expect(tagsPanel.getByTestId(`tag-${removedTagFqn}`)).toBeVisible();
 
-    await tagsPanel.getByTestId('edit-button').first().click();
+    await openClassificationTagPicker(
+      page,
+      tagsPanel.getByTestId('edit-button').first()
+    );
 
-    await expect(page.locator('#tagsForm_tags')).toBeVisible();
-
+    // Search for and uncheck the tag to remove
+    const searchRemove = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response
+          .url()
+          .includes(
+            encodeURIComponent(escapeESReservedCharacters(removedTagFqn))
+          ) &&
+        response.request().method() === 'GET'
+    );
     await page
-      .getByTestId('tag-selector')
-      .getByTestId(`selected-tag-${removedTagFqn}`)
-      .getByTestId('remove-tags')
-      .locator('svg')
-      .click();
+      .getByTestId('classification-tag-picker-search')
+      .fill(removedTagFqn);
+    await searchRemove;
+    await page.getByTestId(`tree-node-${removedTagFqn}`).click();
 
-    await page.locator('#tagsForm_tags').click();
-    await page.locator('#tagsForm_tags').fill(addedTag.data.name);
-
-    await expect(page.getByTestId(`tag-${addedTagFqn}`).first()).toBeVisible();
-    await page.getByTestId(`tag-${addedTagFqn}`).first().click();
-
+    // Now search for and select the tag to add
+    const searchAdd = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response
+          .url()
+          .includes(
+            encodeURIComponent(escapeESReservedCharacters(addedTag.data.name))
+          )
+    );
     await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('saveAssociatedTag')
-      .waitFor({ state: 'visible' });
+      .getByTestId('classification-tag-picker-search')
+      .fill(addedTag.data.name);
+    await searchAdd;
+    await page.getByTestId(`tree-node-${addedTagFqn}`).click();
+
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
     const patchResponse = page.waitForResponse(
       (response) =>
@@ -790,7 +825,8 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
         response.request().method() === 'PATCH'
     );
 
-    await page.getByTestId('saveAssociatedTag').click();
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
 
     const response = await patchResponse;
 

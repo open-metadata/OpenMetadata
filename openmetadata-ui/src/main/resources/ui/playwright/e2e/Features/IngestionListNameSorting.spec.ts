@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { SORT_ORDER } from '../../../src/enums/common.enum';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -72,12 +74,14 @@ const renderedNames = (body: {
   (body.data ?? []).map((pipeline) => pipeline.displayName ?? pipeline.name);
 
 const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/services/ingestionPipelines?') &&
       response.url().includes('sortField=displayName') &&
-      (!cursored || response.url().includes('after=')) &&
-      response.status() === 200
+      (!cursored || response.url().includes('after=')),
+    200
   );
 
 /**
@@ -92,12 +96,14 @@ const expectSortDelegatedToServer = async (
   nameHeader: Locator,
   sortOrder: SORT_ORDER
 ) => {
-  const sortedResponse = page.waitForResponse(
+  const sortedResponse = waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/services/ingestionPipelines?') &&
       response.url().includes(`sortField=displayName`) &&
-      response.url().includes(`sortOrder=${sortOrder}`) &&
-      response.status() === 200
+      response.url().includes(`sortOrder=${sortOrder}`),
+    200
   );
 
   await nameHeader.click();
@@ -161,7 +167,9 @@ test.describe('Ingestion agent list Name column sorting', () => {
     await stubIngestionSchedulerStatus(page);
 
     await test.step('Open the database agents list', async () => {
-      await page.goto('/settings/services/databases?tab=pipelines');
+      await page.goto('/settings/services/databases?tab=pipelines', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -203,7 +211,9 @@ test.describe('Ingestion agent list Name column sorting', () => {
 
     await stubIngestionSchedulerStatus(page);
 
-    await page.goto('/settings/services/databases?tab=pipelines&pageSize=1');
+    await page.goto('/settings/services/databases?tab=pipelines&pageSize=1', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     const sortedFirstPage = waitForSortedListing(page);
@@ -223,7 +233,7 @@ test.describe('Ingestion agent list Name column sorting', () => {
     // bug broke is that the page came back at all.
     const restoredPage = waitForSortedListing(page, { cursored: true });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await restoredPage;
     await waitForAllLoadersToDisappear(page);
 

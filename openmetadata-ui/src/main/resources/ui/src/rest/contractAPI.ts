@@ -13,10 +13,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import {
-  ContractAllResult,
-  ContractResultFilter,
-} from '../components/DataContract/ContractDetailTab/contract.interface';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import {
@@ -26,9 +22,14 @@ import {
 import { ContractValidation } from '../generated/entity/datacontract/contractValidation';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import {
+  ContractAllResult,
+  ContractResultFilter,
+} from '../interface/data-contract/contract.interface';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/dataContracts';
+const APPLICATION_YAML_CONTENT_TYPE = 'application/yaml';
 
 interface ListContractsParams extends ListParams {
   /**
@@ -348,7 +349,7 @@ export const exportContractToODCSYaml = async (
     `${BASE_URL}/${contractId}/odcs/yaml`,
     {
       params: { fields },
-      headers: { Accept: 'application/yaml' },
+      headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',
     }
   );
@@ -393,7 +394,7 @@ export const parseODCSYaml = async (
     `${BASE_URL}/odcs/parse/yaml`,
     yamlContent,
     {
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -434,7 +435,7 @@ export const importContractFromODCSYaml = async (
     yamlContent,
     {
       params: { entityId, entityType, objectName },
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -486,7 +487,7 @@ export const validateODCSYaml = async (
     yamlContent,
     {
       params: { entityId, entityType, objectName },
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -521,7 +522,7 @@ export const validateContractYaml = async (
     `${BASE_URL}/validate/yaml`,
     yamlContent,
     {
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -545,7 +546,7 @@ export const createOrUpdateContractFromODCSYaml = async (
     yamlContent,
     {
       params: { entityId, entityType, mode, objectName },
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 

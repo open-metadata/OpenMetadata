@@ -13,8 +13,9 @@
 AVG Metric definition
 """
 
+from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Callable, NamedTuple, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
@@ -151,7 +152,7 @@ class Mean(StaticMetric):
         return mean
 
     def get_pandas_computation(self) -> PandasComputation:
-        return PandasComputation[SumAndCount, Optional[float]](  # noqa: UP045
+        return PandasComputation[SumAndCount, float | None](
             create_accumulator=lambda: SumAndCount(0.0, 0),
             update_accumulator=lambda acc, df: Mean.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Mean.aggregate_accumulator,
@@ -192,13 +193,13 @@ class Mean(StaticMetric):
     @staticmethod
     def aggregate_accumulator(
         sum_and_count: SumAndCount,
-    ) -> Optional[float]:  # noqa: UP045
+    ) -> float | None:
         """Compute final mean from running sum and count"""
         if sum_and_count.count_value == 0:
             return None
         return sum_and_count.sum_value / sum_and_count.count_value
 
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:  # noqa: UP045
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], T | None]:
         """nosql function"""
         if is_quantifiable(self.col.type):
             return partial(adaptor.mean, column=self.col)

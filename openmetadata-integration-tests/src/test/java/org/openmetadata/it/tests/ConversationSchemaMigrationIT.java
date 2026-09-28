@@ -26,6 +26,7 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -54,6 +55,18 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+/**
+ * Exercises the shipped 2.1.0 conversation DDL against the live database, so it adds and then drops
+ * a generated column on the shared {@code conversation_entity} table. MySQL can only do that by
+ * rebuilding the table, and a transaction another test already had open on it then fails with
+ * {@code "Table definition has changed, please retry transaction"} — which is how {@code
+ * ChartResourceIT} died in CI, on the {@code ConversationDAO.deleteByEntity} delete that cascades
+ * when a test tears its tags down. {@code DbTuneIT} sidesteps the same shared-table hazard by only
+ * ever tuning a throwaway table; this suite cannot, because the point is to run the real migration
+ * against the real table. So it takes the global lock instead: nothing else may be mid-transaction
+ * while the definition moves.
+ */
+@Isolated("rebuilds the shared conversation_entity table")
 @ExtendWith(TestNamespaceExtension.class)
 class ConversationSchemaMigrationIT {
   @Test

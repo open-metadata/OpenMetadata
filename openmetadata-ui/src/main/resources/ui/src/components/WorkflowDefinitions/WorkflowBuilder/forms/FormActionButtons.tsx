@@ -30,6 +30,35 @@ interface FormActionButtonsProps {
   deleteLabel?: string;
 }
 
+interface SaveButtonProps {
+  onSave: () => void;
+  isDisabled: boolean;
+  isLoading: boolean;
+  canSave: boolean;
+  saveLabel: string;
+}
+
+const SaveButton: React.FC<SaveButtonProps> = ({
+  onSave,
+  isDisabled,
+  isLoading,
+  canSave,
+  saveLabel,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Button
+      color="primary"
+      data-testid="save-node-configuration-button"
+      isDisabled={isDisabled || isLoading || !canSave}
+      size="sm"
+      onPress={onSave}>
+      {isLoading ? `${t('label.saving')}...` : saveLabel}
+    </Button>
+  );
+};
+
 export const FormActionButtons: React.FC<FormActionButtonsProps> = ({
   onCancel,
   onSave,
@@ -75,14 +104,13 @@ export const FormActionButtons: React.FC<FormActionButtonsProps> = ({
             {effectiveCancelLabel}
           </Button>
           {showSave && canSave && (
-            <Button
-              color="primary"
-              data-testid="save-node-configuration-button"
-              isDisabled={isDisabled || isLoading || !canSave}
-              size="sm"
-              onPress={onSave}>
-              {isLoading ? `${t('label.saving')}...` : effectiveSaveLabel}
-            </Button>
+            <SaveButton
+              canSave={canSave}
+              isDisabled={isDisabled}
+              isLoading={isLoading}
+              saveLabel={effectiveSaveLabel}
+              onSave={onSave}
+            />
           )}
         </div>
       </div>

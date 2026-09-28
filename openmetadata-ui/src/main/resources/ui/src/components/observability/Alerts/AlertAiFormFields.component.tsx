@@ -18,8 +18,8 @@ import {
   TextArea,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { isEmpty, isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import { ComponentProps, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
@@ -32,7 +32,9 @@ import {
 import { AlertAiFormFieldsProps } from './AlertAiFormFields.interface';
 import {
   getAlertAiResources,
+  getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
+  getRuleEventTypes,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
 import { getAlertAiSourceItems } from './AlertAiFormFieldsSearchUtils';
@@ -41,6 +43,24 @@ import AlertAiNotificationSection from './AlertAiNotificationSection.component';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import { OBSERVABILITY_ALERT_FORM } from './alertFormDocs.constants';
+
+/**
+ * Shown unless the caller says templates are unsupported (OSS). Kept as its own component
+ * so the condition does not push AlertAiFormFields over the cyclomatic-complexity limit.
+ */
+const AlertAiTemplateField = ({
+  docProps,
+  show,
+  ...sectionProps
+}: ComponentProps<typeof AlertAiNotificationSection> & {
+  docProps: ReturnType<typeof useFieldDoc>;
+  show?: boolean;
+}) =>
+  show === false ? null : (
+    <div {...docProps}>
+      <AlertAiNotificationSection {...sectionProps} />
+    </div>
+  );
 
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
@@ -53,6 +73,7 @@ function AlertAiFormFields({
   showBasicFields = true,
   shouldShowActionsSection,
   shouldShowFiltersSection,
+  shouldShowTemplateSection,
   supportedFilters,
   supportedTriggers,
   templates,
@@ -80,8 +101,6 @@ function AlertAiFormFields({
   }, []);
 
   const [selectedSource] = getAlertAiResources(value, alert);
-  const selectedFilters = value.input?.filters ?? [];
-  const selectedTriggers = value.input?.actions ?? [];
   const sourceItems = useMemo(
     () => getAlertAiSourceItems(filterResources, selectedSource),
     [filterResources, selectedSource]
@@ -90,16 +109,22 @@ function AlertAiFormFields({
     () => filterResources.find((resource) => resource.name === selectedSource),
     [filterResources, selectedSource]
   );
-  const selectedSupportedFilters =
-    selectedFilterResource?.supportedFilters ?? supportedFilters;
-  const selectedSupportedTriggers =
-    selectedFilterResource?.supportedActions ?? supportedTriggers;
-  const shouldDisplayFiltersSection = selectedSource
-    ? !isEmpty(selectedSupportedFilters)
-    : shouldShowFiltersSection;
-  const shouldDisplayActionsSection = selectedSource
-    ? !isEmpty(selectedSupportedTriggers)
-    : shouldShowActionsSection;
+  const {
+    selectedFilters,
+    selectedTriggers,
+    selectedSupportedFilters,
+    selectedSupportedTriggers,
+    shouldDisplayFiltersSection,
+    shouldDisplayActionsSection,
+  } = getAlertAiSectionInputs({
+    value,
+    selectedSource,
+    selectedFilterResource,
+    supportedFilters,
+    supportedTriggers,
+    shouldShowActionsSection,
+    shouldShowFiltersSection,
+  });
   const {
     shouldRenderActionsSection,
     shouldRenderFiltersSection,
@@ -253,6 +278,10 @@ function AlertAiFormFields({
             field="filters"
             isViewOnly={isViewOnly}
             selectedSource={selectedSource}
+            supportedEventTypes={getRuleEventTypes(
+              value.alertType,
+              selectedFilterResource
+            )}
             supportedRules={selectedSupportedFilters}
             title={t('label.filter-plural')}
             validationErrors={validationErrors}
@@ -288,14 +317,14 @@ function AlertAiFormFields({
         />
       </div>
 
-      <div {...notificationTemplateDoc}>
-        <AlertAiNotificationSection
-          isViewOnly={isViewOnly}
-          templates={templates}
-          value={value}
-          onChange={onChange}
-        />
-      </div>
+      <AlertAiTemplateField
+        docProps={notificationTemplateDoc}
+        isViewOnly={isViewOnly}
+        show={shouldShowTemplateSection}
+        templates={templates}
+        value={value}
+        onChange={onChange}
+      />
 
       {!isUndefined(inlineAlert) && <InlineAlert {...inlineAlert} />}
     </Box>

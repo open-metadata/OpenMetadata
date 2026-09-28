@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
  * Integration tests for team-level default persona support and user inherited personas.
@@ -326,10 +327,9 @@ public class TeamDefaultPersonaIT {
   }
 
   @Test
-  void test_userNoInheritedPersonasFromNonGroupTeam(TestNamespace ns) {
+  void test_userCannotBeDirectlyAssignedToNonGroupTeam(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Department teams cannot have defaultPersona, so no inheritance
     CreateTeam deptRequest =
         new CreateTeam()
             .withName(ns.prefix("deptNoInherit"))
@@ -337,11 +337,12 @@ public class TeamDefaultPersonaIT {
             .withDescription("Department without persona");
     Team dept = client.teams().create(deptRequest);
 
-    User user = createTestUser(ns, "noInheritDeptUser", List.of(dept.getId()));
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> createTestUser(ns, "noInheritDeptUser", List.of(dept.getId())));
 
-    User fetched = client.users().get(user.getId().toString(), "personas,teams");
-    assertNotNull(fetched.getInheritedPersonas());
-    assertTrue(fetched.getInheritedPersonas().isEmpty());
+    assertTrue(exception.getMessage().contains("Department"));
   }
 
   @Test

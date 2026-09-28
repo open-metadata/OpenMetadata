@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { DataType } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -30,6 +31,7 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -40,6 +42,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 let adminUser: UserClass;
 
@@ -168,9 +171,12 @@ test.describe('Entity Version pages', () => {
       const setupVersionText = `v${Number.parseFloat(
         String(setupPatchVersion)
       ).toFixed(1)}`;
-      const versionDetailResponse = page.waitForResponse(
+      const versionDetailResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
@@ -202,13 +208,13 @@ test.describe('Entity Version pages', () => {
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PersonalData.SpecialCategory"]'
           )
         ).toBeVisible();
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PII.Sensitive"]'
           )
         ).toBeVisible();
       });
@@ -238,10 +244,12 @@ test.describe('Entity Version pages', () => {
         const ownerVersionText = `v${Number.parseFloat(
           String(ownerPatchVersion)
         ).toFixed(1)}`;
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/versions/${ownerPatchVersion}`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/versions/${ownerPatchVersion}`),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -322,10 +330,12 @@ test.describe('Entity Version pages', () => {
         const tierVersionText = `v${Number.parseFloat(
           String(tierPatchVersion)
         ).toFixed(1)}`;
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/versions/${tierPatchVersion}`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/versions/${tierPatchVersion}`),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -375,10 +385,12 @@ test.describe('Entity Version pages', () => {
 
         // Soft-delete is UI-only — no patch response to read the version from,
         // so match any version URL and select the first (latest) panel entry.
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            /\/versions\/\d+\.\d+/.test(response.url()) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            /\/versions\/\d+\.\d+/.test(response.url()),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -404,19 +416,27 @@ test.describe('Entity Version pages', () => {
     });
   });
 
-  test.describe('Table historical column descriptions', () => {
+  test.describe('Table historical column values', () => {
     let freshTable: TableClass;
     let col0Name: string;
     let col0OriginalDesc: string;
     const col0UpdatedDesc =
       'Updated description to verify historical version view';
+    const col0OriginalDataType = 'decimal(9,1)';
+    const col0UpdatedDataType = 'decimal(15,3)';
 
     test.beforeAll(
-      'Create table with historical description',
+      'Create table with historical column values',
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
         freshTable = new TableClass();
+        Object.assign(freshTable.children[0], {
+          dataType: DataType.Decimal,
+          dataTypeDisplay: col0OriginalDataType,
+          precision: 9,
+          scale: 1,
+        });
         await freshTable.create(apiContext);
 
         col0Name = freshTable.entity.columns[0].name;
@@ -427,7 +447,7 @@ test.describe('Entity Version pages', () => {
           'seed column must have a description for this regression check'
         ).not.toBe('');
 
-        await freshTable.patch({
+        const { entity: patchedTable } = await freshTable.patch({
           apiContext,
           patchData: [
             {
@@ -435,7 +455,30 @@ test.describe('Entity Version pages', () => {
               path: '/columns/0/description',
               value: col0UpdatedDesc,
             },
+            {
+              op: 'replace',
+              path: '/columns/0/dataTypeDisplay',
+              value: col0UpdatedDataType,
+            },
+            {
+              op: 'replace',
+              path: '/columns/0/precision',
+              value: 15,
+            },
+            {
+              op: 'replace',
+              path: '/columns/0/scale',
+              value: 3,
+            },
           ],
+        });
+
+        expect(patchedTable.columns[0]).toMatchObject({
+          dataType: DataType.Decimal,
+          dataTypeDisplay: col0UpdatedDataType,
+          description: col0UpdatedDesc,
+          precision: 15,
+          scale: 3,
         });
 
         await afterAction();
@@ -448,16 +491,19 @@ test.describe('Entity Version pages', () => {
       await afterAction();
     });
 
-    test('Table - should show historical column descriptions in version view', async ({
+    test('Table - should show historical column metadata in version view', async ({
       page,
     }) => {
       test.slow();
 
       await freshTable.visitEntityPage(page);
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;
@@ -466,24 +512,40 @@ test.describe('Entity Version pages', () => {
         .locator('[data-testid="version-selector-v0.1"]')
         .waitFor({ state: 'visible' });
 
-      const versionDetailResponse = page.waitForResponse(
+      const versionDetailResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions/0.1') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions/0.1'),
+        200
       );
       await page.locator('[data-testid="version-selector-v0.1"]').click();
       await versionDetailResponse;
 
-      await expect(
-        page.locator(
-          `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
-        )
-      ).toContainText(col0OriginalDesc);
+      await test.step('should show the historical column description', async () => {
+        await expect(
+          page.locator(
+            `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+          )
+        ).toContainText(col0OriginalDesc);
 
-      await expect(
-        page.locator(
-          `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
-        )
-      ).not.toContainText(col0UpdatedDesc);
+        await expect(
+          page.locator(
+            `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+          )
+        ).not.toContainText(col0UpdatedDesc);
+      });
+
+      await test.step('should show the historical data type after precision and scale change', async () => {
+        const historicalColumnRow = page.locator(
+          `[data-row-key$="${col0Name}"]`
+        );
+
+        await expect(historicalColumnRow).toContainText(col0OriginalDataType);
+        await expect(historicalColumnRow).not.toContainText(
+          col0UpdatedDataType
+        );
+      });
     });
   });
 
@@ -521,9 +583,12 @@ test.describe('Entity Version pages', () => {
         '\\$&'
       );
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;
@@ -545,9 +610,12 @@ test.describe('Entity Version pages', () => {
         '\\$&'
       );
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;
@@ -569,9 +637,12 @@ test.describe('Entity Version pages', () => {
         '\\$&'
       );
 
-      const versionListResponse = page.waitForResponse(
+      const versionListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionListResponse;

@@ -12,8 +12,6 @@
 Module containing the logic to kill all DAG not finished executions
 """
 
-from typing import List  # noqa: UP035
-
 from airflow import settings
 from airflow.models import DagModel, DagRun, TaskInstance
 from airflow.utils.state import DagRunState, TaskInstanceState
@@ -36,7 +34,7 @@ def kill_all(dag_id: str) -> Response:
         if not dag_model:
             return ApiResponse.not_found(f"DAG {dag_id} not found.")
 
-        runs: List[DagRun] = (  # noqa: UP006
+        runs: list[DagRun] = (
             session.query(DagRun)
             .filter(
                 DagRun.dag_id == dag_id,
@@ -45,7 +43,7 @@ def kill_all(dag_id: str) -> Response:
             .all()
         )
 
-        instances: List[TaskInstance] = session.query(TaskInstance).filter(  # noqa: UP006
+        instances: list[TaskInstance] = session.query(TaskInstance).filter(
             TaskInstance.dag_id == dag_id,
             TaskInstance.state.notin_((TaskInstanceState.SUCCESS, TaskInstanceState.FAILED)),
         )

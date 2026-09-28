@@ -1,0 +1,53 @@
+[
+  {
+    "type": "table",
+    "fields": {
+      "name": "orders",
+      "fullyQualifiedName": "service.db.schema.orders",
+      "extension": {
+        "cost center / $()": "Engineering",
+        "priority": 5000000000,
+        "threshold": 0.5,
+        "isProduction": true,
+        "settings": {"region": "eu"}
+      },
+      "tags": [
+        {"tagFQN": "PII.Sensitive", "source": "Classification", "labelType": "Manual", "state": "Confirmed", "description": "Personal data"},
+        {"tagFQN": "Business.Customer", "source": "Glossary", "labelType": "Derived", "state": "Suggested"},
+        {"tagFQN": "Tier.Tier1", "source": "Classification"}
+      ],
+      "certification": {"tagLabel": {"tagFQN": "Certification.Gold", "source": "Classification"}, "appliedDate": 1000, "expiryDate": 2000},
+      "lifeCycle": {
+        "created": {"timestamp": 1000, "accessedBy": {"id": "00000000-0000-0000-0000-000000000002", "type": "user"}, "accessedByAProcess": {"id": "00000000-0000-0000-0000-000000000003", "type": "pipeline"}},
+        "updated": {"timestamp": 2000},
+        "accessed": {"timestamp": 3000}
+      },
+      "customProperties": [{"name": "custom", "value": "value", "propertyType": {"name": "string"}}],
+      "columns": [
+        {"name": "id", "fullyQualifiedName": "service.db.schema.orders.id", "dataType": "BIGINT", "constraint": "PRIMARY_KEY", "ordinalPosition": 1},
+        {"name": "accountId", "fullyQualifiedName": "service.db.schema.orders.accountId", "dataType": "BIGINT", "constraint": "UNIQUE"},
+        {"name": "details", "fullyQualifiedName": "service.db.schema.orders.details", "dataType": "STRUCT", "children": [{"name": "amount", "dataType": "DOUBLE"}]}
+      ],
+      "tableConstraints": [
+        {"constraintType": "PRIMARY_KEY", "columns": ["id"]},
+        {"constraintType": "UNIQUE", "columns": ["accountId"]},
+        {"constraintType": "FOREIGN_KEY", "columns": ["accountId"], "referredColumns": ["service.db.schema.accounts.id"], "relationshipType": "MANY_TO_ONE"}
+      ]
+    }
+  },
+  {
+    "type": "pipeline",
+    "fields": {
+      "fullyQualifiedName": "service.pipeline",
+      "pipelineStatus": {
+        "timestamp": 1000,
+        "endTime": 2000,
+        "executionId": "run-1",
+        "executionStatus": "Successful",
+        "executedBy": {"id": "00000000-0000-0000-0000-000000000002", "type": "user"},
+        "inputs": [{"datasetFQN": "service.db.schema.source"}],
+        "outputs": [{"datasetFQN": "service.db.schema.output"}]
+      }
+    }
+  }
+]

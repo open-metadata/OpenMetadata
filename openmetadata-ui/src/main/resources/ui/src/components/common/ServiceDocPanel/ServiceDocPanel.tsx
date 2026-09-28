@@ -21,6 +21,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -249,6 +250,10 @@ const getSupportedLanguage = (language: string): SupportedLocales => {
   return languageMap[language.split('-')[0]] ?? SupportedLocales.English;
 };
 
+/** Folder the docs tree files a service type under — `Api` lives at `ApiEntity`. */
+const getDocsServiceType = (serviceType: string) =>
+  serviceType === 'Api' ? 'ApiEntity' : serviceType;
+
 const isUsableMarkdown = (content: string) => {
   const trimmedContent = content.trimStart().toLowerCase();
 
@@ -259,6 +264,11 @@ const isUsableMarkdown = (content: string) => {
     !trimmedContent.startsWith('<html')
   );
 };
+
+const getSettledMarkdown = (result: PromiseSettledResult<string>): string =>
+  result.status === 'fulfilled' && isUsableMarkdown(result.value)
+    ? result.value
+    : '';
 
 const extractRequirementsMarkdown = (content: string): string => {
   const startIndex = content.search(/^## Requirements\b/m);
@@ -420,7 +430,10 @@ const getConnectorDocsUrl = (markdownContent: string, serviceName: string) => {
       (path) =>
         normalizeConnectorSlug(path.split('/').pop() ?? '') ===
         normalizedServiceName
-    ) ?? paths[0];
+    ) ??
+    // `connectors/ingestion/**` documents a workflow, not a connector, so it
+    // must never stand in for the connector's own page.
+    paths.find((path) => !path.startsWith('ingestion/'));
 
   return docsPath ? `${CONNECTORS_DOCS}/${docsPath}` : CONNECTORS_DOCS;
 };
@@ -497,6 +510,83 @@ const AuthGuidance = ({
   </div>
 );
 
+const buildSectionDocDetails = (
+  section: FocusedSection,
+  activeFieldMarkdown: string,
+  hasAuthMethodGuidance: boolean,
+  t: TFunction
+): FocusedDocDetails => {
+  const sectionCopy = SECTION_DOC_COPY[section];
+  const showAuthGuidance =
+    section === 'authentication' && hasAuthMethodGuidance;
+
+  return {
+    eyebrow: t(sectionCopy.eyebrow),
+    title: t(sectionCopy.title),
+    description: t(sectionCopy.description, {
+      brandName: process.env.BRAND_NAME ?? 'OpenMetadata',
+    }),
+    markdown: section === 'identity' ? '' : activeFieldMarkdown,
+    showRequirements: section === 'connection',
+    beforeRequirements: showAuthGuidance ? (
+      <AuthGuidance
+        keyPairDescription={t('message.key-pair-auth-doc-description')}
+        keyPairLabel={t('label.key-pair')}
+        passwordDescription={t('message.password-auth-doc-description')}
+        passwordLabel={t('label.password')}
+      />
+    ) : undefined,
+  };
+};
+
+const buildFieldDocDetails = (
+  activeFieldName: string | undefined,
+  activeFieldMarkdown: string,
+  activeFieldMeta: ServiceDocPanelProp['activeFieldMeta'],
+  isWorkflow: boolean | undefined,
+  t: TFunction
+): FocusedDocDetails => {
+  const fieldTitle = getMarkdownHeading(activeFieldMarkdown);
+  const fieldBody = stripLeadingMarkdownHeading(activeFieldMarkdown);
+
+  if (activeFieldName && !activeFieldMarkdown) {
+    return {
+      eyebrow: getSectionEyebrow(
+        activeFieldName,
+        isWorkflow,
+        t,
+        activeFieldMeta?.section
+      ),
+      title: activeFieldMeta?.title ?? startCase(activeFieldName),
+      description:
+        activeFieldMeta?.description ??
+        t('message.openmetadata-docs-description'),
+      markdown: '',
+      showRequirements: false,
+    };
+  }
+
+  const fallbackTitle = activeFieldName
+    ? startCase(activeFieldName)
+    : t('label.setup-guide');
+  const hasFieldContent = fieldBody || fieldTitle;
+
+  return {
+    eyebrow: getSectionEyebrow(
+      activeFieldName,
+      isWorkflow,
+      t,
+      activeFieldMeta?.section
+    ),
+    title: fieldTitle ?? fallbackTitle,
+    description: hasFieldContent
+      ? t('message.focused-docs-fallback-description')
+      : t('message.openmetadata-docs-description'),
+    markdown: fieldBody,
+    showRequirements: !activeFieldName,
+  };
+};
+
 const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   serviceType,
   serviceName,
@@ -512,7 +602,9 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [markdownContent, setMarkdownContent] = useState<string>('');
+  const [connectorMarkdown, setConnectorMarkdown] = useState<string>('');
   const [isMarkdownReady, setIsMarkdownReady] = useState<boolean>(false);
+  const markdownRequestIdRef = useRef(0);
 
   const getActiveFieldName = useCallback(
     (activeFieldValue?: ServiceDocPanelProp['activeField']) => {
@@ -555,11 +647,11 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   const fetchRequirement = async () => {
+    const requestId = ++markdownRequestIdRef.current;
     setIsLoading(true);
+    let response = '';
     try {
-      const supportedServiceType =
-        serviceType === 'Api' ? 'ApiEntity' : serviceType;
-      let response = '';
+      const supportedServiceType = getDocsServiceType(serviceType);
       const language = getSupportedLanguage(i18n.language);
       const isEnglishLanguage = language === SupportedLocales.English;
       let filePath = `${language}/${supportedServiceType}/${serviceName}.md`;
@@ -577,35 +669,66 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           : fetchMarkdownFile(fallbackFilePath),
       ]);
 
-      if (
-        translation.status === 'fulfilled' &&
-        isUsableMarkdown(translation.value)
-      ) {
-        response = translation.value;
-      } else if (
-        fallbackTranslation.status === 'fulfilled' &&
-        isUsableMarkdown(fallbackTranslation.value)
-      ) {
-        response = fallbackTranslation.value;
-      }
-
-      setMarkdownContent(
-        response.replaceAll(
-          'OpenMetadata',
-          process.env.BRAND_NAME ?? 'OpenMetadata'
-        )
-      );
+      response =
+        getSettledMarkdown(translation) ||
+        getSettledMarkdown(fallbackTranslation);
     } catch {
-      setMarkdownContent('');
-    } finally {
-      setIsLoading(false);
-      setIsMarkdownReady(true);
+      response = '';
     }
+
+    // The host pages render once before the service has loaded, so a first
+    // request can still be in flight when a second one is made. Only the
+    // newest may write, otherwise a stale response blanks the panel.
+    if (requestId !== markdownRequestIdRef.current) {
+      return;
+    }
+
+    setMarkdownContent(
+      response.replaceAll(
+        'OpenMetadata',
+        process.env.BRAND_NAME ?? 'OpenMetadata'
+      )
+    );
+    setIsLoading(false);
+    setIsMarkdownReady(true);
   };
 
   useEffect(() => {
     fetchRequirement();
   }, [serviceName, serviceType]);
+
+  /**
+   * Workflow markdown is shared by every connector of a service type, so it can
+   * never carry the connector's own docs link. Read the connector file for that
+   * link alone — locale-independent, since we only take a URL out of it.
+   */
+  useEffect(() => {
+    // The host pages render once with no service loaded yet, and the resulting
+    // path names no connector — skip it rather than request it.
+    if (!isWorkflow || !serviceName) {
+      return;
+    }
+
+    let superseded = false;
+    const connectorFile = `${SupportedLocales.English}/${getDocsServiceType(
+      serviceType
+    )}/${serviceName}.md`;
+
+    fetchMarkdownFile(connectorFile)
+      .catch(() => '')
+      // A missing file resolves as the SPA's index.html rather than rejecting,
+      // so the content is validated before it is kept. `superseded` drops a
+      // response whose request a later service has already replaced.
+      .then((content) => {
+        if (!superseded) {
+          setConnectorMarkdown(isUsableMarkdown(content) ? content : '');
+        }
+      });
+
+    return () => {
+      superseded = true;
+    };
+  }, [isWorkflow, serviceName, serviceType]);
 
   const activeFieldName = useMemo(
     () =>
@@ -682,65 +805,21 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     );
 
     if (section) {
-      const sectionCopy = SECTION_DOC_COPY[section];
-
-      return {
-        eyebrow: t(sectionCopy.eyebrow),
-        title: t(sectionCopy.title),
-        description: t(sectionCopy.description, {
-          brandName: process.env.BRAND_NAME ?? 'OpenMetadata',
-        }),
-        markdown: section === 'identity' ? '' : activeFieldMarkdown,
-        showRequirements: section === 'connection',
-        beforeRequirements:
-          section === 'authentication' && hasAuthMethodGuidance ? (
-            <AuthGuidance
-              keyPairDescription={t('message.key-pair-auth-doc-description')}
-              keyPairLabel={t('label.key-pair')}
-              passwordDescription={t('message.password-auth-doc-description')}
-              passwordLabel={t('label.password')}
-            />
-          ) : undefined,
-      };
+      return buildSectionDocDetails(
+        section,
+        activeFieldMarkdown,
+        hasAuthMethodGuidance,
+        t
+      );
     }
 
-    const fieldTitle = getMarkdownHeading(activeFieldMarkdown);
-    const fieldBody = stripLeadingMarkdownHeading(activeFieldMarkdown);
-
-    if (activeFieldName && !activeFieldMarkdown) {
-      return {
-        eyebrow: getSectionEyebrow(
-          activeFieldName,
-          isWorkflow,
-          t,
-          activeFieldMeta?.section
-        ),
-        title: activeFieldMeta?.title ?? startCase(activeFieldName),
-        description:
-          activeFieldMeta?.description ??
-          t('message.openmetadata-docs-description'),
-        markdown: '',
-        showRequirements: false,
-      };
-    }
-
-    return {
-      eyebrow: getSectionEyebrow(
-        activeFieldName,
-        isWorkflow,
-        t,
-        activeFieldMeta?.section
-      ),
-      title:
-        fieldTitle ??
-        (activeFieldName ? startCase(activeFieldName) : t('label.setup-guide')),
-      description:
-        fieldBody || fieldTitle
-          ? t('message.focused-docs-fallback-description')
-          : t('message.openmetadata-docs-description'),
-      markdown: fieldBody,
-      showRequirements: !activeFieldName,
-    };
+    return buildFieldDocDetails(
+      activeFieldName,
+      activeFieldMarkdown,
+      activeFieldMeta,
+      isWorkflow,
+      t
+    );
   }, [
     activeFieldMarkdown,
     activeFieldMeta,
@@ -766,8 +845,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   const connectorDocsUrl = useMemo(
-    () => getConnectorDocsUrl(markdownContent, serviceName),
-    [markdownContent, serviceName]
+    () =>
+      getConnectorDocsUrl(
+        isWorkflow ? connectorMarkdown : markdownContent,
+        serviceName
+      ),
+    [connectorMarkdown, isWorkflow, markdownContent, serviceName]
   );
 
   const docsPanel = useMemo(() => {

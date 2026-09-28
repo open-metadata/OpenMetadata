@@ -13,8 +13,8 @@
 Datalake Azure Blob Client
 """
 
+from collections.abc import Callable, Iterable
 from functools import partial
-from typing import Callable, Iterable, Optional, Set, Tuple  # noqa: UP035
 
 from azure.storage.blob import BlobServiceClient
 
@@ -28,7 +28,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-AZURE_COLD_TIERS: Set[str] = {"Cool", "Cold", "Archive"}  # noqa: UP006
+AZURE_COLD_TIERS: set[str] = {"Cool", "Cold", "Archive"}
 
 
 class DatalakeAzureBlobClient(DatalakeBaseClient):
@@ -50,7 +50,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
     def get_database_names(self, service_connection) -> Iterable[str]:
         yield service_connection.databaseName or DEFAULT_DATABASE
 
-    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:  # noqa: UP045
+    def get_database_schema_names(self, bucket_name: str | None) -> Iterable[str]:
         if bucket_name:
             yield bucket_name
         else:
@@ -60,9 +60,9 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
     def get_table_names(
         self,
         bucket_name: str,
-        prefix: Optional[str],  # noqa: UP045
+        prefix: str | None,
         skip_cold_storage: bool = False,
-    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Iterable[tuple[str, int | None]]:
         container_client = self._client.get_container_client(bucket_name)
 
         for file in container_client.list_blobs(name_starts_with=prefix or None):
@@ -76,7 +76,7 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
     def close(self, service_connection):
         self._client.close()
 
-    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:  # noqa: UP045
+    def get_test_list_buckets_fn(self, bucket_name: str | None) -> Callable:
         if bucket_name:
             # If bucket_name is specified, only test access to that specific container
             # This avoids requiring list_containers permission at storage account level

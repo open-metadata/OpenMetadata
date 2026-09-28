@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Button, Card, RadioChangeEvent, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -36,6 +37,7 @@ import {
   TermsOfUse,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import {
   getContractTabLabel,
@@ -57,6 +59,76 @@ import './add-data-contract.less';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
+
+// Type guard to check if an object has the inherited flag
+// This provides type-safe access to the inherited property
+const hasInheritedFlag = (obj: unknown): obj is { inherited?: boolean } => {
+  return typeof obj === 'object' && obj !== null && 'inherited' in obj;
+};
+
+// Type guard to check if a field is inherited from Data Product
+const isInheritedField = (field: unknown): boolean => {
+  return hasInheritedFlag(field) && field.inherited === true;
+};
+
+// Handle three cases:
+// 1. Object with inherited=true -> exclude (set undefined)
+// 2. Object with inherited=false/undefined -> keep as object
+// 3. String (legacy format) -> convert to object format for form consistency
+// Note: isInheritedField() returns false for null/undefined/string, so those fall through
+const resolveFilteredTermsOfUse = (
+  contract: DataContract
+): TermsOfUse | undefined => {
+  if (isInheritedField(contract.termsOfUse)) {
+    // Case 1: Inherited from Data Product - exclude from editable form
+    return undefined;
+  } else if (
+    typeof contract.termsOfUse === 'object' &&
+    contract.termsOfUse !== null
+  ) {
+    // Case 2: Non-inherited object format - keep as-is
+    return contract.termsOfUse;
+  } else if (typeof contract.termsOfUse === 'string') {
+    // Case 3: Legacy string format - convert to object for form consistency
+    return { content: contract.termsOfUse };
+  }
+
+  // If none match (null/undefined), remains undefined
+  return undefined;
+};
+
+// Build result object, only adding fields that are not inherited
+// This ensures fast-json-patch generates /add operations instead of /replace
+const buildFilteredContractResult = (
+  contract: DataContract,
+  baseContract: Partial<DataContract>,
+  filteredSemantics: DataContract['semantics'],
+  filteredTermsOfUse: TermsOfUse | undefined
+): DataContract => {
+  const result: Partial<DataContract> = { ...baseContract };
+
+  // Only add semantics if there are non-inherited rules
+  if (filteredSemantics && filteredSemantics.length > 0) {
+    result.semantics = filteredSemantics;
+  }
+
+  // Only add termsOfUse if not inherited
+  if (filteredTermsOfUse !== undefined) {
+    result.termsOfUse = filteredTermsOfUse;
+  }
+
+  // Only add security if not inherited
+  if (!isInheritedField(contract.security) && contract.security) {
+    result.security = contract.security;
+  }
+
+  // Only add SLA if not inherited
+  if (!isInheritedField(contract.sla) && contract.sla) {
+    result.sla = contract.sla;
+  }
+
+  return result as DataContract;
+};
 
 export interface FormStepProps {
   onNext: () => void;
@@ -92,47 +164,13 @@ const AddDataContract: React.FC<{
       return undefined;
     }
 
-    // Type guard to check if an object has the inherited flag
-    // This provides type-safe access to the inherited property
-    const hasInheritedFlag = (obj: unknown): obj is { inherited?: boolean } => {
-      return typeof obj === 'object' && obj !== null && 'inherited' in obj;
-    };
-
-    // Type guard to check if a field is inherited from Data Product
-    const isInheritedField = (field: unknown): boolean => {
-      return hasInheritedFlag(field) && field.inherited === true;
-    };
-
     // Filter semantics to exclude inherited rules
     const filteredSemantics = contract.semantics?.filter(
       (rule) => !isInheritedField(rule)
     );
 
     // Get termsOfUse, excluding if inherited
-    // Handle three cases:
-    // 1. Object with inherited=true -> exclude (set undefined)
-    // 2. Object with inherited=false/undefined -> keep as object
-    // 3. String (legacy format) -> convert to object format for form consistency
-    // Note: isInheritedField() returns false for null/undefined/string, so those fall through
-    let filteredTermsOfUse: TermsOfUse | undefined;
-    if (isInheritedField(contract.termsOfUse)) {
-      // Case 1: Inherited from Data Product - exclude from editable form
-      filteredTermsOfUse = undefined;
-    } else if (
-      typeof contract.termsOfUse === 'object' &&
-      contract.termsOfUse !== null
-    ) {
-      // Case 2: Non-inherited object format - keep as-is
-      filteredTermsOfUse = contract.termsOfUse;
-    } else if (typeof contract.termsOfUse === 'string') {
-      // Case 3: Legacy string format - convert to object for form consistency
-      filteredTermsOfUse = { content: contract.termsOfUse };
-    }
-    // If none match (null/undefined), filteredTermsOfUse remains undefined
-
-    // Check if security and SLA are inherited
-    const isSecurityInherited = isInheritedField(contract.security);
-    const isSlaInherited = isInheritedField(contract.sla);
+    const filteredTermsOfUse = resolveFilteredTermsOfUse(contract);
 
     // Start with base contract fields, excluding potentially inherited fields
     // We destructure to exclude sla, security, termsOfUse, semantics, then add them back only if not inherited
@@ -144,33 +182,12 @@ const AddDataContract: React.FC<{
       ...baseContract
     } = contract;
 
-    // Build result object, only adding fields that are not inherited
-    // This ensures fast-json-patch generates /add operations instead of /replace
-    const result: Partial<DataContract> = {
-      ...baseContract,
-    };
-
-    // Only add semantics if there are non-inherited rules
-    if (filteredSemantics && filteredSemantics.length > 0) {
-      result.semantics = filteredSemantics;
-    }
-
-    // Only add termsOfUse if not inherited
-    if (filteredTermsOfUse !== undefined) {
-      result.termsOfUse = filteredTermsOfUse;
-    }
-
-    // Only add security if not inherited
-    if (!isSecurityInherited && contract.security) {
-      result.security = contract.security;
-    }
-
-    // Only add SLA if not inherited
-    if (!isSlaInherited && contract.sla) {
-      result.sla = contract.sla;
-    }
-
-    return result as DataContract;
+    return buildFilteredContractResult(
+      contract,
+      baseContract,
+      filteredSemantics,
+      filteredTermsOfUse
+    );
   }, [contract]);
 
   const [formValues, setFormValues] = useState<DataContract>(
@@ -185,6 +202,10 @@ const AddDataContract: React.FC<{
     entityContractTabs[0]?.toString() ||
       EDataContractTab.CONTRACT_DETAIL.toString()
   );
+
+  // Each form tab seeds itself from `initialValues` on mount, so a remount would
+  // drop in-progress edits.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -231,6 +252,13 @@ const AddDataContract: React.FC<{
       if (contract) {
         // Use filteredContract for PATCH comparison to avoid generating
         // "remove" operations for inherited fields (SLA, security, terms, semantics)
+        // Only propagate `displayName` when the user actually edited the contract
+        // title. `formValues.name` is seeded from `contract.name` (not the displayed
+        // `displayName`) and Ant Design's `setFieldsValue` does not fire
+        // `onValuesChange`, so when an unrelated field is edited `formValues.name`
+        // still equals `filteredContract.name`. Forcing `displayName` here would
+        // otherwise overwrite a divergent `displayName` with the sanitized `name`
+        // on every save. See: AddDataContract/DisplayNameOverwriteBug.test.tsx.
         await updateContract(
           contract?.id,
           compare(filteredContract ?? {}, {
@@ -238,7 +266,10 @@ const AddDataContract: React.FC<{
             ...formValues,
             semantics: validSemantics,
             security: validSecurity,
-            displayName: formValues.name,
+            ...(formValues.name !== undefined &&
+            formValues.name !== filteredContract?.name
+              ? { displayName: formValues.name }
+              : {}),
           })
         );
       } else {
@@ -264,7 +295,7 @@ const AddDataContract: React.FC<{
           semantics: validSemantics,
           security: validSecurity,
           termsOfUse: termsOfUseContent,
-          entityStatus: EntityStatus.Approved,
+          entityStatus: formValues.entityStatus ?? EntityStatus.Draft,
         });
       }
 
@@ -557,14 +588,29 @@ const AddDataContract: React.FC<{
 
     return (
       <Tabs
-        activeKey={activeTab.toString()}
-        className="contract-tabs"
-        items={items}
-        tabPosition="left"
-        onChange={handleTabChange}
-      />
+        className="contract-tabs tw:flex-row"
+        orientation="vertical"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(String(key))}>
+        <Tabs.List className="tw:w-50 tw:shrink-0 tw:pt-5" type="line">
+          {items.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {items.map(({ key, children }) => (
+          <Tabs.Panel
+            className="tw:min-h-125 tw:min-w-0 tw:flex-1 tw:rounded-r-lg tw:bg-primary tw:p-6 tw:data-inert:hidden"
+            id={key}
+            key={key}
+            shouldForceMount={visitedTabs.has(key)}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
-  }, [mode, items, handleTabChange, activeTab, yaml]);
+  }, [mode, items, handleTabChange, activeTab, visitedTabs, yaml]);
 
   return (
     <Card

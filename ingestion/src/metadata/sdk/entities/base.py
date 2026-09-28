@@ -2,20 +2,14 @@
 
 from __future__ import annotations
 
+import builtins  # noqa: TC003
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import (  # noqa: UP035
+from typing import (
     Any,
-    Callable,
     ClassVar,
-    Dict,
     Generic,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Type,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -33,8 +27,8 @@ class EntityList(Generic[TEntity]):
     """Simple typed container for paginated responses."""
 
     entities: Sequence[TEntity]
-    after: Optional[str] = None  # noqa: UP045
-    before: Optional[str] = None  # noqa: UP045
+    after: str | None = None
+    before: str | None = None
 
 
 @dataclass
@@ -42,7 +36,7 @@ class CsvExportOperation(Generic[TEntity]):
     """Stateful helper that performs synchronous or async CSV exports."""
 
     client: OMetaClient
-    entity: Type[TEntity]  # noqa: UP006
+    entity: type[TEntity]
     name: str
     async_enabled: bool = field(default=False, init=False)
 
@@ -71,7 +65,7 @@ class AsyncJobResponse:
     """
 
     job_id: str
-    message: Optional[str] = None  # noqa: UP045
+    message: str | None = None
 
     @classmethod
     def from_response(cls, payload: Any) -> "AsyncJobResponse":  # noqa: UP037
@@ -114,9 +108,9 @@ class CsvImportOperation(Generic[TEntity]):
     """Stateful helper for CSV import operations."""
 
     client: OMetaClient
-    entity: Type[TEntity]  # noqa: UP006
+    entity: type[TEntity]
     name: str
-    csv_data: Optional[str] = None  # noqa: UP045
+    csv_data: str | None = None
     dry_run: bool = False
     async_enabled: bool = field(default=False, init=False)
 
@@ -157,7 +151,7 @@ class CsvImportOperation(Generic[TEntity]):
 class BaseEntity(Generic[TEntity, TCreate]):
     """Typed facade over the ingestion `OpenMetadata` client."""
 
-    _default_client: ClassVar[Optional[OMetaClient]] = None  # noqa: UP045
+    _default_client: ClassVar[OMetaClient | None] = None
 
     # ------------------------------------------------------------------
     # Client handling
@@ -169,12 +163,12 @@ class BaseEntity(Generic[TEntity, TCreate]):
         return cls._default_client
 
     @classmethod
-    def use_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:  # noqa: UP007
+    def use_client(cls, client: OpenMetadata | OMetaClient) -> None:
         """Register a default client for SDK calls."""
         cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
     @classmethod
-    def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:  # noqa: UP007
+    def set_default_client(cls, client: OpenMetadata | OMetaClient) -> None:
         """Backward-compatible alias used across legacy tests/examples."""
         cls.use_client(client)
 
@@ -182,7 +176,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     # Entity metadata
     # ------------------------------------------------------------------
     @classmethod
-    def entity_type(cls) -> Type[TEntity]:  # noqa: UP006
+    def entity_type(cls) -> type[TEntity]:
         raise NotImplementedError
 
     # ------------------------------------------------------------------
@@ -199,8 +193,8 @@ class BaseEntity(Generic[TEntity, TCreate]):
         cls,
         entity_id: UuidLike,
         *,
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        nullable: Optional[bool] = None,  # noqa: UP045
+        fields: Sequence[str] | None = None,
+        nullable: bool | None = None,
     ) -> TEntity:
         """Retrieve an entity by its unique identifier."""
         client = cls._get_client()
@@ -223,10 +217,10 @@ class BaseEntity(Generic[TEntity, TCreate]):
     @classmethod
     def retrieve_by_name(
         cls,
-        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        fqn: str | FullyQualifiedEntityName,
         *,
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        nullable: Optional[bool] = None,  # noqa: UP045
+        fields: Sequence[str] | None = None,
+        nullable: bool | None = None,
     ) -> TEntity:
         """Retrieve an entity by its fully-qualified name."""
         client = cls._get_client()
@@ -280,10 +274,10 @@ class BaseEntity(Generic[TEntity, TCreate]):
         cls,
         *,
         limit: int = 10,
-        after: Optional[str] = None,  # noqa: UP045
-        before: Optional[str] = None,  # noqa: UP045
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        filters: Optional[Mapping[str, str]] = None,  # noqa: UP045
+        after: str | None = None,
+        before: str | None = None,
+        fields: Sequence[str] | None = None,
+        filters: Mapping[str, str] | None = None,
     ) -> EntityList[TEntity]:
         """Fetch a single page of entities from OpenMetadata."""
         client = cls._get_client()
@@ -308,13 +302,13 @@ class BaseEntity(Generic[TEntity, TCreate]):
         cls,
         *,
         batch_size: int = 100,
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        filters: Optional[Mapping[str, str]] = None,  # noqa: UP045
-    ) -> List[TEntity]:  # noqa: UP006
+        fields: Sequence[str] | None = None,
+        filters: Mapping[str, str] | None = None,
+    ) -> builtins.list[TEntity]:
         """Iterate through all entities by repeatedly calling :meth:`list`."""
 
-        results: List[TEntity] = []  # noqa: UP006
-        after: Optional[str] = None  # noqa: UP045
+        results: list[TEntity] = []
+        after: str | None = None
         while True:
             page = cls.list(
                 limit=batch_size,
@@ -530,7 +524,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, BaseModel):
             return cast(TEntity, payload)  # noqa: TC006
         if isinstance(payload, dict):
-            typed_payload = cast(Dict[str, Any], payload)  # noqa: TC006, UP006
+            typed_payload = cast(dict[str, Any], payload)  # noqa: TC006
             model_validate = getattr(entity_cls, "model_validate", None)
             if not callable(model_validate):
                 raise TypeError("Entity type does not support model validation")
@@ -542,7 +536,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, dict):
             return cast(JsonDict, payload)  # noqa: TC006
         if isinstance(payload, BaseModel):
-            json_result: Dict[str, Any] = payload.model_dump(mode="json")  # noqa: UP006
+            json_result: dict[str, Any] = payload.model_dump(mode="json")
             return json_result
         raise TypeError("Expected mapping-compatible payload")
 
@@ -573,7 +567,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     # EntityReference helper
     # ------------------------------------------------------------------
     @staticmethod
-    def to_entity_reference(entity: Any) -> Dict[str, Any]:  # noqa: UP006
+    def to_entity_reference(entity: Any) -> dict[str, Any]:
         """Convert an entity to an EntityReference dict.
 
         This is useful when setting owners, domains, or other reference fields
@@ -605,7 +599,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if entity_id is None:
             raise ValueError("Entity must have an 'id' attribute")
 
-        ref: Dict[str, Any] = {  # noqa: UP006
+        ref: dict[str, Any] = {
             "id": BaseEntity._stringify_identifier(entity_id),
             "type": entity_type or entity.__class__.__name__.lower(),
         }

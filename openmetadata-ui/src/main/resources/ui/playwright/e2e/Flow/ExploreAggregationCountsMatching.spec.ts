@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, Locator, Page, Response, test } from '@playwright/test';
+import { Locator, Page, Response } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 
 // Maps entityType keys from the API aggregation to the explore left-panel tab testid labels.

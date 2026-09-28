@@ -166,4 +166,26 @@ check('staged mode (--cached) catches new antd debt the same way', () => {
   assert.strictEqual(result.code, 1, `expected exit 1, got ${result.code}:\n${result.out}`);
 });
 
+for (const file of ['LegacyForm.test.tsx', 'playwright/browser-tests/sidebar.spec.ts']) {
+  check(`allows real legacy controls in ${file}, in staged and base-ref modes`, () => {
+    const { dir, git } = makeTmpRepo();
+    try {
+      fs.writeFileSync(path.join(dir, 'App.tsx'), 'export const App = () => null;\n');
+      git('add', '-A');
+      git('commit', '-q', '-m', 'base');
+      const baseSha = git('rev-parse', 'HEAD').trim();
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+      fs.writeFileSync(path.join(dir, file), "import { Form, Menu } from 'antd';\n");
+      git('add', '-A');
+      const staged = runGuard(dir, []);
+      assert.strictEqual(staged.code, 0, staged.out);
+      git('commit', '-q', '-m', 'test existing legacy controls');
+      const committed = runGuard(dir, [baseSha]);
+      assert.strictEqual(committed.code, 0, committed.out);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
+
 process.stdout.write(`\n${pass} check(s) passed.\n`);

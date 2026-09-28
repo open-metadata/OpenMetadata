@@ -13,7 +13,6 @@ Client to interact with Atlas apis
 """
 
 import base64
-from typing import List  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
     AtlasConnection,
@@ -41,7 +40,7 @@ class AtlasClient:
         self.client = TrackedREST(client_config, source_name="atlas")
         self._use_raw_data = raw_data
 
-    def list_entities(self) -> List[str]:  # noqa: UP006
+    def list_entities(self) -> list[str]:
         response = self.client.get(f"/atlas/entities?type={self.config.entity_type}")
 
         if "error" in response.keys():  # noqa: SIM118
@@ -50,7 +49,9 @@ class AtlasClient:
         return entities  # noqa: RET504
 
     def get_entity(self, table):
-        response = self.client.get(f"/atlas/v2/entity/bulk?guid={table}")
+        guids = table if isinstance(table, list) else [table]
+        guid_params = "&".join(f"guid={guid}" for guid in guids)
+        response = self.client.get(f"/atlas/v2/entity/bulk?{guid_params}")
         return response  # noqa: RET504
 
     def get_lineage(self, source_guid):

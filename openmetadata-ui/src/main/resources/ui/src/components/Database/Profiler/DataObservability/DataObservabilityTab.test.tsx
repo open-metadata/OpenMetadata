@@ -57,7 +57,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </button>
   );
 
-  return { Tabs };
+  return { Tabs, useTabItemState: () => null };
 });
 
 const mockNavigate = jest.fn();

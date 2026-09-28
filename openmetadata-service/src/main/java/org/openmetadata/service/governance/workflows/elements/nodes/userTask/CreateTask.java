@@ -607,7 +607,7 @@ public class CreateTask implements TaskListener {
             // stays one stage behind the (already committed) Flowable runtime and self-heals on the
             // next stage advance, which re-reads the current task.
             Task latest = taskRepository.get(null, persistTaskId, taskRepository.getFields("*"));
-            taskRepository.update(null, latest, desired, updatedBy);
+            taskRepository.updateWorkflowStage(latest, desired, updatedBy);
           });
       return updatedTask;
     }
@@ -814,6 +814,7 @@ public class CreateTask implements TaskListener {
         && currentWorkflowDefinitionId != null
         && prior.getWorkflowInstanceId() != null
         && !isTerminalTaskStatus(prior.getStatus())
+        && prior.getResolution() == null
         && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
         && currentWorkflowDefinitionId.equals(resolvePriorWorkflowDefinitionId(prior))
         && (requesterToMatch == null || requesterToMatch.equals(prior.getUpdatedBy()));

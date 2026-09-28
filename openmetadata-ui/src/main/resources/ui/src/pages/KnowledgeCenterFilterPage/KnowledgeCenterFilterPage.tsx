@@ -24,11 +24,9 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
 import { getKnowledgePageFields } from '../../constants/KnowledgeCenter.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Paging } from '../../generated/type/paging';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useElementInView } from '../../hooks/useElementInView';
@@ -37,6 +35,7 @@ import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -98,8 +97,12 @@ const KnowledgeCenterFilterPage = () => {
     }
   };
 
+  // Resource-level permission (usePermissionProvider().getResourcePermission(KNOWLEDGE_PAGE),
+  // itself OperationPermission-shaped) run through getDerivedPermissionFlags per the Batch 3
+  // DatabaseSchemaTable.tsx / Batch 8 ContextCenter-trio precedent. `hasViewAccess` is a
+  // byte-for-byte match of the old bare `ViewAll || ViewBasic` OR.
   const hasViewPermission = useMemo(
-    () => permissions.ViewAll || permissions.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 

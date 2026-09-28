@@ -20,8 +20,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 # pyright: reportUnusedCallResult=false
-from typing import List, Optional, Union  # noqa: UP035
-
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
 from metadata.cli.classify import run_classification
@@ -77,6 +75,13 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         type=Path,
         required=True,
     )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        required=False,
+        default=None,
+    )
 
 
 def create_dbt_parser_args(parser: argparse.ArgumentParser):
@@ -90,6 +95,12 @@ def create_dbt_parser_args(parser: argparse.ArgumentParser):
         type=Path,
         default=Path("."),  # noqa: PTH201
         required=False,
+    )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        default=None,
     )
 
 
@@ -115,7 +126,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     )
 
 
-def get_parser(args: Optional[List[str]] = None):  # noqa: UP006, UP045
+def get_parser(args: list[str] | None = None):
     """
     Parser method that returns parsed_args
     """
@@ -212,14 +223,15 @@ def get_parser(args: Optional[List[str]] = None):  # noqa: UP006, UP045
     return parser.parse_args(args)
 
 
-def metadata(args: Optional[List[str]] = None):  # noqa: UP006, UP045
+def metadata(args: list[str] | None = None):
     """
     This method implements parsing of the arguments passed from CLI
     """
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
-    config_file: Optional[Path] = contains_args.get("config")  # noqa: UP045
-    dbt_project_path: Optional[Path] = contains_args.get("dbt_project_path")  # noqa: UP045
+    config_file: Path | None = contains_args.get("config")
+    dbt_project_path: Path | None = contains_args.get("dbt_project_path")
+    status_file: Path | None = contains_args.get("status_file")
 
     path = None
     if config_file:
@@ -230,11 +242,11 @@ def metadata(args: Optional[List[str]] = None):  # noqa: UP006, UP045
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
-        log_level: Union[str, int] = contains_args.get("log_level") or logging.INFO  # noqa: UP007
+        log_level: str | int = contains_args.get("log_level") or logging.INFO
         set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
-        RUN_PATH_METHODS[metadata_workflow](path)
+        RUN_PATH_METHODS[metadata_workflow](path, status_file)
 
     if metadata_workflow == MetadataCommands.SCAFFOLD_CONNECTOR.value:
         has_name = contains_args.get("name")

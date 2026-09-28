@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/worksheet.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Worksheet",
   "$comment": "@om-entity-type",
   "description": "This schema defines the Worksheet entity. A Worksheet is a tab or sheet within a spreadsheet file (Google Sheets, Excel) that contains structured data.",

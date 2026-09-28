@@ -21,6 +21,7 @@ import {
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -35,6 +36,7 @@ import {
   Response as BulkResponse,
   Status,
 } from '../../../generated/type/bulkOperationResult';
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
 import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { queryClient } from '../../../queryClient';
@@ -61,12 +63,8 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExplorePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  CSVExportJob,
-  CSVExportResponse,
-} from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { CSVExportJob } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export interface UseAssetSelectionStateProps {
@@ -311,66 +309,53 @@ export const useAssetSelectionState = ({
         return getEntityReferenceFromEntity(item, item.entityType);
       });
 
+      const nonDomainSavers: Partial<
+        Record<AssetsOfEntity, () => Promise<unknown>>
+      > = {
+        [AssetsOfEntity.DATA_PRODUCT]: () =>
+          addAssetsToDataProduct(
+            activeEntity.fullyQualifiedName ?? '',
+            entities
+          ),
+        [AssetsOfEntity.DATA_PRODUCT_INPUT_PORT]: () =>
+          addInputPortsToDataProduct(
+            activeEntity.fullyQualifiedName ?? '',
+            entities
+          ),
+        [AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT]: () =>
+          addOutputPortsToDataProduct(
+            activeEntity.fullyQualifiedName ?? '',
+            entities
+          ),
+        [AssetsOfEntity.GLOSSARY]: () =>
+          addAssetsToGlossaryTerm(activeEntity as GlossaryTerm, entities),
+        [AssetsOfEntity.TAG]: () =>
+          addAssetsToTags(activeEntity.id ?? '', entities),
+      };
+
       let res;
-      switch (type) {
-        case AssetsOfEntity.DATA_PRODUCT:
-          res = await addAssetsToDataProduct(
-            activeEntity.fullyQualifiedName ?? '',
-            entities
-          );
+      if (type === AssetsOfEntity.DOMAIN) {
+        const domainFqn = activeEntity.fullyQualifiedName ?? '';
+        const dryRunResult = await addAssetsToDomain(domainFqn, entities, {
+          dryRun: true,
+        });
+        const impacts = getDomainDryRunImpacts(dryRunResult);
+        if (impacts.length > 0) {
+          setDryRunWarnings(impacts);
+          setPendingDomainEntities(entities);
+          setIsSaveLoading(false);
 
-          break;
-
-        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
-          res = await addInputPortsToDataProduct(
-            activeEntity.fullyQualifiedName ?? '',
-            entities
-          );
-
-          break;
-
-        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
-          res = await addOutputPortsToDataProduct(
-            activeEntity.fullyQualifiedName ?? '',
-            entities
-          );
-
-          break;
-
-        case AssetsOfEntity.GLOSSARY:
-          res = await addAssetsToGlossaryTerm(
-            activeEntity as GlossaryTerm,
-            entities
-          );
-
-          break;
-
-        case AssetsOfEntity.TAG:
-          res = await addAssetsToTags(activeEntity.id ?? '', entities);
-
-          break;
-        case AssetsOfEntity.DOMAIN: {
-          const domainFqn = activeEntity.fullyQualifiedName ?? '';
-          const dryRunResult = await addAssetsToDomain(domainFqn, entities, {
-            dryRun: true,
-          });
-          const impacts = getDomainDryRunImpacts(dryRunResult);
-          if (impacts.length > 0) {
-            setDryRunWarnings(impacts);
-            setPendingDomainEntities(entities);
-            setIsSaveLoading(false);
-
-            return;
-          }
-          res = await addAssetsToDomain(domainFqn, entities);
-          queryClient.invalidateQueries({
-            queryKey: domainAssetsCountQueryKey,
-          });
-
-          break;
+          return;
         }
-        default:
-          break;
+        res = await addAssetsToDomain(domainFqn, entities);
+        queryClient.invalidateQueries({
+          queryKey: domainAssetsCountQueryKey,
+        });
+      } else {
+        const saver = nonDomainSavers[type];
+        if (saver) {
+          res = await saver();
+        }
       }
 
       await processSaveResponse(res);

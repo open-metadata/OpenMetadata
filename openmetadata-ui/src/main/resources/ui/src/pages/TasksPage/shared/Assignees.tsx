@@ -51,15 +51,20 @@ const Assignees: FC<Props> = ({
     _values: Option[],
     newOptions?: DefaultOptionType | DefaultOptionType[]
   ) => {
-    const newValues = isUndefined(newOptions)
-      ? newOptions
-      : (isArray(newOptions) ? newOptions : [newOptions]).map((option) => ({
-          label: option['data-label'],
-          value: option.value,
-          type: option.type,
-          name: option.name,
-          displayName: option.displayName,
-        }));
+    if (isUndefined(newOptions)) {
+      onChange(newOptions as unknown as Option[]);
+
+      return;
+    }
+
+    const normalizedOptions = isArray(newOptions) ? newOptions : [newOptions];
+    const newValues = normalizedOptions.map((option) => ({
+      label: option['data-label'],
+      value: option.value,
+      type: option.type,
+      name: option.name,
+      displayName: option.displayName,
+    }));
 
     onChange(newValues as Option[]);
   };

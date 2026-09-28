@@ -21,6 +21,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFList;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
@@ -57,6 +59,14 @@ class RdfPropertyMapperTest {
     propertyMapper = new RdfPropertyMapper(BASE_URI, objectMapper, contextCache);
     model = ModelFactory.createDefaultModel();
     entityResource = model.createResource(BASE_URI + "entity/table/" + UUID.randomUUID());
+  }
+
+  private Statement extensionValue(Resource extension, String key) {
+    Resource entry =
+        model.listResourcesWithProperty(model.createProperty(OM_NS, "extensionKey"), key).next();
+    assertTrue(
+        model.contains(extension, model.createProperty(OM_NS, "hasExtensionProperty"), entry));
+    return entry.getRequiredProperty(model.createProperty(OM_NS, "extensionValue"));
   }
 
   @Nested
@@ -246,28 +256,9 @@ class RdfPropertyMapperTest {
           model.contains(extResource, RDF.type, model.createResource(OM_NS + "Extension")),
           "Extension should have correct type");
 
-      // Verify extension properties are stored with prefixed names
-      Property costCenterProp = model.createProperty(OM_NS, "ext_costCenter");
-      assertTrue(
-          model.contains(extResource, costCenterProp), "Extension should have costCenter property");
-      assertEquals(
-          "Engineering",
-          model.getProperty(extResource, costCenterProp).getString(),
-          "costCenter should be 'Engineering'");
-
-      // Verify integer property
-      Property priorityProp = model.createProperty(OM_NS, "ext_priority");
-      assertTrue(
-          model.contains(extResource, priorityProp), "Extension should have priority property");
-      assertEquals(
-          5, model.getProperty(extResource, priorityProp).getInt(), "priority should be 5");
-
-      // Verify boolean property
-      Property isProdProp = model.createProperty(OM_NS, "ext_isProduction");
-      assertTrue(
-          model.contains(extResource, isProdProp), "Extension should have isProduction property");
-      assertTrue(
-          model.getProperty(extResource, isProdProp).getBoolean(), "isProduction should be true");
+      assertEquals("Engineering", extensionValue(extResource, "costCenter").getString());
+      assertEquals(5, extensionValue(extResource, "priority").getInt());
+      assertTrue(extensionValue(extResource, "isProduction").getBoolean());
     }
   }
 
@@ -1230,17 +1221,8 @@ class RdfPropertyMapperTest {
               .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "hasExtension"))
               .next()
               .asResource();
-      assertEquals(
-          2.5,
-          model
-              .getProperty(extensionResource, model.createProperty(OM_NS, "ext_threshold"))
-              .getDouble(),
-          0.0001);
-      assertEquals(
-          "{\"env\":\"prod\"}",
-          model
-              .getProperty(extensionResource, model.createProperty(OM_NS, "ext_settings"))
-              .getString());
+      assertEquals(2.5, extensionValue(extensionResource, "threshold").getDouble(), 0.0001);
+      assertEquals("{\"env\":\"prod\"}", extensionValue(extensionResource, "settings").getString());
     }
 
     @Test
@@ -1872,12 +1854,60 @@ class RdfPropertyMapperTest {
       // would let storeEntity wipe lineage edges on every entity update.
       java.util.Set<String> lineageHookPredicates =
           java.util.Set.of(
-              OM_NS + "UPSTREAM", PROV_NS + "wasDerivedFrom", OM_NS + "hasLineageDetails");
+              OM_NS + "upstream",
+              OM_NS + "downstream",
+              PROV_NS + "wasDerivedFrom",
+              OM_NS + "hasLineageDetails");
       for (String pred : lineageHookPredicates) {
         assertFalse(
             RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES.contains(pred),
             "TRANSLATOR_MANAGED_DIRECT_PREDICATES must NOT include hook-managed " + pred);
       }
+    }
+  }
+
+  @Nested
+  @DisplayName("Dedicated-mapper fields must be fetched, or their emitters see nothing")
+  class DedicatedMapperFieldTests {
+
+    @Test
+    @DisplayName("tableConstraints present -> om:hasConstraint relations are emitted")
+    void tableConstraintsEmitRelationsWhenFetched() throws Exception {
+      ObjectNode entityJson = objectMapper.createObjectNode();
+      ArrayNode constraints = entityJson.putArray("tableConstraints");
+      ObjectNode fk = constraints.addObject();
+      fk.put("constraintType", "FOREIGN_KEY");
+      fk.putArray("columns").add("customer_id");
+      fk.putArray("referredColumns").add("service.db.schema.customers.id");
+
+      emitStructured(entityJson);
+
+      assertTrue(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasConstraint")),
+          "a fetched tableConstraints[] must produce om:hasConstraint relations");
+    }
+
+    @Test
+    @DisplayName("tableConstraints absent -> the dedicated mapper emits nothing at all")
+    void tableConstraintsEmitNothingWhenNotFetched() throws Exception {
+      // This is the pre-fix state: RdfIndexingFields excluded tableConstraints from the field set,
+      // so the entity JSON never carried it and RdfJsonNode.array(...) returned Optional.empty().
+      // emitStructuredProperties still ran; it just had nothing to read.
+      emitStructured(objectMapper.createObjectNode());
+
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasConstraint")),
+          "an unfetched tableConstraints[] silently produces no relations - the bug this guards");
+    }
+
+    private void emitStructured(JsonNode entityJson) throws Exception {
+      invokePrivate(
+          "emitStructuredProperties",
+          new Class[] {EntityInterface.class, JsonNode.class, Resource.class, Model.class},
+          new Table().withFullyQualifiedName("service.db.schema.orders"),
+          entityJson,
+          entityResource,
+          model);
     }
   }
 }

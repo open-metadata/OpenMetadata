@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabsProps } from 'antd';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
@@ -22,6 +21,7 @@ import {
 } from './CustomizePageDispatchUtils';
 import {
   checkIfExpandViewSupported,
+  DetailsTabItem,
   getTabDisplayName,
   getTabLabelMapFromTabs,
   sortTabs,
@@ -81,7 +81,7 @@ describe('CustomizePageUtils', () => {
 
   describe('sortTabs', () => {
     it('should sort tabs according to given order', () => {
-      const tabs: TabsProps['items'] = [
+      const tabs: DetailsTabItem[] = [
         { key: 'c', label: 'C' },
         { key: 'a', label: 'A' },
         { key: 'b', label: 'B' },
@@ -96,7 +96,7 @@ describe('CustomizePageUtils', () => {
     });
 
     it('should handle tabs not in order array', () => {
-      const tabs: TabsProps['items'] = [
+      const tabs: DetailsTabItem[] = [
         { key: 'c', label: 'C' },
         { key: 'd', label: 'D' },
         { key: 'a', label: 'A' },
@@ -190,6 +190,26 @@ describe('CustomizePageUtils', () => {
       );
 
       expect(result).toBe(true);
+    });
+
+    it('should return true for chart details view (mirrors dashboard)', () => {
+      const result = checkIfExpandViewSupported(
+        { key: EntityTabs.DETAILS, label: 'Details' },
+        EntityTabs.DETAILS,
+        PageType.Chart
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false for chart non-details view', () => {
+      const result = checkIfExpandViewSupported(
+        { key: EntityTabs.DETAILS, label: 'Details' },
+        EntityTabs.ACTIVITY_FEED,
+        PageType.Chart
+      );
+
+      expect(result).toBe(false);
     });
   });
 

@@ -144,10 +144,12 @@ const OntologySubsetPanel = ({
       FieldTypes.TEXTAREA
     ),
   ];
-  const isReady = Boolean(
+  const hasDistinctGlossaries =
     values.sourceGlossaryId &&
-      values.targetGlossaryId &&
-      values.sourceGlossaryId !== values.targetGlossaryId &&
+    values.targetGlossaryId &&
+    values.sourceGlossaryId !== values.targetGlossaryId;
+  const isReady = Boolean(
+    hasDistinctGlossaries &&
       values.sourceTermIds.length &&
       values.changeSetName.trim() &&
       values.changeSetDescription.trim()

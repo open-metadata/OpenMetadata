@@ -18,11 +18,16 @@ from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
+import pytest
+import requests
+
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.source.pipeline.kafkaconnect import client as client_module
+from metadata.ingestion.source.pipeline.kafkaconnect import telemetry
 from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
@@ -1926,6 +1931,10 @@ class TestConnectorTopicsFromRuntime:
         client.client = MagicMock()
         client.is_confluent_cloud = confluent_cloud
         client._topics_endpoint_supported = None
+        # No telemetry credentials, so the Confluent telemetry lookup is skipped and these
+        # tests exercise the runtime-to-config fallback they are about.
+        client._telemetry_auth = None
+        client._host_port = ""
         return client
 
     def test_runtime_topics_preferred_over_config(self):
@@ -2447,3 +2456,689 @@ class TestForbiddenIsNotAlwaysUnsupported:
 
         assert [t.name for t in topics] == ["prod.events.orderPlaced_v1"]
         assert client.client.list_connector_topics.call_count == 2
+
+
+class TestConfluentTelemetryTopics:
+    """
+    Topics a Confluent Cloud managed connector actually produced to.
+
+    Confluent Cloud answers KIP-558 with 404, so a connector whose destination topic is
+    chosen per row resolves nothing from config. The telemetry Data Flow dataset reports
+    the topic a producer client wrote to, and a managed connector's producer client id
+    carries its connector id, which is what closes that gap.
+    """
+
+    @staticmethod
+    def _cloud_client():
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-abc/clusters/lkc-xyz"
+        config.verifySSL = True
+        auth = MagicMock()
+        auth.username = "CLOUDKEY"
+        auth.password.get_secret_value.return_value = "cloudsecret"
+        config.KafkaConnectConfig = auth
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            return KafkaConnectClient(config)
+
+    def test_cluster_id_comes_from_the_host_port(self):
+        """The telemetry query is scoped by Kafka cluster, and hostPort already names it."""
+        client = self._cloud_client()
+
+        assert client._confluent_kafka_cluster_id() == "lkc-xyz"
+
+    def test_self_hosted_has_no_cluster_id(self):
+        """A self-hosted Connect URL names no Kafka cluster, so there is nothing to scope by."""
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "http://localhost:8083"
+        config.verifySSL = True
+        config.KafkaConnectConfig = None
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            client = KafkaConnectClient(config)
+
+        assert client._confluent_kafka_cluster_id() is None
+
+    def test_row_routed_topics_are_resolved_from_telemetry(self):
+        """
+        The case config cannot answer.
+
+        An outbox EventRouter routing by a row value publishes topic names that appear in
+        no config key. Telemetry reports them against the connector's producer client.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {
+                    "prod.events.walletEntity_v1",
+                    "prod.events.instrument_v1",
+                },
+                "connector-producer-lcc-bbb222-0": {"prod.events.other_v1"},
+            }
+        )
+
+        topics = client._list_topics_from_telemetry("outbox-wallet")
+
+        assert sorted(t.name for t in topics) == [
+            "prod.events.instrument_v1",
+            "prod.events.walletEntity_v1",
+        ], "must return only the topics produced by this connector's own client"
+
+    def test_another_connectors_topics_are_never_claimed(self):
+        """Client ids are per connector, so a sibling's topics must not leak across."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={"connector-producer-lcc-bbb222-0": {"prod.events.other_v1"}}
+        )
+
+        assert client._list_topics_from_telemetry("outbox-wallet") is None
+
+    def test_schema_history_client_is_not_the_connector(self):
+        """
+        Confluent's managed schema history topic is named dbhistory.<prefix>.<connector-id>,
+        so its name is not derivable from config and cannot be excluded by name. It is
+        produced by a separate client, which is what makes it separable at all.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {"prod.events.walletEntity_v1"},
+                "wallet.prod-schemahistory": {"dbhistory.wallet.prod.lcc-aaa111"},
+            }
+        )
+
+        topics = client._list_topics_from_telemetry("outbox-wallet")
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+
+    def test_unknown_connector_resolves_nothing(self):
+        """A connector absent from the live id map must not be matched by substring."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={"connector-producer-lcc-aaa111-0": {"prod.events.walletEntity_v1"}}
+        )
+
+        assert client._list_topics_from_telemetry("outbox-wallet") is None
+
+    def test_telemetry_failure_is_not_fatal(self):
+        """Telemetry is additive. A failure must degrade to no enrichment, never raise."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(side_effect=Exception("telemetry down"))
+
+        assert client._list_topics_from_telemetry("outbox-wallet") is None
+
+    def test_telemetry_runs_before_config_but_after_runtime(self):
+        """
+        Resolution order: the runtime list wins, then telemetry, then declared config.
+        Both runtime sources describe what happened, config only what was asked for.
+        """
+        client = self._cloud_client()
+        client._list_data_topics_from_api = MagicMock(return_value=None)
+        client._list_topics_from_telemetry = MagicMock(
+            return_value=[KafkaConnectTopics(name="prod.events.walletEntity_v1")]
+        )
+        client._parse_topics_from_config = MagicMock(return_value=[KafkaConnectTopics(name="declared.in.config")])
+
+        topics = client.get_connector_topics("outbox-wallet", connector_config={})
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+        client._parse_topics_from_config.assert_not_called()
+
+    def test_config_still_used_when_telemetry_is_silent(self):
+        """An idle connector reports no flow, so the declared names must still be used."""
+        client = self._cloud_client()
+        client._list_data_topics_from_api = MagicMock(return_value=None)
+        client._list_topics_from_telemetry = MagicMock(return_value=None)
+        client._parse_topics_from_config = MagicMock(return_value=[KafkaConnectTopics(name="declared.in.config")])
+
+        topics = client.get_connector_topics("outbox-wallet", connector_config={})
+
+        assert [t.name for t in topics] == ["declared.in.config"]
+
+    def test_check_passes_for_self_hosted(self):
+        """
+        Self-hosted Connect serves the topics endpoint and never consults telemetry, so the
+        step must not report a failure the operator has no way to act on.
+        """
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "http://localhost:8083"
+        config.verifySSL = True
+        config.KafkaConnectConfig = None
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            client = KafkaConnectClient(config)
+        client._query_dataflow_topics_by_client = MagicMock()
+
+        assert client.check_confluent_telemetry() is True
+        client._query_dataflow_topics_by_client.assert_not_called()
+
+    def test_check_surfaces_the_failure_on_confluent_cloud(self):
+        """
+        The test step reports by raising, unlike the resolution path which stays silent.
+        Here the operator is the one who can fix the credentials, so they must be told.
+        """
+        client = self._cloud_client()
+        client._query_dataflow_topics_by_client = MagicMock(side_effect=Exception("401 Unauthorized"))
+
+        with pytest.raises(Exception, match="401 Unauthorized"):
+            client.check_confluent_telemetry()
+
+    def test_managed_transaction_topic_is_excluded(self):
+        """
+        Debezium's transaction metadata topic is produced by the connector's own client, so
+        client identity cannot separate it. Confluent names it <prefix>.<connector-id>.
+        transaction, which extract_internal_topic_names cannot derive from config because
+        the connector id is assigned at runtime. Emitting it would be the same class of
+        wrong edge that linking the outbox table to bookkeeping topics already was.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {
+                    "prod.events.walletEntity_v1",
+                    "wallet.prod.lcc-aaa111.transaction",
+                }
+            }
+        )
+
+        topics = client._list_topics_from_telemetry("outbox-wallet", connector_config={"topic.prefix": "wallet.prod"})
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+
+    def test_configured_internal_topics_are_excluded(self):
+        """The names config does declare, such as schema history, are excluded too."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {
+                    "prod.events.walletEntity_v1",
+                    "schema-history.wallet.prod",
+                }
+            }
+        )
+
+        topics = client._list_topics_from_telemetry(
+            "outbox-wallet",
+            connector_config={
+                "topic.prefix": "wallet.prod",
+                "schema.history.internal.kafka.topic": "schema-history.wallet.prod",
+            },
+        )
+
+        assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
+
+    def test_a_connector_producing_only_bookkeeping_resolves_nothing(self):
+        """Bookkeeping alone is not lineage, so this must fall through to config."""
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={"connector-producer-lcc-aaa111-0": {"wallet.prod.lcc-aaa111.transaction"}}
+        )
+
+        assert (
+            client._list_topics_from_telemetry("outbox-wallet", connector_config={"topic.prefix": "wallet.prod"})
+            is None
+        )
+
+    def test_cluster_wide_lookups_run_once_per_ingestion(self):
+        """
+        Both lookups describe the whole cluster, not one connector, so repeating them per
+        connector is pure waste. On a four connector rig they were 43 percent of ingestion
+        time, and an estate of thirty six would repeat each thirty six times against an API
+        that rate limits per hour.
+        """
+        client = self._cloud_client()
+        client.client.list_connectors = MagicMock(
+            return_value={
+                "outbox-a": {"id": {"id": "lcc-aaa111"}},
+                "outbox-b": {"id": {"id": "lcc-bbb222"}},
+            }
+        )
+        query = MagicMock(
+            return_value={
+                "connector-producer-lcc-aaa111-0": {"prod.events.a_v1"},
+                "connector-producer-lcc-bbb222-0": {"prod.events.b_v1"},
+            }
+        )
+        client._query_dataflow_topics_by_client = query
+
+        first = client._list_topics_from_telemetry("outbox-a", connector_config={})
+        second = client._list_topics_from_telemetry("outbox-b", connector_config={})
+
+        assert [t.name for t in first] == ["prod.events.a_v1"]
+        assert [t.name for t in second] == ["prod.events.b_v1"]
+        assert query.call_count == 1, "the telemetry query is cluster wide, so once per run"
+        assert client.client.list_connectors.call_count == 1, "the connector list is cluster wide too"
+
+    @staticmethod
+    def _page(rows, next_token=None):
+        """A telemetry response page, shaped as the API returns it."""
+        page = MagicMock()
+        page.raise_for_status = MagicMock()
+        page.json = MagicMock(
+            return_value={
+                "data": rows,
+                "meta": {"pagination": {"next_page_token": next_token}} if next_token else {},
+            }
+        )
+        return page
+
+    def test_every_page_is_followed(self):
+        """
+        The API caps a query at 1000 groups and returns a cursor for the rest. Reading only
+        the first page would drop topics on a busy cluster, and a connector resolving a
+        partial topic set looks perfectly valid, which is worse than resolving nothing.
+        """
+        client = self._cloud_client()
+        pages = [
+            self._page(
+                [{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "a_v1"}],
+                next_token="TOKEN",
+            ),
+            self._page([{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "b_v1"}]),
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            side_effect=pages,
+        ) as post:
+            by_client = client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert by_client == {"connector-producer-lcc-aaa111-0": {"a_v1", "b_v1"}}
+        assert post.call_count == 2
+        assert post.call_args_list[1].kwargs["params"] == {"page_token": "TOKEN"}
+
+    def test_query_stays_within_the_documented_limit(self):
+        """The API documents a maximum of 1000 groups. Above it we rely on leniency."""
+        client = self._cloud_client()
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page([]),
+        ) as post:
+            client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert post.call_args.kwargs["json"]["limit"] <= 1000
+
+    def test_verify_ssl_is_honoured(self):
+        """A user disabling certificate verification for Connect means it for telemetry too."""
+        config = MagicMock(spec=KafkaConnectConnection)
+        config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-abc/clusters/lkc-xyz"
+        config.verifySSL = False
+        auth = MagicMock()
+        auth.username = "K"
+        auth.password.get_secret_value.return_value = "S"
+        config.KafkaConnectConfig = auth
+        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+            client = KafkaConnectClient(config)
+
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page([]),
+        ) as post:
+            client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert post.call_args.kwargs["verify"] is False
+
+    def test_a_failed_query_is_not_retried_for_every_connector(self):
+        """
+        One outage must not become one failed call per connector. The API is rate limited
+        per hour, and an estate of thirty six connectors would spend that budget retrying
+        a call that already failed.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-a": "lcc-aaa111", "outbox-b": "lcc-bbb222"})
+        query = MagicMock(side_effect=Exception("telemetry down"))
+        client._query_dataflow_topics_by_client = query
+
+        assert client._list_topics_from_telemetry("outbox-a", connector_config={}) is None
+        assert client._list_topics_from_telemetry("outbox-b", connector_config={}) is None
+        assert query.call_count == 1, "a failed cluster-wide query must not be retried per connector"
+
+    def test_only_live_connectors_are_retained(self):
+        """
+        The telemetry window outlives the connectors in it. A connector deleted earlier in
+        the window still reports the topics it produced to, and keeping those grows what is
+        retained with churn rather than with the number of connectors that exist. They can
+        never be attributed either, since resolution goes through the live connector list.
+        """
+        client = self._cloud_client()
+        client._connector_id_by_name = MagicMock(return_value={"outbox-live": "lcc-live01"})
+        client._query_dataflow_topics_by_client = MagicMock(
+            return_value={
+                "connector-producer-lcc-live01-0": {"prod.events.live_v1"},
+                "connector-producer-lcc-dead01-0": {"prod.events.deleted_v1"},
+                "connector-producer-lcc-dead02-0": {"prod.events.also_deleted_v1"},
+            }
+        )
+
+        retained = client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        assert set(retained) == {"lcc-live01"}, "a deleted connector's topics must not be retained"
+
+    def test_unattributable_rows_are_dropped_without_losing_the_page(self):
+        """
+        A row has to name both a client and a topic to mean anything: one without a client
+        attributes a topic to no connector, and one without a topic attributes a connector
+        to nothing. Neither can become lineage. An empty string counts as missing, since it
+        would otherwise reach the producer-id match as a real value.
+
+        The rest of the page still resolves, because discarding good pairs over a
+        malformed neighbour would silently shrink a connector's topic set, and a partial
+        set is indistinguishable from a complete one.
+        """
+        client = self._cloud_client()
+        rows = [
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "good_v1"},
+            {"metric.topic": "orphan_v1"},
+            {"metric.client_id": "connector-producer-lcc-aaa111-0"},
+            {"metric.client_id": "", "metric.topic": "blank_client_v1"},
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": ""},
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "also_good_v1"},
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page(rows),
+        ):
+            by_client = client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert by_client == {"connector-producer-lcc-aaa111-0": {"good_v1", "also_good_v1"}}
+        assert "" not in by_client, "an empty client id must not become a producer"
+
+    def test_unrelated_producers_are_dropped_before_they_accumulate(self):
+        """
+        The telemetry query is cluster wide, so the response describes every application
+        producing to the cluster, not just connectors. Those rows can never be attributed,
+        and this map is held across every page, so on a busy cluster keeping them would let
+        ordinary application traffic dominate what the connector holds in memory.
+
+        Asserted on the fetch result rather than on the attributed output, because
+        filtering later would still produce the right topics while holding the whole
+        cluster's producers to get there.
+        """
+        client = self._cloud_client()
+        rows = [
+            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "connector_v1"},
+            {"metric.client_id": "checkout-service-prod-17", "metric.topic": "orders_v1"},
+            {"metric.client_id": "spark-streaming-job-42", "metric.topic": "events_v1"},
+            {"metric.client_id": "consumer-analytics-9", "metric.topic": "connector_v1"},
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page(rows),
+        ):
+            by_client = client._query_dataflow_topics_by_client("lkc-xyz")
+
+        assert by_client == {"connector-producer-lcc-aaa111-0": {"connector_v1"}}, (
+            "only connector producers may be retained from a cluster-wide response"
+        )
+
+    def test_reachability_check_reads_one_page_even_when_more_exist(self):
+        """
+        The test-connection step only has to learn whether the API answers and accepts the
+        credentials, which the first response settles. Following the cursor would spend a
+        request per page against an endpoint that rate limits by the hour, and would hold
+        an operator on a check whose answer was already known.
+
+        The first page here returns a cursor, so a caller that paged would issue a second
+        request. Asserting the call count is what distinguishes the two.
+        """
+        client = self._cloud_client()
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+            return_value=self._page(
+                [{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "a_v1"}],
+                next_token="MORE",
+            ),
+        ) as post:
+            assert client.check_confluent_telemetry() is True
+
+        assert post.call_count == 1, "a reachability check must not walk the cursor"
+
+    def test_reachability_check_reports_failure_by_raising(self):
+        """
+        A test step reports failure by raising, so a rejected credential has to propagate
+        rather than be swallowed the way the resolution path swallows it. The operator is
+        the one who can fix it, and a step that passed regardless would say nothing.
+        """
+        client = self._cloud_client()
+        response = MagicMock()
+        response.raise_for_status = MagicMock(side_effect=Exception("401 Unauthorized"))
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
+                return_value=response,
+            ),
+            pytest.raises(Exception, match="401"),
+        ):
+            client.check_confluent_telemetry()
+
+
+class TestTelemetryFailureHint:
+    """
+    A failed telemetry lookup has to say which of the two fixes applies.
+
+    Confluent answers 401 when the credential is not a Cloud API key at all and 403 when it
+    is valid but unauthorized for metrics. The fixes are opposite, a different key versus a
+    role grant, and the raised HTTPError renders only the status line, so without this the
+    log said the same thing for both.
+    """
+
+    @staticmethod
+    def _error(status, body=None, text=""):
+        response = MagicMock()
+        response.status_code = status
+        response.text = text
+        if body is None:
+            response.json = MagicMock(side_effect=ValueError("not json"))
+        else:
+            response.json = MagicMock(return_value=body)
+        exc = requests.exceptions.HTTPError(f"{status} Client Error")
+        exc.response = response
+        return exc
+
+    def test_unauthorized_names_the_key_as_the_problem(self):
+        """401 is unauthenticated, so no role grant can fix it. The key itself is wrong."""
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"status": "401", "detail": "Invalid credentials"}]})
+        )
+
+        assert "Invalid credentials" in hint, "Confluent's own wording must survive"
+        assert "Cloud API key" in hint
+        assert "MetricsViewer" not in hint, "a role grant cannot fix an unauthenticated key"
+
+    def test_forbidden_names_the_role_as_the_problem(self):
+        """403 authenticated fine, so the key is right and only the role is missing."""
+        hint = telemetry.failure_hint(
+            self._error(
+                403,
+                {
+                    "errors": [
+                        {
+                            "status": "403",
+                            "detail": "Query must filter by at least one of your authorized resources",
+                        }
+                    ]
+                },
+            )
+        )
+
+        assert "authorized resources" in hint, "Confluent's own wording must survive"
+        assert "MetricsViewer" in hint
+        assert "Cloud API key" not in hint, "the key authenticated, so it is not the problem"
+
+    def test_other_failures_report_the_response_but_prescribe_no_fix(self):
+        """
+        A timeout or a 500 is not an auth problem, so naming a fix would send the reader
+        after the wrong thing. What Confluent returned is still reported, because an
+        unexpected shape is worth seeing and a body we declined to print is lost for good.
+        """
+        hint = telemetry.failure_hint(self._error(500, {"errors": []}))
+
+        assert "MetricsViewer" not in hint and "Cloud API key" not in hint, (
+            "a non-auth failure must not prescribe an auth fix"
+        )
+        assert "errors" in hint, "the response itself is still worth reporting"
+
+    def test_no_response_at_all_adds_nothing(self):
+        """A connection error never reached Confluent, so there is no response to report."""
+        assert telemetry.failure_hint(requests.exceptions.ConnectionError("no route")) == ""
+
+    def test_non_json_body_falls_back_to_text(self):
+        """A proxy in front of the API answers HTML, which must not crash the handler."""
+        hint = telemetry.failure_hint(self._error(401, body=None, text="<html>gateway</html>"))
+
+        assert "gateway" in hint
+        assert "Cloud API key" in hint
+
+    def test_remote_text_is_capped(self):
+        """The body is remote input going into a log line, so it cannot be unbounded."""
+        hint = telemetry.failure_hint(self._error(403, {"errors": [{"detail": "x" * 5000}]}))
+
+        assert len(hint) < 1000, "an unbounded remote string must not reach the log"
+
+    def test_hint_reaches_the_warning(self):
+        """The hint is worthless unless it lands in the line an operator actually reads."""
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("k", "s")
+        client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._connect_authenticated = True
+        client._telemetry_topics_by_connector_id = None
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(403, {"errors": [{"detail": "not authorized"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "MetricsViewer" in rendered
+        assert "not authorized" in rendered
+
+    def test_remote_text_cannot_forge_log_lines(self):
+        """
+        The body is whatever answered the request, which on a failure may be a proxy
+        returning HTML rather than Confluent returning JSON. Newlines in it would split one
+        warning into several that each read as their own record, so a crafted body could
+        forge log entries and any body at all could break line-oriented parsing.
+        """
+        forged = "denied\n2026-01-01 00:00:00 INFO  everything is fine\nmore"
+        hint = telemetry.failure_hint(self._error(401, {"errors": [{"detail": forged}]}))
+
+        assert "\n" not in hint and "\r" not in hint, "remote text must not span log lines"
+        assert "everything is fine" in hint, "the content is kept, only the newlines go"
+
+    def test_html_error_body_is_flattened(self):
+        """A proxy's HTML page is multi-line by nature and must collapse to one line."""
+        hint = telemetry.failure_hint(
+            self._error(403, body=None, text="<html>\n  <body>\n    Forbidden\n  </body>\n</html>")
+        )
+
+        assert "\n" not in hint
+        assert "Forbidden" in hint
+
+    def test_401_when_connect_works_does_not_blame_the_key_type(self):
+        """
+        A credential Connect accepts is not a cluster-scoped key, since those fail Connect
+        too. Telling the reader to swap the key type would send them after the wrong thing,
+        so the message reports what was observed and names both levers to check.
+        """
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"detail": "Invalid credentials"}]}),
+            connect_authenticated=True,
+        )
+
+        assert "authenticates to the Connect API" in hint, "the observed split must be stated"
+        assert "MetricsViewer" in hint and "scope" in hint, "both levers are named"
+
+    def test_401_when_connect_also_failed_blames_the_key(self):
+        """Failing both is the ordinary case: the credential is not a Cloud API key."""
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"detail": "Invalid credentials"}]}),
+            connect_authenticated=False,
+        )
+
+        assert "not accepted by the Telemetry API" in hint
+        assert "authenticates to the Connect API" not in hint
+
+    def test_warning_names_the_key_but_never_the_secret(self):
+        """
+        The key id is what identifies which credential to go and look at, and it is not a
+        secret. The secret sits beside it in the same tuple and must never reach a log.
+        """
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("KEYID123", "SUPERSECRET")
+        client._connector_ids = {"outbox-a": "lcc-aaa111"}
+        client._connect_authenticated = True
+        client._telemetry_topics_by_connector_id = None
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "KEYID123" in rendered, "the key id identifies which credential to check"
+        assert "SUPERSECRET" not in rendered, "the secret must never be logged"
+        assert "authenticates to the Connect API" in rendered, "Connect worked, so say so"
+
+    def test_empty_cluster_is_not_mistaken_for_a_rejected_credential(self):
+        """
+        A cluster with no connectors and a cluster we cannot authenticate to both yield an
+        empty connector list. Inferring the credential from that list would tell an operator
+        with a working key and an empty cluster to go and replace the key.
+        """
+        client = object.__new__(KafkaConnectClient)
+        client.is_confluent_cloud = True
+        client._telemetry_auth = ("KEYID123", "SECRET")
+        client._telemetry_topics_by_connector_id = None
+        client._connector_ids = None
+        client._connect_authenticated = None
+        # Connect answers, the cluster simply has no connectors.
+        client.get_connectors_list = MagicMock(return_value={})
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+        )
+
+        with patch.object(client_module.logger, "warning") as warn:
+            client._telemetry_topics_for_connector_ids("lkc-xyz")
+
+        rendered = warn.call_args[0][0] % warn.call_args[0][1:]
+        assert "authenticates to the Connect API" in rendered, (
+            "an empty connector list still means Connect authenticated"
+        )
+        assert "cannot authenticate here" not in rendered
+
+    def test_large_body_is_capped_before_normalizing(self):
+        """
+        A proxy error page can be megabytes. Collapsing whitespace across the whole body
+        would build a token list the size of the response before all but a few hundred
+        characters are discarded, so the input is capped first.
+
+        Asserted by putting a marker past the cap: it cannot appear in the output, which is
+        only true if the body was truncated before being split.
+        """
+        cap = telemetry.MAX_ERROR_CHARS * telemetry.INPUT_CAP_FACTOR
+        body = ("x " * cap) + "MARKER_PAST_THE_CAP"
+
+        out = telemetry.single_log_line(body)
+
+        assert "MARKER_PAST_THE_CAP" not in out, "input must be capped before normalizing"
+        assert len(out) <= telemetry.MAX_ERROR_CHARS
+
+    def test_whitespace_heavy_body_still_yields_full_line(self):
+        """
+        The cap is a multiple of the output so an indented page still gives a usable line.
+        Capping at exactly the output length would leave almost nothing after collapsing.
+        """
+        body = "\n".join("    " + w for w in ["Forbidden"] * 200)
+
+        out = telemetry.single_log_line(body)
+
+        assert len(out) == telemetry.MAX_ERROR_CHARS, "a real line of content must survive"
+        assert "\n" not in out

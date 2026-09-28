@@ -23,7 +23,7 @@ import {
 import { Trash01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, uniqBy } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Effect } from '../../../generated/events/eventSubscription';
@@ -45,6 +45,7 @@ import {
   getListValue,
   getRuleCopy,
   getRuleItems,
+  getRuleSectionFlags,
   getRulesWithAddedRule,
   getRulesWithEffect,
   getRulesWithName,
@@ -68,6 +69,18 @@ const getSelectedValueItems = (selectedValues: string[]): SelectItemType[] =>
   }));
 
 const mergeSelectItems = (items: SelectItemType[]) => uniqBy(items, 'id');
+
+/** Search results replace the option list; selected items stay so their labels still resolve. */
+const getSearchResultItems = (
+  currentItems: SelectItemType[],
+  selectedValues: string[],
+  nextItems: SelectItemType[]
+) =>
+  mergeSelectItems([
+    ...currentItems.filter((item) => selectedValues.includes(String(item.id))),
+    ...getSelectedValueItems(selectedValues),
+    ...nextItems,
+  ]);
 
 /** Persists the next selected values for a single rule argument input. */
 const updateArgumentInput = (
@@ -233,6 +246,12 @@ const AiArgumentAutocomplete = ({
   );
   const [hasNoResults, setHasNoResults] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  // Read through a ref so a changing selection does not recreate (and cancel) a pending search.
+  const selectedValuesRef = useRef(selectedValues);
+
+  useEffect(() => {
+    selectedValuesRef.current = selectedValues;
+  }, [selectedValues]);
 
   useEffect(() => {
     setItems((currentItems) =>
@@ -294,10 +313,14 @@ const AiArgumentAutocomplete = ({
 
         setHasNoResults(searchText.trim() !== '' && nextItems.length === 0);
         setItems((currentItems) =>
-          mergeSelectItems([...selectedItems, ...currentItems, ...nextItems])
+          getSearchResultItems(
+            currentItems,
+            selectedValuesRef.current,
+            nextItems
+          )
         );
       }, 500),
-    [argument, selectedItems, selectedSource, stableContainerEntities]
+    [argument, selectedSource, stableContainerEntities]
   );
 
   useEffect(
@@ -392,11 +415,16 @@ const RuleArgumentField = ({
   name,
   onChange,
   selectedSource,
+  supportedEventTypes,
   validationErrors,
   value,
 }: RuleArgumentFieldProps & { selectedSource?: string }) => {
   const { t } = useTranslation();
-  const selectConfig = getSelectArgumentConfig(argument, t);
+  const selectConfig = getSelectArgumentConfig(
+    argument,
+    t,
+    supportedEventTypes
+  );
   const textArgumentCopy = getTextArgumentCopy(argument, t);
 
   if (selectConfig) {
@@ -455,6 +483,7 @@ const AlertAiRuleSection = ({
   isViewOnly,
   onChange,
   selectedSource,
+  supportedEventTypes,
   supportedRules,
   title,
   validationErrors,
@@ -469,12 +498,13 @@ const AlertAiRuleSection = ({
     [selectedRules, supportedRules]
   );
 
-  const maxRules = field === 'actions' ? 1 : supportedRules?.length ?? 0;
-  const canAddRule =
-    Boolean(supportedRules?.length) && selectedRules.length < maxRules;
-  const isAddDisabled = isEmpty(selectedSource);
-  const showAddButton =
-    !isViewOnly && (field === 'filters' || selectedRules.length === 0);
+  const { canAddRule, isAddDisabled, showAddButton } = getRuleSectionFlags({
+    field,
+    isViewOnly,
+    selectedRules,
+    selectedSource,
+    supportedRules,
+  });
 
   /** Updates the selected rule and rebuilds its argument placeholders. */
   const setRuleName = (index: number, key: Key | null) => {
@@ -581,6 +611,7 @@ const AlertAiRuleSection = ({
                           index={index}
                           name={ruleIndex}
                           selectedSource={selectedSource}
+                          supportedEventTypes={supportedEventTypes}
                           validationErrors={validationErrors}
                           value={value}
                           onChange={onChange}
@@ -672,6 +703,7 @@ const AlertAiRuleSection = ({
                             isViewOnly={isViewOnly}
                             name={ruleIndex}
                             selectedSource={selectedSource}
+                            supportedEventTypes={supportedEventTypes}
                             validationErrors={validationErrors}
                             value={value}
                             onChange={onChange}

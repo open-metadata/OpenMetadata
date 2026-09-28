@@ -100,7 +100,14 @@ export const useIncidentFilters = ({
     ) => {
       const updatedFilters = { ...filters, ...newFilters };
       const allUpdatedParams = dateRangeParams
-        ? { ...updatedFilters, ...dateRangeParams }
+        ? // `groupBy` belongs to the grouped view rather than to this filter
+          // set, so it is carried over explicitly; every other stale param is
+          // still dropped on the date-range path.
+          {
+            ...pick(allParams, ['groupBy']),
+            ...updatedFilters,
+            ...dateRangeParams,
+          }
         : { ...allParams, ...updatedFilters };
 
       navigate(
@@ -291,12 +298,12 @@ export const useIncidentFilters = ({
     ]
   );
 
-  const hasActiveFilters = Boolean(
+  const hasTestCaseOrAssigneeFilter =
     filters.testCaseFQN ||
-      filters.testCaseResolutionStatusType ||
-      filters.assignee ||
-      filters.startTs ||
-      filters.endTs
+    filters.testCaseResolutionStatusType ||
+    filters.assignee;
+  const hasActiveFilters = Boolean(
+    hasTestCaseOrAssigneeFilter || filters.startTs || filters.endTs
   );
 
   const clearAllFilters = useCallback(() => {

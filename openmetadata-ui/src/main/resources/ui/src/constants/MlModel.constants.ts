@@ -17,6 +17,8 @@ import {
   MlModelServiceType,
 } from '../generated/entity/data/mlmodel';
 
+const DOMAIN_WITH_DOT = 'domain.with.dot';
+
 export const ML_MODEL_DUMMY_DATA: Mlmodel = {
   id: '6ef964b1-edb7-4d7c-85f1-51845197206c',
   name: 'eta_predictions',
@@ -148,10 +150,10 @@ export const ML_MODEL_DUMMY_DATA: Mlmodel = {
     {
       id: '761f0a12-7b08-4889-acc3-b8d4d11a7865',
       type: 'domain',
-      name: 'domain.with.dot',
+      name: DOMAIN_WITH_DOT,
       fullyQualifiedName: '"domain.with.dot"',
-      description: 'domain.with.dot',
-      displayName: 'domain.with.dot',
+      description: DOMAIN_WITH_DOT,
+      displayName: DOMAIN_WITH_DOT,
     },
   ],
   dataProducts: [],

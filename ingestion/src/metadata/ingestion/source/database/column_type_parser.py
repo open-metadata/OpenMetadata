@@ -13,7 +13,7 @@ Generic Column Type Parser.
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple, Type, Union  # noqa: UP035
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
@@ -50,7 +50,7 @@ class ColumnTypeParser:
 
     _BRACKETS = {"(": ")", "[": "]", "{": "}", "<": ">"}  # noqa: RUF012
 
-    _COLUMN_TYPE_MAPPING: Dict[Type[types.TypeEngine], str] = {  # noqa: RUF012, UP006
+    _COLUMN_TYPE_MAPPING: dict[type[types.TypeEngine], str] = {  # noqa: RUF012
         types.ARRAY: "ARRAY",
         types.Boolean: "BOOLEAN",
         types.CHAR: "CHAR",
@@ -310,7 +310,7 @@ class ColumnTypeParser:
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
-    _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*,\s*(\d+)\s*\))?")
+    _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\))?")
 
     try:
         # pylint: disable=import-outside-toplevel
@@ -353,7 +353,7 @@ class ColumnTypeParser:
     def _parse_datatype_string(
         data_type: str,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ) -> Union[object, Dict[str, object]]:  # noqa: UP006, UP007
+    ) -> object | dict[str, object]:
         data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
         if data_type.startswith("array<"):
@@ -395,7 +395,7 @@ class ColumnTypeParser:
         return ColumnTypeParser._parse_primitive_datatype_string(data_type)
 
     @staticmethod
-    def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:  # noqa: UP006
+    def _parse_struct_fields_string(stuct_type: str) -> dict[str, object]:
         parts = ColumnTypeParser._ignore_brackets_split(stuct_type, ",", skip_no_child_validation=True)
         columns = []
         for part in parts:
@@ -425,24 +425,26 @@ class ColumnTypeParser:
     @staticmethod
     def _parse_primitive_datatype_string(  # pylint: disable=too-many-return-statements
         dtype: str,
-    ) -> Dict[str, object]:  # noqa: UP006
+    ) -> dict[str, object]:
         if dtype.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
             return {
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
                 "dataTypeDisplay": dtype,
             }
-        if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
-            match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
-            if match.group(2) is not None:  # type: ignore
-                return {
-                    "dataType": ColumnTypeParser.get_column_type(match.group(0)),
-                    "dataTypeDisplay": dtype,
-                    "dataLength": int(match.group(3)),  # type: ignore
-                }
-            return {
-                "dataType": ColumnTypeParser.get_column_type(match.group(0)),
+        decimal_match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
+        if decimal_match:
+            # The digits of a numeric are its precision and scale, never a character length:
+            # dataLength is defined for char/varchar/binary only (entity/data/table.json).
+            parsed: dict[str, object] = {
+                "dataType": ColumnTypeParser.get_column_type(decimal_match.group(0)),
                 "dataTypeDisplay": dtype,
             }
+            if decimal_match.group(3) is not None:
+                parsed["precision"] = int(decimal_match.group(3))
+            # decimal(p) leaves the scale unstated, as SQLAlchemy does for numeric(p).
+            if decimal_match.group(4) is not None:
+                parsed["scale"] = int(decimal_match.group(4))
+            return parsed
         if dtype == "date":
             return {"dataType": "DATE", "dataTypeDisplay": dtype}
         if dtype == "timestamp":
@@ -465,7 +467,7 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _ignore_brackets_split(string: str, separator: str, skip_no_child_validation: bool = False) -> List[str]:  # noqa: UP006
+    def _ignore_brackets_split(string: str, separator: str, skip_no_child_validation: bool = False) -> list[str]:
         parts = []
         buf = ""
         level = 0
@@ -493,7 +495,7 @@ class ColumnTypeParser:
         return parts
 
     @staticmethod
-    def check_col_precision(datatype: str, col_raw_type: object) -> Optional[Tuple[str, str]]:  # noqa: UP006, UP045
+    def check_col_precision(datatype: str, col_raw_type: object) -> tuple[str, str] | None:
         """
         Method retuerns the precision details of column if available
         """

@@ -18,6 +18,8 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface.getStringWithClusterAlias;
+import static org.openmetadata.service.jdbi3.DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX;
 import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
@@ -61,6 +63,8 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -68,6 +72,7 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -182,7 +187,15 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class SearchRepository {
 
+  private static final int MAPPED_FIELD_CACHE_MAX_SIZE = 256;
+  private static final Duration MAPPED_FIELD_CACHE_TTL = Duration.ofMinutes(1);
+
   private volatile SearchClient searchClient;
+  private final Cache<String, Boolean> mappedFieldCache =
+      Caffeine.newBuilder()
+          .maximumSize(MAPPED_FIELD_CACHE_MAX_SIZE)
+          .expireAfterWrite(MAPPED_FIELD_CACHE_TTL)
+          .build();
 
   /**
    * Upper bound on parent ids packed into a single inherited-domain child-propagation terms query,
@@ -533,13 +546,13 @@ public class SearchRepository {
     try {
       EntityLifecycleEventDispatcher dispatcher = EntityLifecycleEventDispatcher.getInstance();
       SearchIndexHandler searchHandler = new SearchIndexHandler(this);
-      // Drop any stale handler bound to a previous SearchRepository instance. Test suites and
+      // Displace any stale handler bound to a previous SearchRepository instance. Test suites and
       // app bootstrap construct SearchRepository more than once and replace the singleton via
       // Entity.setSearchRepository(...); without this the dispatcher keeps delivering events to
       // the first instance and state maintained on the current instance (e.g. activeStagedIndices
-      // used for reindex write-routing) is never consulted.
-      dispatcher.unregisterHandler(searchHandler.getHandlerName());
-      dispatcher.registerHandler(searchHandler);
+      // used for reindex write-routing) is never consulted. Replace rather than unregister then
+      // register, so no concurrent entity write can slip through an unhandled window.
+      dispatcher.replaceHandler(searchHandler);
       LOG.info("Successfully registered SearchIndexHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register SearchIndexHandler", e);
@@ -844,7 +857,8 @@ public class SearchRepository {
                               entry.getValue().indexPattern(), entry.getValue().mappingContent()),
                       (left, right) -> left,
                       TreeMap::new));
-      Map<String, String> liveFingerprints = searchClient.getIndexTemplateFingerprints("om_*");
+      Map<String, String> liveFingerprints =
+          searchClient.getIndexTemplateFingerprints(indexTemplateNamePattern());
       return expectedFingerprints.entrySet().stream()
           .allMatch(
               expected ->
@@ -855,6 +869,18 @@ public class SearchRepository {
           exception.getMessage());
       return false;
     }
+  }
+
+  /**
+   * Template-name wildcard for this deployment only. Template names are {@code om_} + the
+   * cluster-alias-prefixed index name, so a bare {@code om_*} reads every co-tenant's templates on
+   * a shared cluster — visible to a search role that is otherwise confined to its own prefix,
+   * because index-template actions cannot be pattern-scoped by the security plugin.
+   */
+  private String indexTemplateNamePattern() {
+    return nullOrEmpty(clusterAlias)
+        ? "om_*"
+        : "om_" + clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
   }
 
   public void createOrUpdateIndexTemplate(String entityType) throws IOException {
@@ -940,7 +966,33 @@ public class SearchRepository {
     if (!(vectorIndexService instanceof OpenSearchVectorService)) {
       return;
     }
+    double[] weights = resolveHybridWeights();
+    updateHybridSearchPipeline(weights[0], weights[1]);
+  }
 
+  /**
+   * The RRF pipeline body for the effective hybrid weights, ready to inline into a search
+   * request's {@code search_pipeline} field. Empty unless semantic search is on and the backend is
+   * OpenSearch.
+   *
+   * <p>Resolved per call rather than baked into a stored pipeline: the weights live in search
+   * settings, so inlining is what makes an admin's weight change take effect on the next query
+   * instead of waiting for a reindex to re-PUT a cluster-global object that a prefix-scoped search
+   * role is not allowed to write anyway.
+   */
+  public Optional<String> getHybridRrfPipelineDefinition() {
+    if (!isVectorEmbeddingEnabled()
+        || !vectorServiceInitialized
+        || !(vectorIndexService instanceof OpenSearchVectorService)) {
+      return Optional.empty();
+    }
+    double[] weights = resolveHybridWeights();
+    return Optional.of(
+        OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
+  }
+
+  /** Effective {keyword, semantic} weights: search settings when present, else config defaults. */
+  private double[] resolveHybridWeights() {
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
@@ -961,8 +1013,7 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
-
-    updateHybridSearchPipeline(keywordWeight, semanticWeight);
+    return new double[] {keywordWeight, semanticWeight};
   }
 
   public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
@@ -982,6 +1033,20 @@ public class SearchRepository {
 
   public IndexMapping getIndexMapping(String entityType) {
     return entityIndexMap.get(entityType);
+  }
+
+  /**
+   * Entity types that have a search index registered for this deployment, sorted. The registry is
+   * merged from the classpath at startup ({@code elasticsearch/indexMapping.json} plus
+   * {@code elasticsearch/collate/indexMapping.json} when present), so Collate-only indexes are
+   * included without the caller knowing which distribution it runs on.
+   *
+   * <p>This is the authoritative reindexing target list: {@code SearchIndexingApplication} expands
+   * {@code "all"} from it and {@code GET /v1/search/entityTypes} serves it to the entity picker, so
+   * the two cannot drift.
+   */
+  public Set<String> getIndexedEntityTypes() {
+    return Collections.unmodifiableSet(new TreeSet<>(entityIndexMap.keySet()));
   }
 
   /**
@@ -1121,7 +1186,7 @@ public class SearchRepository {
 
   /**
    * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
-   * query. Handles four shapes:
+   * query. Handles these shapes:
    *
    * <ul>
    *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
@@ -1141,6 +1206,8 @@ public class SearchRepository {
    *       the legacy behavior.
    *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
    *       internal code paths that hand back a resolved value don't double-prefix.
+   *   <li><b>Data Insights index or wildcard</b>: uses the hyphen-separated cluster prefix
+   *       used by DI data streams and aliases.
    * </ul>
    *
    * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
@@ -1164,8 +1231,13 @@ public class SearchRepository {
   }
 
   private String resolveSingleAliasToken(String token, String clusterPrefix) {
-    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
+    if (clusterPrefix != null
+        && (token.startsWith(clusterPrefix)
+            || token.startsWith(getStringWithClusterAlias(clusterAlias, DI_SEARCH_INDEX_PREFIX)))) {
       return token;
+    }
+    if (token.startsWith(DI_SEARCH_INDEX_PREFIX)) {
+      return getStringWithClusterAlias(clusterAlias, token);
     }
     IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
     if (mapping == null && aliasIndexMap != null) {
@@ -2665,7 +2737,7 @@ public class SearchRepository {
         if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
           propagateToDomainChildren(entityId, indexMapping, updates);
         } else {
-          String parentFieldName = resolveParentFieldName(entityType, updates);
+          String parentFieldName = resolveParentFieldName(entityType);
           Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
           List<String> entityChildren =
               filterChildAliasesByCapability(
@@ -2691,15 +2763,19 @@ public class SearchRepository {
         .toList();
   }
 
-  private String resolveParentFieldName(
-      String entityType, Pair<String, Map<String, Object>> updates) {
-    if (!updates.getValue().isEmpty()
-        && (updates.getValue().keySet().stream()
-                .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
-            || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
-      if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
-        return SERVICE_ID;
-      }
+  /**
+   * The field on a child document that points back at {@code entityType}.
+   *
+   * <p>A service's children always reference it as {@code service.id} — no index anywhere declares a
+   * {@code databaseService}/{@code dashboardService} property — so the answer depends only on
+   * whether the parent is a service, never on which of its fields changed. It used to be gated on
+   * the payload mentioning {@code domains} or {@code displayName}, which silently sent every other
+   * propagated field (tags, owners) to {@code <serviceEntityType>.id} and matched no document at
+   * all, so a tag set on a service never reached its assets in search.
+   */
+  private String resolveParentFieldName(String entityType) {
+    if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
+      return SERVICE_ID;
     }
     return entityType + ".id";
   }
@@ -2742,7 +2818,7 @@ public class SearchRepository {
                 indexMapping, capability -> capability == null || !capability.isTimeSeries());
     if (!nullOrEmpty(childAliases)) {
       Pair<String, Map<String, Object>> updates = buildInheritedDomainUpdate(newDomains);
-      String parentField = resolveParentFieldName(entityType, updates);
+      String parentField = resolveParentFieldName(entityType);
       List<String> parentIds = assetIds.stream().map(UUID::toString).toList();
       // Chunk so the terms query never approaches Elasticsearch's index.max_terms_count on an
       // extreme bulk move; a normal move stays a single update-by-query.
@@ -3414,34 +3490,46 @@ public class SearchRepository {
         + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
-  private String generateDeleteTagLabelListScript() {
-    return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
-              }
+  /**
+   * Removes the labels a parent stopped carrying, but only where the child's own copy is itself
+   * {@code Derived}.
+   *
+   * <p>A propagated label always lands as {@code Derived} — the cascade stamps every payload label
+   * that way and the add script copies it verbatim — while a label the asset carries in its own
+   * right is {@code Manual}, {@code Automated} or {@code Propagated}. Matching on {@code tagFQN}
+   * alone cannot tell them apart, so un-tagging a parent used to delete the child's own identically
+   * named tag from the index, leaving search reporting fewer tags than the API for every colliding
+   * asset beneath that parent until a reindex. A label with no {@code labelType} at all is left
+   * alone: it cannot be shown to be propagated, and wrongly keeping a stale inherited tag is a far
+   * smaller harm than wrongly deleting one the user applied.
+   */
+  private static final String REMOVE_DERIVED_TAG_LABELS_SCRIPT =
+      """
+      if (ctx._source.tags != null && params.tagDeleted != null) {
+        for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+          def existingTag = ctx._source.tags[i];
+          if (!existingTag.containsKey('labelType')
+              || existingTag.labelType == null
+              || !existingTag.labelType.equalsIgnoreCase('Derived')) {
+            continue;
+          }
+          for (int j = 0; j < params.tagDeleted.size(); j++) {
+            if (existingTag.tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+              ctx._source.tags.remove(i);
+              break;
             }
           }
         }
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+      }
+      """;
+
+  private String generateDeleteTagLabelListScript() {
+    return REMOVE_DERIVED_TAG_LABELS_SCRIPT + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
-    return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
-              }
-            }
-          }
-        }
+    return REMOVE_DERIVED_TAG_LABELS_SCRIPT
+        + """
         if (ctx._source.tags == null) {
           ctx._source.tags = [];
         }
@@ -3818,7 +3906,7 @@ public class SearchRepository {
             JsonUtils.convertValue(
                 fieldChange.getNewValue(),
                 new TypeReference<List<LinkedHashMap<String, String>>>() {}));
-        fieldAddParams.put(FIELD_DOMAINS, entity.getDomains());
+        fieldAddParams.put(FIELD_DOMAINS, buildEntityRefListWithDisplayName(entity.getDomains()));
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
         scriptTxt.append("ctx._source.domains = params.domains;");
       }
@@ -4334,6 +4422,54 @@ public class SearchRepository {
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+  }
+
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    String cacheKey = index + ":" + fieldPath;
+    Boolean cached = mappedFieldCache.getIfPresent(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    boolean mapped = searchClient.isFieldMappedInIndex(index, fieldPath);
+    mappedFieldCache.put(cacheKey, mapped);
+    return mapped;
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {

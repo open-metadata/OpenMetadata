@@ -15,7 +15,8 @@
   },
   "resolutions": {
     "brace-expansion": "1.1.18",
-    "lodash": "4.18.1"
+    "lodash": "4.18.1",
+    "stream-json": "3.5.0"
   },
   "scripts": {
     "preinstall": "yarn global add node-gyp@10.0.1",

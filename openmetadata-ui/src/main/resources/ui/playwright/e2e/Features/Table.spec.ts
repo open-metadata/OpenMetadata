@@ -23,10 +23,17 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
+  escapeESReservedCharacters,
   getFirstRowColumnLink,
+  openClassificationTagPicker,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from '../../utils/glossaryPicker';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -203,7 +210,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist current page', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
@@ -220,10 +229,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const firstLinkInColumn = getFirstRowColumnLink(page);
     await firstLinkInColumn.click();
 
-    await page.waitForURL('**/table/**');
+    await page.waitForURL('**/table/**', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -236,10 +245,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const secondLinkInColumn = getFirstRowColumnLink(page);
     await secondLinkInColumn.click();
 
-    await page.waitForURL('**/table/**');
+    await page.waitForURL('**/table/**', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -250,23 +259,35 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist page size', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
-    await pageSizeDropdown.click();
 
-    const pageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '15 / Page' });
-    await expect(pageSizeOption).toBeVisible();
-    await pageSizeOption.click();
+    // NextPrevious wraps the button in an Ant Dropdown with the default hover
+    // trigger, so a bare click only fires preventDefault. Open and pick inside
+    // one retry: the menu can close between a visibility check and the click,
+    // and a click left outside the loop then waits on a hidden option for the
+    // rest of the test. Asserting the trigger's new label retries the whole
+    // open-and-pick when it did not take.
+    const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await pageSizeOption.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(pageSizeOption).toBeVisible({ timeout: 2_000 });
+      await pageSizeOption.click({ timeout: 5_000 });
+
+      await expect(pageSizeDropdown).toContainText('15 / Page');
+    }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);
@@ -278,7 +299,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await entityApiResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     await page
       .getByTestId('page-size-selection-dropdown')
@@ -295,7 +316,9 @@ test.describe('Table & Data Model columns table pagination', () => {
     page,
   }) => {
     test.slow();
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -376,7 +399,8 @@ test.describe('Table & Data Model columns table pagination', () => {
     page,
   }) => {
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -441,22 +465,10 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const glossaryRowSelector =
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
 
-    await expect
-      .poll(
-        async () => {
-          await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
-          await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await page.locator(glossaryRowSelector).waitFor({ state: 'visible' });
 
-          return await page.locator(glossaryRowSelector).count();
-        },
-        {
-          timeout: 60000,
-          intervals: [1000, 2000, 5000],
-        }
-      )
-      .toBeGreaterThan(0);
-
-    await waitForAllLoadersToDisappear(page);
     const glossaryTagsCell = page.locator(
       `${glossaryRowSelector} [data-testid*="glossary-tags"]`
     );
@@ -467,38 +479,26 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid*="glossary-tags"]';
 
     const addButton = glossaryTagsCell.getByTestId('add-tag');
-    if (await addButton.isVisible().catch(() => false)) {
-      await addButton.click();
-    } else {
-      await glossaryTagsCell.getByTestId('edit-button').click();
-    }
+    await openGlossaryPicker(
+      page,
+      (await addButton.isVisible().catch(() => false))
+        ? addButton
+        : glossaryTagsCell.getByTestId('edit-button')
+    );
 
-    await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await toggleGlossaryTermInPicker(page, {
+      name: glossaryTerm.data.name,
+      displayName: glossaryTerm.data.displayName,
+      fullyQualifiedName: glossaryTerm.responseData.fullyQualifiedName,
+    });
 
-    await page
-      .locator('[data-testid="tag-selector"] input')
-      .fill(glossaryTerm.data.name);
-
-    await page
-      .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
-      .click();
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/columns/name/') &&
-          ['PUT', 'PATCH'].includes(response.request().method()) &&
-          response.ok()
-      ),
-      page.getByTestId('saveAssociatedTag').click(),
-    ]);
-    await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
+    await applyGlossaryPicker(
+      page,
+      (response) =>
+        response.url().includes('/api/v1/columns/name/') &&
+        ['PUT', 'PATCH'].includes(response.request().method()) &&
+        response.ok()
+    );
     await waitForAllLoadersToDisappear(page);
     await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
 
@@ -529,35 +529,24 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    await page.click(`${rowSelector} [data-testid="edit-button"]`);
+    await openGlossaryPicker(
+      page,
+      page.locator(`${rowSelector} [data-testid="edit-button"]`)
+    );
 
-    await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
-    await page
-      .locator('[data-testid="tag-selector"] input')
-      .fill(glossaryTerm.data.name);
+    await toggleGlossaryTermInPicker(page, {
+      name: glossaryTerm.data.name,
+      displayName: glossaryTerm.data.displayName,
+      fullyQualifiedName: glossaryTerm.responseData.fullyQualifiedName,
+    });
 
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
-      .click();
-
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/columns/name/') &&
-          ['PUT', 'PATCH'].includes(response.request().method()) &&
-          response.ok()
-      ),
-      page.getByTestId('saveAssociatedTag').click(),
-    ]);
-    await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
+    await applyGlossaryPicker(
+      page,
+      (response) =>
+        response.url().includes('/api/v1/columns/name/') &&
+        ['PUT', 'PATCH'].includes(response.request().method()) &&
+        response.ok()
+    );
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -574,7 +563,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
     );
 
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer', {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Wait for page to be fully loaded
     await columnsResponse;
@@ -585,30 +576,34 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
-    if (await addButton.isVisible()) {
-      await addButton.click();
-    } else {
-      await page.click(`${rowSelector} [data-testid="edit-button"]`);
-    }
+    const editButton = page.locator(
+      `${rowSelector} [data-testid="edit-button"]`
+    );
+
+    await expect(addButton.or(editButton)).toBeVisible({ timeout: 15000 });
+
+    await openClassificationTagPicker(page, addButton.or(editButton));
+
+    const addSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(testTag.data.name)
+      )}*`
+    );
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(testTag.data.name);
+    await addSearchResponse;
 
     await page
-      .locator('.ant-select-dropdown:visible')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
-    await page
-      .locator('[data-testid="tag-selector"] input')
-      .fill(testTag.data.name);
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
     const saveTagResponse = page.waitForResponse('api/v1/columns/name/*');
-    await page.getByTestId('saveAssociatedTag').click();
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await saveTagResponse;
+    await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
     await expect(
       page
@@ -616,7 +611,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(
@@ -635,28 +630,32 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    await page.click(
-      `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+    await openClassificationTagPicker(
+      page,
+      page.locator(
+        `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+      )
     );
 
-    await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
+    const removeSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(testTag.data.name)
+      )}*`
+    );
     await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
-    await page
-      .locator('[data-testid="tag-selector"] input')
+      .getByTestId('classification-tag-picker-search')
       .fill(testTag.data.name);
+    await removeSearchResponse;
+
+    // Tag is currently selected — clicking again unchecks it
     await page
-      .locator('.ant-select-dropdown')
-      .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
       .click();
 
     const removeTagResponse = page.waitForResponse('api/v1/columns/name/*');
-    await page.getByTestId('saveAssociatedTag').click();
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await removeTagResponse;
 
     await expect(
@@ -734,7 +733,9 @@ test.describe('Large Table Column Search & Copy Link', () => {
       `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns?*`
     );
     // 1. Visit the table page directly
-    await page.goto(`/table/${createdTable.fullyQualifiedName}`);
+    await page.goto(`/table/${createdTable.fullyQualifiedName}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -786,7 +787,7 @@ test.describe('Large Table Column Search & Copy Link', () => {
           'tags,customMetrics,extension,profile'
       );
     });
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
     const columnGetResponse = await columnGetResponsePromise;
 
     expect(columnGetResponse.status()).toBe(200);
@@ -994,7 +995,9 @@ test.describe('Table open-task header stat', () => {
 
     await openTaskStat.click();
 
-    await page.waitForURL('**/activity_feed/tasks');
+    await page.waitForURL('**/activity_feed/tasks', {
+      waitUntil: 'domcontentloaded',
+    });
     await expect(page).toHaveURL(/\/activity_feed\/tasks/);
   });
 });

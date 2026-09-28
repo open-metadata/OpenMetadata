@@ -27,7 +27,9 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import DestinationFormItemFormBridge, {
+  DestinationFormFieldRegistrar,
+} from '../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
@@ -47,16 +49,13 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import {
   NotificationTemplate,
   ProviderType,
 } from '../../generated/entity/events/notificationTemplate';
-import { Operation } from '../../generated/entity/policies/policy';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -75,10 +74,8 @@ import {
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -220,9 +217,13 @@ const AddNotificationPage = () => {
     [fqn, navigate, initialData, currentUser]
   );
 
-  const [selectedTrigger] =
+  const resources =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
+  const destinations = Form.useWatch('destinations', form);
+  const timeout = Form.useWatch('timeout', form);
+  const readTimeout = Form.useWatch('readTimeout', form);
+  const [selectedTrigger] = resources;
 
   const supportedFilters = useMemo(
     () =>
@@ -269,7 +270,7 @@ const AddNotificationPage = () => {
 
       setTemplateResourcePermission(permission);
 
-      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+      if (getDerivedPermissionFlags(permission).canViewAll) {
         const { data } = await getAllNotificationTemplates({
           limit: PAGE_SIZE_LARGE,
           provider: ProviderType.User,
@@ -297,7 +298,12 @@ const AddNotificationPage = () => {
     [loadingState]
   );
 
-  if (isLoading || (isEditMode && isEmpty(alert))) {
+  const shouldShowLoader = useMemo(
+    () => isLoading || (isEditMode && isEmpty(alert)),
+    [isLoading, isEditMode, alert]
+  );
+
+  if (shouldShowLoader) {
     return <Loader />;
   }
 
@@ -398,7 +404,31 @@ const AddNotificationPage = () => {
                             <Divider dashed type="vertical" />
                           </Col>
                           <Col span={24}>
-                            <DestinationFormItem />
+                            <DestinationFormItemFormBridge
+                              renderValidationField={(validate) => (
+                                <Form.Item
+                                  hidden
+                                  name="destinations"
+                                  rules={[{ validator: validate }]}>
+                                  <DestinationFormFieldRegistrar />
+                                </Form.Item>
+                              )}
+                              values={{
+                                destinations,
+                                readTimeout,
+                                resources,
+                                timeout,
+                              }}
+                              onChange={(values) => {
+                                // Each shared field must be replaced at its root. Ant's
+                                // bulk setter deep-merges destination array entries and
+                                // would restore config removed by a type change.
+                                Object.entries(values).forEach(
+                                  ([name, value]) =>
+                                    form.setFieldValue(name, value)
+                                );
+                              }}
+                            />
                           </Col>
 
                           {!isEmpty(extraFormWidgets) && (

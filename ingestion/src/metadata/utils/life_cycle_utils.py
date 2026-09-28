@@ -15,7 +15,7 @@ Life Cycle utils module
 
 import re
 import traceback
-from typing import Any, Optional
+from typing import Any
 
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.utils.logger import utils_logger
@@ -42,7 +42,7 @@ def init_empty_life_cycle_properties() -> LifeCycle:
     return LifeCycle(created=None, updated=None, accessed=None)
 
 
-def _get_query_type_from_name(create_query) -> Optional[Any]:  # noqa: UP045
+def _get_query_type_from_name(create_query) -> Any | None:
     """
     Method to get the query type from query_type field
     """
@@ -52,7 +52,7 @@ def _get_query_type_from_name(create_query) -> Optional[Any]:  # noqa: UP045
     return None
 
 
-def _get_query_type_from_regex(create_query) -> Optional[Any]:  # noqa: UP045
+def _get_query_type_from_regex(create_query) -> Any | None:
     """
     Method to get the query type from regex
     """
@@ -65,7 +65,7 @@ def _get_query_type_from_regex(create_query) -> Optional[Any]:  # noqa: UP045
     return None
 
 
-def get_query_type(create_query) -> Optional[str]:  # noqa: UP045
+def get_query_type(create_query) -> str | None:
     """
     Method to the type of query
     """

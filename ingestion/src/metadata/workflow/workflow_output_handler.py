@@ -15,7 +15,7 @@ Module handles the output messages from different workflows
 
 import time
 from statistics import mean
-from typing import Any, Dict, List, Optional, Type, Union  # noqa: UP035
+from typing import Any
 
 from pydantic import BaseModel
 from tabulate import tabulate
@@ -44,7 +44,7 @@ class Failure(BaseModel):
     """
 
     name: str
-    failures: List[TruncatedStackTraceError]  # noqa: UP006
+    failures: list[TruncatedStackTraceError]
 
 
 @deprecated(message="Use 'workflow.print_status()' instead.", release="1.6")
@@ -62,8 +62,8 @@ def print_status(
     release="1.6",
 )
 def print_init_error(
-    exc: Union[Exception, Type[Exception]],  # noqa: UP006, UP007
-    config: Dict[str, Any],  # noqa: UP006
+    exc: Exception | type[Exception],
+    config: dict[str, Any],
     workflow_type: WorkflowType = WorkflowType.INGEST,
 ):
     # pylint: disable=W0212
@@ -81,8 +81,8 @@ class WorkflowOutputHandler:
     def print_status(
         self,
         result_status: WorkflowResultStatus,
-        steps: List[Step],  # noqa: UP006
-        start_time: Optional[Any] = None,  # noqa: UP045
+        steps: list[Step],
+        start_time: Any | None = None,
         debug: bool = False,
     ):
         """
@@ -104,7 +104,7 @@ class WorkflowOutputHandler:
                 message=WORKFLOW_FAILURE_MESSAGE,
             )
 
-    def print_summary(self, steps: List[Step], debug: bool = False):  # noqa: UP006
+    def print_summary(self, steps: list[Step], debug: bool = False):
         """Prints the summary information for a Workflow Execution."""
         if debug:
             self._print_debug_summary(steps)
@@ -119,8 +119,8 @@ class WorkflowOutputHandler:
 
         self._print_summary(steps)
 
-    def _print_summary(self, steps: List[Step]) -> None:  # noqa: UP006
-        failures: List[Failure] = []  # noqa: UP006
+    def _print_summary(self, steps: list[Step]) -> None:
+        failures: list[Failure] = []
         if not steps:
             log_ansi_encoded_string(message="No steps to process.")
             return
@@ -151,7 +151,7 @@ class WorkflowOutputHandler:
             message="Workflow Success %: " + f"{round(success_pct, 2)}",
         )
 
-    def _print_debug_summary(self, steps: List[Step]):  # noqa: UP006
+    def _print_debug_summary(self, steps: list[Step]):
         log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
 
         for step in steps:
@@ -162,7 +162,7 @@ class WorkflowOutputHandler:
         """Log the QueryParsingFailures Summary."""
         query_failures = QueryParsingFailures()
 
-        summary_table: Dict[str, List[Optional[str]]] = {  # noqa: UP006, UP045
+        summary_table: dict[str, list[str | None]] = {
             "Query": [],
             "Error": [],
         }
@@ -177,7 +177,7 @@ class WorkflowOutputHandler:
                 message=f"\n{tabulate(summary_table, tablefmt='grid', headers=list(summary_table.keys()))}"
             )
 
-    def _get_failures(self, failure: Failure) -> List[Dict[str, Optional[str]]]:  # noqa: UP006, UP045
+    def _get_failures(self, failure: Failure) -> list[dict[str, str | None]]:
         return [
             {
                 "From": failure.name,
@@ -188,7 +188,7 @@ class WorkflowOutputHandler:
             for f in failure.failures
         ]
 
-    def _print_failures_if_apply(self, failures: List[Failure]) -> None:  # noqa: UP006
+    def _print_failures_if_apply(self, failures: list[Failure]) -> None:
         # take only the ones that contain failures
         failures = [f for f in failures if f.failures]
         if failures:

@@ -21,49 +21,80 @@ import type {
 import { getEntityReferenceFromEntity } from './EntityReferenceUtils';
 
 export const getQueryFilterToIncludeDomain = (
-  domainFqn: string,
-  dataProductFqn: string
-) => ({
-  query: {
-    bool: {
-      must: [
-        {
-          term: {
-            'domains.fullyQualifiedName': domainFqn,
-          },
+  domainFqn: string | string[],
+  dataProductFqn: string,
+  requireDomain = true
+): QueryFilterInterface => {
+  const must: QueryFieldInterface[] = [];
+
+  // When the "Data Product Domain Validation" rule is disabled the backend
+  // permits assigning assets from any domain, so the picker must not scope
+  // results to the Data Product's own domain.
+  if (requireDomain) {
+    // A Data Product can belong to multiple domains; scope to any of them with
+    // a `terms` query instead of forcing a single-value `term` match (which
+    // never matches a comma-joined FQN and would return zero assets).
+    const domainFQNs = (Array.isArray(domainFqn) ? domainFqn : [domainFqn])
+      .map((fqn) => fqn?.trim())
+      .filter((fqn): fqn is string => Boolean(fqn));
+
+    if (domainFQNs.length === 1) {
+      must.push({
+        term: {
+          'domains.fullyQualifiedName': domainFQNs[0],
         },
-        {
-          bool: {
-            must_not: [
-              {
-                term: {
-                  'dataProducts.fullyQualifiedName': dataProductFqn,
-                },
-              },
-            ],
-          },
+      });
+    } else {
+      // For 0 FQNs this is an empty `terms` query, which matches no documents.
+      // That keeps the rule fail-closed: a domainless Data Product scopes to
+      // zero assets rather than silently listing assets from every domain.
+      must.push({
+        terms: {
+          'domains.fullyQualifiedName': domainFQNs,
         },
-        {
-          bool: {
-            must_not: [
-              {
-                terms: {
-                  entityType: [
-                    EntityType.DATA_PRODUCT,
-                    EntityType.TEST_SUITE,
-                    EntityType.QUERY,
-                    EntityType.TEST_CASE,
-                    EntityType.TABLE_COLUMN,
-                  ],
-                },
-              },
-            ],
+      });
+    }
+  }
+
+  must.push(
+    {
+      bool: {
+        must_not: [
+          {
+            term: {
+              'dataProducts.fullyQualifiedName': dataProductFqn,
+            },
           },
-        },
-      ],
+        ],
+      },
     },
-  },
-});
+    {
+      bool: {
+        must_not: [
+          {
+            terms: {
+              entityType: [
+                EntityType.DATA_PRODUCT,
+                EntityType.TEST_SUITE,
+                EntityType.QUERY,
+                EntityType.TEST_CASE,
+                EntityType.TABLE_COLUMN,
+              ],
+            },
+          },
+        ],
+      },
+    }
+  );
+
+  return {
+    query: {
+      bool: {
+        must,
+      },
+    },
+  };
+};
 
 export const getQueryFilterToExcludeDomainTerms = (
   fqn: string,

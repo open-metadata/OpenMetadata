@@ -3,11 +3,11 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
-import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.RECONCILE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_DATA_PRODUCT_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
@@ -48,9 +48,12 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchPropagationLimits;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -58,6 +61,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
 import os.org.opensearch.client.opensearch._types.Conflicts;
 import os.org.opensearch.client.opensearch._types.ErrorCause;
@@ -65,6 +69,7 @@ import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.Result;
+import os.org.opensearch.client.opensearch._types.SlicesCalculation;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -77,6 +82,7 @@ import os.org.opensearch.client.opensearch.core.GetResponse;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
+import os.org.opensearch.client.opensearch.core.UpdateRequest;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
 
@@ -450,31 +456,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params = convertToJsonDataMap(doc);
-
-      SearchRetryUtil.executeWithRetry(
-          () ->
-              client.update(
-                  u ->
-                      u.index(indexName)
-                          .id(docId)
-                          .refresh(Refresh.True)
-                          .retryOnConflict(3)
-                          .scriptedUpsert(true)
-                          .upsert(params)
-                          .script(
-                              s ->
-                                  s.inline(
-                                      inline ->
-                                          inline
-                                              .lang(
-                                                  l ->
-                                                      l.builtin(
-                                                          os.org.opensearch.client.opensearch._types
-                                                              .BuiltinScriptLanguage.Painless))
-                                              .source(scriptTxt)
-                                              .params(params))),
-                  Map.class));
+      UpdateRequest<Map, Map> request = buildUpdateEntityRequest(indexName, docId, doc, scriptTxt);
+      SearchRetryUtil.executeWithRetry(() -> client.update(request, Map.class));
 
       LOG.info(
           "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
@@ -496,6 +479,27 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }
+  }
+
+  UpdateRequest<Map, Map> buildUpdateEntityRequest(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    Map<String, JsonData> params = convertToJsonDataMap(doc);
+    return UpdateRequest.of(
+        u ->
+            u.index(indexName)
+                .id(docId)
+                .refresh(Refresh.True)
+                .retryOnConflict(3)
+                .scriptedUpsert(true)
+                .upsert(SearchIndexUtils.toUpsertDocument(doc))
+                .script(
+                    s ->
+                        s.inline(
+                            inline ->
+                                inline
+                                    .lang(l -> l.builtin(BuiltinScriptLanguage.Painless))
+                                    .source(scriptTxt)
+                                    .params(params))));
   }
 
   @Override
@@ -550,6 +554,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
    * scan and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException};
    * submitting it as a background task returns immediately and lets the cluster finish the
    * propagation and the post-task {@code refresh} on its own.
+   *
+   * <p>Sliced and throttled because the widest parent here is a service, whose children are every
+   * asset it ever ingested. Unsliced, that is a single-threaded scroll over millions of documents;
+   * unthrottled, it runs as fast as the cluster allows and starves concurrent ingestion and search
+   * for the duration. {@code slices=auto} gives one slice per shard and
+   * {@link SearchPropagationLimits#REQUESTS_PER_SECOND} caps the sustained write rate.
    */
   UpdateByQueryRequest buildUpdateChildrenRequest(
       List<String> indexNames,
@@ -563,6 +573,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                 .query(exactFieldQuery(fieldAndValue))
                 .conflicts(Conflicts.Proceed)
                 .waitForCompletion(false)
+                .slices(s -> s.calculation(SlicesCalculation.Auto))
+                .requestsPerSecond(SearchPropagationLimits.REQUESTS_PER_SECOND)
                 .script(
                     s ->
                         s.inline(
@@ -958,113 +970,83 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   @Override
   public void updateColumnsInUpstreamLineage(
       String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot update columns in upstream lineage.");
-      return;
-    }
-
-    if (originalUpdatedColumnFqnMap == null || originalUpdatedColumnFqnMap.isEmpty()) {
-      LOG.debug("No column updates provided for upstream lineage update.");
-      return;
-    }
-
-    try {
-      Map<String, JsonData> params =
-          Collections.singletonMap("columnUpdates", JsonData.of(originalUpdatedColumnFqnMap));
-      Query impactedLineageQuery =
-          buildLineageColumnsQuery(new ArrayList<>(originalUpdatedColumnFqnMap.keySet()));
-
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
-              req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                      .query(impactedLineageQuery)
-                      .conflicts(Conflicts.Proceed)
-                      .script(
-                          s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(
-                                              l ->
-                                                  l.builtin(
-                                                      os.org.opensearch.client.opensearch._types
-                                                          .BuiltinScriptLanguage.Painless))
-                                          .source(UPDATE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
-                      .refresh(Refresh.True));
-
-      LOG.info(
-          "Successfully updated columns in upstream lineage for index: {}, updated: {}",
-          indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update columns in upstream lineage: {}", errorMessage);
-      }
-
-    } catch (Exception e) {
-      LOG.error("Error while updating columns in upstream lineage: {}", e.getMessage(), e);
-    }
+    reconcileColumnsInUpstreamLineage(indexName, originalUpdatedColumnFqnMap, List.of());
   }
 
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+    reconcileColumnsInUpstreamLineage(indexName, Map.of(), deletedColumns);
+  }
+
+  @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
     if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot delete columns from upstream lineage.");
+      LOG.error(
+          "Search client is not available. Cannot reconcile column lineage for index {}",
+          indexName);
       return;
     }
-
-    if (deletedColumns == null || deletedColumns.isEmpty()) {
-      LOG.debug("No deleted columns provided for upstream lineage cleanup.");
+    Map<String, String> renames = renamedColumns == null ? Map.of() : renamedColumns;
+    List<String> deletions = CommonUtil.listOrEmpty(deletedColumns);
+    if (renames.isEmpty() && deletions.isEmpty()) {
       return;
     }
-
     try {
-      Map<String, JsonData> params =
-          Collections.singletonMap("deletedFQNs", JsonData.of(deletedColumns));
-      Query impactedLineageQuery = buildLineageColumnsQuery(deletedColumns);
+      UpdateByQueryRequest request = buildColumnLineageRequest(indexName, renames, deletions);
+      SearchUtils.logColumnLineageFlush(
+          ColumnLineageReconciler.reconcile(
+              renames,
+              () ->
+                  columnLineageOutcome(
+                      indexName, renames.size() + deletions.size(), client.updateByQuery(request)),
+              () -> client.indices().refresh(r -> r.index(request.index()))));
+    } catch (IOException | OpenSearchException e) {
+      LOG.error("Error reconciling column lineage for index {}", indexName, e);
+    }
+  }
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
-              req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                      .query(impactedLineageQuery)
-                      .conflicts(Conflicts.Proceed)
-                      .script(
-                          s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(
-                                              l ->
-                                                  l.builtin(
-                                                      os.org.opensearch.client.opensearch._types
-                                                          .BuiltinScriptLanguage.Painless))
-                                          .source(DELETE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
-                      .refresh(Refresh.True));
+  private UpdateByQueryRequest buildColumnLineageRequest(
+      String indexName, Map<String, String> renames, List<String> deletions) {
+    List<String> affectedColumns = new ArrayList<>(renames.keySet());
+    affectedColumns.addAll(deletions);
+    Map<String, JsonData> params =
+        Map.of("columnUpdates", JsonData.of(renames), "deletedFQNs", JsonData.of(deletions));
+    // A following change queries the new FQN; without a refresh it can match zero documents,
+    // so conflict retries cannot recover it.
+    return UpdateByQueryRequest.of(
+        req ->
+            req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                .query(buildLineageColumnsQuery(affectedColumns))
+                .conflicts(Conflicts.Proceed)
+                .script(
+                    s ->
+                        s.inline(
+                            i ->
+                                i.lang(l -> l.builtin(BuiltinScriptLanguage.Painless))
+                                    .source(RECONCILE_COLUMN_LINEAGE_SCRIPT)
+                                    .params(params)))
+                .refresh(Refresh.True));
+  }
 
-      LOG.info(
-          "Successfully deleted columns from upstream lineage for index: {}, updated: {}",
-          indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
+  private SearchUtils.ColumnLineageFlushOutcome columnLineageOutcome(
+      String indexName, int requestedFqns, UpdateByQueryResponse response) {
+    List<String> failures =
+        new ArrayList<>(
+            response.failures().stream()
                 .map(BulkByScrollFailure::cause)
                 .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to delete columns from upstream lineage: {}", errorMessage);
-      }
-
-    } catch (Exception e) {
-      LOG.error("Error while deleting columns from upstream lineage: {}", e.getMessage(), e);
+                .toList());
+    if (Boolean.TRUE.equals(response.timedOut())) {
+      failures.add("Column lineage update-by-query timed out");
     }
+    return new SearchUtils.ColumnLineageFlushOutcome(
+        "Column reconciliation",
+        indexName,
+        requestedFqns,
+        zeroIfNull(response.updated()),
+        zeroIfNull(response.versionConflicts()),
+        failures);
   }
 
   @Override
@@ -1709,7 +1691,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
 
     if (!fieldsToRemove.isEmpty()) {
-      result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
+      result.put(FIELDS_TO_REMOVE, JsonData.of(fieldsToRemove));
     }
 
     return result;
@@ -1770,5 +1752,13 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName.keyword").value(oldFqn)));
     return Query.of(
         q -> q.bool(b -> b.should(prefixOnField).should(prefixOnKeyword).minimumShouldMatch("1")));
+  }
+
+  /**
+   * Update-by-query counters are boxed and nullable in both clients. They are only ever logged, so
+   * a null must not unbox into an exception that aborts the surrounding cleanup.
+   */
+  private static long zeroIfNull(Long count) {
+    return count == null ? 0L : count;
   }
 }

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 import {
@@ -267,7 +268,8 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
     await page.goto(
       `/service/databaseServices/${getEncodedFqn(
         service.entityResponseData.fullyQualifiedName
-      )}/agents/metadata`
+      )}/agents/metadata`,
+      { waitUntil: 'domcontentloaded' }
     );
     await page.getByTestId('data-assets-header').waitFor();
 

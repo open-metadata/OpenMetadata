@@ -53,13 +53,13 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
             {t('label.glossary-term-plural')}
           </div>
           <div className="tw:col-span-10">
-            <TagsViewer newLook sizeCap={3} tags={Glossary ?? []} />
+            <TagsViewer sizeCap={3} tags={Glossary ?? []} />
           </div>
           <div className="tw:col-span-2 tw:text-sm tw:text-secondary">
             {t('label.tag-plural')}
           </div>
           <div className="tw:col-span-10">
-            <TagsViewer newLook sizeCap={3} tags={Classification ?? []} />
+            <TagsViewer sizeCap={3} tags={Classification ?? []} />
           </div>
         </div>
       </div>

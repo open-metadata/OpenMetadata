@@ -17,7 +17,6 @@ import json
 import os
 from functools import lru_cache, partial
 from io import StringIO
-from typing import List, Optional, Tuple  # noqa: UP035
 
 from airflow.models import DagModel, TaskInstance
 from airflow.utils.log.log_reader import TaskLogReader
@@ -36,7 +35,7 @@ DOT_STR = "_DOT_"
 
 
 @lru_cache(maxsize=10)
-def get_log_file_info(log_file_path: str, mtime: int) -> Tuple[int, int]:  # noqa: UP006
+def get_log_file_info(log_file_path: str, mtime: int) -> tuple[int, int]:
     """
     Get total size and number of chunks for a log file.
     :param log_file_path: Path to log file
@@ -71,7 +70,7 @@ def format_json_log_line(line: str) -> str:
         return line if line.endswith("\n") else line + "\n"
 
 
-def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool = True) -> Optional[str]:  # noqa: UP045
+def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool = True) -> str | None:
     """
     Read a specific chunk from a log file without loading entire file.
     Optionally formats JSON logs to readable text.
@@ -99,7 +98,7 @@ def read_log_chunk_from_file(file_path: str, chunk_index: int, format_json: bool
         return None
 
 
-def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Response:  # noqa: UP045
+def last_dag_logs(dag_id: str, task_id: str, after: int | None = None) -> Response:
     """
     Validate that the DAG is registered by Airflow and have at least one Run.
     If exists, returns all logs for each task instance of the last DAG run.
@@ -126,7 +125,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
     if not last_dag_run:
         return ApiResponse.not_found(f"No DAG run found for {dag_id}.")
 
-    task_instances: List[TaskInstance] = last_dag_run.get_task_instances()  # noqa: UP006
+    task_instances: list[TaskInstance] = last_dag_run.get_task_instances()
 
     if not task_instances:
         return ApiResponse.not_found(f"Cannot find any task instance for the last DagRun of {dag_id}.")
@@ -145,7 +144,8 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 
     task_log_reader = TaskLogReader()
     if not task_log_reader.supports_read:
-        return ApiResponse.server_error("Task Log Reader does not support read logs.")
+        logger.error("Task log reader does not support reading logs")
+        return ApiResponse.server_error()
 
     # Try to use file streaming for better performance
     try:
@@ -207,7 +207,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 def _last_dag_logs_fallback(
     dag_id: str,
     task_id: str,
-    after: Optional[int],  # noqa: UP045
+    after: int | None,
     task_instance: TaskInstance,
     task_log_reader: TaskLogReader,
     try_number: int,

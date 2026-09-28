@@ -14,7 +14,7 @@ Validator for column value stddev to be between test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 import pandas as pd
 
@@ -45,7 +45,7 @@ SUM_SQUARES_KEY = "SUM_SQUARES"
 class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenValidator, PandasValidatorMixin):
     """Validator for column value stddev to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | None:
         """compute result of the test case
 
         Args:
@@ -61,7 +61,7 @@ class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenVali
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for stddev with proper weighted aggregation
 
         Follows the iterate pattern from the StdDev metric's df_fn method to handle

@@ -165,7 +165,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   return (
     <TableProfilerProvider {...props}>
       <div
-        className="data-observability-tab-container"
+        className="data-observability-tab-container tw:bg-surface"
         data-testid="table-profiler-container"
         id="profilerDetails">
         <div className="tw:flex tw:items-center tw:justify-between">
@@ -176,14 +176,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
               onSelectionChange={(key) => handleTabChange(String(key))}>
               <Tabs.List type="button-border">
                 {tabOptions.map(({ label, key }) => (
-                  <Tabs.Item
-                    className={({ isSelected, isHovered }) =>
-                      isSelected || isHovered
-                        ? 'tw:bg-brand-solid tw:text-primary_on-brand'
-                        : ''
-                    }
-                    id={key}
-                    key={key}>
+                  <Tabs.Item id={key} key={key}>
                     <TabsLabel count={tabCounts?.[key]} id={key} name={label} />
                   </Tabs.Item>
                 ))}

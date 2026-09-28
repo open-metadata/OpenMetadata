@@ -13,6 +13,7 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { APIServiceType } from '../generated/entity/services/apiService';
+import { loadConnectionSchema } from './loadConnectionSchema';
 
 type SchemaModule =
   | { default: Record<string, unknown> }
@@ -21,7 +22,7 @@ type SchemaLoader = () => Promise<SchemaModule>;
 
 const apiSchemaLoaders: Partial<Record<APIServiceType, SchemaLoader>> = {
   [APIServiceType.REST]: () =>
-    import('../jsons/connectionSchemas/connections/api/restConnection.json'),
+    loadConnectionSchema('connections/api/restConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

@@ -44,6 +44,9 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaBulkPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.databricks.client import (
+    DatabricksClientException,
+)
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
 )
@@ -549,3 +552,26 @@ class DatabricksPipelineTests(TestCase):
                             lineage_details.edge.lineageDetails.columnsLineage,
                             [],
                         )
+
+    @patch("metadata.ingestion.source.database.databricks.client.DatabricksClient.list_jobs")
+    def test_get_pipelines_list_propagates_a_listing_failure(self, list_jobs):
+        """
+        A short job list is indistinguishable from a smaller workspace, and with
+        markDeletedPipelines on the jobs that never arrived get removed. Catching here
+        would put that behaviour back while the client's own tests stayed green.
+        """
+        list_jobs.side_effect = DatabricksClientException("jobs/list failed with status 429")
+
+        with self.assertRaises(DatabricksClientException):
+            list(self.databricks.get_pipelines_list())
+
+    @patch("metadata.ingestion.source.database.databricks.client.DatabricksClient.list_pipelines")
+    @patch("metadata.ingestion.source.database.databricks.client.DatabricksClient.list_jobs")
+    def test_get_pipelines_list_skips_only_the_job_it_cannot_parse(self, list_jobs, list_pipelines):
+        """One malformed job must not cost the rest of the workspace."""
+        list_jobs.return_value = [{"job_id": "not-an-int"}, *mock_data]
+        list_pipelines.return_value = []
+
+        results = list(self.databricks.get_pipelines_list())
+
+        self.assertEqual(PIPELINE_LIST, results)

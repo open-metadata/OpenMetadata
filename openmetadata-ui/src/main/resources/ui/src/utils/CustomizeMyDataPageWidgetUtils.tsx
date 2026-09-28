@@ -93,39 +93,27 @@ const TotalDataAssetsWidget = withSuspenseFallback(
 export const getMyDataWidgetFromKey = (
   widgetKey: string
 ): ComponentType<WidgetCommonProps> => {
-  if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
-    return DataAssetsWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_PRODUCTS)) {
-    return DataProductsWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
-    return MyDataWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
-    return MyFeedWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.KPI)) {
-    return KPIWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
-    return TotalDataAssetsWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
-    return FollowingWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.CURATED_ASSETS)) {
-    return CuratedAssetsWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.MY_TASK)) {
-    return MyTaskWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.DOMAINS)) {
-    return DomainsWidget;
-  }
-  if (widgetKey.startsWith(LandingPageWidgetKeys.KNOWLEDGE_CENTER)) {
-    return KnowledgeCenterWidget;
-  }
+  const widgetKeyPrefixMap: Array<
+    [LandingPageWidgetKeys, ComponentType<WidgetCommonProps>]
+  > = [
+    [LandingPageWidgetKeys.DATA_ASSETS, DataAssetsWidget],
+    [LandingPageWidgetKeys.DATA_PRODUCTS, DataProductsWidget],
+    [LandingPageWidgetKeys.MY_DATA, MyDataWidget],
+    [LandingPageWidgetKeys.ACTIVITY_FEED, MyFeedWidget],
+    [LandingPageWidgetKeys.KPI, KPIWidget],
+    [LandingPageWidgetKeys.TOTAL_DATA_ASSETS, TotalDataAssetsWidget],
+    [LandingPageWidgetKeys.FOLLOWING, FollowingWidget],
+    [LandingPageWidgetKeys.CURATED_ASSETS, CuratedAssetsWidget],
+    [LandingPageWidgetKeys.MY_TASK, MyTaskWidget],
+    [LandingPageWidgetKeys.DOMAINS, DomainsWidget],
+    [LandingPageWidgetKeys.KNOWLEDGE_CENTER, KnowledgeCenterWidget],
+  ];
 
-  return (() => null) as ComponentType<WidgetCommonProps>;
+  const matchedWidget = widgetKeyPrefixMap.find(([prefix]) =>
+    widgetKey.startsWith(prefix)
+  );
+
+  return (
+    matchedWidget?.[1] ?? ((() => null) as ComponentType<WidgetCommonProps>)
+  );
 };

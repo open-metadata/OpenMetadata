@@ -13,8 +13,6 @@
 Dagster Source Model module
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.entity.data.table import Table
@@ -24,24 +22,24 @@ from metadata.generated.schema.entity.data.table import Table
 
 class RunStepStats(BaseModel):
     runId: str  # noqa: N815
-    startTime: Optional[float] = None  # noqa: N815, UP045
-    endTime: Optional[float] = None  # noqa: N815, UP045
-    status: Optional[str] = None  # noqa: UP045
+    startTime: float | None = None  # noqa: N815
+    endTime: float | None = None  # noqa: N815
+    status: str | None = None
 
 
 class SolidStepStatsConnection(BaseModel):
-    nodes: Optional[List[RunStepStats]] = None  # noqa: UP006, UP045
+    nodes: list[RunStepStats] | None = None
 
 
 class TaskSolidHandle(BaseModel):
-    stepStats: Optional[SolidStepStatsConnection] = None  # noqa: N815, UP045
+    stepStats: SolidStepStatsConnection | None = None  # noqa: N815
 
 
 class DagsterPipeline(BaseModel):
     id: str
     name: str
-    description: Optional[str] = None  # noqa: UP045
-    solidHandle: Optional[TaskSolidHandle] = None  # noqa: N815, UP045
+    description: str | None = None
+    solidHandle: TaskSolidHandle | None = None  # noqa: N815
 
 
 class PipelineOrErrorModel(BaseModel):
@@ -57,12 +55,12 @@ class DagsterLocation(BaseModel):
 class Node(BaseModel):
     id: str
     name: str
-    location: Optional[DagsterLocation] = None  # noqa: UP045
-    pipelines: List[DagsterPipeline]  # noqa: UP006
+    location: DagsterLocation | None = None
+    pipelines: list[DagsterPipeline]
 
 
 class RepositoryConnection(BaseModel):
-    nodes: List[Node]  # noqa: UP006
+    nodes: list[Node]
 
 
 class RepositoriesOrErrorModel(BaseModel):
@@ -75,28 +73,28 @@ class SolidName(BaseModel):
 
 
 class DependsOnSolid(BaseModel):
-    solid: Optional[SolidName] = None  # noqa: UP045
+    solid: SolidName | None = None
 
 
 class SolidInput(BaseModel):
-    dependsOn: Optional[List[DependsOnSolid]] = None  # noqa: N815, UP006, UP045
+    dependsOn: list[DependsOnSolid] | None = None  # noqa: N815
 
 
 class Solid(BaseModel):
     name: str
-    inputs: Optional[List[SolidInput]] = None  # noqa: UP006, UP045
+    inputs: list[SolidInput] | None = None
 
 
 class SolidHandle(BaseModel):
     handleID: str  # noqa: N815
-    solid: Optional[Solid] = None  # noqa: UP045
+    solid: Solid | None = None
 
 
 class GraphOrError(BaseModel):
     id: str
     name: str
-    description: Optional[str] = None  # noqa: UP045
-    solidHandles: Optional[List[SolidHandle]] = None  # noqa: N815, UP006, UP045
+    description: str | None = None
+    solidHandles: list[SolidHandle] | None = None  # noqa: N815
 
 
 class GraphOrErrorModel(BaseModel):
@@ -104,7 +102,7 @@ class GraphOrErrorModel(BaseModel):
 
 
 class AssetKey(BaseModel):
-    path: List[str]  # noqa: UP006
+    path: list[str]
 
     def to_string(self) -> str:
         """Convert asset key path to dot-separated string"""
@@ -141,7 +139,7 @@ class DagsterAssetReference(BaseModel):
 
 
 class AssetDependency(BaseModel):
-    asset: Optional[DagsterAssetReference] = None  # noqa: UP045
+    asset: DagsterAssetReference | None = None
 
 
 class MetadataEntry(BaseModel):
@@ -149,15 +147,15 @@ class MetadataEntry(BaseModel):
 
     typename: str = Field(alias="__typename")
     label: str
-    text: Optional[str] = None  # noqa: UP045
-    path: Optional[str] = None  # noqa: UP045
-    jsonString: Optional[str] = None  # noqa: N815, UP045
+    text: str | None = None
+    path: str | None = None
+    jsonString: str | None = None  # noqa: N815
 
 
 class AssetMaterialization(BaseModel):
     runId: str  # noqa: N815
-    timestamp: Optional[float] = None  # noqa: UP045
-    metadataEntries: Optional[List[MetadataEntry]] = None  # noqa: N815, UP006, UP045
+    timestamp: float | None = None
+    metadataEntries: list[MetadataEntry] | None = None  # noqa: N815
 
 
 class JobReference(BaseModel):
@@ -168,21 +166,21 @@ class JobReference(BaseModel):
 class DagsterAssetNode(BaseModel):
     id: str
     assetKey: AssetKey  # noqa: N815
-    description: Optional[str] = None  # noqa: UP045
-    computeKind: Optional[str] = None  # noqa: N815, UP045
-    opNames: Optional[List[str]] = None  # noqa: N815, UP006, UP045
-    dependencies: Optional[List[AssetDependency]] = None  # noqa: UP006, UP045
-    assetMaterializations: Optional[List[AssetMaterialization]] = None  # noqa: N815, UP006, UP045
-    jobs: Optional[List[JobReference]] = None  # noqa: UP006, UP045
+    description: str | None = None
+    computeKind: str | None = None  # noqa: N815
+    opNames: list[str] | None = None  # noqa: N815
+    dependencies: list[AssetDependency] | None = None
+    assetMaterializations: list[AssetMaterialization] | None = None  # noqa: N815
+    jobs: list[JobReference] | None = None
 
 
 class AssetRepository(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     typename: str = Field(alias="__typename")
-    id: Optional[str] = None  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
-    assetNodes: Optional[List[DagsterAssetNode]] = None  # noqa: N815, UP006, UP045
+    id: str | None = None
+    name: str | None = None
+    assetNodes: list[DagsterAssetNode] | None = None  # noqa: N815
 
 
 class AssetsQueryResponse(BaseModel):
@@ -192,8 +190,8 @@ class AssetsQueryResponse(BaseModel):
 class TableResolutionResult(BaseModel):
     """Result of resolving a Dagster asset to an OpenMetadata table"""
 
-    table_fqn: Optional[str] = None  # noqa: UP045
-    table_entity: Optional[Table] = None  # noqa: UP045
+    table_fqn: str | None = None
+    table_entity: Table | None = None
 
     @property
     def is_resolved(self) -> bool:

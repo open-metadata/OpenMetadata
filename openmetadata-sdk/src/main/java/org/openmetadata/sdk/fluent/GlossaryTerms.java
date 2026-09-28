@@ -216,7 +216,7 @@ public final class GlossaryTerms {
     }
 
     public GlossaryTermFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "domains"));
       return this;
     }
 

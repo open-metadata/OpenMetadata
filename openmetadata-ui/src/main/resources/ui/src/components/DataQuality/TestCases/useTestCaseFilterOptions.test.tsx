@@ -14,6 +14,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -24,6 +25,10 @@ jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
+}));
+
+jest.mock('../../../rest/dataQualityDimensionAPI', () => ({
+  getDataQualityDimensions: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../../rest/tagAPI', () => ({
@@ -39,6 +44,8 @@ describe('useTestCaseFilterOptions', () => {
     });
     (getTags as jest.Mock).mockClear();
     (getTags as jest.Mock).mockResolvedValue({ data: [] });
+    (getDataQualityDimensions as jest.Mock).mockClear();
+    (getDataQualityDimensions as jest.Mock).mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -69,6 +76,30 @@ describe('useTestCaseFilterOptions', () => {
     );
     expect(typeof result.current.asyncOptionsByKey).toBe('object');
     expect(typeof result.current.onSearchByKey).toBe('object');
+  });
+
+  it('should list the custom dimensions alongside No Dimension for the dimension key', async () => {
+    (getDataQualityDimensions as jest.Mock).mockResolvedValue({
+      data: [
+        { id: 'd1', name: 'BCBS 239', displayName: 'BCBS 239' },
+        { id: 'd2', name: 'Completeness' },
+      ],
+    });
+    const { result } = renderHook(() => useTestCaseFilterOptions());
+
+    // `await act` rather than a bare `act`: the fetcher is async, so the state update lands in a
+    // later microtask. Without flushing it here the assertion below races the re-render and the
+    // test passes or fails depending on what ran before it.
+    await act(async () => {
+      result.current.getInitialOptions(TEST_CASE_FILTERS.dimension);
+    });
+
+    expect(getDataQualityDimensions).toHaveBeenCalledWith({ limit: 1000 });
+    expect(result.current.dimensionOptions.map(({ value }) => value)).toEqual([
+      'NoDimension',
+      'BCBS 239',
+      'Completeness',
+    ]);
   });
 
   it('should dispatch the tier fetcher through getTags when getInitialOptions is called with the tier key', () => {
@@ -229,6 +260,9 @@ describe('useTestCaseFilterOptions', () => {
         TEST_CASE_FILTERS.tier,
         TEST_CASE_FILTERS.service,
         TEST_CASE_FILTERS.dataProduct,
+        // Dimensions are fetched from Settings > Preferences > Data Quality now, so the
+        // dimension filter is async like the rest rather than a hard-coded option list.
+        TEST_CASE_FILTERS.dimension,
       ].sort((a, b) => a.localeCompare(b))
     );
     expect(result.current.asyncOptionsByKey[TEST_CASE_FILTERS.tier]).toEqual(

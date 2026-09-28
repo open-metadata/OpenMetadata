@@ -31,12 +31,10 @@ import { useNavigate } from 'react-router-dom';
 import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from '../../../../generated/entity/data/table';
@@ -541,11 +539,11 @@ const TestSuitePipelineTab = ({
                     </Table.Cell>
 
                     <Table.Cell className="tw:align-middle tw:w-60">
-                      {isFetchingStatus ? (
-                        <ButtonSkeleton size="default" />
-                      ) : isPlatformDisabled ? (
-                        NO_DATA_PLACEHOLDER
-                      ) : (
+                      {isFetchingStatus && <ButtonSkeleton size="default" />}
+                      {!isFetchingStatus &&
+                        isPlatformDisabled &&
+                        NO_DATA_PLACEHOLDER}
+                      {!isFetchingStatus && !isPlatformDisabled && (
                         <PipelineActions
                           deployIngestion={handleDeployIngestion}
                           handleDeleteSelection={(row) =>

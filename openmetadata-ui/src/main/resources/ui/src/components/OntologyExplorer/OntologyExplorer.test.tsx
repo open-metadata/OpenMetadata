@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { PaletteKey } from '../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
@@ -19,13 +19,14 @@ import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyExplorer from './OntologyExplorer';
 import { LayoutType } from './OntologyExplorer.constants';
 import {
+  MergedEdge,
   OntologyGraphData,
   OntologyGraphHandle,
   OntologyNode,
 } from './OntologyExplorer.interface';
 import {
   ASSET_BINDING_EDGE_KIND,
-  OBSERVED_LINEAGE_EDGE_KIND,
+  SEMANTIC_PROJECTION_EDGE_KIND,
 } from './utils/graphBuilders';
 
 interface OntologyGraphMockProps {
@@ -33,6 +34,7 @@ interface OntologyGraphMockProps {
 }
 
 const mockOntologyGraph = jest.fn<void, [OntologyGraphMockProps]>();
+const mockRelationPanelMount = jest.fn();
 
 jest.mock('./hooks/useOntologyExplorer', () => ({
   useOntologyExplorer: jest.fn(),
@@ -78,6 +80,25 @@ jest.mock('./OntologyConceptDraftInspector', () => ({
     <div data-testid="ontology-concept-draft-inspector">{node.label}</div>
   ),
 }));
+
+jest.mock('./OntologyRelationDetailsPanel', () => {
+  const { useEffect } = jest.requireActual<typeof import('react')>('react');
+
+  return {
+    __esModule: true,
+    OntologyRelationDetailsPanel: ({ edge }: { edge: MergedEdge | null }) => {
+      useEffect(() => {
+        mockRelationPanelMount();
+      }, []);
+
+      return (
+        <div data-testid="ontology-relation-details-panel">
+          {edge?.id ?? ''}
+        </div>
+      );
+    },
+  };
+});
 
 const mockUseOntologyExplorer = useOntologyExplorer as jest.MockedFunction<
   typeof useOntologyExplorer
@@ -178,6 +199,7 @@ function createExplorerState(
     setSelectedNode: jest.fn(),
     settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
     ontologySummary: undefined,
+    isolatedTermDetails: [],
     totalTermCount: 1,
     ...overrides,
   };
@@ -192,6 +214,48 @@ function useStatefulExplorerMock(): ReturnType<typeof useOntologyExplorer> {
 describe('OntologyExplorer Studio data controls', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('renders a hydrated display name instead of an isolated term UUID', () => {
+    const isolatedId = '002e5485-0c59-45cc-912e-15fbc7e350bf';
+    const isolatedNode: OntologyNode = {
+      fullyQualifiedName: `Finance.${isolatedId}`,
+      id: isolatedId,
+      label: isolatedId,
+      type: 'glossaryTermIsolated',
+    };
+    const graphData = { edges: [], nodes: [isolatedNode] };
+    mockUseOntologyExplorer.mockReturnValue(
+      createExplorerState({
+        combinedGraphData: graphData,
+        filteredGraphData: graphData,
+        graphDataToShow: graphData,
+        isolatedTermDetails: [
+          {
+            description: 'Customer account concept',
+            displayName: 'Customer Account',
+            fullyQualifiedName: 'Finance.customer_account',
+            glossary: {
+              id: 'cf650c10-4f15-4775-b737-d7936f3a43cb',
+              name: 'Finance',
+              type: 'glossary',
+            },
+            id: isolatedId,
+            name: 'customer_account',
+          },
+        ],
+      })
+    );
+
+    render(<OntologyExplorer showHealth scope="global" />);
+
+    const connectButton = screen.getByTestId(`ontology-connect-${isolatedId}`);
+
+    expect(connectButton).toHaveTextContent('Customer Account');
+    expect(connectButton).not.toHaveTextContent(isolatedId);
+    expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
+      '1'
+    );
   });
 
   it('exposes global Model and Data modes and dispatches the typed selection', () => {
@@ -279,7 +343,7 @@ describe('OntologyExplorer Studio data controls', () => {
     );
   });
 
-  it('renders observed asset lineage as a solid edge between term clusters', () => {
+  it('draws only the relations between concept clusters, not links between their assets', () => {
     const secondaryAssetNode: OntologyNode = {
       id: 'asset-customers',
       label: 'customers',
@@ -304,18 +368,17 @@ describe('OntologyExplorer Studio data controls', () => {
             to: secondaryTermNode.id,
           },
           {
-            edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
+            edgeKind: SEMANTIC_PROJECTION_EDGE_KIND,
             from: assetNode.id,
-            label: 'observed lineage',
-            relationType: 'lineage',
+            label: 'related to',
+            relationType: 'relatedTo',
             to: secondaryAssetNode.id,
           },
           {
-            edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
-            from: assetNode.id,
-            label: 'observed lineage',
-            relationType: 'lineage',
-            to: secondaryAssetNode.id,
+            from: termNode.id,
+            label: 'related to',
+            relationType: 'relatedTo',
+            to: secondaryTermNode.id,
           },
         ],
         nodes: [termNode, secondaryTermNode, assetNode, secondaryAssetNode],
@@ -325,15 +388,13 @@ describe('OntologyExplorer Studio data controls', () => {
 
     render(<OntologyExplorer scope="global" />);
 
-    const observedEdges = screen.getAllByTestId(
-      'ontology-data-observed-lineage-edge'
+    expect(screen.getAllByTestId('ontology-data-semantic-edge')).toHaveLength(
+      1
     );
-
-    expect(observedEdges).toHaveLength(1);
-    expect(observedEdges[0]).not.toHaveAttribute('stroke-dasharray');
+    expect(screen.getAllByTestId('ontology-data-edge-arrow')).toHaveLength(1);
     expect(
-      screen.queryByTestId('ontology-data-semantic-edge-label')
-    ).not.toBeInTheDocument();
+      screen.getByTestId('ontology-data-semantic-edge-label')
+    ).toHaveTextContent('related to');
   });
 
   it('expands the semantic edge layer when a term card is moved', () => {
@@ -545,14 +606,35 @@ describe('OntologyExplorer Studio data controls', () => {
     expect(state.handleModeChange).not.toHaveBeenCalled();
   });
 
-  it('disables the Data layer while authoring concepts', () => {
+  it('hides the Model and Data switch while authoring concepts', () => {
     const state = createExplorerState();
     mockUseOntologyExplorer.mockReturnValue(state);
 
     render(<OntologyExplorer isAuthoringMode scope="global" />);
-    fireEvent.click(screen.getByRole('tab', { name: 'label.data' }));
 
-    expect(state.handleModeChange).not.toHaveBeenCalledWith('data');
+    expect(
+      screen.queryByTestId('ontology-layer-switch')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('tab', { name: 'label.data' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the metric details panel instead of the concept inspector in authoring mode', () => {
+    const metricNode = {
+      id: 'metric-churn-rate',
+      label: 'Monthly Churn Rate %',
+      type: 'metric',
+    };
+    const state = createExplorerState({ selectedNode: metricNode });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer isAuthoringMode scope="global" />);
+
+    expect(screen.getByTestId('ontology-entity-panel')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-authoring-inspector')
+    ).not.toBeInTheDocument();
   });
 
   it('opens the concept entity page in a new tab from View Details', () => {
@@ -615,5 +697,48 @@ describe('OntologyExplorer Studio data controls', () => {
     expect(
       screen.queryByTestId('ontology-data-render-cap')
     ).not.toBeInTheDocument();
+  });
+
+  it('remounts the relation details panel when the selected edge changes', () => {
+    const state = createExplorerState();
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer isEditMode scope="global" />);
+
+    expect(
+      screen.queryByTestId('ontology-relation-details-panel')
+    ).not.toBeInTheDocument();
+
+    const graphProps = mockOntologyGraph.mock.calls[0][0] as unknown as {
+      onEdgeClick: (edge: MergedEdge | null) => void;
+    };
+    const edgeA: MergedEdge = {
+      from: 'a',
+      id: 'edge-a',
+      isBidirectional: false,
+      relationType: 'partOf',
+      to: 'b',
+    };
+    const edgeB: MergedEdge = {
+      from: 'c',
+      id: 'edge-b',
+      isBidirectional: false,
+      relationType: 'relatedTo',
+      to: 'd',
+    };
+
+    act(() => graphProps.onEdgeClick(edgeA));
+
+    expect(
+      screen.getByTestId('ontology-relation-details-panel')
+    ).toHaveTextContent('edge-a');
+    expect(mockRelationPanelMount).toHaveBeenCalledTimes(1);
+
+    act(() => graphProps.onEdgeClick(edgeB));
+
+    expect(
+      screen.getByTestId('ontology-relation-details-panel')
+    ).toHaveTextContent('edge-b');
+    expect(mockRelationPanelMount).toHaveBeenCalledTimes(2);
   });
 });

@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { ReactElement } from 'react';
+import { ReactElement, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+
+export type TFunctionType = ReturnType<typeof useTranslation>['t'];
 
 export type DisableableFieldElement = ReactElement<{ disabled?: boolean }>;
 export type SchemaPropertyLayout = {
@@ -49,4 +52,36 @@ export interface AdvancedPropertiesSectionProps {
   uiSchema: ObjectFieldTemplateProps['uiSchema'];
   flatPropertyLayout: boolean;
   isRoot: boolean;
+}
+
+export interface PropertiesContentProps {
+  isRoot: boolean;
+  schema: ObjectFieldTemplateProps['schema'];
+  bodyClassName: string;
+  addButton: ReactNode;
+  isGatedCredentialConfig: boolean;
+  gatedCredentialToggleProperties: ObjectFieldTemplateProps['properties'];
+  gatedCredentialFieldProperties: ObjectFieldTemplateProps['properties'];
+  orderedNormalProperties: ObjectFieldTemplateProps['properties'];
+  normalProperties: ObjectFieldTemplateProps['properties'];
+  flatPropertyLayout: boolean;
+  isIamAuthEnabled: boolean;
+  uiSchema: ObjectFieldTemplateProps['uiSchema'];
+  advancedPropertiesContent: ReactNode;
+  t: TFunctionType;
+}
+
+export interface NonRootTitledViewProps {
+  flatPropertyLayout: boolean;
+  isSampleDataSection: boolean;
+  isSampleDataConfig: boolean;
+  isAwsS3StorageConfig: boolean;
+  isGatedCredentialConfig: boolean;
+  isGenericNestedConfig: boolean;
+  schema: ObjectFieldTemplateProps['schema'];
+  idSchema: ObjectFieldTemplateProps['idSchema'];
+  title: string | undefined;
+  shouldShowDescription: boolean;
+  description: string | undefined;
+  propertiesContent: ReactNode;
 }

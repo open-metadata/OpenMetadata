@@ -13,8 +13,6 @@
 Validator for column values to be not null test case
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -49,7 +47,7 @@ class ColumnValuesToBeNotNullValidator(
 ):
     """Validator for column values to be not null test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: Column) -> int | None:
         """compute result of the test case
 
         Args:
@@ -65,7 +63,7 @@ class ColumnValuesToBeNotNullValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
         Calculates impact scores for all dimension values and aggregates

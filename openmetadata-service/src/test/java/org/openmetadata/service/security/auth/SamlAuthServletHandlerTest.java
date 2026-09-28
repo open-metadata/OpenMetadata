@@ -13,6 +13,8 @@
 package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -36,6 +38,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -480,5 +483,101 @@ class SamlAuthServletHandlerTest {
       throw e;
     }
     return result;
+  }
+
+  @Test
+  void resolveSamlIdentity_failsWhenConfiguredEmailAttributeMissing() {
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    when(authConfig.getDisplayNameClaim()).thenReturn("name");
+    when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+    Auth auth = mock(Auth.class);
+    when(auth.getAttribute("email")).thenReturn(null);
+    when(auth.getNameId()).thenReturn("legacy.user@company.com");
+
+    org.openmetadata.service.exception.AuthenticationException exception =
+        assertThrows(
+            org.openmetadata.service.exception.AuthenticationException.class,
+            () -> invokeResolveSamlIdentity(auth));
+
+    assertTrue(exception.getMessage().contains("email attribute 'email' not found"));
+  }
+
+  @Test
+  void getOrCreateEmailFirstSamlUser_returnsExistingUserByExactEmail() throws Exception {
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(authorizerConfig);
+    when(authorizerConfig.getAdminPrincipals()).thenReturn(Set.of());
+
+    User existing =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("john_a1b2")
+            .withEmail("john@y.com")
+            .withDisplayName("John Y");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any()))
+          .thenReturn(existing);
+
+      User resolved = invokeGetOrCreateEmailFirstSamlUser("john@y.com", "John Y");
+
+      assertSame(existing, resolved);
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstSamlUser_rejectsUnregisteredUserWhenSelfSignupDisabled() {
+    when(authConfig.getEnableSelfSignup()).thenReturn(false);
+    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(authorizerConfig);
+    when(authorizerConfig.getAdminPrincipals()).thenReturn(Set.of());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () -> invokeGetOrCreateEmailFirstSamlUser("newuser@company.com", "New User"));
+
+      assertTrue(exception.getMessage().contains("User not registered"));
+    }
+  }
+
+  private Object invokeResolveSamlIdentity(Auth auth) throws Exception {
+    Method method =
+        SamlAuthServletHandler.class.getDeclaredMethod("resolveSamlIdentity", Auth.class);
+    method.setAccessible(true);
+    try {
+      return method.invoke(handler, auth);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private User invokeGetOrCreateEmailFirstSamlUser(String email, String displayName)
+      throws Exception {
+    Method method =
+        SamlAuthServletHandler.class.getDeclaredMethod(
+            "getOrCreateEmailFirstSamlUser", String.class, String.class, List.class);
+    method.setAccessible(true);
+    try {
+      return (User) method.invoke(handler, email, displayName, List.of());
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
   }
 }

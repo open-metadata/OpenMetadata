@@ -24,9 +24,9 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TaskClass } from '../../../support/entity/TaskClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
@@ -84,7 +84,9 @@ test.describe('Task Assignee Management', () => {
     await page.getByTestId('activity_feed').click();
     await waitForAllLoadersToDisappear(page);
 
-    const tasksMenuItem = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksMenuItem = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     await expect(tasksMenuItem).toBeVisible();
     await tasksMenuItem.click();
     await waitForAllLoadersToDisappear(page);

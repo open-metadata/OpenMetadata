@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -67,6 +68,9 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.slf4j.Logger;
@@ -156,6 +160,105 @@ public class IngestionPipelineResourceIT
   @Override
   protected IngestionPipeline createEntity(CreateIngestionPipeline createRequest) {
     return SdkClients.adminClient().ingestionPipelines().create(createRequest);
+  }
+
+  @Test
+  void createRejectsSourceConfigWithoutTypeAndDoesNotPersist(TestNamespace ns) throws Exception {
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns).withName(ns.prefix("missingTypeCreate"));
+
+    HttpResponse<String> response =
+        sendRawRequest(
+            "POST",
+            IngestionPipelineResource.COLLECTION_PATH,
+            requestWithoutSourceConfigType(request),
+            "application/json");
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("sourceConfig.config.type is required"));
+    OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                getEntityByName(
+                    request.getService().getFullyQualifiedName() + "." + request.getName()));
+    assertEquals(404, notFound.getStatusCode());
+  }
+
+  @Test
+  void updateRejectsSourceConfigWithoutTypeAndPreservesStoredConfig(TestNamespace ns)
+      throws Exception {
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns).withName(ns.prefix("missingTypeUpdate"));
+    IngestionPipeline pipeline = createEntity(request);
+
+    HttpResponse<String> response =
+        sendRawRequest(
+            "PUT",
+            IngestionPipelineResource.COLLECTION_PATH,
+            requestWithoutSourceConfigType(request),
+            "application/json");
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("sourceConfig.config.type is required"));
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+  }
+
+  @Test
+  void patchRejectsRemovingSourceConfigTypeAndPreservesStoredConfig(TestNamespace ns)
+      throws Exception {
+    IngestionPipeline pipeline =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("missingTypePatch")));
+    List<Map<String, String>> patch =
+        List.of(Map.of("op", "remove", "path", "/sourceConfig/config/type"));
+
+    HttpResponse<String> response =
+        sendRawRequest(
+            "PATCH",
+            IngestionPipelineResource.COLLECTION_PATH + pipeline.getId(),
+            patch,
+            "application/json-patch+json");
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("sourceConfig.config.type is required"));
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+  }
+
+  @Test
+  void migrationRepairsLegacySourceConfigTypeBeforeDeployment(TestNamespace ns) {
+    IngestionPipeline pipeline =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("legacyMissingType")));
+    Map<String, Object> legacyConfig =
+        new LinkedHashMap<>(JsonUtils.getMap(pipeline.getSourceConfig().getConfig()));
+    legacyConfig.remove("type");
+    pipeline.getSourceConfig().setConfig(legacyConfig);
+    Entity.getCollectionDAO().ingestionPipelineDAO().update(pipeline);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
+
+    assertNull(
+        JsonUtils.getMap(getEntity(pipeline.getId().toString()).getSourceConfig().getConfig())
+            .get("type"));
+
+    IngestionPipelineMigrationUtil.MigrationResult migrationResult =
+        IngestionPipelineMigrationUtil.backfillSourceConfigTypes(Entity.getCollectionDAO());
+    EntityRepository.invalidateCacheForEntity(
+        Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
+
+    assertTrue(migrationResult.repaired() >= 1);
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
+
+    PipelineServiceClientResponse response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                IngestionPipelineResource.COLLECTION_PATH + "deploy/" + pipeline.getId(),
+                null,
+                PipelineServiceClientResponse.class);
+
+    assertEquals(200, response.getCode());
+    assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
   }
 
   @Override
@@ -1898,6 +2001,34 @@ public class IngestionPipelineResourceIT
     return HttpClient.newHttpClient()
         .send(request, HttpResponse.BodyHandlers.ofString())
         .statusCode();
+  }
+
+  private static HttpResponse<String> sendRawRequest(
+      String method, String path, Object body, String contentType) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", contentType)
+            .timeout(Duration.ofSeconds(30))
+            .method(method, HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(body)))
+            .build();
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> requestWithoutSourceConfigType(
+      CreateIngestionPipeline request) {
+    Map<String, Object> payload = JsonUtils.getMap(request);
+    Map<String, Object> sourceConfig = (Map<String, Object>) payload.get("sourceConfig");
+    Map<String, Object> config = (Map<String, Object>) sourceConfig.get("config");
+    config.remove("type");
+    return payload;
+  }
+
+  private void assertStoredSourceConfigType(UUID pipelineId, String expectedType) {
+    IngestionPipeline stored = getEntity(pipelineId.toString());
+    assertEquals(expectedType, JsonUtils.getMap(stored.getSourceConfig().getConfig()).get("type"));
   }
 
   private static String encodeSegment(String value) {

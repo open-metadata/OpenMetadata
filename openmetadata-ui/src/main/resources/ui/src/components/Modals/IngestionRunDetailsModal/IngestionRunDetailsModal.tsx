@@ -23,11 +23,11 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import Table from '../../common/Table/Table';
 import {
   ColumnType,
   ExpandableConfig,
 } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
 

@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { updateCertificationTag } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Certification from '../../Certification/Certification.component';
@@ -41,7 +41,7 @@ const CertificationWidget = () => {
 
   const canEdit = useMemo(
     () =>
-      getPrioritizedEditPermission(permissions, Operation.EditCertification) &&
+      getDerivedPermissionFlags(permissions).can(Operation.EditCertification) &&
       !isVersionView,
     [permissions, isVersionView]
   );
@@ -58,21 +58,21 @@ const CertificationWidget = () => {
     }
   };
 
-  const headerExtra = canEdit ? (
-    entity.certification ? (
-      <WidgetEditButton
-        data-testid="edit-certification"
-        title={t('label.edit-entity', { entity: t('label.certification') })}
-        onClick={() => setIsEditing(true)}
-      />
-    ) : (
-      <WidgetPlusButton
-        data-testid="add-certification"
-        title={t('label.add-entity', { entity: t('label.certification') })}
-        onClick={() => setIsEditing(true)}
-      />
-    )
-  ) : null;
+  const certificationButton = entity.certification ? (
+    <WidgetEditButton
+      data-testid="edit-certification"
+      title={t('label.edit-entity', { entity: t('label.certification') })}
+      onClick={() => setIsEditing(true)}
+    />
+  ) : (
+    <WidgetPlusButton
+      data-testid="add-certification"
+      title={t('label.add-entity', { entity: t('label.certification') })}
+      onClick={() => setIsEditing(true)}
+    />
+  );
+
+  const headerExtra = canEdit ? certificationButton : null;
 
   const content = (
     <Certification

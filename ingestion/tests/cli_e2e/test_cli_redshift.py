@@ -13,8 +13,6 @@
 Redshift E2E tests
 """
 
-from typing import List, Tuple  # noqa: UP035
-
 import pytest
 from sqlalchemy import text
 
@@ -42,7 +40,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.dbt_jaffle.persons;
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         """
     INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate, bigint_col) VALUES
         (1,'Peter Parker', '2004-08-10', 9223372036854775807),
@@ -153,19 +151,19 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         }
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["dbt_jaffle"]
 
     @classmethod
-    def get_excludes_schemas(cls) -> List[str]:  # noqa: UP006
+    def get_excludes_schemas(cls) -> list[str]:
         return ["dbt_jaffle", "information_schema"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return ["customer", "listing"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return ["foo"]
 
     @staticmethod
@@ -240,7 +238,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         }
 
     @staticmethod
-    def delete_queries() -> List[str]:  # noqa: UP006
+    def delete_queries() -> list[str]:
         return [
             """
             DELETE FROM e2e_cli_tests.dbt_jaffle.persons WHERE person_id IN (1,2)
@@ -248,7 +246,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:  # noqa: UP006
+    def update_queries() -> list[str]:
         return [
             """
             UPDATE e2e_cli_tests.dbt_jaffle.persons SET full_name = 'Bruce Wayne' WHERE person_id = 3
@@ -259,7 +257,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def test_profiler_with_time_partition(self) -> None:
         pass
 
-    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:  # noqa: UP006
+    def get_system_profile_cases(self) -> list[tuple[str, list[SystemProfile]]]:
         return [
             (
                 "e2e_redshift.e2e_cli_tests.dbt_jaffle.persons",

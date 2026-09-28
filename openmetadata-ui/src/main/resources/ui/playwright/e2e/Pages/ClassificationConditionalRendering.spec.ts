@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -85,9 +85,9 @@ test('Should render correct content when switching between classifications', asy
 }) => {
   await classification1.visitPage(page);
 
-  await expect(page.locator('.activeCategory')).toContainText(
-    classification1.data.displayName
-  );
+  await expect(
+    page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+  ).toContainText(classification1.data.displayName);
   await expect(page.getByTestId('table')).toContainText(tag1.data.name);
 
   const tagsResponse = page.waitForResponse(
@@ -101,9 +101,9 @@ test('Should render correct content when switching between classifications', asy
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.locator('.activeCategory')).toContainText(
-    classification2.data.displayName
-  );
+  await expect(
+    page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+  ).toContainText(classification2.data.displayName);
   await expect(page.getByTestId('header')).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible();
   await expect(page.getByTestId('table')).toContainText(tag2.data.name);
@@ -118,7 +118,7 @@ test('Should render classification correctly after page reload', async ({
   const classificationsResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await classificationsResponse;
 
   await waitForAllLoadersToDisappear(page);

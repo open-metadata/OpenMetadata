@@ -12,8 +12,6 @@
 MySQL models
 """
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.data.storedProcedure import (
@@ -39,7 +37,7 @@ class MysqlRoutine(BaseModel):
 
     name: str = Field(alias="routine_name")
     schema: str = Field(alias="schema_name")
-    definition: Optional[str] = None  # noqa: UP045
+    definition: str | None = None
     language: str = Field(default="SQL")
-    routine_type: Optional[str] = Field(None, alias="routine_type")  # noqa: UP045
-    description: Optional[str] = Field(None, alias="description")  # noqa: UP045
+    routine_type: str | None = Field(None, alias="routine_type")
+    description: str | None = Field(None, alias="description")

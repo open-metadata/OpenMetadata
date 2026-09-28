@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Pydantic models for ometa client API"""
 
-from typing import Generic, List, Optional, TypeVar  # noqa: UP035
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -27,7 +27,7 @@ class EntityList(BaseModel, Generic[T]):
         after (str): after token for pagination
     """
 
-    entities: List[T]  # noqa: UP006
+    entities: list[T]
     total: int
-    after: Optional[str] = None  # noqa: UP045
-    before: Optional[str] = None  # noqa: UP045
+    after: str | None = None
+    before: str | None = None

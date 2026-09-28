@@ -16,10 +16,14 @@ import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { UUID_REGEX } from '../../../constants/regex.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { searchEntity } from '../../../utils/Alerts/AlertsUtil';
+import {
+  getDataContractSuggestions,
+  searchEntity,
+} from '../../../utils/Alerts/AlertsUtil';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   getEntityName,
@@ -111,16 +115,13 @@ const toSearchSelectItems = (
   uniqBy(
     hits.map((hit) => {
       const source = hit._source;
-      const displayName = showDisplayNameAsLabel
-        ? getEntityName(source)
-        : source.fullyQualifiedName ?? '';
+      const fqn = source.fullyQualifiedName ?? '';
+      const displayName = showDisplayNameAsLabel ? getEntityName(source) : fqn;
       const isContainerOption =
         Boolean(source.entityType) &&
         (wildcardEntityTypes ?? []).includes(source.entityType ?? '');
       const label = isContainerOption ? `${displayName}.*` : displayName;
-      const id = useIdAsValue
-        ? source.id ?? ''
-        : source.fullyQualifiedName ?? '';
+      const id = useIdAsValue ? source.id ?? '' : fqn;
 
       return {
         id,
@@ -184,6 +185,62 @@ const searchAlertAiEntityOptions = async ({
   }
 };
 
+type AlertAiArgumentContext = {
+  containerEntities: string[];
+  selectedSource?: string;
+  trimmedSearchText: string;
+};
+
+type AlertAiArgumentConfig = {
+  searchIndex?: SearchIndex | SearchIndex[];
+  queryFilter?: Record<string, unknown>;
+  showDisplayNameAsLabel?: boolean;
+  wildcardEntityTypes?: string[];
+};
+
+const ALERT_AI_ARGUMENT_CONFIG_BUILDERS: Record<
+  string,
+  (context: AlertAiArgumentContext) => AlertAiArgumentConfig
+> = {
+  fqnList: ({ selectedSource, containerEntities }) => ({
+    searchIndex: getAlertAiFqnSearchIndexes(selectedSource, containerEntities),
+    showDisplayNameAsLabel: false,
+    wildcardEntityTypes: containerEntities,
+  }),
+  domainList: () => ({ searchIndex: SearchIndex.DOMAIN }),
+  tableNameList: () => ({
+    searchIndex: SearchIndex.TABLE,
+    showDisplayNameAsLabel: false,
+  }),
+  entityNameList: () => ({
+    searchIndex: SearchIndex.TABLE,
+    showDisplayNameAsLabel: false,
+  }),
+  ownerNameList: () => ({
+    searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+    queryFilter: getTermQuery({ isBot: 'false' }),
+  }),
+  updateByUserList: () => ({ searchIndex: SearchIndex.USER }),
+  userList: () => ({
+    searchIndex: SearchIndex.USER,
+    queryFilter: getTermQuery({ isBot: 'false' }),
+  }),
+  entityIdList: ({ selectedSource, trimmedSearchText }) => {
+    const searchIndexMapping =
+      searchClassBase.getEntityTypeSearchIndexMapping();
+
+    return {
+      searchIndex: selectedSource
+        ? searchIndexMapping[selectedSource]
+        : undefined,
+      queryFilter: UUID_REGEX.test(trimmedSearchText)
+        ? getTermQuery({ id: trimmedSearchText })
+        : undefined,
+    };
+  },
+  testSuiteList: () => ({ searchIndex: SearchIndex.TEST_SUITE }),
+};
+
 export const searchAlertAiArgumentOptions = async ({
   argument,
   containerEntities = [],
@@ -195,63 +252,27 @@ export const searchAlertAiArgumentOptions = async ({
   searchText: string;
   selectedSource?: string;
 }): Promise<SelectItemType[]> => {
-  const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const trimmedSearchText = searchText.trim();
-  let searchIndex: SearchIndex | SearchIndex[] | undefined;
-  let queryFilter: Record<string, unknown> | undefined;
-  let showDisplayNameAsLabel = true;
-  let wildcardEntityTypes: string[] | undefined;
 
-  switch (argument) {
-    case 'fqnList':
-      searchIndex = getAlertAiFqnSearchIndexes(
-        selectedSource,
-        containerEntities
-      );
-      showDisplayNameAsLabel = false;
-      wildcardEntityTypes = containerEntities;
+  // Data contracts are not in the search-index mapping; classic lists them via the contracts API.
+  if (argument === 'fqnList' && selectedSource === EntityType.DATA_CONTRACT) {
+    const contracts = await getDataContractSuggestions(trimmedSearchText);
 
-      break;
-    case 'domainList':
-      searchIndex = SearchIndex.DOMAIN;
-
-      break;
-    case 'tableNameList':
-    case 'entityNameList':
-      searchIndex = SearchIndex.TABLE;
-      showDisplayNameAsLabel = false;
-
-      break;
-    case 'ownerNameList':
-      searchIndex = [SearchIndex.TEAM, SearchIndex.USER];
-      queryFilter = getTermQuery({ isBot: 'false' });
-
-      break;
-    case 'updateByUserList':
-      searchIndex = SearchIndex.USER;
-
-      break;
-    case 'userList':
-      searchIndex = SearchIndex.USER;
-      queryFilter = getTermQuery({ isBot: 'false' });
-
-      break;
-    case 'entityIdList':
-      searchIndex = selectedSource
-        ? searchIndexMapping[selectedSource]
-        : undefined;
-      queryFilter = UUID_REGEX.test(trimmedSearchText)
-        ? getTermQuery({ id: trimmedSearchText })
-        : undefined;
-
-      break;
-    case 'testSuiteList':
-      searchIndex = SearchIndex.TEST_SUITE;
-
-      break;
-    default:
-      return [];
+    return contracts.map(({ value }) => ({ id: value, label: value }));
   }
+
+  const buildConfig = ALERT_AI_ARGUMENT_CONFIG_BUILDERS[argument];
+
+  if (!buildConfig) {
+    return [];
+  }
+
+  const {
+    searchIndex,
+    queryFilter,
+    showDisplayNameAsLabel = true,
+    wildcardEntityTypes,
+  } = buildConfig({ containerEntities, selectedSource, trimmedSearchText });
 
   if (!searchIndex || isEmpty(searchIndex)) {
     return [];

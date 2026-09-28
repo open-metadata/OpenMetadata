@@ -71,7 +71,10 @@ services:
       # shiro.ini at container start so the override actually takes effect.
       - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
       - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xmx1500m -Xms256m}
+      # Dev-sized heap; NOT representative of production (production guidance in
+      # docs/rdf-production-setup.md is equal min/max -Xms4g -Xmx4g plus page-cache
+      # headroom). Equal min/max even in dev so throughput observations are stable.
+      - JVM_ARGS=${FUSEKI_JVM_ARGS:--Xms1500m -Xmx1500m}
     volumes:
       # New volume name (was `fuseki-data` mounted at `/fuseki`). The in-repo
       # Dockerfile stores TDB2 at `/fuseki-data` and the data layout differs

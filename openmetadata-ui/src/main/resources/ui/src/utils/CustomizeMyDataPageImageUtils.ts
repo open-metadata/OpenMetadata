@@ -28,44 +28,23 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 // Widget preview screenshots are only needed inside customize/add-widget flows.
 // Keeping them out of CustomizeMyDataPageClassBase avoids preloading these
 // image modules when /my-data only needs layout defaults.
+const WIDGET_IMAGE_BY_KEY: ReadonlyArray<[string, string]> = [
+  [LandingPageWidgetKeys.ACTIVITY_FEED, ActivityFeedImg],
+  [LandingPageWidgetKeys.DATA_ASSETS, DataAssetsImg],
+  [LandingPageWidgetKeys.DATA_PRODUCTS, DataProductsImg],
+  [LandingPageWidgetKeys.MY_DATA, MyDataImg],
+  [LandingPageWidgetKeys.KPI, KPIImg],
+  [LandingPageWidgetKeys.TOTAL_DATA_ASSETS, TotalAssetsImg],
+  [LandingPageWidgetKeys.FOLLOWING, FollowingImg],
+  [LandingPageWidgetKeys.CURATED_ASSETS, CuratedAssetsImg],
+  [LandingPageWidgetKeys.MY_TASK, MyTaskImg],
+  [LandingPageWidgetKeys.DOMAINS, DomainsImg],
+  [LandingPageWidgetKeys.KNOWLEDGE_CENTER, KnowledgeCenterWidgetImg],
+  [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE, KnowledgeCenterWidgetImg],
+];
+
 export const getMyDataWidgetImageFromKey = (widgetKey: string): string => {
-  switch (widgetKey) {
-    case LandingPageWidgetKeys.ACTIVITY_FEED: {
-      return ActivityFeedImg;
-    }
-    case LandingPageWidgetKeys.DATA_ASSETS: {
-      return DataAssetsImg;
-    }
-    case LandingPageWidgetKeys.DATA_PRODUCTS: {
-      return DataProductsImg;
-    }
-    case LandingPageWidgetKeys.MY_DATA: {
-      return MyDataImg;
-    }
-    case LandingPageWidgetKeys.KPI: {
-      return KPIImg;
-    }
-    case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
-      return TotalAssetsImg;
-    }
-    case LandingPageWidgetKeys.FOLLOWING: {
-      return FollowingImg;
-    }
-    case LandingPageWidgetKeys.CURATED_ASSETS: {
-      return CuratedAssetsImg;
-    }
-    case LandingPageWidgetKeys.MY_TASK: {
-      return MyTaskImg;
-    }
-    case LandingPageWidgetKeys.DOMAINS: {
-      return DomainsImg;
-    }
-    case LandingPageWidgetKeys.KNOWLEDGE_CENTER:
-    case DetailPageWidgetKeys.KNOWLEDGE_ARTICLE: {
-      return KnowledgeCenterWidgetImg;
-    }
-    default: {
-      return '';
-    }
-  }
+  const match = WIDGET_IMAGE_BY_KEY.find(([key]) => key === widgetKey);
+
+  return match ? match[1] : '';
 };

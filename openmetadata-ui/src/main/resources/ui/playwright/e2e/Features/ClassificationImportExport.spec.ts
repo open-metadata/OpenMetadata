@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -20,16 +20,27 @@ import { performUserLogin } from '../../utils/user';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const userClassification = new ClassificationClass();
-const systemClassification = new ClassificationClass({ provider: 'system' });
-const userTag = new TagClass({ classification: userClassification.data.name });
-const exportUser = new UserClass(undefined, true);
+let userClassification = new ClassificationClass();
+const systemClassification = new ClassificationClass({
+  name: 'PII',
+  displayName: 'PII',
+  provider: 'system',
+});
+let userTag = new TagClass({ classification: userClassification.data.name });
+let exportUser = new UserClass(undefined, true);
 
 test.describe('Classification Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('Setup classifications and a tag', async ({ browser }) => {
+    // beforeAll runs once per worker, and a worker restart re-enters it with the
+    // module scope still warm — so the second pass POSTs the names the first
+    // pass already created and every create 409s. Rebuilding the fixtures here
+    // means each pass owns a fresh set of names.
+    userClassification = new ClassificationClass();
+    userTag = new TagClass({ classification: userClassification.data.name });
+    exportUser = new UserClass(undefined, true);
+
     const { apiContext, afterAction } = await createNewPage(browser);
     await userClassification.create(apiContext);
-    await systemClassification.create(apiContext);
     await userTag.create(apiContext);
     await exportUser.create(apiContext);
     await afterAction();
@@ -107,10 +118,42 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
     await expect(importButton).toBeVisible();
     await importButton.click();
 
-    await page.waitForURL('**/bulk/import/classification/**');
+    await page.waitForURL('**/bulk/import/classification/**', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await expect(
       page.getByText('Drag & Drop or Browse CSV file here')
     ).toBeVisible();
   });
+
+  test.afterAll(
+    'Remove the user classification, tag and user',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      const remove = async (
+        created: boolean,
+        deletion: () => Promise<unknown>
+      ) => {
+        if (!created) {
+          return;
+        }
+
+        await deletion();
+      };
+
+      await remove(Boolean(userTag.responseData?.id), () =>
+        userTag.delete(apiContext)
+      );
+      await remove(Boolean(userClassification.responseData?.id), () =>
+        userClassification.delete(apiContext)
+      );
+      await remove(Boolean(exportUser.responseData?.id), () =>
+        exportUser.delete(apiContext)
+      );
+
+      await afterAction();
+    }
+  );
 });

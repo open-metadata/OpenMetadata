@@ -218,10 +218,11 @@ const ConnectionConfigForm = forwardRef<
     );
 
     const shouldShowIPAlert = useMemo(() => {
+      const isAirflowSchemaWithHostIp =
+        !isEmpty(connSch.schema) && isAirflowAvailable && hostIp;
+
       return (
-        !isEmpty(connSch.schema) &&
-        isAirflowAvailable &&
-        hostIp &&
+        isAirflowSchemaWithHostIp &&
         (platform !== AIRFLOW_HYBRID ||
           ingestionRunner === COLLATE_SAAS ||
           ingestionRunner === COLLATE_SAAS_RUNNER)

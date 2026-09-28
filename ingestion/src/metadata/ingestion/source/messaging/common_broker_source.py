@@ -17,7 +17,8 @@ import concurrent.futures
 import time
 import traceback
 from abc import ABC
-from typing import Any, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 import confluent_kafka
 from cachetools import LRUCache
@@ -196,7 +197,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")
 
-    def _get_schema_text_with_references(self, schema) -> Optional[str]:  # noqa: UP045
+    def _get_schema_text_with_references(self, schema) -> str | None:
         """
         Returns the schema text with references resolved using recursive calls
         """
@@ -217,7 +218,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.error(f"Failed to get schema with references: {exc}")
         return None
 
-    def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:  # noqa: UP045
+    def _parse_topic_metadata(self, topic_name: str) -> Schema | None:
 
         # To find topic in artifact registry, dafault is "<topic_name>-value"
         # But suffix can be overridden using schemaRegistryTopicSuffixName

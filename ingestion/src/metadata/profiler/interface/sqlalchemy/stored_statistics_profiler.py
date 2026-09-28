@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 import threading
-from typing import Any, Dict, List, Set  # noqa: UP035
+from typing import Any
 
 from more_itertools import partition
 from sqlalchemy import Column
@@ -35,14 +35,14 @@ thread_local = threading.local()
 
 
 class StoredStatisticsSource(Root):
-    def get_statistics_metrics(self) -> Set[Metrics]:  # noqa: UP006
+    def get_statistics_metrics(self) -> set[Metrics]:
         """Statistic metrics that are found in system tables. Different for each database."""
         return set()
 
-    def get_column_statistics(self, metric: List[Metrics], schema: str, table_name: Table, column: str) -> dict:  # noqa: UP006
+    def get_column_statistics(self, metric: list[Metrics], schema: str, table_name: Table, column: str) -> dict:
         raise NotImplementedError("You used a connector that does not support using statistics tables.")
 
-    def get_table_statistics(self, metric: List[Metrics], schema: str, table_name: Table) -> dict:  # noqa: UP006
+    def get_table_statistics(self, metric: list[Metrics], schema: str, table_name: Table) -> dict:
         raise NotImplementedError("You used a connector that does not support using statistics tables.")
 
 
@@ -58,7 +58,7 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
 
     def _compute_static_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: QueryRunner,
         column,
         session,
@@ -94,12 +94,12 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
 
     def _compute_table_metrics(
         self,
-        metrics: List[Metric],  # noqa: UP006
+        metrics: list[Metric],
         runner: QueryRunner,
         session,
         *args,
         **kwargs,
-    ) -> Dict[str, Any]:  # noqa: UP006
+    ) -> dict[str, Any]:
         result = {}
         if self.source_config.useStatistics:
             metrics, stat_metrics = map(
@@ -121,7 +121,7 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
             result.update(super_table_metrics)
         return result
 
-    def get_hybrid_metrics(self, column: Column, metric: Metric, column_results: Dict):  # noqa: UP006
+    def get_hybrid_metrics(self, column: Column, metric: Metric, column_results: dict):
         # this metrics might have been computed in a previous step
         return column_results.get(metric.name()) or super().get_hybrid_metrics(column, metric, column_results)
 

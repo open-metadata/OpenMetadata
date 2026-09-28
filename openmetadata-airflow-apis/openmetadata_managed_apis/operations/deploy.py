@@ -11,12 +11,13 @@
 import json
 import pkgutil
 import traceback
+from datetime import datetime
 from pathlib import Path
-from typing import Dict  # noqa: UP035
+from time import monotonic, sleep
 
-import airflow
 from airflow import DAG, settings
 from airflow.models import DagModel
+from airflow.models.serialized_dag import SerializedDagModel
 from jinja2 import Template
 from markupsafe import escape
 
@@ -89,7 +90,7 @@ class DagDeployer:
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
-    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> Dict[str, str]:  # noqa: UP006
+    def store_airflow_pipeline_config(self, dag_config_file_path: Path) -> dict[str, str]:
         """
         Store the airflow pipeline config in a JSON file and
         return the path for the Jinja rendering.
@@ -103,7 +104,7 @@ class DagDeployer:
 
         return {"workflow_config_file": str(dag_config_file_path)}
 
-    def store_and_validate_dag_file(self, dag_runner_config: Dict[str, str]) -> str:  # noqa: UP006
+    def store_and_validate_dag_file(self, dag_runner_config: dict[str, str]) -> str:
         """
         Stores the Python file generating the DAG and returns
         the rendered strings
@@ -145,32 +146,59 @@ class DagDeployer:
         to the Scheduler job, to make sure that all
         the pieces are being properly picked up.
         """
-        # Refresh dag into session
+        requires_scheduler_sync = False
         with settings.Session() as session:
             try:
+                previous_parse = (
+                    session.query(DagModel.last_parsed_time).filter(DagModel.dag_id == self.dag_id).scalar()
+                )
                 dag_bag = get_dagbag()
                 found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))  # noqa: UP032
-                dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
+                # Serialized metadata can lag behind the definition being deployed.
+                dag: DAG | None = next((parsed for parsed in found_dags if parsed.dag_id == self.dag_id), None)
+
+                if dag is None:
+                    logger.error("Workflow [%s] was not loaded from %s", self.dag_id, dag_py_file)
+                    return ApiResponse.server_error()
 
                 if hasattr(dag, "sync_to_db"):
                     dag.sync_to_db(session=session)
                 else:
-                    logger.info(
-                        "Airflow version %s does not support dag.sync_to_db; relying on scheduler scan.",
-                        airflow.__version__,
-                    )
-                dag_model = session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
-                logger.info("dag_model:" + str(dag_model))
-            except Exception as exc:
-                msg = f"Workflow [{self.dag_id}] failed to refresh due to [{exc}]"
-                logger.debug(traceback.format_exc())
-                logger.error(msg)
-                return ApiResponse.server_error({f"message": msg})  # noqa: F541
+                    requires_scheduler_sync = True
+                session.commit()
+            except Exception:
+                logger.exception("Workflow [%s] failed to refresh", self.dag_id)
+                return ApiResponse.server_error()
 
         scan_dags_job_background()
+        if requires_scheduler_sync and not self._wait_for_dag_registration(previous_parse):
+            logger.error("Workflow [%s] was parsed but not registered for triggering within 60 seconds", self.dag_id)
+            return ApiResponse.server_error()
 
         return ApiResponse.success({"message": f"Workflow [{escape(self.dag_id)}] has been created"})
+
+    def _wait_for_dag_registration(self, previous_parse: datetime | None, timeout_seconds: float = 60) -> bool:
+        # Airflow 3 persists DAGs asynchronously. Returning success before that
+        # commit makes an immediate trigger fail, or run an older DAG on redeploy.
+        # Treat the persisted parse time as an opaque marker: process clocks may
+        # differ, and an identical redeploy can reuse the DAG version and hash.
+        deadline = monotonic() + timeout_seconds
+        while True:
+            with settings.Session() as session:
+                model = session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
+                if (
+                    model is not None
+                    and model.last_parsed_time is not None
+                    and model.last_parsed_time != previous_parse
+                    and not model.has_import_errors
+                    and SerializedDagModel.get(self.dag_id, session=session) is not None
+                ):
+                    return True
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                return False
+            sleep(min(1, remaining))
 
     def deploy(self):
         """

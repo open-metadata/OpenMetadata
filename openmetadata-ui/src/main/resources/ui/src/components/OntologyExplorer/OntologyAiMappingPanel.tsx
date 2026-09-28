@@ -118,6 +118,9 @@ const OntologyAiMappingPanel = ({
     }
   };
 
+  const handleDismiss = (id: string) =>
+    setSuggestions((current) => current.filter((item) => item.id !== id));
+
   const sourceLabel = (suggestion: OntologyMappingSuggestion): string => {
     const sourceId = suggestion.operation.targetId;
     const sourceNode = graphData?.nodes.find(
@@ -183,11 +186,7 @@ const OntologyAiMappingPanel = ({
             testId={`mapping-suggestion-${suggestion.id}`}
             title={`${sourceLabel(suggestion)} → ${suggestion.targetLabel}`}
             onAccept={() => void handleAccept(suggestion)}
-            onDismiss={() =>
-              setSuggestions((current) =>
-                current.filter((item) => item.id !== suggestion.id)
-              )
-            }
+            onDismiss={() => handleDismiss(suggestion.id)}
           />
         ))}
       </div>

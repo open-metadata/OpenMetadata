@@ -15,7 +15,6 @@ SFTP connection and helpers
 import io
 import traceback
 from dataclasses import dataclass
-from typing import Optional
 
 import paramiko
 from paramiko import SFTPClient, Transport
@@ -23,9 +22,11 @@ from paramiko import SFTPClient, Transport
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
-    BasicAuth,
-    KeyAuth,
+from metadata.generated.schema.entity.services.connections.drive.sftp.basicAuth import (
+    UsernamePasswordAuthentication,
+)
+from metadata.generated.schema.entity.services.connections.drive.sftp.keyAuth import (
+    PrivateKeyAuthentication,
 )
 from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
     SftpConnection as SftpConnectionConfig,
@@ -63,7 +64,7 @@ class SftpClient:
             logger.warning(f"Error closing SFTP connection: {exc}")
 
 
-def _parse_private_key(private_key_str: str, passphrase: Optional[str] = None) -> Optional[paramiko.PKey]:  # noqa: UP045
+def _parse_private_key(private_key_str: str, passphrase: str | None = None) -> paramiko.PKey | None:
     """
     Parse a private key string in PEM format.
     Tries RSA, Ed25519 and ECDSA key types.
@@ -99,13 +100,13 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
 
             auth_type = connection.authType
 
-            if isinstance(auth_type, BasicAuth):
+            if isinstance(auth_type, UsernamePasswordAuthentication):
                 password = auth_type.password.get_secret_value() if auth_type.password else None
                 transport.connect(
                     username=auth_type.username,
                     password=password,
                 )
-            elif isinstance(auth_type, KeyAuth):
+            elif isinstance(auth_type, PrivateKeyAuthentication):
                 private_key_str = auth_type.privateKey.get_secret_value()
                 passphrase = (
                     auth_type.privateKeyPassphrase.get_secret_value() if auth_type.privateKeyPassphrase else None
@@ -141,8 +142,8 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection to SFTP server
