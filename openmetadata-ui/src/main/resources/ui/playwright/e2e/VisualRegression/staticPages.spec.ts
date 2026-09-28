@@ -13,6 +13,7 @@
 import { expect, test } from '../../support/fixtures/base';
 import {
   gotoForScreenshot,
+  gotoVisualGlossary,
   SCREENSHOT_OPTS,
 } from '../../utils/visualRegression';
 
@@ -62,7 +63,6 @@ const PAGES: {
     // raster/layout delta in CI, so use the suite's established narrow variance allowance.
     maxDiffPixelRatio: 0.03,
   },
-  { name: 'glossary', route: '/glossary' },
   { name: 'settings', route: '/settings' },
   {
     name: 'database-services',
@@ -129,6 +129,11 @@ for (const { name, route, mask, maskColor, maxDiffPixelRatio } of PAGES) {
     });
   });
 }
+
+test('glossary matches baseline', async ({ page }) => {
+  await gotoVisualGlossary(page);
+  await expect(page).toHaveScreenshot('glossary.png', SCREENSHOT_OPTS);
+});
 
 test('landing page with collapsed sidebar matches baseline', async ({
   page,
