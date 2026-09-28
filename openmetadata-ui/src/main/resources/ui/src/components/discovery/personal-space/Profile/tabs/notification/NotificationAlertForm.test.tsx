@@ -22,29 +22,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockForm = {
-  watch: jest.fn().mockReturnValue([]),
-  setValue: jest.fn(),
-  handleSubmit: jest.fn(
-    (fn) => () =>
-      fn({
-        displayName: 'test',
-        resources: [],
-        filters: [],
-        destinations: [],
-        timeout: 10,
-        readTimeout: 30,
-      })
-  ),
-  reset: jest.fn(),
-  control: {},
-};
-
-jest.mock('react-hook-form', () => ({
-  ...jest.requireActual('react-hook-form'),
-  useForm: () => mockForm,
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Box: jest
@@ -60,21 +37,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
-  HookForm: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  FormFields: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="form-fields" />),
-  FormField: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div>{children?.({ field: { value: '', onChange: jest.fn() } })}</div>
-    )),
-  FormItemLabel: jest
-    .fn()
-    .mockImplementation(({ label }) => <span>{label}</span>),
-  FieldTypes: { TEXT: 'text' },
 }));
 
 jest.mock('../../../../../../rest/alertsAPI', () => ({
@@ -116,33 +78,31 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+const mockSetInlineAlertDetails = jest.fn();
+
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({
-    setInlineAlertDetails: jest.fn(),
+  useApplicationStore: () => ({
+    setInlineAlertDetails: mockSetInlineAlertDetails,
     inlineAlertDetails: null,
     currentUser: { id: 'user-1' },
   }),
 }));
 
+const mockGetResourceLimit = jest.fn();
+
 jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
-  useLimitStore: jest.fn().mockReturnValue({
-    getResourceLimit: jest.fn(),
+  useLimitStore: () => ({
+    getResourceLimit: mockGetResourceLimit,
   }),
 }));
 
-jest.mock('../../../../../../constants/Form.constants', () => ({
-  NAME_FIELD_RULES: [],
-}));
-
-jest.mock('../../../../../../constants/constants', () => ({
-  PAGE_SIZE_LARGE: 50,
-}));
+const mockGetResourcePermission = jest.fn().mockResolvedValue({});
 
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({
-    usePermissionProvider: jest.fn().mockReturnValue({
-      getResourcePermission: jest.fn().mockResolvedValue({}),
+    usePermissionProvider: () => ({
+      getResourcePermission: mockGetResourcePermission,
     }),
   })
 );
@@ -155,6 +115,14 @@ jest.mock('../../../../../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: {},
 }));
 
+jest.mock('../../../../../../constants/constants', () => ({
+  PAGE_SIZE_LARGE: 50,
+}));
+
+jest.mock('../../../../../../constants/Alerts.constants', () => ({
+  DEFAULT_READ_TIMEOUT: 30,
+}));
+
 jest.mock('../../../../../../rest/notificationtemplateAPI', () => ({
   getAllNotificationTemplates: jest.fn().mockResolvedValue({ data: [] }),
 }));
@@ -163,22 +131,21 @@ jest.mock('../../../../../common/Loader/Loader', () =>
   jest.fn(() => <div data-testid="loader" />)
 );
 
-jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
-  jest.fn(() => <div data-testid="rich-text-editor" />)
+jest.mock(
+  '../../../../../observability/Alerts/AlertAiForm.component',
+  () => ({
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="alert-ai-form" />),
+  })
 );
 
-jest.mock('./NotificationSourceSelect', () =>
-  jest.fn(() => <div data-testid="source-select" />)
+jest.mock(
+  '../../../../../observability/Alerts/AlertAiFormFields.constants',
+  () => ({
+    ALERT_AI_DEFAULT_CONNECTION_TIMEOUT: 10,
+    ALERT_AI_FORM_MODAL_ID: 'alert-form-modal',
+  })
 );
-
-jest.mock('./NotificationFiltersEditor', () =>
-  jest.fn(() => <div data-testid="filters-editor" />)
-);
-
-jest.mock('./NotificationDestinationBridge', () => ({
-  __esModule: true,
-  default: jest.fn(() => <div data-testid="destination-bridge" />),
-}));
 
 describe('NotificationAlertForm', () => {
   const mockOnNavigate = jest.fn();
@@ -187,38 +154,25 @@ describe('NotificationAlertForm', () => {
     jest.clearAllMocks();
   });
 
-  it('should show loader while data is loading', async () => {
+  it('should render AlertAiForm after loading', async () => {
     const { getResourceFunctions } = jest.requireMock(
       '../../../../../../rest/alertsAPI'
     );
-    let resolveAPI: (v: unknown) => void;
-    getResourceFunctions.mockReturnValueOnce(
-      new Promise((r) => {
-        resolveAPI = r;
-      })
-    );
-
-    render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
-
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    getResourceFunctions.mockResolvedValue({ data: [] });
 
     await act(async () => {
-      (resolveAPI as (v: unknown) => void)({ data: [] });
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
-  });
-
-  it('should render form fields after loading', async () => {
-    render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('form-fields')).toBeInTheDocument();
-      expect(screen.getByTestId('source-select')).toBeInTheDocument();
-      expect(screen.getByTestId('destination-bridge')).toBeInTheDocument();
+      expect(screen.getByTestId('alert-ai-form')).toBeInTheDocument();
     });
   });
 
   it('should render cancel and save buttons', async () => {
-    render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
@@ -227,14 +181,15 @@ describe('NotificationAlertForm', () => {
   });
 
   it('should call onNavigate with list type when cancel is clicked', async () => {
-    render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
-
-    const cancelBtn = await screen.findByTestId('cancel-btn');
-
-    act(() => {
-      cancelBtn.click();
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
 
-    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    await waitFor(async () => {
+      const cancelBtn = screen.getByTestId('cancel-btn');
+      cancelBtn.click();
+
+      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    });
   });
 });

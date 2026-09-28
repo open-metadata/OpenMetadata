@@ -16,9 +16,11 @@ import {
   Box,
   Button,
   EmptyPlaceholder,
+  Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Lock } from '@openmetadata/ui-core-components/icons';
-import { Bell01 } from '@untitledui/icons';
+import { Bell01, Lightbulb05 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -64,6 +66,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const [detailHeaderActions, setDetailHeaderActions] =
     useState<React.ReactNode>(undefined);
   const [resolvedDetailName, setResolvedDetailName] = useState<string>('');
+  const [showHint, setShowHint] = useState(false);
 
   const viewFqn = 'fqn' in view ? view.fqn : undefined;
 
@@ -204,6 +207,17 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       }
     };
 
+    const hintToggle =
+      view.type === 'add' || view.type === 'edit' ? (
+        <Box align="center" direction="row" gap={2}>
+          <Lightbulb05 className="tw:size-4.5 tw:text-secondary" />
+          <Typography size="text-sm" weight="medium">
+            {t('label.show-hint')}
+          </Typography>
+          <Toggle isSelected={showHint} onChange={setShowHint} />
+        </Box>
+      ) : undefined;
+
     const actions: React.ReactNode = (() => {
       if (view.type === 'list' && canAddAlert) {
         return (
@@ -215,6 +229,10 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
             {addAlertLabel}
           </Button>
         );
+      }
+
+      if (view.type === 'add' || view.type === 'edit') {
+        return hintToggle;
       }
 
       if (view.type === 'detail') {
@@ -239,6 +257,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     canAddAlert,
     detailHeaderActions,
     onNavigate,
+    showHint,
     resolvedDetailName,
   ]);
 
@@ -257,7 +276,10 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       }
 
       return canAddAlert ? (
-        <NotificationAlertForm onNavigate={onNavigate} />
+        <NotificationAlertForm
+          showHint={showHint}
+          onNavigate={onNavigate}
+        />
       ) : null;
     }
 
@@ -278,7 +300,13 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
         );
       }
 
-      return <NotificationAlertForm fqn={view.fqn} onNavigate={onNavigate} />;
+      return (
+        <NotificationAlertForm
+          fqn={view.fqn}
+          showHint={showHint}
+          onNavigate={onNavigate}
+        />
+      );
     }
 
     if (view.type === 'detail') {

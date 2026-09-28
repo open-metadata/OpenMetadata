@@ -11,48 +11,27 @@
  *  limitations under the License.
  */
 
-import {
-  Alert,
-  Box,
-  Button,
-  FieldProp,
-  FieldTypes,
-  FormField,
-  FormFields,
-  FormItemLabel,
-  HookForm,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { isEmpty } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useForm } from 'react-hook-form';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../../../../constants/Form.constants';
-import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import {
   NotificationTemplate,
   ProviderType as TemplateProviderType,
 } from '../../../../../../generated/entity/events/notificationTemplate';
 import {
   AlertType,
-  EventFilterRule,
   EventSubscription,
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
-import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import {
   createNotificationAlert,
@@ -61,67 +40,68 @@ import {
   updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
-import type { AddAlertFormWidgetProps } from '../../../../../../utils/AlertsClassBase';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
-import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import AlertAiForm from '../../../../../observability/Alerts/AlertAiForm.component';
+import {
+  ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
+  ALERT_AI_FORM_MODAL_ID,
+} from '../../../../../observability/Alerts/AlertAiFormFields.constants';
 import type {
   ModifiedCreateEventSubscription,
-  ModifiedDestination,
   ModifiedEventSubscription,
 } from './Notification.types';
 import { NotificationView } from './Notification.types';
-import NotificationDestinationBridge, {
-  DestinationFormValidator,
-} from './NotificationDestinationBridge';
-import NotificationFiltersEditor from './NotificationFiltersEditor';
-import NotificationSourceSelect from './NotificationSourceSelect';
 
 interface NotificationAlertFormProps {
   fqn?: string;
+  showHint?: boolean;
   onNavigate: (view: NotificationView) => void;
 }
 
-type AlertFormValues = {
-  displayName: string;
-  description?: string;
-  resources: string[];
-  filters: EventFilterRule[];
-  destinations: ModifiedDestination[];
-  timeout: number;
-  readTimeout: number;
+type ObservabilityFilterResourceDescriptor = {
+  containerEntities?: string[];
+  name?: string;
+  supportedActions?: unknown[];
+  supportedEventTypes?: string[];
+  supportedFilters?: unknown[];
 };
 
-function alertToFormValues(
-  modifiedAlert: ReturnType<typeof alertsClassBase.getModifiedAlertDataForForm>
-): AlertFormValues {
-  return {
-    displayName: getEntityName(modifiedAlert),
-    description: modifiedAlert.description ?? '',
-    resources:
-      (
-        modifiedAlert as unknown as {
-          filteringRules?: { resources?: string[] };
-        }
-      ).filteringRules?.resources ?? [],
-    filters:
-      (
-        modifiedAlert as unknown as {
-          input?: { filters?: EventFilterRule[] };
-        }
-      ).input?.filters ?? [],
-    destinations: modifiedAlert.destinations ?? [],
-    timeout: modifiedAlert.timeout ?? 10,
-    readTimeout: modifiedAlert.readTimeout ?? 30,
-  };
-}
+const getEmptyFormValues = (): ModifiedCreateEventSubscription => ({
+  alertType: AlertType.Notification,
+  destinations: [],
+  displayName: '',
+  input: { filters: [] },
+  name: '',
+  provider: ProviderType.User,
+  readTimeout: DEFAULT_READ_TIMEOUT,
+  resources: [],
+  timeout: ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
+});
+
+const alertToFormValues = (
+  alert: ModifiedEventSubscription
+): ModifiedCreateEventSubscription => ({
+  ...(alert as unknown as ModifiedCreateEventSubscription),
+  alertType: alert.alertType ?? AlertType.Notification,
+  destinations: alert.destinations ?? [],
+  displayName: getEntityName(alert),
+  name: alert.name ?? '',
+  provider: alert.provider ?? ProviderType.User,
+  readTimeout: alert.readTimeout ?? DEFAULT_READ_TIMEOUT,
+  resources: (
+    alert as unknown as { filteringRules?: { resources?: string[] } }
+  ).filteringRules?.resources,
+  timeout: alert.timeout ?? ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
+});
 
 const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   fqn,
+  showHint = false,
   onNavigate,
 }) => {
   const { t } = useTranslation();
@@ -130,74 +110,39 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   const { getResourceLimit } = useLimitStore();
   const { getResourcePermission } = usePermissionProvider();
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [filterResources, setFilterResources] = useState<
+    ObservabilityFilterResourceDescriptor[]
+  >([]);
+  const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [initialData, setInitialData] = useState<EventSubscription>();
+  const [formData, setFormData] = useState<ModifiedCreateEventSubscription>(
+    getEmptyFormValues
+  );
+
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
-  const [templateResourcePermission, setTemplateResourcePermission] =
+  const [_templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const extraFormWidgets = useMemo(
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
     []
   );
-  const extraFormButtons = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraButtons(),
-    []
-  );
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [entityFunctions, setEntityFunctions] = useState<
-    FilterResourceDescriptor[]
-  >([]);
-  const [alert, setAlert] = useState<ModifiedEventSubscription>();
-  const [initialData, setInitialData] = useState<EventSubscription>();
-
-  const destinationValidateRef = useRef<DestinationFormValidator>();
 
   const isEditMode = Boolean(fqn);
 
-  const form = useForm<AlertFormValues>({
-    defaultValues: {
-      displayName: '',
-      description: '',
-      resources: [],
-      filters: [],
-      destinations: [],
-      timeout: 10,
-      readTimeout: 30,
-    },
-  });
+  const selectedTrigger = formData.resources?.[0];
 
-  const resources = form.watch('resources');
-  const filters = form.watch('filters');
-  const destinations = form.watch('destinations');
-  const timeout = form.watch('timeout');
-  const readTimeout = form.watch('readTimeout');
-
-  const [selectedTrigger] = resources;
-
-  const supportedFilters = useMemo(
-    () =>
-      entityFunctions.find((r) => r.name === selectedTrigger)?.supportedFilters,
-    [entityFunctions, selectedTrigger]
-  );
-
-  const containerEntities = useMemo(
-    () =>
-      entityFunctions.find((r) => r.name === selectedTrigger)
-        ?.containerEntities,
-    [entityFunctions, selectedTrigger]
-  );
-
-  const supportedEventTypes = useMemo(
-    () =>
-      entityFunctions.find((r) => r.name === selectedTrigger)
-        ?.supportedEventTypes,
-    [entityFunctions, selectedTrigger]
+  const resourceDescriptor = useMemo(
+    () => filterResources.find((r) => r.name === selectedTrigger),
+    [filterResources, selectedTrigger]
   );
 
   const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
+    () =>
+      selectedTrigger ? !isEmpty(resourceDescriptor?.supportedFilters) : true,
+    [selectedTrigger, resourceDescriptor]
   );
 
   const fetchData = useCallback(async () => {
@@ -209,7 +154,10 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
       ]);
 
       if (functionsResponse.status === 'fulfilled') {
-        setEntityFunctions(functionsResponse.value.data);
+        setFilterResources(
+          functionsResponse.value
+            .data as unknown as ObservabilityFilterResourceDescriptor[]
+        );
       } else {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.config') })
@@ -223,12 +171,13 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
         setInitialData(rawAlert);
         setAlert(modifiedAlert);
-        form.reset(alertToFormValues(modifiedAlert));
+        setFormData(alertToFormValues(modifiedAlert));
       } else if (fqn && alertResponse.status === 'rejected') {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert') })
         );
       }
+
       if (!isEmpty(extraFormWidgets)) {
         try {
           const permission = await getResourcePermission(
@@ -250,7 +199,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [fqn, form, t, extraFormWidgets, getResourcePermission]);
+  }, [fqn, t, extraFormWidgets, getResourcePermission]);
 
   useEffect(() => {
     fetchData();
@@ -261,80 +210,47 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     [alert]
   );
 
-  const nameField: FieldProp = {
-    name: 'displayName',
-    label: t('label.name'),
-    type: FieldTypes.TEXT,
-    required: true,
-    placeholder: t('label.enter-entity', { entity: t('label.name') }),
-    rules: NAME_FIELD_RULES,
-    props: { 'data-testid': 'alert-name-input' },
-  };
+  const handleSave = useCallback(
+    async (data: ModifiedCreateEventSubscription) => {
+      setSaving(true);
+      try {
+        await alertsClassBase.handleAlertSave({
+          data,
+          fqn: fqn ?? '',
+          initialData,
+          currentUser,
+          createAlertAPI: createNotificationAlert,
+          updateAlertAPI: updateNotificationAlert,
+          afterSaveAction: async (savedFqn: string) => {
+            if (isEditMode) {
+              onNavigate({
+                type: 'detail',
+                fqn: savedFqn,
+                name: data.displayName ?? '',
+              });
+            } else {
+              onNavigate({ type: 'list' });
+              await getResourceLimit('eventsubscription', true, true);
+            }
+          },
+          setInlineAlertDetails,
+        });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      fqn,
+      initialData,
+      currentUser,
+      isEditMode,
+      onNavigate,
+      getResourceLimit,
+      setInlineAlertDetails,
+    ]
+  );
 
-  const handleSave = async (values: AlertFormValues) => {
-    try {
-      await destinationValidateRef.current?.();
-    } catch {
-      return;
-    }
-
-    setSaving(true);
-    try {
-      // Destructure out filters so it doesn't appear at top-level in the payload.
-      // The backend rejects unknown top-level fields; filters belong only in input.filters.
-      const { filters: _filters, ...restValues } = values;
-
-      const submitData: ModifiedCreateEventSubscription = {
-        ...restValues,
-        name: values.displayName,
-        alertType: AlertType.Notification,
-        provider: ProviderType.User,
-        input: {
-          filters: values.filters.map(({ name, effect, arguments: args }) => ({
-            name,
-            effect,
-            arguments: args,
-          })),
-          ...(alert
-            ? {
-                actions:
-                  (
-                    alert as unknown as {
-                      input?: { actions?: EventFilterRule[] };
-                    }
-                  )?.input?.actions ?? [],
-              }
-            : {}),
-        },
-      } as unknown as ModifiedCreateEventSubscription;
-
-      await alertsClassBase.handleAlertSave({
-        data: submitData,
-        fqn: fqn ?? '',
-        initialData,
-        currentUser,
-        createAlertAPI: createNotificationAlert,
-        updateAlertAPI: updateNotificationAlert,
-        afterSaveAction: async (savedFqn: string) => {
-          if (isEditMode) {
-            onNavigate({
-              type: 'detail',
-              fqn: savedFqn,
-              name: values.displayName,
-            });
-          } else {
-            onNavigate({ type: 'list' });
-            await getResourceLimit('eventsubscription', true, true);
-          }
-        },
-        setInlineAlertDetails,
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (isLoading) {
+  if (isLoading || (isEditMode && isUndefined(alert))) {
     return <Loader />;
   }
 
@@ -352,135 +268,47 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
   return (
     <Box className="tw:flex tw:flex-col tw:h-full" direction="col">
-      {/* Scrollable content area */}
-      <Box
-        className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0"
-        direction="col">
-        <Box className="tw:max-w-[50%] tw:w-full" direction="col" gap={4}>
-          {/* Title + description */}
-          <Box direction="col" gap={1}>
-            <Typography size="text-lg" weight="semibold">
-              {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
-                entity: t('label.alert'),
-              })}
-            </Typography>
-            <Typography className="tw:text-secondary" size="text-sm">
-              {t('message.alerts-description')}
-            </Typography>
-          </Box>
-
-          <HookForm form={form}>
-            <Box direction="col" gap={4}>
-              {/* Name field */}
-              <FormFields fields={[nameField]} />
-
-              {/* Description field */}
-              <FormField control={form.control} name="description">
-                {({ field }) => (
-                  <Box direction="col" gap={1}>
-                    <FormItemLabel label={t('label.description')} />
-                    <RichTextEditor
-                      className="new-form-style"
-                      data-testid="description"
-                      initialValue={field.value ?? ''}
-                      onTextChange={field.onChange}
-                    />
-                  </Box>
-                )}
-              </FormField>
-
-              {/* Source section */}
-              <NotificationSourceSelect
-                filterResources={entityFunctions}
-                value={resources}
-                onChange={(newResources) => {
-                  form.setValue('resources', newResources, {
-                    shouldValidate: true,
-                  });
-                  form.setValue('filters', []);
-                  form.setValue('destinations', []);
-                }}
-              />
-
-              {/* Filters section */}
-              {shouldShowFiltersSection && (
-                <NotificationFiltersEditor
-                  containerEntities={containerEntities}
-                  selectedResources={resources}
-                  supportedEventTypes={supportedEventTypes}
-                  supportedFilters={supportedFilters}
-                  value={filters}
-                  onChange={(newFilters) =>
-                    form.setValue('filters', newFilters)
-                  }
-                />
-              )}
-
-              {/* Destinations section */}
-              <NotificationDestinationBridge
-                renderValidationField={(validate) => {
-                  destinationValidateRef.current = validate;
-
-                  return null;
-                }}
-                values={{ destinations, resources, timeout, readTimeout }}
-                onChange={(vals) => {
-                  Object.entries(vals).forEach(([k, v]) => {
-                    form.setValue(k as keyof AlertFormValues, v as never);
-                  });
-                }}
-              />
-
-              {/* Extra widgets (Collate extension point) */}
-              {!isEmpty(extraFormWidgets) &&
-                Object.entries(extraFormWidgets).map(([name, Widget]) => (
-                  <Fragment key={name}>
-                    <Box className="tw:border-t tw:border-secondary" />
-                    <Widget
-                      alertDetails={alert}
-                      formRef={
-                        form as unknown as AddAlertFormWidgetProps['formRef']
-                      }
-                      loading={isLoading}
-                      templateResourcePermission={templateResourcePermission}
-                      templates={templates}
-                    />
-                  </Fragment>
-                ))}
-
-              {/* Inline alert errors */}
-              {inlineAlertDetails && (
-                <Alert
-                  closable
-                  title={inlineAlertDetails.heading}
-                  variant={
-                    inlineAlertDetails.type === 'error' ? 'error' : 'warning'
-                  }
-                  onClose={inlineAlertDetails.onClose}>
-                  {inlineAlertDetails.description}
-                </Alert>
-              )}
-            </Box>
-          </HookForm>
-        </Box>
+      <Box className="tw:flex-1 tw:overflow-y-auto" direction="col">
+        <AlertAiForm
+          alert={alert}
+          containerEntities={resourceDescriptor?.containerEntities}
+          fieldDocDisplay="popover"
+          filterResources={
+            filterResources as Parameters<typeof AlertAiForm>[0]['filterResources']
+          }
+          formId={ALERT_AI_FORM_MODAL_ID}
+          inlineAlert={
+            inlineAlertDetails
+              ? {
+                  heading: inlineAlertDetails.heading,
+                  description: inlineAlertDetails.description,
+                  type: inlineAlertDetails.type,
+                  onClose: inlineAlertDetails.onClose,
+                }
+              : undefined
+          }
+          mode={isEditMode ? 'edit' : 'add'}
+          shouldShowActionsSection={false}
+          shouldShowFiltersSection={shouldShowFiltersSection}
+          shouldShowTemplateSection={!isEmpty(extraFormWidgets)}
+          showHint={showHint}
+          supportedFilters={
+            resourceDescriptor?.supportedFilters as Parameters<
+              typeof AlertAiForm
+            >[0]['supportedFilters']
+          }
+          templates={templates}
+          value={formData}
+          onChange={setFormData}
+          onSubmit={handleSave}
+        />
       </Box>
 
-      {/* Fixed footer */}
       <Box
         className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
         direction="row"
         gap={3}
         justify="end">
-        {!isEmpty(extraFormButtons) &&
-          Object.entries(extraFormButtons).map(([name, ButtonComponent]) => (
-            <ButtonComponent
-              alertDetails={alert}
-              formRef={form as unknown as AddAlertFormWidgetProps['formRef']}
-              key={name}
-              templateResourcePermission={templateResourcePermission}
-              templates={templates}
-            />
-          ))}
         <Button
           color="tertiary"
           data-testid="cancel-btn"
@@ -490,8 +318,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Button
           color="primary"
           data-testid="save-btn"
+          form={ALERT_AI_FORM_MODAL_ID}
           isLoading={saving}
-          onPress={() => form.handleSubmit(handleSave)()}>
+          type="submit">
           {t('label.save')}
         </Button>
       </Box>
