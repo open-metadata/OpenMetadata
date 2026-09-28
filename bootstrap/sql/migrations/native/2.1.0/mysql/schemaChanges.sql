@@ -496,3 +496,64 @@ SET @announcement_type_index_ddl = (
 PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
 EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
+
+-- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
+-- the single publication per request. activeInterceptKey is non-null only while an intercepted
+-- request is Pending, so the unique index allows at most one active request per (entity, requester).
+CREATE TABLE IF NOT EXISTS change_request (
+  id varchar(36) NOT NULL,
+  entityType varchar(256) NOT NULL,
+  entityId varchar(36) NOT NULL,
+  requestedBy varchar(256) NOT NULL,
+  workflowDefinitionId varchar(36) NOT NULL,
+  status varchar(32) NOT NULL,
+  activeInterceptKey varchar(300) DEFAULT NULL,
+  taskId varchar(36) DEFAULT NULL,
+  deliveryStatus varchar(32) NOT NULL,
+  deliveryAttempts int NOT NULL DEFAULT 0,
+  nextDeliveryAt bigint unsigned NOT NULL,
+  claimToken varchar(36) DEFAULT NULL,
+  leaseUntil bigint unsigned DEFAULT NULL,
+  updatedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_request_active_intercept_key (activeInterceptKey),
+  KEY change_request_entity_status_index (entityId, status),
+  KEY change_request_requester_status_index (requestedBy, status),
+  KEY change_request_workflow_status_index (workflowDefinitionId, status),
+  KEY change_request_delivery_index (deliveryStatus, nextDeliveryAt),
+  KEY change_request_task_index (taskId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS change_revision (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  revisionNumber int NOT NULL,
+  status varchar(32) NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_revision_request_number_key (changeRequestId, revisionNumber)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS approval_decision (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  revisionId varchar(36) NOT NULL,
+  decidedBy varchar(256) NOT NULL,
+  decision varchar(32) NOT NULL,
+  decidedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY approval_decision_revision_decider_key (revisionId, decidedBy),
+  KEY approval_decision_request_index (changeRequestId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS change_application (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  revisionId varchar(36) NOT NULL,
+  appliedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_application_request_key (changeRequestId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
