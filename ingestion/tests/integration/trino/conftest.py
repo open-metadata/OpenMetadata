@@ -13,7 +13,6 @@ from sqlalchemy.exc import OperationalError
 from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
-from testcontainers.minio import MinioContainer
 from testcontainers.mysql import MySqlContainer
 
 from _openmetadata_testutils.helpers.docker import try_bind
@@ -30,7 +29,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 from ..conftest import ingestion_config as base_ingestion_config
-from ..containers import MinioContainerConfigs
+from ..containers import S3ContainerConfigs, S3ProxyContainer
 
 HIVE_METASTORE_IMAGE = (
     "bitsondatadev/hive-metastore@sha256:"
@@ -196,7 +195,11 @@ def hive_metastore_container(mysql_container, minio_container, docker_network):
 @pytest.fixture(scope="package")
 def minio_container(docker_network):
     container = (
-        MinioContainer(MinioContainerConfigs.image)
+        S3ProxyContainer(
+            S3ContainerConfigs.image,
+            access_key="minioadmin",
+            secret_key="minioadmin",
+        )
         .with_network(docker_network)
         .with_network_aliases("minio")
     )

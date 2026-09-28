@@ -13,12 +13,12 @@ Environment fixtures to be able to test the DeltaLake Ingestion Pipeline.
 """
 import pytest
 
-from ....containers import MinioContainerConfigs, get_minio_container
+from ....containers import S3ContainerConfigs, get_s3_container
 
 
 class DeltaLakeStorageTestConfig:
     def __init__(self):
-        self.minio_config = MinioContainerConfigs()
+        self.minio_config = S3ContainerConfigs()
         self.bucket_name = "bucket"
         self.prefix = "prefix"
         self.storage_options = {
@@ -39,7 +39,7 @@ class DeltaLakeStorageTestConfig:
 @pytest.fixture(scope="module")
 def deltalake_storage_environment():
     config = DeltaLakeStorageTestConfig()
-    minio = get_minio_container(config.minio_config)
+    minio = get_s3_container(config.minio_config)
     with minio:
         minio_client = minio.get_client()
         minio_client.make_bucket(config.bucket_name)
