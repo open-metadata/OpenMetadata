@@ -60,6 +60,7 @@ import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { LineageConfig } from '../../../interface/lineage.interface';
 import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
@@ -70,7 +71,6 @@ import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectio
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
-import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 import LineageTimeFilter from './LineageTimeFilter.component';

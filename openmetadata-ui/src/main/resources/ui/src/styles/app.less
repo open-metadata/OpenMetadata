@@ -832,6 +832,7 @@ a[href].link-text-grey,
   --om-grey-1: var(--color-bg-secondary);
   --om-grey-2: var(--color-bg-secondary);
   --om-grey-5: var(--color-bg-secondary);
+  --om-grey-6: var(--color-bg-secondary);
   --om-grey-50: var(--color-bg-secondary);
   // @grey-15 (= @border-color / @global-border) is the primary neutral border
   // across antd + legacy components (cards, tabs, tables, panels, dividers).
@@ -840,7 +841,15 @@ a[href].link-text-grey,
   // one change themes all @border-color borders app-wide (OSS + Collate via
   // submodule). Light keeps the frozen #eaecf5 fallback.
   --om-grey-15: var(--color-border-subtle);
+  --om-grey-38: var(--color-border-subtle);
   --om-grey-7: var(--color-text-quaternary);
+  --om-heading-color: var(--color-text-primary);
+  --om-border-color-base: var(--color-border-primary);
+  // @blue-29/@blue-30 are the fill/edge of legacy neutral chips (column data
+  // type, tag/glossary chips, async-select tags) — dark uses the core gray Badge pair.
+  --om-blue-29: var(--tw-color-utility-gray-50);
+  --om-purple-1: var(--tw-color-utility-purple-50);
+  --om-blue-30: var(--tw-color-utility-gray-200);
   // Status — utility tokens auto-invert to readable dark values
   --om-blue-13: var(--tw-color-utility-blue-light-100);
   --om-blue-22: var(--tw-color-utility-blue-light-50);
@@ -1230,4 +1239,88 @@ a[href].link-text-grey,
 .dark-mode .ant-card-head {
   color: var(--om-color-text-primary);
   border-bottom-color: var(--om-color-border-secondary);
+}
+
+// antd DatePicker/RangePicker compile static light values: 25%-black
+// suffix/separator/clear icons and out-of-month cells, #bfbfbf placeholder,
+// #f5f5f5 disabled fill and cell hover, 6%-black panel rules, and the
+// theme-agnostic --ant-primary-1 range tint (near-white in dark). Light keeps
+// antd's values.
+.dark-mode {
+  .ant-picker-suffix,
+  .ant-picker-separator,
+  .ant-picker-clear,
+  .ant-picker-header button,
+  .ant-picker-cell:not(.ant-picker-cell-in-view),
+  .ant-picker-cell-disabled {
+    color: var(--om-color-text-quaternary);
+  }
+
+  .ant-picker-focused .ant-picker-separator,
+  .ant-picker-clear:hover {
+    color: var(--om-color-text-tertiary);
+  }
+
+  .ant-picker-input > input::placeholder,
+  .ant-picker-input-placeholder > input {
+    color: var(--om-color-text-placeholder);
+  }
+
+  .ant-picker.ant-picker-disabled,
+  .ant-picker-input > input[disabled] {
+    background-color: var(--om-color-bg-disabled);
+    color: var(--om-color-text-disabled);
+  }
+
+  .ant-picker-header {
+    color: var(--om-color-text-primary);
+  }
+
+  .ant-picker-panel,
+  .ant-picker-header,
+  .ant-picker-panel .ant-picker-footer,
+  .ant-picker-footer-extra:not(:last-child),
+  .ant-picker-datetime-panel .ant-picker-time-panel,
+  .ant-picker-time-panel-column:not(:first-child) {
+    border-color: var(--om-color-border-secondary);
+  }
+
+  .ant-picker-cell:hover:not(.ant-picker-cell-in-view) .ant-picker-cell-inner,
+  .ant-picker-cell:hover:not(.ant-picker-cell-selected):not(
+      .ant-picker-cell-range-start
+    ):not(.ant-picker-cell-range-end):not(
+      .ant-picker-cell-range-hover-start
+    ):not(.ant-picker-cell-range-hover-end)
+    .ant-picker-cell-inner,
+  .ant-picker-time-panel-column
+    > li.ant-picker-time-panel-cell
+    .ant-picker-time-panel-cell-inner:hover {
+    background-color: var(--om-color-bg-secondary-hover);
+  }
+
+  .ant-picker-cell-disabled::before {
+    background-color: var(--om-color-bg-disabled);
+  }
+
+  .ant-picker-cell-in-view.ant-picker-cell-in-range::before,
+  .ant-picker-cell-in-view.ant-picker-cell-range-start:not(
+      .ant-picker-cell-range-start-single
+    )::before,
+  .ant-picker-cell-in-view.ant-picker-cell-range-end:not(
+      .ant-picker-cell-range-end-single
+    )::before {
+    background-color: var(--om-color-bg-brand);
+  }
+}
+
+// antd multi-select tags use @background-color-base / @border-color-split,
+// both fixed light hexes: white chips with near-invisible text in dark.
+.dark-mode .ant-select-multiple .ant-select-selection-item {
+  background: var(--om-color-bg-secondary);
+  border-color: var(--om-color-border-secondary);
+  color: var(--om-color-text-primary);
+
+  .ant-select-selection-item-remove {
+    color: var(--om-color-text-tertiary);
+  }
 }

@@ -14,12 +14,12 @@ import { act } from '@testing-library/react';
 import { renderHook } from '@testing-library/react-hooks';
 import React from 'react';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
+import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AsyncDeleteProvider, {
   useAsyncDeleteProvider,
 } from './AsyncDeleteProvider';
-import { AsyncDeleteWebsocketResponse } from './AsyncDeleteProvider.interface';
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),

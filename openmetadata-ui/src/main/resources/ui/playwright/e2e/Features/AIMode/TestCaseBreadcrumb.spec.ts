@@ -69,6 +69,7 @@ const DETAIL_PAGE_TIMEOUT = 15_000;
 const expectDetailPageLoaded = async (page: Page) => {
   await page.waitForURL(/\/observability\/test-case\//, {
     timeout: DETAIL_PAGE_TIMEOUT,
+    waitUntil: 'domcontentloaded',
   });
   await expect(page.getByTestId('test-case-detail-page')).toBeVisible({
     timeout: DETAIL_PAGE_TIMEOUT,
