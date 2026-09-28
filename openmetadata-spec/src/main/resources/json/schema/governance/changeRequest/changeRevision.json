@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/changeRequest/changeRevision.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChangeRevision",
+  "description": "Immutable content of one revision of a change request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeRevision",
+  "definitions": {
+    "changeRevisionStatus": {
+      "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeRevisionStatus",
+      "type": "string",
+      "enum": ["Active", "Superseded"]
+    }
+  },
+  "properties": {
+    "id": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "changeRequestId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "revisionNumber": { "type": "integer", "minimum": 1 },
+    "baseEntityVersion": { "description": "Entity version the ops were computed against.", "type": "number" },
+    "ops": { "type": "array", "items": { "$ref": "mutationOp.json" } },
+    "digest": { "description": "SHA-256 of the canonical ops.", "type": "string" },
+    "status": { "$ref": "#/definitions/changeRevisionStatus" },
+    "createdBy": { "type": "string" },
+    "createdAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+  },
+  "required": ["id", "changeRequestId", "revisionNumber", "ops", "digest", "status", "createdBy", "createdAt"],
+  "additionalProperties": false
+}

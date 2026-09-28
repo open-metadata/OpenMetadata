@@ -22,6 +22,11 @@
       "description": "New value to apply (for update tasks).",
       "type": "string"
     },
+    "changeRequestRevision": {
+      "description": "Revision number of the linked change request the resolver reviewed. Required when the task reviews a change request.",
+      "type": "integer",
+      "minimum": 1
+    },
     "payload": {
       "description": "Schema-driven resolution payload used for configurable task forms.",
       "type": "object",
