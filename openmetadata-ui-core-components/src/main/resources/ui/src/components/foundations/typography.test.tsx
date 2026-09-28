@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -83,6 +85,20 @@ describe('Typography', () => {
   // inherited properties) while restoring inline flow and avoiding invalid
   // `<div>`-inside-`<span>` nesting. Elements the descendant rules *do* target
   // must keep the wrapper or they silently lose their styling.
+  // `prose` sits on a span or div next to its own size and colour utilities.
+  // Both are unlayered and typography.css loads after the utilities, so the
+  // element-level rule must carry zero specificity or it overrides every one of
+  // them. jsdom does not compute the cascade, so pin the selector itself.
+  it('keeps the element-level prose rule at zero specificity', () => {
+    const css = readFileSync(
+      resolve(__dirname, '../../styles/typography.css'),
+      'utf8'
+    );
+
+    expect(css).toMatch(/^:where\(\.prose\):not\(/m);
+    expect(css).not.toMatch(/^\.prose:not\(/m);
+  });
+
   describe('prose wrapper', () => {
     it('renders no wrapper for the default span, carrying prose itself', () => {
       render(<Typography>Hello</Typography>);
