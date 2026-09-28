@@ -116,26 +116,52 @@ describe('InboxTaskListToolbar', () => {
   });
 
   // Offering the full enum would list types the queue does not contain.
-  it('offers only the types present in the queue, with their counts', () => {
+  it('offers only the kinds present in the queue, with their counts', () => {
     render(<InboxTaskListToolbar {...props} />);
 
     expect(
-      screen.getByTestId('inbox-tasks-type-filter-TagUpdate')
+      screen.getByTestId('inbox-tasks-type-filter-label.tag-request')
     ).toHaveAttribute('data-count', '2');
     expect(
-      screen.getByTestId('inbox-tasks-type-filter-TestCaseResolution')
+      screen.getByTestId('inbox-tasks-type-filter-label.incident')
     ).toHaveAttribute('data-count', '1');
     expect(
-      screen.queryByTestId('inbox-tasks-type-filter-DataAccessRequest')
+      screen.queryByTestId('inbox-tasks-type-filter-label.access-request')
     ).not.toBeInTheDocument();
   });
 
-  it('reports a chosen type', () => {
+  // A test case incident and an incident both read "Incident".
+  it('offers types that share a label as one option', () => {
+    render(
+      <InboxTaskListToolbar
+        {...props}
+        tasks={
+          [
+            { id: 'i1', type: TaskType.IncidentResolution },
+            { id: 'i2', type: TaskType.TestCaseResolution },
+          ] as Task[]
+        }
+      />
+    );
+
+    expect(
+      screen.getAllByTestId(/^inbox-tasks-type-filter-label\./)
+    ).toHaveLength(1);
+    expect(
+      screen.getByTestId('inbox-tasks-type-filter-label.incident')
+    ).toHaveAttribute('data-count', '2');
+  });
+
+  it('reports a chosen kind', () => {
     render(<InboxTaskListToolbar {...props} />);
 
-    fireEvent.click(screen.getByTestId('inbox-tasks-type-filter-TagUpdate'));
+    fireEvent.click(
+      screen.getByTestId('inbox-tasks-type-filter-label.tag-request')
+    );
 
-    expect(props.onTypeFilterChange).toHaveBeenCalledWith([TaskType.TagUpdate]);
+    expect(props.onTypeFilterChange).toHaveBeenCalledWith([
+      'label.tag-request',
+    ]);
   });
 
   it('reports a grouping change', () => {

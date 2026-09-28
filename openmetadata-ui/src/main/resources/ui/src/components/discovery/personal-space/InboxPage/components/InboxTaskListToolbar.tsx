@@ -20,8 +20,8 @@ import {
 import { FilterFunnel01, FilterLines } from '@untitledui/icons';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Task, TaskType } from '../../../../../generated/entity/tasks/task';
-import { getTaskTypeBadge } from '../taskDetail.utils';
+import { Task } from '../../../../../generated/entity/tasks/task';
+import { getTaskTypeBadge, getTaskTypeKey } from '../taskDetail.utils';
 
 /** How the loaded tasks are broken up in the list. */
 export type InboxTaskGrouping = 'none' | 'type';
@@ -33,8 +33,9 @@ export interface InboxTaskListToolbarProps {
   onSearchChange: (value: string) => void;
   grouping: InboxTaskGrouping;
   onGroupingChange: (value: InboxTaskGrouping) => void;
-  typeFilter: TaskType[];
-  onTypeFilterChange: (value: TaskType[]) => void;
+  // Kinds as getTaskTypeKey names them: types sharing a label are one option.
+  typeFilter: string[];
+  onTypeFilterChange: (value: string[]) => void;
   /** The loaded tasks, whose types are the only ones worth offering. */
   tasks: Task[];
 }
@@ -72,15 +73,19 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
     [t]
   );
 
+  // One option per label, not per type: a test case incident and an incident
+  // both read "Incident", and listing them apart showed "Incident" twice.
   const typeOptions = useMemo(() => {
-    const counts = new Map<TaskType, number>();
-    tasks.forEach((task) =>
-      counts.set(task.type, (counts.get(task.type) ?? 0) + 1)
-    );
+    const kinds = new Map<string, { task: Task; count: number }>();
+    tasks.forEach((task) => {
+      const key = getTaskTypeKey(task);
+      const kind = kinds.get(key);
+      kind ? (kind.count += 1) : kinds.set(key, { task, count: 1 });
+    });
 
-    return Array.from(counts, ([type, count]) => ({
-      value: type,
-      label: getTaskTypeBadge({ type } as Task, t).label,
+    return Array.from(kinds, ([key, { task, count }]) => ({
+      value: key,
+      label: getTaskTypeBadge(task, t).label,
       count,
     }));
   }, [tasks, t]);
@@ -128,7 +133,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
           selectionMode="multiple"
           triggerIcon={FilterFunnel01}
           triggerVariant="button"
-          onChange={(values) => onTypeFilterChange(values as TaskType[])}
+          onChange={onTypeFilterChange}
         />
       </Box>
     </Box>

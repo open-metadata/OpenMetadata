@@ -20,7 +20,7 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { isTaskOpen } from './inbox.utils';
-import { TaskResolveAction } from './taskResolve.utils';
+import type { TaskResolveAction } from './taskResolve.utils';
 
 export type TaskStatusTone = 'success' | 'error' | 'warning' | 'gray';
 
