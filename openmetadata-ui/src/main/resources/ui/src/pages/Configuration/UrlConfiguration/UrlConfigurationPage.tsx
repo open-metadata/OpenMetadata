@@ -122,7 +122,9 @@ const UrlConfigurationPage = () => {
               </Typography>
             </Col>
             <Col span={24}>
-              <Typography data-testid="open-metadata-url">
+              <Typography
+                className="tw:wrap-break-word"
+                data-testid="open-metadata-url">
                 {urlConfig?.openMetadataUrl
                   ? urlConfig.openMetadataUrl
                   : NO_DATA_PLACEHOLDER}

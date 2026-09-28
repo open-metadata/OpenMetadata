@@ -468,7 +468,9 @@ export const getTableDetailPageBaseTabs = ({
                 <Typography className="text-grey-muted">
                   {`${t('label.path')}: `}
                 </Typography>
-                <Typography>{tableDetails?.dataModel?.path}</Typography>
+                <Typography className="tw:wrap-break-word">
+                  {tableDetails?.dataModel?.path}
+                </Typography>
               </div>
             </Space>
           }

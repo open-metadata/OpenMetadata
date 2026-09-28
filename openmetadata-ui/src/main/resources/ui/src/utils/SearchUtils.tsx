@@ -194,7 +194,9 @@ export const getSuggestionElement = (
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
-        <Typography className="m-l-xs text-xs" color="secondary">
+        <Typography
+          className="tw:wrap-break-word m-l-xs text-xs"
+          color="secondary">
           {fqn}
         </Typography>
       </Link>

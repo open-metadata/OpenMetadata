@@ -45,7 +45,7 @@ const SsoTestLoginModal = ({
           </Typography>
         )}
         {result.resolvedEmail && (
-          <Typography as="p" className="m-b-0">
+          <Typography as="p" className="tw:wrap-break-word m-b-0">
             <strong>{t('label.email')}:</strong> {result.resolvedEmail}
           </Typography>
         )}

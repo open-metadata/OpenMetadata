@@ -27,14 +27,6 @@ describe('Typography', () => {
     );
   });
 
-  it('wraps long unbroken words instead of overflowing', () => {
-    render(<Typography>service.database.schema.table</Typography>);
-
-    expect(screen.getByText('service.database.schema.table')).toHaveClass(
-      'tw:wrap-break-word'
-    );
-  });
-
   it('applies tw:text-tertiary for color="secondary"', () => {
     render(<Typography color="secondary">Hello</Typography>);
 

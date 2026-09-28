@@ -218,7 +218,6 @@ export const Typography = (props: TypographyProps) => {
   // `color` prop, matching how `className` already overrides `sizeClass`/
   // `weightClass` above.
   const innerClassName = cx(
-    'tw:wrap-break-word',
     sizeClass,
     weightClass,
     colorClass,

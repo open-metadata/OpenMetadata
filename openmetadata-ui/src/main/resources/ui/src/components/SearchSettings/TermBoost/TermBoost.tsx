@@ -81,7 +81,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
                 {item.data.displayName ?? item.data.name}
               </Typography>
               <Typography
-                className="text-grey-muted text-sm"
+                className="tw:wrap-break-word text-grey-muted text-sm"
                 data-testid="tag-option-fully-qualified-name">
                 {fqn}
               </Typography>

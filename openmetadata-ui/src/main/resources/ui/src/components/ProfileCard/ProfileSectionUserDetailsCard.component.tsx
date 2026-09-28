@@ -214,7 +214,7 @@ const ProfileSectionUserDetailsCard = ({
       !isMaskedEmail(userData.email) && (
         <Typography
           as="p"
-          className="m-b-0 profile-details-email"
+          className="tw:wrap-break-word m-b-0 profile-details-email"
           data-testid="user-email-value">
           {userData.email}
         </Typography>
