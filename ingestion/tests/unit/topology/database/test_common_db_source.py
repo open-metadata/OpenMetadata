@@ -31,7 +31,10 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
 )
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    ColumnAndReferredColumn,
+    CommonDbSourceService,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 
@@ -584,3 +587,133 @@ class TestExecuteDatabaseQueryEagerFetch:
         results = list(fake_source.get_database_names_raw())
 
         assert results == ["alpha", "beta", "gamma"]
+
+
+class TestYieldTableConstraintsGrouping:
+    """Regression tests for #34057: multiple deferred FKs for the same table must
+    be applied in a single PATCH, not one-at-a-time (which would overwrite earlier
+    FKs because the PATCH diff is computed against the pre-patch table state)."""
+
+    @pytest.fixture
+    def grouping_source(self):
+        mock_source = MagicMock(spec=CommonDbSourceService)
+        mock_source.yield_table_constraints = CommonDbSourceService.yield_table_constraints.__get__(mock_source)
+        mock_source.service_connection = MagicMock(spec=[])  # no supportsDatabase attr
+
+        context = MagicMock()
+        context.database_service = "svc"
+        mock_source.context.get.return_value = context
+
+        return mock_source
+
+    def _make_fk_entry(self, col_name: str) -> ColumnAndReferredColumn:
+        return ColumnAndReferredColumn(
+            table_name="child",
+            schema_name="public",
+            db_name="mydb",
+            column={
+                "constrained_columns": [col_name],
+                "referred_table": col_name.replace("_id", ""),
+                "referred_schema": "public",
+                "referred_columns": ["id"],
+            },
+        )
+
+    def test_multiple_deferred_fks_produce_one_patch_per_table(self, grouping_source):
+        """Three deferred FKs for the same table must yield exactly one patch
+        containing all three constraints (not three separate one-FK patches)."""
+        fk_entries = [
+            self._make_fk_entry("a_id"),
+            self._make_fk_entry("b_id"),
+            self._make_fk_entry("c_id"),
+        ]
+        global_ctx = MagicMock()
+        global_ctx.foreign_tables = fk_entries
+        grouping_source.context.get_global.return_value = global_ctx
+
+        mock_table = MagicMock(spec=Table)
+        mock_table.tableConstraints = None
+        mock_table.columns = [
+            Column(name="id", dataType=DataType.INT),
+            Column(name="a_id", dataType=DataType.INT),
+            Column(name="b_id", dataType=DataType.INT),
+            Column(name="c_id", dataType=DataType.INT),
+        ]
+
+        def _fqn_build(**kwargs):
+            return f"svc.mydb.public.{kwargs['table_name']}"
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.fqn.build",
+            side_effect=_fqn_build,
+        ):
+            grouping_source.metadata.get_by_name.return_value = mock_table
+
+            tc_a = TableConstraint(constraintType=ConstraintType.FOREIGN_KEY, columns=["a_id"])
+            tc_b = TableConstraint(constraintType=ConstraintType.FOREIGN_KEY, columns=["b_id"])
+            tc_c = TableConstraint(constraintType=ConstraintType.FOREIGN_KEY, columns=["c_id"])
+            grouping_source._prepare_foreign_constraints.side_effect = [tc_a, tc_b, tc_c]
+
+            results = list(grouping_source.yield_table_constraints())
+
+        assert len(results) == 1, (
+            "Expected exactly one patch for all three FKs on the same table; "
+            f"got {len(results)} — likely the old one-at-a-time path is active"
+        )
+        patch_request = results[0].right
+        assert patch_request is not None
+        assert len(patch_request.new_entity.tableConstraints) == 3
+
+    def test_deferred_fks_for_different_tables_produce_separate_patches(self, grouping_source):
+        """Deferred FKs targeting different tables must still produce one patch each."""
+        fk_alpha = ColumnAndReferredColumn(
+            table_name="alpha",
+            schema_name="public",
+            db_name="mydb",
+            column={
+                "constrained_columns": ["x_id"],
+                "referred_table": "x",
+                "referred_schema": "public",
+                "referred_columns": ["id"],
+            },
+        )
+        fk_bravo = ColumnAndReferredColumn(
+            table_name="bravo",
+            schema_name="public",
+            db_name="mydb",
+            column={
+                "constrained_columns": ["y_id"],
+                "referred_table": "y",
+                "referred_schema": "public",
+                "referred_columns": ["id"],
+            },
+        )
+        global_ctx = MagicMock()
+        global_ctx.foreign_tables = [fk_alpha, fk_bravo]
+        grouping_source.context.get_global.return_value = global_ctx
+
+        mock_alpha = MagicMock(spec=Table)
+        mock_alpha.tableConstraints = None
+        mock_alpha.columns = [Column(name="x_id", dataType=DataType.INT)]
+        mock_bravo = MagicMock(spec=Table)
+        mock_bravo.tableConstraints = None
+        mock_bravo.columns = [Column(name="y_id", dataType=DataType.INT)]
+
+        def _fqn_build(**kwargs):
+            return f"svc.mydb.public.{kwargs['table_name']}"
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.fqn.build",
+            side_effect=_fqn_build,
+        ):
+            grouping_source.metadata.get_by_name.side_effect = [mock_alpha, mock_bravo]
+
+            tc_x = TableConstraint(constraintType=ConstraintType.FOREIGN_KEY, columns=["x_id"])
+            tc_y = TableConstraint(constraintType=ConstraintType.FOREIGN_KEY, columns=["y_id"])
+            grouping_source._prepare_foreign_constraints.side_effect = [tc_x, tc_y]
+
+            results = list(grouping_source.yield_table_constraints())
+
+        assert len(results) == 2
+        tables_patched = {r.right.new_entity.tableConstraints[0].columns[0] for r in results}
+        assert tables_patched == {"x_id", "y_id"}

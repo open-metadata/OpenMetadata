@@ -816,19 +816,31 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         supports_database = hasattr(self.service_connection, "supportsDatabase")
 
+        # Group deferred FK entries by target table FQN so all FKs for the same
+        # table are applied in a single PATCH. Without grouping each FK is applied
+        # independently: every iteration re-fetches the pre-patch table state and
+        # the PATCH diff overwrites whatever FKs the previous iteration wrote,
+        # leaving only the last FK per table persisted.
+        grouped: dict[str, list[ColumnAndReferredColumn]] = {}
         for foreign_table in self.context.get_global().foreign_tables or []:
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,
+                database_name=foreign_table.db_name,
+                schema_name=foreign_table.schema_name,
+                table_name=foreign_table.table_name,
+            )
+            grouped.setdefault(table_fqn, []).append(foreign_table)
+
+        for table_fqn, foreign_table_list in grouped.items():
             try:
-                foreign_constraints = []
-                table_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=foreign_table.db_name,
-                    schema_name=foreign_table.schema_name,
-                    table_name=foreign_table.table_name,
-                )
                 table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                if table:
+                if not table:
+                    continue
+
+                foreign_constraints = []
+                for foreign_table in foreign_table_list:
                     foreign_constraint = self._prepare_foreign_constraints(
                         supports_database,
                         foreign_table.column,
@@ -841,7 +853,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                     if foreign_constraint:
                         foreign_constraints.append(foreign_constraint)
 
-                # send the patch request
                 if foreign_constraints:
                     new_entity = copy.deepcopy(table)
                     new_entity.tableConstraints = (new_entity.tableConstraints or []) + foreign_constraints
@@ -852,10 +863,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                     )
                     yield Either(right=patch_request)
             except Exception as exc:
+                first = foreign_table_list[0]
                 yield Either(
                     left=StackTraceError(
-                        name=str(foreign_table.table_name),
-                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",  # noqa: RUF010
+                        name=str(first.table_name),
+                        error=f"Error to yield tableConstraints for {str(first.table_name)}: {exc}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )
