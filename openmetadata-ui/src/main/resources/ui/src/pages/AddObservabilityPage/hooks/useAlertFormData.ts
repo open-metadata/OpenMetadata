@@ -27,24 +27,25 @@ import {
 } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { AddAlertPageLoadingState } from '../../AddNotificationPage/AddNotificationPage.interface';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
   UseAlertFormDataOptions,
   UseAlertFormDataReturn,
 } from '../AddObservabilityPage.interface';
+import { useAlertResources } from './useAlertResources';
 import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 
 /**
- * Alert form state, templates and save for a caller that owns the form values, so it needs
- * no antd form. The caller loads the resources (see useAlertResources) and passes them in.
+ * Alert form state, resources, templates and save for a caller that owns the form values,
+ * so it needs no antd form. The caller passes the chosen source as selectedTrigger.
  */
 export function useAlertFormData({
   afterSaveAction,
-  alertResources,
+  alertType,
   fqn: fqnProp,
   onCancel,
+  selectedTrigger,
 }: UseAlertFormDataOptions): UseAlertFormDataReturn {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -57,7 +58,9 @@ export function useAlertFormData({
 
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
-  const [loadingState, setLoadingState] = useState<AddAlertPageLoadingState>({
+  const [loadingState, setLoadingState] = useState<
+    UseAlertFormDataReturn['loadingState']
+  >({
     alerts: false,
     functions: false,
     templates: false,
@@ -73,6 +76,7 @@ export function useAlertFormData({
     () => alertsClassBase.getAddAlertFormExtraButtons(),
     []
   );
+  const alertResources = useAlertResources(alertType, selectedTrigger);
   const alertTemplates = useObservabilityAlertTemplates({
     extraFormWidgets,
     getResourcePermission,

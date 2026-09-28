@@ -39,7 +39,6 @@ import {
 } from '../../../generated/events/eventSubscription';
 import { useFqn } from '../../../hooks/useFqn';
 import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
-import { useAlertResources } from '../../../pages/AddObservabilityPage/hooks/useAlertResources';
 import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
@@ -102,8 +101,7 @@ const AlertDetailsPage = ({
   }) as ReturnType<typeof useAlertDetailsPage> & {
     fetchAlertDetails?: () => Promise<void>;
   };
-  const alertResources = useAlertResources(kind.alertType);
-  const alertFormState = useAlertFormData({ alertResources, fqn });
+  const alertFormState = useAlertFormData({ alertType: kind.alertType, fqn });
 
   const {
     alertDetails,

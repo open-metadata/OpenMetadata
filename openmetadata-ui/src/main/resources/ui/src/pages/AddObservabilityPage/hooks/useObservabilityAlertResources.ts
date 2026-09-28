@@ -14,21 +14,18 @@
 import type { FormInstance } from 'antd';
 import { Form } from 'antd';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import { AlertType } from '../../../generated/events/eventSubscription';
-import {
-  ModifiedCreateEventSubscription,
-  UseObservabilityAlertResourcesReturn,
-} from '../AddObservabilityPage.interface';
-import { useAlertResources } from './useAlertResources';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 
-/** Alert resources narrowed by the source selected in a classic antd alert form. */
-export function useObservabilityAlertResources(
-  form: FormInstance<ModifiedCreateEventSubscription>,
-  alertType: AlertType = AlertType.Observability
-): UseObservabilityAlertResourcesReturn {
+/**
+ * The alert source picked in a classic antd alert form. Kept in this file, which already
+ * imports antd Form, so the antd import does not spread to a new file.
+ */
+export function useSelectedAlertTrigger(
+  form: FormInstance<ModifiedCreateEventSubscription>
+): string | undefined {
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
 
-  return useAlertResources(alertType, selectedTrigger);
+  return selectedTrigger;
 }

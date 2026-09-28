@@ -56,15 +56,6 @@ jest.mock('../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage', () => ({
   useAlertDetailsPage: (params: unknown) => mockUseAlertDetailsPage(params),
 }));
 
-const mockUseAlertResources = jest.fn();
-
-jest.mock(
-  '../../../pages/AddObservabilityPage/hooks/useAlertResources',
-  () => ({
-    useAlertResources: (alertType: unknown) => mockUseAlertResources(alertType),
-  })
-);
-
 jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
   useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
 }));
@@ -563,8 +554,8 @@ describe('AlertDetailsPage', () => {
     it('loads the alert as a notification alert', () => {
       renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
 
-      expect(mockUseAlertResources).toHaveBeenCalledWith(
-        AlertType.Notification
+      expect(mockUseAlertFormData).toHaveBeenCalledWith(
+        expect.objectContaining({ alertType: AlertType.Notification })
       );
     });
 
