@@ -56,4 +56,23 @@ describe('TaskDetailSummary', () => {
     expect(screen.getByText('harsh (label.you)')).toBeInTheDocument();
     expect(screen.getByText('dana')).toBeInTheDocument();
   });
+
+  it('keeps the callout text on its own lines', () => {
+    render(
+      <TaskDetailSummary
+        callout={{
+          label: 'Context',
+          text: 'Need access for Q3.\nOwner approved.',
+        }}
+        rows={[]}
+      />
+    );
+
+    const text = screen.getByText(/Need access for Q3\./);
+
+    expect(text).toHaveTextContent('Need access for Q3. Owner approved.', {
+      normalizeWhitespace: true,
+    });
+    expect(text).toHaveClass('tw:whitespace-pre-line');
+  });
 });
