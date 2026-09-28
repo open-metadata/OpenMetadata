@@ -13,8 +13,15 @@
 
 import { useMemo } from 'react';
 import { ResourceEntity } from '../../../enums/permissions.enum';
-import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
-import { AlertDetailsPermissions } from '../AlertDetailsPage.interface';
+import { useEntityPermissions } from '../../useEntityPermissions/useEntityPermissions';
+
+export interface AlertDetailsPermissions {
+  deletePermission: boolean;
+  editDescriptionPermission: boolean;
+  editOwnersPermission: boolean;
+  editPermission: boolean;
+  viewPermission: boolean;
+}
 
 export function useAlertDetailsPermissions(fqn: string) {
   const {

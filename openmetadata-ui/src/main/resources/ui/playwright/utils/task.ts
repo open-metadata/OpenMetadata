@@ -17,7 +17,6 @@ import {
   dismissHoverPopovers,
   fillDescriptionBox,
   toastNotification,
-  waitForAntdPopupToSettle,
 } from './common';
 
 export type TaskDetails = {
@@ -214,27 +213,6 @@ export const createTagTask = async (
   await taskResponse;
 
   await toastNotification(page, /Task created successfully./);
-};
-
-/**
- * Opens the task status filter and picks one of its options.
- *
- * The filter sits directly above the task list, so the pointer left parked on a
- * task link keeps an `EntityPopOverCard` open right over where this dropdown
- * renders; the option is then permanently unclickable. Clearing the hover first
- * and letting the menu finish growing is what makes the choice land.
- */
-export const selectTaskStatusFilter = async (
-  page: Page,
-  filter: Locator,
-  optionTestId: 'open-tasks' | 'closed-tasks'
-) => {
-  await dismissHoverPopovers(page);
-  await filter.click();
-  const option = page.getByTestId(optionTestId);
-  await expect(option).toBeVisible();
-  await waitForAntdPopupToSettle(page);
-  await option.click();
 };
 
 export const checkTaskCountInActivityFeed = async (

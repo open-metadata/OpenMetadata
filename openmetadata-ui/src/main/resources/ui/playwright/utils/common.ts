@@ -1953,11 +1953,13 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
   // of a click's actionability checks. A one-shot open-then-click therefore
   // dismisses the popup as often as it selects from it, and nothing reopens
   // it, so the option click waits out the entire test timeout on a node that
-  // was detached mid-click. Reopening converges rather than looping: the
-  // dismissed attempt leaves the page scrolled where the option already sits
-  // in view, so the retry's click needs no scroll and cannot close the popup.
+  // was detached mid-click. Centring the control before opening removes the
+  // actionability scroll that would close it; the retry remains for a popup
+  // dismissed by anything else, with a short option timeout so a detached
+  // option reopens quickly instead of waiting out a long click.
   await expect(async () => {
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(control);
       if ((await control.getAttribute('role')) === 'combobox') {
         await control.press('ArrowDown');
       } else {
@@ -1965,7 +1967,7 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
       }
     }
     await expect(option).toBeVisible({ timeout: 5_000 });
-    await option.click({ timeout: 5_000 });
+    await option.click({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
 };
 
@@ -2026,12 +2028,6 @@ export const searchDataProductOptions = async (
   return page
     .locator('.ant-select-dropdown:visible')
     .getByTestId('tag-' + dataProduct.fullyQualifiedName);
-};
-
-export const waitForAriaModalToSettle = async (page: Page) => {
-  await expect(
-    page.locator('[data-entering]:has([role="dialog"])')
-  ).toHaveCount(0);
 };
 
 export const waitForAntdModalToSettle = async (page: Page) => {
