@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -77,18 +76,13 @@ const syncDomainStoreForUser = (user?: User) => {
   domainStore.setDomainRestriction(isRestricted);
 
   const hasSingleDomain = isRestricted && userDomains.length === 1;
-  const isDefaultDomainActive =
-    domainStore.activeDomain === DEFAULT_DOMAIN_VALUE;
 
-  // The navbar selection is persisted on the user (defaultDomain) so the server can scope list
-  // views from the first request; restore it into the navbar when no domain is active yet.
-  if (isDefaultDomainActive && user?.defaultDomain) {
-    domainStore.updateActiveDomain(user.defaultDomain);
+  // The selection persisted on the user (defaultDomain) is the source of truth: the server scopes
+  // list views from it, so the navbar must show exactly that, including "no selection" when it was
+  // cleared elsewhere (another session or the API) and this browser still caches an older pick.
+  domainStore.updateActiveDomain(user?.defaultDomain);
 
-    return;
-  }
-
-  if (hasSingleDomain && isDefaultDomainActive) {
+  if (hasSingleDomain && !user?.defaultDomain) {
     domainStore.updateActiveDomain(userDomains[0]);
   }
 };
