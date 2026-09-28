@@ -46,11 +46,7 @@ const SqlPropertyView = ({ value }: PropertyViewProps) => (
   </div>
 );
 
-const SqlPropertyEdit = ({
-  value,
-  onSave,
-  formId,
-}: PropertyEditProps) => {
+const SqlPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
   const { t } = useTranslation();
   const formRef = useRef<HTMLFormElement>(null);
   const [query, setQuery] = useState(typeof value === 'string' ? value : '');

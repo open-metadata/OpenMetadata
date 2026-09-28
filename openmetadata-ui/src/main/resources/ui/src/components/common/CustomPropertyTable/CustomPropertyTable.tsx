@@ -22,7 +22,6 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { lazy, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -146,26 +145,18 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return { dataSource, dataSourceColumns: columns };
   }, [maxDataCap, customProperties, isRenderedInRightPanel, widgetSettings]);
 
-  const viewAllBtn = useMemo(() => {
+  const viewAllPath = useMemo(() => {
     const hasHiddenProperties = widgetSettings
       ? dataSource.length < customProperties.length
       : Boolean(maxDataCap && customProperties.length >= maxDataCap);
 
-    if (hasHiddenProperties && entityDetails?.fullyQualifiedName) {
-      return (
-        <Link
-          className="text-sm"
-          to={entityUtilClassBase.getEntityLink(
-            entityType,
-            entityDetails.fullyQualifiedName,
-            EntityTabs.CUSTOM_PROPERTIES
-          )}>
-          {t('label.view-all')}
-        </Link>
-      );
-    }
-
-    return null;
+    return hasHiddenProperties && entityDetails?.fullyQualifiedName
+      ? entityUtilClassBase.getEntityLink(
+          entityType,
+          entityDetails.fullyQualifiedName,
+          EntityTabs.CUSTOM_PROPERTIES
+        )
+      : undefined;
   }, [
     customProperties,
     dataSource,
@@ -258,10 +249,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       <CustomPropertiesRightPanel
         extension={extensionObject.extensionObject}
         hasEditPermissions={hasEditAccess}
-        headerExtra={viewAllBtn}
         isVersionView={isVersionView}
         properties={dataSource}
         versionDataKeys={extensionObject.addedKeysList}
+        viewAllPath={viewAllPath}
         widgetSettings={widgetSettings}
         onExtensionUpdate={onExtensionUpdate}
         onValueSave={onPropertyValueSave}

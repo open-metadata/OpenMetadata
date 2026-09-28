@@ -29,11 +29,7 @@ const MarkdownPropertyView = ({ value }: PropertyViewProps) => (
   <RichTextEditorPreviewerV1 enableSeeMoreVariant markdown={String(value)} />
 );
 
-const MarkdownPropertyEdit = ({
-  value,
-  onSave,
-  formId,
-}: PropertyEditProps) => {
+const MarkdownPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
   const { t } = useTranslation();
   const initialValue = typeof value === 'string' ? value : '';
   const [markdown, setMarkdown] = useState(initialValue);

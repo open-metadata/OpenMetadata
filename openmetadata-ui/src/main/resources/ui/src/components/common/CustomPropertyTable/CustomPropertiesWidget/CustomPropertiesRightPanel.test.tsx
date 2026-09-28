@@ -12,6 +12,7 @@
  */
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { CustomPropertiesRightPanel } from './CustomPropertiesRightPanel';
 
@@ -29,15 +30,17 @@ const properties = [
   createProperty('cost_center', 'Cost Center'),
 ];
 
-const renderPanel = (hasEditPermissions = true) =>
+const renderPanel = (hasEditPermissions = true, viewAllPath?: string) =>
   render(
     <CustomPropertiesRightPanel
       extension={{ owner_team: 'Data Platform' }}
       hasEditPermissions={hasEditPermissions}
       properties={properties}
+      viewAllPath={viewAllPath}
       onExtensionUpdate={jest.fn()}
       onValueSave={jest.fn()}
-    />
+    />,
+    { wrapper: MemoryRouter }
   );
 
 const getRenderedNames = () =>
@@ -160,6 +163,22 @@ describe('CustomPropertiesRightPanel', () => {
 
     expect(within(emptyRow).getByTestId('edit-icon')).toBeInTheDocument();
     expect(within(emptyRow).queryByText('label.add')).not.toBeInTheDocument();
+  });
+
+  it('links to the Custom Properties tab when the widget hides properties', () => {
+    renderPanel(true, '/table/fqn/custom_properties');
+
+    expect(
+      screen.getByTestId('custom-properties-widget-view-all')
+    ).toHaveAttribute('href', '/table/fqn/custom_properties');
+  });
+
+  it('omits the view-all link when every property is listed', () => {
+    renderPanel();
+
+    expect(
+      screen.queryByTestId('custom-properties-widget-view-all')
+    ).not.toBeInTheDocument();
   });
 
   it('hides the edit icon without edit permission', () => {

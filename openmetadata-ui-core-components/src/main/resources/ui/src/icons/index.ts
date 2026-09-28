@@ -207,6 +207,7 @@ export { None } from './None';
 export { Silver } from './Silver';
 export {
   AlignLeft,
+  ArrowUpRight,
   Calendar,
   Check,
   Clock,

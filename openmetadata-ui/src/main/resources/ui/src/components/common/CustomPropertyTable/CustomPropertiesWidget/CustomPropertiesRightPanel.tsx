@@ -16,18 +16,15 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg, XClose } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import {
-  Fragment,
-  lazy,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+  ArrowUpRight,
+  SearchLg,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { Fragment, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import WidgetCard from '../../WidgetCard/WidgetCard';
@@ -52,7 +49,8 @@ interface CustomPropertiesRightPanelProps {
   extension?: Record<string, unknown>;
   versionDataKeys?: string[];
   widgetSettings?: CustomPropertiesWidgetSettings;
-  headerExtra?: ReactNode;
+  /** Link to the Custom Properties tab, set when the widget hides properties. */
+  viewAllPath?: string;
   hasEditPermissions: boolean;
   isVersionView?: boolean;
   onExtensionUpdate: (extension?: Record<string, unknown>) => Promise<void>;
@@ -65,7 +63,7 @@ export const CustomPropertiesRightPanel = ({
   extension,
   versionDataKeys,
   widgetSettings,
-  headerExtra,
+  viewAllPath,
   hasEditPermissions,
   isVersionView,
   onExtensionUpdate,
@@ -122,16 +120,25 @@ export const CustomPropertiesRightPanel = ({
     return (
       <WidgetCard
         className="no-scrollbar"
-        headerExtra={headerExtra}
+        headerExtra={
+          viewAllPath && (
+            <Link className="text-sm" to={viewAllPath}>
+              {t('label.view-all')}
+            </Link>
+          )
+        }
         title={t('label.custom-property-plural')}>
         <div className="custom-property-right-panel-container">
           {properties.map((record, index) => (
             <Fragment key={record.name}>
               <div
-                className={classNames('custom-property-right-panel-card tw:py-3.5', {
-                  'top-border-radius': index === 0,
-                  'bottom-border-radius': index === properties.length - 1,
-                })}>
+                className={classNames(
+                  'custom-property-right-panel-card tw:py-3.5',
+                  {
+                    'top-border-radius': index === 0,
+                    'bottom-border-radius': index === properties.length - 1,
+                  }
+                )}>
                 <PropertyValue
                   isRenderedInRightPanel
                   isVersionView
@@ -209,21 +216,32 @@ export const CustomPropertiesRightPanel = ({
       dataTestId="custom-properties-widget"
       forceExpand={isSearchOpen}
       headerActions={
-        <span className="tw:flex" ref={searchButtonWrapperRef}>
-          <ButtonUtility
-            className="tw:p-1"
-            color="tertiary"
-            data-testid="custom-properties-widget-search-button"
-            icon={SearchLg}
-            size="xs"
-            tooltip={searchLabel}
-            onClick={() => setIsSearchOpen(true)}
-          />
-        </span>
+        <>
+          {viewAllPath && (
+            <ButtonUtility
+              className="tw:p-1"
+              color="tertiary"
+              data-testid="custom-properties-widget-view-all"
+              href={viewAllPath}
+              icon={ArrowUpRight}
+              size="xs"
+              tooltip={t('label.view-all')}
+            />
+          )}
+          <span className="tw:flex" ref={searchButtonWrapperRef}>
+            <ButtonUtility
+              className="tw:p-1"
+              color="tertiary"
+              data-testid="custom-properties-widget-search-button"
+              icon={SearchLg}
+              size="xs"
+              tooltip={searchLabel}
+              onClick={() => setIsSearchOpen(true)}
+            />
+          </span>
+        </>
       }
       headerContent={searchField}
-      // The persona widget scrolls instead of linking out to the tab.
-      headerExtra={widgetSettings ? undefined : headerExtra}
       title={t('label.custom-property-plural')}>
       {visibleItems.length ? (
         <ul
