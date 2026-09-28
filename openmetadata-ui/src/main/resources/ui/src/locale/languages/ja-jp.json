@@ -383,7 +383,6 @@
     "caption-expected-value": "期待値 {{value}}",
     "caption-learned-range": "学習済み範囲 (自動)",
     "caption-threshold": "しきい値 {{value}}",
-    "caption-tolerance": "±{{value}} の許容誤差",
     "card": "カード",
     "cardinality": "カーディナリティ",
     "cascade": "Cascade",

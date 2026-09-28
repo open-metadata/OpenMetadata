@@ -383,7 +383,6 @@
     "caption-expected-value": "المتوقع {{value}}",
     "caption-learned-range": "النطاق المُتعلَّم (تلقائي)",
     "caption-threshold": "الحد {{value}}",
-    "caption-tolerance": "تفاوت ±{{value}}",
     "card": "بطاقة",
     "cardinality": "عدد العناصر",
     "cascade": "Cascade",

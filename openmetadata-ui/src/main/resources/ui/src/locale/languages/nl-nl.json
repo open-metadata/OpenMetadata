@@ -383,7 +383,6 @@
     "caption-expected-value": "verwacht {{value}}",
     "caption-learned-range": "geleerd bereik (auto)",
     "caption-threshold": "drempel {{value}}",
-    "caption-tolerance": "±{{value}} tolerantie",
     "card": "Kaart",
     "cardinality": "Kardinaliteit",
     "cascade": "Cascade",

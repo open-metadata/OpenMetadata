@@ -62,18 +62,15 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   );
 
   const caption = useMemo(() => {
-    const { metric, comparison, tolerance } = getResultHistoryCaption(data);
+    const { metric, comparison } = getResultHistoryCaption(data);
     const metricText = t(metric.key, metric.values);
-    const measured = comparison
+
+    return comparison
       ? t('message.metric-vs-comparison', {
           metric: metricText,
           comparison: t(comparison.key, comparison.values),
         })
       : metricText;
-
-    return tolerance
-      ? `${measured} · ${t(tolerance.key, tolerance.values)}`
-      : measured;
   }, [data, t]);
 
   const handleDateRangeChange = (value: DateRangeObject) => {

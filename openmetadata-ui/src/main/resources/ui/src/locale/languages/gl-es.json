@@ -383,7 +383,6 @@
     "caption-expected-value": "agardado {{value}}",
     "caption-learned-range": "intervalo aprendido (auto)",
     "caption-threshold": "limiar {{value}}",
-    "caption-tolerance": "tolerancia ±{{value}}",
     "card": "Tarxeta",
     "cardinality": "Cardinalidade",
     "cascade": "Cascade",

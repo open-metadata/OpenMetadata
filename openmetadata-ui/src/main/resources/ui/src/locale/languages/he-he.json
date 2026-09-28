@@ -383,7 +383,6 @@
     "caption-expected-value": "צפוי {{value}}",
     "caption-learned-range": "טווח נלמד (אוטומטי)",
     "caption-threshold": "סף {{value}}",
-    "caption-tolerance": "סבילות ±{{value}}",
     "card": "כרטיס",
     "cardinality": "עוצמה",
     "cascade": "Cascade",

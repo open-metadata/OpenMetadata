@@ -383,7 +383,6 @@
     "caption-expected-value": "ожидается {{value}}",
     "caption-learned-range": "изученный диапазон (авто)",
     "caption-threshold": "порог {{value}}",
-    "caption-tolerance": "допуск ±{{value}}",
     "card": "Карточка",
     "cardinality": "Кардинальность",
     "cascade": "Cascade",

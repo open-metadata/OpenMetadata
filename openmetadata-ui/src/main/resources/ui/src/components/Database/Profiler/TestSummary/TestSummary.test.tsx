@@ -305,7 +305,7 @@ describe('TestSummary component', () => {
 
   it.each([
     [
-      'Row count vs. expected 10,000 · ±5% tolerance',
+      'Row count vs. expected 10,000',
       shape('tableRowCountToEqual', {
         value: '10000',
         threshold: '5',

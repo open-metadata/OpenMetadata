@@ -383,7 +383,6 @@
     "caption-expected-value": "अपेक्षित {{value}}",
     "caption-learned-range": "शिकलेली श्रेणी (स्वयं)",
     "caption-threshold": "उंबरठा {{value}}",
-    "caption-tolerance": "±{{value}} सहनशीलता",
     "card": "कार्ड",
     "cardinality": "कार्डिनलिटी",
     "cascade": "Cascade",

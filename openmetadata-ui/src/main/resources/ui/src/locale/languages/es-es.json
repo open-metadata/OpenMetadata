@@ -383,7 +383,6 @@
     "caption-expected-value": "esperado {{value}}",
     "caption-learned-range": "rango aprendido (auto)",
     "caption-threshold": "umbral {{value}}",
-    "caption-tolerance": "tolerancia ±{{value}}",
     "card": "Tarjeta",
     "cardinality": "Cardinalidad",
     "cascade": "Cascade",

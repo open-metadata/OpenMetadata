@@ -383,7 +383,6 @@
     "caption-expected-value": "beklenen {{value}}",
     "caption-learned-range": "öğrenilen aralık (otomatik)",
     "caption-threshold": "eşik {{value}}",
-    "caption-tolerance": "±{{value}} tolerans",
     "card": "Kart",
     "cardinality": "Kardinalite",
     "cascade": "Cascade",

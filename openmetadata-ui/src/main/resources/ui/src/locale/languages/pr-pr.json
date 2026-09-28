@@ -383,7 +383,6 @@
     "caption-expected-value": "مورد انتظار {{value}}",
     "caption-learned-range": "بازهٔ آموخته‌شده (خودکار)",
     "caption-threshold": "آستانه {{value}}",
-    "caption-tolerance": "رواداری ±{{value}}",
     "card": "کارت",
     "cardinality": "تعداد عناصر",
     "cascade": "آبشاری",

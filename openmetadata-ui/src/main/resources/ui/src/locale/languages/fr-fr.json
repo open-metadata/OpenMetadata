@@ -383,7 +383,6 @@
     "caption-expected-value": "attendu {{value}}",
     "caption-learned-range": "plage apprise (auto)",
     "caption-threshold": "seuil {{value}}",
-    "caption-tolerance": "tolérance ±{{value}}",
     "card": "Carte",
     "cardinality": "Cardinalité",
     "cascade": "Cascade",

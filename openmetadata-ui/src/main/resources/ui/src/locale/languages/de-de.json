@@ -383,7 +383,6 @@
     "caption-expected-value": "erwartet {{value}}",
     "caption-learned-range": "gelernter Bereich (automatisch)",
     "caption-threshold": "Schwellenwert {{value}}",
-    "caption-tolerance": "±{{value}} Toleranz",
     "card": "Karte",
     "cardinality": "Kardinalität",
     "cascade": "Cascade",

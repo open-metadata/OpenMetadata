@@ -383,7 +383,6 @@
     "caption-expected-value": "预期 {{value}}",
     "caption-learned-range": "学习范围（自动）",
     "caption-threshold": "阈值 {{value}}",
-    "caption-tolerance": "±{{value}} 容差",
     "card": "卡片",
     "cardinality": "基数",
     "cascade": "Cascade",

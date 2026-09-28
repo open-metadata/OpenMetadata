@@ -383,7 +383,6 @@
     "caption-expected-value": "예상값 {{value}}",
     "caption-learned-range": "학습된 범위 (자동)",
     "caption-threshold": "임계값 {{value}}",
-    "caption-tolerance": "±{{value}} 허용 오차",
     "card": "카드",
     "cardinality": "카디널리티",
     "cascade": "Cascade",

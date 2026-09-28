@@ -27,7 +27,6 @@ export interface CaptionPart {
 export interface ResultHistoryCaption {
   metric: CaptionPart;
   comparison?: CaptionPart;
-  tolerance?: CaptionPart;
 }
 
 const format = (value: number) => value.toLocaleString();
@@ -72,33 +71,13 @@ const getComparison = (
     : { key: 'label.caption-threshold', values: { value: format(threshold) } };
 };
 
-// On the `*ToEqual` tests `threshold` is how far a run may drift from the
-// expected value; elsewhere it is the assertion itself and never a tolerance.
-const getTolerance = (testCase: TestCase): CaptionPart | undefined => {
-  const { expected, threshold } = getParameterBounds(
-    testCase.parameterValues ?? []
-  );
-
-  if (isUndefined(expected) || !threshold) {
-    return undefined;
-  }
-
-  const isPercentage = testCase.parameterValues?.some(
-    (parameter) =>
-      parameter.name === 'thresholdUnit' && parameter.value === 'PERCENTAGE'
-  );
-
-  return {
-    key: 'label.caption-tolerance',
-    values: { value: `${format(threshold)}${isPercentage ? '%' : ''}` },
-  };
-};
-
 /**
  * The line under the chart card's title that says what the chart measures and
- * what it is measured against, e.g. "Row count vs. expected 10,000 · ±5%
- * tolerance". Returned as translation keys so the caller renders it in the
- * reader's language.
+ * what it is measured against, e.g. "Row count vs. expected 10,000".
+ * Returned as translation keys so the caller renders it in the reader's
+ * language. The failure threshold is left out: what it means differs by test
+ * type (a drift around the value, a widening of the range, or a count of
+ * tolerated failing rows), and the API does not say which applies.
  */
 export const getResultHistoryCaption = (
   testCase: TestCase
@@ -107,7 +86,6 @@ export const getResultHistoryCaption = (
     RESULT_METRIC_BY_DEFINITION[testCase.testDefinition?.name ?? ''] ??
     DEFAULT_RESULT_METRIC;
   const comparison = getComparison(testCase, metric.impliedExpected);
-  const tolerance = getTolerance(testCase);
 
   return {
     metric: {
@@ -119,6 +97,5 @@ export const getResultHistoryCaption = (
       }),
     },
     ...(comparison && { comparison }),
-    ...(tolerance && { tolerance }),
   };
 };

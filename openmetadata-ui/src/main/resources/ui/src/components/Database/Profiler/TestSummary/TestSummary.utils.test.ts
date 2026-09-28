@@ -34,7 +34,8 @@ const testCase = (
 
 describe('getResultHistoryCaption', () => {
   // The five shapes the mock draws.
-  it('should read an expected value with its percentage tolerance', () => {
+  // The threshold is not captioned: what it means depends on the test type.
+  it('should read an expected value and leave its threshold out', () => {
     expect(
       getResultHistoryCaption(
         testCase('tableRowCountToEqual', {
@@ -49,7 +50,6 @@ describe('getResultHistoryCaption', () => {
         key: 'label.caption-expected-value',
         values: { value: (10000).toLocaleString() },
       },
-      tolerance: { key: 'label.caption-tolerance', values: { value: '5%' } },
     });
   });
 
@@ -135,28 +135,6 @@ describe('getResultHistoryCaption', () => {
         testCase('tableRowCountToBeBetween', { minValue: '500' })
       ).comparison
     ).toEqual({ key: 'label.caption-allowed-min', values: { value: '500' } });
-  });
-
-  it('should write an absolute tolerance without a percent sign', () => {
-    expect(
-      getResultHistoryCaption(
-        testCase('tableRowCountToEqual', {
-          value: '100',
-          threshold: '5',
-          thresholdUnit: 'ABSOLUTE',
-        })
-      ).tolerance
-    ).toEqual({ key: 'label.caption-tolerance', values: { value: '5' } });
-  });
-
-  // A zero tolerance is no tolerance: "±0%" says nothing the expectation does
-  // not already say.
-  it('should leave out a zero tolerance', () => {
-    expect(
-      getResultHistoryCaption(
-        testCase('tableRowCountToEqual', { value: '100', threshold: '0' })
-      ).tolerance
-    ).toBeUndefined();
   });
 
   it('should fall back to values for a definition it does not know', () => {

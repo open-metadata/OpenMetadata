@@ -383,7 +383,6 @@
     "caption-expected-value": "ค่าที่คาดหวัง {{value}}",
     "caption-learned-range": "ช่วงที่เรียนรู้ (อัตโนมัติ)",
     "caption-threshold": "เกณฑ์ {{value}}",
-    "caption-tolerance": "ค่าคลาดเคลื่อน ±{{value}}",
     "card": "การ์ด",
     "cardinality": "จำนวนสมาชิก",
     "cascade": "Cascade",

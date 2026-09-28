@@ -383,7 +383,6 @@
     "caption-expected-value": "förväntat {{value}}",
     "caption-learned-range": "inlärt intervall (auto)",
     "caption-threshold": "tröskel {{value}}",
-    "caption-tolerance": "±{{value}} tolerans",
     "card": "Kort",
     "cardinality": "Kardinalitet",
     "cascade": "Cascade",
