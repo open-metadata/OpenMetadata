@@ -60,6 +60,10 @@ jest.mock('./tabs/PermissionsTab', () => ({
   __esModule: true,
   default: () => <div data-testid="content-permissions" />,
 }));
+jest.mock('./tabs/notification/NotificationPanel', () => ({
+  __esModule: true,
+  default: () => <div data-testid="content-notification" />,
+}));
 // "My Connections" is no longer built in — a plugin contributes it through the
 // `profile.tabs` extension point, so the page is exercised with one such tab.
 const mockGetContributions = jest.fn();

@@ -22,15 +22,21 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { ALERT_DESCRIPTION } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
+import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
+import { redirectToHomePage, toastNotification } from './common';
 import { selectDropdownOption } from './destination';
+import { getEntityDisplayName, waitForAllLoadersToDisappear } from './entity';
 
 // ─── CoreUI Select helper ─────────────────────────────────────────────────────
 
 /**
- * Select an option in a CoreUI Select component identified by data-testid.
- * CoreUI Select trigger is role="button", options are role="option".
+ * Select an option in a CoreUI Select inside a modal.
+ * Unlike `selectDropdownOption` this does NOT blur the trigger afterward —
+ * blurring inside a ModalOverlay moves focus outside the modal and React
+ * Aria's focus containment then intercepts all subsequent pointer events.
  */
 export const selectCoreUIOption = async (
   page: Page,
@@ -39,12 +45,23 @@ export const selectCoreUIOption = async (
 ) => {
   const trigger = page.getByTestId(testId).getByRole('button');
   await expect(trigger).toBeVisible();
-  await trigger.click();
-  const listbox = page.getByRole('listbox');
-  const option = page.getByRole('option', { name: optionName, exact: true });
-  await expect(option).toBeVisible();
-  await option.click();
-  await listbox.waitFor({ state: 'detached' });
+  await trigger.focus();
+
+  let listboxId = '';
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+    listboxId = (await trigger.getAttribute('aria-controls')) ?? '';
+    expect(listboxId).toBeTruthy();
+  }).toPass({ timeout: 10_000 });
+
+  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+  await listbox.getByRole('option', { exact: true, name: optionName }).click();
+  await expect(listbox).toBeHidden();
 };
 
 // ─── CoreUI Autocomplete helper ───────────────────────────────────────────────
@@ -106,7 +123,7 @@ const selectFilterType = async ({
 
   if (exclude) {
     const ruleRow = page.getByTestId(`filters-${filterNumber}`);
-    const toggle = ruleRow.getByRole('switch');
+    const toggle = ruleRow.getByTestId('toggle-root');
     await expect(toggle).toBeVisible();
     await toggle.click();
   }
@@ -176,7 +193,9 @@ export const addEventTypeFilterProfile = async ({
   });
 
   for (const eventType of eventTypes) {
-    const input = page.getByTestId('eventTypeList-autocomplete').getByRole('combobox');
+    const input = page
+      .getByTestId('eventTypeList-autocomplete')
+      .getByRole('combobox');
     await expect(input).toBeVisible();
     await input.click();
     await input.fill(eventType);
@@ -322,7 +341,7 @@ export const addMultipleFiltersProfile = async ({
   await addEventTypeFilterProfile({
     page,
     filterNumber: 2,
-    eventTypes: ['entityCreated'],
+    eventTypes: ['Entity Created'],
   });
 
   await page.getByTestId('add-filters').click();
@@ -390,6 +409,260 @@ export const addInternalDestinationProfile = async ({
     .getByRole('listbox')
     .waitFor({ state: 'detached' })
     .catch(() => undefined);
+};
+
+/**
+ * Add an external destination in the profile notification form (AI mode).
+ * The AI form uses different testids than the legacy form (no `-field` suffix).
+ */
+export const addExternalDestinationProfile = async ({
+  page,
+  destinationNumber,
+  category,
+  input = '',
+  advancedConfig,
+}: {
+  page: Page;
+  destinationNumber: number;
+  category: string;
+  input?: string;
+  advancedConfig?: {
+    headers?: Array<{ key: string; value: string }>;
+    queryParams?: Array<{ key: string; value: string }>;
+  };
+}) => {
+  const categoryInput = page
+    .getByTestId(`destination-category-select-${destinationNumber}`)
+    .getByRole('combobox');
+  await expect(categoryInput).toBeVisible();
+  await categoryInput.click();
+  await categoryInput.fill('');
+  await categoryInput.press('ArrowDown');
+
+  const option = page.getByRole('option', { exact: true, name: category });
+  await expect(option).toBeVisible();
+  await option.click();
+
+  if (category === 'Email') {
+    const emailInput = page.getByTestId(`email-input-${destinationNumber}`);
+    await expect(emailInput).toBeVisible();
+    await emailInput.locator('input').fill(input);
+    await page.keyboard.press('Enter');
+  } else {
+    const endpointInput = page.getByTestId(
+      `endpoint-input-${destinationNumber}`
+    );
+    await expect(endpointInput).toBeVisible();
+    await endpointInput.locator('input').fill(input);
+  }
+
+  if (advancedConfig) {
+    const dest = page.getByTestId(`destination-${destinationNumber}`);
+    const accordionTrigger = dest.getByRole('button', {
+      exact: true,
+      name: 'Advanced Configuration',
+    });
+
+    if (
+      (await accordionTrigger.isVisible()) &&
+      (await accordionTrigger.getAttribute('aria-expanded')) !== 'true'
+    ) {
+      await accordionTrigger.click();
+    }
+
+    if (advancedConfig.headers) {
+      for (let i = 0; i < advancedConfig.headers.length; i++) {
+        const h = advancedConfig.headers[i];
+        await page
+          .getByTestId(`add-header-button-${destinationNumber}`)
+          .click();
+        await page
+          .getByTestId(`header-key-input-${destinationNumber}-${i}`)
+          .locator('input')
+          .fill(h.key);
+        await page
+          .getByTestId(`header-value-input-${destinationNumber}-${i}`)
+          .locator('input')
+          .fill(h.value);
+      }
+    }
+
+    if (advancedConfig.queryParams) {
+      for (let i = 0; i < advancedConfig.queryParams.length; i++) {
+        const qp = advancedConfig.queryParams[i];
+        await page
+          .getByTestId(`add-query-param-button-${destinationNumber}`)
+          .click();
+        await page
+          .getByTestId(`query-param-key-input-${destinationNumber}-${i}`)
+          .locator('input')
+          .fill(qp.key);
+        await page
+          .getByTestId(`query-param-value-input-${destinationNumber}-${i}`)
+          .locator('input')
+          .fill(qp.value);
+      }
+    }
+  }
+};
+
+// ─── Navigation helpers ──────────────────────────────────────────────────────
+
+export const navigateToNotificationLanding = async (
+  page: Page
+): Promise<void> => {
+  await enableAiAppMode(page);
+  await redirectToHomePage(page);
+
+  await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+  await page.getByTestId('ask-ai-user-menu-trigger').click();
+  await page.getByTestId('ai-user-menu-profile').click();
+  await page.getByTestId('ai-profile-page').waitFor();
+  await page.getByTestId('profile-nav-notification').click();
+  await page.getByTestId('notification-landing').waitFor();
+};
+
+export const navigateToAlertsList = async (page: Page): Promise<void> => {
+  await navigateToNotificationLanding(page);
+
+  const alertsResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/events/subscriptions') &&
+      res.url().includes('alertType=Notification') &&
+      res.request().method() === 'GET'
+  );
+  await page.getByTestId('notification-card-alerts').click();
+  await alertsResponse;
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('alerts-list-container')).toBeVisible();
+};
+
+export const inputAlertInformation = async ({
+  page,
+  name,
+  sourceName,
+}: {
+  page: Page;
+  name: string;
+  sourceName: string;
+}) => {
+  const nameInput = page.getByRole('textbox', { name: /name/i });
+  await expect(nameInput).toBeVisible();
+  await nameInput.fill(name);
+
+  const descriptionTextArea = page
+    .getByTestId('description')
+    .getByRole('textbox');
+  await expect(descriptionTextArea).toBeVisible();
+  await descriptionTextArea.fill(ALERT_DESCRIPTION);
+
+  const sourceSelect = page.getByTestId('source-select');
+  await expect(sourceSelect).toBeVisible();
+  await sourceSelect.click();
+  await page.getByRole('option', { name: new RegExp(sourceName, 'i') }).click();
+};
+
+export const saveNewAlertAndVerify = async (
+  page: Page
+): Promise<AlertDetails> => {
+  const createResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes('/api/v1/events/subscriptions') &&
+      !response.url().includes('testDestination')
+  );
+
+  await page.getByTestId('save-btn').click();
+  const response = await createResponse;
+  expect(response.status(), 'Create alert API should return 201').toBe(201);
+  const alertDetails = await response.json();
+
+  await toastNotification(page, 'Alerts created successfully.');
+
+  return alertDetails;
+};
+
+const findPageWithAlert = async (
+  page: Page,
+  alertDetails: AlertDetails
+): Promise<void> => {
+  await waitForAllLoadersToDisappear(page);
+
+  const container = page.getByTestId('alerts-list-container');
+  await expect(
+    container.locator('[data-testid^="alert-"]')
+  ).not.toHaveCount(0, { timeout: 10_000 });
+
+  const alertRow = page.getByTestId(
+    `alert-${getEntityDisplayName(alertDetails)}`
+  );
+  const nextButton = container.getByTestId('next');
+
+  if (await alertRow.isVisible()) {
+    return;
+  }
+
+  if (!(await nextButton.isVisible()) || !(await nextButton.isEnabled())) {
+    throw new Error(
+      `Alert "${alertDetails.name}" not found on any page of the alerts list.`
+    );
+  }
+
+  const getAlerts = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/events/subscriptions') &&
+      res.request().method() === 'GET'
+  );
+  await nextButton.click();
+  await getAlerts;
+  await findPageWithAlert(page, alertDetails);
+};
+
+export const navigateToAlertDetail = async (
+  page: Page,
+  alertDetails: AlertDetails
+): Promise<void> => {
+  await findPageWithAlert(page, alertDetails);
+
+  const displayName = getEntityDisplayName(alertDetails);
+  const alertRow = page.getByTestId(`alert-${displayName}`);
+
+  const detailResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/events/subscriptions/name/') &&
+      res.request().method() === 'GET'
+  );
+
+  await alertRow.getByTestId('alert-name').click();
+  await detailResponse;
+  await waitForAllLoadersToDisappear(page);
+};
+
+export const navigateToEditAlert = async (
+  page: Page,
+  alertDetails: AlertDetails
+): Promise<void> => {
+  await findPageWithAlert(page, alertDetails);
+  const displayName = getEntityDisplayName(alertDetails);
+  await page.getByTestId(`alert-edit-${displayName}`).click();
+};
+
+export const deleteAlertFromList = async (
+  page: Page,
+  alertDetails: AlertDetails
+): Promise<void> => {
+  await findPageWithAlert(page, alertDetails);
+
+  const displayName = getEntityDisplayName(alertDetails);
+
+  await page.getByTestId(`alert-delete-${displayName}`).click();
+
+  const deleteResponse = page.waitForResponse(
+    (response) => response.request().method() === 'DELETE'
+  );
+  await page.getByTestId('confirm-button').click();
+  expect((await deleteResponse).status()).toBe(200);
+  await toastNotification(page, `"${displayName}" deleted successfully!`);
 };
 
 // ─── Recent events ────────────────────────────────────────────────────────────

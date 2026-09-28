@@ -21,10 +21,7 @@
  */
 
 import { Page } from '@playwright/test';
-import {
-  ALERT_DESCRIPTION,
-  ALERT_UPDATED_DESCRIPTION,
-} from '../../../constant/alert';
+import { ALERT_UPDATED_DESCRIPTION } from '../../../constant/alert';
 import { AlertDetails } from '../../../constant/alert.interface';
 import { Domain } from '../../../support/domain/Domain';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -39,28 +36,24 @@ import {
   generateAlertName,
   waitForRecentEventsToFinishExecution,
 } from '../../../utils/alert';
-import {
-  fillDescriptionBox,
-  getApiContext,
-  getDescriptionBox,
-  redirectToHomePage,
-  toastNotification,
-} from '../../../utils/common';
-import {
-  getEntityDisplayName,
-  waitForAllLoadersToDisappear,
-} from '../../../utils/entity';
-import { addExternalDestination } from '../../../utils/observabilityAlert';
+import { getApiContext } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addEntityFQNFilterProfile,
   addEventTypeFilterProfile,
+  addExternalDestinationProfile,
   addInternalDestinationProfile,
   addMentionedUsersFilterProfile,
   addMultipleFiltersProfile,
   addOwnerFilterProfile,
   checkRecentEventDetailsProfile,
+  deleteAlertFromList,
+  inputAlertInformation,
+  navigateToAlertDetail,
+  navigateToAlertsList,
+  navigateToEditAlert,
+  saveNewAlertAndVerify,
 } from '../../../utils/profileNotificationAlert';
-import { enableAiAppMode } from '../../Utils/appMode';
 
 // ── Test entities (instantiated in beforeAll) ────────────────────────────────
 
@@ -121,113 +114,6 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-// ── Navigation helpers ────────────────────────────────────────────────────────
-
-const navigateToNotificationLanding = async (page: Page): Promise<void> => {
-  await enableAiAppMode(page);
-  await redirectToHomePage(page);
-
-  await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
-  await page.getByTestId('ask-ai-user-menu-trigger').click();
-  await page.getByTestId('ai-user-menu-profile').click();
-  await page.getByTestId('ai-profile-page').waitFor();
-  await page.getByTestId('profile-nav-notification').click();
-  await page.getByTestId('notification-landing').waitFor();
-};
-
-const navigateToAlertsList = async (page: Page): Promise<void> => {
-  await navigateToNotificationLanding(page);
-
-  const alertsResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/events/subscriptions') &&
-      res.url().includes('alertType=Notification') &&
-      res.request().method() === 'GET'
-  );
-  await page.getByTestId('notification-card-alerts').click();
-  await alertsResponse;
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('alerts-list-container')).toBeVisible();
-};
-
-const inputAlertInformation = async ({
-  page,
-  name,
-  sourceName,
-}: {
-  page: Page;
-  name: string;
-  sourceName: string;
-}) => {
-  const nameInput = page.getByRole('textbox', { name: /name/i });
-  await expect(nameInput).toBeVisible();
-  await nameInput.fill(name);
-
-  const descriptionTextArea = page.getByTestId('description');
-  await expect(descriptionTextArea).toBeVisible();
-  await descriptionTextArea.fill(ALERT_DESCRIPTION);
-
-  const sourceSelect = page.getByTestId('source-select');
-  await expect(sourceSelect).toBeVisible();
-  await sourceSelect.click();
-  await page
-    .getByRole('option', { name: new RegExp(sourceName, 'i') })
-    .click();
-};
-
-const saveNewAlertAndVerify = async (page: Page): Promise<AlertDetails> => {
-  const createResponse = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      response.url().includes('/api/v1/events/subscriptions') &&
-      !response.url().includes('testDestination')
-  );
-
-  await page.getByTestId('save-btn').click();
-  const response = await createResponse;
-  expect(response.status(), 'Create alert API should return 201').toBe(201);
-  const alertDetails = await response.json();
-
-  await toastNotification(page, 'Alerts created successfully.');
-
-  return alertDetails;
-};
-
-const navigateToAlertDetail = async (
-  page: Page,
-  alertDetails: AlertDetails
-): Promise<void> => {
-  const displayName = getEntityDisplayName(alertDetails);
-  const alertRow = page.getByTestId(`alert-${displayName}`);
-  await expect(alertRow).toBeVisible();
-
-  const detailResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/events/subscriptions/name/') &&
-      res.request().method() === 'GET'
-  );
-
-  await alertRow.getByTestId('alert-name').click();
-  await detailResponse;
-  await waitForAllLoadersToDisappear(page);
-};
-
-const deleteAlertFromList = async (
-  page: Page,
-  alertDetails: AlertDetails
-): Promise<void> => {
-  const displayName = getEntityDisplayName(alertDetails);
-
-  await page.getByTestId(`alert-delete-${displayName}`).click();
-
-  const deleteResponse = page.waitForResponse(
-    (response) => response.request().method() === 'DELETE'
-  );
-  await page.getByTestId('confirm-button').click();
-  expect((await deleteResponse).status()).toBe(200);
-  await toastNotification(page, `"${displayName}" deleted successfully!`);
-};
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test('Single Filter Alert', async ({ page }) => {
@@ -269,17 +155,19 @@ test('Single Filter Alert', async ({ page }) => {
 
   await test.step('Edit alert by adding multiple filters and destinations', async () => {
     await navigateToAlertsList(page);
-    const editDisplayName = getEntityDisplayName(data.alertDetails);
-    await page.getByTestId(`alert-edit-${editDisplayName}`).click();
+    await navigateToEditAlert(page, data.alertDetails);
 
     const nameInput = page.getByTestId('alert-name-input').getByRole('textbox');
     await expect(nameInput).toBeVisible();
 
-    await getDescriptionBox(page).clear();
-    await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
+    const descriptionTextArea = page
+      .getByTestId('description')
+      .getByRole('textbox');
+    await descriptionTextArea.clear();
+    await descriptionTextArea.fill(ALERT_UPDATED_DESCRIPTION);
 
     // Remove existing filter from creation before adding new ones
-    await page.click('[data-testid="remove-filter-0"]');
+    await page.click('[data-testid="remove-filters-0"]');
     await page.getByTestId('filter-0').waitFor({ state: 'detached' });
 
     await addMultipleFiltersProfile({ page, user1, user2, domain, dashboard });
@@ -354,35 +242,35 @@ test('Multiple Filters Alert', async ({ page }) => {
       type: 'Email',
     });
     await page.click('[data-testid="add-destination-button"]');
-    await addExternalDestination({
+    await addExternalDestinationProfile({
       page,
       destinationNumber: 1,
       category: 'Email',
       input: 'test@example.com',
     });
     await page.click('[data-testid="add-destination-button"]');
-    await addExternalDestination({
+    await addExternalDestinationProfile({
       page,
       destinationNumber: 2,
       category: 'G Chat',
       input: 'https://gchat.com',
     });
     await page.click('[data-testid="add-destination-button"]');
-    await addExternalDestination({
+    await addExternalDestinationProfile({
       page,
       destinationNumber: 3,
       category: 'Webhook',
       input: 'https://webhook.com',
     });
     await page.click('[data-testid="add-destination-button"]');
-    await addExternalDestination({
+    await addExternalDestinationProfile({
       page,
       destinationNumber: 4,
       category: 'Ms Teams',
       input: 'https://msteams.com',
     });
     await page.click('[data-testid="add-destination-button"]');
-    await addExternalDestination({
+    await addExternalDestinationProfile({
       page,
       destinationNumber: 5,
       category: 'Slack',
@@ -394,16 +282,18 @@ test('Multiple Filters Alert', async ({ page }) => {
 
   await test.step('Edit alert by removing filters and destinations', async () => {
     await navigateToAlertsList(page);
-    const editDisplayName = getEntityDisplayName(data.alertDetails);
-    await page.getByTestId(`alert-edit-${editDisplayName}`).click();
+    await navigateToEditAlert(page, data.alertDetails);
 
     const nameInput = page.getByTestId('alert-name-input').getByRole('textbox');
     await expect(nameInput).toBeVisible();
 
-    await getDescriptionBox(page).clear();
+    const descriptionTextArea = page
+      .getByTestId('description')
+      .getByRole('textbox');
+    await descriptionTextArea.clear();
 
     for (let i = 5; i >= 0; i--) {
-      await page.click(`[data-testid="remove-filter-${i}"]`);
+      await page.click(`[data-testid="remove-filters-${i}"]`);
       await page.getByTestId(`filter-${i}`).waitFor({ state: 'detached' });
     }
 
@@ -492,8 +382,7 @@ test('Conversation source alert', async ({ page }) => {
 
   await test.step('Edit alert by adding mentions filter', async () => {
     await navigateToAlertsList(page);
-    const editDisplayName = getEntityDisplayName(data.alertDetails);
-    await page.getByTestId(`alert-edit-${editDisplayName}`).click();
+    await navigateToEditAlert(page, data.alertDetails);
 
     const nameInput = page.getByTestId('alert-name-input').getByRole('textbox');
     await expect(nameInput).toBeVisible();
@@ -563,7 +452,7 @@ test('Alert with recent events check', async ({ page }) => {
     await addEventTypeFilterProfile({
       page,
       filterNumber: 1,
-      eventTypes: ['entitySoftDeleted', 'entityRestored'],
+      eventTypes: ['Entity Soft Deleted', 'Entity Restored'],
     });
 
     await page.click('[data-testid="add-destination-button"]');
@@ -623,7 +512,7 @@ test('Destination should work properly', async ({ page }) => {
 
   await expect(page.getByTestId('test-destination-button')).toBeDisabled();
 
-  await addExternalDestination({
+  await addExternalDestinationProfile({
     page,
     destinationNumber: 0,
     category: 'G Chat',
@@ -631,7 +520,7 @@ test('Destination should work properly', async ({ page }) => {
   });
 
   await page.click('[data-testid="add-destination-button"]');
-  await addExternalDestination({
+  await addExternalDestinationProfile({
     page,
     destinationNumber: 1,
     category: 'Slack',
