@@ -30,7 +30,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';

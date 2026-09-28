@@ -20,7 +20,7 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityNameUtils';

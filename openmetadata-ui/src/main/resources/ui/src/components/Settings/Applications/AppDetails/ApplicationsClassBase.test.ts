@@ -121,8 +121,9 @@ describe('ApplicationsClassBase', () => {
 
       expect(schema).toEqual(rdfIndexAppSchema);
       expect(schema.properties.entities.default).toEqual([]);
-      expect(schema.properties.partitionSize).toBeDefined();
-      expect(schema.properties.useDistributedIndexing).toBeDefined();
+      expect(schema.properties.producerThreads.maximum).toBe(10);
+      expect(schema.properties.partitionSize).toBeUndefined();
+      expect(schema.properties.useDistributedIndexing).toBeUndefined();
     });
   });
 

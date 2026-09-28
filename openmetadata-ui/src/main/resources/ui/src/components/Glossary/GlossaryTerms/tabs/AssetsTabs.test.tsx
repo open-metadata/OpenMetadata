@@ -14,13 +14,13 @@
 import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { searchQuery } from '../../../../rest/searchAPI';
 import * as SearchPureUtils from '../../../../utils/SearchPureUtils';
 import * as StringUtils from '../../../../utils/StringUtils';
 import * as TagsPureUtils from '../../../../utils/TagsPureUtils';
 import AssetsTabs from './AssetsTabs.component';
-import { AssetsOfEntity } from './AssetsTabs.interface';
 
 const buildOperationPermission = (
   overrides: Partial<Record<Operation, boolean>> = {}

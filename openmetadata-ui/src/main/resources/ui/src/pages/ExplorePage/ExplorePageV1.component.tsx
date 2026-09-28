@@ -30,7 +30,6 @@ import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider
 import {
   ExploreProps,
   ExploreQuickFilterField,
-  ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
@@ -54,6 +53,7 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
