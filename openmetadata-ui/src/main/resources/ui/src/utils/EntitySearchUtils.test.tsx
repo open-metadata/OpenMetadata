@@ -18,16 +18,20 @@ import {
   renderHighlightedText,
 } from './EntitySearchUtils';
 import {
+  entityWithMarkdownDescription,
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,
   highlightedEntityDisplayName,
+  highlightedMarkdownDescription,
   mockHighlightedResult,
   mockHighlights,
+  mockHighlightsWithMarkdown,
   mockSearchText,
   mockText,
 } from './mocks/EntityUtils.mock';
 
 jest.mock('./StringUtils', () => ({
+  ...jest.requireActual('./StringUtils'),
   bytesToSize: jest.fn(),
   getEncodedFqn: jest.fn(),
   stringToHTML: jest.fn().mockImplementation((value) => value),
@@ -48,6 +52,22 @@ describe('EntitySearchUtils unit tests', () => {
 
       expect(highlightedEntity.displayName).toBe(highlightedEntityDisplayName);
       expect(highlightedEntity.description).toBe(highlightedEntityDescription);
+    });
+
+    it('should preserve highlight spans when ES fragments contain markdown', () => {
+      const entity = {
+        ...entityWithMarkdownDescription,
+        description: 'bold text and code snippet',
+      };
+      const result = highlightEntityNameAndDescription(
+        entity,
+        mockHighlightsWithMarkdown
+      );
+
+      expect(result.description).toBe(highlightedMarkdownDescription);
+      expect(result.description).toContain(
+        '<span class="text-highlighter">code</span>'
+      );
     });
   });
 
