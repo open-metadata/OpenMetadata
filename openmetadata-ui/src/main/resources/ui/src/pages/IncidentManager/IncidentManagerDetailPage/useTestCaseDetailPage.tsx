@@ -22,11 +22,9 @@ import { ManageButtonItemLabel } from '../../../components/common/ManageButtonCo
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   ChangeDescription,
   EntityReference,

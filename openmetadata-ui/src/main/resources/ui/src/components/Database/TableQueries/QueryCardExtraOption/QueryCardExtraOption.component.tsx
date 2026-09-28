@@ -26,6 +26,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
+import { QueryVoteType } from '../../../../interface/entity/vote.interface';
 import { deleteQuery } from '../../../../rest/queryAPI';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import queryClassBase from '../../../../utils/QueryClassBase';
@@ -33,7 +34,6 @@ import { getQueryPath } from '../../../../utils/RouterUtils';
 import { pluralize } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
-import { QueryVoteType } from '../TableQueries.interface';
 import './query-card-extra-option.style.less';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
