@@ -248,7 +248,14 @@ class RollbackEntityImplTest {
   private Metric capturedPatchedMetric(EntityRepository<Metric> repository, Metric current) {
     ArgumentCaptor<JsonPatch> patchCaptor = ArgumentCaptor.forClass(JsonPatch.class);
     verify(repository)
-        .patch(isNull(), eq(current.getFullyQualifiedName()), eq(REVIEWER), patchCaptor.capture());
+        .patch(
+            isNull(),
+            eq(current.getFullyQualifiedName()),
+            eq(REVIEWER),
+            patchCaptor.capture(),
+            isNull(),
+            isNull(),
+            eq("governance-bot"));
     return applyPatch(current, patchCaptor.getValue());
   }
 

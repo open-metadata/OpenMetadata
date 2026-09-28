@@ -28,12 +28,15 @@ import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ChangeApplication;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.ChangeApplyService;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
@@ -262,5 +265,94 @@ class ChangeRequestApplyIT {
     assertEquals(
         ChangeRequestStatus.PENDING, ChangeRequestService.get(request.getId()).getStatus());
     assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
+  }
+
+  private void deployDraftOnRejectWorkflow(TestNamespace ns, Glossary glossary) {
+    String json =
+        """
+        {
+          "name": "Wf%s",
+          "displayName": "Draft on reject",
+          "description": "Rejecting sets Draft and a display name, then discards the request.",
+          "config": {"storeStageStatus": true},
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["glossary"],
+              "events": ["Updated"],
+              "exclude": [],
+              "include": ["description", "displayName"],
+              "filter": %s
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "Start"},
+            {"type": "userTask", "subType": "userApprovalTask", "name": "Approve",
+             "config": {"assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+                        "approvalThreshold": 1, "rejectionThreshold": 1, "stageId": "review",
+                        "stageDisplayName": "Review", "taskStatus": "Open",
+                        "assigneeStrategy": "reviewers-and-assignees",
+                        "transitionMetadata": [
+                          {"id": "approve", "label": "Approve", "targetStageId": "approved",
+                           "targetTaskStatus": "Approved", "resolutionType": "Approved",
+                           "formRef": "approve", "requiresComment": false},
+                          {"id": "reject", "label": "Reject", "targetStageId": "rejected",
+                           "targetTaskStatus": "Rejected", "resolutionType": "Rejected",
+                           "formRef": "reject", "requiresComment": true}]},
+             "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "SetDraft",
+             "config": {"fieldName": "entityStatus", "fieldValue": "Draft"},
+             "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+            {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "MarkRejected",
+             "config": {"fieldName": "displayName", "fieldValue": "rejected by review"},
+             "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "CommitChange",
+             "config": {"action": "commit"}, "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "DiscardChange",
+             "config": {"action": "discard"}, "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
+            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
+          ],
+          "edges": [
+            {"from": "Start", "to": "Approve"},
+            {"from": "Approve", "to": "CommitChange", "condition": "approve"},
+            {"from": "Approve", "to": "SetDraft", "condition": "reject"},
+            {"from": "SetDraft", "to": "MarkRejected"},
+            {"from": "MarkRejected", "to": "DiscardChange"},
+            {"from": "CommitChange", "to": "ApprovedEnd"},
+            {"from": "DiscardChange", "to": "RejectedEnd"}
+          ]
+        }
+        """
+            .formatted(
+                ns.shortPrefix("draftdiscard"), filterScopedTo(glossary.getFullyQualifiedName()));
+    ns.trackRoot(
+        Entity.WORKFLOW_DEFINITION,
+        SdkClients.adminClient()
+            .workflowDefinitions()
+            .create(JsonUtils.readValue(json, CreateWorkflowDefinition.class)));
+  }
+
+  @Test
+  void rejectSetsDraftAndDiscardsWhileWorkflowAutomationPublishes(TestNamespace ns) {
+    Glossary glossary =
+        gatedGlossaryOwnedBy(ns, "dn", SharedEntities.get().USER2.getEntityReference());
+    deployDraftOnRejectWorkflow(ns, glossary);
+    patchAs(SdkClients.user2Client(), glossary.getId(), replace("description", "never published"));
+    Task task = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+    ChangeRequest request = onlyPendingRequest(glossary.getId());
+
+    resolveAs(SdkClients.user1Client(), task, "reject", TaskResolutionType.Rejected, null);
+
+    awaitStatus(request.getId(), ChangeRequestStatus.REJECTED);
+    Glossary after = fetch(glossary.getId());
+    assertEquals(PUBLISHED, after.getDescription());
+    assertEquals(EntityStatus.DRAFT, after.getEntityStatus());
+    // The workflow's own write of a gated field publishes; it is automation, not a new proposal.
+    assertEquals("rejected by review", after.getDisplayName());
+    assertTrue(
+        requestsFor(glossary.getId()).stream()
+            .noneMatch(r -> r.getStatus() == ChangeRequestStatus.PENDING));
   }
 }

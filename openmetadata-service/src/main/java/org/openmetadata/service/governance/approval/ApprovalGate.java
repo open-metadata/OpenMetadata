@@ -14,6 +14,7 @@
 package org.openmetadata.service.governance.approval;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
@@ -169,12 +170,16 @@ public final class ApprovalGate {
     return value == null ? 0 : value;
   }
 
+  // Workflow automation writes as the acting user with governance-bot as impersonator, and a bot on
+  // its own behalf writes as itself; both publish as they would without approval workflows. Any
+  // other impersonation is a bot acting for a user and is gated as that user.
   private static boolean isExemptActor(String user, String impersonatedBy) {
-    User actor =
-        impersonatedBy == null
-            ? Entity.findByNameOrNull(Entity.USER, user, Include.NON_DELETED)
-            : null;
-    return actor != null && Boolean.TRUE.equals(actor.getIsBot());
+    boolean exempt = GOVERNANCE_BOT.equals(impersonatedBy);
+    if (!exempt && impersonatedBy == null) {
+      User actor = Entity.findByNameOrNull(Entity.USER, user, Include.NON_DELETED);
+      exempt = actor != null && Boolean.TRUE.equals(actor.getIsBot());
+    }
+    return exempt;
   }
 
   private static Optional<StagedChange> stageIfGated(
