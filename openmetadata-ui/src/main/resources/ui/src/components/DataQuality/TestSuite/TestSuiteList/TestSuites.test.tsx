@@ -274,6 +274,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
