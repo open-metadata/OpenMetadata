@@ -42,6 +42,7 @@ import { MlModelServiceType } from '../../../../../generated/entity/services/mlm
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
 import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
+import { getServiceCategoryLabel } from '../../../../../utils/ServicePureUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CATEGORY_CONFIGS } from '../../../../integration/ConnectionsPage/ConnectionsPage.constants';
@@ -63,9 +64,9 @@ const SelectServiceType = ({
   const categorySelectItems: SelectItemType[] = useMemo(
     () => [
       { id: ALL_SERVICES_CATEGORY, label: t('label.all-services') },
-      ...CATEGORY_CONFIGS.map(({ key, titleKey }) => ({
+      ...CATEGORY_CONFIGS.map(({ key }) => ({
         id: key,
-        label: t(titleKey),
+        label: getServiceCategoryLabel(key),
       })),
     ],
     [t]

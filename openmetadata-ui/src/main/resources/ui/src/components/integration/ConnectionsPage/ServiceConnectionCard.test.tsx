@@ -62,11 +62,15 @@ jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => (
   <span>TagsContainerV2</span>
 ));
 
+jest.mock('../../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: (category: string) =>
+    category === 'databaseServices' ? 'label.database-plural' : category,
+}));
+
 jest.mock('./ConnectionsPage.constants', () => ({
   CATEGORY_CONFIGS: [
     {
       key: 'databaseServices',
-      titleKey: 'label.database-plural',
     },
   ],
 }));

@@ -288,7 +288,8 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   );
 
   const categoryBreadcrumb = useMemo(
-    () => getServiceCategoryBreadcrumb(t, serviceCategory),
+    () => getServiceCategoryBreadcrumb(serviceCategory),
+    // `t` stays a dependency so the label is re-translated when the language changes.
     [t, serviceCategory]
   );
 

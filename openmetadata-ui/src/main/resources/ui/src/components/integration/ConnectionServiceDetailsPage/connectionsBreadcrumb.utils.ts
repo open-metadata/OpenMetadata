@@ -14,6 +14,7 @@ import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { ReactComponent as ConnectionsIcon } from '../../../assets/svg/ask-collate-nav-bar/connections-default.svg';
+import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import { CONNECTIONS_ROUTES } from '../connections.constants';
 import {
   CATEGORY_CONFIGS,
@@ -47,7 +48,6 @@ export const getConnectionsRootBreadcrumb = (
  * not tab (llm/mcp services), so the crumb is dropped rather than pointing at a tab that isn't there.
  */
 export const getServiceCategoryBreadcrumb = (
-  t: TFunction,
   serviceCategory?: string
 ): Omit<BreadcrumbItemType, 'id'> | null => {
   const config = CATEGORY_CONFIGS.find(
@@ -55,7 +55,7 @@ export const getServiceCategoryBreadcrumb = (
       category.key === (serviceCategory as ConnectionsServiceCategory)
   );
 
-  const label = config ? String(t(config.titleKey)) : '';
+  const label = config ? getServiceCategoryLabel(config.key) : '';
 
   return config
     ? {

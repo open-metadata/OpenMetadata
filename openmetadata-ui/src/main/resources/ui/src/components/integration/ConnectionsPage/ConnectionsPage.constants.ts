@@ -16,13 +16,11 @@ import {
   ServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE,
 } from '../../../constants/ServiceEmptyState.constant';
-import { SERVICE_CATEGORY_TITLE_KEYS } from '../../../constants/ServiceType.constant';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 
 export interface CategoryConfig {
   key: ServiceCategory;
-  titleKey: string;
   // Bespoke subtitle for the long-standing tabs. Tabs without one fall back to the
   // generic parameterized `connections-service-type-description` message.
   descriptionKey?: string;
@@ -31,55 +29,44 @@ export interface CategoryConfig {
 export const CATEGORY_CONFIGS = [
   {
     key: ServiceCategory.DATABASE_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.DATABASE_SERVICES],
     descriptionKey: 'message.connections-database-services-description',
   },
   {
     key: ServiceCategory.DASHBOARD_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.DASHBOARD_SERVICES],
     descriptionKey: 'message.connections-dashboard-services-description',
   },
   {
     key: ServiceCategory.MESSAGING_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.MESSAGING_SERVICES],
     descriptionKey: 'message.connections-messaging-services-description',
   },
   {
     key: ServiceCategory.PIPELINE_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.PIPELINE_SERVICES],
     descriptionKey: 'message.connections-pipeline-services-description',
   },
   {
     key: ServiceCategory.STORAGE_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.STORAGE_SERVICES],
     descriptionKey: 'message.connections-storage-services-description',
   },
   {
     key: ServiceCategory.API_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.API_SERVICES],
     descriptionKey: 'message.connections-api-services-description',
   },
   {
     key: ServiceCategory.ML_MODEL_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.ML_MODEL_SERVICES],
     descriptionKey: 'message.connections-ml-model-services-description',
   },
   {
     key: ServiceCategory.METADATA_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.METADATA_SERVICES],
     descriptionKey: 'message.connections-metadata-services-description',
   },
   {
     key: ServiceCategory.SEARCH_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.SEARCH_SERVICES],
   },
   {
     key: ServiceCategory.DRIVE_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.DRIVE_SERVICES],
   },
   {
     key: ServiceCategory.SECURITY_SERVICES,
-    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.SECURITY_SERVICES],
   },
 ] satisfies CategoryConfig[];
 

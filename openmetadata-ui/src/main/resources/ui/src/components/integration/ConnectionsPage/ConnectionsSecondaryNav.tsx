@@ -30,6 +30,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import {
   CATEGORY_CONFIGS,
   ConnectionsServiceCategory,
@@ -152,7 +153,7 @@ const ConnectionsSecondaryNav = ({
             isActive={category === config.key}
             isLoading={category === config.key && isCountLoading}
             key={config.key}
-            label={t(config.titleKey)}
+            label={getServiceCategoryLabel(config.key)}
             testId={`connections-nav-${config.key}`}
             onClick={() => onCategoryChange(config.key)}
           />
