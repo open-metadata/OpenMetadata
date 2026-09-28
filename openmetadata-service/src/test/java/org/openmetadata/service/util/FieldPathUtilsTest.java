@@ -637,6 +637,64 @@ class FieldPathUtilsTest {
   }
 
   @Test
+  void updateFieldDescription_columnsAliasOnApiEndpoint_refusesAnAmbiguousName() {
+    // A REST endpoint normally echoes its request shape in its response, so the two schemas share
+    // field names. The "columns" alias concatenates both, and resolving by position wrote the
+    // caller's text onto whichever came first while reporting success — an accepted suggestion for
+    // the response field silently overwrote the request field.
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withId(UUID.randomUUID())
+            .withName("registerCustomer")
+            .withRequestSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))))
+            .withResponseSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertFalse(
+        FieldPathUtils.updateFieldDescription(
+            endpoint, repository, "admin", "columns::category::description", "Pet category"));
+
+    // Neither is written, and nothing is persisted: guessing is worse than declining.
+    assertNull(endpoint.getRequestSchema().getSchemaFields().get(0).getDescription());
+    assertNull(endpoint.getResponseSchema().getSchemaFields().get(0).getDescription());
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void updateFieldDescription_apiEndpointOwnContainer_disambiguatesASharedName() {
+    // The counterweight: the caller that means one of them says which, and that path resolves to
+    // a single schema's list, so the shared name is no longer ambiguous.
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withId(UUID.randomUUID())
+            .withName("registerCustomer")
+            .withRequestSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))))
+            .withResponseSchema(
+                new APISchema()
+                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    assertTrue(
+        FieldPathUtils.updateFieldDescription(
+            endpoint,
+            repository,
+            "admin",
+            "responseSchema::category::description",
+            "Category returned on the created account"));
+
+    assertEquals(
+        "Category returned on the created account",
+        endpoint.getResponseSchema().getSchemaFields().get(0).getDescription());
+    assertNull(endpoint.getRequestSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
   void updateFieldDescription_columnsAliasOnApiEndpoint_writesEitherSchemaField() {
     // The two-container-path type. A response-schema field must be reachable through the same
     // "columns" alias as a request-schema one.

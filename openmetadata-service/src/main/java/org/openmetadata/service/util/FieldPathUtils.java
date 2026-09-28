@@ -282,6 +282,12 @@ public class FieldPathUtils {
   private static boolean setDescriptionInList(
       List<?> fieldList, String fieldName, String description) {
 
+    // Before any match: an ambiguous name must not be resolved by position, and must not fall
+    // through to the nested/recursive branches below either, which would write to a grandchild.
+    if (isAmbiguous(fieldList, fieldName)) {
+      return false;
+    }
+
     // Try exact match first
     Optional<?> field = findFieldByName(fieldList, fieldName);
     if (field.isPresent()) {
@@ -319,6 +325,10 @@ public class FieldPathUtils {
 
   /** Find field by name in list and get its description. */
   private static Optional<String> getDescriptionFromList(List<?> fieldList, String fieldName) {
+
+    if (isAmbiguous(fieldList, fieldName)) {
+      return Optional.empty();
+    }
 
     Optional<?> field = findFieldByName(fieldList, fieldName);
     if (field.isPresent()) {
@@ -413,6 +423,35 @@ public class FieldPathUtils {
       }
     }
     return Optional.empty();
+  }
+
+  /**
+   * Whether more than one child in this list answers to {@code name}.
+   *
+   * <p>The {@code columns} alias serves an apiEndpoint by concatenating its request and response
+   * schemas, and a REST endpoint normally echoes its request shape in its response, so
+   * {@code columns.category.description} names two different fields. Resolving that by position
+   * wrote the caller's text onto whichever came first and reported success. A caller that means
+   * one of them addresses it through that field's own container
+   * ({@code requestSchema.category.description}), which resolves to a single list and is
+   * unambiguous.
+   */
+  private static boolean isAmbiguous(List<?> fieldList, String name) {
+    int matches = 0;
+    for (Object item : fieldList) {
+      if (name.equals(ChildFieldResolver.invokeGetter(item, "getName"))) {
+        matches++;
+      }
+    }
+    if (matches > 1) {
+      LOG.warn(
+          "[FieldPathUtils] Field '{}' matches {} children of this entity; refusing to guess. "
+              + "Address it through its own container, e.g. requestSchema.{}.description",
+          name,
+          matches,
+          name);
+    }
+    return matches > 1;
   }
 
   /** Set description on a field object. */
