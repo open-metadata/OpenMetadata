@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
+import java.sql.SQLException;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -12,10 +13,15 @@ import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 @Slf4j
 public class OMSqlLogger implements SqlLogger {
+  /** Deadlocks and lock wait timeouts, tagged with the DAO method whose statement lost. */
+  public static final String DEADLOCK_METRIC = "db.deadlocks";
+
+  public static final String STATEMENT_TAG = "statement";
   private static final String DB_TIMER_CONTEXT_KEY = "db.timer.context";
   private static final Pattern SQL_TYPE_PATTERN =
       Pattern.compile(
@@ -32,9 +38,17 @@ public class OMSqlLogger implements SqlLogger {
       new ConcurrentHashMap<>();
   private static final ConcurrentHashMap<String, DistributionSummary> SLOW_QUERY_SUMMARIES =
       new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Counter> DEADLOCK_COUNTERS =
+      new ConcurrentHashMap<>();
 
   private static final Timer LEGACY_JDBI_TIMER = Metrics.timer("jdbi_requests_seconds");
   private static final Timer LEGACY_LATENCY_TIMER = Metrics.timer("jdbi_latency_requests_seconds");
+
+  private final AbortedTransactionGuard abortedTransactionGuard;
+
+  public OMSqlLogger(final AbortedTransactionGuard abortedTransactionGuard) {
+    this.abortedTransactionGuard = abortedTransactionGuard;
+  }
 
   public static void setSlowQueryThresholdMs(long thresholdMs) {
     slowQueryThresholdMs = thresholdMs;
@@ -121,6 +135,21 @@ public class OMSqlLogger implements SqlLogger {
           context.getBinding(),
           elapsedTimeMillis);
     }
+  }
+
+  @Override
+  public void logException(StatementContext context, SQLException exception) {
+    if (DeadlockRetry.isDeadlock(exception)) {
+      recordDeadlock(extractDaoMethod(context.getRenderedSql()));
+    }
+    abortedTransactionGuard.onStatementFailure(context, exception);
+  }
+
+  private void recordDeadlock(String statement) {
+    DEADLOCK_COUNTERS
+        .computeIfAbsent(statement, name -> Metrics.counter(DEADLOCK_METRIC, STATEMENT_TAG, name))
+        .increment();
+    LOG.warn("Deadlock or lock wait timeout on {}; the database rolled it back", statement);
   }
 
   private String extractDaoMethod(String sql) {
