@@ -22,6 +22,12 @@ export interface CustomPropertyLayoutItem {
   width: CustomPropertyLayoutWidth;
 }
 
+/** Where a dragged layout tile lands: before or after the tile at `index`. */
+export interface LayoutDropTarget {
+  index: number;
+  side: 'before' | 'after';
+}
+
 /** A property resolved against a layout, ready to render. */
 export interface LaidOutCustomProperty {
   property: CustomProperty;

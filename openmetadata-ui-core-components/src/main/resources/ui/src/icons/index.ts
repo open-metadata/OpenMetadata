@@ -213,6 +213,7 @@ export {
   Clock,
   Code01,
   Database01,
+  DotsGrid,
   Edit05,
   FilterLines,
   Hash02,

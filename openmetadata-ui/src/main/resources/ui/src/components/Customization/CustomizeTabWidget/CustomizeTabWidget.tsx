@@ -43,6 +43,7 @@ import {
   getDefaultWidgetForTab,
 } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import {
   getAddWidgetHandler,
   mergeGridLayout,
@@ -93,6 +94,10 @@ const AddDetailsPageWidgetModal = withSuspenseFallback(
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }
 >;
+
+// Side-panel widgets stay in their column and only reorder vertically.
+const COLUMN_LOCKED_DRAG_HANDLERS =
+  getColumnLockedDragHandlers(TAB_GRID_MAX_COLUMNS);
 
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 
@@ -565,7 +570,8 @@ export const CustomizeTabWidget = () => {
               margin={[16, 16]}
               preventCollision={false}
               rowHeight={100}
-              onLayoutChange={handleLayoutUpdate}>
+              onLayoutChange={handleLayoutUpdate}
+              {...COLUMN_LOCKED_DRAG_HANDLERS}>
               {widgets}
             </ReactGridLayout>
           )}

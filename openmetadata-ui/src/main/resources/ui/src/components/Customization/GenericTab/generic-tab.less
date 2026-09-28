@@ -21,6 +21,20 @@
     transition: all var(--om-duration-200) ease;
     transition-property: left, top;
 
+    // The dragged widget lifts above the grid; the placeholder marks its slot.
+    &.react-draggable-dragging {
+      z-index: var(--om-z-docked);
+      box-shadow: var(--om-shadow-lg);
+      cursor: grabbing;
+    }
+
+    &.react-grid-placeholder {
+      background: var(--om-color-bg-brand);
+      border: 2px dashed var(--om-color-border-brand);
+      border-radius: var(--om-radius-xl);
+      opacity: 1;
+    }
+
     .ant-card.ant-card-bordered {
       &.empty-widget-placeholder {
         .ant-card-body {

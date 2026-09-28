@@ -23,6 +23,7 @@ import {
   CustomPropertyLayoutItem,
   CustomPropertyLayoutWidth,
   LaidOutCustomProperty,
+  LayoutDropTarget,
 } from './CustomPropertiesWidget.types';
 
 const LAYOUT_WIDTHS: CustomPropertyLayoutWidth[] = ['half', 'full'];
@@ -135,3 +136,29 @@ export const getTabDefaultWidth = (
   property: CustomProperty
 ): CustomPropertyLayoutWidth =>
   getPropertyTypeMeta(property.propertyType.name).isWide ? 'full' : 'half';
+
+/**
+ * Index the dragged item ends up at when dropped on `target`, or `undefined`
+ * when the drop leaves it where it is.
+ */
+export const getLayoutDropIndex = (
+  fromIndex: number,
+  target: LayoutDropTarget
+): number | undefined => {
+  const insertAt = target.side === 'before' ? target.index : target.index + 1;
+  const toIndex = fromIndex < insertAt ? insertAt - 1 : insertAt;
+
+  return toIndex === fromIndex ? undefined : toIndex;
+};
+
+export const moveLayoutItem = <T>(
+  items: T[],
+  fromIndex: number,
+  toIndex: number
+): T[] => {
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+
+  return next;
+};

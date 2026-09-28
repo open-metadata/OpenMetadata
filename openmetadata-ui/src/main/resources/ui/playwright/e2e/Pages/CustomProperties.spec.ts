@@ -25,7 +25,7 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Response } from '@playwright/test';
 import {
   CUSTOM_PROPERTIES_ENTITIES,
   NAME_SUFFIX,
@@ -66,7 +66,7 @@ import {
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
-import { typeInCodeEditor } from '../../utils/codeEditor';
+import { CODE_EDITOR_SCROLLER } from '../../utils/codeEditor';
 import {
   createNewPage,
   getApiContext,
@@ -81,6 +81,9 @@ import {
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
+  fillCustomPropertyEditModal,
+  openCustomPropertiesTab,
+  openCustomPropertyEditModal,
   setValueForProperty,
   updateCustomPropertyInRightPanel,
   validateValueForProperty,
@@ -558,27 +561,19 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const editButton = container.getByTestId('edit-icon');
-          await editButton.scrollIntoViewIfNeeded();
-          await expect(editButton).toBeVisible();
-          await expect(editButton).toBeEnabled();
-          await editButton.click();
+          const editModal = await openCustomPropertyEditModal(page, container);
 
           const value =
             "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
-          await typeInCodeEditor(
-            page,
-            page.getByTestId('custom-property-edit-modal'),
-            value + '\n' + value
-          );
-
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await page
-            .getByTestId('custom-property-edit-modal')
-            .getByTestId('inline-save-btn')
-            .click();
+          await fillCustomPropertyEditModal({
+            page,
+            editModal,
+            propertyType: 'sqlQuery',
+            value: value + '\n' + value,
+          });
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
@@ -587,9 +582,12 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const sqlValue = container.getByTestId('sql-query-value');
-          await expect(sqlValue).toBeVisible();
-          const isScrollable = await sqlValue.evaluate(
+          // CodeMirror scrolls inside its own scroller, not the value wrapper.
+          const codeMirrorScroll = container
+            .getByTestId('sql-query-value')
+            .locator(CODE_EDITOR_SCROLLER);
+          await expect(codeMirrorScroll).toBeVisible();
+          const isScrollable = await codeMirrorScroll.evaluate(
             (el) => el.scrollHeight > el.clientHeight
           );
           expect(isScrollable).toBeTruthy();
@@ -623,18 +621,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const editButton = container.getByTestId('edit-icon');
-          await editButton.scrollIntoViewIfNeeded();
-          await expect(editButton).toBeVisible();
-          await expect(editButton).toBeEnabled();
-          await editButton.click();
+          const editModal = await openCustomPropertyEditModal(page, container);
 
           for (const user of users) {
             const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
               user.getUserName()
             )}*`;
-            const referenceInput = page
-              .getByTestId('custom-property-edit-modal')
+            const referenceInput = editModal
               .getByTestId('asset-select-list')
               .getByRole('combobox');
             const searchResponse = page.waitForResponse(searchApi);
@@ -649,10 +642,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await page
-            .getByTestId('custom-property-edit-modal')
-            .getByTestId('inline-save-btn')
-            .click();
+          await editModal.getByTestId('inline-save-btn').click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
@@ -690,7 +680,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
       });
 
-      test('User visible in right panel when added as entityReferenceList custom property', async ({
+      test('User added as entityReferenceList custom property links to the user', async ({
         page,
       }) => {
         test.slow();
@@ -725,17 +715,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await mainEntity.visitEntityPage(page);
+        // The side widget lists only its first properties as plain text, so
+        // the link is checked on the property's card in the tab.
+        await page.getByTestId('custom_properties').click();
 
-        const userElement = page.getByTestId(userName);
-        const isUserVisible = await userElement.isVisible();
-        if (!isUserVisible) {
-          await page.getByTestId('custom_properties').click();
-        }
-
-        const rightPanelSection = page.getByTestId(propertyName);
-        await expect(rightPanelSection).toBeVisible();
-
-        const userLink = page.getByTestId(userName).getByRole('link');
+        const userLink = page
+          .getByTestId(`custom-property-${propertyName}-card`)
+          .getByTestId(userName);
         await expect(userLink).toContainText(userName);
 
         const userDetailsResponse = page.waitForResponse(
@@ -912,59 +898,52 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           state: 'visible',
         });
 
-        const getCustomPropertiesResponse = page.waitForResponse(
-          'api/v1/metadata/types/name/table?fields=customProperties*'
-        );
-        await page.getByTestId('custom_properties').click();
-        await getCustomPropertiesResponse;
+        await openCustomPropertiesTab(page);
 
         const propertyCard = page.getByTestId(
           `custom-property-${propertyName}-card`
         );
-        await propertyCard.getByTestId('edit-icon').click();
+        const isTablePatch = (resp: Response) =>
+          resp.url().includes('/api/v1/tables/') &&
+          resp.request().method() === 'PATCH';
 
-        const enumInput = page
-          .getByTestId('custom-property-edit-modal')
-          .getByTestId('enum-select')
-          .getByRole('combobox');
-        await expect(enumInput).toBeVisible();
-        await enumInput.fill('medium');
-        await page.getByRole('option', { name: 'medium', exact: true }).click();
-
-        const saveButton = page
-          .getByTestId('custom-property-edit-modal')
-          .getByTestId('inline-save-btn');
-        const patchValue1 = page.waitForResponse(
-          (resp) =>
-            resp.url().includes('/api/v1/tables/') &&
-            resp.request().method() === 'PATCH'
+        const setValueModal = await openCustomPropertyEditModal(
+          page,
+          propertyCard
         );
-        await saveButton.click();
+        const patchValue1 = page.waitForResponse(isTablePatch);
+        await fillCustomPropertyEditModal({
+          page,
+          editModal: setValueModal,
+          propertyType: 'enum',
+          value: 'medium',
+        });
         await patchValue1;
 
         await expect(propertyCard.getByTestId('enum-value')).toContainText(
           'medium'
         );
 
-        await propertyCard.locator('[data-testid="edit-icon"]').click();
-        // Backspace in the empty combobox removes the last selected tag.
-        await enumInput.click();
-        await enumInput.press('Backspace');
-        await expect(
-          page
-            .getByTestId('custom-property-edit-modal')
-            .getByTestId('enum-select')
-        ).not.toContainText('medium');
-
-        const patchValue2 = page.waitForResponse(
-          (resp) =>
-            resp.url().includes('/api/v1/tables/') &&
-            resp.request().method() === 'PATCH'
+        const removeValueModal = await openCustomPropertyEditModal(
+          page,
+          propertyCard
         );
-        await saveButton.click();
+        const enumSelect = removeValueModal.getByTestId('enum-select');
+        await enumSelect
+          .getByTestId('autocomplete-selected-item')
+          .filter({ hasText: 'medium' })
+          .getByRole('button')
+          .click();
+        await expect(enumSelect).not.toContainText('medium');
+
+        const patchValue2 = page.waitForResponse(isTablePatch);
+        await removeValueModal.getByTestId('inline-save-btn').click();
         await patchValue2;
 
-        await expect(propertyCard.getByTestId('no-data')).toBeVisible();
+        // Other tests in this describe may leave values of their own set.
+        await expect(
+          propertyCard.getByTestId('property-value')
+        ).not.toContainText('medium');
       });
 
       test('Duration: advanced search equalTo and Contains operators', async ({
@@ -979,11 +958,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await test.step('Assign Custom Property Value', async () => {
           await mainEntity.visitEntityPage(page);
 
-          const customPropertyResponse = page.waitForResponse(
-            '/api/v1/metadata/types/name/table?fields=customProperties'
-          );
-          await page.getByTestId('custom_properties').click();
-          await customPropertyResponse;
+          await openCustomPropertiesTab(page);
 
           await page.locator('.ant-skeleton-active').waitFor({
             state: 'detached',
@@ -1091,11 +1066,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await mainEntity.visitEntityPage(page);
 
-            const customPropertyResponse = page.waitForResponse(
-              '/api/v1/metadata/types/name/table?fields=customProperties'
-            );
-            await page.getByTestId('custom_properties').click();
-            await customPropertyResponse;
+            await openCustomPropertiesTab(page);
 
             await page.locator('.ant-skeleton-active').waitFor({
               state: 'detached',
@@ -3372,11 +3343,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await mainEntity.visitEntityPage(page);
 
-          const customPropertyResponse = page.waitForResponse(
-            '/api/v1/metadata/types/name/dashboard?fields=customProperties'
-          );
-          await page.getByTestId('custom_properties').click();
-          await customPropertyResponse;
+          await openCustomPropertiesTab(page);
 
           await page
             .locator('.ant-skeleton-active')
@@ -3532,11 +3499,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await mainEntity.visitEntityPage(page);
 
-          const customPropertyResponse = page.waitForResponse(
-            '/api/v1/metadata/types/name/pipeline?fields=customProperties'
-          );
-          await page.getByTestId('custom_properties').click();
-          await customPropertyResponse;
+          await openCustomPropertiesTab(page);
 
           await page
             .locator('.ant-skeleton-active')
