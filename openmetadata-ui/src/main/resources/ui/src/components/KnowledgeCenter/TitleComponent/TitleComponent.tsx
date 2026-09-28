@@ -21,7 +21,15 @@ import {
 } from 'react';
 import useAutoSizeTextArea from '../../../hooks/useAutosizeTextArea';
 import i18n from '../../../utils/i18next/LocalUtil';
-import './title-component.less';
+
+// Placeholder is deliberately faint ("Untitled" hint): #f5f5f5 in light, a
+// translucent white in dark.
+const TITLE_INPUT_CLASS = [
+  'tw:w-full tw:resize-none tw:appearance-none tw:overflow-hidden tw:border-0',
+  'tw:bg-transparent tw:text-[32px] tw:leading-snug tw:font-bold',
+  'tw:outline-2 tw:outline-offset-2 tw:outline-transparent',
+  'tw:placeholder:text-(--om-color-bg-secondary-hover)',
+].join(' ');
 
 interface Props {
   value: string;
@@ -90,7 +98,7 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
     return (
       <textarea
         aria-label={i18n.t('label.title')}
-        className="knowledge-page-title-input"
+        className={TITLE_INPUT_CLASS}
         data-testid="entity-header-display-name"
         id="title-input"
         placeholder={placeholder || i18n.t('label.untitled')}

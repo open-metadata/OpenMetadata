@@ -1396,6 +1396,22 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "apiServiceNames": {
+                      "title": "API Service Names List",
+                      "description": "List of API Service Names for creation of lineage",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "searchServiceNames": {
+                      "title": "Search Service Names List",
+                      "description": "List of Search Service Names for creation of lineage",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   }
                 },
@@ -8602,6 +8618,10 @@
                         "sampleDataStorageConfig": {
                           "title": "Storage Config for Sample Data",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
+                        },
+                        "supportsQueryComment": {
+                          "title": "Supports Query Comment",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         }
                       },
                       "additionalProperties": false,
@@ -13789,6 +13809,12 @@
                           "title": "Database Schema",
                           "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                           "type": "string"
+                        },
+                        "includeMetricViews": {
+                          "title": "Include Metric Views",
+                          "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                          "type": "boolean",
+                          "default": true
                         },
                         "connectionTimeout": {
                           "title": "Connection Timeout",

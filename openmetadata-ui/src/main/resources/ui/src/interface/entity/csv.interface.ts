@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
 
-.knowledge-page-title-input {
-  width: 100%;
-  resize: none;
-  appearance: none;
-  overflow: hidden;
-  background-color: transparent;
-  font-weight: var(--om-font-weight-bold);
-  outline: transparent solid 2px;
-  outline-offset: 2px;
-  line-height: 1.375;
-  border: none;
-  font-size: var(--om-font-size-32);
-  &::placeholder {
-    color: var(--om-legacy-color-f3f3f3);
-  }
-}
+export type CSVExportResponse = {
+  jobId: string;
+  message: string;
+};
+
+export type CSVImportAsyncResponse = {
+  jobId: string;
+  message: string;
+};

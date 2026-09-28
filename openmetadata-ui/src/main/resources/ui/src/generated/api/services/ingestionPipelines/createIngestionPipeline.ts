@@ -2816,6 +2816,10 @@ export interface LineageInformation {
      */
     dbServicePrefixes?: string[];
     /**
+     * List of API Service Names for creation of lineage
+     */
+    apiServiceNames?: string[];
+    /**
      * List of Database Service Names for creation of lineage
      */
     dbServiceNames?: string[];
@@ -2823,6 +2827,10 @@ export interface LineageInformation {
      * List of Messaging Service Names for creation of lineage
      */
     messagingServiceNames?: string[];
+    /**
+     * List of Search Service Names for creation of lineage
+     */
+    searchServiceNames?: string[];
     /**
      * List of Storage Service Names for creation of lineage
      */
@@ -4985,6 +4993,11 @@ export interface Connection {
      * Hostname of the Couchbase service.
      */
     hostport?: string;
+    /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
     /**
      * Enable dataflow for ingestion
      */

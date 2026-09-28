@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { EntityLineageResponse } from '../../../components/Lineage/Lineage.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestCase } from '../../../generated/tests/testCase';
+import { EntityLineageResponse } from '../../../interface/lineage.interface';
 
 export interface UseTestCaseStoreInterface {
   testCase: TestCase | undefined;

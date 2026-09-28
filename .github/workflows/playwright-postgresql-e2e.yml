@@ -181,15 +181,12 @@ jobs:
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
-          # Restrict the glob to the current workflow attempt so a re-run
-          # cannot pull in a prior attempt's stale ci-status.json (which
-          # would otherwise outrank a green retry copy in the renderer's
-          # dedup and permanently red the required check). See run
-          # 35650435023: 4 shards' attempt-1 `-retry` uploads carried
-          # `downloadDistribution: failure` from an artifact-service 403;
-          # attempt-2 re-ran them green, but the summary kept counting
-          # attempt-1's failures because they matched the pattern too.
-          pattern: playwright-results-json-*-a${{ github.run_attempt }}*
+          # Every attempt: a "Re-run failed jobs" attempt only re-uploads the
+          # shards it re-ran, so the shards that passed earlier exist only
+          # under their earlier `-a<attempt>` suffix. The next step drops
+          # superseded attempts so a stale ci-status.json cannot outrank a
+          # green re-run (runs 35650435023, 36268674020).
+          pattern: playwright-results-json-*
           path: results
           # Pin the per-artifact subdirectory layout the renderer expects
           # (results/playwright-results-json-<shardId>/results.json). When
@@ -202,6 +199,11 @@ jobs:
           # the layout consistent across single-shard and multi-shard runs.
           # See run 30088248354 for the failure this addresses.
           merge-multiple: false
+
+      - name: Keep only the newest attempt per shard
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        run: python3 .github/scripts/keep_latest_playwright_attempt.py results
 
       # Diagnostic: log the actual on-disk layout the renderer sees. The
       # explicit merge-multiple pin above matches the documented default,

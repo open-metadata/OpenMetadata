@@ -15,10 +15,7 @@ import type {
   IAuthContext,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import type { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import type {
-  EntityUnion,
-  ExploreSearchIndex,
-} from '../components/Explore/ExplorePage.interface';
+import type { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import type { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import type { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import type { LineageSettings } from '../generated/configuration/lineageSettings';
@@ -28,6 +25,7 @@ import type { SearchSettings } from '../generated/configuration/searchSettings';
 import type { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import type { User } from '../generated/entity/teams/user';
 import type { EntityReference } from '../generated/entity/type';
+import type { ExploreSearchIndex } from './discovery/explore.interface';
 
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
