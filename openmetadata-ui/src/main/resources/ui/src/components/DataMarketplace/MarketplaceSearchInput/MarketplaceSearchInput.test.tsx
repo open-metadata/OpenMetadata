@@ -12,9 +12,17 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
 import MarketplaceSearchInput from './MarketplaceSearchInput.component';
+
+interface ResultsProps {
+  onDataProductClick: (dataProduct: DataProduct) => void;
+  onDomainClick: (domain: Domain) => void;
+}
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -44,19 +52,24 @@ jest.mock('../../../hooks/useMarketplaceStore', () => ({
   }),
 }));
 
-const dataProduct = { id: 'dp1', name: 'Customer 360', fullyQualifiedName: 'dp.c360' };
-const domain = { id: 'd1', name: 'Finance', fullyQualifiedName: 'Finance' };
+const dataProduct = {
+  id: 'dp1',
+  name: 'Customer 360',
+  fullyQualifiedName: 'dp.c360',
+} as DataProduct;
+const domain = {
+  id: 'd1',
+  name: 'Finance',
+  fullyQualifiedName: 'Finance',
+} as Domain;
 
-jest.mock(
-  '../MarketplaceSearchResults/useMarketplaceEntitySearch',
-  () => ({
-    useMarketplaceEntitySearch: () => ({
-      dataProducts: [dataProduct],
-      domains: [domain],
-      isSearching: false,
-    }),
-  })
-);
+jest.mock('../MarketplaceSearchResults/useMarketplaceEntitySearch', () => ({
+  useMarketplaceEntitySearch: () => ({
+    dataProducts: [dataProduct],
+    domains: [domain],
+    isSearching: false,
+  }),
+}));
 
 // Stand-in for the results list: exposes one button per entity so a click can
 // be routed through the real handlers.
@@ -64,7 +77,7 @@ jest.mock(
   '../MarketplaceSearchResults/MarketplaceSearchResults.component',
   () => ({
     __esModule: true,
-    default: ({ onDataProductClick, onDomainClick }: any) => (
+    default: ({ onDataProductClick, onDomainClick }: ResultsProps) => (
       <div>
         <button
           data-testid="pick-data-product"
@@ -80,13 +93,18 @@ jest.mock(
 );
 
 jest.mock('../../discovery/explore/ExploreHeader/ExploreSearchInput', () => ({
-  ExploreSearchInput: ({ suggestions }: any) => <div>{suggestions}</div>,
+  ExploreSearchInput: ({ suggestions }: { suggestions: ReactNode }) => (
+    <div>{suggestions}</div>
+  ),
 }));
 
-const renderInput = (props: Record<string, unknown>) =>
+const renderInput = (props: {
+  searchCriteria: SearchIndex;
+  onSearchChange?: (value: string) => void;
+}) =>
   render(
     <MemoryRouter>
-      <MarketplaceSearchInput showEntityResults {...(props as any)} />
+      <MarketplaceSearchInput showEntityResults {...props} />
     </MemoryRouter>
   );
 
