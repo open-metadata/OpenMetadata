@@ -33,7 +33,7 @@ const MarketplaceItemCard = ({
   return (
     <Card
       isClickable
-      className="tw:flex tw:items-center tw:gap-3 tw:p-3 tw:flex-1 tw:min-w-[235px] tw:max-w-[calc((100%-24px)/3)] tw:shadow-xs"
+      className="tw:flex tw:items-center tw:gap-3 tw:p-3 tw:flex-1 tw:min-w-[235px] tw:max-w-[calc((100%-24px)/3)] tw:shadow-xs tw:dark:bg-secondary"
       data-testid={dataTestId}
       role="button"
       tabIndex={0}

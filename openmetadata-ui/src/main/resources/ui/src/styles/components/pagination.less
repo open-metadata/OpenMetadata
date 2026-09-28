@@ -68,11 +68,6 @@
     color: var(--om-legacy-color-0-0-0-0-25);
   }
 
-  // The legacy 25%-black disabled colour vanishes on dark surfaces.
-  .dark-mode & .ant-pagination-disabled .ant-btn-text[disabled],
-  .dark-mode & .ant-btn:disabled {
-    color: var(--om-color-text-disabled);
-  }
   .pagination-button {
     color: @grey-500;
     font-weight: @font-semibold;
@@ -87,4 +82,11 @@
     font-weight: @font-medium;
     font-size: var(--om-font-size-sm);
   }
+}
+
+// TODO: drop once PaginationComponent's itemRender moves to core Button (NextPrevious
+// already has). rc-pagination clones the antd prev/next Button as disabled and the
+// 25%-black rule above outranks the global `.dark-mode .ant-btn[disabled]` retint.
+.dark-mode .ant-pagination .ant-pagination-disabled .ant-btn-text[disabled] {
+  color: var(--om-color-text-disabled);
 }

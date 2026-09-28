@@ -29,10 +29,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   Task,
