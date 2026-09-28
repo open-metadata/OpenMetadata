@@ -76,8 +76,8 @@ function NotificationSourceSelect({
               placeholder={t('label.select-field', {
                 field: t('label.data-asset-plural'),
               })}
-              selectedKey={value[0] ?? null}
-              onSelectionChange={(key) =>
+              value={value[0] ?? null}
+              onChange={(key) =>
                 !isViewMode && key && handleSourceChange(String(key))
               }>
               {(item) => (

@@ -74,6 +74,7 @@ const SOURCE_NAME_5 = 'table';
 // only restores cookies/localStorage, not IndexedDB, so we need a real login.
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- getApiContext reads OIDC token from IndexedDB; storageState does not restore it
     const page = await browser.newPage();
     await admin.login(page);
     await use(page);

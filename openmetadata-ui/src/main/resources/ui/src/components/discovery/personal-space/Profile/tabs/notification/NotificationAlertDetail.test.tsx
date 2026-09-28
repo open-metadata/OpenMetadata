@@ -12,7 +12,26 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { compare } from 'fast-json-patch';
+import { EntityReference } from '../../../../../../generated/entity/data/table';
+import {
+  getAlertsFromName,
+  updateNotificationAlert,
+} from '../../../../../../rest/alertsAPI';
+import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import NotificationAlertDetail from './NotificationAlertDetail';
+
+const EXISTING_OWNER: EntityReference = {
+  id: 'u1',
+  type: 'user',
+  name: 'existing',
+};
+
+const NEW_OWNER: EntityReference = {
+  id: 'u2',
+  type: 'user',
+  name: 'added',
+};
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -42,7 +61,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <span>{children}</span>),
   Owner: jest
     .fn()
-    .mockImplementation(() => <div data-testid="owner-component" />),
+    .mockImplementation(({ selectorContent }) => (
+      <div data-testid="owner-component">{selectorContent}</div>
+    )),
   Tabs: Object.assign(
     jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     {
@@ -77,7 +98,7 @@ jest.mock('../../../../../../rest/alertsAPI', () => ({
     fullyQualifiedName: 'test-alert',
     provider: 'user',
     description: 'Test description',
-    owners: [],
+    owners: [{ id: 'u1', type: 'user', name: 'existing' }],
     destinations: [
       {
         timeout: 10,
@@ -283,5 +304,50 @@ describe('NotificationAlertDetail', () => {
     const headerActions = mockOnSetHeaderActions.mock.calls[0][0];
 
     expect(headerActions).toBeDefined();
+  });
+
+  it('should fetch the alert with owners field so existing owners are loaded', async () => {
+    await act(async () => {
+      render(
+        <NotificationAlertDetail fqn="test-alert" onNavigate={mockOnNavigate} />
+      );
+    });
+
+    await waitFor(() => {
+      expect(getAlertsFromName).toHaveBeenCalledWith('test-alert', {
+        fields: 'owners',
+      });
+    });
+  });
+
+  it('should keep existing owners when adding a new owner', async () => {
+    (compare as jest.Mock).mockImplementation(
+      jest.requireActual('fast-json-patch').compare
+    );
+
+    await act(async () => {
+      render(
+        <NotificationAlertDetail fqn="test-alert" onNavigate={mockOnNavigate} />
+      );
+    });
+
+    await waitFor(() => {
+      expect(UserTeamSelectableList).toHaveBeenCalled();
+    });
+
+    const { onUpdate } = (UserTeamSelectableList as jest.Mock).mock.calls[0][0];
+
+    await act(async () => {
+      await onUpdate([EXISTING_OWNER, NEW_OWNER]);
+    });
+
+    const [, patch] = (updateNotificationAlert as jest.Mock).mock.calls[0];
+    const patchedOwners = patch.find(
+      (op: { path: string }) => op.path === '/owners'
+    );
+
+    // The whole owners array should not be replaced; existing owner is preserved.
+    expect(patchedOwners).toBeUndefined();
+    expect(patch).toEqual([{ op: 'add', path: '/owners/1', value: NEW_OWNER }]);
   });
 });

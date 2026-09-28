@@ -19,10 +19,7 @@ import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constan
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   NotificationTemplate,
   ProviderType as TemplateProviderType,
@@ -43,7 +40,6 @@ import { getAllNotificationTemplates } from '../../../../../../rest/notification
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import AlertAiForm from '../../../../../observability/Alerts/AlertAiForm.component';
@@ -120,8 +116,6 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     useState<ModifiedCreateEventSubscription>(getEmptyFormValues);
 
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
-  const [_templateResourcePermission, setTemplateResourcePermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const extraFormWidgets = useMemo(
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
@@ -181,7 +175,6 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           const permission = await getResourcePermission(
             ResourceEntity.NOTIFICATION_TEMPLATE
           );
-          setTemplateResourcePermission(permission);
           const { canViewAll } = getDerivedPermissionFlags(permission);
           if (canViewAll) {
             const { data } = await getAllNotificationTemplates({

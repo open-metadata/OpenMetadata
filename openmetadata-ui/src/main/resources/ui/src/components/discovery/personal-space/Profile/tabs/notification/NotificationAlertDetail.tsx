@@ -333,7 +333,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     setIsLoading(true);
     try {
       const [alertData, diagData, eventsData] = await Promise.allSettled([
-        getAlertsFromName(fqn),
+        getAlertsFromName(fqn, { fields: 'owners' }),
         getDiagnosticInfo(fqn),
         getAlertEventsDiagnosticsInfo({ fqn, listCountOnly: true }),
       ]);

@@ -161,7 +161,7 @@ interface NotificationAlertConfigViewProps {
 
 function NotificationAlertConfigView({
   alertDetails,
-}: NotificationAlertConfigViewProps) {
+}: Readonly<NotificationAlertConfigViewProps>) {
   const { t } = useTranslation();
   const { getResourcePermission } = usePermissionProvider();
   const modifiedAlertData = useMemo(
@@ -258,7 +258,7 @@ function NotificationAlertConfigView({
   }, []);
 
   const isLoading = useMemo(
-    () => Object.values(loadingState).some((val) => val),
+    () => Object.values(loadingState).some(Boolean),
     [loadingState]
   );
 

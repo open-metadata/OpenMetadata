@@ -206,8 +206,8 @@ function NotificationFiltersEditor({
                         placeholder={t('label.select-field', {
                           field: t('label.filter'),
                         })}
-                        selectedKey={filter.name ?? null}
-                        onSelectionChange={(val) => {
+                        value={filter.name ?? null}
+                        onChange={(val) => {
                           onChange(
                             filters.map((f, i) =>
                               i === index

@@ -166,7 +166,7 @@ function AlertStaticAutocomplete({
   placeholder,
   'data-testid': dataTestId,
   isDisabled,
-}: AlertStaticAutocompleteProps) {
+}: Readonly<AlertStaticAutocompleteProps>) {
   const selectedItems = useMemo(
     () =>
       value.map(
