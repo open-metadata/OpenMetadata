@@ -53,6 +53,16 @@ export const Vertical: StoryObj = {
   ),
 };
 
+export const PrimaryColor: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', height: 48, alignItems: 'center', gap: 16 }}>
+      <span>Panel</span>
+      <Divider color="primary" orientation="vertical" />
+      <span>Panel</span>
+    </div>
+  ),
+};
+
 export const WithLabelCenter: StoryObj = {
   render: () => (
     <div style={{ width: 400 }}>

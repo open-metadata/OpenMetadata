@@ -8438,15 +8438,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/PropertyInput.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/PropertyValue.tsx"
       ],
       "specs": [
