@@ -31,8 +31,8 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  ARTICLES_URL,
   ARTICLE_DESCRIPTION,
+  ARTICLES_URL,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
   createArticleFromButton,
@@ -50,7 +50,6 @@ import {
   scrollHierarchyToNode,
   scrollListingToCard,
   verifyArticleSearch,
-  waitForArticleApproved,
   waitForArticleInFollows,
   waitForDraftPersisted,
   waitForRecentlyViewed,
@@ -225,8 +224,6 @@ test.describe('Context Center Articles', () => {
         draftArticleB.fullyQualifiedName,
         'page'
       ),
-      waitForArticleApproved(apiContext, draftArticleA.fullyQualifiedName),
-      waitForArticleApproved(apiContext, draftArticleB.fullyQualifiedName),
     ]);
 
     await afterAction();
