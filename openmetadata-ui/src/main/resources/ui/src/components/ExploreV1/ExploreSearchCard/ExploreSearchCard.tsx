@@ -52,7 +52,7 @@ import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
-import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
+import DomainTags from '../../common/DomainTags/DomainTags';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -773,7 +773,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ? [
                 {
                   key: 'Domains',
-                  value: <DomainDisplay domains={source.domains} />,
+                  value: <DomainTags domains={source.domains} maxVisible={1} />,
                 },
               ]
             : emptyDomainInfo;

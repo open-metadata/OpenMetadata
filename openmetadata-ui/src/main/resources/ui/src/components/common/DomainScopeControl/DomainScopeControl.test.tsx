@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
-import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
-import { EntityReference } from '../../../../generated/entity/type';
-import { DomainSelectableListProps } from '../../../common/DomainSelectableList/DomainSelectableList.interface';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/type';
+import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainScopeControl from './DomainScopeControl';
 
 const mockNavigate = jest.fn();
@@ -55,11 +55,11 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../../../../hooks/useDomainStore', () => ({
+jest.mock('../../../hooks/useDomainStore', () => ({
   useDomainStore: () => storeState,
 }));
 
-jest.mock('../../../../utils/EntityNameUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getDomainDisplayName: (ref?: EntityReference, active?: string) =>
     ref?.displayName ?? active,
 }));
@@ -99,36 +99,33 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => <div title={title}>{children}</div>,
 }));
 
-jest.mock('../../../AppRouter/withSuspenseFallback', () => ({
+jest.mock('../../AppRouter/withSuspenseFallback', () => ({
   __esModule: true,
   default: (Component: React.ComponentType<DomainSelectableListProps>) =>
     Component,
 }));
 
-jest.mock(
-  '../../../common/DomainSelectableList/DomainSelectableList.component',
-  () => ({
-    __esModule: true,
-    default: (props: DomainSelectableListProps) => {
-      mockDomainSelectableList(props);
+jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
+  __esModule: true,
+  default: (props: DomainSelectableListProps) => {
+    mockDomainSelectableList(props);
 
-      return (
-        <div data-testid="domain-selectable-list">
-          {props.children}
-          <button
-            data-testid="mock-pick-domain"
-            onClick={() => props.onUpdate(demoDomain)}>
-            pick
-          </button>
-        </div>
-      );
-    },
-  })
-);
+    return (
+      <div data-testid="domain-selectable-list">
+        {props.children}
+        <button
+          data-testid="mock-pick-domain"
+          onClick={() => props.onUpdate(demoDomain)}>
+          pick
+        </button>
+      </div>
+    );
+  },
+}));
 
 // The menu is a `React.lazy` wrapper, so the first render suspends until the
 // (mocked) module resolves — await the list before asserting.
-const renderControl = async (variant?: 'panel' | 'rail') => {
+const renderControl = async (variant?: 'card' | 'icon' | 'pill') => {
   const utils = render(<DomainScopeControl variant={variant} />);
   await screen.findByTestId('domain-selectable-list');
 
@@ -232,17 +229,96 @@ describe('DomainScopeControl', () => {
   });
 
   it('renders the rail variant as an icon-only trigger', async () => {
-    await renderControl('rail');
+    await renderControl('icon');
 
-    expect(screen.getByTestId('ask-domain-scope-rail')).toBeInTheDocument();
+    expect(screen.getByTestId('ask-domain-scope-icon')).toBeInTheDocument();
     expect(
       screen.queryByTestId('ask-domain-scope-card')
     ).not.toBeInTheDocument();
   });
 
-  it('opens the menu with an upward placement for the panel card', async () => {
-    await renderControl();
+  describe('landing variant', () => {
+    it('renders the landing pill, not the AI-sidebar card', async () => {
+      await renderControl('pill');
 
-    expect(lastMenuProps().popoverProps?.placement).toBe('topRight');
+      expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ask-domain-scope-card')
+      ).not.toBeInTheDocument();
+    });
+
+    it('keeps the pill for a single-domain user instead of the card', async () => {
+      storeState = {
+        ...storeState,
+        isDomainRestricted: true,
+        userDomains: [complianceDomain],
+      };
+
+      await renderControl('pill');
+
+      // The restricted branch must not pre-empt the landing variant.
+      expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ask-domain-scope-card')
+      ).not.toBeInTheDocument();
+    });
+
+    it('disables the pill for a single-domain user, who has nothing to switch to', async () => {
+      storeState = {
+        ...storeState,
+        isDomainRestricted: true,
+        userDomains: [complianceDomain],
+      };
+
+      await renderControl('pill');
+
+      expect(screen.getByTestId('domain-selector')).toBeDisabled();
+    });
+
+    it('locks the picker itself, not just the button, for a single-domain user', async () => {
+      storeState = {
+        ...storeState,
+        isDomainRestricted: true,
+        userDomains: [complianceDomain],
+      };
+
+      await renderControl('pill');
+
+      // A disabled <button> still receives pointerdown, and the trigger opens
+      // on capture-phase pointerdown — so the list must be disabled too.
+      expect(lastMenuProps().disabled).toBe(true);
+      // ...and the picker it would open stays limited to their domains.
+      expect(lastMenuProps().restrictedDomains).toEqual([complianceDomain]);
+    });
+
+    it('drives aria-expanded from real open state', async () => {
+      await renderControl('pill');
+
+      // popoverProps must be wired, or isOpen never changes and the trigger
+      // reports "collapsed" even while the menu is open.
+      expect(lastMenuProps().popoverProps?.onOpenChange).toBeDefined();
+      expect(screen.getByTestId('domain-selector')).toHaveAttribute(
+        'aria-expanded',
+        'false'
+      );
+
+      act(() => {
+        lastMenuProps().popoverProps?.onOpenChange?.(true);
+      });
+
+      expect(screen.getByTestId('domain-selector')).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
+    });
+
+    it('exposes the pill as a real button with menu semantics', async () => {
+      await renderControl('pill');
+      const trigger = screen.getByTestId('domain-selector');
+
+      expect(trigger.tagName).toBe('BUTTON');
+      expect(trigger).toHaveAttribute('aria-haspopup', 'listbox');
+      expect(trigger).toHaveAttribute('aria-expanded');
+    });
   });
 });
