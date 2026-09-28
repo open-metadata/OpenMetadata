@@ -282,23 +282,20 @@ const ActivityFeedCardNew = ({
 
     return t('label.conversation-lowercase');
   }, [isActivityEvent, activity, entityType, t]);
-  
+
   const timestampValue =
-  post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
+    post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
 
   const timestamp = timestampValue ? (
     <Tooltip
       excludeTriggerFromTabOrder
-      color="white"
-      overlayClassName="timestamp-tooltip"
+      containerClassName="timestamp-tooltip"
       title={formatDateTime(timestampValue, timeFormat)}>
-      <Typography
+      <Typography.Text
         className="feed-card-header-v2-timestamp"
-        color="secondary"
-        data-testid="timestamp"
-        size="text-xs">
+        data-testid="timestamp">
         {getRelativeTime(timestampValue)}
-      </Typography>
+      </Typography.Text>
     </Tooltip>
   ) : null;
 
