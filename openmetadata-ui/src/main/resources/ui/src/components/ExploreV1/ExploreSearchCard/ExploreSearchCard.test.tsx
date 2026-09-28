@@ -89,14 +89,12 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock(
-  '../../common/RichTextEditor/RichTextEditorPreviewerV1',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ markdown }) => (
-        <span data-testid="previewer">{markdown}</span>
-      ))
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockImplementation(({ markdown }) => (
+      <span data-testid="previewer">{markdown}</span>
+    ))
 );
 
 jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
@@ -781,7 +779,8 @@ describe('ExploreSearchCard - Description markdown stripping', () => {
           }}
           source={{
             ...baseSource,
-            description: '**bold text** and `code` and [link](http://example.com)',
+            description:
+              '**bold text** and `code` and [link](http://example.com)',
           }}
         />
       </MemoryRouter>
