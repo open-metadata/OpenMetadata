@@ -20,16 +20,6 @@ ones.
 import uuid
 
 import pytest
-from tests.integration.informix.conftest import (
-    ANSI_DATABASE,
-    DATABASE,
-    INFORMIX_PORT,
-    PASSWORD,
-    SECOND_DATABASE,
-    SERVER_NAME,
-    THIRD_DATABASE,
-    USERNAME,
-)
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -45,6 +35,17 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.workflow.metadata import MetadataWorkflow
+
+from .conftest import (  # noqa: TID252
+    ANSI_DATABASE,
+    DATABASE,
+    INFORMIX_PORT,
+    PASSWORD,
+    SECOND_DATABASE,
+    SERVER_NAME,
+    THIRD_DATABASE,
+    USERNAME,
+)
 
 SYSTEM_DATABASES = ["sysmaster", "sysadmin", "sysuser", "sysutils"]
 

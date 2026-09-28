@@ -21,15 +21,16 @@ rather than rolled back when the connection returns to the pool.
 
 import pytest
 from sqlalchemy import create_engine, text
-from tests.integration.informix.conftest import (
+
+from metadata.ingestion.source.database.informix.connection import _use_committed_read
+
+from .conftest import (  # noqa: TID252
     ANSI_DATABASE,
     INFORMIX_PORT,
     PASSWORD,
     SERVER_NAME,
     USERNAME,
 )
-
-from metadata.ingestion.source.database.informix.connection import _use_committed_read
 
 
 def _locks_on(container, database: str) -> int:
