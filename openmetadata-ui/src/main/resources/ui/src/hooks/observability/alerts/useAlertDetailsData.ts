@@ -28,7 +28,6 @@ import {
   EntityReference,
   EventSubscription,
 } from '../../../generated/events/eventSubscription';
-import { useFqn } from '../../../hooks/useFqn';
 import { updateNotificationAlert } from '../../../rest/alertsAPI';
 import {
   getAlertEventsDiagnosticsInfo,
@@ -45,11 +44,44 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { useFqn } from '../../useFqn';
 import {
-  AlertDetailsPageProps,
-  UseAlertDetailsDataReturn,
-} from '../AlertDetailsPage.interface';
-import { useAlertDetailsPermissions } from './useAlertDetailsPermissions';
+  AlertDetailsPermissions,
+  useAlertDetailsPermissions,
+} from './useAlertDetailsPermissions';
+
+export interface UseAlertDetailsDataOptions {
+  afterDeleteAction?: () => Promise<void> | void;
+  fqn?: string;
+  isNotificationAlert?: boolean;
+  onEditAlert?: (fqn: string) => void;
+  onTabChange?: (tab: AlertDetailTabs) => void;
+  tab?: AlertDetailTabs;
+}
+
+export interface UseAlertDetailsDataReturn extends AlertDetailsPermissions {
+  alertDetails?: EventSubscription;
+  alertEventCounts?: EventsRecord;
+  alertEventCountsLoading: boolean;
+  breadcrumb: {
+    name: string;
+    url: string;
+  }[];
+  fetchAlertDetails: () => Promise<void>;
+  handleAlertDelete: () => Promise<void>;
+  handleAlertEdit: () => Promise<void>;
+  handleAlertSync: () => Promise<void>;
+  handleTabChange: (activeKey: string) => void;
+  hideDeleteModal: () => void;
+  isSyncing: boolean;
+  loadingCount: number;
+  onDescriptionUpdate: (description: string) => Promise<void>;
+  onOwnerUpdate: (owners?: EntityReference[]) => Promise<void>;
+  ownerLoading: boolean;
+  setShowDeleteModal: (show: boolean) => void;
+  showDeleteModal: boolean;
+  tab: AlertDetailTabs;
+}
 
 /** Alert details state and actions without any rendered tab content, so AI pages can use it. */
 export function useAlertDetailsData({
@@ -59,7 +91,7 @@ export function useAlertDetailsData({
   onEditAlert,
   onTabChange,
   tab: tabProp,
-}: Readonly<AlertDetailsPageProps>): UseAlertDetailsDataReturn {
+}: Readonly<UseAlertDetailsDataOptions>): UseAlertDetailsDataReturn {
   const { tab: routeTab } = useRequiredParams<{ tab: AlertDetailTabs }>();
   const { fqn: routeFqn } = useFqn();
   const fqn = fqnProp ?? routeFqn;

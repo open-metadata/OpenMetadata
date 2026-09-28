@@ -12,63 +12,22 @@
  */
 
 import type { ReactNode } from 'react';
-import { AlertDetailTabs } from '../../enums/Alerts.enum';
-import type { EventsRecord } from '../../generated/events/api/eventsRecord';
-import {
-  EntityReference,
-  EventSubscription,
-} from '../../generated/events/eventSubscription';
+import type {
+  UseAlertDetailsDataOptions,
+  UseAlertDetailsDataReturn,
+} from '../../hooks/observability/alerts/useAlertDetailsData';
 import type { DetailsTabItem } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 
-export interface AlertDetailsPageProps {
-  afterDeleteAction?: () => Promise<void> | void;
-  fqn?: string;
-  isNotificationAlert?: boolean;
-  onEditAlert?: (fqn: string) => void;
-  onTabChange?: (tab: AlertDetailTabs) => void;
-  tab?: AlertDetailTabs;
-}
+export type AlertDetailsPageProps = UseAlertDetailsDataOptions;
 
-export interface AlertDetailsPermissions {
-  deletePermission: boolean;
-  editDescriptionPermission: boolean;
-  editOwnersPermission: boolean;
-  editPermission: boolean;
-  viewPermission: boolean;
-}
-
-export interface UseAlertDetailsPageReturn extends AlertDetailsPermissions {
-  alertDetails?: EventSubscription;
+export interface UseAlertDetailsPageReturn
+  extends Omit<
+    UseAlertDetailsDataReturn,
+    'alertEventCounts' | 'alertEventCountsLoading'
+  > {
   alertIcon: ReactNode;
-  breadcrumb: {
-    name: string;
-    url: string;
-  }[];
   extraInfo: ReactNode;
-  fetchAlertDetails: () => Promise<void>;
-  handleAlertDelete: () => Promise<void>;
-  handleAlertEdit: () => Promise<void>;
-  handleAlertSync: () => Promise<void>;
-  handleTabChange: (activeKey: string) => void;
-  hideDeleteModal: () => void;
-  isSyncing: boolean;
-  loadingCount: number;
-  onDescriptionUpdate: (description: string) => Promise<void>;
-  onOwnerUpdate: (owners?: EntityReference[]) => Promise<void>;
-  ownerLoading: boolean;
-  setShowDeleteModal: (show: boolean) => void;
-  showDeleteModal: boolean;
-  tab: AlertDetailTabs;
   tabItems: DetailsTabItem[];
 }
 
 export type AlertDetailsContentProps = UseAlertDetailsPageReturn;
-
-export interface UseAlertDetailsDataReturn
-  extends Omit<
-    UseAlertDetailsPageReturn,
-    'alertIcon' | 'extraInfo' | 'tabItems'
-  > {
-  alertEventCounts?: EventsRecord;
-  alertEventCountsLoading: boolean;
-}

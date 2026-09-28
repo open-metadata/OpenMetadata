@@ -326,9 +326,9 @@ const AlertAiRecentEventsTab = ({
           className="tw:w-40 tw:shrink-0"
           data-testid="recent-events-filter"
           items={filterItems}
-          selectedKey={filter}
           size="sm"
-          onSelectionChange={handleFilterChange}>
+          value={filter}
+          onChange={handleFilterChange}>
           {renderSelectItem}
         </Select>
       </Box>

@@ -20,13 +20,13 @@ import AlertRecentEventsTab from '../../../components/Alerts/AlertDetails/AlertR
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { getAlertExtraInfo } from '../../../utils/Alerts/AlertsUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
 import {
   AlertDetailsPageProps,
   UseAlertDetailsPageReturn,
 } from '../AlertDetailsPage.interface';
-import { useAlertDetailsData } from './useAlertDetailsData';
 
 export function useAlertDetailsPage(
   props: Readonly<AlertDetailsPageProps>

@@ -24,7 +24,10 @@ import { getDiagnosticInfo } from '../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-const formatDiagnosticValue = (value: unknown, t: TFunction) => {
+const formatDiagnosticValue = (
+  value: number | boolean | undefined,
+  t: TFunction
+) => {
   if (typeof value === 'boolean') {
     return t(value ? 'label.yes' : 'label.no');
   }

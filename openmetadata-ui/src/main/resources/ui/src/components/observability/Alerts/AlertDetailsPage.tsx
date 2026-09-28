@@ -37,9 +37,9 @@ import {
   AlertType,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
+import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { useFqn } from '../../../hooks/useFqn';
 import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
-import { useAlertDetailsData } from '../../../pages/AlertDetailsPage/hooks/useAlertDetailsData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';

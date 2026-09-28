@@ -52,7 +52,7 @@ jest.mock('../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'service.alert' }),
 }));
 
-jest.mock('../../../pages/AlertDetailsPage/hooks/useAlertDetailsData', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertDetailsData', () => ({
   useAlertDetailsData: (params: unknown) => mockUseAlertDetailsData(params),
 }));
 

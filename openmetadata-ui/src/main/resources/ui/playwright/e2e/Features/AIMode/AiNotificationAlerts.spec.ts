@@ -28,7 +28,7 @@ import {
   selectAlertSource,
   selectDestinationCategory,
 } from '../../Utils/aiAlertModal';
-import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
+import { enableAiAppMode } from '../../Utils/appMode';
 import {
   expectSurfaceTheme,
   expectTheme,
@@ -50,9 +50,7 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
   const testAlerts: AlertClass[] = [];
 
   test.beforeAll(async ({ browser }) => {
-    const setupPage = await browser.newPage();
-    await redirectToAiModeHomePage(setupPage);
-    const { apiContext, afterAction } = await getApiContext(setupPage);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // The list is name-sorted and cursor-paged; this prefix keeps the alert on page 1.
     alert = new AlertClass({
@@ -62,12 +60,10 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
     await alert.create(apiContext);
 
     await afterAction();
-    await setupPage.close();
   });
 
   test.afterAll(async ({ browser }) => {
-    const teardownPage = await browser.newPage();
-    const { apiContext, afterAction } = await getApiContext(teardownPage);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await alert?.delete(apiContext);
     for (const testAlert of testAlerts) {
@@ -75,7 +71,6 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
     }
 
     await afterAction();
-    await teardownPage.close();
   });
 
   test.beforeEach(async ({ page }) => {
@@ -276,8 +271,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
   });
 
   test.afterAll(async ({ browser }) => {
-    const teardownPage = await browser.newPage();
-    const { apiContext, afterAction } = await getApiContext(teardownPage);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
     for (const id of createdAlertIds) {
       await apiContext.delete(
@@ -286,7 +280,6 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
     }
 
     await afterAction();
-    await teardownPage.close();
   });
 
   test('narrows destinations and event types to what the source supports', async ({
