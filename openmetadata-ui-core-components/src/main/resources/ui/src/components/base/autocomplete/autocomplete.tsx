@@ -252,6 +252,7 @@ const InnerAutocomplete = ({
           ) : (
             <BadgeWithButton
               color="gray"
+              data-testid="autocomplete-selected-item"
               isDisabled={isDisabled}
               key={item.id}
               size="lg"
@@ -448,8 +449,32 @@ export const AutocompleteBase = ({
     [onItemCleared]
   );
 
+  // react-aria commits the focused option when the input is tabbed out of or
+  // loses focus (`ComboBoxState.commit()`), and the listbox focuses whatever
+  // option the pointer last passed over. That turns "move on" into "insert
+  // whatever the cursor happened to rest on", so those commits are dropped — a
+  // value is added by pressing or Entering an option, nothing else.
+  const isLeavingRef = useRef(false);
+  const suppressCommit = useCallback(() => {
+    isLeavingRef.current = true;
+    queueMicrotask(() => {
+      isLeavingRef.current = false;
+    });
+  }, []);
+  const onKeyDownCapture = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        suppressCommit();
+      }
+    },
+    [suppressCommit]
+  );
+
   const onSelectionChange = (id: Key | null) => {
     if (!id) {
+      return;
+    }
+    if (multiple && isLeavingRef.current) {
       return;
     }
     if (!multiple && internalSelected.length >= 1) {
@@ -564,7 +589,10 @@ export const AutocompleteBase = ({
           onSelectionChange={onSelectionChange}
           {...props}>
           {(state) => (
-            <div className="tw:flex tw:flex-col tw:gap-1.5">
+            <div
+              className="tw:flex tw:flex-col tw:gap-1.5"
+              onBlurCapture={suppressCommit}
+              onKeyDownCapture={onKeyDownCapture}>
               {label && (
                 <Label isRequired={state.isRequired} tooltip={tooltip}>
                   {label}

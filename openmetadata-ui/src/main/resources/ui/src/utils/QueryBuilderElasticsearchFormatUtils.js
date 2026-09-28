@@ -1112,12 +1112,22 @@ function buildEsGroup(
   };
 }
 
+// De Morgan: a negated operator builds one `must_not` clause per option, and
+// "none of these" is the conjunction of those — `should` would ask for "not all
+// of these", which matches a document holding every option but one.
+function isNegatedOperator(operator, config) {
+  return (
+    NEGATED_OPERATORS.includes(operator) ||
+    resolveRuleOperator(config, operator)?.not === true
+  );
+}
+
 // A multiselect rule holds its options in value[0]; each option becomes its own
 // clause. An option the user has not picked yet yields no rule; keeping the hole
 // would serialize to a null clause, which the search engines reject.
 function buildMultiselectEsRule(field, value, operator, config, valueSrc) {
   const useAndLogic =
-    operator === 'multiselect_equals' || operator === 'multiselect_not_equals';
+    operator === 'multiselect_equals' || isNegatedOperator(operator, config);
 
   return {
     bool: {

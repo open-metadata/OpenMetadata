@@ -380,6 +380,37 @@ const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
+// `Not in [a, b]` is written as one `must_not` clause per value, AND-ed together
+// — the negation of "any of these". Read back as a single multiselect rule so the
+// builder reopens with the row the user filled, not one `!=` row per value.
+const isMustNotTermClause = (clause: QueryFieldInterface) =>
+  !isUndefined((clause?.bool?.must_not as EsTerm)?.term);
+
+const matchMustMustNotTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  const clauses = (curr.bool as EsBoolQuery)?.must as
+    | QueryFieldInterface[]
+    | undefined;
+
+  if (!Array.isArray(clauses) || clauses.length < 2) {
+    return undefined;
+  }
+
+  if (!clauses.every(isMustNotTermClause)) {
+    return undefined;
+  }
+
+  const fieldOf = (clause: QueryFieldInterface) =>
+    Object.keys((clause.bool?.must_not as EsTerm).term)[0];
+  const field = fieldOf(clauses[0]);
+
+  // Values of different fields are separate conditions, not one multiselect.
+  if (clauses.some((clause) => fieldOf(clause) !== field)) {
+    return undefined;
+  }
+
+  return getSelectNotAnyInProperties(parentPath, clauses);
+};
+
 const matchBoolMust: QueryFilterBranchHandler = (
   curr,
   parentPath,
@@ -828,6 +859,7 @@ const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchMustNotTerm,
   matchShouldTerm,
   matchShouldMustNotTerm,
+  matchMustMustNotTerm,
   matchMustNotExists,
   matchExists,
   matchWildcard,

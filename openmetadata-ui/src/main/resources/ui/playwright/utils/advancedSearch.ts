@@ -376,6 +376,19 @@ export const fillRule = async (
       const listboxId = await dropdownInput.getAttribute('aria-controls');
       const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
+      // A multiselect rule renders one chip per committed value. Count them
+      // before picking so the assertion below can prove this call added exactly
+      // one — a rule that silently gains a value it was never given reads as a
+      // passing test on a query that means something else.
+      const multiSelect = ruleLocator.getByTestId(
+        'advanced-search-value-multiselect'
+      );
+      const selectedChips = multiSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      const isMultiSelect = (await multiSelect.count()) > 0;
+      const chipsBefore = isMultiSelect ? await selectedChips.count() : 0;
+
       // Match on the option's value, not its label. Tag-like fields (Tier,
       // Tags, Certification) render the display name — `Tier1` — while the
       // fixtures carry the FQN `Tier.Tier1`, and the two are legitimately
@@ -414,6 +427,10 @@ export const fillRule = async (
       await dropdown
         .waitFor({ state: 'hidden', timeout: 5_000 })
         .catch(() => undefined);
+
+      if (isMultiSelect) {
+        await expect(selectedChips).toHaveCount(chipsBefore + 1);
+      }
     }
   }
 };
