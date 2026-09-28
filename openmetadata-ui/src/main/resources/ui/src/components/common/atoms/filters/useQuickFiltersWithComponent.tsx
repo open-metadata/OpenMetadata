@@ -20,11 +20,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
-import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
 export enum SelectMode {
   SINGLE = 'single',

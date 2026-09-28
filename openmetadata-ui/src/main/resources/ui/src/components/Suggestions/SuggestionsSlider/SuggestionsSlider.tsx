@@ -17,12 +17,12 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { SuggestionType } from '../../../types/taskSuggestion';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
-import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 
 const SuggestionsSlider = () => {
   const {

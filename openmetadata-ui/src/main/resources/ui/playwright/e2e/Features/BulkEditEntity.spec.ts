@@ -719,19 +719,19 @@ test.describe('Bulk Edit Entity', () => {
         getCellByName(page, 'Playwright Table column')
       ).toBeVisible();
 
-      // Bulk-edit sets tag/glossary on the first COLUMN (not the entity).
-      // KnowledgePanel.Tags is the entity-level panel and stays empty —
-      // scope to the column tags cell instead.
+      // Verify Tags — with `createFullHierarchy: true` this test's
+      // Table is the only one on the page carrying the Sensitive tag,
+      // so the bare role/name locator resolves to a single link.
       await expect(
-        page
-          .getByTestId('classification-tags-0')
-          .getByRole('link', { name: 'Sensitive' })
+        page.getByRole('link', {
+          name: 'Sensitive',
+        })
       ).toBeVisible();
 
       await expect(
-        page
-          .getByTestId('glossary-tags-0')
-          .getByRole('link', { name: glossaryTerm.data.displayName })
+        page.getByRole('link', {
+          name: glossaryTerm.data.displayName,
+        })
       ).toBeVisible();
     });
 
