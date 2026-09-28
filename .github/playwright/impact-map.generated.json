@@ -156,8 +156,6 @@
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
@@ -290,14 +288,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/constant/login.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Login.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/nestedColumnUpdates.ts"
       ],
       "specs": [
@@ -399,7 +389,6 @@
         "playwright/e2e/Pages/HealthCheck.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
@@ -746,7 +735,6 @@
         "playwright/e2e/Features/RTL.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Features/SSOConfiguration.spec.ts",
-        "playwright/e2e/Features/SSOTestLogin.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/TableSearch.spec.ts",
@@ -2173,8 +2161,6 @@
         "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
         "playwright/e2e/Pages/PipelineExecution.spec.ts",
         "playwright/e2e/Pages/PipelineValidation.spec.ts",
@@ -2534,7 +2520,6 @@
         "playwright/e2e/Pages/DescriptionVisibility.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts"
@@ -2675,7 +2660,6 @@
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
@@ -2925,7 +2909,6 @@
         "playwright/e2e/Pages/IntakeForm.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
@@ -3251,7 +3234,6 @@
         "playwright/e2e/Features/RecentlyViewed.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Features/SSOConfiguration.spec.ts",
-        "playwright/e2e/Features/SSOTestLogin.spec.ts",
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
         "playwright/e2e/Features/SchemaDefinition.spec.ts",
         "playwright/e2e/Features/SchemaSearch.spec.ts",
@@ -3381,8 +3363,6 @@
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
@@ -3835,7 +3815,6 @@
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
@@ -4040,14 +4019,6 @@
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/utils/login.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Login.spec.ts"
       ]
     },
     {
@@ -4509,7 +4480,6 @@
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
@@ -4530,8 +4500,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/sso.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/SSOConfiguration.spec.ts",
-        "playwright/e2e/Features/SSOTestLogin.spec.ts"
+        "playwright/e2e/Features/SSOConfiguration.spec.ts"
       ]
     },
     {
@@ -4729,7 +4698,6 @@
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
@@ -7580,7 +7548,6 @@
       "specs": [
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
@@ -8083,7 +8050,6 @@
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
@@ -8140,16 +8106,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SSOConfigurationForm/SSOConfigurationForm.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/SSOConfiguration.spec.ts",
-        "playwright/e2e/Features/SSOTestLogin.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SsoTestLogin/SsoTestLoginModal.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/SSOTestLogin.spec.ts"
+        "playwright/e2e/Features/SSOConfiguration.spec.ts"
       ]
     },
     {
@@ -10512,8 +10469,6 @@
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
-        "playwright/e2e/Pages/Login.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
@@ -10931,14 +10886,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/Configuration/UrlConfiguration/UrlConfigurationPage.tsx"
       ],
       "specs": [
@@ -11052,14 +10999,6 @@
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/ExploreResilience.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/ForgotPassword/ForgotPassword.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Login.spec.ts"
       ]
     },
     {
@@ -11184,14 +11123,6 @@
         "playwright/e2e/Features/MetricHierarchy.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/LoginPage/SignInPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Login.spec.ts"
       ]
     },
     {
@@ -11432,14 +11363,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/SignUp/BasicSignup.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Login.spec.ts"
       ]
     },
     {

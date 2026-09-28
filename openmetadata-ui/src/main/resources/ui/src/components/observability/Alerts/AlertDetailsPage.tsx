@@ -39,7 +39,7 @@ import {
 } from '../../../generated/events/eventSubscription';
 import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { useFqn } from '../../../hooks/useFqn';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -102,10 +102,7 @@ const AlertDetailsPage = ({
     onEditAlert: handleEditAlert,
     onTabChange: (tab) => handleTabChange(tab),
   });
-  const alertFormState = useObservabilityAlertForm({
-    alertType: kind.alertType,
-    fqn,
-  });
+  const alertFormState = useAlertFormData({ alertType: kind.alertType, fqn });
 
   const {
     alertDetails,
