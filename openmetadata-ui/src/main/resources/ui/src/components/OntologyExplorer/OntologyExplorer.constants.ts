@@ -342,9 +342,14 @@ export const COLOR_META_BY_HEX: Record<
   },
 };
 
+const BORDER_PRIMARY_TOKEN = 'var(--color-border-primary)';
+const BORDER_PRIMARY_FALLBACK = '#D5D7DA';
 const BORDER_SECONDARY_TOKEN = 'var(--color-border-secondary)';
 
-export const EDGE_STROKE_COLOR = 'var(--color-border-primary)';
+export const EDGE_STROKE_COLOR = BORDER_PRIMARY_TOKEN;
+// SVG presentation attributes do not resolve CSS variables, so DOM-drawn
+// edges resolve the token first and fall back to this.
+export const EDGE_STROKE_COLOR_FALLBACK = BORDER_PRIMARY_FALLBACK;
 export const DATA_MODE_ASSET_EDGE_STROKE_COLOR = BORDER_SECONDARY_TOKEN;
 export const DIMMED_NODE_OPACITY = 0.32;
 export const DIMMED_EDGE_OPACITY = 0.12;
@@ -414,7 +419,6 @@ export const DATA_MODE_SEED_PAGE_SIZE = 12;
 export const DATA_MODE_ASSET_PREVIEW_SIZE = 4;
 export const DATA_MODE_CONNECTED_TERM_LIMIT = 48;
 export const DATA_MODE_EDGE_LIMIT = 100;
-export const DATA_MODE_LINEAGE_EDGE_LIMIT = 100;
 export const PRACTICAL_MIN_ZOOM = 0.15;
 export const PRACTICAL_MAX_ZOOM_INITIAL = 1;
 
@@ -489,7 +493,7 @@ export const DATA_MODE_TERM_HALO_STROKE = BORDER_SECONDARY_TOKEN;
 export const DATA_MODE_TERM_HALO_STROKE_OPACITY = 0.72;
 export const DATA_MODE_TERM_HALO_SHADOW_COLOR = BORDER_SECONDARY_TOKEN;
 export const DATA_MODE_TERM_HALO_SHADOW_BLUR = 5;
-export const DATA_MODE_TERM_NODE_SHADOW_COLOR = 'var(--color-border-primary)';
+export const DATA_MODE_TERM_NODE_SHADOW_COLOR = BORDER_PRIMARY_TOKEN;
 export const DATA_MODE_TERM_NODE_SHADOW_BLUR = 16;
 export const DATA_MODE_TERM_NODE_SHADOW_OFFSET_Y = 5;
 export const DATA_MODE_TERM_LABEL_SHADOW_COLOR = BORDER_SECONDARY_TOKEN;
@@ -537,5 +541,15 @@ export const EDGE_LINE_APPEND_WIDTH = 12;
 export const EDGE_LINE_WIDTH_DEFAULT = 1.5;
 export const EDGE_LINE_WIDTH_HIGHLIGHTED = 2.5;
 export const NODE_LABEL_FILL_FALLBACK = '#1e293b';
+// A metric node is a governed Metric entity drawn next to the concept it
+// measures, not a concept: muted and dashed so it never reads as authorable.
+export const STUDIO_METRIC_NODE_KIND = 'metric';
+export const METRIC_NODE_FILL = 'var(--color-bg-secondary)';
+export const METRIC_NODE_FILL_FALLBACK = '#FAFAFA';
+export const METRIC_NODE_STROKE = BORDER_PRIMARY_TOKEN;
+export const METRIC_NODE_STROKE_FALLBACK = BORDER_PRIMARY_FALLBACK;
+export const METRIC_NODE_MUTED_COLOR = 'var(--color-text-tertiary)';
+export const METRIC_NODE_MUTED_COLOR_FALLBACK = '#535862';
+export const METRIC_NODE_LINE_DASH = [4, 3];
 export const NODE_SHADOW_COLOR_FALLBACK = 'rgba(0,0,0,0.12)';
 export const LABEL_TEXT_ALIGN_LEFT = 'left';

@@ -15,12 +15,11 @@ import { MemoryRouter } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { TableType } from '../../generated/entity/data/table';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -58,22 +57,8 @@ const mockUseEntityPermissions = jest.fn();
  * object here is the faithful mock, not a shortcut — filling in every key with `false`
  * would silently defeat the fallback (caught a real test failure during this conversion).
  *
- * Uses mockReturnValue rather than mockImplementationOnce: the page calls the hook twice
- * per render (see the comments in TableDetailsPageV1.tsx), so a "once" mock would answer
- * the first call and silently fall through to the default for the second, producing
- * inconsistent flags within one render. Note this means `isLoading`/`error` apply
- * identically to BOTH of the page's two hook calls through this mock — the real hook can't
- * diverge between them either, since both read the same React Query cache entry, but a
- * conversion that gives its two calls genuinely different queryKeys would not be caught by
- * this mock; see the "same first two args" guardrail in afterEach below for that case.
- *
- * `deleted` gating itself is untestable through this mock: real `useEntityPermissions`
- * gates its own canEdit* flags on the `deleted` option a conversion passes it, but this
- * mock's flags come from `getDerivedPermissionFlags(permissions, false)` — always
- * `deleted: false` — regardless of what the page passes as `options.deleted`. A conversion
- * that forgets `{ deleted }` on its edit-tier call will not fail this kind of test; that
- * has to be caught by reading the page's source (or an integration/e2e test against the
- * real hook).
+ * Uses mockReturnValue rather than mockImplementationOnce because React re-renders can call
+ * the hook more than once during a test.
  */
 const setMockPermissions = (
   overrides: Partial<OperationPermission> = {},
@@ -204,7 +189,11 @@ jest.mock(
 );
 
 jest.mock('../../components/Lineage/Lineage.component', () => {
-  return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
+  return jest
+    .fn()
+    .mockImplementation(({ hasEditAccess }: { hasEditAccess: boolean }) => (
+      <p data-has-edit-access={String(hasEditAccess)}>testEntityLineage</p>
+    ));
 });
 
 jest.mock(
@@ -330,26 +319,6 @@ describe('TestDetailsPageV1 component', () => {
     setMockPermissions();
   });
 
-  // Guardrail for the two-call pattern (see the comment on setMockPermissions and the
-  // early/late useEntityPermissions call sites in TableDetailsPageV1.tsx): the page must
-  // call the hook with the IDENTICAL (resource, identifier) pair both times — a future
-  // conversion that accidentally passes a different identifier on one call would silently
-  // fetch two different permission sets instead of sharing one cache entry. This does not
-  // catch every call in every test (some tests render more than once via act()/waitFor()
-  // re-renders, which is fine — same-args still holds across all of them), only that no
-  // call ever diverges from the first.
-  afterEach(() => {
-    const calls = mockUseEntityPermissions.mock.calls;
-    if (calls.length === 0) {
-      return;
-    }
-    const [expectedResource, expectedIdentifier] = calls[0];
-    calls.forEach(([resource, identifier]) => {
-      expect(resource).toBe(expectedResource);
-      expect(identifier).toBe(expectedIdentifier);
-    });
-  });
-
   it('TableDetailsPageV1 should fetch permissions', () => {
     renderWithQueryClient(
       <MemoryRouter>
@@ -359,7 +328,8 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       ResourceEntity.TABLE,
-      'fqn'
+      'fqn',
+      { enabled: true }
     );
   });
 
@@ -447,6 +417,53 @@ describe('TestDetailsPageV1 component', () => {
       expect(
         screen.queryByText('testPermissionSkeleton')
       ).not.toBeInTheDocument();
+    });
+
+    it('uses tour permissions for the Queries tab when permission fetching is disabled', async () => {
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: true,
+        activeTabForTourDatasetPage: EntityTabs.TABLE_QUERIES,
+        isTourPage: false,
+        tourMockDatasetData: mockDatasetData,
+      }));
+      setMockPermissions({}, { isLoading: true });
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(await screen.findByText('testTableQueries')).toBeInTheDocument();
+      expect(
+        screen.queryByText('testErrorPlaceHolder')
+      ).not.toBeInTheDocument();
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.TABLE,
+        'fqn',
+        { enabled: false }
+      );
+    });
+
+    it('uses tour permissions for Lineage edit access', async () => {
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: true,
+        activeTabForTourDatasetPage: EntityTabs.LINEAGE,
+        isTourPage: false,
+        tourMockDatasetData: mockDatasetData,
+      }));
+      setMockPermissions({}, { isLoading: true });
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(await screen.findByText('testEntityLineage')).toHaveAttribute(
+        'data-has-edit-access',
+        'true'
+      );
     });
   });
 

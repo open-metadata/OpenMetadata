@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
@@ -35,6 +37,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
@@ -62,7 +65,6 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import { AssetsTabRef } from './tabs/AssetsTabs.component';
-import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 
 const GlossaryHeader = withSuspenseFallback(
   lazy(() => import('../GlossaryHeader/GlossaryHeader.component'))
@@ -291,37 +293,53 @@ const GlossaryTermsV1 = ({
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Row data-testid="glossary-term" gutter={[0, 12]}>
-        <Col span={24}>
+      <Box data-testid="glossary-term" direction="col" gap={3}>
+        <div>
           <GlossaryHeader
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
           />
-        </Col>
+        </div>
 
-        <Col className="glossary-term-page-tabs" span={24}>
+        <div className="glossary-term-page-tabs">
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
-            items={tabItems}
-            tabBarExtraContent={
-              isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
-                    isTabExpanded ? t('label.collapse') : t('label.expand')
-                  }
-                  onClick={toggleTabExpanded}
-                />
-              )
-            }
-            onChange={activeTabHandler}
-          />
-        </Col>
-      </Row>
+            className="tw:gap-3"
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            onSelectionChange={(key) => activeTabHandler(String(key))}>
+            <Tabs.List
+              actions={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel
+                className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:overflow-y-auto tw:has-[.glossary-terms-empty-container]:flex tw:has-[.glossary-terms-empty-container]:flex-col"
+                id={key}
+                key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </div>
+      </Box>
       {glossaryTerm.fullyQualifiedName && assetModalVisible && (
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}

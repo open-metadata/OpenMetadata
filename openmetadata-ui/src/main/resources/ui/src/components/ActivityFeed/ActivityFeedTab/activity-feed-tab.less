@@ -26,12 +26,6 @@
     gap: @size-md;
   }
 
-  .custom-menu.ant-menu-root.ant-menu-inline {
-    .ant-menu-item {
-      height: 40px;
-    }
-  }
-
   .center-container {
     flex: 1;
     min-width: 0;
@@ -70,7 +64,7 @@
       border-radius: var(--om-radius-xl);
       padding: var(--om-space-16);
       margin: var(--om-space-20) 0 0 0;
-      border: 0.5px solid var(--om-color-gray-blue-100);
+      border: 0.5px solid @grey-15;
       background: @grey-9;
     }
 
@@ -84,10 +78,17 @@
     .comments-input-field {
       background-color: @grey-16;
       border-radius: var(--om-radius-20);
-      border: 1px solid var(--om-color-gray-blue-100);
+      border: 1px solid @grey-15;
       height: 36px;
       font-size: var(--om-font-size-xs);
       line-height: 14.52px;
+
+      // @grey-16 is a fixed hex (a white pill in dark); lift it to the
+      // surface so it reads as an input inside the bg-secondary comments well.
+      .dark-mode & {
+        background-color: var(--om-color-bg-surface);
+        color: var(--om-color-text-primary);
+      }
 
       &::placeholder {
         color: @grey-400;
@@ -123,7 +124,7 @@
     flex-direction: column;
     flex-wrap: wrap;
     width: inherit;
-    border: 0.5px solid var(--om-color-gray-blue-100);
+    border: 0.5px solid @grey-15;
 
     .ant-card-body {
       width: inherit;
@@ -138,6 +139,12 @@
   .activity-feed-card-new.is-active {
     background: @primary-50;
     border: 1px solid @primary-3;
+
+    // --ant-primary-* are injected theme-agnostic, so they stay light in dark.
+    // Match the AI sidebar's selected nav surface instead.
+    .dark-mode & {
+      border-color: var(--om-color-border-brand-subtle);
+    }
   }
 
   .activity-feed-card-message {
@@ -145,7 +152,12 @@
     background-color: var(--om-color-bg-surface);
     width: inherit;
     margin-top: var(--om-space-2);
-    border: 0.5px solid var(--om-color-gray-blue-100);
+    border: 0.5px solid @grey-15;
+
+    // Same message-well treatment as FeedCardBody's .hide-thread in dark.
+    .dark-mode & {
+      background-color: transparent;
+    }
 
     .ant-card-body {
       padding: 0;
@@ -225,18 +237,6 @@
       }
     }
   }
-
-  .feed-card-header-v2-timestamp {
-    color: @grey-500;
-  }
-
-  .seperator {
-    vertical-align: middle;
-    font-size: var(--om-font-size-lg);
-    font-weight: var(--om-font-weight-extrabold);
-    color: @grey-500;
-    padding-bottom: var(--om-space-2);
-  }
 }
 
 .activity-feed-task {
@@ -297,11 +297,11 @@
   font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
   letter-spacing: 0.03em;
-  color: var(--om-color-gray-900);
+  color: var(--om-color-text-primary);
 }
 
-.activity-feed-user-name.ant-typography a {
-  color: var(--om-color-gray-900);
+.activity-feed-user-name a {
+  color: var(--om-color-text-primary);
   font-weight: var(--om-font-weight-semibold);
 }
 
@@ -318,6 +318,10 @@
 
 .active-card {
   background-color: var(--om-legacy-color-e6f1fe) !important;
+
+  .dark-mode & {
+    background-color: var(--om-color-bg-brand) !important;
+  }
 }
 
 .task-tab-custom-dropdown {
@@ -332,10 +336,6 @@
     &.selected {
       color: @primary-5;
     }
-  }
-
-  .ant-dropdown-menu {
-    padding: 0;
   }
 
   .task-count-container {
@@ -366,13 +366,20 @@
     }
   }
 
-  .ant-dropdown-menu .ant-dropdown-menu-item {
+  // Selected-row and count-chip colours follow the configurable antd theme
+  // primary (--ant-primary-*), which has no Tailwind counterpart yet.
+  .task-tab-filter-menu-item {
     box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
     padding: 0;
 
     .active {
       box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
       background-color: @primary-25;
+
+      // --ant-primary-25 is a fixed light tint; use the sidebar selected surface.
+      .dark-mode & {
+        background-color: var(--om-color-bg-brand);
+      }
 
       svg path {
         fill: @primary-5;
@@ -381,72 +388,8 @@
   }
 }
 
-.task-toggle {
-  background: var(--tw-color-bg-primary);
-  border-radius: @size-sm;
-  padding: var(--om-space-4);
-  border: 1px solid @grey-20;
-
-  .ant-segmented-item {
-    color: @text-color;
-    transition: all var(--om-duration-300) ease;
-
-    &-selected {
-      background: @blue-23;
-      color: @primary-heading-color;
-      text-align: center;
-      border-radius: @size-xs;
-      .ant-segmented-item-label {
-        color: @primary-heading-color;
-      }
-
-      svg path {
-        fill: @primary-heading-color;
-      }
-    }
-  }
-
-  &:hover {
-    background: none !important;
-  }
-
-  &:focus {
-    background: none !important;
-  }
-
-  .ant-segmented:not(.ant-segmented-disabled):hover,
-  .ant-segmented:not(.ant-segmented-disabled):focus {
-    background: none !important;
-  }
-}
-
 .header-container-card {
   margin-top: calc(-1 * var(--om-space-2));
-}
-
-.toggle-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--om-space-5);
-  font-size: var(--om-font-size-sm);
-  height: 40px;
-  width: 100px;
-
-  .ant-segmented-item-label {
-    color: @grey-13;
-    font-size: var(--om-font-size-xs);
-    font-style: normal;
-    font-weight: var(--om-font-weight-regular);
-    line-height: 20px;
-  }
-}
-
-.activity-feed-card-container.ant-btn:hover,
-.activity-feed-card-container.ant-btn:focus {
-  background-color: inherit !important;
-  color: inherit !important;
-  border-radius: var(--om-radius-xl) !important;
 }
 
 .activity-feed-comments-title {
@@ -454,11 +397,11 @@
   font-style: normal;
   font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
-  color: var(--om-color-gray-700);
+  color: var(--om-color-text-secondary);
 }
 
 .card-style-feed-header {
-  color: var(--om-color-gray-600);
+  color: var(--om-color-text-tertiary);
   font-size: var(--om-font-size-sm);
   font-style: normal;
   font-weight: var(--om-font-weight-regular);
@@ -495,6 +438,10 @@
 
 .reply-card-border-bottom {
   border-bottom: 0.5px solid var(--om-legacy-color-e4e4e4);
+
+  .dark-mode & {
+    border-bottom-color: var(--om-color-border-secondary);
+  }
 }
 
 // .feed-actions is absolutely positioned at a fixed top: 24px, which only
@@ -513,17 +460,6 @@
   padding-bottom: var(--om-space-2);
 }
 
-// Tooltips render into a portal on document.body, so this has to sit in a
-// stylesheet that every component rendering `timestamp-tooltip` pulls in -
-// both ActivityFeedcardNew and CommentCard import this file. Without it the
-// tooltip keeps antd's default white text on the white background its `color`
-// prop sets, i.e. an empty bubble.
-.timestamp-tooltip {
-  .ant-tooltip-inner {
-    color: var(--om-color-text-primary);
-  }
-}
-
 .reply-message {
   color: var(--om-legacy-color-4a4a4a);
   white-space: normal;
@@ -532,7 +468,7 @@
   font-size: var(--om-font-size-xs);
 }
 
-.reply-card-user-name.activity-feed-user-name.ant-typography a {
+.reply-card-user-name.activity-feed-user-name a {
   color: @text-color;
   font-style: normal;
   font-weight: var(--om-font-weight-medium);
@@ -546,21 +482,10 @@
 
 .no-description-suggestion-card {
   padding: var(--om-space-20);
-  border: 0.5px solid var(--om-color-gray-blue-100);
+  border: 0.5px solid @grey-15;
   background: var(--om-color-bg-surface);
   border-radius: var(--om-radius-xl);
   margin-top: var(--om-space-16);
-}
-
-.task-toggle.ant-segmented {
-  background-color: var(--tw-color-bg-primary);
-  border-radius: @size-sm;
-
-  &:hover {
-    .ant-segmented-item:not(.ant-segmented-item-selected) {
-      background-color: var(--tw-color-bg-primary);
-    }
-  }
 }
 
 .view-more-less-button {

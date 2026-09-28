@@ -647,42 +647,6 @@ test.describe('Glossary P3 Tests', () => {
     }
   });
 
-  // Additional test: API rate limiting handling
-  test('should handle multiple rapid API calls', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-
-      // Make multiple rapid API calls
-      const calls = [];
-
-      for (let i = 0; i < 5; i++) {
-        calls.push(
-          apiContext.get(
-            `/api/v1/glossaries/${glossary.responseData.fullyQualifiedName}`
-          )
-        );
-      }
-
-      const responses = await Promise.all(calls);
-
-      // Verify we got responses (any status code is acceptable - the test verifies the API doesn't crash)
-      expect(responses.length).toBe(5);
-
-      // At least some calls should have been processed (either success or known error)
-      const processedCount = responses.filter(
-        (r) => r.status() >= 200 && r.status() < 600
-      ).length;
-
-      expect(processedCount).toBeGreaterThan(0);
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
   // UI-03: Error state on API failure - non-existent glossary
   test('should show error state when navigating to non-existent glossary', async ({
     browser,

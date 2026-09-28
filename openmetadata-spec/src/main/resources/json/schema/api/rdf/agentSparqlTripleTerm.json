@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/agentSparqlTripleTerm.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentSparqlTripleTerm",
+  "description": "Value of an RDF 1.2 triple term. Components use the SPARQL Results JSON RDF-term representation recursively.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlTripleTerm",
+  "properties": {
+    "subject": {
+      "$ref": "agentSparqlResponse.json#/definitions/rdfTerm"
+    },
+    "predicate": {
+      "$ref": "agentSparqlResponse.json#/definitions/rdfTerm"
+    },
+    "object": {
+      "$ref": "agentSparqlResponse.json#/definitions/rdfTerm"
+    }
+  },
+  "required": ["subject", "predicate", "object"],
+  "additionalProperties": false
+}

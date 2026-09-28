@@ -136,7 +136,9 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -231,7 +233,9 @@ test.describe('Task Navigation - Entity Page', () => {
     await waitForPageLoaded(page);
 
     // Click on Tasks filter
-    const tasksFilter = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksFilter = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksFilter.isVisible()) {
       await tasksFilter.click();
       await waitForPageLoaded(page);
@@ -257,7 +261,9 @@ test.describe('Task Navigation - Entity Page', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -306,7 +312,9 @@ test.describe('Task Navigation - Entity Page', () => {
     await activityFeedTab.click();
     await waitForPageLoaded(page);
 
-    const tasksFilter = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksFilter = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksFilter.isVisible()) {
       await tasksFilter.click();
       await waitForPageLoaded(page);
@@ -379,7 +387,7 @@ test.describe('Task Navigation - Notification Box', () => {
       await expect(notificationBox).toBeVisible();
 
       // Look for Tasks tab
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+      const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
       if (await tasksTab.isVisible()) {
         await tasksTab.click();
@@ -411,7 +419,7 @@ test.describe('Task Navigation - Notification Box', () => {
       const notificationBox = page.locator('.notification-box');
       await expect(notificationBox).toBeVisible();
 
-      const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+      const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
       if (await tasksTab.isVisible()) {
         await tasksTab.click();
