@@ -16,12 +16,12 @@ import {
   AccordionHeader,
   AccordionItem,
   AccordionPanel,
+  BadgeWithIcon,
   Box,
   EmptyPlaceholder,
   PaginationCardWithControls,
   Select,
   Skeleton,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
@@ -32,14 +32,7 @@ import {
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import {
-  Key,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INITIAL_PAGING_VALUE,
@@ -68,52 +61,51 @@ import { renderSelectItem } from './AlertAiFormFieldsSelectUtils';
 const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 const SKELETON_ROWS = 5;
 
-const STATUS_ICONS: Record<
+const STATUS_BADGES: Record<
   Status,
-  { Icon: typeof CheckCircle; className: string }
+  {
+    color: 'success' | 'error' | 'warning';
+    icon: typeof CheckCircle;
+    labelKey: string;
+  }
 > = {
   [Status.Successful]: {
-    Icon: CheckCircle,
-    className: 'tw:text-fg-success-primary',
+    color: 'success',
+    icon: CheckCircle,
+    labelKey: 'label.successful',
   },
-  [Status.Failed]: { Icon: AlertCircle, className: 'tw:text-fg-error-primary' },
+  [Status.Failed]: {
+    color: 'error',
+    icon: AlertCircle,
+    labelKey: 'label.failed',
+  },
   [Status.Unprocessed]: {
-    Icon: Clock,
-    className: 'tw:text-fg-warning-primary',
+    color: 'warning',
+    icon: Clock,
+    labelKey: 'label.unprocessed',
   },
 };
 
-/** An icon with a hover label; the span gives the icon an accessible name. */
-const LabelledIcon = ({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) => (
-  <Tooltip title={label}>
-    <span aria-label={label} className="tw:inline-flex" role="img">
-      {children}
-    </span>
-  </Tooltip>
-);
-
 const EventHeader = ({ typedEvent }: { typedEvent: TypedEvent }) => {
   const { changeEventData } = getChangeEventDataFromTypedEvent(typedEvent);
-  const { Icon, className } = STATUS_ICONS[typedEvent.status];
+  const { t } = useTranslation();
+  const { color, icon, labelKey } = STATUS_BADGES[typedEvent.status];
 
   return (
     <Box align="center" className="tw:w-full" gap={4} justify="between">
       <Box align="center" gap={4}>
-        <LabelledIcon label={startCase(typedEvent.status)}>
-          <Icon className={`tw:size-4 ${className}`} />
-        </LabelledIcon>
-        <LabelledIcon label={startCase(changeEventData.entityType)}>
+        {/* Status and entity type are shown as text rather than tooltips: the
+            header is itself a button, so it cannot hold a tooltip trigger. */}
+        <BadgeWithIcon color={color} iconLeading={icon} size="sm">
+          {t(labelKey)}
+        </BadgeWithIcon>
+        <span className="tw:inline-flex tw:items-center tw:gap-1.5 tw:text-sm tw:font-normal tw:text-tertiary">
           {searchClassBase.getEntityIcon(
             changeEventData.entityType ?? '',
             'tw:size-4 tw:text-fg-quaternary'
           )}
-        </LabelledIcon>
+          {startCase(changeEventData.entityType)}
+        </span>
         <span className="tw:text-sm tw:font-normal tw:text-primary">
           {changeEventData.id}
         </span>

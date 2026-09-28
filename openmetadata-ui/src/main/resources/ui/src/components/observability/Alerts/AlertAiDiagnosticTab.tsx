@@ -14,26 +14,14 @@
 import { Card, Skeleton, Tooltip } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { TFunction } from 'i18next';
-import { isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EventSubscriptionDiagnosticInfo } from '../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { getDiagnosticInfo } from '../../../rest/observabilityAPI';
-import { getDiagnosticItems } from '../../../utils/Alerts/AlertsUtilPure';
+import {
+  formatDiagnosticValue,
+  getDiagnosticItems,
+} from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
-const formatDiagnosticValue = (
-  value: number | boolean | undefined,
-  t: TFunction
-) => {
-  if (typeof value === 'boolean') {
-    return t(value ? 'label.yes' : 'label.no');
-  }
-
-  return isUndefined(value) ? NO_DATA_PLACEHOLDER : String(value);
-};
 
 interface AlertAiDiagnosticTabProps {
   fqn: string;
@@ -41,18 +29,24 @@ interface AlertAiDiagnosticTabProps {
 
 /** Offsets and processed-event counts of an alert's event subscription. */
 const AlertAiDiagnosticTab = ({ fqn }: AlertAiDiagnosticTabProps) => {
-  const { t } = useTranslation();
   const [diagnosticData, setDiagnosticData] =
     useState<EventSubscriptionDiagnosticInfo>();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    getDiagnosticInfo(fqn)
-      .then(setDiagnosticData)
-      .catch((error: AxiosError) => showErrorToast(error))
-      .finally(() => setLoading(false));
+  const fetchDiagnosticInfo = useCallback(async () => {
+    try {
+      setLoading(true);
+      setDiagnosticData(await getDiagnosticInfo(fqn));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
   }, [fqn]);
+
+  useEffect(() => {
+    fetchDiagnosticInfo();
+  }, [fetchDiagnosticInfo]);
 
   const diagnosticItems = useMemo(
     () => getDiagnosticItems(diagnosticData),
@@ -83,7 +77,7 @@ const AlertAiDiagnosticTab = ({ fqn }: AlertAiDiagnosticTabProps) => {
               {loading ? (
                 <Skeleton width={64} />
               ) : (
-                formatDiagnosticValue(item.value, t)
+                formatDiagnosticValue(item.value)
               )}
             </dd>
           </div>
