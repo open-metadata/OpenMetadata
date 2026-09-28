@@ -188,6 +188,36 @@ class TestStarRocksIcebergMapping(TestCase):
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
 
 
+class TestStarRocksDeltaLakeMapping(TestCase):
+    """`ENGINE` for an external catalog table is the catalog type, upper-cased.
+
+    Verified on StarRocks 3.2.16 against a `deltalake` external catalog:
+    `SELECT ENGINE, HEX(ENGINE) FROM <catalog>.information_schema.tables` returns
+    `DELTALAKE` / `44454C54414C414B45`.
+    """
+
+    def test_delta_lake_relkind_mapping(self):
+        from metadata.generated.schema.entity.data.table import TableType
+        from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
+
+        assert RELKIND_MAP["DELTALAKE"] == TableType.DeltaLake
+
+    def test_delta_lake_key_is_upper_case_only(self):
+        """StarRocks emits `DELTALAKE`; a mixed-case lookup must not resolve."""
+        from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
+
+        assert "DeltaLake" not in RELKIND_MAP
+        assert "deltalake" not in RELKIND_MAP
+
+    def test_delta_lake_does_not_disturb_existing_mappings(self):
+        from metadata.generated.schema.entity.data.table import TableType
+        from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
+
+        assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
+        assert RELKIND_MAP["HIVE"] == TableType.External
+        assert RELKIND_MAP["TABLE"] == TableType.Regular
+
+
 mock_starrocks_lineage_config = {
     "source": {
         "type": "starrocks-lineage",
