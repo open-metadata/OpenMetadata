@@ -72,6 +72,18 @@ describe('DocumentTitle store', () => {
     expect(store.getSegments()).toEqual(['Banking Core']);
   });
 
+  it('keeps the slot of a claim whose title is still loading', () => {
+    const store = createDocumentTitleStore();
+    const layout = Symbol('layout');
+    store.set(layout, claim(''));
+    store.set(Symbol('panel'), claim('Banking Core'));
+
+    // The layout's fetched title must not outrank the panel registered after it.
+    store.set(layout, claim('Glossary'));
+
+    expect(store.getSegments()).toEqual(['Banking Core']);
+  });
+
   it('ignores a hidden claim', () => {
     const store = createDocumentTitleStore();
     store.set(Symbol('visible'), claim('dim_customer'));

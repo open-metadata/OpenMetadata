@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PropsWithChildren, ReactNode } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import { RouteVisibilityProvider } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import DocumentTitle from './DocumentTitle';
 import { DocumentTitlePriority } from './DocumentTitle.store';
@@ -42,6 +48,25 @@ const renderAt = (initialPath: string, children: ReactNode) =>
       </DocumentTitleProvider>
     </MemoryRouter>
   );
+
+// Remounts on every navigation, like a shell that re-registers to get ahead of the page.
+const RemountingShellTitle = () => {
+  const { pathname } = useLocation();
+
+  return (
+    <DocumentTitle
+      key={pathname}
+      priority={DocumentTitlePriority.SHELL}
+      title="Glossary"
+    />
+  );
+};
+
+const NavigateTo = ({ path }: { path: string }) => {
+  const navigate = useNavigate();
+
+  return <button onClick={() => navigate(path)}>{path}</button>;
+};
 
 const expectTitle = async (expected: string) =>
   waitFor(() =>
@@ -100,6 +125,43 @@ describe('DocumentTitle', () => {
     );
 
     await expectTitle('Banking Core | brand-name');
+  });
+
+  it('ignores an inherited object key in the tab segment', async () => {
+    renderAt(
+      '/glossary/BankingCore/constructor',
+      <DocumentTitle title="Banking Core" />
+    );
+
+    await expectTitle('Banking Core | brand-name');
+  });
+
+  it('keeps the page title when a sibling tab route updates it in place', async () => {
+    renderAt(
+      '/glossary/BankingCore',
+      <>
+        <RemountingShellTitle />
+        <DocumentTitle title="Banking Core" />
+        <NavigateTo path="/glossary/BankingCore/relations_graph" />
+        <NavigateTo path="/glossary/BankingCore/terms" />
+      </>
+    );
+
+    await expectTitle('Banking Core | brand-name');
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '/glossary/BankingCore/relations_graph',
+      })
+    );
+
+    await expectTitle('Banking Core | relations-graph | brand-name');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '/glossary/BankingCore/terms' })
+    );
+
+    await expectTitle('Banking Core | term-plural | brand-name');
   });
 
   it('ignores a claim from a hidden kept-alive route', async () => {

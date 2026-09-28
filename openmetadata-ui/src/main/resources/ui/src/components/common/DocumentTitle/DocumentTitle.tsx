@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { TAB_LABEL_MAP } from '../../../constants/Customize.constants';
 import { useIsRouteVisible } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { DocumentTitlePriority } from './DocumentTitle.store';
 import { useDocumentTitleStore } from './DocumentTitleProvider';
 
@@ -26,6 +25,12 @@ interface DocumentTitleProps {
   // Appended after the title; defaults to the route's `:tab` param.
   tab?: string;
 }
+
+// Own keys only: the tab comes from the URL, so `constructor` must not resolve to Object's.
+const isKnownTab = (
+  tab: string | undefined
+): tab is keyof typeof TAB_LABEL_MAP =>
+  tab !== undefined && Object.prototype.hasOwnProperty.call(TAB_LABEL_MAP, tab);
 
 // Claims the tab title; DocumentTitleOutlet renders the winning claim.
 const DocumentTitle: FC<DocumentTitleProps> = ({
@@ -44,10 +49,9 @@ const DocumentTitle: FC<DocumentTitleProps> = ({
   const id = idRef.current;
 
   const tabLabel = useMemo(() => {
-    const activeTab = (tab ?? tabParam) as EntityTabs | undefined;
-    const labelKey = activeTab ? TAB_LABEL_MAP[activeTab] : undefined;
+    const activeTab = tab ?? tabParam;
 
-    return labelKey ? t(labelKey) : undefined;
+    return isKnownTab(activeTab) ? t(TAB_LABEL_MAP[activeTab]) : undefined;
   }, [tab, tabParam, t]);
 
   useEffect(() => {

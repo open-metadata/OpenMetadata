@@ -60,7 +60,7 @@ export const createDocumentTitleStore = (): DocumentTitleStore => {
   const resolve = () => {
     let winner: StoredClaim | undefined;
     claims.forEach((claim) => {
-      if (claim.visible && isBetterClaim(claim, winner)) {
+      if (claim.visible && claim.title && isBetterClaim(claim, winner)) {
         winner = claim;
       }
     });
@@ -91,12 +91,9 @@ export const createDocumentTitleStore = (): DocumentTitleStore => {
       };
     },
     getSegments: () => segments,
+    // An empty title keeps its slot, so a title that loads later can't jump ahead of nested claims.
     set: (id, claim) => {
-      if (!claim.title) {
-        claims.delete(id);
-      } else {
-        claims.set(id, { ...claim, seq: claims.get(id)?.seq ?? nextSeq++ });
-      }
+      claims.set(id, { ...claim, seq: claims.get(id)?.seq ?? nextSeq++ });
       recompute();
     },
     remove: (id) => {
