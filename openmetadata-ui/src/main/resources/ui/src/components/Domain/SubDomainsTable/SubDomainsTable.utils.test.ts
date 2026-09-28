@@ -15,16 +15,45 @@ import { ViewMode } from '../../common/ViewToggle/ViewToggle';
 import { resolveDefaultSubDomainView } from './SubDomainsTable.utils';
 
 describe('resolveDefaultSubDomainView', () => {
-  it('maps DefaultViewMode.Grid to ViewMode.Card', () => {
+  it('maps DefaultViewMode.Grid to ViewMode.Card when Sub Domains has its own default', () => {
     expect(resolveDefaultSubDomainView(DefaultViewMode.Grid)).toEqual(
       ViewMode.Card
     );
   });
 
-  it('maps DefaultViewMode.List and undefined to ViewMode.Table', () => {
+  it('maps DefaultViewMode.List to ViewMode.Table when Sub Domains has its own default', () => {
     expect(resolveDefaultSubDomainView(DefaultViewMode.List)).toEqual(
       ViewMode.Table
     );
-    expect(resolveDefaultSubDomainView(undefined)).toEqual(ViewMode.Table);
+  });
+
+  it('falls back to Table when neither Sub Domains nor Domains has a saved default', () => {
+    expect(resolveDefaultSubDomainView(undefined, undefined)).toEqual(
+      ViewMode.Table
+    );
+  });
+
+  it("inherits the Domains page's default when Sub Domains has none of its own", () => {
+    expect(
+      resolveDefaultSubDomainView(undefined, DefaultViewMode.Grid)
+    ).toEqual(ViewMode.Card);
+    expect(
+      resolveDefaultSubDomainView(undefined, DefaultViewMode.List)
+    ).toEqual(ViewMode.Table);
+  });
+
+  it("falls back to Table when it inherits Domains' Tree default, since Sub Domains has no Tree view", () => {
+    expect(
+      resolveDefaultSubDomainView(undefined, DefaultViewMode.Tree)
+    ).toEqual(ViewMode.Table);
+  });
+
+  it("prefers Sub Domains' own default over Domains' when both are set", () => {
+    expect(
+      resolveDefaultSubDomainView(DefaultViewMode.List, DefaultViewMode.Grid)
+    ).toEqual(ViewMode.Table);
+    expect(
+      resolveDefaultSubDomainView(DefaultViewMode.Grid, DefaultViewMode.List)
+    ).toEqual(ViewMode.Card);
   });
 });

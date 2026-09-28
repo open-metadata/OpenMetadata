@@ -13,8 +13,16 @@
 import { DefaultViewMode } from '../../../generated/api/configuration/appConfiguration';
 import { ViewMode } from '../../common/ViewToggle/ViewToggle';
 
-// This table's toggle only offers Table/Card (no Tree, unlike the top-level
-// Domains page) — any saved default other than Grid (including no saved
-// default) keeps today's Table starting view.
-export const resolveDefaultSubDomainView = (mode?: DefaultViewMode): ViewMode =>
-  mode === DefaultViewMode.Grid ? ViewMode.Card : ViewMode.Table;
+// Sub Domains has no default of its own in General Preferences until the
+// admin explicitly adds a "Sub Domains" row there — until then it inherits
+// the Domains page's default instead of always starting on Table. This
+// table's toggle only offers Table/Card (no Tree, unlike the top-level
+// Domains page), so a Tree default on Domains falls back to Table here too.
+export const resolveDefaultSubDomainView = (
+  subDomainMode?: DefaultViewMode,
+  domainMode?: DefaultViewMode
+): ViewMode => {
+  const mode = subDomainMode ?? domainMode;
+
+  return mode === DefaultViewMode.Grid ? ViewMode.Card : ViewMode.Table;
+};

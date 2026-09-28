@@ -96,176 +96,301 @@ describe('GeneralPreferencesPage', () => {
     mockPatchAppConfiguration.mockResolvedValue({});
   });
 
-  it('renders the default view section with no rows initially', async () => {
-    await renderPage();
+  describe('App Mode section', () => {
+    it('renders the three tenant-default options', async () => {
+      await renderPage();
 
-    expect(
-      screen.getByTestId('default-view-modes-section')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId(/^view-mode-row-\d+$/)).not.toBeInTheDocument();
-  });
-
-  it('adds a row, picks a page and a view, and saves only that map', async () => {
-    await renderPage();
-
-    const viewModesSaveButton = screen.getByTestId('save-view-modes-settings');
-
-    fireEvent.click(screen.getByTestId('add-view-mode-row'));
-
-    expect(viewModesSaveButton).toBeDisabled();
-
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'domains' },
-    });
-    fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
-      target: { value: 'grid' },
+      expect(screen.getByTestId('app-mode-radio-group')).toBeInTheDocument();
+      expect(screen.getByTestId('app-mode-option-null')).toBeInTheDocument();
+      expect(screen.getByTestId('app-mode-option-classic')).toBeInTheDocument();
+      expect(screen.getByTestId('app-mode-option-ai')).toBeInTheDocument();
     });
 
-    expect(viewModesSaveButton).toBeEnabled();
+    it('keeps Save disabled until the selection changes', async () => {
+      await renderPage();
 
-    fireEvent.click(viewModesSaveButton);
+      const saveButton = screen.getByTestId('save-app-mode-settings');
 
-    await waitFor(() =>
-      expect(mockPatchAppConfiguration).toHaveBeenCalledWith({
-        defaultViewModes: { domains: 'grid' },
-      })
-    );
+      await waitFor(() => expect(saveButton).toBeDisabled());
 
-    expect(mockPatchAppConfiguration).toHaveBeenCalledTimes(1);
-  });
+      fireEvent.click(screen.getByTestId('app-mode-option-ai'));
 
-  it('excludes a page already selected in another row from the remaining rows', async () => {
-    await renderPage();
-
-    fireEvent.click(screen.getByTestId('add-view-mode-row'));
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'domains' },
+      expect(saveButton).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByTestId('add-view-mode-row'));
+    it('sends the selected mode on Save', async () => {
+      await renderPage();
 
-    const pageSelects = screen.getAllByTestId(/^view-mode-row-page-\d+$/);
-    const secondRowOptions = Array.from(
-      pageSelects[1].querySelectorAll('option')
-    ).map((option) => option.getAttribute('value'));
+      fireEvent.click(screen.getByTestId('app-mode-option-ai'));
+      fireEvent.click(screen.getByTestId('save-app-mode-settings'));
 
-    expect(secondRowOptions).not.toContain('domains');
+      await waitFor(() =>
+        expect(mockPatchAppConfiguration).toHaveBeenCalledWith({
+          defaultAppMode: 'ai',
+        })
+      );
+    });
+
+    it('sends null when "No default" is selected', async () => {
+      mockGetAppConfiguration.mockResolvedValue({ defaultAppMode: 'ai' });
+
+      await renderPage();
+
+      fireEvent.click(screen.getByTestId('app-mode-option-null'));
+      fireEvent.click(screen.getByTestId('save-app-mode-settings'));
+
+      await waitFor(() =>
+        expect(mockPatchAppConfiguration).toHaveBeenCalledWith({
+          defaultAppMode: null,
+        })
+      );
+    });
   });
 
-  it('removes a row', async () => {
-    await renderPage();
+  describe('View Mode section', () => {
+    it('renders the default view section with no rows initially', async () => {
+      await renderPage();
 
-    fireEvent.click(screen.getByTestId('add-view-mode-row'));
+      expect(
+        screen.getByTestId('default-view-modes-section')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(/^view-mode-row-\d+$/)
+      ).not.toBeInTheDocument();
+    });
 
-    expect(screen.getAllByTestId(/^view-mode-row-\d+$/)).toHaveLength(1);
+    it('adds a row, picks a page and a view, and saves only that map', async () => {
+      await renderPage();
 
-    fireEvent.click(screen.getByTestId(/^remove-view-mode-row-\d+$/));
-
-    expect(screen.queryByTestId(/^view-mode-row-\d+$/)).not.toBeInTheDocument();
-  });
-
-  it('offers Tree as a View option only when Page is Domains', async () => {
-    await renderPage();
-
-    fireEvent.click(screen.getByTestId('add-view-mode-row'));
-
-    const viewSelect = screen.getByTestId(/^view-mode-row-view-\d+$/);
-    const viewOptionValues = () =>
-      Array.from(viewSelect.querySelectorAll('option')).map((option) =>
-        option.getAttribute('value')
+      const viewModesSaveButton = screen.getByTestId(
+        'save-view-modes-settings'
       );
 
-    expect(viewOptionValues()).not.toContain('tree');
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
 
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'domains' },
+      expect(viewModesSaveButton).toBeDisabled();
+
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'domains' },
+      });
+      fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
+        target: { value: 'grid' },
+      });
+
+      expect(viewModesSaveButton).toBeEnabled();
+
+      fireEvent.click(viewModesSaveButton);
+
+      await waitFor(() =>
+        expect(mockPatchAppConfiguration).toHaveBeenCalledWith({
+          defaultViewModes: { domains: 'grid' },
+        })
+      );
+
+      expect(mockPatchAppConfiguration).toHaveBeenCalledTimes(1);
     });
 
-    expect(viewOptionValues()).toContain('tree');
+    it('excludes a page already selected in another row from the remaining rows', async () => {
+      await renderPage();
 
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'dataProducts' },
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'domains' },
+      });
+
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
+
+      const pageSelects = screen.getAllByTestId(/^view-mode-row-page-\d+$/);
+      const secondRowOptions = Array.from(
+        pageSelects[1].querySelectorAll('option')
+      ).map((option) => option.getAttribute('value'));
+
+      expect(secondRowOptions).not.toContain('domains');
     });
 
-    expect(viewOptionValues()).not.toContain('tree');
+    it('removes a row', async () => {
+      await renderPage();
+
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
+
+      expect(screen.getAllByTestId(/^view-mode-row-\d+$/)).toHaveLength(1);
+
+      fireEvent.click(screen.getByTestId(/^remove-view-mode-row-\d+$/));
+
+      expect(
+        screen.queryByTestId(/^view-mode-row-\d+$/)
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers Tree as a View option only when Page is Domains', async () => {
+      await renderPage();
+
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
+
+      const viewSelect = screen.getByTestId(/^view-mode-row-view-\d+$/);
+      const viewOptionValues = () =>
+        Array.from(viewSelect.querySelectorAll('option')).map((option) =>
+          option.getAttribute('value')
+        );
+
+      expect(viewOptionValues()).not.toContain('tree');
+
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'domains' },
+      });
+
+      expect(viewOptionValues()).toContain('tree');
+
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'dataProducts' },
+      });
+
+      expect(viewOptionValues()).not.toContain('tree');
+    });
+
+    it("resets the row's View when its Page changes away from Domains while Tree was selected", async () => {
+      await renderPage();
+
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'domains' },
+      });
+      fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
+        target: { value: 'tree' },
+      });
+
+      expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue(
+        'tree'
+      );
+
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'dataProducts' },
+      });
+
+      expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue('');
+    });
+
+    it('keeps Save disabled when changing a loaded row away from Domains leaves it incomplete', async () => {
+      mockGetAppConfiguration.mockResolvedValue({
+        defaultViewModes: { domains: 'tree' },
+      });
+
+      await renderPage();
+
+      const viewModesSaveButton = screen.getByTestId(
+        'save-view-modes-settings'
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId(/^view-mode-row-page-\d+$/)).toHaveValue(
+          'domains'
+        )
+      );
+
+      expect(viewModesSaveButton).toBeDisabled();
+
+      // Switching the loaded domains/tree row's Page away from domains resets
+      // its View to null (Tree isn't valid elsewhere) — the row is now
+      // incomplete and would silently drop the saved entry if submitted.
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'dataProducts' },
+      });
+
+      expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue('');
+      expect(viewModesSaveButton).toBeDisabled();
+
+      // Only picking a new View for the now-incomplete row re-enables Save.
+      fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
+        target: { value: 'grid' },
+      });
+
+      expect(viewModesSaveButton).toBeEnabled();
+    });
   });
 
-  it("resets the row's View when its Page changes away from Domains while Tree was selected", async () => {
-    await renderPage();
+  describe('shared load state', () => {
+    it("keeps App Mode's and View Mode's Save buttons and saves independent", async () => {
+      await renderPage();
 
-    fireEvent.click(screen.getByTestId('add-view-mode-row'));
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'domains' },
-    });
-    fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
-      target: { value: 'tree' },
-    });
+      const appModeSaveButton = screen.getByTestId('save-app-mode-settings');
+      const viewModesSaveButton = screen.getByTestId(
+        'save-view-modes-settings'
+      );
 
-    expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue('tree');
+      await waitFor(() => {
+        expect(appModeSaveButton).toBeDisabled();
+        expect(viewModesSaveButton).toBeDisabled();
+      });
 
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'dataProducts' },
-    });
+      // Changing only App Mode enables just its own Save button.
+      fireEvent.click(screen.getByTestId('app-mode-option-ai'));
 
-    expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue('');
-  });
+      expect(appModeSaveButton).toBeEnabled();
+      expect(viewModesSaveButton).toBeDisabled();
 
-  it('keeps Save disabled when changing a loaded row away from Domains leaves it incomplete', async () => {
-    mockGetAppConfiguration.mockResolvedValue({
-      defaultViewModes: { domains: 'tree' },
-    });
+      fireEvent.click(appModeSaveButton);
 
-    await renderPage();
+      await waitFor(() =>
+        expect(mockPatchAppConfiguration).toHaveBeenCalledWith({
+          defaultAppMode: 'ai',
+        })
+      );
 
-    const viewModesSaveButton = screen.getByTestId('save-view-modes-settings');
+      expect(mockPatchAppConfiguration).toHaveBeenCalledTimes(1);
+      expect(appModeSaveButton).toBeDisabled();
+      expect(viewModesSaveButton).toBeDisabled();
 
-    await waitFor(() =>
-      expect(screen.getByTestId(/^view-mode-row-page-\d+$/)).toHaveValue(
-        'domains'
-      )
-    );
+      // Changing only a View Mode row enables just its own Save button.
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'domains' },
+      });
+      fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
+        target: { value: 'grid' },
+      });
 
-    expect(viewModesSaveButton).toBeDisabled();
+      expect(viewModesSaveButton).toBeEnabled();
+      expect(appModeSaveButton).toBeDisabled();
 
-    // Switching the loaded domains/tree row's Page away from domains resets
-    // its View to null (Tree isn't valid elsewhere) — the row is now
-    // incomplete and would silently drop the saved entry if submitted.
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'dataProducts' },
-    });
+      fireEvent.click(viewModesSaveButton);
 
-    expect(screen.getByTestId(/^view-mode-row-view-\d+$/)).toHaveValue('');
-    expect(viewModesSaveButton).toBeDisabled();
+      await waitFor(() =>
+        expect(mockPatchAppConfiguration).toHaveBeenCalledWith({
+          defaultViewModes: { domains: 'grid' },
+        })
+      );
 
-    // Only picking a new View for the now-incomplete row re-enables Save.
-    fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
-      target: { value: 'grid' },
-    });
-
-    expect(viewModesSaveButton).toBeEnabled();
-  });
-
-  it('keeps Save disabled when the initial config load fails, even after adding a row', async () => {
-    mockGetAppConfiguration.mockRejectedValue(new Error('network error'));
-
-    await renderPage();
-
-    const viewModesSaveButton = screen.getByTestId('save-view-modes-settings');
-
-    expect(viewModesSaveButton).toBeDisabled();
-
-    // Without the load-error guard this would look like a legitimate empty
-    // form: adding and completing a row would enable Save, and submitting
-    // it would replace the server's whole `defaultViewModes` map with just
-    // this one entry — wiping every page default that failed to load.
-    fireEvent.click(screen.getByTestId('add-view-mode-row'));
-    fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
-      target: { value: 'domains' },
-    });
-    fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
-      target: { value: 'grid' },
+      expect(mockPatchAppConfiguration).toHaveBeenCalledTimes(2);
     });
 
-    expect(viewModesSaveButton).toBeDisabled();
+    it('keeps both Save buttons disabled when the initial config load fails, even after editing both sections', async () => {
+      mockGetAppConfiguration.mockRejectedValue(new Error('network error'));
+
+      await renderPage();
+
+      const appModeSaveButton = screen.getByTestId('save-app-mode-settings');
+      const viewModesSaveButton = screen.getByTestId(
+        'save-view-modes-settings'
+      );
+
+      expect(appModeSaveButton).toBeDisabled();
+      expect(viewModesSaveButton).toBeDisabled();
+
+      // Without the load-error guard these would look like a legitimate
+      // empty form: picking a mode / completing a row would enable Save, and
+      // submitting either would replace the server's whole config (or its
+      // whole `defaultViewModes` map) with incomplete data.
+      fireEvent.click(screen.getByTestId('app-mode-option-ai'));
+      fireEvent.click(screen.getByTestId('add-view-mode-row'));
+      fireEvent.change(screen.getByTestId(/^view-mode-row-page-\d+$/), {
+        target: { value: 'domains' },
+      });
+      fireEvent.change(screen.getByTestId(/^view-mode-row-view-\d+$/), {
+        target: { value: 'grid' },
+      });
+
+      expect(appModeSaveButton).toBeDisabled();
+      expect(viewModesSaveButton).toBeDisabled();
+    });
   });
 });

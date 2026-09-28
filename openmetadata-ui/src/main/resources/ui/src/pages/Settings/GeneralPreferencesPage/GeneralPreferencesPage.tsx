@@ -14,6 +14,8 @@ import {
   Box,
   Button,
   Card,
+  RadioButton,
+  RadioGroup,
   Select,
   SelectItem,
   Typography,
@@ -23,8 +25,15 @@ import { AxiosError } from 'axios';
 import { Key, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
-import { DefaultViewMode } from '../../../generated/api/configuration/appConfiguration';
+import {
+  DefaultAppMode,
+  DefaultViewMode,
+} from '../../../generated/api/configuration/appConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  setAppDefaultMode,
+  translateWireMode,
+} from '../../../hooks/useAppMode';
 import {
   getAppConfiguration,
   patchAppConfiguration,
@@ -41,16 +50,45 @@ import {
   serializeViewModes,
 } from './GeneralPreferencesPage.utils';
 
+// Sentinel value for the "no tenant default" radio option — the wire value
+// for that choice is `null`, but native form controls can't carry `null` as
+// a value, so we translate at the option/handler boundary only.
+const NO_DEFAULT_VALUE = 'null';
+
+interface AppModeOption {
+  value: string;
+  labelKey: string;
+}
+
+// The tenant default is the fixed `DefaultAppMode` wire enum (`ai` | `classic`)
+// plus the "no default" sentinel — not a runtime registry — so the options are
+// a static list rather than something derived from the router.
+const APP_MODE_OPTIONS: AppModeOption[] = [
+  { value: NO_DEFAULT_VALUE, labelKey: 'label.no-default' },
+  { value: DefaultAppMode.Classic, labelKey: 'label.classic' },
+  { value: DefaultAppMode.AI, labelKey: 'label.ai' },
+];
+
 const GeneralPreferencesPage: React.FC = () => {
   const { t } = useTranslation();
   const { setDefaultViewModes } = useApplicationStore();
   const pageTitle = t('label.general-preferences');
+
+  const [initialAppMode, setInitialAppMode] =
+    useState<string>(NO_DEFAULT_VALUE);
+  const [currentAppMode, setCurrentAppMode] =
+    useState<string>(NO_DEFAULT_VALUE);
+  const [isSavingAppMode, setIsSavingAppMode] = useState(false);
+
   const [initialRows, setInitialRows] = useState<ViewModeRow[]>([]);
   const [rows, setRows] = useState<ViewModeRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasLoadError, setHasLoadError] = useState(false);
   const [isSavingViewModes, setIsSavingViewModes] = useState(false);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadError, setHasLoadError] = useState(false);
+
+  // Both sections read from the same tenant config, so one load populates
+  // both — App Mode and View Mode still save independently below.
   useEffect(() => {
     let isMounted = true;
 
@@ -59,6 +97,10 @@ const GeneralPreferencesPage: React.FC = () => {
         if (!isMounted) {
           return;
         }
+        const appMode = config?.defaultAppMode ?? NO_DEFAULT_VALUE;
+        setInitialAppMode(appMode);
+        setCurrentAppMode(appMode);
+
         const viewModeRows = buildRowsFromViewModes(config?.defaultViewModes);
         setInitialRows(viewModeRows);
         setRows(viewModeRows);
@@ -67,7 +109,8 @@ const GeneralPreferencesPage: React.FC = () => {
         // A failed load leaves `rows` empty — saving from that state would
         // replace the server's whole `defaultViewModes` map with whatever
         // was added since, wiping every previously-saved page default.
-        // Block Save until a real config (even an empty one) has loaded.
+        // Block both Saves until a real config (even an empty one) has
+        // loaded.
         if (isMounted) {
           setHasLoadError(true);
         }
@@ -84,6 +127,10 @@ const GeneralPreferencesPage: React.FC = () => {
     };
   }, []);
 
+  const isAppModeDirty = currentAppMode !== initialAppMode;
+  const isAppModeSaveDisabled =
+    !isAppModeDirty || isLoading || hasLoadError || isSavingAppMode;
+
   const isViewModesDirty =
     serializeViewModes(buildViewModesMap(rows)) !==
     serializeViewModes(buildViewModesMap(initialRows));
@@ -94,9 +141,43 @@ const GeneralPreferencesPage: React.FC = () => {
   const hasIncompleteRow = rows.some(
     (row) => Boolean(row.page) !== Boolean(row.view)
   );
-  const isRowsInvalid = hasIncompleteRow || hasLoadError;
-  const isSaveDisabled =
-    !isViewModesDirty || isRowsInvalid || isLoading || isSavingViewModes;
+  const isViewRowsInvalid = hasIncompleteRow || hasLoadError;
+  const isViewModesSaveDisabled =
+    !isViewModesDirty || isViewRowsInvalid || isLoading || isSavingViewModes;
+
+  // App Mode and View Mode each save independently through the same
+  // `patchAppConfiguration` — it read-modify-writes against the stored
+  // config, so one section's partial patch can never wipe the other
+  // section's already-saved field.
+  const handleSaveAppMode = async () => {
+    setIsSavingAppMode(true);
+    try {
+      const defaultAppMode =
+        currentAppMode === NO_DEFAULT_VALUE
+          ? null
+          : (currentAppMode as DefaultAppMode);
+      await patchAppConfiguration({ defaultAppMode });
+      setInitialAppMode(currentAppMode);
+      // Same translation AuthProvider runs at boot — keeps the boot-time
+      // fallback cache (`getAppDefaultMode`) current so the *next*
+      // login/reload, for this admin and for everyone else, picks up the
+      // new tenant default. It does NOT change the mode already active in
+      // this tab: that's driven by `useAppModeStore`/`writeAppMode`, which
+      // this call never touches, and a live boot-style write here risks
+      // transiently flipping the active mode mid-session (see
+      // `removeAppModeSession`'s doc comment in useAppMode.ts).
+      setAppDefaultMode(translateWireMode(defaultAppMode));
+      showSuccessToast(
+        t('server.entity-updated-success', {
+          entity: t('label.default-app-mode'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingAppMode(false);
+    }
+  };
 
   const handleAddRow = () => {
     setRows((prev) => [
@@ -144,7 +225,9 @@ const GeneralPreferencesPage: React.FC = () => {
       // pick up the new tenant default without a reload.
       setDefaultViewModes(defaultViewModes);
       showSuccessToast(
-        t('server.entity-updated-success', { entity: pageTitle })
+        t('server.entity-updated-success', {
+          entity: t('label.default-view-per-page'),
+        })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -164,7 +247,50 @@ const GeneralPreferencesPage: React.FC = () => {
         className="not-prose tw:text-lg tw:font-semibold tw:mb-2">
         {pageTitle}
       </Typography>
-      <Typography as="p" className="not-prose tw:text-secondary tw:mb-10">
+
+      <Typography
+        as="h2"
+        className="not-prose tw:text-md tw:font-semibold tw:mb-2">
+        {t('label.default-app-mode')}
+      </Typography>
+      <Typography as="p" className="not-prose tw:text-secondary tw:mb-6">
+        {t('message.default-app-mode-description')}
+      </Typography>
+      <Card className="tw:mb-8">
+        <Card.Content>
+          <RadioGroup
+            aria-label={t('label.default-app-mode')}
+            data-testid="app-mode-radio-group"
+            value={currentAppMode}
+            onChange={setCurrentAppMode}>
+            {APP_MODE_OPTIONS.map((option) => (
+              <RadioButton
+                data-testid={`app-mode-option-${option.value}`}
+                key={option.value}
+                label={t(option.labelKey)}
+                value={option.value}
+              />
+            ))}
+          </RadioGroup>
+        </Card.Content>
+        <Card.Footer>
+          <Button
+            color="primary"
+            data-testid="save-app-mode-settings"
+            isDisabled={isAppModeSaveDisabled}
+            isLoading={isSavingAppMode}
+            onPress={handleSaveAppMode}>
+            {t('label.save')}
+          </Button>
+        </Card.Footer>
+      </Card>
+
+      <Typography
+        as="h2"
+        className="not-prose tw:text-md tw:font-semibold tw:mb-2">
+        {t('label.default-view-per-page')}
+      </Typography>
+      <Typography as="p" className="not-prose tw:text-secondary tw:mb-6">
         {t('message.general-preferences-description')}
       </Typography>
       <Card>
@@ -251,7 +377,7 @@ const GeneralPreferencesPage: React.FC = () => {
           <Button
             color="primary"
             data-testid="save-view-modes-settings"
-            isDisabled={isSaveDisabled}
+            isDisabled={isViewModesSaveDisabled}
             isLoading={isSavingViewModes}
             onPress={handleSaveViewModes}>
             {t('label.save')}

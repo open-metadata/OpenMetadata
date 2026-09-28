@@ -699,13 +699,6 @@ class GlobalSettingsClassBase {
             icon: LearningIcon,
           },
           {
-            label: t('label.default-app-mode'),
-            description: t('message.default-app-mode-description'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
-            icon: AppModeIcon,
-          },
-          {
             label: t('label.general-preferences'),
             description: t('message.general-preferences-description'),
             isProtected: Boolean(isAdminUser),

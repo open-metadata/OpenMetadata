@@ -109,7 +109,7 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
  * concurrent calls could both GET the same stored row before either PUTs,
  * and whichever PUT lands second would still wipe the other's change (e.g.
  * clicking the App Mode and View Mode Save buttons in quick succession on
- * `DefaultAppModePage`). `patchQueue` chains each call after the previous
+ * `GeneralPreferencesPage`). `patchQueue` chains each call after the previous
  * one settles — success or failure — so a call's GET only ever starts once
  * the prior call's PUT has finished.
  */

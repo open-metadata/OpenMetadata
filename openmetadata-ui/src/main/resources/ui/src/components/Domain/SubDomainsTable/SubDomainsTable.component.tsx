@@ -86,7 +86,10 @@ const SubDomainsTable = ({
 
   const { defaultViewModes } = useApplicationStore();
   const [view, setView] = useState<ViewMode>(
-    resolveDefaultSubDomainView(defaultViewModes.subDomains)
+    resolveDefaultSubDomainView(
+      defaultViewModes.subDomains,
+      defaultViewModes.domains
+    )
   );
   const { renderDomainCard } = useDomainCardTemplates();
 
