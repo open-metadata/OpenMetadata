@@ -27,5 +27,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'Table',
   reindexEntityType: 'table',
-  entityFactory: () => new TableClass(),
+  // Service-facet assertion pins to a single `table-data-card_<fqn>`;
+  // under SharedInfra other workers' tables share the same service and
+  // push the card past page 1. Use a unique service per suite so the
+  // filter narrows to just this table.
+  entityFactory: () =>
+    new TableClass(undefined, undefined, undefined, {
+      createFullHierarchy: true,
+    }),
 });
