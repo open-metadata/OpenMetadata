@@ -1861,6 +1861,10 @@
       "specs": [
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/ApiEndpoint.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
+        "playwright/e2e/Pages/ExploreTree.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1875,7 +1879,12 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/Dashboard.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
+        "playwright/e2e/Pages/ExploreBrowse.spec.ts",
+        "playwright/e2e/Pages/ExploreTree.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1886,18 +1895,32 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/service/DatabaseServiceClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
+        "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
+        "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
+        "playwright/e2e/Features/LineagePipelineAnnotator.spec.ts",
+        "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/Database.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/DatabaseSchema.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/ExploreFilterSeparation.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/StoredProcedure.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
         "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
+        "playwright/e2e/Pages/ExploreBrowse.spec.ts",
+        "playwright/e2e/Pages/ExploreTree.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1911,6 +1934,7 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1921,10 +1945,14 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/service/MessagingServiceClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/Topic.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1943,8 +1971,12 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/service/MlmodelServiceClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/MlModel.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1957,6 +1989,9 @@
       "specs": [
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/Pipeline.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1969,6 +2004,9 @@
       "specs": [
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
+        "playwright/e2e/Pages/ExploreTree.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -1981,7 +2019,10 @@
       "specs": [
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/Container.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
