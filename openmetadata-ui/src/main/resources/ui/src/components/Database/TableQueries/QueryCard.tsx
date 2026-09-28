@@ -12,6 +12,7 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
+import { Copy } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
@@ -23,7 +24,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import {
   ONE_MINUTE_IN_MILLISECOND,
   PIPE_SYMBOL,
@@ -256,16 +256,16 @@ const QueryCard: FC<QueryCardProp> = ({
           <div className="tw:pt-px">
             <Space className="query-entity-button" size={8}>
               <Button
-                className="flex-center bg-white"
+                className="flex-center"
                 data-testid="query-entity-expand-button"
                 icon={renderExpandIcon()}
                 onClick={handleExpandClick}
               />
               <Tooltip title={t('message.copy-to-clipboard')}>
                 <Button
-                  className="flex-center bg-white"
+                  className="flex-center"
                   data-testid="query-entity-copy-button"
-                  icon={<CopyIcon height={16} width={16} />}
+                  icon={<Copy size={16} />}
                   onClick={onCopyToClipBoard}
                 />
               </Tooltip>
