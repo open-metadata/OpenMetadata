@@ -14,7 +14,7 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 import validators
 from tableauserverclient import (
@@ -110,7 +110,7 @@ class TableauClient:
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: dict[str, list[str]] = {}
         self.owner_cache: dict[str, TableauOwner] = {}
-        self.all_projects: list[ProjectItem] = []
+        self.all_projects: dict[str, ProjectItem] = {}
         self.ssl_manager = ssl_manager
 
     def server_info(self):
@@ -175,31 +175,26 @@ class TableauClient:
 
     def get_all_projects(self) -> None:
         """
-        Get all projects from the tableau server
+        Get all projects from the tableau server, keyed by project id for O(1) lookup.
         """
         try:
             logger.debug("Getting all projects from the tableau server")
-            all_projects: list[ProjectItem] = []
-            for project in Pager(self.tableau_server.projects):
-                all_projects.append(project)  # noqa: PERF402
-            self.all_projects = all_projects
+            self.all_projects = {
+                str(project.id): project for project in Pager(self.tableau_server.projects)
+            }
         except Exception as e:
             logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
 
     def get_project_parents_by_id(self, project_id: str) -> str | None:
         """
-        Get the parents of a project by id
+        Get the parents of a project by id (O(1) dict lookup per level).
         """
         try:
             parent_projects = []
             current_project_id = project_id
 
             while current_project_id:
-                # Find project with current ID
-                project = next(
-                    (proj for proj in self.all_projects if str(proj.id) == str(current_project_id)),
-                    None,
-                )
+                project = self.all_projects.get(str(current_project_id))
 
                 if not project:
                     break
@@ -223,14 +218,29 @@ class TableauClient:
         _, pagination_item = self.tableau_server.workbooks.get(RequestOptions(pagesize=1))
         return pagination_item.total_available
 
-    def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
+    def get_workbooks(
+        self,
+        include_owners: bool = True,
+        filter_fn: Callable[[str, str | None], bool] | None = None,
+    ) -> Iterable[TableauDashboard]:
         """
-        Fetch all tableau workbooks
+        Fetch all tableau workbooks.
+
+        ``filter_fn(name, project_path)`` is called before the expensive
+        ``populate_views`` API call.  Return ``True`` to skip the workbook.
+        This lets callers push dashboard/project filter patterns into the
+        client loop so that discarded workbooks never pay for ``populate_views``
+        or ``get_datasources``.
         """
         self.get_all_projects()
         self.cache_custom_sql_tables()
         for workbook in Pager(self.tableau_server.workbooks):
             try:
+                if filter_fn is not None:
+                    project_path = self.get_project_parents_by_id(str(workbook.project_id))
+                    if filter_fn(workbook.name, project_path):
+                        continue
+
                 self.tableau_server.workbooks.populate_views(workbook, usage=True)
                 charts, user_views = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
                 workbook = TableauDashboard(  # noqa: PLW2901

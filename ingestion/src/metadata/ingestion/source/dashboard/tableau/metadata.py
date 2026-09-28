@@ -94,7 +94,9 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.utils import fqn
 from metadata.utils.filters import (
     filter_by_chart,
+    filter_by_dashboard,
     filter_by_datamodel,
+    filter_by_project,
     filter_pattern_enabled,
 )
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -159,7 +161,20 @@ class TableauSource(DashboardServiceSource):
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
         self._declare_dashboard_progress_total()
-        yield from self.client.get_workbooks(include_owners=self.source_config.includeOwners)
+
+        dashboard_pattern = self.source_config.dashboardFilterPattern
+        project_pattern = self.source_config.projectFilterPattern
+
+        def _early_filter(name: str, project_path: str | None) -> bool:
+            """Return True if the workbook should be skipped before populate_views."""
+            return filter_by_dashboard(dashboard_pattern, name) or filter_by_project(
+                project_pattern, project_path
+            )
+
+        yield from self.client.get_workbooks(
+            include_owners=self.source_config.includeOwners,
+            filter_fn=_early_filter,
+        )
 
     def _declare_dashboard_progress_total(self) -> None:
         """Declare the Dashboard progress total. ``get_workbook_count`` is a
