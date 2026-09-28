@@ -16,6 +16,7 @@ import {
   ServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE,
 } from '../../../constants/ServiceEmptyState.constant';
+import { SERVICE_CATEGORY_TITLE_KEYS } from '../../../constants/ServiceType.constant';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 
@@ -30,55 +31,55 @@ export interface CategoryConfig {
 export const CATEGORY_CONFIGS = [
   {
     key: ServiceCategory.DATABASE_SERVICES,
-    titleKey: 'label.database-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.DATABASE_SERVICES],
     descriptionKey: 'message.connections-database-services-description',
   },
   {
     key: ServiceCategory.DASHBOARD_SERVICES,
-    titleKey: 'label.dashboard-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.DASHBOARD_SERVICES],
     descriptionKey: 'message.connections-dashboard-services-description',
   },
   {
     key: ServiceCategory.MESSAGING_SERVICES,
-    titleKey: 'label.messaging-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.MESSAGING_SERVICES],
     descriptionKey: 'message.connections-messaging-services-description',
   },
   {
     key: ServiceCategory.PIPELINE_SERVICES,
-    titleKey: 'label.pipeline-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.PIPELINE_SERVICES],
     descriptionKey: 'message.connections-pipeline-services-description',
   },
   {
     key: ServiceCategory.STORAGE_SERVICES,
-    titleKey: 'label.storage-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.STORAGE_SERVICES],
     descriptionKey: 'message.connections-storage-services-description',
   },
   {
     key: ServiceCategory.API_SERVICES,
-    titleKey: 'label.api-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.API_SERVICES],
     descriptionKey: 'message.connections-api-services-description',
   },
   {
     key: ServiceCategory.ML_MODEL_SERVICES,
-    titleKey: 'label.ml-model',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.ML_MODEL_SERVICES],
     descriptionKey: 'message.connections-ml-model-services-description',
   },
   {
     key: ServiceCategory.METADATA_SERVICES,
-    titleKey: 'label.metadata-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.METADATA_SERVICES],
     descriptionKey: 'message.connections-metadata-services-description',
   },
   {
     key: ServiceCategory.SEARCH_SERVICES,
-    titleKey: 'label.search-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.SEARCH_SERVICES],
   },
   {
     key: ServiceCategory.DRIVE_SERVICES,
-    titleKey: 'label.drive',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.DRIVE_SERVICES],
   },
   {
     key: ServiceCategory.SECURITY_SERVICES,
-    titleKey: 'label.security-service',
+    titleKey: SERVICE_CATEGORY_TITLE_KEYS[ServiceCategory.SECURITY_SERVICES],
   },
 ] satisfies CategoryConfig[];
 

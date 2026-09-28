@@ -128,7 +128,7 @@ const ConnectionsSecondaryNav = ({
 
   return (
     <aside
-      className="tw:w-[264px] tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-primary tw:px-3.5 tw:pb-48 tw:pt-5"
+      className="tw:w-[264px] tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-primary tw:px-3.5 tw:pb-5 tw:pt-5"
       data-testid="connections-secondary-nav">
       <nav aria-label={t('label.connection-plural')}>
         <NavigationItem
@@ -142,7 +142,7 @@ const ConnectionsSecondaryNav = ({
         />
 
         <div className="tw:mb-2 tw:mt-5 tw:px-3 tw:text-xs tw:font-semibold tw:leading-[18px] tw:tracking-[0.04em] tw:text-utility-gray-400 tw:uppercase">
-          {t('label.browse-by-service-type')}
+          {t('label.browse-by-service-category')}
         </div>
 
         {CATEGORY_CONFIGS.map((config) => (

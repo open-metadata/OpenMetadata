@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -66,31 +65,21 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   drives: ServiceCategory.DRIVE_SERVICES,
 };
 
-export const servicesDisplayName: Record<
-  string,
-  { key: string; entity: string }
-> = {
-  databaseServices: { key: 'label.entity-service', entity: 'label.database' },
-  messagingServices: { key: 'label.entity-service', entity: 'label.messaging' },
-  dashboardServices: { key: 'label.entity-service', entity: 'label.dashboard' },
-  pipelineServices: { key: 'label.entity-service', entity: 'label.pipeline' },
-  mlmodelServices: { key: 'label.entity-service', entity: 'label.ml-model' },
-  metadataServices: { key: 'label.entity-service', entity: 'label.metadata' },
-  storageServices: { key: 'label.entity-service', entity: 'label.storage' },
-  searchServices: { key: 'label.entity-service', entity: 'label.search' },
-  dashboardDataModel: {
-    key: 'label.entity-service',
-    entity: 'label.data-model',
-  },
-  apiServices: { key: 'label.entity-service', entity: 'label.api-uppercase' },
-  securityServices: { key: 'label.entity-service', entity: 'label.security' },
-  driveServices: { key: 'label.entity-service', entity: 'label.drive' },
+// Category names deliberately omit "Service": they label a kind of source (Connections tabs,
+// breadcrumbs, the add-service picker), whereas the `*-service` labels name the service entity.
+export const SERVICE_CATEGORY_TITLE_KEYS: Record<ServiceCategory, string> = {
+  [ServiceCategory.DATABASE_SERVICES]: 'label.database-plural',
+  [ServiceCategory.DASHBOARD_SERVICES]: 'label.dashboard-plural',
+  [ServiceCategory.MESSAGING_SERVICES]: 'label.messaging',
+  [ServiceCategory.PIPELINE_SERVICES]: 'label.pipeline-plural',
+  [ServiceCategory.STORAGE_SERVICES]: 'label.storage',
+  [ServiceCategory.API_SERVICES]: 'label.api-uppercase-plural',
+  [ServiceCategory.ML_MODEL_SERVICES]: 'label.ml-model-plural',
+  [ServiceCategory.METADATA_SERVICES]: 'label.catalog-plural',
+  [ServiceCategory.SEARCH_SERVICES]: 'label.search-engine-plural',
+  [ServiceCategory.DRIVE_SERVICES]: 'label.drive-plural',
+  [ServiceCategory.SECURITY_SERVICES]: 'label.security',
 };
-
-export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
-  label: startCase(value),
-  value,
-}));
 
 // Sentinel for "no specific category chosen" on the add-service wizard's category-agnostic entry
 // points (the All Connections tab, the /settings/services landing page) — deliberately not a

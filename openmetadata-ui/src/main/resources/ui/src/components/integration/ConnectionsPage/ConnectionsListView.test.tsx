@@ -600,7 +600,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (24)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (24)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');
@@ -841,7 +841,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (3)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (3)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');

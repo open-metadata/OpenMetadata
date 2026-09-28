@@ -12,9 +12,11 @@
  */
 
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { startCase } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
+  SERVICE_CATEGORY_TITLE_KEYS,
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
@@ -257,6 +259,15 @@ export const getEntityTypeFromServiceCategory = (
 ) =>
   ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP[serviceCategory as ServiceCategory] ??
   EntityType.DATABASE_SERVICE;
+
+// Categories outside the map (e.g. llm/mcp services arriving via a route param) keep their
+// derived name rather than rendering blank.
+export const getServiceCategoryLabel = (serviceCategory: string): string => {
+  const titleKey =
+    SERVICE_CATEGORY_TITLE_KEYS[serviceCategory as ServiceCategory];
+
+  return titleKey ? t(titleKey) : startCase(serviceCategory);
+};
 
 export const getServiceDisplayNameQueryFilter = (displayName: string) => ({
   query: {
