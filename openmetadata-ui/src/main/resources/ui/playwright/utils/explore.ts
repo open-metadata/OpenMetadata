@@ -159,14 +159,15 @@ export const selectDataAssetFilter = async (
     await filterRow.click();
   }
 
-  // Legacy mode commits + closes on Update; immediate-apply commits on check but
-  // leaves the dropdown open, so close it via its trigger to match the helper's
-  // post-condition (results interactable for callers).
+  // Staged mode commits + closes on Update; immediate-apply commits on check but
+  // leaves the dropdown open, and FilterSelect owns its own dismissal -- its
+  // pointerdown handler returns early for anything inside the trigger, so
+  // pressing the trigger again cannot close it. Escape is what it listens for.
   const updateButton = page.getByTestId('update-btn');
   if (await updateButton.isVisible().catch(() => false)) {
     await updateButton.click();
   } else {
-    await page.getByRole('button', { name: 'Data Assets' }).click();
+    await page.keyboard.press('Escape');
   }
 };
 

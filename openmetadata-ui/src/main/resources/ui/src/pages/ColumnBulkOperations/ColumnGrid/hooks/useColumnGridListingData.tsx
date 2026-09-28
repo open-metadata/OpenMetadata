@@ -63,6 +63,7 @@ export const useColumnGridListingData = (
   allRows: ColumnGridRowData[];
   setAllRows: React.Dispatch<React.SetStateAction<ColumnGridRowData[]>>;
   gridItems: ColumnGridItem[];
+  isBuildingRows: boolean;
   setGridItems: React.Dispatch<React.SetStateAction<ColumnGridItem[]>>;
   setSelectedEntities: (ids: string[] | ((prev: string[]) => string[])) => void;
   clearEditedValues: () => void;
@@ -73,7 +74,6 @@ export const useColumnGridListingData = (
     props.externalFilters || {}
   );
   const [loading, setLoading] = useState(false);
-  const [entities, setEntities] = useState<ColumnGridRowData[]>([]);
   const [totalUniqueColumns, setTotalUniqueColumns] = useState(0);
   const [totalOccurrences, setTotalOccurrences] = useState(0);
   const [gridItems, setGridItems] = useState<ColumnGridItem[]>([]);
@@ -136,7 +136,7 @@ export const useColumnGridListingData = (
   }, [urlState.filters]);
 
   // Selection state
-  const selectionState = useSelectionState(entities);
+  const selectionState = useSelectionState(allRows);
 
   // Pagination state - use backend total (client-side filters work on current page only)
   const effectiveTotal = totalUniqueColumnsRef.current || totalUniqueColumns;
@@ -267,13 +267,6 @@ export const useColumnGridListingData = (
     []
   );
 
-  const applyClientSideFilters = useCallback(
-    (rows: ColumnGridRowData[]): ColumnGridRowData[] => {
-      return rows;
-    },
-    []
-  );
-
   const editedValuesRef = useRef<
     Map<
       string,
@@ -317,10 +310,6 @@ export const useColumnGridListingData = (
     expandedStructRows,
     props.transformGridItemsToRows,
   ]);
-
-  useEffect(() => {
-    setEntities(applyClientSideFilters(allRows));
-  }, [allRows, applyClientSideFilters]);
 
   useEffect(() => {
     allRows.forEach((row) => {
@@ -572,7 +561,7 @@ export const useColumnGridListingData = (
   }, []);
 
   return {
-    entities,
+    entities: allRows,
     loading,
     totalEntities: totalUniqueColumns,
     currentPage: paginationState.currentPage,
@@ -610,6 +599,8 @@ export const useColumnGridListingData = (
     setExpandedStructRows,
     allRows,
     setAllRows,
+    // Rows are built from `gridItems` one effect later.
+    isBuildingRows: gridItems.length > 0 && allRows.length === 0,
     gridItems,
     setGridItems,
   };
