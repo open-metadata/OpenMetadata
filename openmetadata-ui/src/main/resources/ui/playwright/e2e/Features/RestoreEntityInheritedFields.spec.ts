@@ -289,13 +289,13 @@ const waitForInheritedDomainOnEntityPage = async (
     await entity.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
-    const domainCountButton = page.getByTestId('domain-count-button');
-    const hasMultipleDomains = await domainCountButton
+    const showAllDomainsButton = page.getByTestId('show-all-domains');
+    const hasMultipleDomains = await showAllDomainsButton
       .isVisible()
       .catch(() => false);
 
     if (hasMultipleDomains) {
-      await expect(domainCountButton).toBeVisible({
+      await expect(showAllDomainsButton).toBeVisible({
         timeout: 2_000,
       });
     } else {
