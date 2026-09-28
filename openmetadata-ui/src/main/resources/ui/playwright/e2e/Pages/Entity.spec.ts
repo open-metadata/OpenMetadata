@@ -174,12 +174,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       );
     });
 
-    // Domain Propagation lives in `EntityDomainPropagation.spec.ts`. It
-    // assigns a domain to `entity.service`, which under SharedInfra is a
-    // per-shard shared service; concurrent tests in this file race on the
-    // same service's domain field. The extracted spec constructs each
-    // entity with `createFullHierarchy: true` so the assign/verify is
-    // race-free without paying that isolation cost for the other tests.
+    // Domain Propagation lives in EntityDomainPropagation.spec.ts: it mutates
+    // the parent service, and entities here share the shard's service.
 
     /**
      * Tests user ownership management on entities

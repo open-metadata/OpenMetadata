@@ -28,35 +28,23 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
-import { SharedInfra } from './SharedInfra';
+import { resolveParents } from './ParentResolver';
+import { MessagingServiceClass } from './service/MessagingServiceClass';
 
 /**
- * See TableClass.TableClassOptions — `createFullHierarchy` defaults to
- * `false`, meaning the topic reuses the per-worker messagingService cached
- * in SharedInfra. Pass `true` for tests that assert on unique service
- * names, navigate the messaging-service page, or exercise service-level
- * cascade delete.
+ * Without `service` the topic sits in the shard's shared messagingService.
+ * Pass a MessagingServiceClass when the test needs its own service — to
+ * assert on a unique service name, visit the service page, or mutate it.
  */
 export type TopicClassOptions = {
-  createFullHierarchy?: boolean;
+  name?: string;
+  service?: MessagingServiceClass;
+  sharedInfraKey?: string;
 };
 
 export class TopicClass extends EntityClass {
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        bootstrapServers: string;
-        saslUsername: string;
-        saslPassword: string;
-        saslMechanism: string;
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
-  private readonly topicName: string;
+  service = new MessagingServiceClass().entity;
+  private readonly serviceOverride?: MessagingServiceClass;
   children: Field[];
   entity: {
     name: string;
@@ -73,36 +61,20 @@ export class TopicClass extends EntityClass {
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: Topic = {} as Topic;
-  createFullHierarchy: boolean;
 
-  constructor(name?: string, options?: TopicClassOptions) {
+  constructor(options: TopicClassOptions = {}) {
     super(EntityTypeEndpoint.Topic);
     this.type = 'Topic';
     this.childrenTabId = 'schema';
     this.serviceCategory = SERVICE_TYPE.Messaging;
     this.serviceType = ServiceTypes.MESSAGING_SERVICES;
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
 
-    // Names are still generated eagerly so full-hierarchy mode keeps its
-    // current shape. In shared mode create() rebinds this.service.name to
-    // the SharedInfra messagingService before POSTing the topic.
-    const serviceName = name ?? `pw-messaging-service-${uuid()}`;
-    this.topicName = `pw-topic-entity-class-${uuid()}`;
-
-    this.service = {
-      name: serviceName,
-      serviceType: 'Kafka',
-      connection: {
-        config: {
-          type: 'Kafka',
-          bootstrapServers: 'Bootstrap Servers',
-          saslUsername: 'admin',
-          saslPassword: 'admin',
-          saslMechanism: 'PLAIN',
-          supportsMetadataExtraction: true,
-        },
-      },
-    };
+    const topicName = options.name ?? `pw-topic-entity-class-${uuid()}`;
 
     this.children = [
       {
@@ -149,10 +121,10 @@ export class TopicClass extends EntityClass {
     ];
 
     this.entity = {
-      name: this.topicName,
-      displayName: this.topicName,
+      name: topicName,
+      displayName: topicName,
       service: this.service.name,
-      description: `Description for ${this.topicName}`,
+      description: `Description for ${topicName}`,
       messageSchema: {
         schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
     "properties":{"first_name":{"type":"string"},"last_name":{"type":"string"}}},"age":{"type":"integer"},"club_name":{"type":"string"}}}`,
@@ -166,20 +138,16 @@ export class TopicClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    if (this.createFullHierarchy) {
-      this.serviceResponseData = await createOrFetch(apiContext, {
-        label: 'TopicClass.create',
-        createPath: '/api/v1/services/messagingServices',
-        fqnSegments: [this.service.name],
-        data: this.service,
-      });
-    } else {
-      // Shared per-worker Kafka MessagingService from SharedInfra — created
-      // lazily on first call, cached.
-      this.serviceResponseData = await SharedInfra.messagingService(apiContext);
-      this.service = { ...this.service, name: this.serviceResponseData.name };
-      this.entity.service = this.serviceResponseData.name;
-    }
+    const { parents, ownedRootPath } = await resolveParents(
+      apiContext,
+      'messaging',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
+    );
+    this.serviceResponseData = parents.service as ResponseDataType;
+    this.ownedRootPath = ownedRootPath;
+    this.service = { ...this.service, name: this.serviceResponseData.name };
+    this.entity.service = this.serviceResponseData.name;
 
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'TopicClass.create',
@@ -228,12 +196,21 @@ export class TopicClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
-  public set(data: { entity: Topic; service: ResponseDataType }): void {
+  public set(data: {
+    entity: Topic;
+    service: ResponseDataType;
+    ownedRootPath?: string;
+  }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.entity.service = data.service.name;
+    this.service = { ...this.service, name: data.service.name };
   }
 
   async visitEntityPage(page: Page) {
@@ -245,28 +222,11 @@ export class TopicClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    // Shared-hierarchy topics must not cascade to the messagingService —
-    // other topics in the same worker still reference it.
-    if (!this.createFullHierarchy) {
-      const topicResponse = await apiContext.delete(
-        `/api/v1/topics/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
-      );
-
-      return {
-        service: undefined,
-        entity: topicResponse.body,
-      };
-    }
-
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/messagingServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=true`
+    await this.deleteOwnedOrLeaf(
+      apiContext,
+      `/api/v1/topics/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

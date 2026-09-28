@@ -23,8 +23,9 @@ import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class SearchIndexServiceClass extends EntityClass {
+export class SearchIndexServiceClass extends EntityClass implements ParentNode {
   entity = {
     name: `pw-search-service-${uuid()}`,
     serviceType: 'ElasticSearch',
@@ -43,6 +44,7 @@ export class SearchIndexServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.SearchService);
@@ -99,6 +101,20 @@ export class SearchIndexServiceClass extends EntityClass {
       },
       false
     );
+  }
+
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/searchServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
   }
 
   async delete(apiContext: APIRequestContext) {

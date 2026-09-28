@@ -16,46 +16,42 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
-  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
+import type { DatabaseClass } from './DatabaseClass';
+import type { DatabaseSchemaClass } from './DatabaseSchemaClass';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
   ResponseDataWithServiceType,
+  ServiceEntity,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
-import { SharedInfra } from './SharedInfra';
+import { resolveParents } from './ParentResolver';
+import { DatabaseServiceClass } from './service/DatabaseServiceClass';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
+/**
+ * Without a parent the stored procedure sits in the shard's shared service →
+ * database → schema chain. Pass the deepest parent the test needs to own:
+ *   - `service` — own service page, unique service name, or service-level
+ *     cascade;
+ *   - `database` — mutates the database or asserts on its schema listing;
+ *   - `schema` — asserts on the schema's stored-procedure listing.
+ * Levels below the one passed are created fresh and deleted with the entity.
+ */
 export type StoredProcedureClassOptions = {
-  createFullHierarchy?: boolean;
+  name?: string;
+  service?: DatabaseServiceClass;
+  database?: DatabaseClass;
+  schema?: DatabaseSchemaClass;
   sharedInfraKey?: string;
 };
 
 export class StoredProcedureClass extends EntityClass {
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        scheme: string;
-        username: string;
-        authType: {
-          password: string;
-        };
-        hostPort: string;
-        supportsMetadataExtraction: boolean;
-        supportsDBTExtraction: boolean;
-        supportsProfiler: boolean;
-        supportsQueryComment: boolean;
-      };
-    };
-  };
+  service: ServiceEntity;
   database: {
     name: string;
     service: string;
@@ -80,47 +76,36 @@ export class StoredProcedureClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  createFullHierarchy: boolean;
-  sharedInfraKey: string | undefined;
 
-  constructor(name?: string, options?: StoredProcedureClassOptions) {
+  private readonly parentOverrides: Pick<
+    StoredProcedureClassOptions,
+    'service' | 'database' | 'schema'
+  >;
+
+  constructor(options: StoredProcedureClassOptions = {}) {
     super(EntityTypeEndpoint.StoreProcedure);
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
-    this.sharedInfraKey = options?.sharedInfraKey;
-
-    this.service = {
-      name: name ?? `pw-database-service-${uuid()}`,
-      serviceType: 'Mysql',
-      connection: {
-        config: {
-          type: 'Mysql',
-          scheme: 'mysql+pymysql',
-          username: 'username',
-          authType: {
-            password: 'password',
-          },
-          hostPort: 'mysql:3306',
-          supportsMetadataExtraction: true,
-          supportsDBTExtraction: true,
-          supportsProfiler: true,
-          supportsQueryComment: true,
-        },
-      },
+    this.sharedInfraKey = options.sharedInfraKey;
+    this.parentOverrides = {
+      service: options.service,
+      database: options.database,
+      schema: options.schema,
     };
 
+    // Placeholder parent names until create() binds the resolved chain.
+    this.service = options.service?.entity ?? new DatabaseServiceClass().entity;
     this.database = {
       name: `pw-database-${uuid()}`,
       service: this.service.name,
     };
-
     this.schema = {
       name: `pw-database-schema-${uuid()}`,
       database: `${this.service.name}.${this.database.name}`,
     };
 
+    const name = options.name ?? `pw-stored-procedure-${uuid()}`;
     this.entity = {
-      name: `pw-stored-procedure-${uuid()}`,
-      description: `Description for pw-stored-procedure-${uuid()}`,
+      name,
+      description: `Description for ${name}`,
       databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
       storedProcedureCode: {
         code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
@@ -133,63 +118,39 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    let service: ResponseDataType;
-    let database: ResponseDataWithServiceType;
-    let schema: ResponseDataWithServiceType;
+    const { parents, ownedRootPath } = await resolveParents(
+      apiContext,
+      'database',
+      this.parentOverrides,
+      this.sharedInfraKey
+    );
+    const service = parents.service as ResponseDataType;
+    const database = {
+      ...parents.database,
+      service,
+    } as ResponseDataWithServiceType;
+    const schema = {
+      ...parents.schema,
+      service,
+    } as ResponseDataWithServiceType;
 
-    if (this.createFullHierarchy) {
-      service = await createOrFetch(apiContext, {
-        label: 'StoredProcedureClass.create service',
-        createPath: '/api/v1/services/databaseServices',
-        fqnSegments: [this.service.name],
-        data: this.service,
-      });
+    this.ownedRootPath = ownedRootPath;
+    this.bindParentNames(service, database, schema);
 
-      database = await createOrFetch(apiContext, {
-        label: 'StoredProcedureClass.create database',
-        createPath: '/api/v1/databases',
-        fqnSegments: [this.service.name, this.database.name],
-        data: this.database,
-      });
-
-      schema = await createOrFetch(apiContext, {
-        label: 'StoredProcedureClass.create schema',
-        createPath: '/api/v1/databaseSchemas',
-        fqnSegments: [this.service.name, this.database.name, this.schema.name],
-        data: this.schema,
-      });
-    } else {
-      const hierarchy = await SharedInfra.databaseHierarchy(
-        apiContext,
-        this.sharedInfraKey
-      );
-      service = hierarchy.service;
-      database = {
-        ...hierarchy.database,
-        service,
-      } as ResponseDataWithServiceType;
-      schema = { ...hierarchy.schema, service } as ResponseDataWithServiceType;
-
-      this.service = { ...this.service, name: service.name };
-      this.database = { name: database.name, service: service.name };
-      this.schema = {
-        name: schema.name,
-        database: `${service.name}.${database.name}`,
-      };
-      this.entity.databaseSchema = schema.fullyQualifiedName;
-    }
-
-    const entity = await createOrFetch(apiContext, {
-      label: 'StoredProcedureClass.create storedProcedure',
-      createPath: '/api/v1/storedProcedures',
-      fqnSegments: [
-        this.service.name,
-        this.database.name,
-        this.schema.name,
-        this.entity.name,
-      ],
-      data: this.entity,
-    });
+    const entity = await createOrFetch<ResponseDataWithServiceType>(
+      apiContext,
+      {
+        label: 'StoredProcedureClass.create storedProcedure',
+        createPath: '/api/v1/storedProcedures',
+        fqnSegments: [
+          service.name,
+          database.name,
+          schema.name,
+          this.entity.name,
+        ],
+        data: this.entity,
+      }
+    );
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -202,6 +163,20 @@ export class StoredProcedureClass extends EntityClass {
       schema,
       entity,
     };
+  }
+
+  private bindParentNames(
+    service: ResponseDataType,
+    database: ResponseDataType,
+    schema: ResponseDataType
+  ) {
+    this.service = { ...this.service, name: service.name };
+    this.database = { name: database.name, service: service.name };
+    this.schema = {
+      name: schema.name,
+      database: `${service.name}.${database.name}`,
+    };
+    this.entity.databaseSchema = schema.fullyQualifiedName;
   }
 
   async patch({
@@ -238,6 +213,7 @@ export class StoredProcedureClass extends EntityClass {
       database: this.databaseResponseData,
       schema: this.schemaResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
@@ -246,11 +222,15 @@ export class StoredProcedureClass extends EntityClass {
     service: ResponseDataType;
     database: ResponseDataWithServiceType;
     schema: ResponseDataWithServiceType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
     this.databaseResponseData = data.database;
     this.schemaResponseData = data.schema;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.bindParentNames(data.service, data.database, data.schema);
   }
 
   async visitEntityPage(page: Page) {
@@ -262,28 +242,11 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    if (!this.createFullHierarchy) {
-      const entityResponse = await deleteFixtureEntity(
-        apiContext,
-        `/api/v1/storedProcedures/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
-      );
-
-      return {
-        service: undefined,
-        entity: entityResponse.body,
-      };
-    }
-
-    const serviceResponse = await deleteFixtureEntity(
+    await this.deleteOwnedOrLeaf(
       apiContext,
-      `/api/v1/services/databaseServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+      `/api/v1/storedProcedures/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

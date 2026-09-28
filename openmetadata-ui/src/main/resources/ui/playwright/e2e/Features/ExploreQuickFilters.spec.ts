@@ -15,6 +15,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -40,9 +41,7 @@ const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
 // Quick-filter assertions read table.serviceResponseData.name to
 // resolve the service the filter selects — needs a unique service.
-const table = new TableClass(undefined, undefined, undefined, {
-  createFullHierarchy: true,
-});
+const table = new TableClass({ service: new DatabaseServiceClass() });
 const tier = new TagClass({
   classification: 'Tier',
 });

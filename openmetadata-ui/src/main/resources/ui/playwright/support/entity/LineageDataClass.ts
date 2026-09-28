@@ -25,9 +25,9 @@
  * a stable order that matches the spec's `Object.values(allEntities)`
  * iteration. `entity-data.setup.ts` calls `create()` (via
  * `seedLineageAndSharedInfra`) once per shard
- * against the same `apiContext` used by the auth setup; each entity's
- * `createFullHierarchy: false` means parents are pulled from
- * `SharedInfra` and only the leaf is POSTed. Response data is serialised
+ * against the same `apiContext` used by the auth setup; no entity passes a
+ * parent, so parents come from `SharedInfra` and only the leaf is POSTed.
+ * Response data is serialised
  * to `playwright/output/lineage-data.json` and re-loaded on module import
  * (mirrors `EntityDataClass`), so every test process sees the same FQNs.
  *
@@ -90,14 +90,7 @@ const OUTPUT_FILENAME = 'lineage-data.json';
 
 export class LineageDataClass {
   // Root entity — lineageEntity in the spec.
-  static readonly lineageEntity = new TableClass(
-    undefined,
-    undefined,
-    undefined,
-    {
-      createFullHierarchy: false,
-    }
-  );
+  static readonly lineageEntity = new TableClass();
 
   // depth-1 entity + 14 depth-2 entities. Order MUST match the spec's
   // `Object.values(allEntities).map(E => new E())` iteration, because the
@@ -106,42 +99,21 @@ export class LineageDataClass {
   // slot so LineageFilters' filter-by-service/database/schema assertions
   // isolate one entity at a time (see LineageFilters.spec.ts:761,810,912
   // for the database/schema/search-select tests).
-  static readonly table = new TableClass(undefined, undefined, undefined, {
-    createFullHierarchy: false,
-    sharedInfraKey: 'lineage-table',
+  static readonly table = new TableClass({ sharedInfraKey: 'lineage-table' });
+  static readonly container = new ContainerClass();
+  static readonly topic = new TopicClass();
+  // Own SharedInfra slot so filter-by-dashboardService selects only this
+  // Dashboard, not the sibling DashboardDataModel.
+  static readonly dashboard = new DashboardClass({
+    sharedInfraKey: 'lineage-dashboard',
   });
-  static readonly container = new ContainerClass(undefined, {
-    createFullHierarchy: false,
-  });
-  static readonly topic = new TopicClass(undefined, {
-    createFullHierarchy: false,
-  });
-  static readonly dashboard = new DashboardClass(
-    undefined,
-    undefined,
-    undefined,
-    {
-      createFullHierarchy: false,
-      // Own SharedInfra slot so filter-by-dashboardService selects only
-      // this Dashboard, not the sibling DashboardDataModel.
-      sharedInfraKey: 'lineage-dashboard',
-    }
-  );
-  static readonly mlmodel = new MlModelClass(undefined, {
-    createFullHierarchy: false,
-  });
-  static readonly pipeline = new PipelineClass(undefined, undefined, {
-    createFullHierarchy: false,
-  });
-  static readonly storedProcedure = new StoredProcedureClass(undefined, {
-    createFullHierarchy: false,
+  static readonly mlmodel = new MlModelClass();
+  static readonly pipeline = new PipelineClass();
+  static readonly storedProcedure = new StoredProcedureClass({
     sharedInfraKey: 'lineage-storedProcedure',
   });
-  static readonly searchIndex = new SearchIndexClass(undefined, {
-    createFullHierarchy: false,
-  });
-  static readonly dataModel = new DashboardDataModelClass(undefined, {
-    createFullHierarchy: false,
+  static readonly searchIndex = new SearchIndexClass();
+  static readonly dataModel = new DashboardDataModelClass({
     sharedInfraKey: 'lineage-dataModel',
   });
   static readonly apiEndpoint = new ApiEndpointClass();
@@ -149,20 +121,14 @@ export class LineageDataClass {
   // Each drive-family entity gets its own driveService slot so the
   // per-entity filter-by-service test in LineageFilters isolates
   // Directory / File / Spreadsheet / Worksheet from one another.
-  static readonly directory = new DirectoryClass(undefined, {
-    createFullHierarchy: false,
+  static readonly directory = new DirectoryClass({
     sharedInfraKey: 'lineage-directory',
   });
-  static readonly file = new FileClass(undefined, {
-    createFullHierarchy: false,
-    sharedInfraKey: 'lineage-file',
-  });
-  static readonly spreadsheet = new SpreadsheetClass(undefined, {
-    createFullHierarchy: false,
+  static readonly file = new FileClass({ sharedInfraKey: 'lineage-file' });
+  static readonly spreadsheet = new SpreadsheetClass({
     sharedInfraKey: 'lineage-spreadsheet',
   });
-  static readonly worksheet = new WorksheetClass(undefined, {
-    createFullHierarchy: false,
+  static readonly worksheet = new WorksheetClass({
     sharedInfraKey: 'lineage-worksheet',
   });
 

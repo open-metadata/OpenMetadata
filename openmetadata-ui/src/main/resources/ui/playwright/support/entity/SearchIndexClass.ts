@@ -21,7 +21,6 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
-  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -29,32 +28,24 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
-import { SharedInfra } from './SharedInfra';
+import { resolveParents } from './ParentResolver';
+import { SearchIndexServiceClass } from './service/SearchIndexServiceClass';
 
-/** See TableClass.TableClassOptions. `createFullHierarchy` defaults to false; the entity routes its parent service/chain through SharedInfra. Pass true only for tests that navigate a per-fixture service page, exercise service-level cascade, or otherwise assert on a unique service name. */
+/**
+ * Without `service` the search index sits in the shard's shared searchService.
+ * Pass a SearchIndexServiceClass when the test needs its own service — to
+ * assert on a unique service name, visit the service page, or mutate it.
+ */
 export type SearchIndexClassOptions = {
-  createFullHierarchy?: boolean;
+  name?: string;
+  service?: SearchIndexServiceClass;
+  sharedInfraKey?: string;
 };
 
 export class SearchIndexClass extends EntityClass {
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        hostPort: string;
-        authType: {
-          username: string;
-          password: string;
-        };
-        connectionTimeoutSecs: number;
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service = new SearchIndexServiceClass().entity;
+  private readonly serviceOverride?: SearchIndexServiceClass;
   private readonly searchIndexName: string;
-  private readonly fqn: string;
 
   children: SearchIndexField[];
 
@@ -68,31 +59,16 @@ export class SearchIndexClass extends EntityClass {
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: SearchIndex = {} as SearchIndex;
-  createFullHierarchy: boolean;
 
-  constructor(name?: string, options?: SearchIndexClassOptions) {
+  constructor(options: SearchIndexClassOptions = {}) {
     super(EntityTypeEndpoint.SearchIndex);
-    this.createFullHierarchy = options?.createFullHierarchy ?? false;
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
 
-    this.service = {
-      name: name ?? `pw-search-service-${uuid()}`,
-      serviceType: 'ElasticSearch',
-      connection: {
-        config: {
-          type: 'ElasticSearch',
-          hostPort: 'elasticsearch:9200',
-          authType: {
-            username: 'admin',
-            password: 'admin',
-          },
-          connectionTimeoutSecs: 30,
-          supportsMetadataExtraction: true,
-        },
-      },
-    };
-
-    this.searchIndexName = `pw-search-index-${uuid()}`;
-    this.fqn = `${this.service.name}.${this.searchIndexName}`;
+    this.searchIndexName = options.name ?? `pw-search-index-${uuid()}`;
 
     this.children = [
       {
@@ -160,26 +136,22 @@ export class SearchIndexClass extends EntityClass {
 
     this.type = 'SearchIndex';
     this.childrenTabId = 'fields';
-    this.childrenSelectorId = `${this.fqn}.${this.children[0].name}`;
+    this.childrenSelectorId = `${this.service.name}.${this.searchIndexName}.${this.children[0].name}`;
     this.serviceCategory = SERVICE_TYPE.Search;
     this.serviceType = ServiceTypes.SEARCH_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
-    if (this.createFullHierarchy) {
-      this.serviceResponseData = await createOrFetch(apiContext, {
-        label: 'SearchIndexClass.create',
-        createPath: '/api/v1/services/searchServices',
-        fqnSegments: [this.service.name],
-        data: this.service,
-      });
-    } else {
-      this.serviceResponseData = await SharedInfra.searchIndexService(
-        apiContext
-      );
-      this.service = { ...this.service, name: this.serviceResponseData.name };
-      this.entity.service = this.serviceResponseData.name;
-    }
+    const { parents, ownedRootPath } = await resolveParents(
+      apiContext,
+      'search',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
+    );
+    this.serviceResponseData = parents.service as ResponseDataType;
+    this.ownedRootPath = ownedRootPath;
+    this.service = { ...this.service, name: this.serviceResponseData.name };
+    this.entity.service = this.serviceResponseData.name;
 
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'SearchIndexClass.create',
@@ -226,12 +198,21 @@ export class SearchIndexClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
-  public set(data: { entity: SearchIndex; service: ResponseDataType }): void {
+  public set(data: {
+    entity: SearchIndex;
+    service: ResponseDataType;
+    ownedRootPath?: string;
+  }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.entity.service = data.service.name;
+    this.service = { ...this.service, name: data.service.name };
   }
 
   async visitEntityPage(page: Page) {
@@ -243,28 +224,11 @@ export class SearchIndexClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    if (!this.createFullHierarchy) {
-      const searchIndexResponse = await deleteFixtureEntity(
-        apiContext,
-        `/api/v1/searchIndexes/${this.entityResponseData?.id}?recursive=true&hardDelete=true`
-      );
-
-      return {
-        service: undefined,
-        entity: searchIndexResponse.body,
-      };
-    }
-
-    const serviceResponse = await deleteFixtureEntity(
+    await this.deleteOwnedOrLeaf(
       apiContext,
-      `/api/v1/services/searchServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=true`
+      `/api/v1/searchIndexes/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

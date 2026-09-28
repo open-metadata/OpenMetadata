@@ -23,8 +23,9 @@ import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class StorageServiceClass extends EntityClass {
+export class StorageServiceClass extends EntityClass implements ParentNode {
   entity = {
     name: `pw-storage-service-${uuid()}`,
     serviceType: 'S3',
@@ -43,6 +44,7 @@ export class StorageServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.StorageService);
@@ -96,6 +98,20 @@ export class StorageServiceClass extends EntityClass {
       },
       false
     );
+  }
+
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/storageServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
   }
 
   async delete(apiContext: APIRequestContext) {

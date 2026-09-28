@@ -315,9 +315,7 @@ test.describe(
       // Bulk-edit-import runs at the service level with recursive=false and
       // asserts passed/processed counts — a shared service would contain
       // other workers' databases and break the count.
-      const table = new TableClass(undefined, undefined, undefined, {
-        createFullHierarchy: true,
-      });
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -458,9 +456,7 @@ test.describe(
       // Navigates the service page and picks the database row by name — a
       // shared databaseService listing contains other workers' databases
       // and hides the target row under pagination.
-      const table = new TableClass(undefined, undefined, undefined, {
-        createFullHierarchy: true,
-      });
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -611,9 +607,7 @@ test.describe(
 
       // Navigates service → database → schema; the shared listing pollutes
       // every hop with other workers' rows.
-      const table = new TableClass(undefined, undefined, undefined, {
-        createFullHierarchy: true,
-      });
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);

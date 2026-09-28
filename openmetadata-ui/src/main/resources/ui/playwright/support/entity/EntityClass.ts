@@ -79,6 +79,13 @@ export class EntityClass {
   childrenSelectorId2?: string;
   endpoint: EntityTypeEndpoint;
   cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
+  sharedInfraKey?: string;
+  /**
+   * Entity path of the top-most parent this entity created (see
+   * ParentResolver). Undefined when every parent is shared or borrowed.
+   * Kept as a string so it survives get()/set() across processes.
+   */
+  ownedRootPath?: string;
 
   customPropertyValue: Record<
     string,
@@ -99,6 +106,23 @@ export class EntityClass {
 
   public set(_data: unknown) {
     // handle in parent component
+  }
+
+  /**
+   * Remove the owned parent chain if this entity created one, else just the
+   * leaf. `leafPath` is the leaf's entity path without a query string.
+   */
+  protected deleteOwnedOrLeaf(
+    apiContext: APIRequestContext,
+    leafPath: string,
+    hardDelete = true
+  ) {
+    return deleteFixtureEntity(
+      apiContext,
+      `${
+        this.ownedRootPath ?? leafPath
+      }?recursive=true&hardDelete=${hardDelete}`
+    );
   }
 
   async visitEntityPage(_: Page) {

@@ -23,8 +23,9 @@ import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class DriveServiceClass extends EntityClass {
+export class DriveServiceClass extends EntityClass implements ParentNode {
   entity = {
     name: `pw-drive-service-${uuid()}`,
     serviceType: 'GoogleDrive',
@@ -54,6 +55,7 @@ export class DriveServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DriveService);
@@ -111,6 +113,20 @@ export class DriveServiceClass extends EntityClass {
       },
       false
     );
+  }
+
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/driveServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
   }
 
   async delete(apiContext: APIRequestContext) {

@@ -24,8 +24,9 @@ import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class DashboardServiceClass extends EntityClass {
+export class DashboardServiceClass extends EntityClass implements ParentNode {
   entity = {
     name: `pw-dashboard-service-${uuid()}`,
     serviceType: 'Superset',
@@ -49,6 +50,7 @@ export class DashboardServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
   childrenArrayResponseData: ResponseDataType[] = [];
 
   constructor(name?: string) {
@@ -156,6 +158,20 @@ export class DashboardServiceClass extends EntityClass {
       },
       false
     );
+  }
+
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
   }
 
   async delete(apiContext: APIRequestContext) {

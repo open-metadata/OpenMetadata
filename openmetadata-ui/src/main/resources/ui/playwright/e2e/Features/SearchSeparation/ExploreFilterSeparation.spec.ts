@@ -18,6 +18,7 @@
  * sibling specs in this folder cover other entity types via the same factory.
  */
 
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
@@ -27,12 +28,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'Table',
   reindexEntityType: 'table',
-  // Service-facet assertion pins to a single `table-data-card_<fqn>`;
-  // under SharedInfra other workers' tables share the same service and
-  // push the card past page 1. Use a unique service per suite so the
-  // filter narrows to just this table.
-  entityFactory: () =>
-    new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    }),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () => new TableClass({ service: new DatabaseServiceClass() }),
 });

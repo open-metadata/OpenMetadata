@@ -27,6 +27,14 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
@@ -109,35 +117,32 @@ const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'containers',
     createInstance: (namespace) =>
-      new ContainerClass(namespace.name('storage-service'), {
-        createFullHierarchy: true,
+      new ContainerClass({
+        service: new StorageServiceClass(namespace.name('storage-service')),
       }),
     typeName: 'container',
   },
   {
     apiPath: 'dashboards',
     createInstance: (namespace) =>
-      new DashboardClass(
-        undefined,
-        undefined,
-        { name: namespace.name('dashboard-service') },
-        { createFullHierarchy: true }
-      ),
+      new DashboardClass({
+        service: new DashboardServiceClass(namespace.name('dashboard-service')),
+      }),
     typeName: 'dashboard',
   },
   {
     apiPath: 'topics',
     createInstance: (namespace) =>
-      new TopicClass(namespace.name('messaging-service'), {
-        createFullHierarchy: true,
+      new TopicClass({
+        service: new MessagingServiceClass(namespace.name('messaging-service')),
       }),
     typeName: 'topic',
   },
   {
     apiPath: 'pipelines',
     createInstance: (namespace) =>
-      new PipelineClass(namespace.name('pipeline-service'), undefined, {
-        createFullHierarchy: true,
+      new PipelineClass({
+        service: new PipelineServiceClass(namespace.name('pipeline-service')),
       }),
     typeName: 'pipeline',
   },
@@ -163,32 +168,36 @@ const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'mlmodels',
     createInstance: (namespace) =>
-      new MlModelClass(namespace.name('mlmodel-service'), {
-        createFullHierarchy: true,
+      new MlModelClass({
+        service: new MlmodelServiceClass(namespace.name('mlmodel-service')),
       }),
     typeName: 'mlmodel',
   },
   {
     apiPath: 'searchIndexes',
     createInstance: (namespace) =>
-      new SearchIndexClass(namespace.name('search-service'), {
-        createFullHierarchy: true,
+      new SearchIndexClass({
+        service: new SearchIndexServiceClass(namespace.name('search-service')),
       }),
     typeName: 'searchIndex',
   },
   {
     apiPath: 'storedProcedures',
     createInstance: (namespace) =>
-      new StoredProcedureClass(namespace.name('stored-procedure-service'), {
-        createFullHierarchy: true,
+      new StoredProcedureClass({
+        service: new DatabaseServiceClass(
+          namespace.name('stored-procedure-service')
+        ),
       }),
     typeName: 'storedProcedure',
   },
   {
     apiPath: 'dashboard/datamodels',
     createInstance: (namespace) =>
-      new DashboardDataModelClass(namespace.name('data-model-service'), {
-        createFullHierarchy: true,
+      new DashboardDataModelClass({
+        service: new DashboardServiceClass(
+          namespace.name('data-model-service')
+        ),
       }),
     typeName: 'dashboardDataModel',
   },
@@ -200,17 +209,19 @@ const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'apiCollections',
     createInstance: (namespace) =>
-      new ApiCollectionClass(namespace.name('api-collection')),
+      new ApiCollectionClass({
+        name: namespace.name('api-collection'),
+        service: new ApiServiceClass(namespace.name('api-collection')),
+      }),
     typeName: 'apiCollection',
   },
   {
     apiPath: 'apiEndpoints',
     createInstance: (namespace) =>
-      new ApiEndpointClass(
-        namespace.name('api-endpoint-service'),
-        namespace.name('api-endpoint'),
-        { createFullHierarchy: true }
-      ),
+      new ApiEndpointClass({
+        name: namespace.name('api-endpoint'),
+        service: new ApiServiceClass(namespace.name('api-endpoint-service')),
+      }),
     typeName: 'apiEndpoint',
   },
   {
@@ -770,12 +781,10 @@ const exerciseTableColumnContract = async ({
     adminApiContext,
     testNamespace
   );
-  const table = new TableClass(
-    testNamespace.name('column-contract-table'),
-    undefined,
-    undefined,
-    { createFullHierarchy: true }
-  );
+  const table = new TableClass({
+    name: testNamespace.name('column-contract-table'),
+    service: new DatabaseServiceClass(),
+  });
 
   testNamespace.registerCleanup(async () => {
     await adminApiContext.delete(

@@ -24,6 +24,15 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -51,54 +60,33 @@ type LifecycleEntity = EntityClass & {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-// Domain Propagation mutates the entity's parent service (assign then
-// remove `domain1`). Under SharedInfra a shared-mode entity uses the
-// per-shard shared service, so concurrent tests in Entity.spec.ts (or
-// any other spec that reads/writes the same shared service) race on
-// the service's `domains` field and this test observes a foreign
-// domain UUID between its own PATCH and its own read.
-//
-// Extracted from Entity.spec.ts to its own file so each entity type can
-// be constructed with `createFullHierarchy: true` — a service dedicated
-// to this suite — without changing the ~30 other tests in Entity.spec.ts
-// that legitimately reuse the shared parents.
-//
-// Signatures diverge across entity classes, so each type gets its own
-// factory that puts `{ createFullHierarchy: true }` in the right slot.
-// Metric has no `service` field (the wrapped test's `'service' in entity`
-// guard skips it) and Chart never used SharedInfra to begin with; both
-// are included so this spec mirrors Entity.spec.ts's entity list.
+// Domain Propagation assigns a domain to the entity's parent service, then
+// verifies it on the entity. On the shard's shared service a concurrent test
+// can overwrite that domain between this test's PATCH and its read, so every
+// entity here owns its service. It lives apart from Entity.spec.ts so the
+// other ~30 tests there keep sharing parents. Metric has no service and the
+// test skips it; it stays so this list mirrors Entity.spec.ts.
 const isolatedEntityFactories: Record<string, () => LifecycleEntity> = {
   'Api Endpoint': () =>
-    new ApiEndpointClass(undefined, undefined, {
-      createFullHierarchy: true,
-    }),
-  Table: () =>
-    new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    }),
+    new ApiEndpointClass({ service: new ApiServiceClass() }),
+  Table: () => new TableClass({ service: new DatabaseServiceClass() }),
   'Stored Procedure': () =>
-    new StoredProcedureClass(undefined, { createFullHierarchy: true }),
-  Dashboard: () =>
-    new DashboardClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    }),
-  Pipeline: () =>
-    new PipelineClass(undefined, undefined, { createFullHierarchy: true }),
-  Topic: () => new TopicClass(undefined, { createFullHierarchy: true }),
-  'Ml Model': () => new MlModelClass(undefined, { createFullHierarchy: true }),
-  Container: () => new ContainerClass(undefined, { createFullHierarchy: true }),
+    new StoredProcedureClass({ service: new DatabaseServiceClass() }),
+  Dashboard: () => new DashboardClass({ service: new DashboardServiceClass() }),
+  Pipeline: () => new PipelineClass({ service: new PipelineServiceClass() }),
+  Topic: () => new TopicClass({ service: new MessagingServiceClass() }),
+  'Ml Model': () => new MlModelClass({ service: new MlmodelServiceClass() }),
+  Container: () => new ContainerClass({ service: new StorageServiceClass() }),
   'Search Index': () =>
-    new SearchIndexClass(undefined, { createFullHierarchy: true }),
+    new SearchIndexClass({ service: new SearchIndexServiceClass() }),
   'Dashboard Data Model': () =>
-    new DashboardDataModelClass(undefined, { createFullHierarchy: true }),
+    new DashboardDataModelClass({ service: new DashboardServiceClass() }),
   Metric: () => new MetricClass(),
-  Chart: () => new ChartClass(),
-  Directory: () => new DirectoryClass(undefined, { createFullHierarchy: true }),
-  File: () => new FileClass(undefined, { createFullHierarchy: true }),
-  Spreadsheet: () =>
-    new SpreadsheetClass(undefined, { createFullHierarchy: true }),
-  Worksheet: () => new WorksheetClass(undefined, { createFullHierarchy: true }),
+  Chart: () => new ChartClass({ service: new DashboardServiceClass() }),
+  Directory: () => new DirectoryClass({ service: new DriveServiceClass() }),
+  File: () => new FileClass({ service: new DriveServiceClass() }),
+  Spreadsheet: () => new SpreadsheetClass({ service: new DriveServiceClass() }),
+  Worksheet: () => new WorksheetClass({ service: new DriveServiceClass() }),
 };
 
 Object.entries(isolatedEntityFactories).forEach(([key, factory]) => {

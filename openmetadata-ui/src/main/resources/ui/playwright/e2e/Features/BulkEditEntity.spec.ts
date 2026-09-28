@@ -17,6 +17,7 @@ import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -181,9 +182,7 @@ test.describe('Bulk Edit Entity', () => {
     // Bulk-edit mutates the database/schema (owners, tags, tier) —
     // must own the parent chain so concurrent tests do not see the
     // shared-parent ownership propagate into their schema lists.
-    const table = new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    });
+    const table = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -325,9 +324,7 @@ test.describe('Bulk Edit Entity', () => {
     // Bulk-edit mutates the database/schema (owners, tags, tier) —
     // must own the parent chain so concurrent tests do not see the
     // shared-parent ownership propagate into their schema lists.
-    const table = new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    });
+    const table = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -481,9 +478,7 @@ test.describe('Bulk Edit Entity', () => {
     // Bulk-edit mutates the database/schema (owners, tags, tier) —
     // must own the parent chain so concurrent tests do not see the
     // shared-parent ownership propagate into their schema lists.
-    const table = new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    });
+    const table = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
@@ -636,9 +631,7 @@ test.describe('Bulk Edit Entity', () => {
   test('Table', async ({ page }) => {
     test.slow(true);
 
-    const tableEntity = new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    });
+    const tableEntity = new TableClass({ service: new DatabaseServiceClass() });
 
     const { apiContext, afterAction } = await getApiContext(page);
     await tableEntity.create(apiContext);
@@ -719,9 +712,8 @@ test.describe('Bulk Edit Entity', () => {
         getCellByName(page, 'Playwright Table column')
       ).toBeVisible();
 
-      // Verify Tags — with `createFullHierarchy: true` this test's
-      // Table is the only one on the page carrying the Sensitive tag,
-      // so the bare role/name locator resolves to a single link.
+      // This table owns its service, so it is the only Sensitive-tagged
+      // asset on the page and the bare role/name locator resolves once.
       await expect(
         page.getByRole('link', {
           name: 'Sensitive',

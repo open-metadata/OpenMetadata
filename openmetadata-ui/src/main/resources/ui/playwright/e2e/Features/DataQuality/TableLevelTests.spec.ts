@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { clickCodeEditor } from '../../../utils/codeEditor';
@@ -633,8 +634,12 @@ test.describe(
       test.slow();
       await redirectToHomePage(page);
       const { apiContext } = await getApiContext(page);
-      table1 = new TableClass(undefined, undefined, service);
-      table2 = new TableClass(undefined, undefined, service);
+      table1 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
+      table2 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = {

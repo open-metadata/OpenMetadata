@@ -16,7 +16,6 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
-  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -28,25 +27,24 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { DashboardServiceClass } from './service/DashboardServiceClass';
+
+/**
+ * Without `service` the chart sits in the shard's shared dashboardService.
+ * Pass a DashboardServiceClass when the test needs its own service — to
+ * assert on a unique service name, visit the service page, or mutate it.
+ */
+export type ChartClassOptions = {
+  name?: string;
+  service?: DashboardServiceClass;
+  sharedInfraKey?: string;
+};
 
 export class ChartClass extends EntityClass {
   private chartName: string;
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        hostPort: string;
-        connection: {
-          provider: string;
-          username: string;
-          password: string;
-        };
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service = new DashboardServiceClass().entity;
+  private readonly serviceOverride?: DashboardServiceClass;
   entity: {
     name: string;
     displayName: string;
@@ -58,27 +56,15 @@ export class ChartClass extends EntityClass {
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
 
-  constructor(name?: string) {
+  constructor(options: ChartClassOptions = {}) {
     super(EntityTypeEndpoint.Chart);
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
 
-    this.chartName = `pw-chart-${uuid()}`;
-
-    this.service = {
-      name: name ?? `pw-chart-service-${uuid()}`,
-      serviceType: 'Superset',
-      connection: {
-        config: {
-          type: 'Superset',
-          hostPort: 'http://localhost:8088',
-          connection: {
-            provider: 'ldap',
-            username: 'admin',
-            password: 'admin',
-          },
-          supportsMetadataExtraction: true,
-        },
-      },
-    };
+    this.chartName = options.name ?? `pw-chart-${uuid()}`;
 
     this.entity = {
       name: this.chartName,
@@ -93,12 +79,17 @@ export class ChartClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'ChartClass.create',
-      createPath: '/api/v1/services/dashboardServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    const { parents, ownedRootPath } = await resolveParents(
+      apiContext,
+      'dashboard',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
+    );
+    this.serviceResponseData = parents.service as ResponseDataType;
+    this.ownedRootPath = ownedRootPath;
+    this.service = { ...this.service, name: this.serviceResponseData.name };
+    this.entity.service = this.serviceResponseData.name;
+
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'ChartClass.create',
       createPath: '/api/v1/charts',
@@ -141,15 +132,21 @@ export class ChartClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.entity.service = data.service.name;
+    this.service = { ...this.service, name: data.service.name };
   }
 
   async visitEntityPage(page: Page) {
@@ -161,16 +158,11 @@ export class ChartClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await deleteFixtureEntity(
+    await this.deleteOwnedOrLeaf(
       apiContext,
-      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+      `/api/v1/charts/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

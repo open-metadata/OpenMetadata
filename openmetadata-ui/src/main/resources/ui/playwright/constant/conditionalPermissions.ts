@@ -18,6 +18,14 @@ import { DashboardClass } from '../support/entity/DashboardClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../support/entity/service/StorageServiceClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { EntityData } from '../support/interfaces/ConditionalPermissions.interface';
@@ -31,58 +39,55 @@ export const matchAnyTagRole = new RolesClass();
 export const userWithOwnerPermission = new UserClass();
 export const userWithTagPermission = new UserClass();
 // Every fixture below is used to navigate to a per-asset service page
-// (assetOwnerUrl/assetTagUrl below), so each needs its own service — opt out of
-// the shared-per-worker default with createFullHierarchy: true.
-// ApiCollectionClass creates its own service unconditionally and takes no options.
-export const apiCollectionWithOwner = new ApiCollectionClass();
-export const apiCollectionWithTag = new ApiCollectionClass();
-export const containerWithOwner = new ContainerClass(undefined, {
-  createFullHierarchy: true,
+// (assetOwnerUrl/assetTagUrl below), so each passes its own service instead of
+// sharing the shard's.
+export const apiCollectionWithOwner = new ApiCollectionClass({
+  service: new ApiServiceClass(),
 });
-export const containerWithTag = new ContainerClass(undefined, {
-  createFullHierarchy: true,
+export const apiCollectionWithTag = new ApiCollectionClass({
+  service: new ApiServiceClass(),
 });
-export const dashboardWithOwner = new DashboardClass(
-  undefined,
-  undefined,
-  undefined,
-  { createFullHierarchy: true }
-);
-export const dashboardWithTag = new DashboardClass(
-  undefined,
-  undefined,
-  undefined,
-  { createFullHierarchy: true }
-);
-export const mlModelWithOwner = new MlModelClass(undefined, {
-  createFullHierarchy: true,
+export const containerWithOwner = new ContainerClass({
+  service: new StorageServiceClass(),
 });
-export const mlModelWithTag = new MlModelClass(undefined, {
-  createFullHierarchy: true,
+export const containerWithTag = new ContainerClass({
+  service: new StorageServiceClass(),
 });
-export const pipelineWithOwner = new PipelineClass(undefined, undefined, {
-  createFullHierarchy: true,
+export const dashboardWithOwner = new DashboardClass({
+  service: new DashboardServiceClass(),
 });
-export const pipelineWithTag = new PipelineClass(undefined, undefined, {
-  createFullHierarchy: true,
+export const dashboardWithTag = new DashboardClass({
+  service: new DashboardServiceClass(),
 });
-export const searchIndexWithOwner = new SearchIndexClass(undefined, {
-  createFullHierarchy: true,
+export const mlModelWithOwner = new MlModelClass({
+  service: new MlmodelServiceClass(),
 });
-export const searchIndexWithTag = new SearchIndexClass(undefined, {
-  createFullHierarchy: true,
+export const mlModelWithTag = new MlModelClass({
+  service: new MlmodelServiceClass(),
 });
-export const tableWithOwner = new TableClass(undefined, undefined, undefined, {
-  createFullHierarchy: true,
+export const pipelineWithOwner = new PipelineClass({
+  service: new PipelineServiceClass(),
 });
-export const tableWithTag = new TableClass(undefined, undefined, undefined, {
-  createFullHierarchy: true,
+export const pipelineWithTag = new PipelineClass({
+  service: new PipelineServiceClass(),
 });
-export const topicWithOwner = new TopicClass(undefined, {
-  createFullHierarchy: true,
+export const searchIndexWithOwner = new SearchIndexClass({
+  service: new SearchIndexServiceClass(),
 });
-export const topicWithTag = new TopicClass(undefined, {
-  createFullHierarchy: true,
+export const searchIndexWithTag = new SearchIndexClass({
+  service: new SearchIndexServiceClass(),
+});
+export const tableWithOwner = new TableClass({
+  service: new DatabaseServiceClass(),
+});
+export const tableWithTag = new TableClass({
+  service: new DatabaseServiceClass(),
+});
+export const topicWithOwner = new TopicClass({
+  service: new MessagingServiceClass(),
+});
+export const topicWithTag = new TopicClass({
+  service: new MessagingServiceClass(),
 });
 
 const withOwner = {

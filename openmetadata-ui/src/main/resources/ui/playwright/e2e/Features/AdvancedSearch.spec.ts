@@ -19,6 +19,9 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -63,19 +66,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
     test.slow(true);
 
     user = new UserClass();
-    // These fixtures assert on their SERVICE name being uniquely theirs
-    // (advanced search filters by service.name). Opt out of shared mode.
-    table = new TableClass(undefined, 'Regular', undefined, {
-      createFullHierarchy: true,
+    // Advanced search filters by service.name, so each fixture owns its service.
+    table = new TableClass({
+      tableType: 'Regular',
+      service: new DatabaseServiceClass(),
     });
-    table1 = new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    });
-    table2 = new TableClass(undefined, undefined, undefined, {
-      createFullHierarchy: true,
-    });
-    topic1 = new TopicClass(undefined, { createFullHierarchy: true });
-    topic2 = new TopicClass(undefined, { createFullHierarchy: true });
+    table1 = new TableClass({ service: new DatabaseServiceClass() });
+    table2 = new TableClass({ service: new DatabaseServiceClass() });
+    topic1 = new TopicClass({ service: new MessagingServiceClass() });
+    topic2 = new TopicClass({ service: new MessagingServiceClass() });
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -402,9 +401,7 @@ test.describe(
 
         glossaryForStatus = new Glossary();
         glossaryTermApproved = new GlossaryTerm(glossaryForStatus);
-        mlModelDraft = new MlModelClass(undefined, {
-          createFullHierarchy: true,
-        });
+        mlModelDraft = new MlModelClass({ service: new MlmodelServiceClass() });
         dataProductInReview = new DataProduct();
 
         await glossaryForStatus.create(apiContext);
@@ -677,8 +674,8 @@ test.describe(
         DESCRIPTION_TEXT = `This is a table description containing the word ${UNIQUE_WORD} to test the advanced search functionality.`;
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
-        descFilterTable = new TableClass(undefined, undefined, undefined, {
-          createFullHierarchy: true,
+        descFilterTable = new TableClass({
+          service: new DatabaseServiceClass(),
         });
         await descFilterTable.create(apiContext);
 
@@ -1163,11 +1160,11 @@ test.describe(
           columnTag2.create(apiContext),
         ]);
 
-        columnTagTable1 = new TableClass(undefined, undefined, undefined, {
-          createFullHierarchy: true,
+        columnTagTable1 = new TableClass({
+          service: new DatabaseServiceClass(),
         });
-        columnTagTable2 = new TableClass(undefined, undefined, undefined, {
-          createFullHierarchy: true,
+        columnTagTable2 = new TableClass({
+          service: new DatabaseServiceClass(),
         });
         await Promise.all([
           columnTagTable1.create(apiContext),
@@ -1613,8 +1610,8 @@ test.describe(
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          lazyLoadTable = new TableClass(undefined, undefined, undefined, {
-            createFullHierarchy: true,
+          lazyLoadTable = new TableClass({
+            service: new DatabaseServiceClass(),
           });
           await lazyLoadTable.create(apiContext);
 
