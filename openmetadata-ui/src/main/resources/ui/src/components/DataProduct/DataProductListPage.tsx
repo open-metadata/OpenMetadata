@@ -199,7 +199,6 @@ const DataProductListPage = ({
 
   const headerSearch = showHeaderSearch ? (
     <MarketplaceSearchInput
-      showEntityResults
       placeholder={t('label.search-for-type', {
         type: t('label.data-product-plural'),
       })}

@@ -49,9 +49,10 @@ interface MarketplaceSearchInputProps {
   /** Placeholder text. Defaults to Explore's. */
   placeholder?: string;
   /**
-   * Show matching domains and data products in the popover instead of
-   * Explore's suggestions. For a page with no list of its own - the overview,
-   * where these results are the only thing a query can produce.
+   * Render results in the popover instead of Explore's suggestions. Only for a
+   * page with no list of its own - the overview. Everywhere else the list is
+   * the results surface, as Explore's cards are, and the popover just prompts
+   * for Enter.
    */
   showEntityResults?: boolean;
 }
