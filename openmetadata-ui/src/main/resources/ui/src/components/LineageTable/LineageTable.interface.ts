@@ -1,5 +1,5 @@
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import type { LineagePagingInfo } from '../../interface/lineage.interface';
+import { LineagePagingInfo } from '../../interface/lineage.interface';
 import {
   ColumnLevelLineageNode,
   LineageNode,
@@ -17,11 +17,6 @@ import {
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type {
-  LineageNodeData,
-  LineagePagingInfo,
-} from '../../interface/lineage.interface';
-
 export enum EImpactLevel {
   TableLevel = 'table',
   ColumnLevel = 'column',

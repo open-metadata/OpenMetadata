@@ -11,34 +11,20 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../enums/entity.enum';
-import { ContainerDataModel } from '../../generated/api/data/createContainer';
-import { EsLineageData } from '../../generated/api/lineage/esLineageData';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { Chart } from '../../generated/entity/data/chart';
-import { MlFeature } from '../../generated/entity/data/mlmodel';
-import { SearchIndexField } from '../../generated/entity/data/searchIndex';
-import { MessageSchemaObject } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
-import { APISchema } from '../../generated/type/apiSchema';
-import type {
+import {
   EdgeDetails,
   EdgeFromToData,
+  LineageNodeType,
 } from '../../interface/lineage.interface';
 import {
   SearchSourceAlias,
   TableSearchSource,
 } from '../../interface/search.interface';
 import { FormattedDatabaseServiceType } from '../../utils/EntityUtils.interface';
-import type { EntityChildren } from '../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
-
-export type {
-  EdgeDetails,
-  EdgeFromToData,
-  LineageData,
-  NodeData,
-} from '../../interface/lineage.interface';
 
 export interface LineageProps {
   entityType: EntityType;
@@ -107,36 +93,4 @@ export interface DirectionalLineageResponse {
   nodes: Record<string, LineageNodeType>;
   upstreamEdges: Record<string, EdgeDetails>;
   downstreamEdges: Record<string, EdgeDetails>;
-}
-
-export interface LineageNodeType
-  extends Exclude<EntityReference, 'type'>,
-    Pick<
-      TableSearchSource,
-      'entityType' | 'deleted' | 'serviceType' | 'testSuite' | 'columns'
-    > {
-  nodeDepth?: number;
-  paging?: {
-    entityDownstreamCount?: number;
-    entityUpstreamCount?: number;
-  };
-  pagination_data?: {
-    index: number;
-    parentId: string;
-    childrenLength: number;
-  };
-  direction?: LineageDirection;
-  upstreamExpandPerformed?: boolean;
-  downstreamExpandPerformed?: boolean;
-  upstreamLineage?: EsLineageData[];
-  flattenChildren?: EntityChildren;
-  dataModel?: ContainerDataModel;
-  mlFeatures?: MlFeature[];
-  charts?: Chart[];
-  messageSchema?: MessageSchemaObject;
-  responseSchema?: APISchema;
-  requestSchema?: APISchema;
-  fields?: SearchIndexField[];
-  isTempTable?: boolean;
-  lineageMapSubtitle?: string;
 }

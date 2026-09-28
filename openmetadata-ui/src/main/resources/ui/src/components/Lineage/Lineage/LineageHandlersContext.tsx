@@ -16,9 +16,9 @@ import { ExportTypes } from '../../../constants/Export.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
-import { CSVExportResponse } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
+import { LineageNodeType } from '../../../interface/lineage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import { LineageNodeType } from '../Lineage.interface';
 
 // The subset of `<Lineage />`'s internal handlers that cannot be plain,
 // store-driven functions because they close over React-tree state (ELK

@@ -1,5 +1,4 @@
 import { ExportTypes } from '../../../constants/Export.constants';
-import type { CSVExportResponse } from '../../../interface/lineage.interface';
 
 /*
  *  Copyright 2023 Collate.
@@ -14,7 +13,7 @@ import type { CSVExportResponse } from '../../../interface/lineage.interface';
  *  limitations under the License.
  */
 
-export type { CSVExportResponse } from '../../../interface/lineage.interface';
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
 
 export type CSVExportWebsocketResponse = {
   jobId: string;

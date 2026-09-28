@@ -23,13 +23,13 @@ import { Node } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { LineageNodeType } from '../../../interface/lineage.interface';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,
 } from '../../../rest/lineageAPI';
 import tableClassBase from '../../../utils/TableClassBase';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import { LineageNodeType } from '../Lineage.interface';
 import { Lineage } from './Lineage';
 import { useLineageHandlers } from './LineageHandlersContext';
 

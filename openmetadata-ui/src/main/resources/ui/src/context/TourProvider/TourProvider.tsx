@@ -20,14 +20,12 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type {
-  ExploreSearchIndex,
-  SearchHitCounts,
-} from '../../components/Explore/ExplorePage.interface';
+import type { SearchHitCounts } from '../../components/Explore/ExplorePage.interface';
 import { ROUTES } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import type { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { SearchResponse } from '../../interface/search.interface';
 
 interface Props {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { exportLineageAsync } from '../../../rest/lineageAPI';
 import { exportLineageData } from './exportHandler';
@@ -36,6 +37,7 @@ describe('exportLineageData', () => {
         upstreamDepth: 2,
         downstreamDepth: 3,
         nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
       },
       timeFilter: { startTime: 100, endTime: 200 },
     });
@@ -45,7 +47,12 @@ describe('exportLineageData', () => {
     expect(mockExportLineageAsync).toHaveBeenCalledWith(
       'sample_data.ecommerce_db.shopify.dim_address',
       EntityType.TABLE,
-      { upstreamDepth: 2, downstreamDepth: 3, nodesPerLayer: 50 },
+      {
+        upstreamDepth: 2,
+        downstreamDepth: 3,
+        nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
+      },
       '{"query":{}}',
       100,
       200

@@ -74,7 +74,14 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { useMapBasedNodesEdges } from '../../../hooks/useMapBasedNodesEdges';
-import { EntityLineageResponse } from '../../../interface/lineage.interface';
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
+import {
+  EdgeDetails,
+  EntityLineageResponse,
+  LineageData,
+  LineageNodeType,
+  NodeData,
+} from '../../../interface/lineage.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
@@ -127,18 +134,11 @@ import { addBaseNodeDepthToNodes } from '../../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { CSVExportResponse } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import '../../Entity/EntityLineage/entity-lineage.style.less';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import {
-  EdgeDetails,
-  LineageData,
-  LineageNodeType,
-  NodeData,
-} from '../Lineage.interface';
 import { getRealEntityRef } from '../LineageMap/LineageMapEdit.utils';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import {

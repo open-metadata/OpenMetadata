@@ -60696,14 +60696,6 @@
                 }
             },
             {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 26,
-                    "endColumn": 71,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportAttributeAccessIssue",
                 "range": {
                     "startColumn": 48,
@@ -60738,32 +60730,24 @@
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
-                    "startColumn": 48,
-                    "endColumn": 64,
+                    "startColumn": 44,
+                    "endColumn": 60,
                     "lineCount": 1
                 }
             },
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
-                    "startColumn": 49,
-                    "endColumn": 57,
+                    "startColumn": 45,
+                    "endColumn": 53,
                     "lineCount": 1
                 }
             },
             {
                 "code": "reportArgumentType",
                 "range": {
-                    "startColumn": 77,
-                    "endColumn": 89,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportOptionalMemberAccess",
-                "range": {
-                    "startColumn": 60,
-                    "endColumn": 62,
+                    "startColumn": 73,
+                    "endColumn": 85,
                     "lineCount": 1
                 }
             },
@@ -60773,6 +60757,14 @@
                     "startColumn": 18,
                     "endColumn": 13,
                     "lineCount": 9
+                }
+            },
+            {
+                "code": "reportMissingParameterType",
+                "range": {
+                    "startColumn": 8,
+                    "endColumn": 18,
+                    "lineCount": 1
                 }
             },
             {
@@ -60788,24 +60780,6 @@
                 "range": {
                     "startColumn": 15,
                     "endColumn": 47,
-                    "lineCount": 1
-                }
-            }
-        ],
-        "./src/metadata/ingestion/source/pipeline/airbyte/utils.py": [
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 15,
-                    "endColumn": 28,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 15,
-                    "endColumn": 33,
                     "lineCount": 1
                 }
             }

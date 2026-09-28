@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CSVExportResponse } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
 import { exportLineageAsync } from '../../../rest/lineageAPI';
 
 /**

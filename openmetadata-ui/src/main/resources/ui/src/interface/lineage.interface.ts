@@ -11,28 +11,41 @@
  *  limitations under the License.
  */
 
-// Shared by the lineage store and the lineage UI, so it sits below the
-// component layer. EntityLineage.interface re-exports it.
-import type { LineageNodeType } from '../components/Lineage/Lineage.interface';
+// Shared by the lineage store, the lineage provider and the lineage UI, so it
+// sits below the component layer. EntityLineage.interface re-exports it.
 import { EntityType } from '../enums/entity.enum';
+import { ContainerDataModel } from '../generated/api/data/createContainer';
+import { EsLineageData } from '../generated/api/lineage/esLineageData';
+import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
+import { Chart } from '../generated/entity/data/chart';
+import { MlFeature } from '../generated/entity/data/mlmodel';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { Column } from '../generated/entity/data/table';
+import { Field, MessageSchemaObject } from '../generated/entity/data/topic';
 import { EntityReference } from '../generated/entity/type';
+import { APISchema } from '../generated/type/apiSchema';
 import {
   ColumnLineage,
   TempLineageTable,
 } from '../generated/type/entityLineage';
-import { SearchSourceAlias } from './search.interface';
+import { SearchSourceAlias, TableSearchSource } from './search.interface';
 
 export interface LineageConfig extends Omit<LineageSettings, 'lineageLayer'> {
   nodesPerLayer: number;
 }
 
-export interface EntityLineageResponse {
-  entity: LineageNodeType;
-  nodes?: LineageNodeType[];
-  edges?: EdgeDetails[];
-  downstreamEdges?: EdgeDetails[];
-  upstreamEdges?: EdgeDetails[];
+export interface Edge {
+  edge: {
+    fromEntity: {
+      id: string;
+      type: string;
+    };
+    toEntity: {
+      id: string;
+      type: string;
+    };
+  };
 }
 
 export interface EdgeFromToData {
@@ -68,6 +81,46 @@ export type NodeData = {
   nodeDepth?: number;
 };
 
+export interface LineageNodeType
+  extends Exclude<EntityReference, 'type'>,
+    Pick<
+      TableSearchSource,
+      'entityType' | 'deleted' | 'serviceType' | 'testSuite' | 'columns'
+    > {
+  nodeDepth?: number;
+  paging?: {
+    entityDownstreamCount?: number;
+    entityUpstreamCount?: number;
+  };
+  pagination_data?: {
+    index: number;
+    parentId: string;
+    childrenLength: number;
+  };
+  direction?: LineageDirection;
+  upstreamExpandPerformed?: boolean;
+  downstreamExpandPerformed?: boolean;
+  upstreamLineage?: EsLineageData[];
+  flattenChildren?: EntityChildren;
+  dataModel?: ContainerDataModel;
+  mlFeatures?: MlFeature[];
+  charts?: Chart[];
+  messageSchema?: MessageSchemaObject;
+  responseSchema?: APISchema;
+  requestSchema?: APISchema;
+  fields?: SearchIndexField[];
+  isTempTable?: boolean;
+  lineageMapSubtitle?: string;
+}
+
+export interface EntityLineageResponse {
+  entity: LineageNodeType;
+  nodes?: LineageNodeType[];
+  edges?: EdgeDetails[];
+  downstreamEdges?: EdgeDetails[];
+  upstreamEdges?: EdgeDetails[];
+}
+
 export type LineageData = {
   nodes: Record<string, NodeData>;
   downstreamEdges: Record<string, EdgeDetails>;
@@ -92,7 +145,16 @@ export interface LineagePagingInfo {
   totalUpstreamEntities: number;
 }
 
-export type CSVExportResponse = {
-  jobId: string;
-  message: string;
+export type Flatten<T> = T & {
+  depth?: number;
 };
+
+export type EntityChildrenItem =
+  | Flatten<Column>
+  | Flatten<Field>
+  | Flatten<EntityReference>
+  | Flatten<MlFeature>
+  | Flatten<Field>
+  | Flatten<SearchIndexField>;
+
+export type EntityChildren = EntityChildrenItem[];

@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
+import { LineageNodeType } from '../../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { LineageNodeType } from '../../../Lineage/Lineage.interface';
 import NodeChildren from './NodeChildren.component';
 
 const mockUpdateColumnsInCurrentPages = jest.fn();

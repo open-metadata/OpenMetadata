@@ -22,8 +22,8 @@ import {
 } from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import { LineageDetails } from '../generated/type/entityLineage';
+import { CSVExportResponse } from '../interface/entity/csv.interface';
 import {
-  CSVExportResponse,
   EdgeDetails,
   EntityLineageResponse,
   LineageConfig,

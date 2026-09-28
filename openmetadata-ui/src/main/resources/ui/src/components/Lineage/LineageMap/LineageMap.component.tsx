@@ -80,6 +80,11 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import {
+  EntityChildren,
+  LineageConfig,
+  LineageNodeType,
+} from '../../../interface/lineage.interface';
+import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../../../interface/queryFilter.interface';
@@ -104,14 +109,12 @@ import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
-import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../../Entity/EntityLineage/LineageLayers/LineageLayers';
-import { EntityChildren } from '../../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
-import { LineageNodeType, LineageProps } from '../Lineage.interface';
+import { LineageProps } from '../Lineage.interface';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
