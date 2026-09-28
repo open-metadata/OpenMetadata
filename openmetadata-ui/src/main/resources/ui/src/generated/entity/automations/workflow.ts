@@ -684,6 +684,17 @@ export interface TestServiceConnectionRequest {
      */
     databaseSchema?: string;
     /**
+     * UUIDs of files uploaded to one chat conversation, analyzed instead of a warehouse
+     * service. Every file is loaded into the same in-process DuckDB session, so a query may
+     * join them; serviceName and credentials are not used.
+     */
+    fileIds?: string[];
+    /**
+     * RUNTIME FIELD - The files behind fileIds, resolved by the backend before dispatch. Never
+     * accepted from the client.
+     */
+    files?: QueryRunnerFile[];
+    /**
      * RUNTIME FIELD - Automatically injected by backend from admin
      * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
      * request. The backend fetches this value from the service's QueryRunnerConfig and injects
@@ -5800,6 +5811,29 @@ export enum AirflowConnectionType {
 export enum CredentialSourceType {
     Team = "team",
     User = "user",
+}
+
+/**
+ * An uploaded file resolved by the backend for in-process analysis.
+ */
+export interface QueryRunnerFile {
+    /**
+     * UUID of the uploaded file (Asset).
+     */
+    fileId: string;
+    /**
+     * Original name of the file. Its extension selects the reader.
+     */
+    fileName: string;
+    /**
+     * Short-lived readable location (presigned URL) of the file.
+     */
+    fileUri: string;
+    /**
+     * Relation name the file is registered under. A multi-sheet workbook registers one relation
+     * per sheet, named tableName_<sheet>.
+     */
+    tableName: string;
 }
 
 /**
