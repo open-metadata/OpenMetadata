@@ -163,7 +163,7 @@ test.describe('FeedWidget on landing page', () => {
 
         // Set up widget in a separate page context
         const adminPage = await browser.newPage({ storageState: undefined });
-        await adminUser.login(adminPage);
+        await adminUser.signIn(adminPage);
 
         try {
           // Set persona as default
@@ -220,7 +220,7 @@ test.describe('FeedWidget on landing page', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
   });
@@ -511,13 +511,13 @@ test.describe('Mention notifications in Notification Box', () => {
   }>({
     adminPage: async ({ browser }, use) => {
       const page = await browser.newPage({ storageState: undefined });
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
       await page.close();
     },
     user1Page: async ({ browser }, use) => {
       const page = await browser.newPage({ storageState: undefined });
-      await user1.login(page);
+      await user1.signIn(page);
       await use(page);
       await page.close();
     },
@@ -841,7 +841,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await redirectToHomePage(page);
   });
 
@@ -980,7 +980,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   const test = base.extend<{ adminPage: Page }>({
     adminPage: async ({ browser }, use) => {
       const page = await browser.newPage({ storageState: undefined });
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
       await page.close();
     },

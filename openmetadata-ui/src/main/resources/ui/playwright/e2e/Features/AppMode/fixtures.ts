@@ -111,6 +111,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
+      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
       await isolatedAdmin.login(page);
       await use(page);
     } finally {
@@ -127,6 +128,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
+      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
       await dataConsumer.login(page);
       await use(page);
     } finally {
