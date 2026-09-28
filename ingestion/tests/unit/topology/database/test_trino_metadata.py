@@ -231,6 +231,25 @@ class TestTrinoIcebergDetection(unittest.TestCase):
         result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
         assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
 
+    def test_delta_lake_catalog_returns_delta_lake_type(self):
+        mock_self = self._make_mock_source("delta_lake", ["delta_sales", "delta_events"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [
+            TableNameAndType(name="delta_sales", type_=TableType.DeltaLake),
+            TableNameAndType(name="delta_events", type_=TableType.DeltaLake),
+        ]
+
+    def test_hive_catalog_does_not_return_delta_lake_type(self):
+        mock_self = self._make_mock_source("hive", ["hive_orders"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="hive_orders", type_=TableType.Regular)]
+
+    def test_delta_substring_connector_is_not_delta_lake(self):
+        """`delta` is Presto's connector name, not Trino's; Trino must not match it."""
+        mock_self = self._make_mock_source("delta", ["t1"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="t1", type_=TableType.Regular)]
+
     def test_connection_error_falls_back_to_regular(self):
         mock_self = Mock()
         mock_self.context.get.return_value.database = "test_catalog"
