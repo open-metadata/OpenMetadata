@@ -100,8 +100,11 @@ export class DashboardServiceClass extends EntityClass implements ParentNode {
         childDashboardResponseData.push(responseData);
       }
     } else {
+      // childEntity.service was captured before the constructor applied a
+      // custom service name; bind it to the name actually created.
       const childDashboard = {
         ...this.childEntity,
+        service: this.entity.name,
       };
       const responseData = await this.createDashboardChild(
         apiContext,
@@ -162,6 +165,17 @@ export class DashboardServiceClass extends EntityClass implements ParentNode {
 
   isCreated() {
     return Boolean(this.entityResponseData?.id);
+  }
+
+  // As a parent override only the service is wanted: the default child
+  // dashboard would show up in the test's own service listings and counts.
+  async createAsParent(apiContext: APIRequestContext) {
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'DashboardServiceClass.createAsParent',
+      createPath: '/api/v1/services/dashboardServices',
+      fqnSegments: [this.entity.name],
+      data: this.entity,
+    });
   }
 
   parentSnapshot(): ParentSnapshot {

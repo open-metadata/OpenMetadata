@@ -22,6 +22,14 @@ import { DashboardDataModelClass } from '../../support/entity/DashboardDataModel
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
@@ -307,19 +315,22 @@ const waitForInheritedDomainOnEntityPage = async (
   }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
 };
 
-const entities = [
-  ApiEndpointClass,
-  TableClass,
-  StoredProcedureClass,
-  DashboardClass,
-  PipelineClass,
-  TopicClass,
-  MlModelClass,
-  ContainerClass,
-  SearchIndexClass,
-  DashboardDataModelClass,
-  ChartClass,
-] as const;
+// The test assigns a domain and data product to each entity's parent
+// (database, API collection or service), so every entity owns its parents —
+// on the shard's shared parent a concurrent test overwrites that domain.
+const entityFactories = [
+  () => new ApiEndpointClass({ service: new ApiServiceClass() }),
+  () => new TableClass({ service: new DatabaseServiceClass() }),
+  () => new StoredProcedureClass({ service: new DatabaseServiceClass() }),
+  () => new DashboardClass({ service: new DashboardServiceClass() }),
+  () => new PipelineClass({ service: new PipelineServiceClass() }),
+  () => new TopicClass({ service: new MessagingServiceClass() }),
+  () => new MlModelClass({ service: new MlmodelServiceClass() }),
+  () => new ContainerClass({ service: new StorageServiceClass() }),
+  () => new SearchIndexClass({ service: new SearchIndexServiceClass() }),
+  () => new DashboardDataModelClass({ service: new DashboardServiceClass() }),
+  () => new ChartClass({ service: new DashboardServiceClass() }),
+];
 
 test.beforeAll('setup test', async ({ browser }) => {
   domain = new Domain();
@@ -332,8 +343,8 @@ test.beforeAll('setup test', async ({ browser }) => {
   await afterAction();
 });
 
-entities.forEach((EntityClass) => {
-  const entity = new EntityClass();
+entityFactories.forEach((createEntity) => {
+  const entity = createEntity();
 
   test.describe(entity.getType(), () => {
     test.beforeAll('setup entity ' + entity.getType(), async ({ browser }) => {

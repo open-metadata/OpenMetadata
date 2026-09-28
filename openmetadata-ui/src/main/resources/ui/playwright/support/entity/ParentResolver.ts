@@ -85,7 +85,9 @@ export const resolveParents = async (
 
   let ownedRootPath: string | undefined;
   if (!override.isCreated()) {
-    await override.create(apiContext);
+    await (override.createAsParent
+      ? override.createAsParent(apiContext)
+      : override.create(apiContext));
     ownedRootPath = override.rootDeletePath();
   }
 

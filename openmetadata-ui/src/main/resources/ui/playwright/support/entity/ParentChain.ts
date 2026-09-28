@@ -44,6 +44,9 @@ export interface ParentNode {
   readonly parentLevel: ParentLevel;
   isCreated(): boolean;
   create(apiContext: APIRequestContext): Promise<unknown>;
+  /** Used instead of create() when the node is a parent override — for
+   *  classes whose create() also seeds children the test did not ask for. */
+  createAsParent?(apiContext: APIRequestContext): Promise<unknown>;
   /** This node's response data plus every ancestor it resolved. */
   parentSnapshot(): ParentSnapshot;
   /**

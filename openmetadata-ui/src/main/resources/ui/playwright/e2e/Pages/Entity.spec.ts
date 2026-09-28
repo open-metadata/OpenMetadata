@@ -30,6 +30,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -131,7 +132,12 @@ test.afterAll('Cleanup shared entities', async () => {
 
 Object.entries(entities).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
-  const deleteEntity = new EntityClass();
+  // For tables, softDeleteEntity counts and clicks the deleted table in its
+  // schema's listing, so that table must be alone in its own schema.
+  const deleteEntity =
+    EntityClass === TableClass
+      ? new TableClass({ service: new DatabaseServiceClass() })
+      : new EntityClass();
   const entityName = entity.getType();
 
   test.describe(key, () => {
