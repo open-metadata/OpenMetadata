@@ -117,6 +117,9 @@ class RedshiftDatashareCatalog:
         # Capped so rotating worker threads cannot retain schemas indefinitely;
         # an eviction costs one re-query, not correctness.
         self._schema_columns: LRUCache = LRUCache(maxsize=SCHEMA_CACHE_SIZE)
+        # `LRUCache` reorders on read as well as write, so unlike a plain dict it
+        # is not safe under the threaded schema walk without this.
+        self._schema_columns_lock = threading.Lock()
 
     @property
     def database_types(self) -> dict[str, str] | None:
@@ -222,7 +225,8 @@ class RedshiftDatashareCatalog:
         """
         key = (database_name, schema_name)
         thread_id = threading.get_ident()
-        cached = self._schema_columns.get(thread_id)
+        with self._schema_columns_lock:
+            cached = self._schema_columns.get(thread_id)
         if cached is not None and cached[0] == key:
             return cached[1]
         rows = self._connection_provider().execute(
@@ -233,5 +237,6 @@ class RedshiftDatashareCatalog:
         for row in rows:
             by_table[str(row.table_name)].append(row)
         columns_by_table = dict(by_table)
-        self._schema_columns[thread_id] = (key, columns_by_table)
+        with self._schema_columns_lock:
+            self._schema_columns[thread_id] = (key, columns_by_table)
         return columns_by_table

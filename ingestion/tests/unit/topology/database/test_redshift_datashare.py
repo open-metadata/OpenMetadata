@@ -33,6 +33,7 @@ from metadata.ingestion.source.database.redshift.metadata import (
 from metadata.ingestion.source.database.redshift.metadata import (
     logger as metadata_logger,
 )
+from metadata.ingestion.source.database.redshift.models import RedshiftDatashareTable
 from metadata.ingestion.source.database.redshift.strategy import (
     BaseStrategy,
     DatashareStrategy,
@@ -330,6 +331,29 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         self.assertEqual(
             self.redshift_source.get_table_description("public", "orders", MagicMock()),
             "Shared orders",
+        )
+
+    def test_a_large_schema_keeps_every_table_description(self):
+        """Remarks arrive a whole schema at a time and are read back one table at
+        a time. A cache that caps *tables* evicts the front of a big schema before
+        anything reads it, so every table past the cap silently loses its
+        description."""
+        self._enter_datashare_mode()
+        strategy = self.redshift_source.strategy
+        wide = [
+            RedshiftDatashareTable(name=f"t{i}", table_type=TableType.Regular, remarks=f"remark {i}")
+            for i in range(1500)
+        ]
+        with patch.object(strategy.catalog, "get_tables", return_value=wide):
+            strategy.table_names_and_types("public")
+        # the first table, which a table-capped cache would have evicted long ago
+        self.assertEqual(
+            self.redshift_source.get_table_description("public", "t0", MagicMock()),
+            "remark 0",
+        )
+        self.assertEqual(
+            self.redshift_source.get_table_description("public", "t1499", MagicMock()),
+            "remark 1499",
         )
 
     def test_table_descriptions_of_two_schemas_do_not_overwrite_each_other(self):

@@ -22,6 +22,7 @@ The two are expressed as strategies over the same interface so that the walk in
 never asks again which kind of database it is looking at.
 """
 
+import threading
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast
@@ -52,9 +53,11 @@ if TYPE_CHECKING:
     )
     from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
 
-# Descriptions are read back per table right after the schema is listed, so the
-# working set is one schema's tables; the cap only bites on a very large one.
-TABLE_REMARKS_CACHE_SIZE = 1000
+# Remarks arrive a whole schema at a time and are read back one table at a time,
+# so whole schemas are what the cache holds. Capping tables instead would evict
+# the front of a large schema before anything read it, silently costing every
+# table past the cap its description. Bounded by the schemas in flight.
+SCHEMA_REMARKS_CACHE_SIZE = 32
 
 STANDARD_TABLE_TYPES = {
     "r": TableType.Regular,
@@ -209,11 +212,12 @@ class DatashareStrategy(RedshiftMetadataStrategy):
         # catalog views can see inside it.
         self._schema_names = schema_names
         self.catalog = catalog
-        # Keyed by schema as well, so that tables of another schema being
-        # processed in parallel keep their own remarks. Capped so a database with
-        # a very large catalog cannot retain a remark per table for the whole
-        # walk; an eviction costs one table its description, nothing else.
-        self._table_remarks: LRUCache = LRUCache(maxsize=TABLE_REMARKS_CACHE_SIZE)
+        # Per schema, so that schemas walked in parallel keep their own remarks
+        # and no schema is ever half-evicted while its tables are still being
+        # processed. `LRUCache` maintains ordering on read as well as write, so
+        # unlike a plain dict it needs the lock.
+        self._table_remarks: LRUCache = LRUCache(maxsize=SCHEMA_REMARKS_CACHE_SIZE)
+        self._table_remarks_lock = threading.Lock()
 
     def schema_names(self) -> Iterable[str]:
         return self._schema_names
@@ -223,7 +227,8 @@ class DatashareStrategy(RedshiftMetadataStrategy):
         # last connected schema's constraints from being attached to these tables.
         self.source.constraint_details = {}
         tables = self.catalog.get_tables(self.database_name, schema_name)
-        self._table_remarks.update({(schema_name, table.name): table.remarks for table in tables})
+        with self._table_remarks_lock:
+            self._table_remarks[schema_name] = {table.name: table.remarks for table in tables}
         return [
             TableNameAndType(name=table.name, type_=table.table_type)
             for table in tables
@@ -244,7 +249,9 @@ class DatashareStrategy(RedshiftMetadataStrategy):
         return build_columns(inspector.dialect, rows)  # pyright: ignore[reportReturnType]
 
     def table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
-        return self._table_remarks.get((schema_name, table_name))
+        with self._table_remarks_lock:
+            remarks = self._table_remarks.get(schema_name)
+        return (remarks or {}).get(table_name)
 
     def schema_definition(
         self,
