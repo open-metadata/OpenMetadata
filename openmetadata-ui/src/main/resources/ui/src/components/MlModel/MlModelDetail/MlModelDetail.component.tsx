@@ -50,12 +50,12 @@ import {
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
   updateTierTag,
 } from '../../../utils/TagsPureUtils';
-import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
