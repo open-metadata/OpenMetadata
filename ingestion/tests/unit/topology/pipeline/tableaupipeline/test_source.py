@@ -70,14 +70,17 @@ class Catalog:
 
     def __init__(self):
         self.entities: dict[tuple[type, str], MagicMock] = {}
+        self.unindexed: set[str] = set()
         self.datamodels: list[tuple[str, MagicMock]] = []
         # The dbServiceNames of WORKFLOW_CONFIG: a service with databases of its own.
         self.add_service("warehouse", PostgresConnection(username="u", hostPort="localhost:5432", database="warehouse"))
 
-    def add(self, entity_type: type, entity_fqn: str) -> MagicMock:
+    def add(self, entity_type: type, entity_fqn: str, indexed: bool = True) -> MagicMock:
         entity = _mock_entity()
         entity.fullyQualifiedName = FullyQualifiedEntityName(entity_fqn)
         self.entities[(entity_type, entity_fqn.lower())] = entity
+        if not indexed:
+            self.unindexed.add(entity_fqn.lower())
         return entity
 
     def add_service(self, name: str, config) -> MagicMock:
@@ -99,7 +102,9 @@ class Catalog:
             return [dm for name, dm in self.datamodels if fqn_search_string == f"*.{name}"] or None
         pattern = fqn_search_string.lower()
         return [
-            entity for (kind, key), entity in self.entities.items() if kind is entity_type and fnmatchcase(key, pattern)
+            entity
+            for (kind, key), entity in self.entities.items()
+            if kind is entity_type and key not in self.unindexed and fnmatchcase(key, pattern)
         ] or None
 
     def search_in_any_service(self, entity_type, fqn_search_string, fetch_multiple_entities=False):
@@ -469,28 +474,79 @@ class TestTableResolution:
         database=TableauLineageDatabase(name="shop", connection_type="mysql"),
     )
 
-    def _mysql_catalog(self, source):
+    @staticmethod
+    def _mysql_catalog(source) -> Catalog:
+        """A MySQL service as OpenMetadata files it: one `default` database, with
+        each MySQL database as a schema. Tables added first are found first."""
         catalog = Catalog()
         catalog.add_service(
             MYSQL_SERVICE, MysqlConnection(username="u", authType=BasicAuth(password="p"), hostPort="localhost:3306")
         )
-        customers = catalog.add(Table, f"{MYSQL_SERVICE}.default.shop.customers")
         catalog.wire(source)
-        return customers
+        return catalog
 
     def test_a_single_database_service_is_searched_under_its_default_database(self, tableau_source):
         """OpenMetadata files a MySQL service under one `default` database, and
         Tableau's database is the MySQL schema."""
         source, _ = tableau_source
         source.source_config.lineageInformation.dbServiceNames = [MYSQL_SERVICE]
-        customers = self._mysql_catalog(source)
+        customers = self._mysql_catalog(source).add(Table, f"{MYSQL_SERVICE}.default.shop.customers")
+
+        assert source._resolve_table_entity(self.MYSQL_CUSTOMERS) is customers
+
+    def test_a_same_named_table_in_another_mysql_database_does_not_get_the_edge(self, tableau_source):
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = [MYSQL_SERVICE]
+        catalog = self._mysql_catalog(source)
+        catalog.add(Table, f"{MYSQL_SERVICE}.default.staging.customers")
+        customers = catalog.add(Table, f"{MYSQL_SERVICE}.default.shop.customers")
+
+        assert source._resolve_table_entity(self.MYSQL_CUSTOMERS) is customers
+
+    def test_a_file_the_flow_reads_is_not_taken_for_a_table_of_the_same_name(self, tableau_source):
+        """Tableau reports an Excel sheet with its workbook as the database and
+        no schema, and OpenMetadata names ignore case."""
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = [MYSQL_SERVICE]
+        self._mysql_catalog(source).add(Table, f"{MYSQL_SERVICE}.default.sales.orders")
+        excel_orders = TableauLineageTable(
+            id="t-sheet-orders",
+            name="Orders",
+            full_name="[Orders$]",
+            schema_="",
+            database=TableauLineageDatabase(name="Sample - Superstore.xls", connection_type="excel-direct"),
+        )
+
+        assert source._resolve_table_entity(excel_orders) is None
+
+    def test_custom_sql_naming_only_the_table_finds_the_one_table_of_that_name(self, tableau_source):
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = [MYSQL_SERVICE]
+        orders = self._mysql_catalog(source).add(Table, f"{MYSQL_SERVICE}.default.sales.orders")
+
+        assert source._resolve_tables_from_sql("SELECT id FROM orders") == [orders]
+
+    def test_custom_sql_naming_only_the_table_finds_nothing_when_several_tables_match(self, tableau_source):
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = [MYSQL_SERVICE]
+        catalog = self._mysql_catalog(source)
+        catalog.add(Table, f"{MYSQL_SERVICE}.default.staging.customers")
+        catalog.add(Table, f"{MYSQL_SERVICE}.default.shop.customers")
+
+        assert source._resolve_tables_from_sql("SELECT id FROM customers") == []
+
+    def test_a_full_name_resolves_before_search_has_indexed_the_table(self, tableau_source):
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = [MYSQL_SERVICE]
+        catalog = self._mysql_catalog(source)
+        customers = catalog.add(Table, f"{MYSQL_SERVICE}.default.shop.customers", indexed=False)
 
         assert source._resolve_table_entity(self.MYSQL_CUSTOMERS) is customers
 
     def test_without_configured_services_the_full_name_finds_the_table(self, tableau_source):
         source, _ = tableau_source
         source.source_config.lineageInformation.dbServiceNames = []
-        customers = self._mysql_catalog(source)
+        customers = self._mysql_catalog(source).add(Table, f"{MYSQL_SERVICE}.default.shop.customers")
 
         assert source._resolve_table_entity(self.MYSQL_CUSTOMERS) is customers
 

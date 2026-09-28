@@ -84,10 +84,13 @@ and table Tableau reports first and then those in the table's full name
 dashboard Tableau connector does:
 
 1. With `lineageInformation.dbServiceNames` set, only those services are
-   tried, each with its own database naming: a single-database service
-   (MySQL, Oracle, Hive, …) files Tableau's database — really its schema —
-   under its configured or `default` database, and BigQuery's database is
-   left to the search.
+   tried, in order, each with its own database naming. A single-database
+   service (MySQL, Oracle, Hive, …) has one database, its configured or
+   `default` one, and a table Tableau reports with a database but no schema
+   is looked up with that database as its schema, as OpenMetadata files a
+   MySQL database. BigQuery's database is left to the search. A name still
+   missing its database or schema, such as a table in custom SQL, must match
+   a single table of the service: the first of several would be a guess.
 2. Without them, a search across every database service is used, and only
    a single match is accepted — a same-named table elsewhere never gets the
    edge, and names that match several tables do not fall back to looser ones.
@@ -95,6 +98,9 @@ dashboard Tableau connector does:
    fetched (in a separate query, so popular tables do not spend the main
    query's node budget) and parsed (ANSI dialect); each source table resolves
    via steps 1–2.
+
+A file a flow reads (Excel, CSV, …) is reported with the file as its database
+and no schema, so it is not mistaken for a database table of the same name.
 
 Published data sources resolve to the `DashboardDataModel`s the dashboard
 Tableau connector created — in every dashboard service that ingests the site

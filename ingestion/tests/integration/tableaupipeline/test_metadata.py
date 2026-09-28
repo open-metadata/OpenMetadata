@@ -81,7 +81,8 @@ class TestTableauPipelineWorkflow:
 
     def test_a_flow_links_the_table_it_reads_to_the_table_it_writes(self, metadata, warehouse_tables):
         """Tableau reports the MySQL tables as `warehouse.orders`; OpenMetadata
-        files them under `default.warehouse`, and the edge still resolves."""
+        files them under `default.warehouse`, and the edge still resolves — to
+        that table, not to the `orders` of another MySQL database."""
         sales = _pipeline(metadata, "flow-sales")
         orders, sales_clean = warehouse_tables["orders"], warehouse_tables["sales_clean"]
 
@@ -89,8 +90,17 @@ class TestTableauPipelineWorkflow:
 
         assert edge is not None
         assert edge["edge"]["pipeline"]["id"] == str(sales.id.root)
+        assert metadata.get_lineage_edge(warehouse_tables["staging.orders"].id.root, sales_clean.id.root) is None
         assert metadata.get_lineage_edge(orders.id.root, sales.id.root) is None
         assert metadata.get_lineage_edge(sales.id.root, sales_clean.id.root) is None
+
+    def test_a_file_a_flow_reads_is_not_taken_for_a_table_of_the_same_name(self, metadata, warehouse_tables):
+        """`Files` reads an Excel sheet `Customers`; the MySQL table `customers`
+        gets no edge from it."""
+        _pipeline(metadata, "flow-files")
+        customers, sales_clean = warehouse_tables["customers"], warehouse_tables["sales_clean"]
+
+        assert metadata.get_lineage_edge(customers.id.root, sales_clean.id.root) is None
 
     def test_a_flow_with_separate_branches_links_each_input_to_its_own_output(self, metadata, warehouse_tables):
         split = _pipeline(metadata, "flow-split")

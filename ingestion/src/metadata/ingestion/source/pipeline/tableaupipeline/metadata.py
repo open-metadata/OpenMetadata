@@ -780,14 +780,16 @@ class TableaupipelineSource(PipelineServiceSource):
 
         Tableau names a table as its source reports it, which is not always how
         OpenMetadata files it: a single-database service (MySQL, Oracle, Hive,
-        ...) has one synthetic database, and what Tableau calls the database is
-        its schema. So the names Tableau reports are tried first, then those in
-        the table's full name, as the dashboard Tableau connector does.
+        ...) has one synthetic database, and the MySQL database Tableau reports
+        as the table's database is its schema there. So the names Tableau
+        reports are tried first, then those in the table's full name, as the
+        dashboard Tableau connector does.
 
         The configured dbServiceNames are authoritative: when set, only they are
-        tried, each with its own database naming. Without them, a search across
-        every database service is accepted only when it finds exactly one table
-        — a same-named table elsewhere must not receive the edge.
+        tried, in order, each with its own database naming. Without them, every
+        database service is searched. Either way, a search that finds several
+        tables is not a match — a same-named table elsewhere must not receive
+        the edge.
         """
         if not table.name:
             return None
@@ -826,19 +828,44 @@ class TableaupipelineSource(PipelineServiceSource):
         return None
 
     def _table_in_service(self, service_name: str, parts: TableNameParts) -> Table | None:
+        """The table a configured service holds under these names. A name that
+        lacks its database or schema is a search, and only a search that finds
+        one table resolves it: the first of several is a guess."""
         database_name, schema_name, table_name = parts
         service = self._database_service(service_name)
         if service is not None:
+            if self._is_single_database(service):
+                # Tableau reports a MySQL table with its database and no schema, and
+                # OpenMetadata files that database as the table's schema.
+                schema_name = schema_name or database_name
             database_name = self._service_database_name(service, database_name)
-        entity_fqn = fqn.build(
+        matches = self.metadata.es_search_from_fqn(
+            entity_type=Table,
+            fqn_search_string=build_es_fqn_search_string(
+                database_name=database_name,
+                schema_name=schema_name,
+                service_name=service_name,
+                table_name=table_name,
+            ),
+        )
+        if matches:
+            if len(matches) == 1:
+                return matches[0]
+            logger.debug("Tableau table %s matches several tables of %s; skipping it", table_name, service_name)
+            return None
+        if not (database_name and schema_name):
+            return None
+        # Search lags a create by the index refresh; a full name can be read directly.
+        table_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Table,
             service_name=service_name,
             database_name=database_name,
             schema_name=schema_name,
             table_name=table_name,
+            skip_es_search=True,
         )
-        return self.metadata.get_by_name(entity=Table, fqn=entity_fqn) if entity_fqn else None
+        return self.metadata.get_by_name(entity=Table, fqn=table_fqn) if table_fqn else None
 
     def _database_service(self, service_name: str) -> DatabaseService | None:
         if service_name not in self._database_services:
@@ -858,6 +885,12 @@ class TableaupipelineSource(PipelineServiceSource):
         if isinstance(config, BigQueryConnection):
             tableau_database = None
         return get_database_name_for_lineage(service, tableau_database)
+
+    @staticmethod
+    def _is_single_database(service: DatabaseService) -> bool:
+        """Whether OpenMetadata files the service under one database, by the test
+        get_database_name_for_lineage applies."""
+        return service.connection is not None and not hasattr(service.connection.config, "supportsDatabase")
 
     def _unique_table_match(self, candidates: list[TableNameParts]) -> Table | None:
         """The table the first matching names find across every database

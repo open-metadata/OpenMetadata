@@ -38,6 +38,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.classification.classification import Classification
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -103,6 +104,18 @@ def _table(table_id: str, name: str) -> dict:
     }
 
 
+def _excel_sheet(table_id: str, sheet: str, workbook: str) -> dict:
+    """An Excel sheet as Tableau reports it: the workbook is its database, and
+    there is no schema."""
+    return {
+        "id": table_id,
+        "name": sheet,
+        "fullName": f"[{sheet}$]",
+        "schema": "",
+        "database": {"name": workbook, "connectionType": "excel-direct"},
+    }
+
+
 def _flow_lineage(
     inputs: list[dict],
     outputs: list[dict],
@@ -132,7 +145,8 @@ def _output_field(source: str, target: str) -> dict:
 # which the flow `Ops` reads next. `Sales` is listed first, so its edge to `Ops`
 # can only be drawn after `Ops` is ingested. `Split` runs two branches, orders
 # into orders_clean and customers into customers_clean, which only its field
-# lineage tells apart.
+# lineage tells apart. `Files` reads an Excel sheet named like the table
+# `customers`.
 FLOW_LINEAGE = {
     "flow-sales": _flow_lineage(
         [_table("t-orders", "orders")],
@@ -145,6 +159,10 @@ FLOW_LINEAGE = {
         [_table("t-orders", "orders"), _table("t-customers", "customers")],
         [_table("t-orders-clean", "orders_clean"), _table("t-customers-clean", "customers_clean")],
         steps=(("out-orders", "Clean orders"), ("out-customers", "Clean customers")),
+    ),
+    "flow-files": _flow_lineage(
+        [_excel_sheet("t-sheet-customers", "Customers", "Sample - Superstore.xls")],
+        [_table("t-sales-clean", "sales_clean")],
     ),
 }
 OUTPUT_FIELDS = {
@@ -163,6 +181,7 @@ class FakeTableauSite:
             _flow("flow-sales", "Sales", tags='<tag label="finance"/>'),
             _flow("flow-ops", "Ops"),
             _flow("flow-split", "Split"),
+            _flow("flow-files", "Files"),
         ]
         self.flow_runs = {
             "flow-sales": [
@@ -288,10 +307,29 @@ def _wait_until_searchable(metadata, schema_fqn: str, count: int) -> None:
         time.sleep(1)
 
 
+def _create_tables(metadata, database: Database, schema_name: str, names: tuple[str, ...]) -> dict[str, Table]:
+    schema = metadata.create_or_update(
+        CreateDatabaseSchemaRequest(name=schema_name, database=database.fullyQualifiedName)
+    )
+    tables = {
+        name: metadata.create_or_update(
+            CreateTableRequest(
+                name=name,
+                databaseSchema=schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.INT)],
+            )
+        )
+        for name in names
+    }
+    _wait_until_searchable(metadata, schema.fullyQualifiedName.root, len(tables))
+    return tables
+
+
 @pytest.fixture(scope="module")
 def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
     """A MySQL service as OpenMetadata files it: one `default` database, with
-    the MySQL database `warehouse` as its schema."""
+    each MySQL database as a schema. `staging` holds an `orders` too and is
+    indexed first, so a search for `orders` in any schema finds it first."""
     service = metadata.create_or_update(
         CreateDatabaseServiceRequest(
             name=DB_SERVICE,
@@ -302,21 +340,9 @@ def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
         )
     )
     database = metadata.create_or_update(CreateDatabaseRequest(name="default", service=service.fullyQualifiedName))
-    schema = metadata.create_or_update(
-        CreateDatabaseSchemaRequest(name="warehouse", database=database.fullyQualifiedName)
-    )
-    tables = {
-        name: metadata.create_or_update(
-            CreateTableRequest(
-                name=name,
-                databaseSchema=schema.fullyQualifiedName,
-                columns=[Column(name="id", dataType=DataType.INT)],
-            )
-        )
-        for name in WAREHOUSE_TABLES
-    }
-    _wait_until_searchable(metadata, schema.fullyQualifiedName.root, len(tables))
-    yield tables
+    staging = _create_tables(metadata, database, "staging", ("orders",))
+    tables = _create_tables(metadata, database, "warehouse", WAREHOUSE_TABLES)
+    yield {**tables, "staging.orders": staging["orders"]}
     metadata.delete(entity=DatabaseService, entity_id=service.id, recursive=True, hard_delete=True)
 
 
