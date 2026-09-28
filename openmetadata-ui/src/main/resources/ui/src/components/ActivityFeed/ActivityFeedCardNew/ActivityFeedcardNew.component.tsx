@@ -295,15 +295,17 @@ const ActivityFeedCardNew = ({
 
   const timestampValue =
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
+
   const timestamp = timestampValue ? (
-    <Tooltip excludeTriggerFromTabOrder title={formatDateTime(timestampValue)}>
-      <Typography
+    <Tooltip
+      excludeTriggerFromTabOrder
+      containerClassName="timestamp-tooltip"
+      title={formatDateTime(timestampValue, timeFormat)}>
+      <Typography.Text
         className="feed-card-header-v2-timestamp"
-        color="secondary"
-        data-testid="timestamp"
-        size="text-xs">
+        data-testid="timestamp">
         {getRelativeTime(timestampValue)}
-      </Typography>
+      </Typography.Text>
     </Tooltip>
   ) : null;
 
