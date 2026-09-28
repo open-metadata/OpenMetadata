@@ -123,6 +123,7 @@ import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.compo
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
 import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
@@ -405,6 +406,8 @@ function DataProductActionButtons(
           })}
         </Button>
       )}
+
+      {!isVersionsView && <ChangeRequestsIndicator entityId={dataProduct.id} />}
 
       <ButtonGroup className="spaced" size="small">
         {dataContractLatestResultButton}

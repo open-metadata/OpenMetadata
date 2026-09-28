@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Resolves the approval-gated change held for the related entity. The action is configured
- * on the node itself (not inferred from the status): 'commit' persists the held change to
- * the entity (the point a real ChangeEvent is emitted); 'discard' drops it, leaving the
- * approved values in place; 'hold' leaves it held. Place this node after the status is set
- * (e.g. commit after Approved, discard after Rejected/Draft, hold after In Review).
+ * Resolves the change request the workflow run reviews. The action is configured on the
+ * node itself: 'commit' applies the reviewed revision when an eligible approval of that
+ * exact revision is recorded (the point a real ChangeEvent is emitted); 'discard' rejects
+ * it, leaving the published values in place. Place commit on the approval path and discard
+ * on the rejection path.
  */
 export interface ResolvePendingChangeTask {
     config: NodeConfiguration;
@@ -44,12 +44,11 @@ export interface NodeConfiguration {
 }
 
 /**
- * What to do with the held pending change.
+ * What to do with the change request the run reviews.
  */
 export enum Action {
     Commit = "commit",
     Discard = "discard",
-    Hold = "hold",
 }
 
 export interface InputNamespaceMap {

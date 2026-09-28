@@ -20,7 +20,8 @@ import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface ResolvePendingChangeFormProps {
   node: Node;
@@ -29,7 +30,7 @@ interface ResolvePendingChangeFormProps {
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
 }
 
-const ACTION_OPTIONS = ['commit', 'discard', 'hold'] as const;
+const ACTION_OPTIONS = ['commit', 'discard'] as const;
 
 export const ResolvePendingChangeForm: React.FC<
   ResolvePendingChangeFormProps
@@ -51,7 +52,6 @@ export const ResolvePendingChangeForm: React.FC<
   const actionLabels: Record<string, string> = {
     commit: t('label.commit'),
     discard: t('label.discard'),
-    hold: t('label.hold'),
   };
 
   const handleSave = () => {
