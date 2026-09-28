@@ -13,7 +13,6 @@
 import { expect, Page } from '@playwright/test';
 import { COLLATE_SAAS_RUNNER } from '../constant/serviceForm';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
-import { selectOptionWithRetry } from './common';
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -53,6 +52,7 @@ export const selectOneOfOption = async (
 
   if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
     await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
 
     return;
   }
@@ -65,7 +65,11 @@ export const selectOneOfOption = async (
       .locator('.core-one-of-field-select-popover')
       .getByRole('option', { name: optionNamePattern });
 
-    await selectOptionWithRetry(trigger, option);
+    await trigger.focus();
+    await trigger.click();
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(trigger).toContainText(optionNamePattern);
 
     return;
   }
@@ -90,8 +94,11 @@ export const selectIngestionRunnerFromDropdown = async (
       .locator('.core-select-widget-popover')
       .getByRole('option', { name: runnerDisplayName, exact: true });
 
-    await selectOptionWithRetry(trigger, option);
-    await expect(runnerSelector).toContainText(runnerDisplayName);
+    await trigger.focus();
+    await trigger.click();
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(trigger).toContainText(runnerDisplayName);
   }
 };
 
