@@ -23,7 +23,7 @@ import { getRunSummary } from './RunSummaryTiles.utils';
 const NO_RATE = '—';
 
 const TILE_CLASS =
-  'tw:rounded-xl tw:bg-surface tw:px-4 tw:py-3 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary';
+  'tw:rounded-xl tw:bg-surface tw:px-3 tw:py-2.5 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary';
 
 interface RunSummaryTilesProps {
   results: { testCaseStatus?: TestCaseStatus }[];
@@ -45,19 +45,19 @@ const RunSummaryTiles = ({ results }: RunSummaryTilesProps) => {
         key: 'passed',
         label: t('label.passed'),
         value: formatNumberWithComma(summary.passed),
-        className: 'tw:text-success-primary',
+        className: 'tw:text-utility-success-700',
       },
       {
         key: 'failed',
         label: t('label.failed'),
         value: formatNumberWithComma(summary.failed),
-        className: 'tw:text-error-primary',
+        className: 'tw:text-utility-error-700',
       },
       {
         key: 'aborted',
         label: t('label.aborted'),
         value: formatNumberWithComma(summary.aborted),
-        className: 'tw:text-warning-primary',
+        className: 'tw:text-utility-warning-700',
       },
       {
         key: 'success-rate',
@@ -73,7 +73,7 @@ const RunSummaryTiles = ({ results }: RunSummaryTilesProps) => {
     // Five across whenever the card is wide enough, as in the mock, wrapping
     // only when a narrow card cannot fit them.
     <div
-      className="tw:grid tw:grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] tw:gap-3"
+      className="tw:grid tw:grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] tw:gap-2.5"
       data-testid="run-summary-tiles">
       {tiles.map((tile) => (
         <Box
@@ -82,14 +82,14 @@ const RunSummaryTiles = ({ results }: RunSummaryTilesProps) => {
           direction="col"
           gap={1}
           key={tile.key}>
-          <Typography className="tw:text-tertiary" size="text-sm">
+          <Typography className="tw:text-quaternary" size="text-xs">
             {tile.label}
           </Typography>
           <Typography
             data-value
             className={tile.className}
-            size="display-xs"
-            weight="semibold">
+            size="text-lg"
+            weight="bold">
             {tile.value}
           </Typography>
         </Box>

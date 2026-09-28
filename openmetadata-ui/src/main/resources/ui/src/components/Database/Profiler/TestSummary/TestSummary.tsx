@@ -125,17 +125,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     <Box data-testid="test-summary-container" direction="col" gap={4}>
       <Box align="start" gap={4} justify="between">
         <Box direction="col" gap={1}>
-          {/* The global h2 style otherwise wins over the size class and renders
-              the title at 24px. */}
-          <Typography
-            as="h2"
-            className="tw:m-0 tw:text-lg! tw:leading-7!"
-            size="text-lg"
-            weight="semibold">
+          {/* A plain heading rather than Typography: Typography wraps an h2 in
+              .prose, whose heading style (24px, semibold, margins) outranks
+              the size classes. */}
+          <h2 className="tw:m-0 tw:text-md tw:leading-5 tw:font-bold tw:text-primary">
             {t('label.result-history')}
-          </Typography>
+          </h2>
           <Typography
-            className="tw:text-tertiary"
+            className="tw:text-quaternary"
             data-testid="result-history-caption"
             size="text-sm">
             {caption}
@@ -143,6 +140,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         </Box>
         <DqDateRangeFilter
           endTs={dateRangeObject.endTs}
+          size="sm"
           startTs={dateRangeObject.startTs}
           onApply={handleDateRangeChange}
         />
