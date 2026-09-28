@@ -12,7 +12,11 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Box, Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Bell01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';

@@ -249,8 +249,7 @@ export const getEntityByIdOptions = async (
   searchText: string,
   selectedTrigger: string
 ) => {
-  const searchIndexMapping =
-    searchClassBase.getEntityTypeSearchIndexMapping();
+  const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const trimmed = searchText.trim();
   const isUuidInput = UUID_REGEX.test(trimmed);
 

@@ -34,14 +34,14 @@ import React, {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { NAME_FIELD_RULES } from '../../../../../../constants/Form.constants';
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
+import { NAME_FIELD_RULES } from '../../../../../../constants/Form.constants';
+import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import {
   NotificationTemplate,
   ProviderType as TemplateProviderType,
@@ -61,8 +61,8 @@ import {
   updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
-import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import type { AddAlertFormWidgetProps } from '../../../../../../utils/AlertsClassBase';
+import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
@@ -475,9 +475,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           Object.entries(extraFormButtons).map(([name, ButtonComponent]) => (
             <ButtonComponent
               alertDetails={alert}
-              formRef={
-                form as unknown as AddAlertFormWidgetProps['formRef']
-              }
+              formRef={form as unknown as AddAlertFormWidgetProps['formRef']}
               key={name}
               templateResourcePermission={templateResourcePermission}
               templates={templates}
