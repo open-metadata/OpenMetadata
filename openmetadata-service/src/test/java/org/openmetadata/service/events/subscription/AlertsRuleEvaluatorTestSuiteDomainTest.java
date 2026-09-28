@@ -19,17 +19,21 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
@@ -74,12 +78,21 @@ class AlertsRuleEvaluatorTestSuiteDomainTest {
         .withEntity(payload);
   }
 
+  /** testCase declares domains; without this the #31331 guard skips the read under a static mock. */
+  private static EntityRepository<EntityInterface> repositoryDeclaringDomains() {
+    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    when(repository.isSupportsDomains()).thenReturn(true);
+    return repository;
+  }
+
   @Test
   void matchesDomainCarriedOnlyByTheStoredTestSuite() {
+    EntityRepository<EntityInterface> repository = repositoryDeclaringDomains();
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock
           .when(() -> Entity.getEntityClassFromType(Entity.TEST_CASE))
           .thenReturn(TestCase.class);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TEST_CASE)).thenReturn(repository);
       // The test case itself carries no domains...
       entityMock
           .when(
@@ -110,10 +123,12 @@ class AlertsRuleEvaluatorTestSuiteDomainTest {
 
   @Test
   void doesNotMatchWhenNeitherTestCaseNorSuiteCarriesTheDomain() {
+    EntityRepository<EntityInterface> repository = repositoryDeclaringDomains();
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock
           .when(() -> Entity.getEntityClassFromType(Entity.TEST_CASE))
           .thenReturn(TestCase.class);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TEST_CASE)).thenReturn(repository);
       entityMock
           .when(
               () ->

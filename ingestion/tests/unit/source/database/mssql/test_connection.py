@@ -30,6 +30,7 @@ from sqlalchemy.pool import StaticPool
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Matchers, collect_checks
 from metadata.core.connections.test_connection.checks.database import DEFAULT_SAMPLE_ROWS, DatabaseStep
+from metadata.core.connections.test_connection.records import Evidence
 from metadata.core.connections.test_connection.runner import TestConnectionRunner
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
@@ -45,11 +46,15 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.mssql.connection import (
+    DEFAULT_QUERY_TIMEOUT_SECONDS,
     MSSQL_ERRORS,
     MssqlChecks,
     MssqlConnection,
     _mssql_number,
+    bound_pyodbc_query_timeout,
+    configured_query_timeout,
     get_connection_url,
+    with_default_query_timeout,
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_CURRENT_DATABASE,
@@ -484,3 +489,203 @@ def test_get_databases_counts_the_databases_it_found():
 
 def test_get_databases_reports_a_floor_when_the_sample_is_capped():
     assert _databases_summary(DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+
+
+# Query timeouts. A hung read must not stall a workflow forever, and the shared
+# engine builder sets no timeout, so the connector applies one per driver.
+
+
+@pytest.mark.parametrize("scheme", [MssqlScheme.mssql_pytds, MssqlScheme.mssql_pymssql])
+def test_the_drivers_that_take_a_query_timeout_get_one(scheme):
+    """pytds and pymssql both read `timeout` as the socket timeout on every read."""
+    connection = with_default_query_timeout(_config(scheme=scheme))
+
+    assert connection.connectionArguments.root["timeout"] == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+def test_pyodbc_is_left_alone_because_its_timeout_argument_is_the_login_one():
+    """Setting `timeout` for pyodbc would shorten the login, not bound the query."""
+    connection = with_default_query_timeout(_config(scheme=MssqlScheme.mssql_pyodbc))
+
+    assert "timeout" not in (connection.connectionArguments.root if connection.connectionArguments else {})
+
+
+def test_a_user_supplied_timeout_wins():
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pytds,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": 5},
+    )
+
+    connection = with_default_query_timeout(config)
+
+    assert connection.connectionArguments.root["timeout"] == 5
+
+
+def test_the_configured_connection_is_left_untouched():
+    """The bound belongs to the engine: a workflow that stores its service
+    connection would otherwise persist a timeout nobody configured."""
+    config = _config(scheme=MssqlScheme.mssql_pytds)
+
+    with_default_query_timeout(config)
+
+    assert config.connectionArguments is None
+
+
+def _real_engine_for(config: MssqlConnectionConfig) -> Engine:
+    """The engine a workflow would actually be handed.
+
+    SQLAlchemy resolves the dialect and builds the pool without opening a socket,
+    so the connector can be driven for real here and the assertions can read the
+    engine itself rather than a record of how it was constructed.
+    """
+    return MssqlConnection(config).client
+
+
+def _timeout_a_new_connection_would_get(engine: Engine) -> int | None:
+    """Fire the engine's own connect listener the way its pool does, and report
+    the bound a fresh DBAPI connection comes away with - None when the engine
+    carries no such listener at all."""
+    listeners = [fn for fn in engine.pool.dispatch.connect if fn.__name__ == "set_query_timeout"]
+    if not listeners:
+        return None
+    dbapi_connection = MagicMock()
+    listeners[0](dbapi_connection, MagicMock())
+    return dbapi_connection.timeout
+
+
+def test_the_engine_is_built_with_pre_ping():
+    """A pooled connection the server has dropped must not fail the borrower."""
+    engine = _real_engine_for(_config())
+    try:
+        # The pool is where SQLAlchemy keeps it; it exposes no public reader.
+        assert engine.pool._pre_ping is True
+    finally:
+        engine.dispose()
+
+
+def test_a_configured_timeout_is_the_bound_pyodbc_queries_get():
+    """pyodbc spends `timeout` on the login, so a service that asked for a tighter
+    bound would otherwise keep running its queries against the default."""
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pyodbc,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": 30},
+    )
+
+    engine = _real_engine_for(config)
+    try:
+        assert _timeout_a_new_connection_would_get(engine) == 30
+    finally:
+        engine.dispose()
+
+
+def test_the_default_bound_applies_when_nothing_is_configured():
+    assert configured_query_timeout(_config(scheme=MssqlScheme.mssql_pyodbc)) == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+def test_a_non_numeric_timeout_falls_back_to_the_default():
+    """Whatever the driver makes of it, it is not a bound this can apply."""
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pyodbc,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": "thirty"},
+    )
+
+    assert configured_query_timeout(config) == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize(
+    ("scheme", "bounded"),
+    [(MssqlScheme.mssql_pyodbc, True), (MssqlScheme.mssql_pytds, False)],
+)
+def test_only_pyodbc_bounds_the_query_timeout_on_the_engine(scheme, bounded):
+    """The other drivers take the bound as a connect argument, so an engine-level
+    listener would be a second, conflicting bound rather than a missing one."""
+    engine = _real_engine_for(_config(scheme=scheme))
+    try:
+        timeout = _timeout_a_new_connection_would_get(engine)
+    finally:
+        engine.dispose()
+
+    assert (timeout == DEFAULT_QUERY_TIMEOUT_SECONDS) is bounded
+
+
+def test_the_query_timeout_is_applied_to_every_new_connection():
+    """pyodbc exposes the query timeout as a connection attribute, so it can only
+    be set once the DBAPI connection exists - hence a listener on connect."""
+    engine = create_engine("sqlite://", poolclass=StaticPool)
+    bound_pyodbc_query_timeout(engine, timeout_seconds=42)
+    dbapi_connection = MagicMock()
+
+    (listener,) = [fn for fn in engine.pool.dispatch.connect if fn.__name__ == "set_query_timeout"]
+    listener(dbapi_connection, MagicMock())
+
+    assert dbapi_connection.timeout == 42
+
+
+# ── GetTables / GetViews: TOP-1 existence probe, not a sorted reflection ─────
+#
+# A database with hundreds of thousands of tables makes inspector.get_table_names()
+# (ORDER BY, no cap) blow past the per-step timeout, since SQL Server has to sort
+# every row before returning the first one. These checks only need to know
+# *something* is visible, so they run their own TOP 1 / no ORDER BY probe instead.
+#
+# The probe's SQL is T-SQL (TOP, sys.tables/sys.views), which SQLite - the rest of
+# this file's stand-in engine - cannot run. run_sql is mocked instead, with a
+# side_effect that still calls the real summarize callback the check builds, so
+# the check's own found/empty/caveat logic runs for real; only the query
+# execution itself is faked.
+
+
+def _fake_run_sql(rows: list[tuple]):
+    def run(client, statement, summarize, max_rows=1):
+        return Evidence(summary=summarize(rows), command=statement)
+
+    return run
+
+
+def _probe_evidence(step: DatabaseStep, rows: list[tuple]):
+    checks = MssqlChecks(db=Borrowed.of(MagicMock()), get_databases_statement="SELECT 1")
+    with patch(f"{CONNECTION_MODULE}.run_sql", side_effect=_fake_run_sql(rows)) as mock_run_sql:
+        evidence = collect_checks(checks)[step]()
+    return evidence, mock_run_sql.call_args.args[1]
+
+
+def test_get_tables_probes_with_top_1_and_no_order_by():
+    evidence, statement = _probe_evidence(DatabaseStep.GetTables, rows=[("big_tbl_0",)])
+    assert "TOP 1" in statement
+    assert "ORDER BY" not in statement
+    assert "sys.tables" in statement
+    assert "is_ms_shipped = 0" in statement
+    assert evidence.summary == "tables visible"
+
+
+def test_get_tables_warns_but_does_not_fail_when_database_is_empty():
+    evidence, _ = _probe_evidence(DatabaseStep.GetTables, rows=[])
+    assert evidence.summary == "no tables visible"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No tables visible"
+
+
+def test_get_views_stays_silent_when_there_are_no_views():
+    """Unlike GetTables, an empty view list is normal - no caveat."""
+    evidence, statement = _probe_evidence(DatabaseStep.GetViews, rows=[])
+    assert "sys.views" in statement
+    assert evidence.summary == "no views visible"
+    assert evidence.caveat is None
+
+
+def test_get_views_reports_visible_views():
+    evidence, _ = _probe_evidence(DatabaseStep.GetViews, rows=[("v",)])
+    assert evidence.summary == "views visible"
+    assert evidence.caveat is None

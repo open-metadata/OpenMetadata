@@ -1,12 +1,12 @@
 # Standalone Apache Jena Fuseki for RDF/Knowledge Graph storage
 services:
   fuseki:
-    # Build from the in-repo Dockerfile (Fuseki 5.6.0). See
+    # Build from the in-repo Dockerfile (Fuseki 6.2.0). See
     # ../development/docker-compose-fuseki.yml for the full rationale.
     build:
       context: ../rdf-store
       dockerfile: Dockerfile
-    image: openmetadata-fuseki:5.6.0
+    image: openmetadata-fuseki:6.2.0
     container_name: fuseki-standalone
     hostname: fuseki
     ports:

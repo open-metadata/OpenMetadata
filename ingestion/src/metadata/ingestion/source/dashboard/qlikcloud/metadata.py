@@ -11,7 +11,7 @@
 """QlikCloud source module"""
 
 import traceback
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -68,7 +68,7 @@ class QlikcloudSource(QliksenseSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: QlikCloudConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikCloudConnection):
@@ -81,9 +81,9 @@ class QlikcloudSource(QliksenseSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.projects_map: Dict[str, QlikSpace] = {}  # noqa: UP006
-        self.collections: List[QlikApp] = []  # noqa: UP006
-        self.data_models: List[QlikTable] = []  # noqa: UP006
+        self.projects_map: dict[str, QlikSpace] = {}
+        self.collections: list[QlikApp] = []
+        self.data_models: list[QlikTable] = []
 
     def prepare(self):
         """
@@ -126,7 +126,7 @@ class QlikcloudSource(QliksenseSource):
         """
         return dashboard.name
 
-    def get_project_name(self, dashboard_details: Optional[QlikApp]) -> Optional[str]:  # noqa: UP045
+    def get_project_name(self, dashboard_details: QlikApp | None) -> str | None:
         """
         Get Project Name
         """
@@ -136,7 +136,7 @@ class QlikcloudSource(QliksenseSource):
         project = self.projects_map.get(dashboard_details.space_id)
         return project.name if project else None
 
-    def get_dashboard_details(self, dashboard: QlikApp) -> Optional[QlikApp]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: QlikApp) -> QlikApp | None:
         """
         Get app Details
         """
@@ -221,7 +221,7 @@ class QlikcloudSource(QliksenseSource):
         self,
         db_service_entity: DatabaseService,
         data_model_entity: DashboardDataModel,
-    ) -> Optional[Table]:  # noqa: UP045
+    ) -> Table | None:
         """
         Get the table entity for lineage
         """
@@ -250,7 +250,7 @@ class QlikcloudSource(QliksenseSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikApp,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (

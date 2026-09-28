@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { Edge } from 'reactflow';
+import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { CanvasEdgeRenderer } from './CanvasEdgeRenderer.component';
 
 const mockRedraw = jest.fn();
@@ -72,6 +73,8 @@ jest.mock('../../../hooks/useLineageEdgeColors', () => ({
     primary: '#1890ff',
     columnHighlight: '#3F51B5',
     dqHighlight: '#F44336',
+    labelBackground: '#FFFFFF',
+    labelText: '#475467',
   }),
 }));
 
@@ -130,7 +133,7 @@ describe('CanvasEdgeRenderer', () => {
     reactFlowContainer.appendChild(wrapper);
     document.body.appendChild(reactFlowContainer);
 
-    return render(ui, { container: wrapper });
+    return render(ui, { container: wrapper, wrapper: ThemeProvider });
   };
 
   it('renders canvas element', () => {
@@ -459,7 +462,7 @@ describe('CanvasEdgeRenderer', () => {
         },
       ] as unknown as ResizeObserverEntry[];
 
-      resizeCallback(mockEntries, {} as ResizeObserver);
+      act(() => resizeCallback?.(mockEntries, {} as ResizeObserver));
     }
 
     await waitFor(() => {

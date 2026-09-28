@@ -18,7 +18,6 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional, Type  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -47,7 +46,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
 
     def _compute_table_metrics(
         self,
-        metrics: List[Type[Metric]],  # noqa: UP006
+        metrics: list[type[Metric]],
         runner: NoSQLAdaptor,
         *args,
         **kwargs,
@@ -69,12 +68,12 @@ class NoSQLProfilerInterface(ProfilerInterface):
 
     def _compute_static_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: NoSQLAdaptor,
         column: SQALikeColumn,
         *args,
         **kwargs,
-    ) -> Dict[str, any]:  # noqa: UP006
+    ) -> dict[str, any]:
         try:
             aggs = [metric(column).nosql_fn(runner)(self.table) for metric in metrics]
             filtered = [agg for agg in aggs if agg is not None]
@@ -99,7 +98,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner,
         *args,
         **kwargs,
@@ -109,13 +108,13 @@ class NoSQLProfilerInterface(ProfilerInterface):
     def _compute_system_metrics(
         self,
         metrics: Metrics,
-        runner: List,  # noqa: UP006
+        runner: list,
         *args,
         **kwargs,
     ):
         return None
 
-    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, *args, **kwargs):  # noqa: UP006
+    def _compute_custom_metrics(self, metrics: list[CustomMetric], runner, *args, **kwargs):
         return None
 
     def compute_metrics(
@@ -145,18 +144,18 @@ class NoSQLProfilerInterface(ProfilerInterface):
             column = None
         return row, column, metric_func.metric_type.value
 
-    def fetch_sample_data(self, table, columns: List[SQALikeColumn]) -> TableData:  # noqa: UP006
+    def fetch_sample_data(self, table, columns: list[SQALikeColumn]) -> TableData:
         return self.sampler.fetch_sample_data(columns)
 
-    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: dict):
         return None
 
-    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: dict):
         return None
 
     def get_all_metrics(
         self,
-        metric_funcs: List[ThreadPoolMetrics],  # noqa: UP006
+        metric_funcs: list[ThreadPoolMetrics],
     ):
         """get all profiler metrics"""
         profile_results = {"table": {}, "columns": defaultdict(dict)}
@@ -191,7 +190,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
         """OM Table entity"""
         return self.table_entity
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
+    def get_columns(self) -> list[SQALikeColumn | None]:
         return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.table.columns]
 
     def close(self):

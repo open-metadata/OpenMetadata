@@ -20,9 +20,12 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../hooks/useAppMode';
+import { isLoginConfigurationApplicable } from '../../utils/AuthProvider.util';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -30,6 +33,7 @@ import {
   getSettingPathRelative,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
+import { NOTIFICATION_ALERT_KIND } from '../observability/Alerts/alertKinds';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
@@ -74,6 +78,12 @@ const ColumnBulkOperations = withPageSuspenseFallback(
 const DataAssetRulesPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/Configuration/DataAssetRules/DataAssetRulesPage')
+  )
+);
+
+const DefaultAppModePage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/Settings/DefaultAppModePage/DefaultAppModePage')
   )
 );
 
@@ -235,6 +245,12 @@ const ProfilerConfigurationPage = withPageSuspenseFallback(
   )
 );
 
+const DataQualitySettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/DataQualitySettingsPage/DataQualitySettingsPage')
+  )
+);
+
 const AddRolePage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
 );
@@ -323,6 +339,16 @@ const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
 
+// AI mode renders notification alerts with the same AI alert pages
+// Observability uses; only the alert kind differs.
+const AiAlertsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../observability/Alerts/AlertsPage'))
+);
+
+const AiAlertDetailsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../observability/Alerts/AlertDetailsPage'))
+);
+
 /**
  * The bare `/settings/services` path is served by this generic category route, so the services
  * guard has to live inside it. Matching a literal `services` path instead looks equivalent and is
@@ -345,6 +371,12 @@ const SettingCategoryRoute = () => {
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const authProvider = useApplicationStore(
+    (state) => state.authConfig?.provider
+  );
+
+  const isLoginConfigEnabled = isLoginConfigurationApplicable(authProvider);
 
   return (
     <Routes>
@@ -432,13 +464,17 @@ const SettingsRouter = () => {
 
       <Route
         element={
-          <AdminProtectedRoute hasPermission={false}>
-            <EditLoginConfiguration
-              pageTitle={t('label.edit-entity', {
-                entity: t('label.login-configuration'),
-              })}
-            />
-          </AdminProtectedRoute>
+          isLoginConfigEnabled ? (
+            <AdminProtectedRoute hasPermission={false}>
+              <EditLoginConfiguration
+                pageTitle={t('label.edit-entity', {
+                  entity: t('label.login-configuration'),
+                })}
+              />
+            </AdminProtectedRoute>
+          ) : (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          )
         }
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG.replace(
           ROUTES.SETTINGS,
@@ -466,7 +502,11 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            <NotificationListPage />
+            {isAiMode ? (
+              <AiAlertsPage kind={NOTIFICATION_ALERT_KIND} />
+            ) : (
+              <NotificationListPage />
+            )}
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
@@ -479,7 +519,11 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            <NotificationAlertDetailsPage />
+            {isAiMode ? (
+              <AiAlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />
+            ) : (
+              <NotificationAlertDetailsPage />
+            )}
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(
@@ -789,7 +833,8 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
+            hasPermission={checkPermission(
+              Operation.AuditLogs,
               ResourceEntity.AUDIT_LOG,
               permissions
             )}>
@@ -859,13 +904,28 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AdminProtectedRoute hasPermission={false}>
-            <LoginConfigurationPage />
-          </AdminProtectedRoute>
+          isLoginConfigEnabled ? (
+            <AdminProtectedRoute hasPermission={false}>
+              <LoginConfigurationPage />
+            </AdminProtectedRoute>
+          ) : (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          )
         }
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <DataQualitySettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.DATA_QUALITY
         )}
       />
 
@@ -929,6 +989,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LEARNING_RESOURCES
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultAppModePage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.APP_MODE
         )}
       />
       <Route

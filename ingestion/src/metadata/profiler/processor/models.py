@@ -14,10 +14,9 @@ Models to map profiler definitions
 JSON workflows to the profiler
 """
 
-from typing import List, Optional, Type  # noqa: UP035
+from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.profiler.registry import MetricRegistry
 from metadata.utils.dependency_injector.dependency_injector import (
@@ -28,7 +27,7 @@ from metadata.utils.dependency_injector.dependency_injector import (
 
 
 @inject
-def valid_metric(value: str, metrics: Inject[Type[MetricRegistry]] = None):  # noqa: UP006
+def valid_metric(value: str, metrics: Inject[type[MetricRegistry]] = None):
     """
     Validate that the input metrics are correctly named
     and can be found in the Registry
@@ -53,5 +52,5 @@ class ProfilerDef(BaseModel):
     """
 
     name: str  # Profiler name
-    timeout_seconds: Optional[int] = None  # Stop running a query after X seconds and continue  # noqa: UP045
-    metrics: Optional[List[ValidMetric]] = None  # noqa: UP006, UP045
+    timeout_seconds: int | None = None  # Stop running a query after X seconds and continue
+    metrics: list[ValidMetric] | None = None

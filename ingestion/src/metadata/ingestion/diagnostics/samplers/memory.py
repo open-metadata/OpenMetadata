@@ -290,13 +290,13 @@ def _detect_cgroup_paths() -> dict:
     """
     paths = {}
     v2_root = "/sys/fs/cgroup"
-    if os.path.exists(f"{v2_root}/memory.current"):  # noqa: PTH110  cheap probe
+    if os.path.exists(f"{v2_root}/memory.current"):  # noqa: PTH110
         paths["current"] = f"{v2_root}/memory.current"
         paths["max"] = f"{v2_root}/memory.max"
         paths["events"] = f"{v2_root}/memory.events"
         return paths
     v1_root = "/sys/fs/cgroup/memory"
-    if os.path.exists(f"{v1_root}/memory.usage_in_bytes"):  # noqa: PTH110  cheap probe
+    if os.path.exists(f"{v1_root}/memory.usage_in_bytes"):  # noqa: PTH110
         paths["current"] = f"{v1_root}/memory.usage_in_bytes"
         paths["max"] = f"{v1_root}/memory.limit_in_bytes"
         paths["events"] = None
@@ -307,7 +307,7 @@ def _read_int(path: str | None) -> int | None:
     if not path:
         return None
     try:
-        with open(path, "rb") as fh:  # noqa: PTH123  binary read of /sys file
+        with open(path, "rb") as fh:  # noqa: PTH123
             data = fh.read().strip()
         return int(data)
     except (OSError, ValueError):
@@ -319,7 +319,7 @@ def _read_cgroup_max(path: str | None) -> int | None:
     if not path:
         return None
     try:
-        with open(path, "rb") as fh:  # noqa: PTH123  binary read of /sys file
+        with open(path, "rb") as fh:  # noqa: PTH123
             data = fh.read().strip()
         if data == b"max":
             return None
@@ -339,7 +339,7 @@ def _read_memory_events(path: str | None) -> dict[str, int]:
     if not path:
         return out
     try:
-        with open(path) as fh:  # noqa: PTH123  text read of /sys file
+        with open(path) as fh:  # noqa: PTH123
             for line in fh:
                 key, _, value = line.partition(" ")
                 try:
@@ -358,7 +358,7 @@ def _detect_psi_path() -> str | None:
     far more reliable than a static cgroup-ratio threshold.
     """
     psi_path = "/proc/pressure/memory"
-    if os.path.exists(psi_path):  # noqa: PTH110  cheap probe
+    if os.path.exists(psi_path):  # noqa: PTH110
         return psi_path
     return None
 
@@ -376,7 +376,7 @@ def _read_psi_some_avg10(path: str | None) -> float | None:
     if not path:
         return None
     try:
-        with open(path) as fh:  # noqa: PTH123  text read of /proc file
+        with open(path) as fh:  # noqa: PTH123
             line = fh.readline()
     except OSError:
         return None
@@ -394,7 +394,7 @@ def _read_psi_some_avg10(path: str | None) -> float | None:
 def _read_rss_proc_self_status() -> int:
     """Fallback when psutil is unavailable."""
     try:
-        with open("/proc/self/status") as fh:  # noqa: PTH123  text read of /proc file
+        with open("/proc/self/status") as fh:  # noqa: PTH123
             for line in fh:
                 if line.startswith("VmRSS:"):
                     parts = line.split()

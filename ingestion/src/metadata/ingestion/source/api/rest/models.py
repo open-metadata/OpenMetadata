@@ -12,8 +12,6 @@
 OpenAPI REST API Models
 """
 
-from typing import Optional
-
 from pydantic import AnyUrl, BaseModel
 
 from metadata.generated.schema.entity.data.apiEndpoint import ApiRequestMethod
@@ -25,19 +23,19 @@ class RESTCollection(BaseModel):
     """REST colleciton model"""
 
     name: basic.EntityName
-    display_name: Optional[str] = None  # noqa: UP045
-    description: Optional[basic.Markdown] = None  # noqa: UP045
-    url: Optional[AnyUrl] = None  # noqa: UP045
+    display_name: str | None = None
+    description: basic.Markdown | None = None
+    url: AnyUrl | None = None
 
 
 class RESTEndpoint(BaseModel):
     """REST endpoint model"""
 
-    name: Optional[str] = None  # noqa: UP045
-    display_name: Optional[str] = None  # noqa: UP045
-    description: Optional[basic.Markdown] = None  # noqa: UP045
-    url: Optional[AnyUrl] = None  # noqa: UP045
-    operationId: Optional[str] = None  # noqa: N815, UP045
-    request_method: Optional[ApiRequestMethod] = None  # noqa: UP045
-    request_schema: Optional[APISchema] = None  # noqa: UP045
-    response_schema: Optional[APISchema] = None  # noqa: UP045
+    name: str | None = None
+    display_name: str | None = None
+    description: basic.Markdown | None = None
+    url: AnyUrl | None = None
+    operationId: str | None = None  # noqa: N815
+    request_method: ApiRequestMethod | None = None
+    request_schema: APISchema | None = None
+    response_schema: APISchema | None = None

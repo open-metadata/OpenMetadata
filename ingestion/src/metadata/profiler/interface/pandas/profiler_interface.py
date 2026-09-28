@@ -17,8 +17,9 @@ supporting sqlalchemy abstraction layer
 
 import traceback
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from sqlalchemy import Column
 
@@ -66,7 +67,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
+        service_connection_config: DatabaseConnection | DatalakeConnection,
         ometa_client: OpenMetadata,
         entity: Table,
         source_config: DatabaseServiceProfilerPipeline,
@@ -95,7 +96,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.status = ProfilerProcessorStatus()
         self.column_names_cache = {}
 
-    def _get_column_type_mapping(self) -> List[str]:  # noqa: UP006
+    def _get_column_type_mapping(self) -> list[str]:
         """Compute column type mapping
 
         Returns:
@@ -159,7 +160,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def _compute_table_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: "PandasRunner",
         *args,
         **kwargs,
@@ -224,7 +225,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def _compute_static_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: "PandasRunner",
         column,
         *args,
@@ -276,7 +277,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         runner: "PandasRunner",
         column,
         *args,
@@ -310,7 +311,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """
         return None  # to be implemented  # noqa: RET501
 
-    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner: "PandasRunner", *args, **kwargs):  # noqa: UP006
+    def _compute_custom_metrics(self, metrics: list[CustomMetric], runner: "PandasRunner", *args, **kwargs):
         """Compute custom metrics. For pandas source we expect expression
         to be a boolean value. We'll return the length of the dataframe
 
@@ -369,7 +370,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             self.status.failed_profiler(error, traceback.format_exc())
             return None, None, None
 
-    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: dict):
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -387,7 +388,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             return None
 
-    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict):  # noqa: UP006
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: dict):
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -407,7 +408,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def get_all_metrics(
         self,
-        metric_funcs: List[ThreadPoolMetrics],  # noqa: UP006
+        metric_funcs: list[ThreadPoolMetrics],
     ):
         """get all profiler metrics"""
 
@@ -440,7 +441,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """OM Table entity"""
         return self.table_entity
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
+    def get_columns(self) -> list[SQALikeColumn | None]:
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
         if self.dataset is not None:

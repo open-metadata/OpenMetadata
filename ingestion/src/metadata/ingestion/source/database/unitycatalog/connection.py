@@ -15,7 +15,7 @@ Source connection handler
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import (
@@ -188,7 +188,7 @@ def _require_resolved_catalog_and_schema(table_obj: DatabricksTable) -> tuple[st
     return table_obj.catalog_name, table_obj.schema_name
 
 
-def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalog_name: Optional[str] = None) -> None:  # noqa: UP045
+def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalog_name: str | None = None) -> None:
     """
     Resolve the catalog used by the remaining test connection steps. If a catalog is
     configured on the connection, validate access to that exact catalog.
@@ -202,7 +202,7 @@ def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalo
                 break
 
 
-def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: Optional[str] = None) -> None:  # noqa: UP045
+def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: str | None = None) -> None:
     """
     Resolve the schema used by the remaining test connection steps. If a databaseSchema is
     configured on the connection, validate access to that exact schema.

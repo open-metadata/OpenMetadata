@@ -43,16 +43,24 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.feed.CreateConversation;
 import org.openmetadata.schema.api.feed.CreatePost;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.automations.CreateWorkflow;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -77,7 +85,8 @@ import org.openmetadata.service.Entity;
 public class DataRetentionAppIT {
 
   private static final String APP_NAME = "DataRetentionApplication";
-  // Default activityThreadsRetentionPeriod is 60 days; 90 days is safely past it.
+  // Default activityThreadsRetentionPeriod is 60 days and workflowRetentionPeriod is 30;
+  // 90 days is safely past both.
   private static final long NINETY_DAYS_MILLIS = 90L * 24 * 60 * 60 * 1000;
   private static final Set<String> TERMINAL_RUN_STATUSES =
       Set.of("success", "completed", "failed", "stopped", "activeError");
@@ -166,6 +175,29 @@ public class DataRetentionAppIT {
   }
 
   @Test
+  void test_retentionRun_cleansOldAutomationWorkflows(TestNamespace ns) throws Exception {
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
+
+    Workflow oldWorkflow = createTestConnectionWorkflow(ns.prefix("wf-old"));
+    Workflow recentWorkflow = createTestConnectionWorkflow(ns.prefix("wf-recent"));
+    backdateWorkflow(oldWorkflow.getId(), System.currentTimeMillis() - NINETY_DAYS_MILLIS);
+
+    AppRunRecord run = triggerAppAndWaitForCompletion();
+
+    assertEquals(
+        "success",
+        run.getStatus().value(),
+        () -> "Data retention run did not succeed. failureContext=" + run.getFailureContext());
+    assertEquals(
+        0,
+        workflowRowCount(oldWorkflow.getId()),
+        "automation workflow older than the retention period must be deleted");
+    assertEquals(
+        1, workflowRowCount(recentWorkflow.getId()), "recent automation workflow must be retained");
+  }
+
+  @Test
   void test_appConfigurationChange_isUsedByTheNextRun() throws Exception {
     assumeFalse(
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
@@ -247,6 +279,63 @@ public class DataRetentionAppIT {
             "/v1/activity/" + activityId + "/replies",
             new CreatePost().withMessage("Retain this activity comment"),
             ConversationReply.class);
+  }
+
+  private Workflow createTestConnectionWorkflow(String name) {
+    TestServiceConnectionRequest request =
+        new TestServiceConnectionRequest()
+            .withServiceType(ServiceType.DATABASE)
+            .withConnectionType("Mysql")
+            .withConnection(
+                new DatabaseConnection()
+                    .withConfig(
+                        new MysqlConnection()
+                            .withHostPort("mysql:3306")
+                            .withUsername("openmetadata_user")
+                            .withAuthType(new basicAuth().withPassword("openmetadata_password"))));
+    return SdkClients.adminClient()
+        .workflows()
+        .create(
+            new CreateWorkflow()
+                .withName(name)
+                .withDescription(name)
+                .withWorkflowType(WorkflowType.TEST_CONNECTION)
+                .withRequest(request));
+  }
+
+  private void backdateWorkflow(UUID workflowId, long updatedAtMillis) throws Exception {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              String json =
+                  handle
+                      .createQuery("SELECT json FROM automations_workflow WHERE id = :id")
+                      .bind("id", workflowId.toString())
+                      .mapTo(String.class)
+                      .one();
+              ObjectNode workflow = (ObjectNode) MAPPER.readTree(json);
+              workflow.put("updatedAt", updatedAtMillis);
+              String updateSql =
+                  isPostgres(handle)
+                      ? "UPDATE automations_workflow SET json = CAST(:json AS jsonb) WHERE id = :id"
+                      : "UPDATE automations_workflow SET json = :json WHERE id = :id";
+              handle
+                  .createUpdate(updateSql)
+                  .bind("json", workflow.toString())
+                  .bind("id", workflowId.toString())
+                  .execute();
+            });
+  }
+
+  private int workflowRowCount(UUID workflowId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM automations_workflow WHERE id = :id")
+                    .bind("id", workflowId.toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   private void backdateConversation(UUID conversationId, long createdAtMillis) throws Exception {

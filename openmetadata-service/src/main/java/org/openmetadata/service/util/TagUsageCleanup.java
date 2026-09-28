@@ -33,6 +33,11 @@ import org.openmetadata.service.jdbi3.TagRepository;
 @Slf4j
 public class TagUsageCleanup {
 
+  // Malformed tag_usage rows have NULL hash columns that cannot be keyset-paginated; they are swept
+  // in one bounded query. Expected to be empty (no write path produces NULL hashes), so a generous
+  // cap is safe; exceeding it is logged so an operator can investigate a pathological table.
+  private static final int MAX_NULL_HASH_ROWS = 10_000;
+
   private final CollectionDAO collectionDAO;
   private final TagRepository tagRepository;
   private final GlossaryTermRepository glossaryTermRepository;
@@ -81,49 +86,59 @@ public class TagUsageCleanup {
 
     try {
       long totalTagUsages = collectionDAO.tagUsageDAO().getTotalTagUsageCount();
-      result.setTotalTagUsagesScanned((int) totalTagUsages);
 
       LOG.info(
           "Found {} total tag usages to scan. Processing in batches of {}",
           totalTagUsages,
           batchSize);
 
-      long offset = 0;
-      int processedCount = 0;
+      int lastSource = -1;
+      String lastTagFQNHash = "";
+      String lastTargetFQNHash = "";
+      int processedCount = sweepNullHashTagUsages(result);
       int batchNumber = 1;
+      boolean hasMore = true;
 
-      while (offset < totalTagUsages) {
-        LOG.info("Processing batch {} (offset: {}, limit: {})", batchNumber, offset, batchSize);
+      while (hasMore) {
+        LOG.info(
+            "Processing batch {} (after source={}, tagFQNHash={})",
+            batchNumber,
+            lastSource,
+            lastTagFQNHash);
 
         List<CollectionDAO.TagUsageObject> tagUsageBatch =
-            collectionDAO.tagUsageDAO().getAllTagUsagesPaginated(offset, batchSize);
+            collectionDAO
+                .tagUsageDAO()
+                .getTagUsagesAfter(lastSource, lastTagFQNHash, lastTargetFQNHash, batchSize);
 
         if (tagUsageBatch.isEmpty()) {
           LOG.info("No more tag usages to process");
-          break;
-        }
+          hasMore = false;
+        } else {
+          tagUsageBatch.forEach(tagUsage -> processTagUsage(tagUsage, result));
+          processedCount += tagUsageBatch.size();
 
-        for (CollectionDAO.TagUsageObject tagUsage : tagUsageBatch) {
-          OrphanedTagUsage orphan = validateTagUsage(tagUsage);
-          if (orphan != null) {
-            result.getOrphanedTagUsages().add(orphan);
-            result.getOrphansBySource().merge(orphan.getSourceName(), 1, Integer::sum);
+          CollectionDAO.TagUsageObject lastRow = tagUsageBatch.getLast();
+          lastSource = lastRow.getSource();
+          lastTagFQNHash = lastRow.getTagFQNHash();
+          lastTargetFQNHash = lastRow.getTargetFQNHash();
+          batchNumber++;
+          hasMore = tagUsageBatch.size() == batchSize;
+
+          if (processedCount % (batchSize * 10) == 0 || !hasMore) {
+            LOG.info(
+                "Progress: {}/{} tag usages processed, {} orphaned tag usages found",
+                processedCount,
+                totalTagUsages,
+                result.getOrphanedTagUsages().size());
           }
-          processedCount++;
-        }
-
-        offset += tagUsageBatch.size();
-        batchNumber++;
-
-        if (processedCount % (batchSize * 10) == 0 || offset >= totalTagUsages) {
-          LOG.info(
-              "Progress: {}/{} tag usages processed, {} orphaned tag usages found",
-              processedCount,
-              totalTagUsages,
-              result.getOrphanedTagUsages().size());
         }
       }
 
+      // The keyset scan deliberately excludes NULL-hash rows and the NULL-hash sweep is capped,
+      // so the row count of the table is not what was actually walked. Report the real figure --
+      // the same one the logs below print.
+      result.setTotalTagUsagesScanned(processedCount);
       result.setOrphanedTagUsagesFound(result.getOrphanedTagUsages().size());
 
       LOG.info(
@@ -148,6 +163,26 @@ public class TagUsageCleanup {
     }
 
     return result;
+  }
+
+  private int sweepNullHashTagUsages(TagCleanupResult result) {
+    List<CollectionDAO.TagUsageObject> nullHashRows =
+        collectionDAO.tagUsageDAO().getTagUsagesWithNullHash(MAX_NULL_HASH_ROWS);
+    nullHashRows.forEach(tagUsage -> processTagUsage(tagUsage, result));
+    if (nullHashRows.size() == MAX_NULL_HASH_ROWS) {
+      LOG.warn(
+          "Reached the {}-row cap while sweeping tag_usage rows with NULL hashes; malformed rows beyond the cap were not examined this run. Re-run cleanup to process the remainder.",
+          MAX_NULL_HASH_ROWS);
+    }
+    return nullHashRows.size();
+  }
+
+  private void processTagUsage(CollectionDAO.TagUsageObject tagUsage, TagCleanupResult result) {
+    OrphanedTagUsage orphan = validateTagUsage(tagUsage);
+    if (orphan != null) {
+      result.getOrphanedTagUsages().add(orphan);
+      result.getOrphansBySource().merge(orphan.getSourceName(), 1, Integer::sum);
+    }
   }
 
   private OrphanedTagUsage validateTagUsage(CollectionDAO.TagUsageObject tagUsage) {
@@ -209,11 +244,19 @@ public class TagUsageCleanup {
 
     for (OrphanedTagUsage orphan : orphanedTagUsages) {
       try {
+        // Malformed rows from the NULL-hash sweep cannot be matched by the equality delete
+        // (col = NULL is UNKNOWN), so they need the NULL-safe predicate to actually be removed.
+        boolean hasNullHash = orphan.getTagFQNHash() == null || orphan.getTargetFQNHash() == null;
         int deleted =
-            collectionDAO
-                .tagUsageDAO()
-                .deleteTagUsage(
-                    orphan.getSource(), orphan.getTagFQNHash(), orphan.getTargetFQNHash());
+            hasNullHash
+                ? collectionDAO
+                    .tagUsageDAO()
+                    .deleteTagUsageNullSafe(
+                        orphan.getSource(), orphan.getTagFQNHash(), orphan.getTargetFQNHash())
+                : collectionDAO
+                    .tagUsageDAO()
+                    .deleteTagUsage(
+                        orphan.getSource(), orphan.getTagFQNHash(), orphan.getTargetFQNHash());
 
         if (deleted > 0) {
           deletedCount++;

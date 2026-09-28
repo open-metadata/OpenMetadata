@@ -32,6 +32,8 @@ interface DropdownItemProps extends AriaMenuItemProps {
   icon?: FC<{ className?: string }>;
   /** If true, shows a checkbox on the left to indicate selection state. */
   showCheckbox?: boolean;
+  /** Size of that checkbox. */
+  checkboxSize?: 'xs' | 'sm';
 }
 
 const DropdownItem = ({
@@ -41,10 +43,15 @@ const DropdownItem = ({
   icon: Icon,
   unstyled,
   showCheckbox,
+  checkboxSize = 'sm',
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
-    return <AriaMenuItem id={label} textValue={label} {...props} />;
+    return (
+      <AriaMenuItem id={label} textValue={label} {...props}>
+        {children}
+      </AriaMenuItem>
+    );
   }
 
   return (
@@ -63,17 +70,22 @@ const DropdownItem = ({
         <div
           className={cx(
             'tw:relative tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-            !state.isDisabled && 'tw:group-hover:bg-primary_hover',
-            state.isFocused && 'tw:bg-primary_hover',
-            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
-            state.isSelected && 'tw:bg-active'
+            // Selected matches the sidebar's selected nav item and keeps its
+            // tint under hover/focus, like the sidebar does.
+            state.isSelected
+              ? 'tw:bg-brand-primary'
+              : cx(
+                  !state.isDisabled && 'tw:group-hover:bg-primary_hover',
+                  state.isFocused && 'tw:bg-primary_hover'
+                ),
+            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
           )}>
           {showCheckbox && (
             <CheckboxBase
               isDisabled={state.isDisabled}
               isFocusVisible={state.isFocusVisible}
               isSelected={state.isSelected}
-              size="sm"
+              size={checkboxSize}
             />
           )}
 
@@ -84,6 +96,8 @@ const DropdownItem = ({
                 'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
+                  : state.isSelected
+                  ? 'tw:text-fg-brand-secondary_alt'
                   : 'tw:text-fg-quaternary'
               )}
             />
@@ -92,8 +106,13 @@ const DropdownItem = ({
           <span
             className={cx(
               'tw:grow tw:truncate tw:text-sm',
-              state.isDisabled ? 'tw:text-disabled' : 'tw:text-secondary',
-              state.isFocused && 'tw:text-secondary_hover'
+              state.isDisabled
+                ? 'tw:text-disabled'
+                : state.isSelected
+                ? 'tw:text-brand-secondary'
+                : state.isFocused
+                ? 'tw:text-secondary_hover'
+                : 'tw:text-secondary'
             )}>
             {label ||
               (typeof children === 'function' ? children(state) : children)}
@@ -145,7 +164,7 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
       {...rest}
       className={(state) =>
         cx(
-          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-overlay-surface tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&
@@ -165,7 +184,7 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
     <AriaSeparator
       {...props}
       className={cx(
-        'tw:my-1 tw:h-px tw:w-full tw:bg-border-secondary',
+        'tw:my-1 tw:w-full tw:border-t tw:border-subtle',
         props.className
       )}
     />

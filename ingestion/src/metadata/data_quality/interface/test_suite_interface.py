@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Set, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
@@ -53,8 +53,8 @@ class TestSuiteInterface(ABC):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
-        validator_builder: Type[ValidatorBuilder],  # noqa: UP006
-        sample_data_config: Optional[SampleDataIngestionConfig] = None,  # noqa: UP045
+        validator_builder: type[ValidatorBuilder],
+        sample_data_config: SampleDataIngestionConfig | None = None,
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -102,7 +102,7 @@ class TestSuiteInterface(ABC):
         return cls.runtime_params_setter_fact()
 
     @classmethod
-    def _set_runtime_params_setter_fact(cls, class_fact: Type[RuntimeParameterSetterFactory]):  # noqa: UP006
+    def _set_runtime_params_setter_fact(cls, class_fact: type[RuntimeParameterSetterFactory]):
         """Set the runtime parameter setter factory.
         Use this method to set the runtime parameter setter factory and override the default.
 
@@ -116,10 +116,10 @@ class TestSuiteInterface(ABC):
         when the global profiler configuration disables storing sample data."""
         return self.sample_data_config is None or bool(self.sample_data_config.storeSampleData)
 
-    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResultResponse]:  # noqa: UP045
+    def run_test_case(self, test_case: TestCase) -> TestCaseResultResponse | None:
         """run column data quality tests"""
         runtime_params_setter_fact: RuntimeParameterSetterFactory = self._get_runtime_params_setter_fact()  # type: ignore
-        runtime_params_setters: Set[RuntimeParameterSetter] = runtime_params_setter_fact.get_runtime_param_setters(  # noqa: UP006
+        runtime_params_setters: set[RuntimeParameterSetter] = runtime_params_setter_fact.get_runtime_param_setters(
             test_case.testDefinition.fullyQualifiedName,  # type: ignore
             self.ometa_client,
             self.service_connection_config,

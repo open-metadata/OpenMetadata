@@ -15,7 +15,6 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.ingestion.ometa.client import REST
@@ -46,7 +45,7 @@ class OMetaTopicMixin:
         )
         return TopicSampleData(**resp["sampleData"])
 
-    def get_topic_sample_data(self, topic: Topic) -> Optional[Topic]:  # noqa: UP045
+    def get_topic_sample_data(self, topic: Topic) -> Topic | None:
         """
         GET call for the /sampleData endpoint for a given Topic
 

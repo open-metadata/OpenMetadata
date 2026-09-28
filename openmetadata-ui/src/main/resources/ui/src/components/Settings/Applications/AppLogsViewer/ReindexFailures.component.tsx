@@ -11,41 +11,60 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
+import { Drawer, Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getReindexFailures,
-  SearchIndexFailureRecord,
-} from '../../../../rest/searchAPI';
+import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
+import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
+import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { ColumnsType } from '../../../common/Table/Table.interface';
-import { ReindexFailuresProps } from './ReindexFailures.interface';
+import Table from '../../../common/Table/TableV2';
+import {
+  ReindexFailureRecord,
+  ReindexFailuresProps,
+} from './ReindexFailures.interface';
 
 const PAGE_SIZE = 20;
 
-const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
+const ReindexFailures = ({
+  visible,
+  onClose,
+  appName,
+}: ReindexFailuresProps) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<SearchIndexFailureRecord[]>([]);
+  const [data, setData] = useState<ReindexFailureRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [entityTypeFilter, setEntityTypeFilter] = useState<string | undefined>(
     undefined
   );
   const [entityTypes, setEntityTypes] = useState<string[]>([]);
+  const requestSequence = useRef(0);
+  const invalidatePendingRequest = useCallback(() => {
+    requestSequence.current++;
+  }, []);
 
   const fetchFailures = useCallback(
     async (page: number, entityType?: string) => {
+      const requestId = ++requestSequence.current;
       setLoading(true);
       try {
-        const response = await getReindexFailures({
+        const fetcher =
+          appName === RDF_INDEX_APP_NAME
+            ? getRdfReindexFailures
+            : getReindexFailures;
+        const response = await fetcher({
           offset: (page - 1) * PAGE_SIZE,
           limit: PAGE_SIZE,
           entityType,
         });
+        if (requestId !== requestSequence.current) {
+          return;
+        }
         setData(response.data);
         setTotal(response.total);
 
@@ -54,21 +73,30 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
           setEntityTypes(types);
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === requestSequence.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setLoading(false);
+        if (requestId === requestSequence.current) {
+          setLoading(false);
+        }
       }
     },
-    []
+    [appName]
   );
 
   useEffect(() => {
     if (visible) {
       setCurrentPage(1);
       setEntityTypeFilter(undefined);
+      setEntityTypes([]);
+      setData([]);
+      setTotal(0);
       fetchFailures(1);
     }
-  }, [visible]);
+
+    return invalidatePendingRequest;
+  }, [fetchFailures, invalidatePendingRequest, visible]);
 
   const handlePageChange = useCallback(
     (page: number) => {
@@ -87,7 +115,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
     [fetchFailures]
   );
 
-  const columns: ColumnsType<SearchIndexFailureRecord> = useMemo(
+  const columns: ColumnsType<ReindexFailureRecord> = useMemo(
     () => [
       {
         title: t('label.entity-type'),
@@ -176,6 +204,11 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
             ))}
           </Select>
         </Space>
+        {total > 0 && (
+          <Typography.Text className="text-grey-muted">
+            {t('label.showing-total-failure-plural', { total })}
+          </Typography.Text>
+        )}
       </Space>
 
       <Table
@@ -185,15 +218,16 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         pagination={{
           current: currentPage,
           pageSize: PAGE_SIZE,
-          total,
           showSizeChanger: false,
-          showTotal: (total) =>
-            t('label.showing-total-failure-plural', { total }),
-          onChange: handlePageChange,
+          total,
         }}
         rowKey="id"
-        scroll={{ y: 'calc(100vh - 280px)' }}
+        // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
+        // than the 900px drawer. Set the horizontal extent so TableV2 scrolls
+        // rather than collapsing the columns into the drawer width.
+        scroll={{ x: 950, y: 'calc(100vh - 280px)' }}
         size="small"
+        onChange={({ current }) => handlePageChange(current ?? 1)}
       />
     </Drawer>
   );

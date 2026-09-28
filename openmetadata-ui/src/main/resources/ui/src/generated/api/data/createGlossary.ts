@@ -41,6 +41,10 @@ export interface CreateGlossary {
      */
     name: string;
     /**
+     * Ontology modeling, layering, import, and IRI settings for this glossary.
+     */
+    ontologyConfiguration?: OntologyConfiguration;
+    /**
      * Owners of this glossary
      */
     owners?:   EntityReference[];
@@ -56,7 +60,42 @@ export interface CreateGlossary {
 }
 
 /**
- * Owners of this glossary
+ * Ontology modeling, layering, import, and IRI settings for this glossary.
+ *
+ * Ontology modeling and namespace settings inherited by every term in a glossary.
+ */
+export interface OntologyConfiguration {
+    /**
+     * Absolute base IRI used when minting governed concepts.
+     */
+    baseIri?: string;
+    /**
+     * Ontology models this model depends on. Dependencies must point to the same or a more
+     * foundational layer.
+     */
+    imports?: EntityReference[];
+    /**
+     * Verified ontology library packs installed into this model, keyed by stable pack ID.
+     */
+    installedPacks: OntologyPackInstallation[];
+    /**
+     * IRI suffix pattern. Supported placeholders are {glossary}, {term}, and {uuid}.
+     */
+    iriMintingPattern: string;
+    layer:             Layer;
+    /**
+     * Prefix registry used for display, authoring, import, and export.
+     */
+    prefixes: Prefix[];
+    /**
+     * Whether the model is an installed reference model that cannot be edited directly.
+     */
+    readOnly: boolean;
+}
+
+/**
+ * Ontology models this model depends on. Dependencies must point to the same or a more
+ * foundational layer.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -109,6 +148,45 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Durable provenance and version state for an installed ontology library pack.
+ */
+export interface OntologyPackInstallation {
+    installedAt: number;
+    installedBy: string;
+    license:     string;
+    licenseUrl:  string;
+    modules:     OntologyPackModuleInstallation[];
+    packId:      string;
+    sourceUrl:   string;
+    version:     string;
+}
+
+/**
+ * Verified ontology pack module recorded as installation provenance.
+ */
+export interface OntologyPackModuleInstallation {
+    moduleId: string;
+    sha256:   string;
+}
+
+/**
+ * Governance layer of an ontology model.
+ */
+export enum Layer {
+    L1 = "L1",
+    L2 = "L2",
+    L3 = "L3",
+}
+
+/**
+ * A compact IRI prefix and its absolute namespace.
+ */
+export interface Prefix {
+    namespace: string;
+    prefix:    string;
 }
 
 /**

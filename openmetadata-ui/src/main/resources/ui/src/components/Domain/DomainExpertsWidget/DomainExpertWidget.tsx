@@ -15,10 +15,9 @@ import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import type { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
   WidgetEditButton,
@@ -45,15 +44,23 @@ export const DomainExpertWidget = () => {
   } = useGenericContext<Domain>();
   const { t } = useTranslation();
 
-  const { editOwnerPermission, editAllPermission } = useMemo(
-    () => ({
-      editOwnerPermission:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditOwners),
-      editAllPermission: permissions?.EditAll,
-    }),
-    [permissions]
-  );
+  // Named-flag derivation (Task 8 prop-contract migration): `permissions` is the raw
+  // OperationPermission from useGenericContext(), non-optional per GenericContextType — the
+  // old `permissions &&` guard was defensive dead code. No `deleted` argument: `Domain` has no
+  // `deleted` field (confirmed against the generated type) and the old code never gated on
+  // one. `editOwnerPermission` is a pure rename of the already-prioritized
+  // getPrioritizedEditPermission(permissions, Operation.EditOwners) call. `editAllPermission`
+  // maps the raw, EditAll-only `permissions?.EditAll` read onto `canEditAll` — canEditAll is
+  // exactly `Boolean(permissions[Operation.EditAll]) && !deleted`, i.e. the same value, per
+  // PermissionDerivation.ts's "EditAll-only" mapping rule (not a prioritization change).
+  const { editOwnerPermission, editAllPermission } = useMemo(() => {
+    const flags = getDerivedPermissionFlags(permissions);
+
+    return {
+      editOwnerPermission: flags.canEditOwners,
+      editAllPermission: flags.canEditAll,
+    };
+  }, [permissions]);
 
   const handleExpertsUpdate = async (data: Array<EntityReference>) => {
     if (!isEqual(data, domain.experts)) {

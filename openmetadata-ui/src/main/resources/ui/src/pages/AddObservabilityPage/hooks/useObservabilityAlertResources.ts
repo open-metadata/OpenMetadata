@@ -17,7 +17,9 @@ import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import { getResourceFunctions } from '../../../rest/observabilityAPI';
+import { AlertType } from '../../../generated/events/eventSubscription';
+import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
+import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   ModifiedCreateEventSubscription,
@@ -27,7 +29,8 @@ import {
 import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
 
 export function useObservabilityAlertResources(
-  form: FormInstance<ModifiedCreateEventSubscription>
+  form: FormInstance<ModifiedCreateEventSubscription>,
+  alertType: AlertType = AlertType.Observability
 ): UseObservabilityAlertResourcesReturn {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -42,7 +45,10 @@ export function useObservabilityAlertResources(
   const fetchFunctions = async () => {
     try {
       setLoading(true);
-      const filterResources = await getResourceFunctions();
+      const filterResources =
+        alertType === AlertType.Notification
+          ? await getNotificationResourceFunctions()
+          : await getObservabilityResourceFunctions();
 
       setFilterResources(
         filterResources.data.map(toObservabilityFilterResourceDescriptor)
@@ -58,7 +64,7 @@ export function useObservabilityAlertResources(
 
   useEffect(() => {
     fetchFunctions();
-  }, []);
+  }, [alertType]);
 
   const selectedResource = useMemo(
     () => filterResources.find((resource) => resource.name === selectedTrigger),

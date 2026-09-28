@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -55,7 +54,7 @@ def run_profiler(
 class ProfilerTestParameters:
     table_fqn: str
     expected_table_profile: TableProfile
-    expected_column_profiles: List[ColumnProfile] = None  # noqa: UP006
+    expected_column_profiles: list[ColumnProfile] = None
     config_predicate: Callable[[DatabaseServiceProfilerPipeline], bool] = lambda x: True
 
 

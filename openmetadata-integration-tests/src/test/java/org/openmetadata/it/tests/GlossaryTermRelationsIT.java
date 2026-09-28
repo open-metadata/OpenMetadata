@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.slf4j.Logger;
@@ -207,19 +209,13 @@ public class GlossaryTermRelationsIT {
     addTermRelation(root.getId().toString(), child1.getId().toString(), "narrower");
     addTermRelation(root.getId().toString(), child2.getId().toString(), "narrower");
 
-    Map<String, Object> graph = getTermRelationGraph(root.getId().toString(), 2, null);
+    GlossaryTermRelationGraph graph = getTermRelationGraph(root.getId().toString(), 2, null);
 
     assertNotNull(graph);
-    assertTrue(graph.containsKey("nodes"), "Graph should have nodes");
-    assertTrue(graph.containsKey("edges"), "Graph should have edges");
+    assertTrue(graph.getNodes().size() >= 3, "Should have at least 3 nodes (root + 2 children)");
+    assertTrue(graph.getEdges().size() >= 2, "Should have at least 2 edges");
 
-    List<?> nodes = (List<?>) graph.get("nodes");
-    List<?> edges = (List<?>) graph.get("edges");
-
-    assertTrue(nodes.size() >= 3, "Should have at least 3 nodes (root + 2 children)");
-    assertTrue(edges.size() >= 2, "Should have at least 2 edges");
-
-    LOG.debug("Graph has {} nodes and {} edges", nodes.size(), edges.size());
+    LOG.debug("Graph has {} nodes and {} edges", graph.getNodes().size(), graph.getEdges().size());
   }
 
   @Test
@@ -232,18 +228,18 @@ public class GlossaryTermRelationsIT {
     addTermRelation(root.getId().toString(), synonym.getId().toString(), "synonym");
     addTermRelation(root.getId().toString(), broader.getId().toString(), "broader");
 
-    Map<String, Object> filteredGraph = getTermRelationGraph(root.getId().toString(), 1, "synonym");
+    GlossaryTermRelationGraph filteredGraph =
+        getTermRelationGraph(root.getId().toString(), 1, "synonym");
 
     assertNotNull(filteredGraph);
+    filteredGraph
+        .getEdges()
+        .forEach(
+            edge ->
+                assertEquals(
+                    "synonym", edge.getRelationType(), "All edges should be synonym type"));
 
-    List<?> edges = (List<?>) filteredGraph.get("edges");
-    for (Object edge : edges) {
-      @SuppressWarnings("unchecked")
-      Map<String, Object> edgeMap = (Map<String, Object>) edge;
-      assertEquals("synonym", edgeMap.get("relationType"), "All edges should be synonym type");
-    }
-
-    LOG.debug("Filtered graph has {} edges of type synonym", edges.size());
+    LOG.debug("Filtered graph has {} edges of type synonym", filteredGraph.getEdges().size());
   }
 
   private GlossaryTerm addTermRelation(String fromTermId, String toTermId, String relationType) {
@@ -259,10 +255,16 @@ public class GlossaryTermRelationsIT {
   }
 
   private Map<String, Integer> getRelationTypeUsageCounts() {
-    return SdkClients.adminClient().glossaryTerms().relationTypeUsage();
+    Map<String, Integer> counts = new HashMap<>();
+    for (org.openmetadata.schema.type.RelationshipTypeUsage usage :
+        SdkClients.adminClient().glossaryTerms().relationTypeUsage()) {
+      counts.put(usage.getRelationshipType().getName(), usage.getCount());
+    }
+    return counts;
   }
 
-  private Map<String, Object> getTermRelationGraph(String termId, int depth, String relationTypes) {
+  private GlossaryTermRelationGraph getTermRelationGraph(
+      String termId, int depth, String relationTypes) {
     List<String> types = relationTypes != null ? List.of(relationTypes.split(",")) : null;
     return SdkClients.adminClient()
         .glossaryTerms()

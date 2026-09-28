@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -42,7 +43,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
@@ -73,8 +74,12 @@ public abstract class AbstractEventConsumer
   private long pendingGapSince;
   private boolean gapStateChanged;
   private long startingOffset = -1;
+  private Long startingTimestamp;
 
   private AlertMetrics alertMetrics;
+  // Set when a consumer that makes its own deliveries records one, so the tick still persists
+  // metrics even though no change_event offset moved.
+  private boolean metricsChanged;
 
   // Collect successful events during HTTP phase, batch write in commit phase.
   // This reduces connection pool contention from N connections to 1.
@@ -118,6 +123,7 @@ public abstract class AbstractEventConsumer
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.startingTimestamp = eventSubscriptionOffset.getStartingTimestamp();
       this.lastReadOffset = this.offset;
       this.pendingGapSince = loadPendingGapSince();
       this.gapStateChanged = false;
@@ -251,7 +257,8 @@ public abstract class AbstractEventConsumer
     if (events.isEmpty()) {
       return;
     }
-    Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    Map<ChangeEvent, Set<UUID>> filteredEvents =
+        getFilteredEvents(eventSubscription, events, startingTimestamp, this::deadLetterEvent);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -268,6 +275,20 @@ public abstract class AbstractEventConsumer
     }
     alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successDeliveries);
     alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedDeliveries);
+  }
+
+  /** An event we could not even filter is a publisher-side failure, so record it as one. */
+  private void deadLetterEvent(ChangeEvent event, Exception error) {
+    LOG.error(
+        "Event Subscription: {} could not evaluate filters for change event {}",
+        eventSubscription.getName(),
+        event.getId(),
+        error);
+    handleFailedEvent(
+        new EventPublisherException(
+            String.format("Failed to evaluate alert filters: %s", error.getMessage()),
+            Pair.of(eventSubscription.getId(), event)),
+        false);
   }
 
   private EventDeliveryResult publishEvent(
@@ -352,6 +373,7 @@ public abstract class AbstractEventConsumer
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
             .withStartingOffset(startingOffset)
+            .withStartingTimestamp(startingTimestamp)
             .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()
@@ -529,13 +551,65 @@ public abstract class AbstractEventConsumer
           e);
 
     } finally {
-      if (lastReadOffset > offset) {
-        offset = lastReadOffset;
-        commit(jobExecutionContext);
-      } else if (gapStateChanged) {
-        persistPendingGapState(jobExecutionContext);
-      }
+      persistTick(jobExecutionContext);
     }
+  }
+
+  private void persistTick(JobExecutionContext jobExecutionContext) {
+    boolean offsetMoved = lastReadOffset > offset;
+    boolean commitNeeded = offsetMoved || metricsChanged;
+    if (offsetMoved) {
+      offset = lastReadOffset;
+    }
+    if (commitNeeded) {
+      metricsChanged = false;
+      commit(jobExecutionContext);
+    }
+    if (!commitNeeded && gapStateChanged) {
+      persistPendingGapState(jobExecutionContext);
+    }
+  }
+
+  /**
+   * Records a delivery this consumer made itself, for a subclass that produces its own events
+   * instead of polling change events.
+   *
+   * <p>Metrics otherwise reach the subscription only through the poll-and-publish path, and
+   * {@link #executeTick} commits only when the change_event offset moves. A consumer with nothing
+   * to poll never moves it, so its total, success and failure counts stay at zero for the life of
+   * the subscription however much it has delivered, and the status and diagnostics endpoints
+   * report an alert that has never sent anything.
+   */
+  protected void recordDelivery(int successCount, int failedCount) {
+    alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + successCount + failedCount);
+    alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successCount);
+    alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedCount);
+    metricsChanged = true;
+  }
+
+  /**
+   * Records a delivery failure that has no change event behind it.
+   *
+   * <p>{@link #handleFailedEvent} returns early unless the exception carries one, because it keys
+   * the row by that event's id. A consumer producing its own events has none, so a bounced email or
+   * a dead channel would leave nothing on the subscription for the UI to show, however often it
+   * happened. The row written here is keyed by the subscription alone, so it holds the most recent
+   * such failure rather than growing without bound.
+   */
+  protected void recordFailure(String reason) {
+    FailedEvent failedEvent =
+        new FailedEvent()
+            .withFailingSubscriptionId(eventSubscription.getId())
+            .withReason(reason)
+            .withRetriesLeft(0)
+            .withTimestamp(System.currentTimeMillis());
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertFailedEvent(
+            eventSubscription.getId().toString(),
+            String.format("%s-self", FAILED_EVENT_EXTENSION),
+            JsonUtils.pojoToJson(failedEvent),
+            FailureTowards.SUBSCRIBER.toString());
   }
 
   private void persistPendingGapState(JobExecutionContext jobExecutionContext) {

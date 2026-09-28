@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { KPIData } from '../constant/dataInsight.interface';
-import { descriptionBox } from './common';
+import { fillDescriptionBox } from './common';
 
 export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
   const kpis = await apiRequest.get('/api/v1/kpi').then((res) => res.json());
@@ -63,7 +63,7 @@ export const addKpi = async (page: Page, data: KPIData) => {
   await page.getByTestId('end-date').fill(endDate);
   await page.getByTestId('end-date').press('Enter');
 
-  await page.locator(descriptionBox).fill('Playwright KPI test description');
+  await fillDescriptionBox(page, 'Playwright KPI test description');
 
   await page.getByTestId('submit-btn').click();
   await page.waitForURL('**/data-insights/kpi');

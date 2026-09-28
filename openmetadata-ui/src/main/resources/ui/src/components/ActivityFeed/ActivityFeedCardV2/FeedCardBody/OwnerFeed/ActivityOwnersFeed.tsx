@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner, OwnerChip } from '@openmetadata/ui-core-components';
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -25,8 +26,7 @@ import {
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { OwnerItem } from '../../../../common/OwnerItem/OwnerItem';
-import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
+import { toOwnerRef } from '../../../../../utils/Owner/ownerConversionUtils';
 import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
@@ -50,7 +50,11 @@ function ActivityOwnersFeed({
     try {
       if (activity.oldValue) {
         const parsed = JSON.parse(activity.oldValue);
-        oldOwners = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+        if (Array.isArray(parsed)) {
+          oldOwners = parsed;
+        } else if (parsed) {
+          oldOwners = [parsed];
+        }
       }
     } catch {
       oldOwners = [];
@@ -59,7 +63,11 @@ function ActivityOwnersFeed({
     try {
       if (activity.newValue) {
         const parsed = JSON.parse(activity.newValue);
-        newOwners = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+        if (Array.isArray(parsed)) {
+          newOwners = parsed;
+        } else if (parsed) {
+          newOwners = [parsed];
+        }
       }
     } catch {
       newOwners = [];
@@ -113,18 +121,17 @@ function ActivityOwnersFeed({
                   'bg-white': showThread,
                 })}
                 key={owner.id}>
-                <OwnerItem
-                  isCompactView
+                <OwnerChip
                   avatarSize={24}
-                  className="owner-chip-text"
-                  owner={owner}
+                  isCompactView={false}
+                  owner={toOwnerRef(owner)}
                 />
               </div>
             )
           )}
         </Row>
       ) : (
-        <OwnerLabel
+        <Owner
           avatarSize={24}
           isCompactView={false}
           maxVisibleOwners={maxVisibleOwners}

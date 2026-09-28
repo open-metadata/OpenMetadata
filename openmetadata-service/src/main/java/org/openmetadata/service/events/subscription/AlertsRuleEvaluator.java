@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -53,11 +54,18 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+/**
+ * SpEL matchers for alert filtering rules. A matcher returns {@code false} when it cannot evaluate
+ * and must never throw for a well-formed event: {@code AlertUtil.isChangeEventAllowed} treats an
+ * escaping exception as "not allowed" and dead-letters that event, so a throw silently costs the
+ * alert a delivery it should have made.
+ */
 @Slf4j
 public class AlertsRuleEvaluator {
   private static final String FIELD_TEST_SUITES_AND_OWNERS =
@@ -154,7 +162,8 @@ public class AlertsRuleEvaluator {
 
   private List<EntityReference> resolveOwners(EntityInterface entity) {
     List<EntityReference> ownerReferences = entity.getOwners();
-    if (nullOrEmpty(ownerReferences)) {
+    if (nullOrEmpty(ownerReferences)
+        && supports(changeEvent.getEntityType(), EntityRepository::isSupportsOwners)) {
       EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_OWNERS);
       ownerReferences = storedEntity == null ? ownerReferences : storedEntity.getOwners();
     }
@@ -311,25 +320,11 @@ public class AlertsRuleEvaluator {
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean filterByTableNameTestCaseBelongsTo(List<String> tableFqns) {
-    if (changeEvent == null) {
-      return false;
-    }
-    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
-      return true;
-    }
-    TestCase testCase = (TestCase) getEntity(changeEvent);
-    String parentFqn = resolveParentTableFqn(testCase);
-    return parentFqn != null && tableFqns.contains(parentFqn);
-  }
-
-  private String resolveParentTableFqn(TestCase testCase) {
-    if (testCase.getEntityFQN() != null) {
-      return testCase.getEntityFQN();
-    }
-    if (testCase.getEntityLink() != null) {
-      return MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN();
-    }
-    return null;
+    TestCase testCase = (TestCase) eventEntityOfType(TEST_CASE);
+    // The link's entity, not entityFQN, which is <table>.<column> for a column-level test.
+    return testCase != null
+        && tableFqns.contains(
+            MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
   }
 
   @Function(
@@ -500,9 +495,11 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean matchesEntityOrTestSuiteDomain(EntityInterface entity, List<String> domainFqns) {
-    EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_DOMAINS);
-    List<EntityReference> domains =
-        storedEntity == null ? entity.getDomains() : storedEntity.getDomains();
+    List<EntityReference> domains = entity.getDomains();
+    if (supports(changeEvent.getEntityType(), EntityRepository::isSupportsDomains)) {
+      EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_DOMAINS);
+      domains = storedEntity == null ? domains : storedEntity.getDomains();
+    }
     boolean matched = matchesAnyDomainFqn(domains, domainFqns);
     if (!matched && TEST_CASE.equals(changeEvent.getEntityType())) {
       // If we did not match on the domain and are dealing with a test case,
@@ -537,6 +534,24 @@ public class AlertsRuleEvaluator {
   private <T extends EntityInterface> T readStoredEntity(UUID entityId, String fields) {
     return Entity.getEntityOrNull(
         changeEvent.getEntityType(), entityId, fields, DELETED_TOLERANT_SUBJECT);
+  }
+
+  /**
+   * Whether {@code entityType}'s repository declares the capability, so a matcher can skip the store
+   * re-read for a field the entity's schema does not declare. Reading it anyway raises
+   * {@code IllegalArgumentException} out of the matcher and discards the whole change-event batch
+   * (issue #31331). An unregistered type reads as unsupported: a feed subject can name one.
+   */
+  private static boolean supports(String entityType, Predicate<EntityRepository<?>> capability) {
+    boolean supported = false;
+    if (entityType != null) {
+      try {
+        supported = capability.test(Entity.getEntityRepository(entityType));
+      } catch (EntityNotFoundException e) {
+        LOG.debug("No repository for {}, treating the field as unsupported", entityType);
+      }
+    }
+    return supported;
   }
 
   private List<TestSuite> resolveTestSuites(TestCase testCase, String fields) {
@@ -753,6 +768,25 @@ public class AlertsRuleEvaluator {
         || CONVERSATION.equals(changeEvent.getEntityType());
   }
 
+  // The event's entity of entityType: the entity itself, or for a comment, the entity it is on.
+  private EntityInterface eventEntityOfType(String entityType) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
+      return null;
+    }
+    return switch (changeEvent.getEntityType()) {
+      case null -> null;
+      case THREAD, CONVERSATION -> feedSubjectOfType(entityType);
+      default -> entityType.equals(changeEvent.getEntityType()) ? getEntity(changeEvent) : null;
+    };
+  }
+
+  private EntityInterface feedSubjectOfType(String entityType) {
+    EntityReference subject = feedSubject();
+    return subject != null && entityType.equals(subject.getType())
+        ? Entity.getEntityOrNull(subject, "", Include.NON_DELETED)
+        : null;
+  }
+
   private boolean feedSubjectMatchesType(List<String> entityTypes) {
     EntityReference subject = feedSubject();
     return subject != null && entityTypes.contains(subject.getType());
@@ -792,7 +826,7 @@ public class AlertsRuleEvaluator {
 
   private boolean feedSubjectMatchesOwner(List<String> ownerNameList) {
     EntityInterface subject =
-        Entity.getEntityOrNull(feedSubject(), Entity.FIELD_OWNERS, Include.NON_DELETED);
+        readFeedSubject(Entity.FIELD_OWNERS, EntityRepository::isSupportsOwners);
     return subject != null
         && !nullOrEmpty(subject.getOwners())
         && matchOwners(subject.getOwners(), ownerNameList);
@@ -800,8 +834,18 @@ public class AlertsRuleEvaluator {
 
   private boolean feedSubjectMatchesDomain(List<String> domainFqns) {
     EntityInterface subject =
-        Entity.getEntityOrNull(feedSubject(), Entity.FIELD_DOMAINS, Include.NON_DELETED);
+        readFeedSubject(Entity.FIELD_DOMAINS, EntityRepository::isSupportsDomains);
     return subject != null && matchesAnyDomainFqn(subject.getDomains(), domainFqns);
+  }
+
+  /** The feed's subject read with {@code field}, or null when its type cannot supply that field. */
+  private EntityInterface readFeedSubject(String field, Predicate<EntityRepository<?>> capability) {
+    EntityReference subject = feedSubject();
+    EntityInterface entity = null;
+    if (subject != null && supports(subject.getType(), capability)) {
+      entity = Entity.getEntityOrNull(subject, field, Include.NON_DELETED);
+    }
+    return entity;
   }
 
   private boolean matchOwners(List<EntityReference> ownerReferences, List<String> ownerNameList) {
@@ -861,19 +905,12 @@ public class AlertsRuleEvaluator {
       examples = {"filterByEntityNameDataContractBelongsTo({'service.database.schema.table1'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public Boolean filterByEntityNameDataContractBelongsTo(List<String> entityFqns) {
-    if (changeEvent == null || !changeEvent.getEntityType().equals(DATA_CONTRACT)) {
-      return false;
-    }
-    try {
-      DataContract dataContract =
-          JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
-      if (dataContract.getEntity() == null) {
-        return false;
-      }
-      return entityFqns.contains(dataContract.getEntity().getFullyQualifiedName());
-    } catch (Exception e) {
-      LOG.warn("Failed to parse DataContract from change event", e);
-      return false;
-    }
+    DataContract dataContract = (DataContract) eventEntityOfType(DATA_CONTRACT);
+    // The UI creates contracts with an id-only entity reference, so the FQN can be absent.
+    String coveredFqn =
+        dataContract == null || dataContract.getEntity() == null
+            ? null
+            : dataContract.getEntity().getFullyQualifiedName();
+    return coveredFqn != null && entityFqns.contains(coveredFqn);
   }
 }

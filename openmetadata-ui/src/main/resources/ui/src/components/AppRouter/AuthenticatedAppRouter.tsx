@@ -19,7 +19,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -130,7 +130,7 @@ const ServicePage = withPageSuspenseFallback(
 );
 
 const SwaggerPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/SwaggerPage'))
+  React.lazy(() => import('../../pages/SwaggerPage/SwaggerPage'))
 );
 
 const TourPageComponent = withPageSuspenseFallback(
@@ -205,6 +205,12 @@ const ExplorePageV1 = withPageSuspenseFallback(
 const OntologyExplorerPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
+  )
+);
+
+const SparqlPlaygroundPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
   )
 );
 
@@ -320,12 +326,6 @@ const MetricListPage = withPageSuspenseFallback(
   )
 );
 
-const AddMetricPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
-  )
-);
-
 const ColumnBulkOperationsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -378,6 +378,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE_WITH_TAB}
+      />
+      <Route
+        element={<SparqlPlaygroundPage />}
+        path={ROUTES.SPARQL_PLAYGROUND}
       />
       <Route
         element={<OntologyExplorerPage />}
@@ -801,16 +805,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.DATA_PRODUCT}
       />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
-      <Route
-        element={
-          <AddMetricPage
-            pageTitle={t('label.add-new-entity', {
-              entity: t('label.metric'),
-            })}
-          />
-        }
-        path={ROUTES.ADD_METRIC}
-      />
       <Route
         element={<ColumnBulkOperationsPage />}
         path={ROUTES.COLUMN_BULK_OPERATIONS}

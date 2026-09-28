@@ -221,7 +221,7 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence and attachment widget', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
@@ -293,7 +293,7 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
@@ -350,7 +350,7 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
@@ -387,7 +387,7 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
@@ -447,7 +447,6 @@ test.describe('Context Center - Article Attachments', () => {
       await expect(
         page.getByTestId('uploaded-image-node').first()
       ).toBeVisible();
-      await page.waitForTimeout(500);
     });
 
     await test.step('navigate away immediately without waiting for autosave', async () => {

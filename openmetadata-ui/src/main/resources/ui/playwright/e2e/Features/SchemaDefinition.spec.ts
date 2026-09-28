@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { CODE_EDITOR_CONTENT, CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import { redirectToHomePage } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 
@@ -38,12 +39,8 @@ test.describe('Schema definition (views)', () => {
 
     await page.click('[data-testid="schema_definition"]');
 
-    await expect(
-      page.locator('.CodeMirror-line > [role="presentation"]').first()
-    ).toBeVisible();
+    await expect(page.locator(CODE_EDITOR_LINE).first()).toBeVisible();
 
-    await expect(
-      page.locator('.CodeMirror-line > [role="presentation"]')
-    ).toContainText(query);
+    await expect(page.locator(CODE_EDITOR_CONTENT)).toContainText(query);
   });
 });

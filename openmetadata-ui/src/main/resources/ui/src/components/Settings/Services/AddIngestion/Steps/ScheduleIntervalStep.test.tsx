@@ -15,14 +15,14 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { createRef } from 'react';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
-import { ScheduleIntervalHandle } from './ScheduleInterval.interface';
+import { ScheduleIntervalHandle } from './ScheduleInterval.types';
 import ScheduleIntervalStep from './ScheduleIntervalStep';
 
-jest.mock('./ScheduleIntervalV1', () =>
+jest.mock('./ScheduleInterval', () =>
   jest
     .fn()
     .mockImplementation(({ value, onChange, disabled, onValidityChange }) => (
-      <div data-testid="schedule-interval-v1">
+      <div data-testid="schedule-interval">
         <span data-testid="cron-value">{value ?? 'UNDEFINED'}</span>
         <span data-testid="cron-disabled">{String(Boolean(disabled))}</span>
         <button
@@ -80,7 +80,7 @@ describe('ScheduleIntervalStep', () => {
   it('should render the scheduler along with the retries and raise on error fields', () => {
     renderStep();
 
-    expect(screen.getByTestId('schedule-interval-v1')).toBeInTheDocument();
+    expect(screen.getByTestId('schedule-interval')).toBeInTheDocument();
     expect(screen.getByTestId('retries')).toBeInTheDocument();
     expect(screen.getByTestId('raise-on-error')).toBeInTheDocument();
   });

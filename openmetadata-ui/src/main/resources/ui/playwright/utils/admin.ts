@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Browser, Page, request } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { AdminClass } from '../support/user/AdminClass';
 import {
   getAuthContext,
@@ -20,12 +21,26 @@ import {
   getWorkerAdminAPIContext,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { claimFirstBoot } from './storageStateRecovery';
 
 export const authenticateAdminPage = async (page: Page) => {
+  // Claimed before goto and settled before choosing the UI-login fallback:
+  // otherwise the storageState guard would claim this first boot itself and
+  // re-seed + reload in the background, landing in the middle of admin.login.
+  const firstBootRecovery = claimFirstBoot(page, '/my-data');
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
-  const requiresLogin = await Promise.race([
+
+  if (await firstBootRecovery) {
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
+  // Promise.any, not Promise.race: only one of the two elements ever appears, so
+  // the losing waitFor keeps running until it times out or the page closes. With
+  // race, that loser's late rejection is unhandled and shows up in traces as a
+  // giant red "Wait for selector #email" spanning the whole test — misleading
+  // noise that points at a login stall that never happened. any() consumes it.
+  const requiresLogin = await Promise.any([
     page
-      .locator('#email')
+      .locator('input[name="email"]')
       .waitFor({ state: 'visible' })
       .then(() => true),
     page
@@ -136,6 +151,7 @@ export async function performAdminLogin(
         ? 'playwright/.auth/admin.json'
         : undefined,
   });
+  await installServerLoadReducers(page.context());
 
   try {
     await authenticateAdminPage(page);

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, Optional, cast
+from typing import ClassVar, cast
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
@@ -18,8 +18,8 @@ from metadata.sdk.types import OMetaClient
 class OpenMetadata:
     """Main SDK client for OpenMetadata."""
 
-    _instance: ClassVar[Optional["OpenMetadata"]] = None  # noqa: UP037, UP045
-    _default_client: ClassVar[Optional[OMetaClient]] = None  # noqa: UP045
+    _instance: ClassVar["OpenMetadata" | None] = None  # noqa: UP037
+    _default_client: ClassVar[OMetaClient | None] = None
 
     def __init__(self, config: OpenMetadataConfig):
         """Initialize OpenMetadata client."""

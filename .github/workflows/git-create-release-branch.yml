@@ -25,7 +25,7 @@ jobs:
       run: |
         make update_all RELEASE_VERSION=${{ inputs.release_branch_name }}
     - name: Commit changes to ${{ inputs.release_branch_name }} branch
-      uses: EndBug/add-and-commit@v9
+      uses: EndBug/add-and-commit@v11
       with:
         default_author: github_actions
         message: 'chore(release): Prepare Branch for `${{ inputs.release_branch_name }}`'

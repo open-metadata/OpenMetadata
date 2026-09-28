@@ -10,11 +10,14 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 public final class LLMClientHolder {
   private static volatile LLMCompletionClient instance;
   private static volatile boolean enabled;
+  private static volatile boolean memoryExtractionEnabled;
 
   private LLMClientHolder() {}
 
   public static synchronized void initialize(LLMConfiguration config) {
     enabled = config != null && Boolean.TRUE.equals(config.getEnabled());
+    memoryExtractionEnabled =
+        config != null && Boolean.TRUE.equals(config.getMemoryExtractionEnabled());
     instance = enabled ? LLMCompletionClientFactory.create(config) : new NoopCompletionClient();
   }
 
@@ -30,9 +33,20 @@ public final class LLMClientHolder {
     return enabled;
   }
 
+  /**
+   * Whether Context Center memory extraction may run. Separate from {@link #isEnabled()} because
+   * that switch also turns on embeddings and the other completion features: a deployment that
+   * enables LLM features for semantic search does not thereby ask for every upload and article
+   * edit to spend model calls deriving pills.
+   */
+  public static boolean isMemoryExtractionEnabled() {
+    return enabled && memoryExtractionEnabled;
+  }
+
   /** Test seam: inject a deterministic completion client (and force-enable) for integration tests. */
   public static synchronized void setForTesting(LLMCompletionClient client) {
     instance = client;
     enabled = client != null;
+    memoryExtractionEnabled = client != null;
   }
 }

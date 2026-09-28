@@ -1,0 +1,100 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { ChevronDown } from '@untitledui/icons';
+import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermPicker';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
+import {
+  chipChevronClassName,
+  chipCountBadgeClassName,
+  chipTriggerClassName,
+} from './dqFilterChip.utils';
+import DqSearchFilterChip from './DqSearchFilterChip';
+
+const DqFilterChip = ({
+  filter,
+  isOpen,
+  onOpenChange,
+}: {
+  filter: DqFilterDescriptor;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
+    return (
+      <GlossaryTermPicker
+        bordered
+        commitMode="staged"
+        data-testid={`search-dropdown-${filter.label}`}
+        // The bar owns which chip is open, so it can close this one.
+        isOpen={isOpen}
+        label={filter.label}
+        triggerVariant="button"
+        value={fqnsToGlossaryTags(filter.selectedFqns)}
+        onChange={(terms) => filter.onChange(glossaryTagsToFqns(terms))}
+        onOpenChange={onOpenChange}
+      />
+    );
+  }
+
+  if (filter.type === DQ_FILTER_TYPES.OWNER) {
+    return (
+      <UserTeamSelectableList
+        hasPermission
+        owner={filter.selectedOwners}
+        popoverProps={{ open: isOpen, placement: 'bottomLeft', onOpenChange }}
+        // `UserTeamSelectableList` closes itself by clearing its internal
+        // visibility state, but `popoverProps` is spread onto the Popover last,
+        // so the `open` above wins and that internal close does nothing. Owning
+        // `open` means owning the close on both exits, or the picker stays up
+        // after a selection.
+        onClose={() => onOpenChange(false)}
+        onUpdate={async (owners) => {
+          await filter.onChange(owners);
+          onOpenChange(false);
+        }}>
+        <button
+          className={chipTriggerClassName}
+          data-testid={`search-dropdown-${filter.key}`}
+          type="button">
+          {filter.label}
+          {filter.selectedOwnerKeys.length > 0 && (
+            <span
+              className={chipCountBadgeClassName}
+              data-testid="filter-count-badge">
+              {filter.selectedOwnerKeys.length}
+            </span>
+          )}
+          <ChevronDown className={chipChevronClassName} />
+        </button>
+      </UserTeamSelectableList>
+    );
+  }
+
+  return (
+    <DqSearchFilterChip
+      isOpen={isOpen}
+      label={filter.label}
+      searchKey={filter.searchKey}
+      searchProps={filter.searchProps}
+      onOpenChange={onOpenChange}
+    />
+  );
+};
+
+export default DqFilterChip;

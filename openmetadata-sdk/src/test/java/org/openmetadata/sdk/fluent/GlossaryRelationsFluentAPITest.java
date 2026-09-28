@@ -23,14 +23,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.RelationCategory;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 import org.openmetadata.sdk.services.system.SystemSettingsService;
@@ -102,9 +104,26 @@ class GlossaryRelationsFluentAPITest {
 
   @Test
   void usageReturnsPerTypeCounts() {
-    when(glossaryTerms.relationTypeUsage()).thenReturn(Map.of(PRESCRIBES, 3));
+    RelationshipTypeUsage usage =
+        new RelationshipTypeUsage()
+            .withRelationshipType(new EntityReference().withName(PRESCRIBES))
+            .withCount(3);
+    when(glossaryTerms.relationTypeUsage()).thenReturn(List.of(usage));
 
     assertEquals(3, GlossaryRelationTypes.usage().get(PRESCRIBES));
+  }
+
+  @Test
+  void detailedUsageReturnsTypedRelationReferences() {
+    RelationshipTypeUsage usage =
+        new RelationshipTypeUsage()
+            .withRelationshipType(new EntityReference().withName(PRESCRIBES))
+            .withCount(3);
+    when(glossaryTerms.relationTypeUsage()).thenReturn(List.of(usage));
+
+    RelationshipTypeUsage result = GlossaryRelationTypes.usageDetailed().getFirst();
+    assertEquals(PRESCRIBES, result.getRelationshipType().getName());
+    assertEquals(3, result.getCount());
   }
 
   @Test
@@ -159,10 +178,10 @@ class GlossaryRelationsFluentAPITest {
   @Test
   void relationsFetchesGraphWithDepthAndTypes() {
     UUID rootId = UUID.randomUUID();
-    Map<String, Object> graph = Map.of("nodes", List.of(), "edges", List.of());
+    GlossaryTermRelationGraph graph = new GlossaryTermRelationGraph();
     when(glossaryTerms.relationGraph(rootId, 2, List.of(PRESCRIBES, "treats"))).thenReturn(graph);
 
-    Map<String, Object> result =
+    GlossaryTermRelationGraph result =
         GlossaryTerms.find(rootId.toString())
             .relations()
             .depth(2)
@@ -176,7 +195,8 @@ class GlossaryRelationsFluentAPITest {
   @Test
   void relationsDefaultsToDepthOneAndAllTypes() {
     UUID rootId = UUID.randomUUID();
-    when(glossaryTerms.relationGraph(rootId, 1, List.of())).thenReturn(Map.of());
+    when(glossaryTerms.relationGraph(rootId, 1, List.of()))
+        .thenReturn(new GlossaryTermRelationGraph());
 
     GlossaryTerms.find(rootId.toString()).relations().fetch();
 

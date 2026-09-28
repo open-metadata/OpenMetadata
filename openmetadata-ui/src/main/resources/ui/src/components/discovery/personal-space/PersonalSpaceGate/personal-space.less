@@ -1,0 +1,28 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// The routed personal-space page owns its scrolling: pin the app-mode shell
+// content slot so the inner flex column controls overflow. These only match
+// when the page is mounted inside the app-mode shell (`.assistant-layout` /
+// `.assistant-content`); a plain classic-mode mount is unaffected. Parent-scope
+// `:has()` cannot be expressed in tw.
+.assistant-layout:has(.personal-space) {
+  overflow-y: hidden;
+}
+
+.assistant-content:has(.personal-space) {
+  // Only pin scrolling — the shell already paints `--tw-color-bg-primary`; the
+  // earlier `background: var(--color-bg-primary)` here referenced an undefined
+  // token and knocked out the panel background.
+  overflow: hidden;
+}

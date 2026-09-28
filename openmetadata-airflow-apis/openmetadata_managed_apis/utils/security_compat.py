@@ -12,8 +12,8 @@
 Compatibility layer for Airflow security decorators across versions
 """
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable  # noqa: UP035
 
 from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
 

@@ -17,7 +17,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
@@ -77,20 +79,6 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityLink: jest.fn().mockReturnValue('Entity Link'),
 }));
 
-jest.mock('../../../utils/CustomProperty.utils', () => ({
-  formatCustomPropertyDateTime: jest
-    .fn()
-    .mockImplementation((value) => value.toFormat('dd-MM-yyyy')),
-  getCustomPropertyLuxonFormat: jest.fn().mockReturnValue('dd-MM-yyyy'),
-  parseCustomPropertyDateTime: jest
-    .fn()
-    .mockImplementation((value) =>
-      jest
-        .requireActual<typeof import('luxon')>('luxon')
-        .DateTime.fromFormat(value, 'dd-MM-yyyy')
-    ),
-}));
-
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockReturnValue('Icon'),
 }));
@@ -98,12 +86,6 @@ jest.mock('../../../utils/SearchClassBase', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-
-jest.mock('../DatePicker/DatePicker', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="date-time-picker">DatePicker</div>)
-);
 
 const mockUpdate = jest.fn();
 const RouterWrapper = ({ children }: { children: ReactNode }) => (
@@ -614,5 +596,249 @@ describe('Test PropertyValue Component', () => {
     expect(
       await screen.findByTestId('entity-reference-select')
     ).toBeInTheDocument();
+  });
+
+  it('Should render edit icon alongside toggle when markdown property overflows', async () => {
+    // Regression test for #32477: edit icon must not be hidden inside the overflow container
+    const extension = { yNumber: 'some markdown value' };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'markdown',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    // Both edit icon and expand toggle should be accessible when content overflows
+    const editIcon = await screen.findByTestId('edit-icon');
+    const toggleBtn = await screen.findByTestId(
+      `toggle-${mockData.property.name}`
+    );
+
+    expect(editIcon).toBeInTheDocument();
+    expect(toggleBtn).toBeInTheDocument();
+  });
+
+  describe('inline editors save the edited value', () => {
+    const renderEditor = async (
+      typeName: string,
+      extension: Record<string, unknown>,
+      customPropertyConfig?: Record<string, unknown>
+    ) => {
+      render(
+        <PropertyValue
+          {...mockData}
+          extension={extension}
+          property={{
+            ...mockData.property,
+            propertyType: { ...mockData.property.propertyType, name: typeName },
+            ...(customPropertyConfig ? { customPropertyConfig } : {}),
+          }}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(await screen.findByTestId('edit-icon'));
+      });
+    };
+
+    const save = async () => {
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('inline-save-btn'));
+      });
+    };
+
+    // Jest runs with global fake timers; user-event has to advance them.
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    beforeEach(() => {
+      mockUpdate.mockReset();
+    });
+
+    it('enum (multi) adds a value to the existing selection', async () => {
+      await renderEditor(
+        'enum',
+        { yNumber: ['small'] },
+        { config: { multiSelect: true, values: ['small', 'medium', 'large'] } }
+      );
+
+      const enumSelect = screen.getByTestId('enum-select');
+      await user.click(
+        within(enumSelect).getByRole('button', {
+          name: /label.enum-value-plural/,
+        })
+      );
+      await user.click(screen.getByRole('option', { name: 'large' }));
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({ yNumber: ['small', 'large'] });
+    });
+
+    it('enum (single) replaces the previous value', async () => {
+      await renderEditor(
+        'enum',
+        { yNumber: ['small'] },
+        { config: { multiSelect: false, values: ['small', 'medium'] } }
+      );
+
+      await user.click(
+        within(screen.getByTestId('enum-select')).getByRole('button', {
+          name: /label.enum-value-plural/,
+        })
+      );
+      await user.click(screen.getByRole('option', { name: 'medium' }));
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({ yNumber: ['medium'] });
+    });
+
+    it('enum clear removes the property', async () => {
+      await renderEditor(
+        'enum',
+        { yNumber: ['small'] },
+        { config: { multiSelect: false, values: ['small', 'medium'] } }
+      );
+
+      await user.click(
+        within(screen.getByTestId('enum-select')).getByRole('button', {
+          name: 'label.clear-all',
+        })
+      );
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith(undefined);
+    });
+
+    it('email shows a validation error and does not save an invalid value', async () => {
+      await renderEditor('email', { yNumber: 'john@doe.com' });
+
+      fireEvent.change(screen.getByTestId('email-input'), {
+        target: { value: 'not-an-email' },
+      });
+      await save();
+
+      expect(
+        screen.getByText('message.entity-is-not-valid')
+      ).toBeInTheDocument();
+      expect(mockUpdate).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByTestId('email-input'), {
+        target: { value: 'jane@doe.com' },
+      });
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({ yNumber: 'jane@doe.com' });
+    });
+
+    it('timestamp validates the epoch format and saves a number', async () => {
+      await renderEditor('timestamp', {});
+
+      fireEvent.change(screen.getByTestId('timestamp-input'), {
+        target: { value: '123' },
+      });
+      await save();
+
+      expect(
+        screen.getByText('message.invalid-unix-epoch-time-milliseconds')
+      ).toBeInTheDocument();
+      expect(mockUpdate).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByTestId('timestamp-input'), {
+        target: { value: '1710831125922' },
+      });
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({ yNumber: 1710831125922 });
+    });
+
+    it('timeInterval saves start and end as numbers', async () => {
+      await renderEditor('timeInterval', {});
+
+      fireEvent.change(screen.getByTestId('start-input'), {
+        target: { value: '1710831125922' },
+      });
+      fireEvent.change(screen.getByTestId('end-input'), {
+        target: { value: '1710831125924' },
+      });
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({
+        yNumber: { start: 1710831125922, end: 1710831125924 },
+      });
+    });
+
+    it('duration submits on Enter', async () => {
+      await renderEditor('duration', {});
+
+      const input = screen.getByTestId('duration-input');
+      await user.type(input, 'P1D{Enter}');
+
+      await waitFor(() =>
+        expect(mockUpdate).toHaveBeenCalledWith({ yNumber: 'P1D' })
+      );
+    });
+
+    it('hyperlink requires a URL', async () => {
+      await renderEditor('hyperlink-cp', {});
+      await save();
+
+      expect(screen.getByText('label.field-required')).toBeInTheDocument();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('hyperlink rejects non-http protocols', async () => {
+      await renderEditor('hyperlink-cp', {});
+
+      fireEvent.change(screen.getByTestId('hyperlink-url-input'), {
+        target: { value: 'javascript:alert(1)' },
+      });
+      await save();
+
+      expect(
+        screen.getByText('message.url-must-use-http-or-https')
+      ).toBeInTheDocument();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('time keeps seconds and saves the edited time', async () => {
+      await renderEditor('time-cp', { yNumber: '15:35:59' });
+
+      const [hour] = within(screen.getByTestId('time-picker')).getAllByRole(
+        'spinbutton'
+      );
+      await act(async () => {
+        fireEvent.keyDown(hour, { key: 'ArrowUp' });
+      });
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({ yNumber: '16:35:59' });
+    });
+
+    it('date saves the unchanged value in the configured format', async () => {
+      await renderEditor('date-cp', { yNumber: '2024-07-09' });
+
+      expect(screen.getByTestId('date-time-picker')).toBeInTheDocument();
+
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({ yNumber: '2024-07-09' });
+    });
+
+    it('dateTime renders date and time pickers and keeps the time', async () => {
+      await renderEditor('dateTime-cp', { yNumber: '2024-07-09 15:07:59' });
+
+      expect(screen.getByTestId('date-time-picker')).toBeInTheDocument();
+      expect(screen.getByTestId('time-picker')).toBeInTheDocument();
+
+      await save();
+
+      expect(mockUpdate).toHaveBeenCalledWith({
+        yNumber: '2024-07-09 15:07:59',
+      });
+    });
   });
 });

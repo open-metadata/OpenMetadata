@@ -17,9 +17,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.RelationCategory;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -48,7 +50,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * }
  *
  * // How often each type is used across all terms
- * Map&lt;String, Integer&gt; usage = usage();
+ * Map&lt;String, Integer&gt; counts = usage();
+ * List&lt;RelationshipTypeUsage&gt; detailedUsage = usageDetailed();
  *
  * // Register a new type (admin only)
  * define(new GlossaryTermRelationType().withName("prescribes")
@@ -96,6 +99,14 @@ public final class GlossaryRelationTypes {
 
   /** Per-relation-type usage counts across all glossary terms. */
   public static Map<String, Integer> usage() {
+    return usageDetailed().stream()
+        .collect(
+            Collectors.toUnmodifiableMap(
+                item -> item.getRelationshipType().getName(), RelationshipTypeUsage::getCount));
+  }
+
+  /** Typed relation references and usage counts across all glossary terms. */
+  public static List<RelationshipTypeUsage> usageDetailed() {
     return getClient().glossaryTerms().relationTypeUsage();
   }
 

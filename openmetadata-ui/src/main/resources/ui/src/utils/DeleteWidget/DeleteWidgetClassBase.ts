@@ -15,49 +15,63 @@ import { EntityType } from '../../enums/entity.enum';
 import { getEntityDeleteMessage } from '../EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
 
+const ENTITY_TYPE_PATH_MAP: Record<string, string> = {
+  [EntityType.GLOSSARY]: 'glossaries',
+  [EntityType.GLOSSARY_TERM]: 'glossaryTerms',
+  [EntityType.POLICY]: 'policies',
+  [EntityType.KPI]: EntityType.KPI,
+  [EntityType.DASHBOARD_DATA_MODEL]: 'dashboard/datamodels',
+  [EntityType.SEARCH_INDEX]: 'searchIndexes',
+  [EntityType.DIRECTORY]: 'drives/directories',
+  [EntityType.KNOWLEDGE_CENTER]: 'contextCenter/pages',
+  [EntityType.KNOWLEDGE_PAGE]: 'contextCenter/pages',
+};
+
+const ENTITY_TYPE_PATH_GROUPS: { prefix: string; types: string[] }[] = [
+  {
+    prefix: 'services',
+    types: [
+      EntityType.DASHBOARD_SERVICE,
+      EntityType.DATABASE_SERVICE,
+      EntityType.MESSAGING_SERVICE,
+      EntityType.PIPELINE_SERVICE,
+      EntityType.METADATA_SERVICE,
+      EntityType.STORAGE_SERVICE,
+      EntityType.MLMODEL_SERVICE,
+      EntityType.SEARCH_SERVICE,
+      EntityType.API_SERVICE,
+      EntityType.DRIVE_SERVICE,
+    ],
+  },
+  {
+    prefix: 'dataQuality',
+    types: [EntityType.TEST_SUITE, EntityType.TEST_CASE],
+  },
+  {
+    prefix: 'events',
+    types: [EntityType.SUBSCRIPTION],
+  },
+  {
+    prefix: 'drives',
+    types: [EntityType.FILE, EntityType.SPREADSHEET, EntityType.WORKSHEET],
+  },
+];
+
 class DeleteWidgetClassBase {
   public prepareEntityType(entityType: string) {
-    switch (entityType) {
-      case EntityType.DASHBOARD_SERVICE:
-      case EntityType.DATABASE_SERVICE:
-      case EntityType.MESSAGING_SERVICE:
-      case EntityType.PIPELINE_SERVICE:
-      case EntityType.METADATA_SERVICE:
-      case EntityType.STORAGE_SERVICE:
-      case EntityType.MLMODEL_SERVICE:
-      case EntityType.SEARCH_SERVICE:
-      case EntityType.API_SERVICE:
-      case EntityType.DRIVE_SERVICE:
-        return `services/${entityType}s`;
-      case EntityType.GLOSSARY:
-        return `glossaries`;
-      case EntityType.GLOSSARY_TERM:
-        return `glossaryTerms`;
-      case EntityType.POLICY:
-        return 'policies';
-      case EntityType.KPI:
-        return entityType;
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return `dashboard/datamodels`;
-      case EntityType.TEST_SUITE:
-      case EntityType.TEST_CASE:
-        return `dataQuality/${entityType}s`;
-      case EntityType.SEARCH_INDEX:
-        return `searchIndexes`;
-      case EntityType.SUBSCRIPTION:
-        return `events/${entityType}s`;
-      case EntityType.DIRECTORY:
-        return 'drives/directories';
-      case EntityType.FILE:
-      case EntityType.SPREADSHEET:
-      case EntityType.WORKSHEET:
-        return `drives/${entityType}s`;
-      case EntityType.KNOWLEDGE_CENTER:
-      case EntityType.KNOWLEDGE_PAGE:
-        return 'contextCenter/pages';
-      default:
-        return `${entityType}s`;
+    const staticPath = ENTITY_TYPE_PATH_MAP[entityType];
+    if (staticPath) {
+      return staticPath;
     }
+
+    const group = ENTITY_TYPE_PATH_GROUPS.find((item) =>
+      item.types.includes(entityType)
+    );
+    if (group) {
+      return `${group.prefix}/${entityType}s`;
+    }
+
+    return `${entityType}s`;
   }
 
   public getDeleteMessage(

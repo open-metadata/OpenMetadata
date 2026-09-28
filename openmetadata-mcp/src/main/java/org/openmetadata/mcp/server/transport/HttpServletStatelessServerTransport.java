@@ -183,38 +183,47 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                   .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
                   .block();
 
-          String jsonResponseText = jsonMapper.writeValueAsString(jsonrpcResponse);
-          if (shouldEmitSse(acceptsJson, acceptsSse)) {
-            writeSseResponse(response, jsonResponseText);
-          } else {
-            writeJsonResponse(response, jsonResponseText);
-          }
+          writeResponse(
+              response, jsonMapper.writeValueAsString(jsonrpcResponse), acceptsJson, acceptsSse);
         } catch (Exception e) {
-          logger.error("Failed to handle request", e);
-          responseError(
-              response,
-              HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-              jsonrpcRequest.id(),
-              McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
-                  .message("Failed to handle request")
-                  .build());
+          McpSchema.JSONRPCResponse.JSONRPCError unknownMethod = unknownMethodError(e);
+          if (unknownMethod != null) {
+            McpSchema.JSONRPCResponse errorResponse =
+                new McpSchema.JSONRPCResponse(
+                    McpSchema.JSONRPC_VERSION, jsonrpcRequest.id(), null, unknownMethod);
+            writeResponse(
+                response, jsonMapper.writeValueAsString(errorResponse), acceptsJson, acceptsSse);
+          } else {
+            logger.error("Failed to handle request", e);
+            responseError(
+                response,
+                HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                jsonrpcRequest.id(),
+                McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+                    .message("Failed to handle request")
+                    .build());
+          }
         }
       } else if (message instanceof McpSchema.JSONRPCNotification jsonrpcNotification) {
-        try {
-          this.mcpHandler
-              .handleNotification(transportContext, jsonrpcNotification)
-              .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
-              .block();
+        if (McpSchema.METHOD_NOTIFICATION_INITIALIZED.equals(jsonrpcNotification.method())) {
           response.setStatus(HttpServletResponse.SC_ACCEPTED);
-        } catch (Exception e) {
-          logger.error("Failed to handle notification", e);
-          responseError(
-              response,
-              HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-              null,
-              McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
-                  .message("Failed to handle notification")
-                  .build());
+        } else {
+          try {
+            this.mcpHandler
+                .handleNotification(transportContext, jsonrpcNotification)
+                .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
+                .block();
+            response.setStatus(HttpServletResponse.SC_ACCEPTED);
+          } catch (Exception e) {
+            logger.error("Failed to handle notification", e);
+            responseError(
+                response,
+                HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                null,
+                McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+                    .message("Failed to handle notification")
+                    .build());
+          }
         }
       } else {
         responseError(
@@ -243,6 +252,33 @@ public class HttpServletStatelessServerTransport extends HttpServlet
           McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
               .message("Internal server error")
               .build());
+    }
+  }
+
+  /**
+   * The SDK relays a handler's own failure inside a JSON-RPC response, so the only error that
+   * escapes {@code handleRequest} is METHOD_NOT_FOUND for a method it has no handler for. That is a
+   * client mistake, not a server fault: return the -32601 envelope at HTTP 200 instead of a 500.
+   */
+  private static McpSchema.JSONRPCResponse.JSONRPCError unknownMethodError(Exception e) {
+    if (!(e instanceof McpError mcpError)) {
+      return null;
+    }
+    McpSchema.JSONRPCResponse.JSONRPCError error = mcpError.getJsonRpcError();
+    boolean unknownMethod = error != null && error.code() == McpSchema.ErrorCodes.METHOD_NOT_FOUND;
+    return unknownMethod ? error : null;
+  }
+
+  static void writeResponse(
+      HttpServletResponse response,
+      String jsonResponseText,
+      boolean acceptsJson,
+      boolean acceptsSse)
+      throws IOException {
+    if (shouldEmitSse(acceptsJson, acceptsSse)) {
+      writeSseResponse(response, jsonResponseText);
+    } else {
+      writeJsonResponse(response, jsonResponseText);
     }
   }
 

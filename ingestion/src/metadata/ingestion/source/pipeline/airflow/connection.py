@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 from functools import singledispatch
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlparse
 
 from packaging import version
@@ -113,7 +113,7 @@ def _(_: BackendConnection) -> Engine:
     return engine
 
 
-def _get_backend_engine_from_session() -> Optional[Engine]:  # noqa: UP045
+def _get_backend_engine_from_session() -> Engine | None:
     """
     Try to get the Airflow metadata engine via airflow.settings.Session.
     This is allowed on Airflow 2.x but raises a RuntimeError on Airflow 3.x.
@@ -214,7 +214,7 @@ class AirflowTaskDetailsAccessError(Exception):
     """
 
 
-def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
+def _test_task_detail_access(session) -> Any | None:
     """
     Verify task-level access to serialized_dag.
     Extracted to module level so it can be unit-tested directly.

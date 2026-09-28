@@ -16,10 +16,10 @@ JSON DataFrame reader - streams JSON Lines in batches to avoid OOM
 import gzip
 import json
 import zipfile
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from functools import singledispatchmethod
-from typing import Any, Iterator, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -122,7 +122,7 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _read_json_object(
         content: bytes,
-    ) -> tuple[Generator["DataFrame", Any, None], Optional[str]]:  # noqa: F821, UP045
+    ) -> tuple[Generator["DataFrame", Any, None], str | None]:  # noqa: F821
         """Load entire JSON object/array. Non-streaming fallback for small files."""
         from pandas import DataFrame
 
@@ -153,7 +153,7 @@ class JSONDataFrameReader(DataFrameReader):
                 return False
             if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(obj):  # noqa: SIM103
                 return False
-            return True  # noqa:TRY300
+            return True  # noqa: TRY300
         except json.JSONDecodeError:
             return False
 
@@ -162,7 +162,7 @@ class JSONDataFrameReader(DataFrameReader):
         file_obj_getter,
         key: str,
         bucket_name: str,
-        file_size: Optional[int] = None,  # noqa: UP045
+        file_size: int | None = None,
     ) -> DatalakeColumnWrapper:
         """
         Smart JSON reading with automatic format detection and streaming.
@@ -263,6 +263,6 @@ class JSONDataFrameReader(DataFrameReader):
 
         return self._read_json_smart(get_stream, key, bucket_name)
 
-    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:  # noqa: UP045
+    def _read(self, *, key: str, bucket_name: str, file_size: int | None = None, **__) -> DatalakeColumnWrapper:
         self._file_size = file_size
         return self._read_json_dispatch(self.config_source, key=key, bucket_name=bucket_name)

@@ -49,7 +49,7 @@ export const Modal = (props: ModalProps) => (
     {...props}
     className={(state) =>
       cx(
-        'tw:inset-y-0 tw:right-0 tw:h-full tw:w-full tw:max-w-100 tw:shadow-xl tw:transition',
+        'tw:inset-y-0 tw:right-0 tw:h-full tw:w-full tw:max-w-100 tw:shadow-overlay tw:transition',
         state.isEntering &&
           'tw:duration-300 tw:animate-in tw:slide-in-from-right',
         state.isExiting &&
@@ -72,7 +72,7 @@ export const Dialog = (props: DialogProps) => (
     className={cx(
       // `outline-hidden` removed: the outline now draws this panel's border (it replaced a
       // ring, which WebKit does not pixel-snap), so suppressing it would erase the border.
-      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:outline-1 tw:outline-secondary_alt',
+      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-overlay-surface tw:outline-1 tw:outline-secondary_alt',
       props.className
     )}
   />
@@ -82,6 +82,7 @@ Dialog.displayName = 'Dialog';
 interface SlideoutMenuProps
   extends Omit<AriaModalOverlayProps, 'children'>,
     RefAttributes<HTMLDivElement> {
+  'aria-label'?: string;
   children:
     | ReactNode
     | ((children: AriaModalRenderProps & { close: () => void }) => ReactNode);
@@ -90,13 +91,14 @@ interface SlideoutMenuProps
 }
 
 const Menu = ({
+  'aria-label': ariaLabel,
   children,
   dialogClassName,
   width,
   ...props
 }: SlideoutMenuProps) => {
   return (
-    <ModalOverlay {...props}>
+    <ModalOverlay aria-label={ariaLabel} {...props}>
       <Modal
         className={(state) =>
           cx(
@@ -107,7 +109,7 @@ const Menu = ({
         }
         style={width !== undefined ? { maxWidth: width } : undefined}>
         {(state) => (
-          <Dialog className={dialogClassName}>
+          <Dialog aria-label={ariaLabel} className={dialogClassName}>
             {({ close }) => {
               return typeof children === 'function'
                 ? children({ ...state, close })
@@ -168,7 +170,7 @@ const Footer = (props: ComponentPropsWithRef<'footer'>) => {
     <footer
       {...props}
       className={cx(
-        'tw:w-full tw:p-4 tw:shadow-[inset_0px_1px_0px_0px] tw:shadow-border-secondary tw:md:px-6',
+        'tw:w-full tw:border-t tw:border-subtle tw:p-4 tw:md:px-6',
         props.className
       )}
     />

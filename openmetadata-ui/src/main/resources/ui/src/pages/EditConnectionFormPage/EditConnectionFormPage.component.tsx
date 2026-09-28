@@ -14,8 +14,10 @@
 import {
   Breadcrumbs,
   Button,
+  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -31,7 +33,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
@@ -94,6 +95,9 @@ function EditConnectionFormPage() {
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
+  // Leaving with nothing to save never enters the 'waiting' state that
+  // otherwise disarms the blocker, so it disarms it explicitly.
+  const [isLeaving, setIsLeaving] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
@@ -145,7 +149,10 @@ function EditConnectionFormPage() {
 
     const jsonPatch = compare(serviceDetails, configData);
 
+    // Nothing to persist, but the form still has to close.
     if (isEmpty(jsonPatch)) {
+      setIsLeaving(true);
+
       return;
     }
 
@@ -207,6 +214,19 @@ function EditConnectionFormPage() {
     }
   };
 
+  // From an effect, not inline: NavigationBlocker is a child, so its effects
+  // have detached the history patches by the time this runs.
+  useEffect(() => {
+    if (isLeaving) {
+      navigate(
+        connectionsRouterClassBase.getPathByServiceFQN(
+          serviceCategory,
+          serviceFQN
+        )
+      );
+    }
+  }, [isLeaving, navigate, serviceCategory, serviceFQN]);
+
   const onCancel = () => {
     navigate(-1);
   };
@@ -250,13 +270,18 @@ function EditConnectionFormPage() {
 
   if (isError && !isLoading) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(serviceCategory, serviceFQN)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
+        <EmptyPlaceholder
+          description={getEntityMissingError(serviceCategory, serviceFQN)}
+          icon={<OpenIncidents className="tw:text-secondary" />}
+          title={t('message.something-went-wrong')}
+        />
+      </div>
     );
   }
 
   const isSavingService = saveServiceState === 'waiting';
+  const resolvedServiceType = serviceDetails?.serviceType ?? '';
 
   const handleFooterBack = () => {
     if (activeServiceStep === 1) {
@@ -309,7 +334,7 @@ function EditConnectionFormPage() {
         <div className="tw:mt-6">
           <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
             {getServiceLogo(
-              serviceDetails?.serviceType ?? '',
+              resolvedServiceType,
               'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
             )}
             <Typography
@@ -337,7 +362,7 @@ function EditConnectionFormPage() {
                   data={serviceDetails}
                   ref={connectionFormRef}
                   serviceCategory={serviceCategory}
-                  serviceType={serviceDetails?.serviceType ?? ''}
+                  serviceType={resolvedServiceType}
                   status={saveServiceState}
                   onFocus={handleFieldFocus}
                   onSave={async (e) => {
@@ -353,7 +378,7 @@ function EditConnectionFormPage() {
                   data={serviceDetails}
                   ref={filtersFormRef}
                   serviceCategory={serviceCategory}
-                  serviceType={serviceDetails?.serviceType ?? ''}
+                  serviceType={resolvedServiceType}
                   showConnectedMessage={isConnectionVerified}
                   status={saveServiceState}
                   onFocus={handleFieldFocus}
@@ -371,7 +396,13 @@ function EditConnectionFormPage() {
 
   return (
     <NavigationBlocker
-      enabled={!isSavingService}
+      enabled={!isSavingService && !isLeaving}
+      // Otherwise a confirmed back falls through to history.go(-2), which
+      // assumes one guard entry; two are pushed, so it lands back on this page.
+      leaveTo={connectionsRouterClassBase.getPathByServiceFQN(
+        serviceCategory,
+        serviceFQN
+      )}
       renderModal={({ isOpen, onLeave, onStay }) => (
         <NavigationGuardModal
           isOpen={isOpen}
@@ -392,7 +423,7 @@ function EditConnectionFormPage() {
                   focusedMode
                   activeField={activeField}
                   activeFieldMeta={activeFieldMeta}
-                  serviceName={serviceDetails?.serviceType ?? ''}
+                  serviceName={resolvedServiceType}
                   serviceType={getServiceType(serviceCategory)}
                 />
               </Suspense>

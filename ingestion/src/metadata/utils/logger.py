@@ -18,7 +18,7 @@ from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Any, Dict, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.datacontract.dataContractResult import (
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -205,7 +206,7 @@ def diag_logger():
     return logging.getLogger(Loggers.DIAGNOSTICS.value)
 
 
-def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
+def set_loggers_level(level: int | str = logging.INFO):
     """
     Set all loggers levels
     :param level: logging level
@@ -214,7 +215,7 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None,  # noqa: UP045
+    color: ANSI | None = None,
     bold: bool = False,
     message: str = "",
     level=logging.INFO,
@@ -226,7 +227,7 @@ def log_ansi_encoded_string(
 
 
 @singledispatch
-def get_log_name(record: Entity) -> Optional[str]:  # noqa: UP045
+def get_log_name(record: Entity) -> str | None:
     try:
         if hasattr(record, "name"):
             return f"{type(record).__name__} [{getattr(record, 'name').root}]"  # noqa: B009
@@ -276,6 +277,16 @@ def _(record: OMetaFQNLineageRequest) -> str:
         f"{type(record).__name__} "
         f"[{record.from_entity_type}: {record.from_entity_fqn} -> {record.to_entity_type}: {record.to_entity_fqn}]"
     )
+
+
+@get_log_name.register
+def _(record: Barrier) -> None:
+    """A Barrier is a control record, not an ingested asset.
+
+    Returning None keeps it out of Status.scanned, which would otherwise report the
+    flush as a scanned record and inflate the connector's record count.
+    """
+    return
 
 
 @get_log_name.register
@@ -388,7 +399,7 @@ def sanitize_url_credentials(message: str) -> str:
     return re.sub(r"https://[^@]+@", "https://****@", message)
 
 
-def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:  # noqa: UP006, UP007
+def redacted_config(config: dict[str, str | dict]) -> dict[str, str | dict]:
     config_copy = deepcopy(config)
 
     def traverse_and_modify(obj):

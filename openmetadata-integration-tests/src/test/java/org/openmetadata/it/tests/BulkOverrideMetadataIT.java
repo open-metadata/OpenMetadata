@@ -19,12 +19,17 @@ import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.TagLabel;
 
 /**
  * Integration tests for the {@code overrideMetadata} flag on the bulk path ({@code PUT
@@ -192,6 +197,55 @@ public class BulkOverrideMetadataIT {
             + "always preserved from a bot PUT");
   }
 
+  @Test
+  void test_botReplacesMutuallyExclusiveTableTag_withOverride(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<TagLabel> tags = createMutuallyExclusiveTags(ns, "ovr_table_tags");
+    CreateTable original = table(ns, schemaFqn, "ovr_table_tags", "desc", "hash-v1");
+    original.setTags(List.of(tags.getFirst()));
+    BulkApi.upsert("tables", List.of(original), false, BulkApi.botToken());
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_table_tags", "desc", "hash-v2");
+    changed.setTags(List.of(tags.getLast()));
+    BulkApi.upsert("tables", List.of(changed), true, BulkApi.botToken());
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertEquals(List.of(tags.getLast().getTagFQN()), tagFqns(getTable(fqn).getTags()));
+  }
+
+  @Test
+  void test_botReplacesMutuallyExclusiveColumnTag_withOverride(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<TagLabel> tags = createMutuallyExclusiveTags(ns, "ovr_column_tags");
+    CreateTable original = table(ns, schemaFqn, "ovr_column_tags", "desc", "hash-v1");
+    original.getColumns().getFirst().setTags(List.of(tags.getFirst()));
+    BulkApi.upsert("tables", List.of(original), false, BulkApi.botToken());
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_column_tags", "desc", "hash-v2");
+    changed.getColumns().getFirst().setTags(List.of(tags.getLast()));
+    BulkApi.upsert("tables", List.of(changed), true, BulkApi.botToken());
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertEquals(
+        List.of(tags.getLast().getTagFQN()),
+        tagFqns(getTable(fqn).getColumns().getFirst().getTags()));
+  }
+
+  @Test
+  void test_overrideDoesNotRemoveTagsWhenNoneSupplied(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    TagLabel tag = createMutuallyExclusiveTags(ns, "ovr_missing_tags").getFirst();
+    CreateTable original = table(ns, schemaFqn, "ovr_missing_tags", "desc", "hash-v1");
+    original.setTags(List.of(tag));
+    BulkApi.upsert("tables", List.of(original), false, BulkApi.botToken());
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_missing_tags", "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), true, BulkApi.botToken());
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertEquals(List.of(tag.getTagFQN()), tagFqns(getTable(fqn).getTags()));
+  }
+
   // ===================================================================
   // HELPERS
   // ===================================================================
@@ -210,6 +264,40 @@ public class BulkOverrideMetadataIT {
     return schema.getFullyQualifiedName();
   }
 
+  private List<TagLabel> createMutuallyExclusiveTags(TestNamespace ns, String name) {
+    Classification classification =
+        SdkClients.adminClient()
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix(name))
+                    .withDescription("Mutually exclusive tags for override metadata tests")
+                    .withMutuallyExclusive(true));
+    Tag original = createTag(classification, "original");
+    Tag replacement = createTag(classification, "replacement");
+    return List.of(tagLabel(original), tagLabel(replacement));
+  }
+
+  private Tag createTag(Classification classification, String name) {
+    return SdkClients.adminClient()
+        .tags()
+        .create(
+            new CreateTag()
+                .withName(name)
+                .withDescription("Tag for override metadata tests")
+                .withClassification(classification.getName()));
+  }
+
+  private TagLabel tagLabel(Tag tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withSource(TagLabel.TagSource.CLASSIFICATION);
+  }
+
+  private List<String> tagFqns(List<TagLabel> tags) {
+    return tags.stream().map(TagLabel::getTagFQN).toList();
+  }
+
   private CreateTable table(
       TestNamespace ns, String schemaFqn, String baseName, String description, String sourceHash) {
     CreateTable createTable =
@@ -225,7 +313,9 @@ public class BulkOverrideMetadataIT {
   private Table getTable(String fqn) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
-            .uri(URI.create(SdkClients.getServerUrl() + "/v1/tables/name/" + fqn))
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl() + "/v1/tables/name/" + fqn + "?fields=columns,tags"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .GET()
             .build();

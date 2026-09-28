@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -232,9 +233,13 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
+    // The team title exists twice on the page — once as the selected chip in the
+    // TreeSelect input, once as the option inside the dropdown. `.nth(1)` matched
+    // the option by DOM order but raced with the dropdown re-rendering after the
+    // hierarchy load. Scope to the dropdown so the option is unambiguous.
     await adminPage
+      .locator('.ant-tree-select-dropdown')
       .locator('[title="' + team.responseData.displayName + '"]')
-      .nth(1)
       .click();
 
     const userProfileResponse = adminPage.waitForResponse((response) =>

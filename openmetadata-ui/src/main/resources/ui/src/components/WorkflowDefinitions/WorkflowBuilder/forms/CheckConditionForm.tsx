@@ -21,11 +21,9 @@ import {
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import {
-  FormActionButtons,
-  MetadataFormSection,
-  QueryBuilderSection,
-} from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
+import { QueryBuilderSection } from './QueryBuilderSection';
 
 interface CheckConditionFormProps {
   entityTypes: EntityType[];

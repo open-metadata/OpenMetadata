@@ -17,7 +17,6 @@ import Qs, { ParsedQs } from 'qs';
 import type { Key } from 'react';
 import type {
   ExploreQuickFilterField,
-  ExploreSearchIndex,
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
 import type {
@@ -34,6 +33,7 @@ import {
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
+import type { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import type { Aggregations } from '../interface/search.interface';
 import type {
   EsBoolQuery,
@@ -539,11 +539,15 @@ export const getQueryFilterMust = (
 ): QueryFieldInterface[] => {
   const parsedMust = get(queryFilter, 'query.bool.must');
 
-  return Array.isArray(parsedMust)
-    ? parsedMust
-    : parsedMust
-    ? [parsedMust]
-    : [];
+  if (Array.isArray(parsedMust)) {
+    return parsedMust;
+  }
+
+  if (parsedMust) {
+    return [parsedMust];
+  }
+
+  return [];
 };
 
 /**

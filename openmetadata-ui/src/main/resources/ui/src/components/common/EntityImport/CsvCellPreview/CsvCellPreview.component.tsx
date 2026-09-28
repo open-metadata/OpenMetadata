@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import type { CSSProperties } from 'react';
 import { SEMICOLON_SPLITTER } from '../../../../constants/regex.constants';
@@ -152,12 +153,15 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
       content = (
         <div className="csv-cell-chips csv-cell-chips-custom-properties">
           {customPropertyItems.map((item) => (
-            <span
-              className="csv-chip csv-chip-prop"
+            <Tooltip
+              excludeTriggerFromTabOrder
               key={item.key}
               title={`${item.label}: ${item.value}`}>
-              {item.label}: <span className="csv-chip-value">{item.value}</span>
-            </span>
+              <span className="csv-chip csv-chip-prop">
+                {item.label}:{' '}
+                <span className="csv-chip-value">{item.value}</span>
+              </span>
+            </Tooltip>
           ))}
         </div>
       );
@@ -169,12 +173,14 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
           const { label } = parseEntity(item);
 
           return (
-            <span className="csv-owner-chip" key={item} title={label}>
-              <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
-                {getInitials(label)}
+            <Tooltip excludeTriggerFromTabOrder key={item} title={label}>
+              <span className="csv-owner-chip">
+                <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
+                  {getInitials(label)}
+                </span>
+                <span className="csv-owner-name">{label}</span>
               </span>
-              <span className="csv-owner-name">{label}</span>
-            </span>
+            </Tooltip>
           );
         })}
       </div>
@@ -188,13 +194,13 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
             column === 'glossaryTerms' ? getGlossaryTermLabel(item) : item;
 
           return (
-            <span
-              className={`csv-chip csv-chip-${variant}`}
-              key={item}
-              style={getChipStyle(column, item, itemStyles)}
-              title={item}>
-              {label}
-            </span>
+            <Tooltip excludeTriggerFromTabOrder key={item} title={item}>
+              <span
+                className={`csv-chip csv-chip-${variant}`}
+                style={getChipStyle(column, item, itemStyles)}>
+                {label}
+              </span>
+            </Tooltip>
           );
         })}
       </div>

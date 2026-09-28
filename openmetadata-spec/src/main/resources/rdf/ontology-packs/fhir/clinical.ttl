@@ -1,0 +1,17 @@
+@prefix fhir: <https://open-metadata.org/library/fhir/clinical/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+fhir:ClinicalRecord a skos:Concept ;
+  skos:prefLabel "Clinical Record" .
+
+fhir:PatientRecord a skos:Concept ;
+  skos:prefLabel "Patient Record" ;
+  skos:broader fhir:ClinicalRecord .
+
+fhir:ObservationRecord a skos:Concept ;
+  skos:prefLabel "Observation Record" ;
+  skos:broader fhir:ClinicalRecord .
+
+fhir:MedicationRecord a skos:Concept ;
+  skos:prefLabel "Medication Record" ;
+  skos:broader fhir:ClinicalRecord .

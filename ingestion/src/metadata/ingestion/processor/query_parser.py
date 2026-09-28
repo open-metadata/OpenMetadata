@@ -14,7 +14,6 @@ Query parser implementation
 
 import datetime
 import traceback
-from typing import Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
@@ -38,7 +37,7 @@ def parse_sql_statement(
     record: TableQuery,
     dialect: Dialect,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Optional[ParsedData]:  # noqa: UP045
+) -> ParsedData | None:
     """
     Use the lineage parser and work with the tokens
     to convert a RAW SQL statement into
@@ -106,14 +105,14 @@ class QueryParserProcessor(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
         **kwargs,
     ):
         config = ConfigModel.model_validate(config_dict)
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata, connection_type)
 
-    def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:  # noqa: UP045
+    def _run(self, record: TableQueries) -> Either[QueryParserData] | None:
         if record is None or record.queries is None:
             return None
 

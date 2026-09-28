@@ -21,7 +21,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.seeding.RequiredSeedRows;
 import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 

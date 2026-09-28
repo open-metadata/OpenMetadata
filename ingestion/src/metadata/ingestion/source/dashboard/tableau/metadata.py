@@ -13,10 +13,12 @@ Tableau source module
 """
 
 # pylint: disable=too-many-lines
+import re
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Set  # noqa: UP035
+from typing import Any
 
 from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
@@ -108,6 +110,18 @@ logger = ingestion_logger()
 
 TABLEAU_TAG_CATEGORY = "TableauTags"
 TABLEAU_FIELD_TYPE_DISPLAY = "Tableau Field"
+# Tableau titles database column names when it builds fields (`order_date` becomes
+# `Order Date`), so separators and casing carry no meaning when comparing the two.
+# `\w` is Unicode-aware, and `_` is listed explicitly because `\w` matches it: a name made
+# only of non-ASCII letters must normalize to itself rather than to an empty string, or a
+# CJK column would never collapse onto the field mirroring it.
+NON_ALPHANUMERIC = re.compile(r"[\W_]")
+
+
+def normalize_column_name(name: str) -> str:
+    """Strip separators and casing so a Tableau field name can be compared to the physical
+    column it wraps (``Order Date`` vs ``order_date``)."""
+    return NON_ALPHANUMERIC.sub("", name.casefold())
 
 
 class TableauSource(DashboardServiceSource):
@@ -133,7 +147,7 @@ class TableauSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: TableauConnection = config.serviceConnection.root.config
@@ -176,7 +190,7 @@ class TableauSource(DashboardServiceSource):
         dashboard.dataModels = self.client.get_datasources(dashboard.id)
         return dashboard
 
-    def get_owner_ref(self, dashboard_details: TableauDashboard) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: TableauDashboard) -> EntityReferenceList | None:
         """
         Get dashboard owner from email
         """
@@ -191,7 +205,7 @@ class TableauSource(DashboardServiceSource):
         return None
 
     @staticmethod
-    def _get_data_models_tags(data_models: List[DataSource]) -> Set[str]:  # noqa: UP006
+    def _get_data_models_tags(data_models: list[DataSource]) -> set[str]:
         """
         Get the tags from the data model in the upstreamDatasources
         """
@@ -213,7 +227,7 @@ class TableauSource(DashboardServiceSource):
         Method to yield tags related to specific dashboards
         """
         if self.source_config.includeTags:
-            tags: Set = set()  # noqa: UP006
+            tags: set = set()
             for container in [[dashboard_details], dashboard_details.charts or []]:
                 for elem in container:
                     tags.update(elem.tags)
@@ -230,7 +244,7 @@ class TableauSource(DashboardServiceSource):
                 include_tags=self.source_config.includeTags,
             )
 
-    def _get_datamodel_sql_query(self, data_model: DataSource) -> Optional[str]:  # noqa: UP045
+    def _get_datamodel_sql_query(self, data_model: DataSource) -> str | None:
         """
         Method to fetch the custom sql query from the tableau datamodels
         """
@@ -374,7 +388,7 @@ class TableauSource(DashboardServiceSource):
             )
 
     @staticmethod
-    def _build_upstream_column_map(data_model: DataSource) -> Dict[str, Set[str]]:  # noqa: UP006
+    def _build_upstream_column_map(data_model: DataSource) -> dict[str, set[str]]:
         """
         Map each physical upstream column id to the data model column names (Tableau field ids)
         that consume it.
@@ -390,8 +404,8 @@ class TableauSource(DashboardServiceSource):
     def _get_data_model_column_fqn(
         data_model_entity: DashboardDataModel,
         column_id: str,
-        field_names: Set[str],  # noqa: UP006
-    ) -> List[str]:  # noqa: UP006
+        field_names: set[str],
+    ) -> list[str]:
         """
         Resolve a physical upstream column to the data model columns that consume it.
 
@@ -424,8 +438,8 @@ class TableauSource(DashboardServiceSource):
         upstream_table: UpstreamTable,
         table_entity: Table,
         data_model_entity: DashboardDataModel,
-        upstream_column_map: Dict[str, Set[str]],  # noqa: UP006
-    ) -> List[ColumnLineage]:  # noqa: UP006
+        upstream_column_map: dict[str, set[str]],
+    ) -> list[ColumnLineage]:
         """
         Get the column lineage from the fields
         """
@@ -497,7 +511,7 @@ class TableauSource(DashboardServiceSource):
         self,
         upstream_data_model: DataSource,
         datamodel: DataSource,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
         upstream_data_model_entity: DashboardDataModel,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -548,7 +562,7 @@ class TableauSource(DashboardServiceSource):
         self,
         data_model_col: Column,
         upstream_data_model_col: Column,
-    ) -> Optional[List[ColumnLineage]]:  # noqa: UP006, UP045
+    ) -> list[ColumnLineage] | None:
         """
         Get the lineage between children columns of the datamodels
         """
@@ -604,7 +618,7 @@ class TableauSource(DashboardServiceSource):
         self,
         datamodel: DataSource,
         data_model_entity: DashboardDataModel,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """ "
         Method to create lineage between tables<->published datasource<->embedded datasource
@@ -736,7 +750,7 @@ class TableauSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: TableauDashboard,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         This method creates the lineage between tables and datamodels
@@ -837,7 +851,7 @@ class TableauSource(DashboardServiceSource):
         self,
         db_service_prefix: str | None,
         table: UpstreamTable,
-    ) -> Optional[List[TableAndQuery]]:  # noqa: UP006, UP045
+    ) -> list[TableAndQuery] | None:
         """
         In case we get the table details from the Graphql APIs we process them
         """
@@ -929,7 +943,7 @@ class TableauSource(DashboardServiceSource):
         self,
         db_service_prefix: str | None,
         table: UpstreamTable,
-    ) -> Optional[List[TableAndQuery]]:  # noqa: UP006, UP045
+    ) -> list[TableAndQuery] | None:
         """
         In case we get the table details from the Graphql APIs we process them
         """
@@ -1012,7 +1026,7 @@ class TableauSource(DashboardServiceSource):
         self,
         db_service_prefix: str | None,
         table: UpstreamTable,
-    ) -> Optional[List[TableAndQuery]]:  # noqa: UP006, UP045
+    ) -> list[TableAndQuery] | None:
         """
         Get the table entities for lineage
         """
@@ -1024,7 +1038,7 @@ class TableauSource(DashboardServiceSource):
             return self._get_table_entities_from_query(db_service_prefix=db_service_prefix, table=table)
         return None
 
-    def _get_datamodel(self, datamodel: DataSource) -> Optional[DashboardDataModel]:  # noqa: UP045
+    def _get_datamodel(self, datamodel: DataSource) -> DashboardDataModel | None:
         """
         Get the datamodel entity for lineage
         """
@@ -1041,7 +1055,7 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
-    def get_child_columns(self, field: DatasourceField) -> List[Column]:  # noqa: UP006
+    def get_child_columns(self, field: DatasourceField) -> list[Column]:
         """
         Extract the child columns from the fields
         """
@@ -1064,7 +1078,7 @@ class TableauSource(DashboardServiceSource):
         return columns
 
     @staticmethod
-    def _get_mirrored_upstream_column(field: DatasourceField) -> Optional[UpstreamColumn]:  # noqa: UP045
+    def _get_mirrored_upstream_column(field: DatasourceField) -> UpstreamColumn | None:
         """
         A plain Tableau ColumnField wraps exactly one physical column and keeps its name, so
         nesting that column renders an identical-looking duplicate row in the data model. Return
@@ -1074,18 +1088,22 @@ class TableauSource(DashboardServiceSource):
         column: its value is a transformation, so the physical column stays visible as a child and
         its ``remoteType`` must not be reported as the field's own type. ``formula`` is only
         populated by the ``... on CalculatedField`` fragment, which makes it the field-type marker.
+
+        Names are compared normalized: Tableau titles database column names when it builds the
+        field, so a Databricks column ``order_date`` surfaces as a field named ``Order Date``.
+        Those are still the same column, and comparing them raw would leave the mirror nested.
         """
         mirrored_column = None
         upstream_columns = [column for column in field.upstreamColumns or [] if column]
         if not field.formula and len(upstream_columns) == 1:
             upstream_column = upstream_columns[0]
-            field_name = field.name or field.id
-            upstream_column_name = upstream_column.name or upstream_column.id
-            if field_name.casefold() == upstream_column_name.casefold():
+            field_name = normalize_column_name(field.name or field.id)
+            upstream_column_name = normalize_column_name(upstream_column.name or upstream_column.id)
+            if field_name and field_name == upstream_column_name:
                 mirrored_column = upstream_column
         return mirrored_column
 
-    def get_column_info(self, data_source: DataSource) -> Optional[List[Column]]:  # noqa: UP006, UP045
+    def get_column_info(self, data_source: DataSource) -> list[Column] | None:
         """
         Args:
             data_source: DataSource
@@ -1105,6 +1123,10 @@ class TableauSource(DashboardServiceSource):
                     "name": truncate_column_name(field.id),
                     "displayName": field.name if field.name else field.id,
                     "description": description or None,
+                    # Always set explicitly, even when empty: the patch path merges each column
+                    # onto the stored one and only overlays fields present in `model_fields_set`,
+                    # so leaving `children` unset would resurrect children ingested previously.
+                    "children": [],
                 }
                 mirrored_column = self._get_mirrored_upstream_column(field=field)
                 if mirrored_column:
@@ -1113,16 +1135,14 @@ class TableauSource(DashboardServiceSource):
                     if mirrored_column.remoteType == DataType.ARRAY.value:
                         parsed_fields["arrayDataType"] = DataType.UNKNOWN
                 else:
-                    child_columns = self.get_child_columns(field=field)
-                    if child_columns:
-                        parsed_fields["children"] = child_columns
+                    parsed_fields["children"] = self.get_child_columns(field=field)
                 datasource_columns.append(Column(**parsed_fields))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def get_project_name(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
+    def get_project_name(self, dashboard_details: Any) -> str | None:
         """
         Get the project / workspace / folder / collection name of the dashboard
         """
@@ -1134,7 +1154,7 @@ class TableauSource(DashboardServiceSource):
             logger.warning(f"Error fetching project name for {dashboard_details.id}: {exc}")
         return None
 
-    def get_project_names(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
+    def get_project_names(self, dashboard_details: Any) -> str | None:
         """
         Get the project / workspace / folder / collection names of the dashboard
         """

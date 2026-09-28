@@ -10,6 +10,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from summarize_playwright_requests import merge_latency_histograms
 
 CONVERGENCE_TARGET_NAMES = frozenset(
     {
@@ -75,9 +76,7 @@ def has_valid_boot_measurement(
     )
 
 
-def has_at_most_one_app_boot_per_ui_scenario(
-    app_boots: int, ui_scenarios: int
-) -> bool:
+def has_at_most_one_app_boot_per_ui_scenario(app_boots: int, ui_scenarios: int) -> bool:
     return ui_scenarios > 0 and app_boots <= ui_scenarios
 
 
@@ -113,9 +112,7 @@ def classify_targets(
         if name in CONVERGENCE_TARGET_NAMES
     }
     budget_targets = {
-        name: passed
-        for name, passed in targets.items()
-        if name in BUDGET_TARGET_NAMES
+        name: passed for name, passed in targets.items() if name in BUDGET_TARGET_NAMES
     }
     # Anything neither budget nor convergence still hard-fails --enforce.
     # The set is intentionally empty today; it exists so a future target
@@ -152,10 +149,16 @@ BUDGET_TARGET_DETAILS: dict[str, dict[str, Any]] = {
     },
     # The planner packs shards to a 19-minute predicted budget
     # (COMMON_SHARD_BUDGET_MS in build_playwright_shards.py); 1500 s is that
-    # promise plus tail headroom. The hang-protection `timeout … 30m` wrapper
-    # in playwright-e2e-reusable.yml sits well above this on purpose: a shard
-    # between 25 and 30 minutes breaches the budget (signal) but still
-    # finishes, uploads results, and keeps the run green if tests passed.
+    # promise plus tail headroom. The hang-protection `timeout … 60m` wrapper
+    # in playwright-e2e-reusable.yml sits far above this on purpose: a shard
+    # over 25 minutes breaches the budget (signal) but still finishes, uploads
+    # results, and keeps the run green if tests passed. These two targets are
+    # the "this shard is too slow" alert — they annotate the run and upsert the
+    # tracked issue "Playwright CI over time budget". The wrapper is not an
+    # alert and must never be used as one: killing a slow shard destroys its
+    # blob report, so its tests read as never-executed and the merge-queue
+    # batch is ejected with no record of what passed (2026-09-04: 584 of 4464
+    # tests lost, 0 test failures, 27 batches ejected).
     "executionAtMostTwentyFiveMinutes": {
         "label": "Maximum shard execution",
         "phase_field": "executionSeconds",
@@ -193,16 +196,13 @@ def offending_shards(
     )
 
 
-def describe_failed_target(
-    name: str, phases: list[dict[str, Any]]
-) -> str:
+def describe_failed_target(name: str, phases: list[dict[str, Any]]) -> str:
     detail = BUDGET_TARGET_DETAILS.get(name)
     shards = offending_shards(phases, name)
     if not detail or not shards:
         return name
     top = ", ".join(
-        f"{shard['shardId']} {shard['value']} {detail['unit']}"
-        for shard in shards[:5]
+        f"{shard['shardId']} {shard['value']} {detail['unit']}" for shard in shards[:5]
     )
     suffix = f" (+{len(shards) - 5} more)" if len(shards) > 5 else ""
     return (
@@ -253,6 +253,23 @@ def main() -> None:
     static_bytes = sum(int(shard.get("staticBytes", 0)) for shard in requests)
     api_server_ms = sum(int(shard.get("apiServerMs", 0)) for shard in requests)
     static_server_ms = sum(int(shard.get("staticServerMs", 0)) for shard in requests)
+    latency_shards = [shard for shard in requests if "apiLatency" in shard]
+    api_latency = merge_latency_histograms(
+        shard["apiLatency"] for shard in latency_shards
+    )
+    endpoint_histograms: dict[str, list[dict]] = {}
+    for shard in latency_shards:
+        for route, histogram in shard.get("apiEndpointLatency", {}).items():
+            endpoint_histograms.setdefault(route, []).append(histogram)
+    api_statuses: Counter[str] = Counter()
+    for shard in requests:
+        api_statuses.update(
+            {
+                status: int(count)
+                for status, count in shard.get("statuses", {}).items()
+                if status.startswith("api:")
+            }
+        )
     app_boots = sum(int(shard.get("appBoots", 0)) for shard in requests)
     ui_scenarios = sum(int(shard.get("uiScenarios", 0)) for shard in requests)
     app_entry_requests = sum(
@@ -302,21 +319,40 @@ def main() -> None:
         "staticBytes": static_bytes,
         "apiServerMs": api_server_ms,
         "staticServerMs": static_server_ms,
+        "apiRequestsPerAttempt": round(api_requests / stability_attempts, 2)
+        if stability_attempts
+        else None,
+        "meanApiServerMs": round(api_server_ms / api_requests, 2)
+        if api_requests
+        else None,
+        "apiLatency": api_latency,
+        "requestMetricShards": len(requests),
+        "latencyMetricShards": len(latency_shards),
+        "apiServerErrors": sum(
+            count
+            for status, count in api_statuses.items()
+            if status.startswith("api:5")
+        ),
+        "apiRateLimitedRequests": api_statuses["api:429"],
+        "slowApiEndpoints": sorted(
+            [
+                {"endpoint": route, **merge_latency_histograms(histograms)}
+                for route, histograms in endpoint_histograms.items()
+            ],
+            key=lambda item: item["sumMs"],
+            reverse=True,
+        )[:20],
         "appBoots": app_boots,
         "uiScenarios": ui_scenarios,
         "appEntryRequests": app_entry_requests,
         "requestsPerAttempt": (
-            round(total_requests / stability_attempts, 2)
-            if stability_attempts
-            else 0.0
+            round(total_requests / stability_attempts, 2) if stability_attempts else 0.0
         ),
         "staticRequestsPerAppBoot": (
             round(static_requests / app_boots, 2) if app_boots else 0.0
         ),
         "appBootsPerAttempt": (
-            round(app_boots / stability_attempts, 2)
-            if stability_attempts
-            else 0.0
+            round(app_boots / stability_attempts, 2) if stability_attempts else 0.0
         ),
         "appBootsPerUIScenario": (
             round(app_boots / ui_scenarios, 2) if ui_scenarios else 0.0
@@ -378,9 +414,7 @@ def main() -> None:
             app_boots, ui_scenarios, app_entry_requests
         ),
     }
-    blocking_targets, budget_targets, convergence_targets = classify_targets(
-        targets
-    )
+    blocking_targets, budget_targets, convergence_targets = classify_targets(targets)
     failed_budget_details = {
         name: {
             "label": BUDGET_TARGET_DETAILS[name]["label"],

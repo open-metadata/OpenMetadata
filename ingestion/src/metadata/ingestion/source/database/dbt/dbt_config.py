@@ -17,8 +17,8 @@ import os
 import re
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from functools import singledispatch
-from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 import requests
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
@@ -369,7 +369,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
         raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")  # noqa: B904
 
 
-def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:  # noqa: UP006
+def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
     """
@@ -407,8 +407,8 @@ def _has_date_pattern(directory: str) -> bool:
 
 
 def _filter_latest_per_project(
-    blob_grouped_by_directory: Dict[str, List[str]],  # noqa: UP006
-) -> Dict[str, List[str]]:  # noqa: UP006
+    blob_grouped_by_directory: dict[str, list[str]],
+) -> dict[str, list[str]]:
     """
     When multiple timestamped run directories exist under the same project
     (e.g. project/target_2025-04-19/manifest.json, project/target_2025-04-20/manifest.json),
@@ -425,8 +425,8 @@ def _filter_latest_per_project(
         return blob_grouped_by_directory
 
     # Separate dated dirs (candidates for filtering) from non-dated dirs (always kept)
-    project_to_dated_dirs: Dict[str, List[str]] = defaultdict(list)  # noqa: UP006
-    filtered: Dict[str, List[str]] = {}  # noqa: UP006
+    project_to_dated_dirs: dict[str, list[str]] = defaultdict(list)
+    filtered: dict[str, list[str]] = {}
 
     for directory in blob_grouped_by_directory:  # noqa: PLC0206
         if _has_date_pattern(directory):
@@ -455,7 +455,7 @@ def download_dbt_files(
     blob_grouped_by_directory: dict,
     config,
     client,
-    bucket_name: Optional[str],  # noqa: UP045
+    bucket_name: str | None,
 ) -> Iterable[DbtFiles]:
     """
     Method to download the files from sources
@@ -822,7 +822,7 @@ def _(config: DbtAzureConfig):
         raise DBTConfigException(f"Error fetching dbt files from Azure: {exc}")  # noqa: B904
 
 
-def get_dbt_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
+def get_dbt_prefix_config(config) -> tuple[str | None, str | None]:
     """
     Return (bucket, prefix) tuple
     """

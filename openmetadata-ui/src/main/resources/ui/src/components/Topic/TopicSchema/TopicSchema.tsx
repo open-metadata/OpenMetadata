@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import { Col, Row, Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -25,6 +26,10 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
@@ -49,6 +54,7 @@ import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -71,8 +77,8 @@ import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityA
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
-import Table from '../../common/Table/Table';
 import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -150,19 +156,28 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [currentVersionData, isVersionView, topicDetails]
   );
 
+  // Consumer via useGenericContext() (Task 8 rule 2). Ungated: `isReadOnly` above
+  // (currentVersionData or topicDetails.deleted) is passed separately to each
+  // TableDescription/TableTags render site below, never folded into these edit
+  // flags in the old code — same isReadOnly-vs-deleted separation as the sibling
+  // SearchIndexFieldsTab/SchemaTable family. All 3 raw `EditAll || EditField`
+  // OR-expressions are explicit-deny-wins fixes.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+
   const {
     hasDescriptionEditAccess,
     hasTagEditAccess,
     hasGlossaryTermEditAccess,
   } = useMemo(
     () => ({
-      hasDescriptionEditAccess:
-        permissions.EditAll || permissions.EditDescription,
-      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
-      hasGlossaryTermEditAccess:
-        permissions.EditAll || permissions.EditGlossaryTerms,
+      hasDescriptionEditAccess: flags.canEditDescription,
+      hasTagEditAccess: flags.canEditTags,
+      hasGlossaryTermEditAccess: flags.canEditGlossaryTerms,
     }),
-    [permissions]
+    [flags]
   );
 
   const schemaAllRowKeys = useMemo(() => {
@@ -459,80 +474,121 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     messageSchema?.schemaFields,
   ]);
 
+  const hasNoSchemaContent =
+    isEmpty(messageSchema?.schemaFields) && isEmpty(messageSchema?.schemaText);
+
+  const renderSchemaTypeBadge = () => {
+    if (!messageSchema?.schemaType) {
+      return null;
+    }
+
+    return (
+      <Col>
+        <Typography.Text type="secondary">{t('label.schema')}</Typography.Text>
+        {schemaTypePlaceholder ?? (
+          <Tag className="ml-4">{messageSchema.schemaType}</Tag>
+        )}
+      </Col>
+    );
+  };
+
+  const renderViewToggle = () => {
+    if (isEmpty(messageSchema?.schemaFields) || isVersionView) {
+      return null;
+    }
+
+    return (
+      <Col span={24}>
+        <ButtonGroup
+          disallowEmptySelection
+          className={SEGMENT_TOGGLE_GROUP_CLASS}
+          selectedKeys={[viewType]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const selected = [...keys][0];
+            if (selected) {
+              setViewType(selected as SchemaViewType);
+            }
+          }}>
+          {viewTypeOptions.map(({ label, value }) => (
+            <ButtonGroupItem
+              className={SEGMENT_TOGGLE_ITEM_CLASS}
+              id={value}
+              key={value}>
+              {label}
+            </ButtonGroupItem>
+          ))}
+        </ButtonGroup>
+      </Col>
+    );
+  };
+
+  const renderSchemaContent = () => {
+    const showTextView =
+      viewType === SchemaViewType.TEXT || isEmpty(messageSchema?.schemaFields);
+
+    if (showTextView) {
+      return messageSchema?.schemaText ? (
+        <SchemaEditor
+          className="custom-code-mirror-theme custom-query-editor"
+          editorClass={classNames('table-query-editor')}
+          mode={{ name: CSMode.JAVASCRIPT }}
+          options={{
+            styleActiveLine: false,
+          }}
+          value={messageSchema?.schemaText ?? ''}
+        />
+      ) : null;
+    }
+
+    return (
+      <Table
+        className={classNames('align-table-filter-left', className)}
+        columns={columns}
+        data-testid="topic-schema-fields-table"
+        dataSource={filteredSchemaFields}
+        defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
+        expandable={{
+          ...getTableExpandableConfig<Field>(false, 'text-link-color'),
+          rowExpandable: (record) => !isEmpty(record.children),
+          onExpandedRowsChange: handleExpandedRowsChange,
+          expandedRowKeys,
+        }}
+        extraTableFilters={
+          <ToggleExpandButton
+            allRowKeys={schemaAllRowKeys}
+            expandedRowKeys={expandedRowKeys}
+            toggleExpandAll={toggleExpandAll}
+          />
+        }
+        pagination={false}
+        rowClassName={getRowClassName}
+        rowKey="fullyQualifiedName"
+        scroll={TABLE_SCROLL_VALUE}
+        size="small"
+        staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
+      />
+    );
+  };
+
+  const renderSchemaBody = () => {
+    if (hasNoSchemaContent) {
+      return <ErrorPlaceHolder />;
+    }
+
+    return (
+      <>
+        {renderViewToggle()}
+        <Col span={24}>{renderSchemaContent()}</Col>
+      </>
+    );
+  };
+
   return (
     <Row gutter={[16, 16]}>
-      {messageSchema?.schemaType && (
-        <Col>
-          <Typography.Text type="secondary">
-            {t('label.schema')}
-          </Typography.Text>
-          {schemaTypePlaceholder ?? (
-            <Tag className="ml-4">{messageSchema.schemaType}</Tag>
-          )}
-        </Col>
-      )}
-      {isEmpty(messageSchema?.schemaFields) &&
-      isEmpty(messageSchema?.schemaText) ? (
-        <ErrorPlaceHolder />
-      ) : (
-        <>
-          {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (
-            <Col span={24}>
-              <Segmented
-                className="segment-toggle"
-                options={viewTypeOptions}
-                value={viewType}
-                onChange={(value) => setViewType(value as SchemaViewType)}
-              />
-            </Col>
-          )}
-
-          <Col span={24}>
-            {viewType === SchemaViewType.TEXT ||
-            isEmpty(messageSchema?.schemaFields) ? (
-              messageSchema?.schemaText && (
-                <SchemaEditor
-                  className="custom-code-mirror-theme custom-query-editor"
-                  editorClass={classNames('table-query-editor')}
-                  mode={{ name: CSMode.JAVASCRIPT }}
-                  options={{
-                    styleActiveLine: false,
-                  }}
-                  value={messageSchema?.schemaText ?? ''}
-                />
-              )
-            ) : (
-              <Table
-                className={classNames('align-table-filter-left', className)}
-                columns={columns}
-                data-testid="topic-schema-fields-table"
-                dataSource={filteredSchemaFields}
-                defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
-                expandable={{
-                  ...getTableExpandableConfig<Field>(false, 'text-link-color'),
-                  rowExpandable: (record) => !isEmpty(record.children),
-                  onExpandedRowsChange: handleExpandedRowsChange,
-                  expandedRowKeys,
-                }}
-                extraTableFilters={
-                  <ToggleExpandButton
-                    allRowKeys={schemaAllRowKeys}
-                    expandedRowKeys={expandedRowKeys}
-                    toggleExpandAll={toggleExpandAll}
-                  />
-                }
-                pagination={false}
-                rowClassName={getRowClassName}
-                rowKey="fullyQualifiedName"
-                scroll={TABLE_SCROLL_VALUE}
-                size="small"
-                staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-                onChange={handleTableChange}
-              />
-            )}
-          </Col>
-        </>
-      )}
+      {renderSchemaTypeBadge()}
+      {renderSchemaBody()}
       {editFieldDescription && (
         <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}

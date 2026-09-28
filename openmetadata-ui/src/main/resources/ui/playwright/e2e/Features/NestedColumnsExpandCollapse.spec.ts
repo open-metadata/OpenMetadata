@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
+import { test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
@@ -26,6 +27,7 @@ import {
   verifyExpandCollapseForSummaryPanel,
   verifyExpandCollapseNoDuplication,
 } from '../../utils/nestedColumnUpdatesUtils';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -145,11 +147,13 @@ test.describe('Table Profiler Tab - Nested columns with duplicate names', () => 
     await redirectToHomePage(page);
     await entityData.visitPage(page);
     await page.getByTestId('profiler').click();
-    const columnProfileResponse = page.waitForResponse(
+    const columnProfileResponse = waitForResponseWithStatus(
+      page,
       (response) =>
+        response.request().method() === 'GET' &&
         response.url().includes('/columns') &&
-        response.url().includes('fields=profile') &&
-        response.status() === 200
+        response.url().includes('fields=profile'),
+      200
     );
     await page.getByRole('tab', { name: 'Column Profile' }).click();
     await columnProfileResponse;

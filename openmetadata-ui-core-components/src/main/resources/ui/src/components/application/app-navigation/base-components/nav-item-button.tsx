@@ -51,7 +51,7 @@ export const NavItemButton = ({
         <a
           aria-label={label}
           className={cx(
-            'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:bg-primary tw:p-2 tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+            'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:bg-primary tw:dark:bg-transparent tw:p-2 tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
             current &&
               'tw:bg-active tw:text-fg-quaternary_hover tw:hover:bg-secondary_hover',
             styles[size].root,

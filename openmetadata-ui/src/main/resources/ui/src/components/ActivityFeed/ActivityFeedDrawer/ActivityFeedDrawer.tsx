@@ -24,6 +24,8 @@ import TaskPanelHeader from '../ActivityFeedPanel/TaskPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-drawer.less';
 
+const ACTIVITY_FEED_DRAWER_CLASS = 'activity-feed-drawer';
+
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
     import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
@@ -59,7 +61,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   if (selectedTask) {
     return (
       <Drawer
-        className={classNames('activity-feed-drawer', className)}
+        className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
         closable={false}
         open={open}
         title={
@@ -88,7 +90,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   if (selectedActivity) {
     return (
       <Drawer
-        className={classNames('activity-feed-drawer', className)}
+        className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
         closable={false}
         open={open}
         title={
@@ -115,7 +117,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
 
   return (
     <Drawer
-      className={classNames('activity-feed-drawer', className)}
+      className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
       closable={false}
       open={open}
       title={

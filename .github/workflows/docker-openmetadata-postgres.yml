@@ -20,6 +20,9 @@ on:
         description: "Do you want to update docker image latest tag as well ?"
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest

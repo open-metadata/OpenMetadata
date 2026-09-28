@@ -15,7 +15,7 @@ Validator for column values to be between test case
 
 from collections import defaultdict
 from datetime import datetime
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 import pandas as pd
 
@@ -57,7 +57,7 @@ class ColumnValuesToBeBetweenValidator(
 ):
     """Validator for column values to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | None:
         """compute result of the test case
 
         Args:
@@ -79,7 +79,7 @@ class ColumnValuesToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for values to be between with proper aggregation
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -253,8 +253,10 @@ class ColumnValuesToBeBetweenValidator(
                 pre_processor=convert_timestamp,
             )
         else:
-            min_bound = self.get_min_bound("minValue")
-            max_bound = self.get_max_bound("maxValue")
+            # The verdict is taken against the window the failure threshold widened into, so the
+            # failed rows are filtered with it too: a value the tolerance accepted is not a failure
+            # and has no business showing up in the sample.
+            min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         filters = []
         if min_bound is not None:
             filters.append(f"{column.name} < {min_bound}")

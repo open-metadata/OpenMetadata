@@ -79,9 +79,10 @@ import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
@@ -101,11 +102,11 @@ import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
 import {
   ColumnsType,
   ExpandableConfig,
 } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
@@ -208,25 +209,20 @@ const SchemaTable = () => {
     [fqn]
   );
 
+  // Named-flag derivation (Task 8): `tablePermissions` is the raw OperationPermission read
+  // off useGenericContext(). Every field below was a raw `(EditX || EditAll) && !deleted` OR
+  // — kept under its original local name (consumed throughout this file) but now sourced from
+  // the prioritized named flag, a documented explicit-deny-wins fix (Task 6 Finding 1 /
+  // Task 8 Batch 2 precedent): an explicit `EditX: false` now wins over a bare
+  // `EditAll: true` grant, where the old raw OR granted regardless.
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editDisplayNamePermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditDisplayName: editDisplayNamePermission,
+    canEditAll,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
-      editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
-      editDisplayNamePermission:
-        (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
-        !deleted,
-    }),
+    () => getDerivedPermissionFlags(tablePermissions, deleted),
     [tablePermissions, deleted]
   );
 
@@ -667,10 +663,12 @@ const SchemaTable = () => {
         key: 'name',
         label: (
           <span data-testid="sort-alphabetical">
+            {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
             {t('label.alphabetical')} (A → Z)
           </span>
         ),
         icon:
+          // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
           sortBy === 'name' ? <span className="text-primary">✓</span> : null,
       },
       {
@@ -682,6 +680,7 @@ const SchemaTable = () => {
         ),
         icon:
           sortBy === 'ordinalPosition' ? (
+            // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
             <span className="text-primary">✓</span>
           ) : null,
       },
@@ -726,7 +725,7 @@ const SchemaTable = () => {
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
                 )}
                 data-testid="column-name">
-                {stringToHTML(highlightSearchText(name, searchText))}
+                {renderHighlightedText(highlightSearchText(name, searchText))}
               </Typography.Text>
             </div>
             <div className="d-flex items-center">
@@ -763,7 +762,7 @@ const SchemaTable = () => {
             <Typography.Text
               className="m-b-0 d-block break-word"
               data-testid="column-display-name">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </Typography.Text>
@@ -1030,10 +1029,7 @@ const SchemaTable = () => {
                   {t('label.sort')}
                 </Button>
               </Dropdown>
-              {getBulkEditButton(
-                tablePermissions.EditAll && !deleted,
-                handleEditTable
-              )}
+              {getBulkEditButton(canEditAll, handleEditTable)}
             </div>
           }
           loading={columnsLoading}

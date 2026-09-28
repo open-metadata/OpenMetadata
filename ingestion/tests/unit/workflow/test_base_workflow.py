@@ -8,16 +8,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Validate the logic and status handling of the base workflow
-"""
+"""Validate the logic and status handling of the base workflow."""
 
-from typing import Iterable, Tuple  # noqa: UP035
+import json
+import uuid
+from collections.abc import Iterable
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.cli.common import execute_workflow
+from metadata.cmd import metadata as metadata_cli
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -33,6 +36,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -113,6 +122,20 @@ class SimpleSink(Sink):
         """Nothing to do"""
 
 
+class OkSink(Sink):
+    """Sink that never produces failures — every element succeeds."""
+
+    def _run(self, element: int) -> Either:
+        return Either(right=element)
+
+    @classmethod
+    def create(cls, _: dict, __: OpenMetadataConnection) -> "OkSink":
+        return cls()
+
+    def close(self) -> None:
+        """Nothing to do"""
+
+
 class SimpleWorkflow(IngestionWorkflow):
     """
     Simple Workflow for testing
@@ -121,7 +144,15 @@ class SimpleWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = SimpleSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
+
+
+class OkWorkflow(IngestionWorkflow):
+    """Workflow wired to OkSink — produces zero failures."""
+
+    def set_steps(self):
+        self.source = SimpleSource()
+        self.steps: tuple[Step] = (OkSink(),)
 
 
 class BrokenWorkflow(IngestionWorkflow):
@@ -132,10 +163,9 @@ class BrokenWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = BrokenSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
 
 
-# Pass only the required details so that the workflow can be initialized
 config = OpenMetadataWorkflowConfig(
     source=Source(
         type="simple",
@@ -199,6 +229,81 @@ class TestBaseWorkflow(TestCase):
         )
 
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
+
+
+def _self_registration_workflow(source_config: SourceConfig) -> SimpleWorkflow:
+    workflow_config = config.model_copy(
+        update={"source": config.source.model_copy(update={"type": "mysql", "sourceConfig": source_config})},
+        deep=True,
+    )
+
+    metadata = MagicMock()
+    metadata.config.forceEntityOverwriting = True
+    with patch("metadata.workflow.base.create_ometa_client", return_value=metadata):
+        workflow = SimpleWorkflow(config=workflow_config)
+
+    workflow.config = workflow_config.model_copy(
+        update={"ingestionPipelineFQN": "test-service.self-registered-pipeline"}
+    )
+    workflow.metadata.get_by_name.return_value = None
+    return workflow
+
+
+def _self_registration_request(source_config):
+    workflow = _self_registration_workflow(SourceConfig(config=source_config))
+    with patch.object(
+        workflow,
+        "_get_ingestion_pipeline_service",
+        return_value=SimpleNamespace(id=uuid.uuid4()),
+    ):
+        workflow.get_or_create_ingestion_pipeline()
+
+    return workflow.metadata.create_or_update.call_args.args[0]
+
+
+def test_self_registration_serializes_default_source_config_type():
+    source_config = DatabaseServiceMetadataPipeline()
+
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+    request = _self_registration_request(source_config)
+    payload = json.loads(request.model_dump_json(context={"mask_secrets": False}, by_alias=True, exclude_unset=True))
+
+    assert payload["sourceConfig"]["config"]["type"] == "DatabaseMetadata"
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+
+def test_self_registration_marks_default_type_on_a_copy():
+    source_config = SourceConfig(config=DatabaseServiceMetadataPipeline())
+    workflow = _self_registration_workflow(source_config)
+
+    copied_source_config = workflow._source_config_with_explicit_type()
+
+    assert copied_source_config is not source_config
+    assert copied_source_config.config is not source_config.config
+    assert "type" in copied_source_config.config.model_fields_set
+    assert "type" not in source_config.config.model_fields_set
+
+
+def test_self_registration_preserves_raw_source_config_without_copying_or_mutating_it():
+    raw_config = {"type": "DatabaseMetadata", "markDeletedTables": True}
+    source_config = SourceConfig.model_construct(config=raw_config)
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config is raw_config
+
+
+def test_self_registration_does_not_invent_a_missing_model_type():
+    source_config = SourceConfig.model_construct(config=DatabaseServiceMetadataPipeline(type=None))
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config.type is None
 
 
 class TestWorkflowExecuteTeardown:
@@ -408,3 +513,136 @@ class TestWorkflowExecuteTeardown:
             workflow.execute()
 
             mock_step_close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "source_type,pipeline,expected_source_type",
+    [
+        ("mysql", DatabaseServiceMetadataPipeline(), "mysql"),
+        ("mysql", DatabaseServiceProfilerPipeline(), "mysql"),
+        ("mysql-lineage", DatabaseServiceQueryLineagePipeline(), "mysql-lineage"),
+    ],
+    ids=["metadata", "profiler", "lineage"],
+)
+def test_write_status_file_reports_source_type_not_pipeline_type(tmp_path, source_type, pipeline, expected_source_type):
+    source = Source(
+        type=source_type,
+        serviceName="test",
+        serviceConnection={"config": {"type": "Mysql", "username": "user", "hostPort": "localhost:3306"}},
+        sourceConfig=SourceConfig(config=pipeline),
+    )
+    workflow = OkWorkflow(config=config.model_copy(update={"source": source}))
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    assert status_file.exists()
+    payload = json.loads(status_file.read_text())
+
+    assert payload["source_type"] == expected_source_type
+    assert "pipeline_type" not in payload
+    assert payload["ingestion_pipeline_fqn"] is None
+    assert payload["success"] is True
+    assert isinstance(payload["steps"], list)
+    assert len(payload["steps"]) >= 2
+
+
+def test_write_status_file_reports_failure_shape_with_sink_errors(tmp_path):
+    workflow = SimpleWorkflow(config=config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+
+    assert isinstance(payload["steps"], list)
+    assert len(payload["steps"]) >= 2
+    sink_steps_with_failures = [s for s in payload["steps"] if s.get("failures")]
+    assert len(sink_steps_with_failures) >= 1
+    assert payload["success"] is False
+
+
+def test_write_status_file_reports_failure_when_source_fails(tmp_path):
+    workflow = BrokenWorkflow(config=config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+    assert payload["success"] is False
+
+
+def test_write_status_file_includes_ingestion_pipeline_fqn(tmp_path):
+    fqn_config = config.model_copy(update={"ingestionPipelineFQN": "test_service.test_pipeline"})
+    workflow = SimpleWorkflow(config=fqn_config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+
+    assert payload["ingestion_pipeline_fqn"] == "test_service.test_pipeline"
+
+
+@pytest.mark.parametrize("raise_on_error", [True, False])
+def test_execute_workflow_fails_when_status_file_cannot_be_written(tmp_path, raise_on_error):
+    workflow = OkWorkflow(config=config)
+
+    with pytest.raises(IsADirectoryError) as error:
+        execute_workflow(
+            workflow,
+            {"workflowConfig": {"raiseOnError": raise_on_error}},
+            status_file=tmp_path,
+        )
+
+    assert error.value.filename == str(tmp_path)
+
+
+def test_execute_workflow_preserves_execution_error_when_status_write_also_fails(tmp_path):
+    class FailingWorkflow(OkWorkflow):
+        def execute_internal(self):
+            raise RuntimeError("source execution failed")
+
+    workflow = FailingWorkflow(config=config)
+
+    with pytest.raises(IsADirectoryError) as error:
+        execute_workflow(workflow, {}, status_file=tmp_path)
+
+    assert isinstance(error.value.__context__, RuntimeError)
+    assert str(error.value.__context__) == "source execution failed"
+
+
+@pytest.mark.parametrize("workflow_class,success", [(OkWorkflow, True), (SimpleWorkflow, False)])
+@pytest.mark.parametrize("status_writable", [True, False])
+def test_ingest_dbt_cli_status_file_contract(tmp_path, workflow_class, success, status_writable):
+    project = tmp_path / "my_dbt_project"
+    target = project / "target"
+    target.mkdir(parents=True)
+    (target / "manifest.json").write_text("{}")
+    (project / "dbt_project.yml").write_text(
+        "name: my_project\nvars:\n"
+        "  openmetadata_host_port: http://localhost:8585/api\n"
+        "  openmetadata_jwt_token: placeholder\n"
+        "  openmetadata_service_name: my_service\n"
+    )
+    status_path = tmp_path / "status.json" if status_writable else tmp_path
+    workflow = workflow_class(config=config)
+
+    with patch("metadata.cli.ingest_dbt.MetadataWorkflow.create", return_value=workflow):
+        args = ["ingest-dbt", "-c", str(project), "--status-file", str(status_path)]
+        if success and status_writable:
+            metadata_cli(args)
+        else:
+            with pytest.raises(SystemExit) as error:
+                metadata_cli(args)
+            assert error.value.code == 1
+
+    if status_writable:
+        payload = json.loads(status_path.read_text())
+        assert payload["success"] is success
+        failures = [failure for step in payload["steps"] for failure in step["failures"] or []]
+        assert [failure["name"] for failure in failures] == ([] if success else ["bum"])

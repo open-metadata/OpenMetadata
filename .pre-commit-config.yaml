@@ -61,7 +61,7 @@ repos:
         entry: scripts/check-ui-format.sh
         language: script
         files: ^(openmetadata-ui/src/main/resources/ui/(src|playwright)|openmetadata-ui-core-components/src/main/resources/ui/src)/.*\.(ts|tsx|js|jsx|json)$
-        exclude: /generated/
+        exclude: /(generated|jsons)/
         require_serial: true
       - id: ui-license-header
         name: Apache-2.0 license header (UI)

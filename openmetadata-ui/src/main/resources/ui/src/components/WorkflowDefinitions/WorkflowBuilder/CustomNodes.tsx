@@ -22,8 +22,10 @@ import { CustomNodeData } from '../../../interface/WorkflowBuilder.interface';
 import { getCanvasNodeIcon } from '../../../utils/NodeIconUtils';
 import { getDisplayLabelFromSubType } from '../../../utils/NodeUtils';
 
+const TRANSLATE_Y_CENTER = 'translateY(-50%)';
+
 const HANDLE_CLASS_NAME =
-  'tw:!w-2.5 tw:!h-2.5 tw:!border-2 tw:!border-brand-solid tw:!bg-primary';
+  'tw:!w-2.5 tw:!h-2.5 tw:!border-2 tw:!border-brand-solid tw:!bg-raised';
 
 export const StartNode: React.FC<NodeProps<CustomNodeData>> = () => {
   const { t } = useTranslation();
@@ -52,7 +54,7 @@ export const StartNode: React.FC<NodeProps<CustomNodeData>> = () => {
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />
@@ -73,7 +75,7 @@ export const EndNode: React.FC<NodeProps<CustomNodeData>> = () => {
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
@@ -120,13 +122,13 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
 
       <div className="tw:p-3 tw:rounded-lg tw:flex tw:items-center tw:gap-2">
-        <div className="tw:w-4 tw:h-4 tw:bg-primary tw:rounded-sm tw:flex tw:items-center tw:justify-center">
+        <div className="tw:w-4 tw:h-4 tw:bg-surface tw:rounded-sm tw:flex tw:items-center tw:justify-center">
           {getCanvasNodeIcon(data.subType, {
             style: { width: '16px', height: '16px' },
           })}
@@ -153,7 +155,7 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />
@@ -186,12 +188,12 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
       <div className="tw:px-4 tw:py-3 tw:rounded-lg tw:flex tw:items-center tw:gap-2">
-        <div className="tw:w-4 tw:h-4 tw:bg-primary tw:rounded-sm tw:flex tw:items-center tw:justify-center">
+        <div className="tw:w-4 tw:h-4 tw:bg-surface tw:rounded-sm tw:flex tw:items-center tw:justify-center">
           {getCanvasNodeIcon(data.subType, {
             style: { width: '16px', height: '16px' },
           })}
@@ -219,7 +221,7 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />

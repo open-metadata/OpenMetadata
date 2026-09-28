@@ -13,7 +13,9 @@ Preprocessing functions for the classification tasks.
 """
 
 import datetime
-from typing import Any, List, Mapping, Optional, Sequence, Union, cast  # noqa: UP035
+import numbers
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from metadata.utils.logger import pii_logger
 
@@ -23,7 +25,7 @@ MAX_NLP_TEXT_LENGTH = 5_000
 
 
 # pylint: disable=too-many-return-statements
-def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP006, UP007, UP045
+def convert_to_str(value: Any) -> list[str] | str | None:
     """
     Convert the given value to a string. This is a conversion
     tailored to our use case, not a generic one.
@@ -37,7 +39,7 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP00
             )
             return value[:MAX_NLP_TEXT_LENGTH]
         return value
-    if isinstance(value, (int, float, datetime.datetime, datetime.date)):
+    if isinstance(value, (numbers.Number, datetime.datetime, datetime.date)):
         # Values we want to convert to string out of the box
         return str(value)
     if isinstance(value, bytes):
@@ -46,7 +48,7 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP00
     if isinstance(value, (Sequence, Mapping)):
         if isinstance(value, Mapping):
             value = list(value.values())
-        converted = [convert_to_str(el) for el in cast(List[Any], value)]  # noqa: TC006, UP006
+        converted = [convert_to_str(el) for el in cast(list[Any], value)]  # noqa: TC006
         return [
             item
             for sublist in converted
@@ -59,8 +61,26 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP00
     return None
 
 
-def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
-    result: List[str] = []  # noqa: UP006
+def _is_allcaps_alpha(s: str) -> bool:
+    """Return True for ALL-CAPS strings that contain no digit characters.
+
+    Digits disqualify structured identifiers such as IBANs
+    ("GB82WEST12345698765432") or RAMQ codes ("ABCD12345678") that happen to
+    satisfy str.isupper() but whose uppercase pattern matters for regex
+    recognisers and must not be title-cased.
+    """
+    return bool(s) and s.isupper() and not any(c.isdigit() for c in s)
+
+
+def preprocess_values(values: Sequence[Any]) -> list[str]:
+    """Convert sample column values to a flat list of strings for PII analysis.
+
+    No case normalisation is applied here so that pattern-based recognisers
+    (IBAN, CRYPTO, etc.) always receive the original casing.  Call
+    :func:`ner_normalize_values` on the result when a second NER-friendly pass
+    is needed.
+    """
+    result: list[str] = []
     for value in values:
         converted_value = convert_to_str(value)
         if converted_value is None:
@@ -72,7 +92,22 @@ def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
 
         # skip empty strings
         converted_value = [el.strip() for el in converted_value if el.strip()]
-        # Add the converted value as is, without any further processing
         result.extend(converted_value)
 
     return result
+
+
+def ner_normalize_values(values: list[str]) -> list[str]:
+    """Return a copy of *values* with purely alphabetic ALL-CAPS tokens title-cased.
+
+    spaCy NER models are trained on mixed-case text and miss names like "SERGE"
+    or "THÉODORE".  Tokens that contain digits are left untouched because they
+    may be structured identifiers (IBANs, health card numbers, etc.) whose
+    uppercase pattern is load-bearing for regex recognisers.
+
+    Returns the input list unchanged when no ALL-CAPS alpha tokens are present,
+    so callers can cheaply detect whether a second NER pass is worthwhile by
+    comparing identity (``ner_values is values`` is never True, but
+    ``ner_values == values`` is True when there is nothing to normalise).
+    """
+    return [el.title() if _is_allcaps_alpha(el) else el for el in values]

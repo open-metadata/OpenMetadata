@@ -13,12 +13,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -28,26 +31,65 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 
 @ExtendWith(TestNamespaceExtension.class)
+@Isolated("Owns the global retry queue and application worker lifecycle")
 @Execution(ExecutionMode.SAME_THREAD)
 class SearchIndexRetryQueueIT {
 
   private static CollectionDAO collectionDAO;
   private static SearchIndexRetryQueueDAO retryQueueDAO;
   private static SearchRepository searchRepository;
+  private static SearchIndexRetryWorker applicationRetryWorker;
 
   @BeforeAll
-  static void setupAll() {
+  static void setupAll() throws Exception {
     SdkClients.adminClient();
     collectionDAO = Entity.getCollectionDAO();
     retryQueueDAO = collectionDAO.searchIndexRetryQueueDAO();
     searchRepository = Entity.getSearchRepository();
+    applicationRetryWorker = pauseApplicationRetryWorker();
+  }
+
+  @AfterAll
+  static void resumeApplicationRetryWorker() {
+    if (applicationRetryWorker != null) {
+      applicationRetryWorker.start();
+      applicationRetryWorker = null;
+    }
+  }
+
+  /**
+   * Pauses the always-on {@link SearchIndexRetryWorker} the application registers at startup and
+   * returns it, so {@link #resumeApplicationRetryWorker()} can put it back.
+   *
+   * <p>That worker runs four threads that poll the shared {@code search_index_retry_queue} table
+   * every five seconds and claim <i>every</i> row sitting in PENDING, PENDING_RETRY_1 or
+   * PENDING_RETRY_2 — flipping it to IN_PROGRESS, then deleting it once processed. The tests below
+   * write rows in exactly those statuses and read them straight back, so the worker takes them in
+   * the window between the write and the read and the read finds nothing:
+   * {@code java.util.NoSuchElementException: No value present}.
+   *
+   * <p>Nothing here needs it running: the worker tests construct and start their own worker, and
+   * the DAO-level tests want no worker at all. Pausing it for the duration of the class is what
+   * makes them deterministic instead of timing-dependent.
+   */
+  private static SearchIndexRetryWorker pauseApplicationRetryWorker() {
+    SearchIndexRetryWorker worker =
+        TestSuiteBootstrap.findManagedObject(SearchIndexRetryWorker.class)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "The application registered no SearchIndexRetryWorker. These tests pause "
+                            + "it to keep their assertions deterministic; without it they race the "
+                            + "worker for rows in the shared retry queue."));
+    worker.stop();
+    return worker;
   }
 
   @BeforeEach
@@ -72,22 +114,48 @@ class SearchIndexRetryQueueIT {
     String entityFqn = ns.prefix("rq") + ".testEntity";
 
     retryQueueDAO.upsert(
-        entityId, entityFqn, "test failure reason", SearchIndexRetryQueue.STATUS_PENDING, "table");
+        entityId,
+        entityFqn,
+        "test failure reason",
+        SearchIndexRetryQueue.STATUS_COMPLETED,
+        "table");
 
     List<SearchIndexRetryRecord> records =
-        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_COMPLETED, 1000);
     assertTrue(records.stream().anyMatch(r -> r.getEntityId().equals(entityId)));
 
     SearchIndexRetryRecord record =
         records.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
     assertEquals(entityFqn, record.getEntityFqn());
     assertEquals("test failure reason", record.getFailureReason());
-    assertEquals(SearchIndexRetryQueue.STATUS_PENDING, record.getStatus());
+    assertEquals(SearchIndexRetryQueue.STATUS_COMPLETED, record.getStatus());
     assertEquals("table", record.getEntityType());
     assertEquals(0, record.getRetryCount());
     assertNull(record.getClaimedAt());
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
+  void testPendingRecordIsStableWithoutAWorker(TestNamespace ns) {
+    final String entityId = UUID.randomUUID().toString();
+    final String entityFqn = ns.prefix("unclaimed");
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "pending", SearchIndexRetryQueue.STATUS_PENDING, "table");
+    try {
+      Awaitility.await("DAO tests own the retry queue until they start a worker")
+          .during(Duration.ofSeconds(6))
+          .atMost(Duration.ofSeconds(8))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      retryQueueDAO
+                          .findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000)
+                          .stream()
+                          .anyMatch(record -> record.getEntityId().equals(entityId))));
+    } finally {
+      retryQueueDAO.deleteByEntity(entityId, entityFqn);
+    }
   }
 
   @Test
@@ -914,11 +982,11 @@ class SearchIndexRetryQueueIT {
   // ---------------------------------------------------------------------------
 
   /**
-   * A row enqueued for an unresolvable/deleted entity is "handled" once ANY worker (this test's
-   * worker or the always-on application worker sharing the global queue) has touched it: the row is
-   * either gone (the success path after remove-stale) or no longer sitting untouched in its initial
-   * PENDING state. The row counts as untouched only while it is still PENDING with retryCount 0 and
-   * no claimedAt — so this still fails if no worker ever processes the row.
+   * A row enqueued for an unresolvable/deleted entity is "handled" once the worker this test
+   * started has touched it: the row is either gone (the success path after remove-stale) or no
+   * longer sitting untouched in its initial PENDING state. The row counts as untouched only while
+   * it is still PENDING with retryCount 0 and no claimedAt — so this still fails if no worker ever
+   * processes the row.
    */
   private boolean isHandledByAnyWorker(String entityId) {
     SearchIndexRetryRecord record =

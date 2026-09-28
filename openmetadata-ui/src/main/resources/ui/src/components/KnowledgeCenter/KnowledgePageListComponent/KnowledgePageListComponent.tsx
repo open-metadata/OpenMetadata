@@ -12,34 +12,25 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  MenuProps,
-  Row,
-  Skeleton,
-  Space,
-  Typography,
-} from 'antd';
+import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
+import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import React, {
   forwardRef,
+  ReactNode,
   RefObject,
   useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
   PAGE_SIZE_MEDIUM,
@@ -48,12 +39,12 @@ import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   CreateKnowledgePage,
   KnowledgeCenterPageProps,
@@ -73,6 +64,7 @@ import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
@@ -89,9 +81,200 @@ interface KnowledgePageListComponentProps {
   hideAddButton?: boolean;
   rightPanelSlot?: React.ReactNode;
   searchQuery?: string;
+  quickFilterQuery?: Record<string, unknown>;
+  sortField?: string;
+  restSortField?: string;
+  sortOrder?: 'asc' | 'desc';
   onEmptyStateChange?: (isEmpty: boolean) => void;
   isPermissionsLoading?: boolean;
 }
+
+/** The listing's loading placeholder — four skeleton knowledge cards. */
+const KnowledgePageListSkeleton = () => (
+  <Row data-testid="knowledge-page-skeleton" gutter={[0, 56]}>
+    {Array.from({ length: 4 }).map(() => (
+      <Col className="knowledge-card-col" key={uniqueId()} span={24}>
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Space>
+              <Skeleton avatar paragraph={{ rows: 1 }} title={false} />
+              <Skeleton paragraph={{ rows: 1, width: 150 }} title={false} />
+            </Space>
+          </Col>
+          <Col span={24}>
+            <Skeleton
+              active
+              className="m-b-sm"
+              paragraph={{ rows: 1 }}
+              title={false}
+            />
+            <Skeleton active paragraph={{ rows: 2 }} title={false} />
+          </Col>
+          <Col span={24}>
+            <Space>
+              <Skeleton
+                active
+                paragraph={{ rows: 1, width: 100 }}
+                title={false}
+              />
+              <Skeleton
+                active
+                paragraph={{ rows: 1, width: 100 }}
+                title={false}
+              />
+              <Skeleton
+                active
+                paragraph={{ rows: 1, width: 100 }}
+                title={false}
+              />
+            </Space>
+          </Col>
+        </Row>
+      </Col>
+    ))}
+  </Row>
+);
+
+const KnowledgePageAccessDenied = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <EmptyPlaceholder
+        description={
+          <Transi18next
+            i18nKey="message.no-access-placeholder"
+            renderElement={<b />}
+            values={{
+              entity: t('label.view-entity', {
+                entity: t('label.article-plural'),
+              }),
+            }}
+          />
+        }
+        icon={<Lock className="tw:text-secondary" />}
+        title={t('label.access-denied')}
+      />
+    </div>
+  );
+};
+
+const KnowledgePageNoSearchResults = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:relative tw:min-h-[320px] tw:py-12">
+      <EmptyPlaceholder
+        description={t('message.check-spelling-or-try-different-term')}
+        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        title={t('label.no-matching-results')}
+        variant="blank"
+      />
+    </div>
+  );
+};
+
+interface KnowledgePageEmptyStateProps {
+  addQuickLinkModalElement: ReactNode;
+  hideAddButton: boolean;
+  items: MenuProps['items'];
+  /** Derived Create flag rather than the raw OperationPermission object. */
+  canCreate: boolean;
+  theme: { primaryColor: string };
+}
+
+const KnowledgePageEmptyState = ({
+  addQuickLinkModalElement,
+  hideAddButton,
+  items,
+  canCreate,
+  theme,
+}: KnowledgePageEmptyStateProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
+      <EmptyPlaceholder
+        description={
+          <Transi18next
+            i18nKey="message.refer-to-our-doc"
+            renderElement={
+              <a
+                aria-label={t('label.documentation')}
+                href={KNOWLEDGE_CENTER_DOC_LINK}
+                rel="noreferrer"
+                style={{ color: theme.primaryColor }}
+                target="_blank"
+              />
+            }
+            values={{ doc: t('label.doc-plural-lowercase') }}
+          />
+        }
+        footer={
+          <>
+            {canCreate && !hideAddButton && (
+              <LimitWrapper resource="knowledgeCenter">
+                <Dropdown menu={{ items }} trigger={['click']}>
+                  <Button
+                    ghost
+                    className="p-x-lg"
+                    data-testid="add-knowledge-page-btn"
+                    type="primary">
+                    <PlusOutlined />
+                    {t('label.add')}
+                  </Button>
+                </Dropdown>
+              </LimitWrapper>
+            )}
+            {addQuickLinkModalElement}
+          </>
+        }
+        icon={<Articles className="tw:text-secondary" />}
+        title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+          entity: t('label.article'),
+        })}
+        width={320}
+      />
+    </div>
+  );
+};
+
+type KnowledgePageListViewState =
+  | 'loading'
+  | 'noAccess'
+  | 'noSearchResults'
+  | 'empty'
+  | 'list';
+
+/**
+ * The listing's early-return states are mutually exclusive and checked in
+ * priority order: a load in flight always wins, then access, then the two
+ * empty variants — search-empty first, since an unfiltered empty list is a
+ * different state (offering to create the first page).
+ */
+const resolveKnowledgePageListViewState = (
+  isLoading: boolean,
+  isCreatingNewPage: boolean,
+  isPermissionsLoading: boolean,
+  hasViewPermission: boolean,
+  knowledgePages: KnowledgePage[],
+  isFiltered: boolean
+): KnowledgePageListViewState => {
+  if (isLoading || isCreatingNewPage || isPermissionsLoading) {
+    return 'loading';
+  }
+  if (!hasViewPermission) {
+    return 'noAccess';
+  }
+  if (isEmpty(knowledgePages) && isFiltered) {
+    return 'noSearchResults';
+  }
+  if (isEmpty(knowledgePages)) {
+    return 'empty';
+  }
+
+  return 'list';
+};
 
 const KnowledgePageListComponent = forwardRef<
   KnowledgeCenterPageRef,
@@ -104,6 +287,10 @@ const KnowledgePageListComponent = forwardRef<
       hideAddButton = false,
       rightPanelSlot,
       searchQuery,
+      quickFilterQuery,
+      sortField = 'updatedAt',
+      restSortField,
+      sortOrder = 'desc',
       onEmptyStateChange,
       isPermissionsLoading = false,
     },
@@ -134,43 +321,83 @@ const KnowledgePageListComponent = forwardRef<
     const handleRefreshTagsCategory = (value: boolean) =>
       setRefreshTagsCategory(value);
 
+    // Quick-filter facets are only available through the `page` search index, so
+    // any active text search or filter routes the listing through ES; the plain
+    // REST list serves the unfiltered default view.
+    const hasQueryFilter = !isEmpty(quickFilterQuery);
+    const isFiltered = Boolean(searchQuery) || hasQueryFilter;
+    // Publication-date / popularity sorts have no REST equivalent, so they route
+    // through ES even with no filter (`restSortField` is undefined for them).
+    const useSearchPath = isFiltered || !restSortField;
+
+    // Search/filter/sort changes fire overlapping requests with no cancellation;
+    // only the latest one may commit its results so a slow earlier response can't
+    // overwrite the current sort/filter view.
+    const latestRequestId = useRef(0);
+
+    const fetchFilteredKnowledgePages = async (
+      offset: number,
+      requestId: number
+    ) => {
+      const results = await fetchSearchResults({
+        query: searchQuery || '',
+        pageNumber: offset / PAGE_SIZE_MEDIUM + 1,
+        pageSize: PAGE_SIZE_MEDIUM,
+        searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+        queryFilter: quickFilterQuery,
+        sortField,
+        sortOrder,
+      });
+      if (requestId !== latestRequestId.current) {
+        return;
+      }
+      const hits = results.hits.hits.map((hit) => hit._source as KnowledgePage);
+      setKnowledgePages((prev) =>
+        uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...hits] : hits, 'id')
+      );
+      setPaging({ total: results.hits.total.value });
+    };
+
+    const fetchUnfilteredKnowledgePages = async (
+      offset: number,
+      requestId: number
+    ) => {
+      const { data, paging: pagingObj } = await getListKnowledgePages({
+        fields: getKnowledgePageFields(),
+        limit: PAGE_SIZE_MEDIUM,
+        offset,
+        sortBy: restSortField ?? 'updatedAt',
+        sortOrder,
+      });
+      if (requestId !== latestRequestId.current) {
+        return;
+      }
+      setKnowledgePages((prev) =>
+        uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...data] : data, 'id')
+      );
+      setPaging(pagingObj);
+    };
+
     const fetchKnowledgePages = async (offset = 0) => {
+      const requestId = ++latestRequestId.current;
       if (offset > 0) {
         setIsLoadingMore(true);
       } else {
         setIsLoading(true);
       }
       try {
-        if (searchQuery) {
-          const results = await fetchSearchResults({
-            query: searchQuery,
-            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
-            sortField: 'updatedAt',
-            sortOrder: 'desc',
-            pageSize: PAGE_SIZE_MEDIUM,
-          });
-          setKnowledgePages(
-            results.hits.hits.map((hit) => hit._source as KnowledgePage)
-          );
-          setPaging({ total: results.hits.total.value });
+        if (useSearchPath) {
+          await fetchFilteredKnowledgePages(offset, requestId);
         } else {
-          const { data, paging: pagingObj } = await getListKnowledgePages({
-            fields: getKnowledgePageFields(),
-            limit: PAGE_SIZE_MEDIUM,
-            offset,
-            sortBy: 'updatedAt',
-            sortOrder: 'desc',
-          });
-          setKnowledgePages((prev) =>
-            uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...data] : data, 'id')
-          );
-          setPaging(pagingObj);
+          await fetchUnfilteredKnowledgePages(offset, requestId);
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        if (requestId === latestRequestId.current) {
+          setIsLoading(false);
+          setIsLoadingMore(false);
+        }
       }
     };
 
@@ -300,19 +527,21 @@ const KnowledgePageListComponent = forwardRef<
         const res = await unFollowKnowledgePage(knowledgePageId, USERId);
         const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
-        setKnowledgePages((prevPages) =>
-          map(prevPages, (page) => {
-            if (page.id === knowledgePageId) {
-              return {
-                ...page,
-                followers: (page?.followers ?? []).filter(
-                  (follower) => follower.id !== oldValue[0].id
-                ),
-              };
-            }
+        const removeUnfollowedFollower = (page: KnowledgePage) => {
+          if (page.id === knowledgePageId) {
+            return {
+              ...page,
+              followers: (page?.followers ?? []).filter(
+                (follower) => follower.id !== oldValue[0].id
+              ),
+            };
+          }
 
-            return page;
-          })
+          return page;
+        };
+
+        setKnowledgePages((prevPages) =>
+          map(prevPages, removeUnfollowedFollower)
         );
         setRefreshBookMarkWidget(true);
       } catch (error) {
@@ -332,8 +561,13 @@ const KnowledgePageListComponent = forwardRef<
       );
     };
 
-    const hasViewPermission = useMemo(
-      () => permissions.ViewAll || permissions.ViewBasic,
+    // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+    // component receives as a prop. The old raw OR of `ViewAll`/`ViewBasic` is exactly what
+    // `hasViewAccess` encodes (`Boolean(permissions[ViewBasic] || permissions[ViewAll])`) —
+    // not a prioritized read, a literal semantic match (same precedent as TopicDetailsPage,
+    // Task 7A File 3). `permissions.Create` is a single-key read → `canCreate` (identical).
+    const { hasViewAccess: hasViewPermission, canCreate } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
       [permissions]
     );
 
@@ -347,29 +581,32 @@ const KnowledgePageListComponent = forwardRef<
       } else {
         setIsLoading(false);
       }
-    }, [hasViewPermission, searchQuery, isPermissionsLoading]);
+    }, [
+      hasViewPermission,
+      searchQuery,
+      quickFilterQuery,
+      sortField,
+      restSortField,
+      sortOrder,
+      isPermissionsLoading,
+    ]);
 
     useEffect(() => {
-      if (!isLoading && !isPermissionsLoading && !searchQuery) {
+      if (!isLoading && !isPermissionsLoading && !isFiltered) {
         onEmptyStateChange?.(isEmpty(knowledgePages));
       }
     }, [
       isLoading,
       isPermissionsLoading,
-      searchQuery,
+      isFiltered,
       knowledgePages,
       onEmptyStateChange,
     ]);
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
-      if (
-        isInView &&
-        hasMore &&
-        !isLoadingMore &&
-        !searchQuery &&
-        hasViewPermission
-      ) {
+      const canLoadMore = isInView && hasMore && !isLoadingMore && !isLoading;
+      if (canLoadMore && hasViewPermission) {
         const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);
@@ -379,7 +616,7 @@ const KnowledgePageListComponent = forwardRef<
       paging.total,
       knowledgePages.length,
       isLoadingMore,
-      searchQuery,
+      isLoading,
       hasViewPermission,
     ]);
 
@@ -451,145 +688,36 @@ const KnowledgePageListComponent = forwardRef<
         setKnowledgePages((prevPages) => [knowledgePage, ...prevPages]),
     }));
 
-    if (isLoading || isCreatingNewPage || isPermissionsLoading) {
-      return (
-        <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
-          {Array.from({ length: 4 }).map(() => (
-            <Col className="knowledge-card-col" key={uniqueId()} span={24}>
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
-                  <Space>
-                    <Skeleton avatar paragraph={{ rows: 1 }} title={false} />
-                    <Skeleton
-                      paragraph={{ rows: 1, width: 150 }}
-                      title={false}
-                    />
-                  </Space>
-                </Col>
-                <Col span={24}>
-                  <Skeleton
-                    active
-                    className="m-b-sm"
-                    paragraph={{ rows: 1 }}
-                    title={false}
-                  />
-                  <Skeleton active paragraph={{ rows: 2 }} title={false} />
-                </Col>
-                <Col span={24}>
-                  <Space>
-                    <Skeleton
-                      active
-                      paragraph={{ rows: 1, width: 100 }}
-                      title={false}
-                    />
-                    <Skeleton
-                      active
-                      paragraph={{ rows: 1, width: 100 }}
-                      title={false}
-                    />
-                    <Skeleton
-                      active
-                      paragraph={{ rows: 1, width: 100 }}
-                      title={false}
-                    />
-                  </Space>
-                </Col>
-              </Row>
-            </Col>
-          ))}
-        </Row>
-      );
+    const viewState = resolveKnowledgePageListViewState(
+      isLoading,
+      isCreatingNewPage,
+      isPermissionsLoading,
+      hasViewPermission,
+      knowledgePages,
+      isFiltered
+    );
+
+    if (viewState === 'loading') {
+      return <KnowledgePageListSkeleton />;
     }
 
-    if (!hasViewPermission) {
+    if (viewState === 'noAccess') {
+      return <KnowledgePageAccessDenied />;
+    }
+
+    if (viewState === 'noSearchResults') {
+      return <KnowledgePageNoSearchResults />;
+    }
+
+    if (viewState === 'empty') {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.article-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        <KnowledgePageEmptyState
+          addQuickLinkModalElement={addQuickLinkModalElement}
+          canCreate={canCreate}
+          hideAddButton={hideAddButton}
+          items={items}
+          theme={theme}
         />
-      );
-    }
-
-    if (!isLoading && isEmpty(knowledgePages) && searchQuery) {
-      return (
-        <div className="tw:relative tw:min-h-[320px] tw:py-12">
-          <EmptyPlaceholder
-            description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
-            title={t('label.no-matching-results')}
-            variant="blank"
-          />
-        </div>
-      );
-    }
-
-    if (!isLoading && isEmpty(knowledgePages)) {
-      return (
-        <ErrorPlaceHolder
-          className="border-none"
-          icon={
-            <AddPlaceHolderIcon
-              data-testid="no-data-image"
-              height={SIZE.LARGE}
-              width={SIZE.LARGE}
-            />
-          }
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div
-            className="bg-white h-full flex-center"
-            data-testid="create-error-placeholder-create">
-            <Space
-              align="center"
-              className="w-full"
-              direction="vertical"
-              size={10}>
-              <div className="text-center text-sm font-normal">
-                <Typography.Paragraph>
-                  {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                    entity: t('label.article'),
-                  })}
-                </Typography.Paragraph>
-
-                <Typography.Paragraph>
-                  <Transi18next
-                    i18nKey="message.refer-to-our-doc"
-                    renderElement={
-                      <a
-                        aria-label={t('label.documentation')}
-                        href={KNOWLEDGE_CENTER_DOC_LINK}
-                        rel="noreferrer"
-                        style={{ color: theme.primaryColor }}
-                        target="_blank"
-                      />
-                    }
-                    values={{
-                      doc: t('label.doc-plural-lowercase'),
-                    }}
-                  />
-                </Typography.Paragraph>
-
-                {permissions.Create && !hideAddButton && (
-                  <LimitWrapper resource="knowledgeCenter">
-                    <Dropdown menu={{ items }} trigger={['click']}>
-                      <Button
-                        ghost
-                        className="p-x-lg"
-                        data-testid="add-knowledge-page-btn"
-                        type="primary">
-                        <PlusOutlined />
-                        {t('label.add')}
-                      </Button>
-                    </Dropdown>
-                  </LimitWrapper>
-                )}
-              </div>
-            </Space>
-          </div>
-          {addQuickLinkModalElement}
-        </ErrorPlaceHolder>
       );
     }
 

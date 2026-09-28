@@ -12,7 +12,7 @@
 CSRF Token endpoint to provide token for POST/PUT/DELETE requests
 """
 
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, session
 

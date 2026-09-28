@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { AllStatusTypes, icons } from '../../../constants/StatusBadge.constant';
-import './status-badge.less';
-import { StatusBadgeProps } from './StatusBadge.interface';
+import {
+  AllStatusTypes,
+  icons,
+  STATUS_TYPE_TO_BADGE_COLOR,
+} from '../../../constants/StatusBadge.constant';
+import { StatusBadgeProps, StatusType } from './StatusBadge.interface';
+
+// Test-case results arrive as `failed` (lower-cased TestCaseStatus), not
+// StatusType.Failure; the legacy LESS styled both as the error colour.
+const STATUS_ALIASES: Partial<Record<string, StatusType>> = {
+  failed: StatusType.Failure,
+};
 
 const StatusBadge = ({
   label,
@@ -29,12 +38,17 @@ const StatusBadge = ({
     : undefined;
 
   return (
-    <div
-      className={classNames('status-badge', status, className)}
-      data-testid={dataTestId}>
-      {StatusIcon && <Icon component={StatusIcon} />}
-      <span className={`status-badge-label ${status}`}>{label}</span>
-    </div>
+    <Badge
+      className={classNames('status-badge tw:gap-1', status, className)}
+      color={
+        STATUS_TYPE_TO_BADGE_COLOR[STATUS_ALIASES[status] ?? status] ?? 'gray'
+      }
+      data-testid={dataTestId}
+      size="sm"
+      type="color">
+      {StatusIcon && <StatusIcon height={14} width={14} />}
+      <span className={classNames('status-badge-label', status)}>{label}</span>
+    </Badge>
   );
 };
 

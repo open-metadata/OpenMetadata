@@ -59,7 +59,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 
   const popoverContent = (
     <div className="tw:min-w-0 tw:rounded-lg">
-      <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-gray-200 tw:px-4 tw:py-3 ">
+      <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3 ">
         <Typography
           as="span"
           className="tw:text-sm tw:font-semibold tw:text-primary">
@@ -78,7 +78,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
         <div className="tw:space-y-1.5 tw:w-full tw:pt-4">
           <Typography
             as="span"
-            className="tw:text-xs tw:font-semibold tw:text-gray-500">
+            className="tw:text-xs tw:font-semibold tw:text-quaternary">
             {t('label.layout')}
           </Typography>
           <Select

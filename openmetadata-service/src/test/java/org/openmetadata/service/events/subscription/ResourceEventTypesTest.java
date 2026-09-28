@@ -41,9 +41,6 @@ class ResourceEventTypesTest {
     // #28122 routes a conversation to the alert of the entity the thread is about
     assertTrue(glossaryTerm.contains(EventType.THREAD_CREATED));
     assertTrue(glossaryTerm.contains(EventType.POST_CREATED));
-    // a task thread reaches its parent entity down the same path
-    assertTrue(glossaryTerm.contains(EventType.TASK_RESOLVED));
-    assertTrue(glossaryTerm.contains(EventType.TASK_CLOSED));
   }
 
   @Test
@@ -67,17 +64,12 @@ class ResourceEventTypesTest {
         conversation);
   }
 
+  // A task is an entity like any other since #30909 retired the thread-task model
   @Test
-  void taskDeclaresEntityEventsAndTheLegacyThreadTaskEvents() {
+  void taskDeclaresEntityEvents() {
     List<EventType> task = ResourceEventTypes.forResource(Entity.TASK);
+    assertTrue(task.contains(EventType.ENTITY_CREATED));
     assertTrue(task.contains(EventType.ENTITY_UPDATED));
-    assertTrue(task.contains(EventType.TASK_RESOLVED));
-    assertTrue(task.contains(EventType.TASK_CLOSED));
-  }
-
-  @Test
-  void conversationDeclaresNoTaskEvents() {
-    assertFalse(ResourceEventTypes.forResource("conversation").contains(EventType.TASK_RESOLVED));
   }
 
   @Test
@@ -92,6 +84,19 @@ class ResourceEventTypesTest {
     // reachable only through "all": their entity types are not notification resources
     assertTrue(all.contains(EventType.LOGICAL_TEST_CASE_ADDED));
     assertTrue(all.contains(EventType.ENTITY_LINEAGE_ADDED));
+  }
+
+  @Test
+  void ontologyEventsAreDeclaredByTheirReachableResources() {
+    List<EventType> glossary = ResourceEventTypes.forResource(Entity.GLOSSARY);
+    assertTrue(glossary.contains(EventType.ONTOLOGY_IMPORTED));
+    assertFalse(glossary.contains(EventType.ONTOLOGY_RELATIONSHIP_TYPE_UPDATED));
+    assertFalse(glossary.contains(EventType.ONTOLOGY_CHANGE_SET_APPLIED));
+
+    List<EventType> all = ResourceEventTypes.forResource(ResourceEventTypes.ALL_RESOURCE);
+    assertTrue(all.contains(EventType.ONTOLOGY_IMPORTED));
+    assertTrue(all.contains(EventType.ONTOLOGY_RELATIONSHIP_TYPE_UPDATED));
+    assertTrue(all.contains(EventType.ONTOLOGY_CHANGE_SET_APPLIED));
   }
 
   @Test

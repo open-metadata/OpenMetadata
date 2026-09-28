@@ -47,8 +47,11 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -1111,14 +1114,14 @@ public final class EntityLoader {
   private static List<String> createGlossaryParents(final TestNamespace ns, final int n) {
     final List<String> fqns = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
-      fqns.add(
+      final Glossary glossary =
           SdkClients.adminClient()
               .glossaries()
               .create(
                   new CreateGlossary()
                       .withName(ns.prefix("glossary_parent_" + i))
-                      .withDescription("Loader parent glossary " + i))
-              .getFullyQualifiedName());
+                      .withDescription("Loader parent glossary " + i));
+      fqns.add(ns.trackRoot(Entity.GLOSSARY, glossary).getFullyQualifiedName());
     }
     return fqns;
   }
@@ -1126,14 +1129,14 @@ public final class EntityLoader {
   private static List<String> createClassificationParents(final TestNamespace ns, final int n) {
     final List<String> names = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
-      names.add(
+      final Classification classification =
           SdkClients.adminClient()
               .classifications()
               .create(
                   new CreateClassification()
                       .withName(ns.prefix("classification_parent_" + i))
-                      .withDescription("Loader parent classification " + i))
-              .getName());
+                      .withDescription("Loader parent classification " + i));
+      names.add(ns.trackRoot(Entity.CLASSIFICATION, classification).getName());
     }
     return names;
   }
@@ -1141,15 +1144,15 @@ public final class EntityLoader {
   private static List<String> createDomainParents(final TestNamespace ns, final int n) {
     final List<String> fqns = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
-      fqns.add(
+      final Domain domain =
           SdkClients.adminClient()
               .domains()
               .create(
                   new CreateDomain()
                       .withName(ns.prefix("domain_parent_" + i))
                       .withDomainType(DomainType.AGGREGATE)
-                      .withDescription("Loader parent domain " + i))
-              .getFullyQualifiedName());
+                      .withDescription("Loader parent domain " + i));
+      fqns.add(ns.trackRoot(Entity.DOMAIN, domain).getFullyQualifiedName());
     }
     return fqns;
   }

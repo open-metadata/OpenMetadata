@@ -1,6 +1,8 @@
 import copy
+from collections.abc import Sequence
+from dataclasses import dataclass
 from itertools import groupby
-from typing import List, Optional, Sequence, final  # noqa: UP035
+from typing import final
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -17,11 +19,15 @@ from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadat
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException
+from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
+    combine_patchers,
     date_time_patcher,
+    named_entity_patcher,
 )
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
@@ -40,13 +46,68 @@ TARGET_MAP = {
     recognizer.Target.column_name: tagLabelRecognizerMetadata.Target.column_name,
 }
 
+_NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
+_MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
+
+
+@dataclass(frozen=True)
+class _RecognitionEvidence:
+    value: str
+    result: RecognizerResult
+
+
+def _is_uncontextualized_spacy_named_entity(result: RecognizerResult) -> bool:
+    metadata = result.recognition_metadata or {}
+    return (
+        result.entity_type in _NAMED_ENTITY_TYPES
+        and metadata.get(presidio_constants.RECOGNIZER_METADATA_NAME) == Name.SpacyRecognizer.value
+        and not metadata.get(RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY)
+    )
+
+
+def _normalized_match(evidence: _RecognitionEvidence) -> str:
+    result = evidence.result
+    if not 0 <= result.start < result.end <= len(evidence.value):
+        return ""
+    return " ".join(evidence.value[result.start : result.end].casefold().split())
+
+
+def _corroborated_content_results(evidence: Sequence[_RecognitionEvidence]) -> list[RecognizerResult]:
+    """Drop an isolated, uncontextualized spaCy named-entity guess.
+
+    Pattern recognizers, vetted date results and context-enhanced NER results are strong
+    enough to stand on their own. Each uncontextualized statistical NER type needs one
+    independent corroborating entity so a repeated model mistake does not classify the
+    whole column.
+
+    Distinct matches are a recall-first heuristic, not proof that an entity is PII: two
+    different spaCy mistakes can still corroborate each other. spaCy assigns the same
+    recognizer score to both real and mistaken entities, so a higher score threshold would
+    not distinguish them, while requiring more matches would miss sparse PII again.
+    """
+    distinct_matches_by_entity: dict[str, set[str]] = {}
+    for item in evidence:
+        if _is_uncontextualized_spacy_named_entity(item.result) and (match := _normalized_match(item)):
+            distinct_matches_by_entity.setdefault(item.result.entity_type, set()).add(match)
+
+    corroborated_entities = {
+        entity_type
+        for entity_type, matches in distinct_matches_by_entity.items()
+        if len(matches) >= _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES
+    }
+    return [
+        item.result
+        for item in evidence
+        if not _is_uncontextualized_spacy_named_entity(item.result) or item.result.entity_type in corroborated_entities
+    ]
+
 
 class TagAnalysis(BaseModel):
     tag: Tag
     score: float
-    explanation: Optional[str]  # noqa: UP045
-    recognizer_results: List[RecognizerResult] = []  # noqa: UP006
-    target: Optional[recognizer.Target] = None  # noqa: UP045
+    explanation: str | None
+    recognizer_results: list[RecognizerResult] = []
+    target: recognizer.Target | None = None
     column_name_matched: bool = False
 
     @final
@@ -141,8 +202,8 @@ class TagAnalyzer:
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
-        nlp_engine: Optional[NlpEngine] = None,  # noqa: UP045
-        effective_language: Optional[str] = None,  # noqa: UP045
+        nlp_engine: NlpEngine | None = None,
+        effective_language: str | None = None,
     ) -> AnalyzerEngine:
         effective_lang = effective_language or self._language.value
         if effective_lang == ClassificationLanguage.any.value:
@@ -164,11 +225,11 @@ class TagAnalyzer:
         self,
         text_or_values: str | Sequence[str],
         recognizers: list[EntityRecognizer],
-        context: Optional[list[str]] = None,  # noqa: UP045
-        result_patcher: Optional[PresidioRecognizerResultPatcher] = None,  # noqa: UP045
-    ) -> list[RecognizerResult]:
+        context: list[str] | None = None,
+        result_patcher: PresidioRecognizerResultPatcher | None = None,
+    ) -> list[_RecognitionEvidence]:
         values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
-        results: list[RecognizerResult] = []
+        evidence: list[_RecognitionEvidence] = []
 
         if self._language is not ClassificationLanguage.any:
             analyzer = self.build_analyzer_with(recognizers)
@@ -179,8 +240,9 @@ class TagAnalyzer:
                     context=context,
                     return_decision_process=True,
                 )
-                results.extend(result_patcher(value_results, value) if result_patcher else value_results)
-            return results
+                patched_results = result_patcher(value_results, value) if result_patcher else value_results
+                evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
+            return evidence
 
         sorted_recs = sorted(recognizers, key=lambda r: r.supported_language)
         for lang, group in groupby(sorted_recs, key=lambda r: r.supported_language):
@@ -204,8 +266,9 @@ class TagAnalyzer:
                     context=context,
                     return_decision_process=True,
                 )
-                results.extend(result_patcher(value_results, value) if result_patcher else value_results)
-        return results
+                patched_results = result_patcher(value_results, value) if result_patcher else value_results
+                evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
+        return evidence
 
     def analyze(
         self,
@@ -218,20 +281,30 @@ class TagAnalyzer:
             content_recognizers = self.content_recognizers
             if content_recognizers:
                 context = split_column_name(self._column_name)
-                content_results = self._analyze_with(
+                content_evidence = self._analyze_with(
                     str_values,
                     content_recognizers,
                     context=context,
-                    result_patcher=date_time_patcher,
+                    result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
-                content_score = min(sum(r.score for r in content_results) / len(str_values), 1.0)
+                content_results = _corroborated_content_results(content_evidence)
+                # Use the maximum individual recogniser score rather than the average over all
+                # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
+                # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any
+                # reasonable minimumConfidence.  For a security control, sensitivity is
+                # contaminating, not statistical: one confirmed hit is enough to classify the
+                # column as PII. Statistical named-entity guesses are corroborated above before
+                # they are eligible for this maximum. (Fixes #32070)
+                content_score = max((r.score for r in content_results), default=0.0)
 
         column_results: list[RecognizerResult] = []
         column_score = 0.0
         if run_column_analysis:
             column_recognizers = self.column_recognizers
             if column_recognizers:
-                column_results = self._analyze_with(self._column_name, column_recognizers)
+                column_results = [
+                    evidence.result for evidence in self._analyze_with(self._column_name, column_recognizers)
+                ]
                 column_score = min(sum(r.score for r in column_results), 1.0)
 
         column_wins = column_score >= content_score and bool(column_results)

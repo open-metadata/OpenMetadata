@@ -1,0 +1,36 @@
+@prefix isa95: <https://open-metadata.org/library/isa-95/manufacturing-operations/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+isa95:Enterprise a skos:Concept ;
+  skos:prefLabel "Enterprise" .
+
+isa95:Site a skos:Concept ;
+  skos:prefLabel "Site" ;
+  skos:broader isa95:Enterprise .
+
+isa95:Area a skos:Concept ;
+  skos:prefLabel "Area" ;
+  skos:broader isa95:Site .
+
+isa95:WorkCenter a skos:Concept ;
+  skos:prefLabel "Work Center" ;
+  skos:broader isa95:Area .
+
+isa95:WorkUnit a skos:Concept ;
+  skos:prefLabel "Work Unit" ;
+  skos:broader isa95:WorkCenter .
+
+isa95:Resource a skos:Concept ;
+  skos:prefLabel "Resource" .
+
+isa95:Personnel a skos:Concept ;
+  skos:prefLabel "Personnel" ;
+  skos:broader isa95:Resource .
+
+isa95:Equipment a skos:Concept ;
+  skos:prefLabel "Equipment" ;
+  skos:broader isa95:Resource .
+
+isa95:Material a skos:Concept ;
+  skos:prefLabel "Material" ;
+  skos:broader isa95:Resource .

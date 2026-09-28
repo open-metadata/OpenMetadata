@@ -31,6 +31,10 @@ const path = require('path');
 const { canonicalizeColor, colorSlug } = require('./color-utils');
 
 const UPSTREAM = require('./upstream-palette.json').palette;
+const MANUAL_ABSOLUTE_COLOR_TOKENS = new Set([
+  '--om-color-black',
+  '--om-color-white',
+]);
 
 // ---------------------------------------------------------------------------
 // Scales (Layer 1 primitive values)
@@ -373,6 +377,8 @@ function emitPaletteBlock() {
       upstreamVar,
       omName: omPaletteName(upstreamVar),
     }))
+    // Absolute colors are declared in the manual token layer and must not be overridden later.
+    .filter(({ omName }) => !MANUAL_ABSOLUTE_COLOR_TOKENS.has(omName))
     .sort((a, b) => a.omName.localeCompare(b.omName));
   const lines = entries
     .map((e) => `  ${e.omName}: var(${e.upstreamVar}, ${e.canon});`)
@@ -404,6 +410,11 @@ function slugToNum(slug) {
   return Number(slug.replace('_', '.'));
 }
 
+// A prefix check misclassifies semantic scale names such as `2xl` as off-scale values.
+function isNumericSlug(slug) {
+  return /^\d+(?:_\d+)?$/.test(slug);
+}
+
 function emitSpacingExtBlock() {
   const pxs = [...registry.spacing.keys()]
     .filter((px) => !CORE_SPACING.has(px))
@@ -422,7 +433,7 @@ function emitSpacingExtBlock() {
 }
 
 function emitRadiusExtBlock() {
-  const numeric = [...registry.radius.keys()].filter((k) => /^\d/.test(k));
+  const numeric = [...registry.radius.keys()].filter(isNumericSlug);
   let block = null;
   if (numeric.length) {
     const lines = numeric
@@ -435,12 +446,14 @@ function emitRadiusExtBlock() {
 }
 
 function emitFontSizeExtBlock() {
-  const numeric = [...registry.fontSize.keys()].filter((k) => /^\d/.test(k));
+  const numeric = [...registry.fontSize.keys()].filter(isNumericSlug);
   let block = null;
   if (numeric.length) {
     const lines = numeric
       .sort((a, b) => slugToNum(a) - slugToNum(b))
-      .map((slug) => `  --om-font-size-${slug}: ${registry.fontSize.get(slug)};`)
+      .map(
+        (slug) => `  --om-font-size-${slug}: ${registry.fontSize.get(slug)};`
+      )
       .join('\n');
     block = `  /* Extended font sizes — off-scale values in use. */\n` + lines;
   }
@@ -469,9 +482,7 @@ function emitDurationBlock() {
   const ms = sortByNum(registry.duration);
   let block = null;
   if (ms.length) {
-    const lines = ms
-      .map((n) => `  --om-duration-${n}: ${n}ms;`)
-      .join('\n');
+    const lines = ms.map((n) => `  --om-duration-${n}: ${n}ms;`).join('\n');
     block = `  /* Motion durations in use. */\n` + lines;
   }
   return block;
@@ -515,8 +526,10 @@ module.exports = {
   registry,
   resetRegistry,
   emitGeneratedBlocks,
+  isNumericSlug,
   constants: {
     CORE_SPACING,
+    MANUAL_ABSOLUTE_COLOR_TOKENS,
     RADIUS_VALUE,
     FONT_SIZE_VALUE,
     FONT_WEIGHT_VALUE,

@@ -498,7 +498,7 @@ export const PaginationCardWithControls = ({
     <Pagination.Root
       {...props}
       className={cx(
-        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-gray-blue-100 tw:bg-primary tw:px-4 tw:py-3 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
+        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-subtle tw:bg-surface tw:px-4 tw:py-3 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
         className
       )}
       page={currentPage}
@@ -569,33 +569,37 @@ export const PaginationCardWithControls = ({
           </Pagination.NextTrigger>
         </div>
 
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>
-            {t('label.records', 'Records')}
-          </span>
-          <Select
-            aria-label={t('label.records', 'Records')}
-            className={compactRowsPerPageSelectClassName}
-            data-testid="rows-per-page-dropdown"
-            fontSize="xs"
-            items={pageSizeItems}
-            placeholder={String(pageSize)}
-            popoverClassName="tw:min-w-16!"
-            selectedKey={String(pageSize)}
-            size="sm"
-            onSelectionChange={(key) => onPageSizeChange?.(Number(key))}>
-            {(item) => (
-              <Select.Item
-                className={compactRowsPerPageItemClassName}
-                data-testid={`rows-per-page-option-${item.id}`}
-                id={item.id}
-                key={item.id}
-                textValue={item.label}>
-                {item.label}
-              </Select.Item>
-            )}
-          </Select>
-        </div>
+        {onPageSizeChange && (
+          // A size picker with nothing wired to it is dead UI, and AntD
+          // hides its own unless the caller asks for it.
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+            <span className={compactTextClassName}>
+              {t('label.records', 'Records')}
+            </span>
+            <Select
+              aria-label={t('label.records', 'Records')}
+              className={compactRowsPerPageSelectClassName}
+              data-testid="rows-per-page-dropdown"
+              fontSize="xs"
+              items={pageSizeItems}
+              placeholder={String(pageSize)}
+              popoverClassName="tw:min-w-16!"
+              selectedKey={String(pageSize)}
+              size="sm"
+              onSelectionChange={(key) => onPageSizeChange?.(Number(key))}>
+              {(item) => (
+                <Select.Item
+                  className={compactRowsPerPageItemClassName}
+                  data-testid={`rows-per-page-option-${item.id}`}
+                  id={item.id}
+                  key={item.id}
+                  textValue={item.label}>
+                  {item.label}
+                </Select.Item>
+              )}
+            </Select>
+          </div>
+        )}
       </div>
     </Pagination.Root>
   );

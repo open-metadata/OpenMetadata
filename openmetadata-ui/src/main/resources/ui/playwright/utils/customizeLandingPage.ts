@@ -192,7 +192,9 @@ export const navigateToCustomizeLandingPage = async (
   page: Page,
   { personaName }: { personaName: string }
 ) => {
-  await page.goto(`/settings/persona/${encodeURIComponent(personaName)}`);
+  await page.goto(`/settings/persona/${encodeURIComponent(personaName)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
 
   // Navigate to the customize landing page
@@ -226,18 +228,17 @@ export const removeAndCheckWidget = async (
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
-// Callers poll this across navigations, and each iteration starts from a fresh page load, so
-// the widget needs a chance to mount inside the iteration — an instant `isVisible()` would
-// never observe it. The assertion inherits the project's expect timeout.
+// Keep each probe non-blocking so the caller can reveal a slot that mounts
+// after this probe. Waiting here would leave that slot below the viewport.
 const isLandingPageWidgetVisible = async (
   page: Page,
   widgetKey: string
 ): Promise<boolean> => {
   await revealLandingPageWidget(page, widgetKey);
 
-  return expect(page.getByTestId(widgetKey))
-    .toBeVisible()
-    .then(() => true)
+  return page
+    .getByTestId(widgetKey)
+    .isVisible()
     .catch(() => false);
 };
 
@@ -464,57 +465,37 @@ export const addCuratedAssetPlaceholder = async ({
   ).toBeVisible();
 };
 
-// Helper function to select asset types in the dropdown
 export const selectAssetTypes = async (
   page: Page,
   assetTypes: string[] | 'all'
 ) => {
-  // Click on asset type selector to open dropdown
-  await page.locator('[data-testid="asset-type-select"]').click();
+  const field = page.getByTestId('asset-type-select');
+  const search = field.getByRole('combobox');
+  await search.focus();
+  await search.press('ArrowDown');
+  const tree = page.getByRole('tree');
+  await expect(tree).toBeVisible();
+  await search.clear();
 
-  // Wait for dropdown to be visible
-  await page.locator('.ant-select-dropdown').waitFor({
-    state: 'visible',
-    timeout: 5000,
-  });
-
-  // Wait for the tree to load
-  await page.locator('.ant-select-tree').waitFor({
-    state: 'visible',
-    timeout: 5000,
-  });
-
-  if (assetTypes === 'all') {
-    // Select all asset types using the checkbox
-    await page.locator('[data-testid="all-option"]').click();
-  } else {
-    // Select specific asset types
-    for (const assetType of assetTypes) {
-      // Find the corresponding config for search term
-      const config = ENTITY_TYPE_CONFIGS.find(
-        (c) => c.name === assetType || c.displayName === assetType
-      );
-      const searchTerm = config?.searchTerm || assetType;
-      const index = config?.index || assetType.toLowerCase();
-
-      // Search for the asset type
-      await page.keyboard.type(searchTerm);
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-      await page.waitForTimeout(500);
-
-      // Try to click the filtered result
-      const filteredElement = page.locator(`[data-testid="${index}-option"]`);
-
-      if (await filteredElement.isVisible()) {
-        await filteredElement.click();
-      }
-
-      await page.getByText('Select Asset Type').click();
-    }
+  const types = assetTypes === 'all' ? ['all'] : assetTypes;
+  for (const assetType of types) {
+    const config = ENTITY_TYPE_CONFIGS.find(
+      (entry) => entry.name === assetType || entry.displayName === assetType
+    );
+    const index = assetType === 'all' ? 'all' : config?.index;
+    expect(index, `Asset type configuration for ${assetType}`).toBeTruthy();
+    // TreeSelect filters its value, and virtualized options may not be mounted
+    // until filtered. Display labels can differ (the page value is "Article").
+    await search.fill(index ?? '');
+    const option = tree.getByTestId(`${index}-option`);
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(field.getByTestId(`${index}-option`)).toBeAttached();
   }
 
-  // Close the dropdown
-  await page.getByText('Select Asset Type').click();
+  // Escape also dismisses the parent modal when TreeSelect has already closed.
+  await search.press('Tab');
+  await expect(tree).toBeHidden();
 };
 
 // Helper function to test widget footer "View More" button
@@ -590,7 +571,7 @@ export const verifyWidgetFooterViewMore = async (
 
   if (expectedLink) {
     // Wait for the specific URL
-    await page.waitForURL(expectedLink);
+    await page.waitForURL(expectedLink, { waitUntil: 'domcontentloaded' });
   } else if (link) {
     const currentUrl = page.url();
 
@@ -621,26 +602,31 @@ export const verifyWidgetEntityNavigation = async (
     altApiResponseUrl?: string;
   }
 ) => {
-  // Wait for API response matching the search query with timeout fallback
-  const response = Promise.race([
-    page.waitForResponse((response) => {
-      // Check primary API URL
-      if (response.url().includes(apiResponseUrl)) {
-        if (Array.isArray(searchQuery)) {
-          return searchQuery.every((query) => response.url().includes(query));
+  // Wait for the API response matching the search query, but tolerate it never
+  // arriving: waitForResponse's own timeout replaces the Promise.race against a
+  // fixed waitForTimeout, and .catch keeps the previous behaviour of continuing
+  // rather than failing when nothing matches inside the budget.
+  const response = page
+    .waitForResponse(
+      (response) => {
+        // Check primary API URL
+        if (response.url().includes(apiResponseUrl)) {
+          if (Array.isArray(searchQuery)) {
+            return searchQuery.every((query) => response.url().includes(query));
+          }
+          return response.url().includes(searchQuery);
         }
-        return response.url().includes(searchQuery);
-      }
 
-      // Check alternative API URL (for Task API migration)
-      if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
-        return true;
-      }
+        // Check alternative API URL (for Task API migration)
+        if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
+          return true;
+        }
 
-      return false;
-    }),
-    page.waitForTimeout(10000),
-  ]);
+        return false;
+      },
+      { timeout: 10_000 }
+    )
+    .catch(() => null);
 
   await redirectToHomePage(page);
 
@@ -751,6 +737,86 @@ export const verifyWidgetHeaderNavigation = async (
   );
 };
 
+// Read a landing-page widget's rendered count once, or null if the widget isn't
+// ready yet (slot not revealed, still showing its skeleton, or the target card
+// not painted). Never throws — a detached node during a remount resolves to null
+// so the caller's poll rides it out instead of aborting.
+const readLandingWidgetCount = async (
+  page: Page,
+  widgetKey: string,
+  cardSelector: string
+): Promise<string | null> => {
+  if (!(await isLandingPageWidgetVisible(page, widgetKey))) {
+    return null;
+  }
+
+  const widget = page.getByTestId(widgetKey);
+  if (await isLandingPageWidgetLoading(widget)) {
+    return null;
+  }
+
+  const card = widget.locator(cardSelector).first();
+  if (!(await card.isVisible().catch(() => false))) {
+    return null;
+  }
+
+  return (await card.textContent().catch(() => null))?.trim() ?? null;
+};
+
+// Poll a landing-page widget's asset count until it equals `expectedCount`.
+//
+// Each iteration reveals the widget itself: `readLandingWidgetCount` scrolls the
+// deferred slot into view (via `isLandingPageWidgetVisible`) so a below-the-fold
+// widget mounts and paints before it is read — that reveal is independent of the
+// reload below.
+//
+// `reloadOnMismatch` (default true): the Domains and Data Products widgets fetch
+// their asset-count map exactly once per page load and never refetch in the
+// background. Asset add/remove mutations also return before Elasticsearch is
+// refreshed, so the *first* page load after a mutation can snapshot a stale count
+// — and because the widget never refetches, a plain DOM poll would then re-read
+// that same stale value until it times out (passing only on the next run once the
+// index caught up: the flake). Reloading the landing page whenever the rendered
+// count doesn't match yet forces a fresh fetch, so the assertion self-heals as
+// soon as the index propagates.
+//
+// Pass `false` when asserting the count already rendered on the current page (no
+// mutation preceded it): a wrong value must then fail rather than self-heal via a
+// reload, so a real UI regression is not masked — and the helper must not silently
+// navigate a non-home caller to `/my-data`.
+const pollLandingWidgetCount = async (
+  page: Page,
+  widgetKey: string,
+  cardSelector: string,
+  expectedCount: number,
+  reloadOnMismatch = true
+) => {
+  const expected = expectedCount.toString();
+
+  await expect
+    .poll(
+      async () => {
+        const value = await readLandingWidgetCount(
+          page,
+          widgetKey,
+          cardSelector
+        );
+
+        // A settled-but-wrong read means the widget already loaded a stale count;
+        // reload so the next iteration reads a freshly fetched value. A null read
+        // (still loading) needs no reload — just wait it out.
+        if (reloadOnMismatch && value !== null && value !== expected) {
+          await redirectToHomePage(page, false);
+          await waitForAllLoadersToDisappear(page).catch(() => undefined);
+        }
+
+        return value;
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(expected);
+};
+
 export const verifyDomainCountInDomainWidget = async (
   page: Page,
   domainId: string,
@@ -763,34 +829,12 @@ export const verifyDomainCountInDomainWidget = async (
 
   await redirectToHomePage(page, false);
 
-  await expect
-    .poll(
-      async () => {
-        if (
-          !(await isLandingPageWidgetVisible(page, 'KnowledgePanel.Domains'))
-        ) {
-          return null;
-        }
-
-        const domainWidget = page.getByTestId('KnowledgePanel.Domains');
-        if (await isLandingPageWidgetLoading(domainWidget)) {
-          return null;
-        }
-
-        const card = domainWidget.locator(widgetCardSelector).first();
-        const isCardVisible = await card.isVisible().catch(() => false);
-
-        if (!isCardVisible) {
-          return null;
-        }
-
-        const text = await card.textContent();
-
-        return text?.trim() ?? null;
-      },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toContain(expectedCount.toString());
+  await pollLandingWidgetCount(
+    page,
+    'KnowledgePanel.Domains',
+    widgetCardSelector,
+    expectedCount
+  );
 };
 
 export const verifyDataProductCountInDataProductWidget = async (
@@ -802,39 +846,12 @@ export const verifyDataProductCountInDataProductWidget = async (
 
   await redirectToHomePage(page, false);
 
-  await expect
-    .poll(
-      async () => {
-        if (
-          !(await isLandingPageWidgetVisible(
-            page,
-            'KnowledgePanel.DataProducts'
-          ))
-        ) {
-          return null;
-        }
-
-        const dataProductWidget = page.getByTestId(
-          'KnowledgePanel.DataProducts'
-        );
-        if (await isLandingPageWidgetLoading(dataProductWidget)) {
-          return null;
-        }
-
-        const card = dataProductWidget.locator(widgetCardSelector).first();
-        const isCardVisible = await card.isVisible().catch(() => false);
-
-        if (!isCardVisible) {
-          return null;
-        }
-
-        const text = await card.textContent();
-
-        return text?.trim() ?? null;
-      },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toContain(expectedCount.toString());
+  await pollLandingWidgetCount(
+    page,
+    'KnowledgePanel.DataProducts',
+    widgetCardSelector,
+    expectedCount
+  );
 };
 
 export const verifyWidgetCountOnCurrentPage = async (
@@ -843,25 +860,5 @@ export const verifyWidgetCountOnCurrentPage = async (
   selector: string,
   expectedCount: number
 ) => {
-  const widget = await waitForLandingPageWidget(page, widgetKey);
-
-  await expect
-    .poll(
-      async () => {
-        if (await isLandingPageWidgetLoading(widget)) {
-          return null;
-        }
-
-        const element = widget.locator(selector).first();
-        const isVisible = await element.isVisible().catch(() => false);
-
-        if (!isVisible) {
-          return null;
-        }
-
-        return (await element.textContent())?.trim() ?? null;
-      },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toContain(expectedCount.toString());
+  await pollLandingWidgetCount(page, widgetKey, selector, expectedCount, false);
 };

@@ -13,8 +13,9 @@ Validation logic for Custom Pydantic BaseModel
 """
 
 import logging
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, Optional  # noqa: UP035
+from typing import Any
 
 logger = logging.getLogger("metadata")
 
@@ -52,7 +53,7 @@ def is_service_level_create_model(model_name: str) -> bool:
 
 # Explicit configuration for entity name transformations
 # This dictionary will be populated lazily to avoid circular imports
-TRANSFORMABLE_ENTITIES: Dict[Any, Dict[str, Any]] = {}  # noqa: UP006
+TRANSFORMABLE_ENTITIES: dict[Any, dict[str, Any]] = {}
 
 
 def _initialize_transformable_entities():
@@ -135,13 +136,13 @@ def replace_separators(value):
     )
 
 
-def get_entity_config(model: Optional[Any]) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+def get_entity_config(model: Any | None) -> dict[str, Any] | None:
     """Get transformation configuration for entity"""
     _initialize_transformable_entities()  # Ensure entities are loaded
     return TRANSFORMABLE_ENTITIES.get(model)
 
 
-def get_transformer(model: Optional[Any]) -> Optional[Callable]:  # noqa: UP045
+def get_transformer(model: Any | None) -> Callable | None:
     """Get the appropriate transformer function for model"""
     config = get_entity_config(model)
     if not config:
@@ -187,7 +188,7 @@ def transform_all_names(obj, transformer):
         obj.name = transformer(name)
 
 
-def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:  # noqa: UP045
+def transform_entity_names(entity: Any, model: Any | None) -> Any:
     """Transform entity names"""
     model_name = model.__name__
     if not entity or (model_name.startswith("Create") and is_service_level_create_model(model_name)):

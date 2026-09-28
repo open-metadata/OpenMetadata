@@ -201,6 +201,15 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     </Typography.Text>
   );
 
+  const enumUpdateBanner = isSaving && (
+    <Banner
+      className="border-radius"
+      isLoading={isSaving}
+      message={t('message.enum-property-update-message')}
+      type="success"
+    />
+  );
+
   return (
     <Modal
       centered
@@ -242,14 +251,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
             {hasEnumConfig && (
               <>
                 {generateFormFields([enumConfigField, multiSelectField])}
-                {isSaving && (
-                  <Banner
-                    className="border-radius"
-                    isLoading={isSaving}
-                    message={t('message.enum-property-update-message')}
-                    type="success"
-                  />
-                )}
+                {enumUpdateBanner}
               </>
             )}
 

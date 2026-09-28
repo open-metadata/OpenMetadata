@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
@@ -30,7 +31,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -86,9 +86,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
-          value: (
-            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
-          ),
+          value: <Owner owners={(source.owners as EntityReference[]) ?? []} />,
         },
       ];
 
@@ -96,13 +94,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         source.entityType !== EntityType.GLOSSARY_TERM &&
         source.entityType !== EntityType.TAG
       ) {
+        const tierName = isString(source.tier)
+          ? source.tier
+          : getEntityName(source.tier);
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : getEntityName(source.tier)
-            : '',
+          value: source.tier ? tierName : '',
         });
       }
 

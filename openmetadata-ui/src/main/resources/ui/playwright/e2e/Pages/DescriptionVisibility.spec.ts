@@ -50,8 +50,6 @@ test.describe(
   'Long Description Visibility',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     let domain: Domain;
     let dataProductData: DataProduct['data'];
     let glossary: Glossary;

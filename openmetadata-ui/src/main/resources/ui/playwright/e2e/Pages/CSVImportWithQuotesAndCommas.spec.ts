@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import * as fs from 'fs';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import {
   fetchCompletedCsvAsyncJobResult,
@@ -39,9 +40,7 @@ const cleanupTempFile = (filePath: string | undefined): void => {
 const selectGlossaryManageItem = async (page: Page, itemTestId: string) => {
   await page.getByTestId('manage-button').click();
 
-  const manageDropdown = page
-    .locator('.glossary-manage-dropdown-list-container')
-    .last();
+  const manageDropdown = page.getByTestId('manage-dropdown-list-container');
 
   await expect(manageDropdown).toBeVisible();
   await manageDropdown.getByTestId(itemTestId).click();
@@ -70,7 +69,9 @@ const waitForGlossaryTerms = async (
         );
 
         if (!response.ok()) {
-          return [];
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const data = (await response.json()) as GlossaryTermsResponse;

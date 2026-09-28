@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import {
   DOMAIN_TAGS,
   PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../constant/config';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
+import { triggerIngestionPipeline } from '../../utils/ingestionExecution';
 import {
   getLogViewerLineCount,
   waitForRunningPipelineStatus,
@@ -52,10 +54,6 @@ const KAFKA_BOOTSTRAP_SERVERS =
 const KAFKA_SCHEMA_REGISTRY_URL =
   process.env.PLAYWRIGHT_KAFKA_SCHEMA_REGISTRY_URL ?? '';
 
-const PIPELINE_TRIGGER_ATTEMPTS = 3;
-const PIPELINE_TRIGGER_RETRY_DELAY_MS = 5_000;
-const DEPLOY_SETTLE_MS = 5_000;
-
 const serviceName = `pw-kafka-live-logs-${uuid()}`;
 const pipelineName = `pw-live-logs-agent-${uuid()}`;
 
@@ -78,35 +76,7 @@ const deployAndTrigger = async (
     `Deploying pipeline ${id} failed with ${deployResponse.status()}`
   ).toBeTruthy();
 
-  // The DAG file is written by the deploy call but the scheduler needs a moment
-  // to pick it up; triggering immediately returns a 404 for an unknown DAG.
-  await new Promise((resolve) => setTimeout(resolve, DEPLOY_SETTLE_MS));
-
-  let lastStatus: number | undefined;
-  let lastBody = '';
-
-  for (let attempt = 1; attempt <= PIPELINE_TRIGGER_ATTEMPTS; attempt++) {
-    const triggerResponse = await apiContext.post(
-      `/api/v1/services/ingestionPipelines/trigger/${id}`
-    );
-    lastStatus = triggerResponse.status();
-
-    if (triggerResponse.ok()) {
-      return;
-    }
-
-    lastBody = await triggerResponse.text();
-
-    if (attempt < PIPELINE_TRIGGER_ATTEMPTS) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, PIPELINE_TRIGGER_RETRY_DELAY_MS)
-      );
-    }
-  }
-
-  throw new Error(
-    `Failed to trigger pipeline ${id} after ${PIPELINE_TRIGGER_ATTEMPTS} attempts: ${lastStatus} ${lastBody}`
-  );
+  await triggerIngestionPipeline(apiContext, id);
 };
 
 test.describe(
@@ -124,74 +94,82 @@ test.describe(
     );
 
     test.beforeAll(async ({ browser }) => {
-      // Hooks do not inherit test.slow(); give this one the same 180s ceiling.
-      test.setTimeout(180_000);
+      // Hooks do not inherit test.slow(). Sized for the re-trigger loop:
+      // LOGS_VIEWER_RUNNING_STATUS_ATTEMPTS x 45s plus deploy/settle and setup.
+      test.setTimeout(240_000);
 
       const { apiContext, afterAction } = await createNewPage(browser);
 
-      const serviceResponse = await apiContext.post(
-        '/api/v1/services/messagingServices',
-        {
-          data: {
-            name: serviceName,
-            serviceType: 'Kafka',
-            connection: {
-              config: {
-                type: 'Kafka',
-                bootstrapServers: KAFKA_BOOTSTRAP_SERVERS,
-                schemaRegistryURL: KAFKA_SCHEMA_REGISTRY_URL,
+      // Every failure path below (service/pipeline create, deploy, re-trigger)
+      // must still release the page created above.
+      try {
+        const serviceResponse = await apiContext.post(
+          '/api/v1/services/messagingServices',
+          {
+            data: {
+              name: serviceName,
+              serviceType: 'Kafka',
+              connection: {
+                config: {
+                  type: 'Kafka',
+                  bootstrapServers: KAFKA_BOOTSTRAP_SERVERS,
+                  schemaRegistryURL: KAFKA_SCHEMA_REGISTRY_URL,
+                },
               },
             },
-          },
-        }
-      );
+          }
+        );
 
-      expect(
-        serviceResponse.status(),
-        `Creating Kafka service failed: ${await serviceResponse.text()}`
-      ).toBe(201);
+        expect(
+          serviceResponse.status(),
+          `Creating Kafka service failed: ${await serviceResponse.text()}`
+        ).toBe(201);
 
-      const service = await serviceResponse.json();
-      serviceId = service.id;
-      serviceFqn = service.fullyQualifiedName;
+        const service = await serviceResponse.json();
+        serviceId = service.id;
+        serviceFqn = service.fullyQualifiedName;
 
-      // No topicFilterPattern at all: every topic is ingested, including the
-      // internal `__*` ones the connector otherwise skips. generateSampleData
-      // makes the connector read messages per topic, which is what keeps the
-      // run alive long enough to watch it tail.
-      const pipelineResponse = await apiContext.post(
-        '/api/v1/services/ingestionPipelines',
-        {
-          data: {
-            airflowConfig: { scheduleInterval: '0 0 * * *' },
-            loggerLevel: 'INFO',
-            name: pipelineName,
-            pipelineType: 'metadata',
-            service: { id: serviceId, type: 'messagingService' },
-            sourceConfig: {
-              config: {
-                type: 'MessagingMetadata',
-                generateSampleData: true,
+        // No topicFilterPattern at all: every topic is ingested, including the
+        // internal `__*` ones the connector otherwise skips. generateSampleData
+        // makes the connector read messages per topic, which is what keeps the
+        // run alive long enough to watch it tail.
+        const pipelineResponse = await apiContext.post(
+          '/api/v1/services/ingestionPipelines',
+          {
+            data: {
+              airflowConfig: { scheduleInterval: '0 0 * * *' },
+              loggerLevel: 'INFO',
+              name: pipelineName,
+              pipelineType: 'metadata',
+              service: { id: serviceId, type: 'messagingService' },
+              sourceConfig: {
+                config: {
+                  type: 'MessagingMetadata',
+                  generateSampleData: true,
+                },
               },
             },
-          },
-        }
-      );
+          }
+        );
 
-      expect(
-        pipelineResponse.status(),
-        `Creating ingestion pipeline failed: ${await pipelineResponse.text()}`
-      ).toBe(201);
+        expect(
+          pipelineResponse.status(),
+          `Creating ingestion pipeline failed: ${await pipelineResponse.text()}`
+        ).toBe(201);
 
-      const pipeline = await pipelineResponse.json();
-      pipelineId = pipeline.id;
-      pipelineFqn = pipeline.fullyQualifiedName;
+        const pipeline = await pipelineResponse.json();
+        pipelineId = pipeline.id;
+        pipelineFqn = pipeline.fullyQualifiedName;
 
-      await deployAndTrigger(apiContext, pipelineId);
+        await deployAndTrigger(apiContext, pipelineId);
 
-      ({ runId } = await waitForRunningPipelineStatus(apiContext, pipelineFqn));
-
-      await afterAction();
+        ({ runId } = await waitForRunningPipelineStatus(
+          apiContext,
+          pipelineFqn
+        ));
+      } finally {
+        await afterAction();
+      }
     });
 
     test.afterAll(async ({ browser }) => {
@@ -237,7 +215,8 @@ test.describe(
       await page.goto(
         `/service/messagingServices/${getEncodedFqn(
           serviceFqn
-        )}/agents/metadata`
+        )}/agents/metadata`,
+        { waitUntil: 'domcontentloaded' }
       );
       await page.getByTestId('data-assets-header').waitFor();
 

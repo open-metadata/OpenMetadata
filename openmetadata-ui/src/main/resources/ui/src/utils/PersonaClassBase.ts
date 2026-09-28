@@ -50,7 +50,8 @@ export type CustomizeIconKeys =
   | 'govern'
   | 'dataAssets'
   | 'navigation'
-  | 'app-mode';
+  | 'app-mode'
+  | 'askCollateSidebar';
 
 const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Table]: TableIcon,
@@ -72,6 +73,7 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.LandingPage]: HomepageIcon,
   ['navigation']: NavigationIcon,
   ['app-mode']: AppModeIcon,
+  ['askCollateSidebar']: NavigationIcon,
   [PageType.APICollection]: APICollectionIcon,
   [PageType.APIEndpoint]: APIEndpointIcon,
   [PageType.MlModel]: MlModelIcon,
@@ -108,6 +110,13 @@ class PersonaClassBase {
         isBeta: false,
         description: i18n.t('message.app-mode-description'),
         icon: entityIcons['app-mode'],
+      },
+      {
+        key: 'askCollateSidebar',
+        label: i18n.t('label.app-mode-sidebar'),
+        isBeta: false,
+        description: i18n.t('message.customize-app-mode-sidebar-description'),
+        icon: entityIcons['askCollateSidebar'],
       },
       {
         key: PageType.LandingPage,

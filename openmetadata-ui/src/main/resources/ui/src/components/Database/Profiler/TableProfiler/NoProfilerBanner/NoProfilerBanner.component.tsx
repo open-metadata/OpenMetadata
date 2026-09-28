@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/ticket-with-check.svg';
@@ -42,15 +43,16 @@ const NoProfilerBanner = () => {
       </div>
 
       <div className="tw:flex tw:shrink-0 tw:items-center tw:justify-end">
-        <a
-          className="tw:font-semibold tw:text-brand-600 tw:flex tw:items-center tw:gap-1"
-          data-testid="documentation-link"
-          href={profilerDocsLink}
-          rel="noreferrer"
-          target="_blank"
-          title="data quality observability profiler workflow">
-          {t('label.learn-more')} <ArrowRight className="tw:size-4" />
-        </a>
+        <Tooltip title={t('label.learn-more')}>
+          <a
+            className="tw:font-semibold tw:text-brand-600 tw:flex tw:items-center tw:gap-1"
+            data-testid="documentation-link"
+            href={profilerDocsLink}
+            rel="noreferrer"
+            target="_blank">
+            {t('label.learn-more')} <ArrowRight className="tw:size-4" />
+          </a>
+        </Tooltip>
       </div>
     </div>
   );

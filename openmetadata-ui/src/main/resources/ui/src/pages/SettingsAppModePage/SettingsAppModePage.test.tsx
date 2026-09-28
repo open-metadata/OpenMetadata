@@ -14,7 +14,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Persona } from '../../generated/entity/teams/persona';
 import { AppMode } from '../../generated/type/personaPreferences';
-import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import { SettingsAppModePage } from './SettingsAppModePage';
 
@@ -81,9 +80,6 @@ const seedDoc = (appMode?: AppMode) => {
 
 describe('SettingsAppModePage', () => {
   beforeEach(() => {
-    useAppRoutesRegistry.setState({
-      routes: { ai: (() => null) as never },
-    });
     seedDoc(undefined);
   });
 
@@ -150,12 +146,17 @@ describe('SettingsAppModePage', () => {
     expect(classicOption.checked).toBe(true);
   });
 
-  it('shows the unavailable placeholder when no non-default mode is registered', () => {
-    useAppRoutesRegistry.setState({ routes: {} });
+  it('never shows the unavailable placeholder (AI always available in OSS)', () => {
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 
     expect(
-      screen.getByTestId('app-mode-unavailable-placeholder')
+      screen.queryByTestId('app-mode-unavailable-placeholder')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId(`app-mode-option-${AppMode.Classic}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`app-mode-option-${AppMode.AI}`)
     ).toBeInTheDocument();
   });
 });

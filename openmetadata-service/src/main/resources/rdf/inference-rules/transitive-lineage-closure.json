@@ -1,0 +1,10 @@
+{
+  "name": "transitive-lineage-closure",
+  "displayName": "Transitive lineage closure",
+  "description": "Materialize indirect upstream/downstream lineage edges by walking prov:wasDerivedFrom transitively. Lets SPARQL answer 'all upstream tables of dashboard X' without requiring property paths in user queries.",
+  "ruleType": "CONSTRUCT",
+  "priority": 100,
+  "enabled": true,
+  "tags": ["lineage"],
+  "ruleBody": "PREFIX prov: <http://www.w3.org/ns/prov#>\nPREFIX om: <https://open-metadata.org/ontology/>\nCONSTRUCT { ?x om:transitivelyDerivedFrom ?y }\nWHERE {\n  ?x prov:wasDerivedFrom+ ?y .\n  FILTER(?x != ?y)\n}"
+}

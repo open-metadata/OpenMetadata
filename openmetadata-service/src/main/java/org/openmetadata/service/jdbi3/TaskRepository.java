@@ -24,7 +24,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -50,6 +49,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionPayload;
+import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -63,6 +63,7 @@ import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandle
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthRequest;
@@ -84,7 +85,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 @Repository
@@ -108,6 +109,9 @@ public class TaskRepository extends EntityRepository<Task> {
   // Stage a workflow-managed task holds after being persisted but before its Flowable instance
   // starts.
   public static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
+
+  private static final Set<TaskEntityStatus> ALREADY_OPEN_STATUSES =
+      Set.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress);
 
   /**
    * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
@@ -723,9 +727,13 @@ public class TaskRepository extends EntityRepository<Task> {
     if (comment.getAuthor() != null && comment.getAuthor().getName() != null) {
       task.setUpdatedBy(comment.getAuthor().getName());
     }
+    storeEntity(task, true);
+
     // Record the new comment in the change delta so the event is self-describing: the notification
     // pipeline resolves mentions from this comment only, and the email template renders it as a
-    // reply rather than treating every task update as a comment.
+    // reply rather than treating every task update as a comment. Attached only after storing: it
+    // describes this request, not a task version, and a stored copy would be replayed by the next
+    // event that reads the task's changeDescription.
     task.setChangeDescription(
         new ChangeDescription()
             .withPreviousVersion(task.getVersion())
@@ -734,7 +742,6 @@ public class TaskRepository extends EntityRepository<Task> {
                     new FieldChange()
                         .withName(FIELD_COMMENTS)
                         .withNewValue(comment.getMessage()))));
-    storeEntity(task, true);
 
     // Store mentions from the comment message
     storeMentions(task, comment.getMessage());
@@ -757,21 +764,30 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     List<EntityLink> mentions = MessageParser.getEntityLinks(message);
-    mentions.stream()
-        .distinct()
-        .forEach(
-            mention ->
-                daoCollection
-                    .fieldRelationshipDAO()
-                    .insert(
-                        mention.getFullyQualifiedFieldValue(),
-                        task.getId().toString(),
-                        mention.getFullyQualifiedFieldValue(),
-                        task.getId().toString(),
-                        mention.getFullyQualifiedFieldType(),
-                        Entity.TASK,
-                        Relationship.MENTIONED_IN.ordinal(),
-                        null));
+    String taskId = task.getId().toString();
+    String taskIdHash = FullyQualifiedName.buildHash(taskId);
+
+    List<FieldRelationship> relationships =
+        mentions.stream()
+            .distinct()
+            .map(
+                mention -> {
+                  FieldRelationship relationship = new FieldRelationship();
+                  relationship.setFromFQNHash(
+                      FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()));
+                  relationship.setToFQNHash(taskIdHash);
+                  relationship.setFromFQN(mention.getFullyQualifiedFieldValue());
+                  relationship.setToFQN(taskId);
+                  relationship.setFromType(mention.getFullyQualifiedFieldType());
+                  relationship.setToType(Entity.TASK);
+                  relationship.setRelation(Relationship.MENTIONED_IN.ordinal());
+                  return relationship;
+                })
+            .toList();
+
+    if (!relationships.isEmpty()) {
+      daoCollection.fieldRelationshipDAO().insertMany(relationships);
+    }
   }
 
   /**
@@ -879,10 +895,18 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
-   * Reopen a previously resolved task.
+   * Reopen a previously resolved task. A task that is already open is returned unchanged.
    */
   public Task reopenTask(Task task, String user) {
-    return TaskWorkflowHandler.getInstance().reopenTask(task, user);
+    if (ALREADY_OPEN_STATUSES.contains(task.getStatus())) {
+      LOG.warn("Task '{}' is already open", task.getId());
+      return task;
+    }
+    Task original = get(null, task.getId(), getFields("*"));
+    Task updated = JsonUtils.deepCopy(original, Task.class);
+    updated.setStatus(TaskEntityStatus.Open);
+    updated.setResolution(null);
+    return persistLifecycleChange(original, updated, user);
   }
 
   /**
@@ -928,11 +952,15 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   private void restoreTerminalTask(Task terminalSnapshot, Task current, String user) {
-    Task restored = JsonUtils.deepCopy(terminalSnapshot, Task.class);
-    restored.setUpdatedBy(user);
-    restored.setUpdatedAt(System.currentTimeMillis());
-    storeEntity(restored, true);
-    postUpdate(current, restored);
+    Task original = get(null, current.getId(), getFields("*"));
+    Task restored = JsonUtils.deepCopy(original, Task.class);
+    restored.setStatus(terminalSnapshot.getStatus());
+    restored.setResolution(terminalSnapshot.getResolution());
+    restored.setWorkflowInstanceId(terminalSnapshot.getWorkflowInstanceId());
+    restored.setWorkflowStageId(terminalSnapshot.getWorkflowStageId());
+    restored.setWorkflowStageDisplayName(terminalSnapshot.getWorkflowStageDisplayName());
+    restored.setAvailableTransitions(terminalSnapshot.getAvailableTransitions());
+    persistLifecycleChange(original, restored, user);
   }
 
   /**
@@ -958,9 +986,11 @@ public class TaskRepository extends EntityRepository<Task> {
    * resolve the task".
    *
    * <p>For incident-style tasks ({@code TestCaseResolution}, {@code IncidentResolution}) a
-   * fallback is permitted: a non-filer user with {@code EditTests}/{@code EditAll} on the related
-   * entity can resolve the task even if the task policy alone would deny — preserving the
-   * historical behaviour that test owners can act on incidents. The filer check is intentional:
+   * fallback is permitted: a non-filer user with {@code EditStatus}, {@code EditTests} or
+   * {@code EditAll} on the related entity can resolve the task even if the task policy alone would
+   * deny — preserving the historical behaviour that test owners can act on incidents, and letting
+   * {@code EditStatus} alone grant incident management without test case edit rights. The filer
+   * check is intentional:
    * mixing the task policy and the incident fallback in a single {@code AuthorizationLogic.ANY}
    * call would let a filer who also owns the related entity bypass the {@code isTaskFiler()} deny
    * rule and approve their own task. The two checks are therefore evaluated sequentially with the
@@ -1063,38 +1093,52 @@ public class TaskRepository extends EntityRepository<Task> {
       if (testCase == null) {
         return;
       }
-      ResourceContextInterface testCaseResourceContext =
-          TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
-      EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-      ResourceContextInterface entityResourceContext =
-          entityLink != null
-              ? TestCaseResourceContext.builder().entityLink(entityLink).build()
-              : TestCaseResourceContext.builder().build();
-
-      if (entityLink != null) {
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
-                entityResourceContext));
-        requests.add(
-            new AuthRequest(
-                new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
-                entityResourceContext));
-      }
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
-              testCaseResourceContext));
-      requests.add(
-          new AuthRequest(
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
-              testCaseResourceContext));
+      requests.addAll(buildIncidentEditRequests(testCase));
     } catch (Exception e) {
       LOG.warn(
           "[TaskRepository] Failed to build incident permission fallback for task '{}': {}",
           task.getId(),
           e.getMessage());
     }
+  }
+
+  /**
+   * Auth requests accepted for the task-first incident fallback. {@code EditStatus} on the test
+   * case is the Incident Manager grant: it lets a user drive incident transitions (status,
+   * severity, assignment) without holding edit rights on the test case itself. The historical
+   * {@code EditTests}/{@code EditAll} grants — on the test case and on the entity under test —
+   * remain accepted.
+   */
+  static List<AuthRequest> buildIncidentEditRequests(TestCase testCase) {
+    List<AuthRequest> requests = new ArrayList<>();
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    if (entityLink != null) {
+      ResourceContextInterface entityResourceContext =
+          TestCaseResourceContext.builder().entityLink(entityLink).build();
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_TESTS),
+              entityResourceContext));
+      requests.add(
+          new AuthRequest(
+              new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
+              entityResourceContext));
+    }
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_STATUS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+            testCaseResourceContext));
+    requests.add(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+            testCaseResourceContext));
+    return requests;
   }
 
   private void validateUnderlyingEntityPermission(
@@ -1202,32 +1246,78 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   public Task resolveTask(Task task, TaskResolution resolution, String updatedBy) {
+    return resolveTask(task, resolution, null, updatedBy);
+  }
+
+  /**
+   * Resolve a task, moving it to the target stage of {@code transition} when one is given.
+   *
+   * <p>The committed task is re-read and only its lifecycle fields change: callers hand in
+   * partially loaded tasks, and saving one of those whole would erase the fields it was not loaded
+   * with.
+   */
+  public Task resolveTask(
+      Task task, TaskResolution resolution, TaskAvailableTransition transition, String updatedBy) {
     if (resolution == null) {
       throw new IllegalArgumentException("Resolution cannot be null");
     }
-
-    // Read the committed state BEFORE mutating the task so postUpdate gets a
-    // meaningful (original, updated) pair. The `task` argument is the caller's
-    // in-memory copy which may already have staged fields (e.g., workflowStageId)
-    // set by applyTaskResolution, so we can't use it as the pre-image.
     Task original = get(null, task.getId(), getFields("*"));
+    Task updated = JsonUtils.deepCopy(original, Task.class);
+    updated.setStatus(mapResolutionToStatus(resolution.getType()));
+    updated.setResolution(resolution);
+    applyTransitionTarget(updated, transition, resolution.getResolvedBy());
+    return persistLifecycleChange(original, updated, updatedBy);
+  }
 
-    TaskEntityStatus newStatus = mapResolutionToStatus(resolution.getType());
-    task.setStatus(newStatus);
-    task.setResolution(resolution);
-    task.setUpdatedBy(updatedBy);
-    task.setUpdatedAt(System.currentTimeMillis());
+  private void applyTransitionTarget(
+      Task task, TaskAvailableTransition transition, EntityReference resolvedBy) {
+    if (transition != null) {
+      task.setWorkflowStageId(transition.getTargetStageId());
+      task.setWorkflowStageDisplayName(transition.getTargetStageId());
+      task.setAvailableTransitions(List.of());
+      if (TaskWorkflowLifecycleResolver.isApproveTransition(transition)) {
+        task.setApprovedBy(resolvedBy);
+        task.setApprovedById(resolvedBy.getId().toString());
+        task.setApprovedAt(System.currentTimeMillis());
+      }
+    }
+  }
 
-    storeEntity(task, true);
+  /**
+   * Persist a status or resolution change through the {@link EntityUpdater}, so it gets its own
+   * version and a changeDescription that describes exactly this change, and record its change
+   * event.
+   */
+  private Task persistLifecycleChange(Task original, Task updated, String user) {
+    PutResponse<Task> response = update(null, original, updated, user);
+    recordTaskChangeEvent(response, user);
+    return response.getEntity();
+  }
 
-    // storeEntity is the raw persistence path and deliberately skips the full
-    // update pipeline. Invoke postUpdate explicitly so lifecycle hooks fire
-    // consistently with every other task-update path (PATCH, workflow-driven
-    // CreateTask updates, etc.). This is what allows IncidentTcrsSyncHandler
-    // — and any future postUpdate handler — to see terminal resolutions.
-    postUpdate(original, task);
+  /**
+   * Persist a stage change made by the task's governance workflow. It records a change event like
+   * any other lifecycle change, except when it binds a just-created task to its workflow: that
+   * write completes the creation and is not a change a subscriber should hear about.
+   */
+  public Task updateWorkflowStage(Task current, Task desired, String user) {
+    PutResponse<Task> response = update(null, current, desired, user);
+    if (!PENDING_WORKFLOW_START_STAGE_ID.equals(current.getWorkflowStageId())) {
+      recordTaskChangeEvent(response, user);
+    }
+    return response.getEntity();
+  }
 
-    return task;
+  /**
+   * Task lifecycle changes come from internal callers (workflows, incidents, bulk operations,
+   * timers) as well as REST calls, so the event is recorded here rather than by the REST response
+   * filter. Migrations replay historical task state and record nothing, like every other
+   * migration write.
+   */
+  private void recordTaskChangeEvent(PutResponse<Task> response, String user) {
+    if (!WorkflowHandler.isMigrationContext()) {
+      storeChangeEventForAsyncOperation(
+          response.getEntity(), response.getChangeType(), false, user);
+    }
   }
 
   private TaskEntityStatus mapResolutionToStatus(TaskResolutionType resolutionType) {
@@ -1363,37 +1453,6 @@ public class TaskRepository extends EntityRepository<Task> {
     if (task != null) {
       closeTask(task, user, comment);
     }
-  }
-
-  /**
-   * Update assignees on an open approval task for the given entity.
-   * Used when an entity's reviewers change while an approval task is in progress.
-   * Silently does nothing if no open task exists.
-   *
-   * @param entityFqn Fully qualified name of the target entity
-   * @param newAssignees The new list of assignees (typically entity reviewers)
-   * @param updatedBy The user making the change
-   */
-  public void updateApprovalTaskAssignees(
-      String entityFqn, List<EntityReference> newAssignees, String updatedBy) {
-    Task task = findOpenTaskByEntityAndCategory(entityFqn, TaskCategory.Approval);
-    if (task == null) {
-      return;
-    }
-
-    Task currentTask = get(null, task.getId(), getFields("*"));
-    Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
-    updatedTask.setAssignees(newAssignees);
-    updatedTask.setUpdatedBy(updatedBy);
-    updatedTask.setUpdatedAt(System.currentTimeMillis());
-
-    JsonPatch patch = JsonUtils.getJsonPatch(currentTask, updatedTask);
-    if (patch.toJsonArray().isEmpty()) {
-      return;
-    }
-
-    Task patchedTask = patch(null, currentTask.getId(), updatedBy, patch).entity();
-    WebsocketNotificationHandler.handleTaskNotification(patchedTask);
   }
 
   @Override

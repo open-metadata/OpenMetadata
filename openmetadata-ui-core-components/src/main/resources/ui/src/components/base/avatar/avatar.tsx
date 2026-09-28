@@ -2,6 +2,7 @@ import { cx } from '@/utils/cx';
 import { User01 } from '@untitledui/icons';
 import { type CSSProperties, type FC, type ReactNode, useState } from 'react';
 import { AvatarOnlineIndicator, VerifiedTick } from './base-components';
+import { getAvatarColorClasses } from './utils';
 
 type AvatarSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
@@ -34,6 +35,17 @@ export interface AvatarProps {
    */
   initials?: string;
   /**
+   * How initials are colored when no image is available:
+   * - `auto` (default): a consistent tinted `utility-*` color derived from the
+   *   name (`alt` ?? `initials`) that adapts to light/dark.
+   * - `solid`: a solid `utility-*` fill with white initials.
+   * - `neutral`: the plain gray surface with muted initials (e.g. the "+N"
+   *   overflow bubble).
+   *
+   * @default 'auto'
+   */
+  colorVariant?: 'auto' | 'solid' | 'neutral';
+  /**
    * An icon to display if no image is available.
    */
   placeholderIcon?: FC<{ className?: string }>;
@@ -50,17 +62,18 @@ export interface AvatarProps {
    */
   focusable?: boolean;
   style?: CSSProperties;
+  'data-testid'?: string;
 }
 
 const styles = {
   xxs: {
     root: 'tw:size-4 tw:outline-[0.5px] tw:-outline-offset-[0.5px]',
-    initials: 'tw:text-xs tw:font-semibold',
+    initials: 'tw:text-[8px] tw:font-semibold',
     icon: 'tw:size-3',
   },
   xs: {
     root: 'tw:size-6 tw:outline-[0.5px] tw:-outline-offset-[0.5px]',
-    initials: 'tw:text-xs tw:font-semibold',
+    initials: 'tw:text-[10px] tw:font-semibold',
     icon: 'tw:size-4',
   },
   sm: {
@@ -96,6 +109,7 @@ export const Avatar = ({
   src,
   alt,
   initials,
+  colorVariant = 'auto',
   placeholder,
   placeholderIcon: PlaceholderIcon,
   badge,
@@ -104,8 +118,28 @@ export const Avatar = ({
   focusable = false,
   className,
   style,
+  'data-testid': dataTestId,
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
+
+  // Normalize an unknown `size` (e.g. a stray numeric value from an untyped
+  // caller) to `md` once, so every size-keyed consumer below — the styles
+  // lookup and the badge sub-components — degrades safely instead of crashing
+  // on `.root`.
+  const resolvedSize: AvatarSize = size in styles ? size : 'md';
+  const sizeStyles = styles[resolvedSize];
+
+  // Color the initials only when we actually fall back to them (no usable
+  // image). `auto`/`solid` derive a theme-adapting utility color from the name;
+  // `neutral` keeps the plain gray surface.
+  const showingInitials = Boolean(initials) && !(src && !isFailed);
+  const initialsColor =
+    showingInitials && colorVariant !== 'neutral'
+      ? getAvatarColorClasses(
+          alt || initials || '',
+          colorVariant === 'solid' ? 'solid' : 'outlined'
+        )
+      : undefined;
 
   const renderMainContent = () => {
     if (src && !isFailed) {
@@ -122,7 +156,9 @@ export const Avatar = ({
 
     if (initials) {
       return (
-        <span className={cx('tw:text-quaternary', styles[size].initials)}>
+        // Color is inherited from the root (see className above) so a caller can
+        // override it; the span only carries sizing.
+        <span className={cx('tw:text-current', sizeStyles.initials)}>
           {initials}
         </span>
       );
@@ -130,13 +166,13 @@ export const Avatar = ({
 
     if (PlaceholderIcon) {
       return (
-        <PlaceholderIcon className={cx('tw:text-current', styles[size].icon)} />
+        <PlaceholderIcon className={cx('tw:text-current', sizeStyles.icon)} />
       );
     }
 
     return (
       placeholder || (
-        <User01 className={cx('tw:text-fg-quaternary', styles[size].icon)} />
+        <User01 className={cx('tw:text-fg-quaternary', sizeStyles.icon)} />
       )
     );
   };
@@ -145,7 +181,7 @@ export const Avatar = ({
     if (status) {
       return (
         <AvatarOnlineIndicator
-          size={size === 'xxs' ? 'xs' : size}
+          size={resolvedSize === 'xxs' ? 'xs' : resolvedSize}
           status={status}
         />
       );
@@ -156,9 +192,10 @@ export const Avatar = ({
         <VerifiedTick
           className={cx(
             'tw:absolute tw:right-0 tw:bottom-0',
-            (size === 'xxs' || size === 'xs') && 'tw:-right-px tw:-bottom-px'
+            (resolvedSize === 'xxs' || resolvedSize === 'xs') &&
+              'tw:-right-px tw:-bottom-px'
           )}
-          size={size === 'xxs' ? 'xs' : size}
+          size={resolvedSize === 'xxs' ? 'xs' : resolvedSize}
         />
       );
     }
@@ -170,14 +207,23 @@ export const Avatar = ({
     <div
       data-avatar
       className={cx(
-        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-transparent',
+        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:outline-transparent',
+        // Colored initials bring their own tinted surface (+ border for the
+        // outlined variant); otherwise fall back to the neutral gray surface.
+        initialsColor ? initialsColor.container : 'tw:bg-tertiary',
+        // Initials text color lives on the root (the span inherits it) so a
+        // caller's `className` — applied last — can still override it.
+        showingInitials && (initialsColor?.text ?? 'tw:text-quaternary'),
         // Focus styles
         focusable &&
           'tw:group-outline-focus-ring tw:group-focus-visible:outline-2 tw:group-focus-visible:outline-offset-2',
+        // Honor the contrast outline regardless of the initials color treatment
+        // — AvatarGroup relies on it to separate negatively-overlapped avatars.
         contrastBorder && 'tw:outline tw:outline-avatar-contrast-border',
-        styles[size].root,
+        sizeStyles.root,
         className
       )}
+      data-testid={dataTestId}
       style={style}>
       {renderMainContent()}
       {renderBadgeContent()}

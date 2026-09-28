@@ -13,7 +13,8 @@ Glue source methods.
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -44,9 +45,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
+    SqlQuery,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -58,7 +61,13 @@ from metadata.ingestion.source.connections import (
     create_connection,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.column_type_parser import (
+    NUMERIC_TYPES_SUPPORTING_PRECISION,
+    ColumnTypeParser,
+)
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    CustomPropertyExtensionMixin,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -66,9 +75,11 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
+    GlueTable,
     StorageDetails,
     TablePage,
 )
+from metadata.ingestion.source.database.glue.utils import get_schema_definition
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -81,7 +92,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 
-class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
+class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, DatabaseServiceSource):
     """
     Implements the necessary methods to extract
     Database metadata from Glue Source
@@ -99,11 +110,12 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         self.schema_description_map = {}
         self.schema_catalog_id_map = {}
         self.external_location_map = {}
+        self._init_custom_properties()
         with close_on_failure(self._connection):
             self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GlueConnection = config.serviceConnection.root.config
         if not isinstance(connection, GlueConnection):
@@ -266,7 +278,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Handle table and views.
 
@@ -282,6 +294,15 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 try:
                     table_name = table.Name
                     table_name = self.standardize_table_name(schema_name, table_name)
+                    # Glue types a view as VIRTUAL_VIEW whatever the table format underneath is,
+                    # so this stays the one answer to "is this a view" that the source works from.
+                    is_view = table.TableType == "VIRTUAL_VIEW"
+                    if is_view and not self.source_config.includeViews:
+                        logger.debug("Skipping view [%s]: includeViews is off", table_name)
+                        continue
+                    if not is_view and not self.source_config.includeTables:
+                        logger.debug("Skipping table [%s]: includeTables is off", table_name)
+                        continue
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -323,7 +344,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         )
                     )
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -331,7 +352,9 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         table_name, table_type = table_name_and_type
         table = self.context.get().table_data
         table_constraints = None
-        storage_descriptor = table.StorageDescriptor
+        # A view can come back with an explicit null storage descriptor, which the model default
+        # does not cover, and this runs before the try below that would report the failure.
+        storage_descriptor = table.StorageDescriptor or StorageDetails()
         database_name = self.context.get().database
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
@@ -341,10 +364,15 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             )
         try:
             columns = self.get_columns(storage_descriptor)
+            # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type
+            # keeps it from being the one kind of view that loses its definition.
+            is_view = table.TableType == "VIRTUAL_VIEW"
+            schema_definition = get_schema_definition(table, schema_name, table_name) if is_view else None
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
                 description=table.Description,
+                schemaDefinition=SqlQuery(schema_definition) if schema_definition else None,
                 columns=list(columns),
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
@@ -363,6 +391,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 ),
                 fileFormat=self.get_format(storage_descriptor),
                 locationPath=storage_descriptor.Location,
+                extension=EntityExtension(extensions) if (extensions := self.get_table_extensions(table)) else None,
             )
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
@@ -375,26 +404,45 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 )
             )
 
+    def get_table_extensions(self, table: GlueTable) -> dict[str, str] | None:
+        """Glue table Parameters as custom properties.
+
+        Takes the table rather than a name, unlike the CommonDbSourceService hook of the same
+        name: GlueSource does not inherit that hook, and yield_table already holds the table.
+        """
+        if not self.custom_properties_enabled or not table.Parameters:
+            return None
+        return self.build_entity_extension(
+            table.Parameters.model_dump(),
+            source_label="Glue table parameters",
+        )
+
     def prepare(self):
-        """Nothing to prepare"""
+        super().prepare()
+        self._load_string_property_type_ref()
 
     def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
             column.Type = column.Type.replace(" ", "")
-        parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+        parsed = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
             column.Type.lower()
         )
-        if isinstance(parsed_string, list):
-            parsed_string = {}
-            parsed_string["dataTypeDisplay"] = str(column.Type)
-            parsed_string["dataType"] = "UNION"
+        # A union parses to a list of its member types, which has no single dataType to report.
+        parsed_string: dict[str, Any] = (
+            {"dataTypeDisplay": str(column.Type), "dataType": "UNION"}
+            if isinstance(parsed, list)
+            else cast("dict[str, Any]", parsed)
+        )
         parsed_string["name"] = truncate_column_name(column.Name)
         parsed_string["displayName"] = column.Name
-        parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+        # A numeric carries precision and scale instead, so defaulting a length here would
+        # put a meaningless 1 on every decimal column.
+        if parsed_string.get("dataType") not in NUMERIC_TYPES_SUPPORTING_PRECISION:
+            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
-    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:  # noqa: UP045
+    def get_columns(self, column_data: StorageDetails) -> Iterable[Column] | None:
         """
         Get columns from Glue, yielding each column name at most once.
 
@@ -416,85 +464,26 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             seen_column_names.add(column_name)
             yield column
 
-    # pylint: disable=too-many-locals
     def _iter_columns(self, column_data: StorageDetails) -> Iterable[Column]:
         """
         Yield the raw Glue columns, regular ones first and partition keys last.
+
+        Iceberg keeps a dropped field in the table schema flagged current=false, so emitting
+        every column would resurrect it. GetTables already carries that flag on each column,
+        which is why this needs neither a per-table GetTable nor a glue:GetTable grant.
         """
-        # Check if this is an Iceberg table
         table = self.context.get().table_data
-        is_iceberg = table.Parameters and table.Parameters.table_type == "ICEBERG"
-
-        if is_iceberg:
-            # For Iceberg tables, get the full table metadata from Glue to access column parameters
-            try:
-                schema_name = self.context.get().database_schema
-                table_name = table.Name
-
-                # Get full table metadata from Glue API, from the schema's own catalog
-                get_table_args = {"DatabaseName": schema_name, "Name": table_name}
-                catalog_id = self.schema_catalog_id_map.get(schema_name)
-                if catalog_id:
-                    get_table_args["CatalogId"] = catalog_id
-                response = self.glue.get_table(**get_table_args)
-
-                table_info = response["Table"]
-
-                # Filter out non-current Iceberg columns
-                storage_descriptor = table_info.get("StorageDescriptor", {})
-                glue_columns = storage_descriptor.get("Columns", [])
-
-                for glue_col in glue_columns:
-                    col_name = glue_col["Name"]
-                    col_type = glue_col["Type"]
-                    col_comment = glue_col.get("Comment")
-                    col_parameters = glue_col.get("Parameters", {})
-
-                    # Check if this is a non-current Iceberg column
-                    iceberg_current = col_parameters.get("iceberg.field.current", "true")
-                    is_current = iceberg_current != "false"
-
-                    if is_current:
-                        # Create a GlueColumn object for processing
-                        column_obj = GlueColumn(Name=col_name, Type=col_type, Comment=col_comment)
-                        yield self._get_column_object(column_obj)
-
-                # Process partition columns
-                partition_keys = table_info.get("PartitionKeys", [])
-                for glue_col in partition_keys:
-                    col_name = glue_col["Name"]
-                    col_type = glue_col["Type"]
-                    col_comment = glue_col.get("Comment")
-                    col_parameters = glue_col.get("Parameters", {})
-
-                    # Check if this is a non-current Iceberg column
-                    iceberg_current = col_parameters.get("iceberg.field.current", "true")
-                    is_current = iceberg_current != "false"
-
-                    if is_current:
-                        # Create a GlueColumn object for processing
-                        column_obj = GlueColumn(Name=col_name, Type=col_type, Comment=col_comment)
-                        yield self._get_column_object(column_obj)
-
-                return  # noqa: TRY300
-
-            except Exception as e:
-                # If we can't get Glue metadata, fall back to the original method
-                # This ensures backward compatibility
-                logger.warning(f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}")
-
-        # For non-Iceberg tables or if Glue access fails, use the original method
-        # process table regular columns info
-        for column in column_data.Columns:
-            yield self._get_column_object(column)
-
-        # process table partition columns info
-        for column in self.context.get().table_data.PartitionKeys:
+        is_iceberg = bool(table.Parameters and table.Parameters.table_type == "ICEBERG")
+        # Glue sends an explicit null rather than an empty list for a table with neither.
+        for column in [*(column_data.Columns or []), *(table.PartitionKeys or [])]:
+            if is_iceberg and not column.is_current_iceberg_field():
+                logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
+                continue
             yield self._get_column_object(column)
 
     @classmethod
-    def get_format(cls, storage: StorageDetails) -> Optional[FileFormat]:  # noqa: UP045
-        library = storage.SerdeInfo.SerializationLibrary
+    def get_format(cls, storage: StorageDetails) -> FileFormat | None:
+        library = storage.SerdeInfo.SerializationLibrary if storage.SerdeInfo else None
         if library is None:
             return None
         if library.endswith(".LazySimpleSerDe"):
@@ -520,10 +509,10 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
 
     def get_source_url(
         self,
-        database_name: Optional[str],  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for dynamodb
         """

@@ -9,8 +9,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -50,7 +54,6 @@ import org.slf4j.LoggerFactory;
 public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartRepository.class);
 
-  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
   // Streaming constants
@@ -62,25 +65,22 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   private ScheduledExecutorService scheduler;
   private final Map<String, StreamingSession> activeSessions;
 
+  /**
+   * Every entity type reachable under {@link #DI_SEARCH_INDEX}, i.e. the ones DataInsightsApp
+   * ingests plus the ones aliased in from a live index. Derived from {@link DataAssetType} so this
+   * set cannot drift from the types Data Insights actually covers; it is used only to enumerate
+   * index names when building the custom-chart field catalog.
+   *
+   * <p>Iteration order is the enum's declaration order. The catalog appends records per type as it
+   * walks this set, so a salted order would vary the record order per JVM start and any consumer
+   * that resolves a duplicated field name by taking the first record would resolve it differently
+   * after a restart.
+   */
   public static final Set<String> dataAssetTypes =
-      Set.of(
-          "table",
-          "storedProcedure",
-          "databaseSchema",
-          "database",
-          "chart",
-          "dashboard",
-          "dashboardDataModel",
-          "pipeline",
-          "topic",
-          "container",
-          "searchIndex",
-          "mlmodel",
-          "dataProduct",
-          "glossaryTerm",
-          "tag",
-          "testCaseResult",
-          "testCaseResolutionStatus");
+      Collections.unmodifiableSet(
+          Arrays.stream(DataAssetType.values())
+              .map(DataAssetType::value)
+              .collect(Collectors.<String, LinkedHashSet<String>>toCollection(LinkedHashSet::new)));
 
   public static final String DI_SEARCH_INDEX_PREFIX = "di-data-assets";
 
@@ -527,9 +527,19 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return getPreviewData(chart, startTimestamp, endTimestamp);
   }
 
+  /**
+   * Resolved per call rather than held in a static field: the search repository is not wired up
+   * when this class is loaded, so a class-initializer lookup fails with an NPE in any context that
+   * touches the class before the application is up (start-up hooks, unit tests reading {@link
+   * #DATA_ASSET_FILTER}).
+   */
+  private static SearchClient searchClient() {
+    return Entity.getSearchRepository().getSearchClient();
+  }
+
   public DataInsightCustomChartResultList getPreviewData(
       DataInsightCustomChart chart, long startTimestamp, long endTimestamp) throws IOException {
-    return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
+    return searchClient().buildDIChart(chart, startTimestamp, endTimestamp);
   }
 
   public Map<String, DataInsightCustomChartResultList> listChartData(
@@ -565,7 +575,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           chartDetails.put("includeXAxisFiled", serviceName.toLowerCase());
         }
         DataInsightCustomChartResultList data =
-            searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
+            searchClient().buildDIChart(chart, startTimestamp, endTimestamp, live);
         result.put(chartName, data);
       }
     }

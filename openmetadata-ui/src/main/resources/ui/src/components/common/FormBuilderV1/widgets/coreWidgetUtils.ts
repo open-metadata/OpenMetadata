@@ -28,9 +28,9 @@ export const getWidgetLabel = ({
 }: Pick<WidgetProps, 'hideLabel' | 'label'>) => {
   const looksLikeRawKey = (s: string) => /^[a-z][a-zA-Z0-9]*$/.test(s); // camelCase id
 
-  return hideLabel
-    ? undefined
-    : looksLikeRawKey(label)
-    ? getFormDisplayLabel(label)
-    : label;
+  if (hideLabel) {
+    return undefined;
+  }
+
+  return looksLikeRawKey(label) ? getFormDisplayLabel(label) : label;
 };

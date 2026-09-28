@@ -19,8 +19,8 @@ import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/succe
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import {
   TeamCSVRecord,
   TeamImportResultProps,

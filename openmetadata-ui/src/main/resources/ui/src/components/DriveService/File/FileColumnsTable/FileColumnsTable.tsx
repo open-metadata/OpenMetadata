@@ -35,6 +35,7 @@ import { Column, TagSource } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import {
   pruneEmptyChildren,
@@ -49,8 +50,8 @@ import {
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
@@ -75,24 +76,19 @@ function FileColumnsTable() {
   const [editFileColumnDescription, setEditFileColumnDescription] =
     useState<Column>();
 
-  const {
-    editDescriptionPermission,
-    editGlossaryTermsPermission,
-    editTagsPermission,
-    deleted,
-  } = useMemo(() => {
-    const isDeleted = fileDetails?.deleted;
+  const deleted = fileDetails?.deleted;
 
-    return {
-      editDescriptionPermission:
-        (permissions.EditAll || permissions.EditDescription) && !isDeleted,
-      editGlossaryTermsPermission:
-        (permissions.EditAll || permissions.EditGlossaryTerms) && !isDeleted,
-      editTagsPermission:
-        (permissions.EditAll || permissions.EditTags) && !isDeleted,
-      deleted: isDeleted,
-    };
-  }, [permissions, fileDetails]);
+  // Consumer via useGenericContext(). Original local names kept (used throughout this
+  // file) but sourced from getDerivedPermissionFlags's prioritized flags instead of raw
+  // (EditX || EditAll) && !deleted ORs — explicit-deny-wins fix (Task 6 Finding 1).
+  const {
+    canEditDescription: editDescriptionPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditTags: editTagsPermission,
+  } = useMemo(
+    () => getDerivedPermissionFlags(permissions, deleted),
+    [permissions, deleted]
+  );
 
   // Original schema with empty children is required to maintain the integrity of the data and for
   // operations like updating tags and descriptions.

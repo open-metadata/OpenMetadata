@@ -25,8 +25,10 @@ import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { claimFirstBoot } from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
@@ -39,6 +41,95 @@ let workerAdminAPIContext: Promise<APIRequestContext> | undefined;
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
   '.om-block-editor[contenteditable="false"]';
+
+/**
+ * Resolve the description editor that belongs to `scope`.
+ *
+ * `descriptionBox` is page-global, so it matches every editable block editor
+ * currently mounted. Any page that has more than one at a time — an entity page
+ * with a form drawer or description modal overlaid on it, or two drawers
+ * overlapping while one plays its exit animation — turns an unscoped
+ * `page.locator(descriptionBox)` into a strict mode violation. Pass the form,
+ * drawer or modal the editor lives in instead.
+ *
+ * A `Page` is accepted too, for the callers that have no narrower container to
+ * hand; {@link resolveDescriptionBox} is what makes that case safe.
+ */
+export const getDescriptionBox = (scope: Page | Locator): Locator =>
+  scope.locator(descriptionBox);
+
+/**
+ * Resolve the description editor that an `edit-description` click just opened.
+ *
+ * Editing a description can mount the editor inline on the page or inside a
+ * modal, and on an entity page both can be present at once. `.first()` picks
+ * whichever comes first in the DOM — the inline editor *behind* the overlay. It
+ * is visible, so `toBeVisible()` passes, and the click then fails on
+ * "ant-modal-wrap ... intercepts pointer events" and retries until the test
+ * times out; the trace shows a 45s click on an editor nothing could reach.
+ *
+ * Prefers the editor inside the dialog whenever the edit opened one. Retrying
+ * covers the modal's enter animation, during which the dialog is not yet
+ * attached.
+ */
+export const resolveDescriptionBox = async (page: Page): Promise<Locator> => {
+  const descriptionDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: getDescriptionBox(page) });
+
+  let editor = getDescriptionBox(page);
+
+  await expect(async () => {
+    if (await descriptionDialog.count()) {
+      editor = getDescriptionBox(descriptionDialog);
+
+      // The one place a single-editor invariant actually holds. Two editors in
+      // one open dialog means the dialog selector matched something it should
+      // not have, which is worth failing on.
+      await expect(editor).toHaveCount(1);
+    } else {
+      // No dialog: a page legitimately hosts several editors at once — an entity
+      // description alongside per-column ones — so there is nothing to assert
+      // and nothing better to discriminate on. This is the long-standing
+      // behaviour, and it was never the bug: the bug was taking the first match
+      // *while a modal was open*, which the branch above now handles.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- a page may hold several description editors; with no dialog to scope to there is no better discriminator
+      editor = getDescriptionBox(page).first();
+    }
+
+    await expect(editor).toBeVisible();
+  }).toPass({ timeout: 15_000 });
+
+  return editor;
+};
+
+/**
+ * Fill the description editor for `scope`.
+ *
+ * An explicit `Locator` is a container the author chose — a form, a modal —
+ * where exactly one editor is a real invariant, so the count assertion from
+ * #32599 stands: failing here names the scope that needs narrowing rather than
+ * typing into an arbitrary editor.
+ *
+ * A `Page` means no container was chosen, and a page may legitimately hold
+ * several editors, so asserting there would fail on ordinary pages. Resolve
+ * instead — the dialog's editor when the edit opened one, first match otherwise.
+ */
+export const fillDescriptionBox = async (
+  scope: Page | Locator,
+  value: string
+) => {
+  if ('goto' in scope) {
+    await (await resolveDescriptionBox(scope)).fill(value);
+
+    return;
+  }
+
+  const editor = getDescriptionBox(scope);
+
+  await expect(editor).toHaveCount(1);
+  await editor.fill(value);
+};
 
 export const INVALID_NAMES = {
   MAX_LENGTH:
@@ -59,21 +150,78 @@ export const getToken = async (page: Page) => {
   return await getTokenFromStorage(page);
 };
 
+// Transport-layer failures where the connection died without the client
+// receiving a response. These strings do NOT reliably distinguish
+// "request never reached the server" from "server processed it and then the
+// connection dropped before the response landed" -- ECONNRESET/socket hang up
+// can be either. Retrying is therefore only safe for idempotent methods
+// (GET/HEAD/PUT); repeating a POST/PATCH/DELETE risks a duplicate write, a
+// second application of an array patch, or a spurious 404 on cleanup.
+const UNSENT_REQUEST_ERROR =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|other side closed/i;
+
+// Idempotent methods only. POST/PATCH/DELETE deliberately excluded -- see the
+// comment on UNSENT_REQUEST_ERROR above. A POST fixture-setup call that hits
+// this race should be wrapped explicitly (e.g. via createOrFetch, which has
+// 409 recovery) rather than silently double-fired.
+const RETRIABLE_METHODS = new Set(['get', 'head', 'put']);
+
+/**
+ * Re-sends an idempotent request that died with the connection rather than
+ * with a response.
+ *
+ * `conf/openmetadata.yaml` closes idle connections after `SERVER_IDLE_TIMEOUT`
+ * (60s), while this context asks for `Connection: keep-alive`. A request handed
+ * to a connection the server is closing in the same instant loses that race and
+ * surfaces as `apiRequestContext.get: socket hang up`. Retrying once on a fresh
+ * connection is the only fix available on this side, and only safe for methods
+ * where a duplicate application is a no-op.
+ */
+const retryUnsentRequests = (context: APIRequestContext): APIRequestContext =>
+  new Proxy(context, {
+    get(target, property) {
+      // Read against the target, not the proxy: a getter that used `this`
+      // would otherwise re-enter this trap.
+      const value = Reflect.get(target, property);
+
+      if (typeof value !== 'function') {
+        return value;
+      }
+      if (!RETRIABLE_METHODS.has(String(property))) {
+        return value.bind(target);
+      }
+
+      return async (...args: unknown[]) => {
+        try {
+          return await value.apply(target, args);
+        } catch (error) {
+          if (!UNSENT_REQUEST_ERROR.test(String(error))) {
+            throw error;
+          }
+
+          return await value.apply(target, args);
+        }
+      };
+    },
+  });
+
 export const getAuthContext = async (token: string) => {
   const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 
-  return await request.newContext({
-    baseURL:
-      process.env.PLAYWRIGHT_TEST_BASE_URL ??
-      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
-    // Default timeout is 30s making it to 1m for AUTs
-    timeout: 90000,
-    ignoreHTTPSErrors: isH2Mode,
-    extraHTTPHeaders: {
-      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return retryUnsentRequests(
+    await request.newContext({
+      baseURL:
+        process.env.PLAYWRIGHT_TEST_BASE_URL ??
+        (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
+      // Default timeout is 30s making it to 1m for AUTs
+      timeout: 90000,
+      ignoreHTTPSErrors: isH2Mode,
+      extraHTTPHeaders: {
+        ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  );
 };
 
 const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
@@ -141,13 +289,27 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
+  // Every spec funnels through here, including the ones that build their own
+  // page with browser.newPage() and so never touch the `context` fixture. This
+  // is the only hook that reaches all of them; the call is idempotent.
+  await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
+  // Claimed before goto so it cannot miss the boot's auth decision. The
+  // waitForURL below resolves before a signed-out boot redirects to /signin,
+  // and the loader check passes on the login page too, so without this a lost
+  // storageState token surfaces 60s later as an unrelated-looking failure.
+  // Undefined unless this is the context's first navigation.
+  const firstBootRecovery = claimFirstBoot(page, '/my-data');
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForURL('**/my-data', {
     waitUntil: 'domcontentloaded',
   });
+
+  if (await firstBootRecovery) {
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
@@ -238,6 +400,7 @@ export async function createNewPage(
         ? adminStorageStateFile
         : undefined,
     });
+    await installServerLoadReducers(page.context());
     await redirectToHomePage(page);
   }
 
@@ -371,6 +534,26 @@ export const waitForToastToDisappear = async (
     .filter({ hasText: message })
     .first()
     .waitFor({ state: 'detached', timeout });
+};
+
+/**
+ * Waits until the toast stack holds no toast, so a click on something beneath it
+ * cannot be swallowed.
+ *
+ * The toast region renders fixed at bottom-center — the same spot as many
+ * dialogs' action buttons (Test Connection's Done/OK, for one). The backend fans
+ * async-delete notifications from parallel workers' cleanup out to every socket
+ * of the logged-in user, so unrelated "…deleted successfully!" toasts can pile up
+ * over a button and intercept the click. A count assertion is used instead of a
+ * message-filtered `waitFor` because the intercepting toast can be any of them —
+ * `toHaveCount(0)` retries until the whole stack has drained and never trips
+ * strict mode.
+ */
+export const waitForToastStackToClear = async (
+  page: Page,
+  timeout?: number
+) => {
+  await expect(page.getByTestId('alert-bar')).toHaveCount(0, { timeout });
 };
 
 /**
@@ -864,7 +1047,7 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('menuitem', { name: glossaryName, exact: true })
+    .getByRole('link', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -1359,19 +1542,6 @@ type ResponseWithRequest = {
   url: () => string;
 };
 
-type MetricSearchHit = {
-  _source?: {
-    displayName?: string;
-    name?: string;
-  };
-};
-
-type MetricSearchResponse = {
-  hits?: {
-    hits?: MetricSearchHit[];
-  };
-};
-
 type CsvAsyncJob = {
   jobId: string;
   status: string;
@@ -1410,99 +1580,53 @@ export const fetchCompletedCsvAsyncJobResult = async (
   return resultResponse.text();
 };
 
-export const isMetricsSearchResponse = (response: ResponseWithRequest) => {
+export const isMetricsListingResponse = (response: ResponseWithRequest) => {
   const url = new URL(response.url());
 
   return (
     response.request().method() === 'GET' &&
-    url.pathname.endsWith('/api/v1/search/query') &&
-    url.searchParams.get('index') === 'metric'
+    (url.pathname.endsWith('/api/v1/metrics/hierarchy') ||
+      (url.pathname.endsWith('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'metric'))
   );
 };
 
-export const waitForMetricsSearchResponse = (page: Page) =>
-  page.waitForResponse(isMetricsSearchResponse);
+export const waitForMetricsListingResponse = (page: Page) =>
+  page.waitForResponse(isMetricsListingResponse);
 
 export const testMetricsPaginationNavigation = async (page: Page) => {
-  const page1ResponsePromise = waitForMetricsSearchResponse(page);
+  const page1ResponsePromise = waitForMetricsListingResponse(page);
 
-  await page.goto('/metrics?pageSize=15');
+  await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
 
   const page1Response = await page1ResponsePromise;
   expect(page1Response.status()).toBe(200);
+  const page1Url = new URL(page1Response.url());
+  expect(page1Url.pathname).toContain('/api/v1/metrics/hierarchy');
+  expect(page1Url.searchParams.get('limit')).toBe('20');
+  expect(page1Url.searchParams.get('offset')).toBe('0');
 
   await page.locator('table').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 
-  const page1Data: MetricSearchResponse = await page1Response.json();
-  const page1FirstItem = page1Data.hits?.hits?.[0]?._source;
-  const page1FirstItemName =
-    page1FirstItem?.displayName ?? page1FirstItem?.name;
-
-  await expect(page.getByTestId('previous')).toBeDisabled();
-  const nextButton = page.getByTestId('next');
+  await expect(page.getByTestId('metric-page-previous')).toBeDisabled();
+  const nextButton = page.getByTestId('metric-page-next');
   await expect(nextButton).toBeEnabled();
 
   const [page2Response] = await Promise.all([
-    waitForMetricsSearchResponse(page),
+    waitForMetricsListingResponse(page),
     nextButton.click(),
   ]);
   expect(page2Response.status()).toBe(200);
+  const page2Url = new URL(page2Response.url());
+  expect(page2Url.searchParams.get('limit')).toBe('20');
+  expect(page2Url.searchParams.get('offset')).toBe('20');
 
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-
-  const paginationText = page.locator('[data-testid="page-indicator"]');
-  await expect(paginationText).toBeVisible();
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  if (page1FirstItemName) {
-    await expect(page.locator('tbody tr').first()).not.toContainText(
-      page1FirstItemName
-    );
-  }
-
-  const reloadResponsePromise = waitForMetricsSearchResponse(page);
-
-  await page.reload();
-
-  const reloadResponse = await reloadResponsePromise;
-  expect(reloadResponse.status()).toBe(200);
-
-  await page.locator('table').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
-  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
-
-  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-  await expect(pageSizeDropdown).toHaveText('15 / Page');
-
-  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-  await pageSizeDropdown.hover();
-  const isMenuVisibleAfterHover = await menuItem.isVisible();
-  if (!isMenuVisibleAfterHover) {
-    await pageSizeDropdown.click();
-  }
-  await menuItem.waitFor({ state: 'visible' });
-
-  const pageSizeChangeResponsePromise = waitForMetricsSearchResponse(page);
-  await menuItem.click();
-
-  const pageSizeChangeResponse = await pageSizeChangeResponsePromise;
-  expect(pageSizeChangeResponse.status()).toBe(200);
-  expect(new URL(pageSizeChangeResponse.url()).searchParams.get('size')).toBe(
-    '25'
+  await expect(page.getByTestId('metric-page-previous')).toBeEnabled();
+  await expect(page.getByTestId('metric-page-indicator')).toHaveText(
+    /2\s*of\s*\d+/
   );
-
-  await waitForAllLoadersToDisappear(page);
-  await expect(pageSizeDropdown).toHaveText('25 / Page');
-
-  const newRowCount = await page
-    .locator('tbody > tr[data-row-key]:visible')
-    .count();
-  expect(newRowCount).toBeLessThanOrEqual(25);
 };
 
 export const testClientSidePaginationNavigation = async (
@@ -1584,6 +1708,9 @@ export interface PaginationTestConfig {
   searchParamName?: string;
   waitForLoadSelector?: string;
   deleteBtnTestId?: string;
+  // Set true when the search value is kept in component state rather than the
+  // URL (e.g. Impact Analysis), so the URL-param check after search is skipped.
+  skipUrlParamCheck?: boolean;
 }
 
 export const testCompletePaginationWithSearch = async (
@@ -1598,6 +1725,7 @@ export const testCompletePaginationWithSearch = async (
     searchParamName = 'endpoint',
     waitForLoadSelector = 'table',
     deleteBtnTestId = 'show-deleted',
+    skipUrlParamCheck = false,
   } = config;
 
   await page.goto(`${baseUrl}`);
@@ -1631,8 +1759,12 @@ export const testCompletePaginationWithSearch = async (
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
 
-  const urlAfterSearch = new URL(page.url());
-  expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(searchTestTerm);
+  if (!skipUrlParamCheck) {
+    const urlAfterSearch = new URL(page.url());
+    expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(
+      searchTestTerm
+    );
+  }
 
   await expect(page.getByTestId('previous')).toBeDisabled();
   const paginationAfterSearch = page.locator('[data-testid="page-indicator"]');
@@ -1774,4 +1906,41 @@ export const testTableSearch = async (
       timeout: 5_000,
     });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
+};
+
+// React-aria closes a non-modal popover (Select, ComboBox) when an ancestor of
+// its trigger scrolls, and the browser delivers `scroll` a frame after the
+// scroll itself. If a trigger is even partly clipped by a scroll container,
+// Playwright's click scrolls it just before pointerdown; the event then lands
+// after pointerdown has opened the popover and closes it again. Centre the
+// element -- `scrollIntoViewIfNeeded` only reveals the minimum and can leave the
+// click point clipped, so Playwright scrolls again at click time -- and let two
+// frames run so the scroll is delivered before anything opens.
+export const scrollIntoViewAndSettle = async (locator: Locator) => {
+  await locator.evaluate(async (element) => {
+    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    );
+  });
+};
+
+/**
+ * Opens a React Aria Select or ComboBox and clicks one of its options, reopening
+ * it if the popover closed first. `open` defaults to a click; a ComboBox that
+ * does not always reopen on click can pass its own.
+ */
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator,
+  open: () => Promise<void> = () => trigger.click()
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(trigger);
+      await open();
+    }
+
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
 };

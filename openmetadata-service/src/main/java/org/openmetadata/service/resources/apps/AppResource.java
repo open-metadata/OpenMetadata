@@ -94,7 +94,10 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -339,6 +342,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public List<EntityReference> list(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // Enumerating every installed app is the same read as the paged list endpoint, which the base
+    // class gates, so it takes the same collection-level check rather than none.
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
     return repository.listAllAppsReference();
   }
 
@@ -388,6 +397,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
+    authorizeAppOperation(securityContext, name, MetadataOperation.VIEW_ALL);
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     ResultList<AppRunRecord> appRuns;
     if (installation.getAppType().equals(AppType.Internal)) {
@@ -476,6 +486,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("offset")
           @Min(0)
           int offset) {
+    authorizeAppOperation(securityContext, name, MetadataOperation.VIEW_ALL);
     App app = repository.getByName(uriInfo, name, repository.getFields("id"));
     if (!"SearchIndexingApplication".equals(app.getName())) {
       throw new BadRequestException(
@@ -550,6 +561,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("byName")
           @DefaultValue("false")
           boolean byName) {
+    authorizeAppOperation(securityContext, name, MetadataOperation.VIEW_ALL);
     App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
     if (startTs != null) {
       ResultList<AppExtension> appExtensionList =
@@ -609,6 +621,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("limit")
           @DefaultValue("1000")
           int limit) {
+    authorizeAppOperation(securityContext, name, MetadataOperation.VIEW_ALL);
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
@@ -705,6 +718,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("after")
           @DefaultValue("")
           String after) {
+    authorizeAppOperation(securityContext, name, MetadataOperation.VIEW_ALL);
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
@@ -910,6 +924,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
     }
     App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.CREATE),
+        new CreateResourceContext<>(entityType, app));
     limits.enforceLimits(
         securityContext,
         getResourceContext(),
@@ -953,6 +971,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       }))
           JsonPatch patch)
       throws SchedulerException {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     if (app.getSystem()) {
       throw new IllegalArgumentException(
@@ -1001,6 +1023,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       }))
           JsonPatch patch)
       throws SchedulerException {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     App app = repository.getByName(null, fqn, repository.getFields("bot,pipelines"));
     if (app.getSystem()) {
       throw new IllegalArgumentException(
@@ -1048,6 +1074,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
     }
     App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    // Evaluate exactly what the base createOrUpdate below will evaluate: Create against the
+    // incoming entity when the app is new, EditAll against the stored one when it already exists.
+    // A coarser check here would pass for a caller whose EditAll is owner-scoped on the stored
+    // app, and the scheduler would then be torn down for a request the authoritative check goes
+    // on to reject. The stored entity is looked up twice as a result, which is the cost of gating
+    // the side effect instead of leaving it ahead of authorization.
+    ResourceContext<App> putResourceContext =
+        getResourceContextByName(app.getName(), ResourceContextInterface.Operation.PUT);
+    MetadataOperation putOperation = EntityUtil.createOrUpdateOperation(putResourceContext);
+    ResourceContextInterface authorizedContext =
+        putOperation == MetadataOperation.CREATE
+            ? new CreateResourceContext<>(entityType, app)
+            : putResourceContext;
+    authorizer.authorize(
+        securityContext, new OperationContext(entityType, putOperation), authorizedContext);
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
@@ -1085,6 +1126,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    authorizeAppOperation(securityContext, name, MetadataOperation.DELETE);
     App app =
         repository.getByName(uriInfo, name, repository.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
@@ -1127,6 +1169,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
+    authorizeAppOperation(securityContext, id, MetadataOperation.DELETE);
     App app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
@@ -1238,9 +1281,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeAppOperation(securityContext, name, MetadataOperation.EDIT_ALL);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(
@@ -1280,9 +1321,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeAppOperation(securityContext, name, MetadataOperation.EDIT_ALL);
     // The application will have the updated appConfiguration we can use to run the `configure`
     // logic
     ApplicationHandler.getInstance()
@@ -1319,8 +1358,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeAppOperation(securityContext, name, MetadataOperation.TRIGGER);
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
@@ -1379,8 +1417,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String runId) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeAppOperation(securityContext, name, MetadataOperation.TRIGGER);
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
       if (app.getAppType().equals(AppType.Internal)) {
         Thread.ofVirtual()
@@ -1555,8 +1592,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DEPLOY);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeAppOperation(securityContext, name, MetadataOperation.DEPLOY);
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
@@ -1593,6 +1629,22 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
     }
     throw new InternalServerErrorException("Failed to deploy application.");
+  }
+
+  // Authorization runs at the request boundary, before any scheduler or pipeline-service call,
+  // so a rejected request cannot leave the application in a changed state.
+  private void authorizeAppOperation(
+      SecurityContext securityContext, String name, MetadataOperation operation) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, operation),
+        getResourceContextByName(name));
+  }
+
+  private void authorizeAppOperation(
+      SecurityContext securityContext, UUID id, MetadataOperation operation) {
+    authorizer.authorize(
+        securityContext, new OperationContext(entityType, operation), getResourceContextById(id));
   }
 
   private void decryptOrNullify(

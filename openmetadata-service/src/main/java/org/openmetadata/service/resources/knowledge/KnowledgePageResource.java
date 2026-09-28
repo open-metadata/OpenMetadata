@@ -179,11 +179,11 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Field to sort by. Supported: name, createdAt, updatedAt.",
+              description = "Field to sort by. Supported: name, displayName, createdAt, updatedAt.",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"name", "createdAt", "updatedAt"}))
+                      allowableValues = {"name", "displayName", "createdAt", "updatedAt"}))
           @QueryParam("sortBy")
           String sortBy,
       @Parameter(
@@ -307,9 +307,12 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
   private static String resolveSortField(String sortBy) {
     return switch (sortBy) {
       case "name" -> "name.keyword";
+      case "displayName" -> "displayName.keyword";
       case "createdAt", "updatedAt" -> "updatedAt";
       default -> throw new IllegalArgumentException(
-          "Unsupported sortBy value '" + sortBy + "'. Allowed: name, createdAt, updatedAt.");
+          "Unsupported sortBy value '"
+              + sortBy
+              + "'. Allowed: name, displayName, createdAt, updatedAt.");
     };
   }
 
@@ -684,9 +687,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @PUT
@@ -742,9 +743,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @PUT

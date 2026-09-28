@@ -62,6 +62,14 @@ public final class McpResponseTrim {
   public static final String MESSAGE_KEY = "message";
 
   /**
+   * Set by the lineage tools when the per-node permission filter removed nodes. Centralized here
+   * with the other markers so the tool output and the callers that read it cannot drift apart.
+   */
+  public static final String HIDDEN_NODES_KEY = "hiddenNodes";
+
+  public static final String HIDDEN_UNCHECKED_KEY = "hiddenNodesUnchecked";
+
+  /**
    * Elasticsearch index-only document fields — the embedding vector and the RAG source/context text
    * used to build it. Each adds several kB per node and carries no value for an LLM reading the
    * result, so search/lineage documents drop them before returning.

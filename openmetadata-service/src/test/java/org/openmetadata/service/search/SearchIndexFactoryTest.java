@@ -41,11 +41,13 @@ import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.QueryCostRecord;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
@@ -110,6 +112,7 @@ import org.openmetadata.service.search.indexes.McpServerIndex;
 import org.openmetadata.service.search.indexes.McpServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
+import org.openmetadata.service.search.indexes.MetricGroupIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
@@ -120,6 +123,7 @@ import org.openmetadata.service.search.indexes.PromptTemplateIndex;
 import org.openmetadata.service.search.indexes.QueryCostRecordIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
+import org.openmetadata.service.search.indexes.RelationshipTypeIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
@@ -391,9 +395,15 @@ class SearchIndexFactoryTest {
         Arguments.of(Entity.USER, (Supplier<Object>) User::new, UserIndex.class),
         Arguments.of(Entity.TEAM, (Supplier<Object>) Team::new, TeamIndex.class),
         Arguments.of(Entity.METRIC, (Supplier<Object>) Metric::new, MetricIndex.class),
+        Arguments.of(
+            Entity.METRIC_GROUP, (Supplier<Object>) MetricGroup::new, MetricGroupIndex.class),
         Arguments.of(Entity.GLOSSARY, (Supplier<Object>) Glossary::new, GlossaryIndex.class),
         Arguments.of(
             Entity.GLOSSARY_TERM, (Supplier<Object>) GlossaryTerm::new, GlossaryTermIndex.class),
+        Arguments.of(
+            Entity.RELATIONSHIP_TYPE,
+            (Supplier<Object>) RelationshipType::new,
+            RelationshipTypeIndex.class),
         Arguments.of(Entity.MLMODEL, (Supplier<Object>) MlModel::new, MlModelIndex.class),
         Arguments.of(Entity.LLM_MODEL, (Supplier<Object>) LLMModel::new, LlmModelIndex.class),
         Arguments.of(

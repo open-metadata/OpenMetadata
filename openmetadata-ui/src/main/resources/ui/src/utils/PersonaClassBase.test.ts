@@ -47,12 +47,13 @@ describe('PersonaClassBase', () => {
   });
 
   describe('getCustomizePageCategories', () => {
-    it('returns navigation, app-mode, home-page, data-marketplace, governance, and data-assets categories', () => {
+    it('returns navigation, app-mode, askCollateSidebar, home-page, data-marketplace, governance, and data-assets categories', () => {
       const categories = instance.getCustomizePageCategories();
 
       expect(categories.map((category) => category.key)).toEqual([
         'navigation',
         'app-mode',
+        'askCollateSidebar',
         PageType.LandingPage,
         PageType.DataMarketplace,
         'governance',

@@ -35,6 +35,7 @@ export const Default: Story = {
 };
 
 export const Colors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Button color="primary">Primary</Button>
@@ -73,6 +74,7 @@ export const Sizes: StoryObj = {
 };
 
 export const WithLeadingIcon: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Button color="primary" iconLeading={Plus} size="xs">
@@ -108,6 +110,7 @@ export const WithTrailingIcon: StoryObj = {
 };
 
 export const IconOnly: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <Button color="primary" iconLeading={Plus} size="xs" />
@@ -151,6 +154,7 @@ export const Disabled: StoryObj = {
 };
 
 export const LinkColors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 16 }}>
       <Button color="link-gray">Link Gray</Button>

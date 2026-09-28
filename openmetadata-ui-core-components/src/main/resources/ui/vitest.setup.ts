@@ -16,3 +16,31 @@ expect.extend(matchers);
 afterEach(() => {
   cleanup();
 });
+
+// jsdom ships no `DataTransfer`, and every component that hands a `FileList`
+// back to a callback builds one through it (see `filesToFileList` in
+// `file-upload.tsx`). Without this shim, drop-zone code paths throw
+// `DataTransfer is not defined` before any assertion runs. Only the
+// `items.add` → `files` shape used by that helper is modelled.
+if (typeof globalThis.DataTransfer === 'undefined') {
+  class DataTransferPolyfill {
+    private readonly collected: File[] = [];
+
+    readonly items = {
+      add: (file: File) => {
+        this.collected.push(file);
+      },
+    };
+
+    get files(): FileList {
+      const list = [...this.collected];
+
+      return Object.assign(list, {
+        item: (index: number) => list[index] ?? null,
+      }) as unknown as FileList;
+    }
+  }
+
+  globalThis.DataTransfer =
+    DataTransferPolyfill as unknown as typeof DataTransfer;
+}
