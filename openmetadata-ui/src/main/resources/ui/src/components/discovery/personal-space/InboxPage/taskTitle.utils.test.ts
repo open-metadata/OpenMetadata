@@ -141,6 +141,21 @@ describe('getTaskTitle', () => {
     );
   });
 
+  // A workflow's first save runs the description through the server's HTML
+  // sanitizer, which stores "yesterday's" as "yesterday&#39;s".
+  it('shows a description title as text, decoding what the server encoded', () => {
+    expect(
+      getTaskTitle(
+        task({
+          about: undefined,
+          description:
+            '<p>Dashboards show yesterday&#39;s numbers &amp; totals</p>',
+        }),
+        t
+      )
+    ).toBe("Dashboards show yesterday's numbers & totals");
+  });
+
   it('falls back to the task id when nothing else is available', () => {
     expect(
       getTaskTitle(task({ about: undefined, description: undefined }), t)
