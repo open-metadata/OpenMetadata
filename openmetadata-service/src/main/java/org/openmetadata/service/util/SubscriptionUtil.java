@@ -26,6 +26,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -34,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.glassfish.jersey.client.ClientProperties;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.StatusContext;
@@ -66,6 +68,26 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public class SubscriptionUtil {
+  /**
+   * Headers a caller must not set: hop-by-hop headers and Host belong to the transport, and the
+   * cloud metadata headers exist only to make a metadata service answer.
+   */
+  private static final Set<String> PROTECTED_HEADERS =
+      Set.of(
+          "host",
+          "connection",
+          "keep-alive",
+          "proxy-authenticate",
+          "proxy-authorization",
+          "te",
+          "trailer",
+          "transfer-encoding",
+          "upgrade",
+          "metadata",
+          "metadata-flavor",
+          "x-aws-ec2-metadata-token",
+          "x-metadata-token");
+
   private SubscriptionUtil() {
     /* Hidden constructor */
   }
@@ -345,14 +367,33 @@ public class SubscriptionUtil {
       }
     }
 
-    if (webhook.getHeaders() != null && !webhook.getHeaders().isEmpty()) {
-      for (Map.Entry<String, String> entry : webhook.getHeaders().entrySet()) {
-        if (oauth2Active && "Authorization".equalsIgnoreCase(entry.getKey())) {
-          continue;
-        }
-        target.header(entry.getKey(), entry.getValue());
-      }
+    applyCustomHeaders(target, webhook, oauth2Active);
+  }
+
+  private static void applyCustomHeaders(
+      Invocation.Builder target, Webhook webhook, boolean oauth2Active) {
+    if (webhook.getHeaders() == null || webhook.getHeaders().isEmpty()) {
+      return;
     }
+    for (Map.Entry<String, String> entry : webhook.getHeaders().entrySet()) {
+      String name = entry.getKey();
+      if (oauth2Active && "Authorization".equalsIgnoreCase(name)) {
+        continue;
+      }
+      if (PROTECTED_HEADERS.contains(name.toLowerCase(Locale.ROOT))) {
+        LOG.warn("Dropping protected header {} from webhook request", name);
+        continue;
+      }
+      if (hasControlCharacters(name) || hasControlCharacters(entry.getValue())) {
+        LOG.warn("Dropping header {} from webhook request: illegal characters", name);
+        continue;
+      }
+      target.header(name, entry.getValue());
+    }
+  }
+
+  private static boolean hasControlCharacters(String value) {
+    return value != null && (value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0);
   }
 
   public static String decryptWebhookSecretKey(String encryptedSecretkey) {
@@ -489,6 +530,9 @@ public class SubscriptionUtil {
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
     clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
+    // A redirect is a failure for a callback, and following one would skip the policy check below
+    clientBuilder.property(ClientProperties.FOLLOW_REDIRECTS, false);
+    clientBuilder.register(new OutboundUrlPolicyFilter());
     return clientBuilder.build();
   }
 

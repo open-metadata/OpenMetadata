@@ -1,0 +1,32 @@
+{
+  "name": "Clickzetta",
+  "displayName": "ClickZetta Test Connection",
+  "description": "This Test Connection validates access to ClickZetta and basic metadata extraction of schemas, tables, and views.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that OpenMetadata can reach ClickZetta and authenticate with the configured credentials.",
+      "errorMessage": "Failed to connect to ClickZetta. Validate the host, workspace, virtual cluster, and credentials.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all schemas available to the user.",
+      "errorMessage": "Failed to fetch schemas. Validate that the user can list schemas.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "List tables from the configured schema or an available schema.",
+      "errorMessage": "Failed to fetch tables. Validate that the user can list tables.",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "List views from the configured schema or an available schema.",
+      "errorMessage": "Failed to fetch views. Validate that the user can list views.",
+      "mandatory": false
+    }
+  ]
+}

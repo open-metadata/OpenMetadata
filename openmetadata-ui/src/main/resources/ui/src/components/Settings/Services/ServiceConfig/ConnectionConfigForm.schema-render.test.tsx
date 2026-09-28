@@ -553,6 +553,36 @@ describe('ConnectionConfigForm schema rendering', () => {
     }
   );
 
+  it('renders the Snowflake private key as a credential drop zone', async () => {
+    const { container } = await renderConnectionSchema('Snowflake');
+
+    fireEvent.click(screen.getByTestId('auth-method-1'));
+
+    const privateKey = getRequiredElement(
+      container,
+      '[data-field-name="privateKey"]'
+    );
+
+    expect(
+      within(privateKey).getByTestId('credential-file-dropzone')
+    ).toBeInTheDocument();
+    // `fileOrInput` keeps the paste path alongside the drop zone.
+    expect(within(privateKey).getByRole('textbox')).toBeInTheDocument();
+  });
+
+  it('keeps a plain password field free of any file affordance', async () => {
+    const { container } = await renderConnectionSchema('Snowflake');
+
+    const password = getRequiredElement(
+      container,
+      '[data-field-name="password"]'
+    );
+
+    expect(
+      within(password).queryByTestId('credential-file-dropzone')
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps Airflow five-way connection choices as a compact select', async () => {
     const { container } = await renderConnectionSchema(
       'Airflow',

@@ -21,22 +21,20 @@ test.describe('Table & Data Model columns table pagination', () => {
   test('Page size should persist across different pages', async ({
     dataConsumerPage: page,
   }) => {
-    // Under merge-queue load (many parallel shards on shared ES/DB) this
-    // test's three page loads + two dropdown hand-offs can each drift 5–10 s.
-    // Triple the budget so a slow shard finishes instead of failing at 60 s.
+    // Walks three pages, changing and re-reading the persisted page size at
+    // each, so its 39.5s timing baseline leaves under 1.6x of headroom against
+    // the 60s default. Shards routinely run ~1.7x their baseline (measured
+    // across 124 baselined tests on chromium-01), which puts this at 67s.
     test.slow();
 
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
 
-    // Change page size to 25.
-    // The Antd Dropdown behind `page-size-selection-dropdown` opens on hover,
-    // but under load the mouseenter can miss the transition and the menu
-    // never renders. Same toPass pattern as playwright/utils/common.ts —
-    // hover, fall back to click, and retry until the option is visible.
+    // Change page size to 25
     const tablePageSizeDropdown = page.getByTestId(
       'page-size-selection-dropdown'
     );
@@ -79,9 +77,13 @@ test.describe('Table & Data Model columns table pagination', () => {
     const menuItem1 = page.getByTestId('rows-per-page-option-50');
     const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' });
     await expect(async () => {
-      await pageSizeRecordBtn.click();
+      if (!(await menuItem1.isVisible())) {
+        await pageSizeRecordBtn.click({ timeout: 2_000 });
+      }
       await expect(menuItem1).toBeVisible({ timeout: 2_000 });
-      await menuItem1.click();
+      // The summary panel can resize the page and dismiss the popover. Let the
+      // outer retry reopen it if the option detaches during actionability checks.
+      await menuItem1.click({ timeout: 2_000 });
       await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
         '50'
       );

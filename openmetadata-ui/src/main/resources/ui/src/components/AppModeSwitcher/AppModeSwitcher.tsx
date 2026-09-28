@@ -32,11 +32,11 @@ import {
 } from '../../hooks/useAppMode';
 
 const OPTION_ICON_BOX =
-  'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-blue-50 tw:border tw:border-blue-100 tw:shrink-0';
+  'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-utility-blue-50 tw:border tw:border-utility-blue-100 tw:shrink-0';
 
 const BADGE_CLASS =
   'tw:inline-flex tw:items-center tw:gap-1 tw:px-2 tw:py-0.5 tw:rounded-full ' +
-  'tw:bg-blue-50 tw:border tw:border-blue-200 tw:text-blue-700 tw:text-xs tw:font-semibold ' +
+  'tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:text-utility-blue-700 tw:text-xs tw:font-semibold ' +
   'tw:whitespace-nowrap tw:shrink-0';
 
 const AppModeSwitcherTrigger: React.FC<{
@@ -185,10 +185,10 @@ const AppModeSwitcher: React.FC<{
 
           <button
             className={classNames(
-              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
+              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': !isAiMode,
-                'tw:border-transparent tw:hover:bg-blue-50': isAiMode,
+                'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
+                'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
               }
             )}
             data-testid="app-mode-option-classic"
@@ -215,10 +215,10 @@ const AppModeSwitcher: React.FC<{
 
           <button
             className={classNames(
-              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:mt-1.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-white tw:border tw:text-left',
+              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:mt-1.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
               {
-                'tw:bg-blue-50 tw:border-blue-200': isAiMode,
-                'tw:border-transparent tw:hover:bg-blue-50': !isAiMode,
+                'tw:bg-utility-blue-50 tw:border-utility-blue-200': isAiMode,
+                'tw:border-transparent tw:hover:bg-utility-blue-50': !isAiMode,
               }
             )}
             data-testid="app-mode-option-ai"
@@ -243,7 +243,7 @@ const AppModeSwitcher: React.FC<{
             )}
           </button>
 
-          <hr className="tw:border-0 tw:border-t tw:border-gray-200 tw:my-2" />
+          <hr className="tw:border-0 tw:border-t tw:border-secondary tw:my-2" />
 
           <button
             className="tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:px-2 tw:py-2.5 tw:border-0 tw:bg-transparent tw:cursor-pointer tw:text-left"
@@ -257,7 +257,8 @@ const AppModeSwitcher: React.FC<{
                 'tw:w-5 tw:h-5 tw:rounded-md tw:shrink-0 tw:transition',
                 {
                   'tw:bg-blue-600 tw:border-0': isRemembered,
-                  'tw:bg-white tw:border tw:border-gray-400': !isRemembered,
+                  'tw:bg-surface tw:border tw:border-utility-gray-400':
+                    !isRemembered,
                 }
               )}
               justify="center"

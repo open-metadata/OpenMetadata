@@ -15,7 +15,6 @@ import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +45,7 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -92,7 +92,6 @@ const EditIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [activeField, setActiveField] = useState<string>('');
   const addIngestionRef = useRef<AddIngestionHandle>(null);
 
   const isSettingsPipeline = useMemo(
@@ -104,7 +103,9 @@ const EditIngestionPage = () => {
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getServiceByFQN(serviceCategory, serviceFQN)
+      getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      })
         .then((resService) => {
           if (resService) {
             setServiceData(resService as ServicesUpdateRequest);
@@ -134,8 +135,10 @@ const EditIngestionPage = () => {
 
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
+      // `owners` must be fetched so the form pre-fills the saved owners and the
+      // patch diff replaces them instead of adding against a missing baseline.
       getIngestionPipelineByFqn(ingestionFQN, {
-        fields: TabSpecificField.PIPELINE_STATUSES,
+        fields: [TabSpecificField.PIPELINE_STATUSES, TabSpecificField.OWNERS],
       })
         .then((res) => {
           if (res) {
@@ -238,14 +241,8 @@ const EditIngestionPage = () => {
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
-  };
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
 
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(
@@ -339,6 +336,7 @@ const EditIngestionPage = () => {
       focusedMode
       isWorkflow
       activeField={activeField}
+      activeFieldMeta={activeFieldMeta}
       serviceName={serviceData?.serviceType ?? ''}
       serviceType={getServiceType(serviceCategory as ServiceCategory)}
       workflowType={ingestionType as PipelineType}

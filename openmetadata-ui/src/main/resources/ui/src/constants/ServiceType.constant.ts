@@ -190,8 +190,6 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
-  DatabaseServiceType.MicrosoftFabric,
-  PipelineServiceType.MicrosoftFabricPipeline,
   DatabaseServiceType.BurstIQ,
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
@@ -207,6 +205,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.SapBw4HanaPipeline,
   PipelineServiceType.Prefect,
   DatabaseServiceType.Iomete,
+  DatabaseServiceType.Clickzetta,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

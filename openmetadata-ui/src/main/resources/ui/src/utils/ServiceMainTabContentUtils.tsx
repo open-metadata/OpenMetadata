@@ -24,7 +24,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../interface/platform/service.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
@@ -34,11 +34,13 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { highlightSearchText } from './EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
 import { getColumnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
-import { stringToHTML } from './StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -67,14 +69,16 @@ export const getServiceMainTabColumns = (
     sorter: getColumnSorter<ServicePageData, 'name'>('name'),
     render: (_, record: ServicePageData) => (
       <DisplayName
-        displayName={stringToHTML(
+        displayName={renderHighlightedText(
           highlightSearchText(record.displayName, searchValue)
         )}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
-        name={stringToHTML(highlightSearchText(record.name, searchValue))}
+        name={renderHighlightedText(
+          highlightSearchText(record.name, searchValue)
+        )}
         onEditDisplayName={handleDisplayNameUpdate}
       />
     ),

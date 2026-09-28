@@ -543,3 +543,22 @@ export const fetchEntityActivityCountInto = async (
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
   }
 };
+
+/**
+ * The activity feed's authorship test: match on id when the post carries one,
+ * otherwise on name. Shared so a call site that has to pass `canEdit` /
+ * `canDelete` into ActivityFeedActions derives them from the same rule the
+ * component itself falls back to, rather than a second copy of it.
+ */
+export const isFeedPostAuthor = (
+  currentUser: { id?: string; name?: string } | undefined,
+  author:
+    | { id?: string; name?: string; fullyQualifiedName?: string }
+    | undefined
+): boolean => {
+  const authorName = author?.name ?? author?.fullyQualifiedName;
+
+  return author?.id
+    ? author.id === currentUser?.id
+    : authorName === currentUser?.name;
+};

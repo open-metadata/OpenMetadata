@@ -6,6 +6,7 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -29,6 +30,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -95,12 +97,15 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
@@ -120,6 +125,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static final String TEST_DEFINITION_FIELD = "testDefinition";
   public static final String INCIDENTS_FIELD = "incidentId";
   public static final String INCIDENT_STATUS_FIELD = "incidentStatus";
+  public static final String DATA_QUALITY_DIMENSION_FIELD = "dataQualityDimension";
+  // The search document denormalizes the dimension to its name under a dedicated key. The
+  // EntityReference-typed DATA_QUALITY_DIMENSION_FIELD is never indexed, so a hit read back into a
+  // TestCase can never carry a string where the POJO expects a reference.
+  public static final String DATA_QUALITY_DIMENSION_NAME_FIELD = "dataQualityDimensionName";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
@@ -175,6 +185,45 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENT_STATUS_FIELD)
             ? getIncidentStatus(test)
             : test.getIncidentStatus());
+    // Always resolved rather than gated on `fields`: the dimension is not stored on the test case
+    // and every consumer (search indexing, the UI, the DQ dashboards) expects it to be there.
+    test.setDataQualityDimension(readDataQualityDimension(test.getId()));
+  }
+
+  /**
+   * Reads the dimension straight off the relationship rather than through getFromEntityRef so the
+   * inherited marker stored on the row survives into the reference the API returns.
+   */
+  private EntityReference readDataQualityDimension(UUID testCaseId) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFromRecords(
+            testCaseId, TEST_CASE, Relationship.RELATED_TO, Entity.DATA_QUALITY_DIMENSION);
+    if (nullOrEmpty(records)) {
+      return null;
+    }
+    CollectionDAO.EntityRelationshipRecord record = records.get(0);
+    try {
+      return Entity.getEntityReferenceById(Entity.DATA_QUALITY_DIMENSION, record.getId(), ALL)
+          .withInherited(isInheritedMarker(record.getJson()));
+    } catch (EntityNotFoundException e) {
+      // Relationship left behind by a dimension that is gone: report no dimension rather than fail
+      // the read of the test case.
+      return null;
+    }
+  }
+
+  /** True when the relationship row carries the marker written by {@link #inheritedMarker}. */
+  static Boolean isInheritedMarker(String relationshipJson) {
+    if (nullOrEmpty(relationshipJson)) {
+      return null;
+    }
+    try {
+      JsonNode node = JsonUtils.readTree(relationshipJson).get("inherited");
+      return node != null && node.asBoolean() ? true : null;
+    } catch (Exception e) {
+      LOG.debug("Unreadable relationship json [{}]", relationshipJson, e);
+      return null;
+    }
   }
 
   private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
@@ -188,6 +237,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (fields.contains(TEST_DEFINITION)) {
       fetchAndSetTestDefinitions(testCases);
     }
+
+    // Not gated on `fields`, mirroring setFields: the dimension lives only in the relationship
+    // table, so it would otherwise come back null on every list response.
+    fetchAndSetDataQualityDimensions(testCases);
 
     if (fields.contains(TEST_SUITE_FIELD) || fields.contains(Entity.FIELD_TEST_SUITES)) {
       fetchAndSetTestSuitesData(
@@ -347,6 +400,53 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     for (TestCase testCase : testCases) {
       testCase.setTestDefinition(testDefinitionMap.get(testCase.getId()));
+    }
+  }
+
+  private void fetchAndSetDataQualityDimensions(List<TestCase> testCases) {
+    List<String> testCaseIds =
+        testCases.stream().map(TestCase::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> dimensionRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                testCaseIds,
+                Relationship.RELATED_TO.ordinal(),
+                Entity.DATA_QUALITY_DIMENSION,
+                TEST_CASE);
+    if (dimensionRecords.isEmpty()) {
+      return;
+    }
+
+    List<UUID> dimensionIds =
+        dimensionRecords.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
+    Map<UUID, EntityReference> refMap =
+        Entity.getEntityReferencesByIds(Entity.DATA_QUALITY_DIMENSION, dimensionIds, ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    Map<UUID, EntityReference> byTestCase = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject relation : dimensionRecords) {
+      EntityReference ref = refMap.get(UUID.fromString(relation.getFromId()));
+      if (ref != null) {
+        // Copied per test case: the same dimension reference is shared across the page, but the
+        // inherited marker is a property of each individual relationship row.
+        byTestCase.put(
+            UUID.fromString(relation.getToId()),
+            new EntityReference()
+                .withId(ref.getId())
+                .withType(ref.getType())
+                .withName(ref.getName())
+                .withFullyQualifiedName(ref.getFullyQualifiedName())
+                .withDisplayName(ref.getDisplayName())
+                .withDescription(ref.getDescription())
+                .withDeleted(ref.getDeleted())
+                .withInherited(isInheritedMarker(relation.getJson())));
+      }
+    }
+
+    for (TestCase testCase : testCases) {
+      testCase.setDataQualityDimension(byTestCase.get(testCase.getId()));
     }
   }
 
@@ -790,6 +890,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testDefinition);
     validateColumnTestCase(table, entityLink, testDefinition.getEntityType());
     validateDimensionColumns(test, table);
+    setDataQualityDimension(test, testDefinition);
 
     // Create/resolve the basic test suite only after all validations pass.
     // This avoids creating side entities when request validation fails early.
@@ -960,6 +1061,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
           validateParameterRule(parameter, values);
         }
+        TestCaseThresholdValidator.validate(testDefinition, values).forEach(LOG::warn);
       }
     }
   }
@@ -1012,9 +1114,64 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  /**
+   * A test case points at a dimension entity — a system one or a custom one created in Settings >
+   * Preferences > Data Quality. When none is given, the test case inherits the dimension of its
+   * test definition, so that clearing the field resets it to that default.
+   */
+  static void setDataQualityDimension(TestCase test, TestDefinition testDefinition) {
+    EntityReference dimension = test.getDataQualityDimension();
+    if (dimension != null) {
+      // Include.ALL rather than NON_DELETED: setFields resolves the dimension of an existing test
+      // case with ALL, so a soft-deleted dimension comes back on the entity and re-resolving it
+      // strictly here would make that test case permanently un-updatable — nothing ever flips the
+      // relationship row to deleted, so there would be no way out of the state.
+      // Explicitly supplied, so it is the test case's own dimension: inherited stays unset and the
+      // relationship is left alone when the test definition is later reclassified.
+      test.setDataQualityDimension(
+          Entity.getEntityReference(dimension.withType(Entity.DATA_QUALITY_DIMENSION), ALL)
+              .withInherited(null));
+      return;
+    }
+    String defaultDimension = testDefinition.getDataQualityDimension();
+    // NoDimension is the "unset" marker and has no dimension entity seeded for it, so it means the
+    // test case has no dimension rather than a reference to resolve.
+    if (defaultDimension == null
+        || DataQualityDimensionRepository.NO_DIMENSION.equals(defaultDimension)) {
+      test.setDataQualityDimension(null);
+      return;
+    }
+    // A dimension is a label: one that has since been deleted must not make the test type
+    // uncreatable, so a default that no longer resolves degrades to no dimension at all.
+    try {
+      // Marked inherited so that reclassifying the test definition later moves this test case with
+      // it, while a dimension the user picked themselves stays put. The marker is persisted on the
+      // relationship row by storeRelationships.
+      test.setDataQualityDimension(
+          Entity.getEntityReferenceByName(Entity.DATA_QUALITY_DIMENSION, defaultDimension, ALL)
+              .withInherited(true));
+    } catch (EntityNotFoundException e) {
+      LOG.warn(
+          "Test definition [{}] is classified under data quality dimension [{}], which no longer "
+              + "exists. Test case [{}] is created without a dimension.",
+          testDefinition.getName(),
+          defaultDimension,
+          test.getName());
+      test.setDataQualityDimension(null);
+    }
+  }
+
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult", INCIDENTS_FIELD);
+    // The dimension is stored as a relationship only, so renaming, recolouring or deleting a
+    // dimension is reflected on every test case that uses it without rewriting them.
+    return List.of(
+        "testSuite",
+        "testSuites",
+        "testDefinition",
+        "testCaseResult",
+        DATA_QUALITY_DIMENSION_FIELD,
+        INCIDENTS_FIELD);
   }
 
   @Override
@@ -1033,6 +1190,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<UUID> ids = entities.stream().map(TestCase::getId).toList();
     deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_SUITE);
     deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_DEFINITION);
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.RELATED_TO, Entity.DATA_QUALITY_DIMENSION);
   }
 
   @Override
@@ -1049,7 +1207,30 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TEST_DEFINITION,
         TEST_CASE,
         Relationship.CONTAINS);
+    // RELATED_TO rather than CONTAINS: a dimension does not own its test cases, so deleting one
+    // must not be blocked by (or cascade into) the test cases that reference it.
+    if (test.getDataQualityDimension() != null) {
+      addRelationship(
+          test.getDataQualityDimension().getId(),
+          test.getId(),
+          Entity.DATA_QUALITY_DIMENSION,
+          TEST_CASE,
+          Relationship.RELATED_TO,
+          inheritedMarker(test.getDataQualityDimension()),
+          false);
+    }
   }
+
+  /**
+   * Relationship payload marking a dimension the test case took from its test definition rather
+   * than one the user chose. {@link TestDefinitionRepository} reclassifies only the marked rows, so
+   * a dimension set on the test case itself survives a reclassification of its test definition.
+   */
+  static String inheritedMarker(EntityReference dimension) {
+    return Boolean.TRUE.equals(dimension.getInherited()) ? INHERITED_DIMENSION_JSON : null;
+  }
+
+  public static final String INHERITED_DIMENSION_JSON = "{\"inherited\":true}";
 
   @Override
   protected void postDelete(TestCase testCase, boolean hardDelete) {
@@ -1268,17 +1449,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             relationshipChange.set(
                 addAllTestCasesToLogicalTestSuiteFlush(testSuite.getId(), excludedTestCaseIds)));
 
+    postLogicalSuiteRelationshipUpdatesInBatches(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private void postLogicalSuiteRelationshipUpdatesInBatches(
+      LogicalSuiteRelationshipChange relationshipChange) {
     for (List<EntityReference> batch :
-        Lists.partition(relationshipChange.get().testCaseReferences(), 100)) {
+        Lists.partition(
+            relationshipChange.testCaseReferences(), LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE)) {
       Map<UUID, Long> batchRevisions = new HashMap<>();
       for (EntityReference testCase : batch) {
         batchRevisions.put(
-            testCase.getId(), relationshipChange.get().testCaseRevisions().get(testCase.getId()));
+            testCase.getId(), relationshipChange.testCaseRevisions().get(testCase.getId()));
       }
       postLogicalSuiteRelationshipUpdate(List.copyOf(batch), batchRevisions);
     }
-    updateLogicalTestSuite(relationshipChange.get());
-    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
   private LogicalSuiteRelationshipChange addAllTestCasesToLogicalTestSuiteFlush(
@@ -1316,6 +1503,112 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
   }
 
+  private static final int BULK_MATCH_SEARCH_BATCH_SIZE = 1000;
+  // Cap each relationship write + post-update so a large filtered selection cannot exceed DB
+  // statement/bind limits or transaction memory (the unfiltered "all" path batches similarly).
+  private static final int BULK_MATCH_WRITE_BATCH_SIZE = 500;
+  private static final int LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE = 100;
+
+  /**
+   * Add every test case matching the given search/filter (as shown in the UI) to the bundle suite,
+   * minus excludeIds. Enumerates all matches via search_after so the count is not capped by the
+   * search engine's max_result_window, and writes them in bounded batches.
+   */
+  public RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuite(
+      TestSuite testSuite, String searchFilter, String query, List<UUID> excludeIds) {
+    List<UUID> matchingIds = resolveMatchingTestCaseIds(searchFilter, query, excludeIds);
+    if (matchingIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE);
+    }
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                addMatchingTestCasesToLogicalTestSuiteFlush(testSuite.getId(), matchingIds)));
+
+    postLogicalSuiteRelationshipUpdatesInBatches(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private LogicalSuiteRelationshipChange addMatchingTestCasesToLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> matchingIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    for (List<UUID> batch : Lists.partition(matchingIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      bulkAddToRelationship(testSuiteId, batch, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> addedTestCases =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
+  }
+
+  private List<UUID> resolveMatchingTestCaseIds(
+      String searchFilter, String query, List<UUID> excludeIds) {
+    Set<String> excluded = excludeIds.stream().map(UUID::toString).collect(Collectors.toSet());
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    // Sort on the keyword subfield (fullyQualifiedName is analyzed text): a unique, stable key
+    // for search_after paging, matching how the search layer sorts FQN elsewhere.
+    SearchSortFilter sortFilter =
+        new SearchSortFilter("fullyQualifiedName.keyword", "asc", null, null);
+    List<UUID> matchingIds = new ArrayList<>();
+    Object[] searchAfter = null;
+    while (true) {
+      SearchResultListMapper page =
+          fetchTestCaseIdPage(searchRepository, query, searchFilter, sortFilter, searchAfter);
+      List<Map<String, Object>> hits = page.getResults();
+      if (nullOrEmpty(hits)) {
+        break;
+      }
+      collectTestCaseIds(hits, excluded, matchingIds);
+      searchAfter = page.getLastDocumentsInBatch();
+      if (hits.size() < BULK_MATCH_SEARCH_BATCH_SIZE
+          || searchAfter == null
+          || searchAfter.length == 0) {
+        break;
+      }
+    }
+    return matchingIds;
+  }
+
+  private SearchResultListMapper fetchTestCaseIdPage(
+      SearchRepository searchRepository,
+      String query,
+      String searchFilter,
+      SearchSortFilter sortFilter,
+      Object[] searchAfter) {
+    try {
+      return searchRepository.listWithDeepPagination(
+          TEST_CASE,
+          query,
+          searchFilter,
+          new String[] {"id"},
+          sortFilter,
+          BULK_MATCH_SEARCH_BATCH_SIZE,
+          searchAfter);
+    } catch (IOException e) {
+      throw new UnhandledServerException("Failed to resolve matching test cases for bulk add", e);
+    }
+  }
+
+  private void collectTestCaseIds(
+      List<Map<String, Object>> hits, Set<String> excluded, List<UUID> matchingIds) {
+    for (Map<String, Object> hit : hits) {
+      Object id = hit.get("id");
+      if (id != null && !excluded.contains(id.toString())) {
+        matchingIds.add(UUID.fromString(id.toString()));
+      }
+    }
+  }
+
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(
       UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
@@ -1335,6 +1628,60 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
+  }
+
+  public RestUtil.DeleteResponse<TestSuite> deleteTestCasesFromLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds) {
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                deleteTestCasesFromLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
+
+    postLogicalSuiteRelationshipUpdate(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.DeleteResponse<>(testSuite, ENTITY_DELETED);
+  }
+
+  /**
+   * The ids among {@code testCaseIds} that the logical test suite currently contains, in suite
+   * order and without duplicates. Callers use this to narrow a bulk request down to the
+   * memberships that are actually going to change before they authorize it.
+   */
+  public List<UUID> getLogicalTestSuiteMemberIds(UUID testSuiteId, List<UUID> testCaseIds) {
+    if (nullOrEmpty(testCaseIds)) {
+      return List.of();
+    }
+    return logicalTestSuiteMembers(testSuiteId, testCaseIds).stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
+  private List<EntityReference> logicalTestSuiteMembers(UUID testSuiteId, List<UUID> testCaseIds) {
+    Set<UUID> requestedIds = new HashSet<>(testCaseIds);
+    return findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE).stream()
+        .filter(ref -> requestedIds.contains(ref.getId()))
+        .toList();
+  }
+
+  private LogicalSuiteRelationshipChange deleteTestCasesFromLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> testCaseIds) {
+    // Only the test cases the suite actually contains are removed, so that the relationship change
+    // published afterwards describes what really changed
+    List<EntityReference> removedTestCaseReferences =
+        logicalTestSuiteMembers(testSuiteId, testCaseIds);
+    if (removedTestCaseReferences.isEmpty()) {
+      return LogicalSuiteRelationshipChange.empty();
+    }
+
+    // Removed one by one, as the single test case removal does, so that the RDF store and the
+    // caches on both sides of every relationship are kept in step
+    removedTestCaseReferences.forEach(
+        ref ->
+            deleteRelationship(
+                testSuiteId, TEST_SUITE, ref.getId(), TEST_CASE, Relationship.CONTAINS));
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, removedTestCaseReferences);
   }
 
   private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {
@@ -1555,6 +1902,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
+    /**
+     * Rewrites the dimension relationship by hand rather than through updateFromRelationship: the
+     * generic helper cannot carry the inherited marker, and losing it would make a dimension the
+     * user picked look inherited and get overwritten the next time its test definition is
+     * reclassified.
+     */
+    private void updateDataQualityDimension() {
+      EntityReference originalDimension = original.getDataQualityDimension();
+      EntityReference updatedDimension = updated.getDataQualityDimension();
+      recordChange("dataQualityDimension", originalDimension, updatedDimension, true);
+
+      if (originalDimension != null) {
+        deleteRelationship(
+            originalDimension.getId(),
+            Entity.DATA_QUALITY_DIMENSION,
+            original.getId(),
+            TEST_CASE,
+            Relationship.RELATED_TO);
+      }
+      if (updatedDimension != null) {
+        addRelationship(
+            updatedDimension.getId(),
+            original.getId(),
+            Entity.DATA_QUALITY_DIMENSION,
+            TEST_CASE,
+            Relationship.RELATED_TO,
+            inheritedMarker(updatedDimension),
+            false);
+      }
+    }
+
     @Override
     protected boolean consolidateChanges(TestCase original, TestCase updated, Operation operation) {
       return false;
@@ -1646,6 +2024,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "topDimensions", original.getTopDimensions(), updated.getTopDimensions()));
+      compareAndUpdate("dataQualityDimension", this::updateDataQualityDimension);
       compareAndUpdate(
           "testCaseStatus",
           () ->

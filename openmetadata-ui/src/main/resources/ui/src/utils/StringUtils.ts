@@ -72,10 +72,20 @@ export const removeOuterEscapes = (input: string) => {
 };
 
 /**
+ * `btoa` alone treats every JS character as a Latin-1 byte, so non-ASCII input
+ * is silently corrupted (`\u00a3` -> `a3` instead of `c2 a3`) and input above
+ * U+00FF throws. Encode to UTF-8 bytes first, since consumers (the login API)
+ * decode the base64 as UTF-8. See issue #28694.
+ *
  * @param text plain text
- * @returns base64 encoded text
+ * @returns base64 encoding of the UTF-8 bytes of `text`
  */
-export const getBase64EncodedString = (text: string): string => btoa(text);
+export const getBase64EncodedString = (text: string): string =>
+  btoa(
+    Array.from(new TextEncoder().encode(text), (byte) =>
+      String.fromCharCode(byte)
+    ).join('')
+  );
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replaceAll(' ', slugString);
@@ -88,8 +98,49 @@ export const slugify = (value: string) =>
     .replaceAll(/^-+|-+$/g, '');
 
 // will add back slash "\" before quote in string if present
-export const getQueryWithSlash = (query: string): string =>
-  query.replaceAll(/["']/g, String.raw`\$&`);
+export const getQueryWithSlash = (query: string): string => {
+  const trimmed = query.trim();
+  // escapeESReservedCharacters already escapes "&" upstream of this call;
+  // re-escaping a query that is purely those already-escaped characters
+  // sends Elasticsearch a term with no actual content, so drop it instead.
+  if (/^[\\&]+$/.test(trimmed)) {
+    return '';
+  }
+
+  /*
+   * Always escape a raw single quote. Escape a double quote only when it
+   * isn't already escaped: escapeESReservedCharacters pre-escapes " -> \"
+   * for callers that use it (e.g. Suggestions.tsx), while other callers
+   * (e.g. TagsUtils#fetchGlossaryList) pass raw text straight here and
+   * still need an unescaped quote escaped so it doesn't break
+   * Elasticsearch's query_string parser. A quote is only actually escaped
+   * when it's preceded by an odd number of backslashes -- an even run
+   * (including zero) resolves to literal backslashes, leaving the quote
+   * itself unescaped. Walking the string once (instead of a `(\\*)"` regex)
+   * avoids the super-linear backtracking a quantified-group-then-literal
+   * pattern causes on long non-matching backslash runs.
+   */
+  let result = '';
+  let precedingBackslashes = 0;
+  for (const char of query) {
+    if (char === '\\') {
+      precedingBackslashes += 1;
+      result += char;
+
+      continue;
+    }
+    if (char === "'") {
+      result += String.raw`\'`;
+    } else if (char === '"') {
+      result += precedingBackslashes % 2 === 1 ? char : String.raw`\"`;
+    } else {
+      result += char;
+    }
+    precedingBackslashes = 0;
+  }
+
+  return result;
+};
 
 /**
  * Convert a template string into HTML DOM nodes.

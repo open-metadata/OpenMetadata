@@ -12,6 +12,69 @@
  */
 import { APIRequestContext, APIResponse } from '@playwright/test';
 
+// Preserved for the many support classes that still call withNotFoundRetry
+// against just-created entity ids where the server occasionally answers 404
+// briefly (row is committed, reference lookup lags ~15ms). See withNotFoundRetry
+// for the full explanation and the reproduction that motivates it.
+const NOT_FOUND_RETRY_ATTEMPTS = 3;
+const NOT_FOUND_RETRY_BASE_DELAY_MS = 300;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+export const assertFulfilled = (results: PromiseSettledResult<unknown>[]) => {
+  const failures = results.filter(
+    (result): result is PromiseRejectedResult => result.status === 'rejected'
+  );
+  if (failures.length) {
+    const errors = failures.map((failure) => failure.reason);
+    throw new AggregateError(
+      errors,
+      `Parallel fixture operations failed:\n${errors.map(String).join('\n')}`
+    );
+  }
+};
+
+export const settleAll = async (operations: Iterable<unknown>) => {
+  assertFulfilled(await Promise.allSettled(operations));
+};
+
+// 401 during teardown means the JWT expired mid-test — the fixture may
+// leak, but failing the whole test on a cleanup auth error is worse than
+// warning and moving on (the same reason main's bare apiContext.delete
+// tolerated it silently). 404 is already-gone. 400 covers protected
+// "system entity" classifications the server refuses to hard-delete —
+// same class: fixture leak, not a test-correctness issue. Everything
+// else surfaces. 403 stays a hard fail: it means the token is valid but
+// the caller lacks permission, which is a real test-setup bug.
+const CLEANUP_TOLERATED_STATUSES = new Set([400, 401, 404]);
+
+/** Cleanup is idempotent, but a real HTTP error must not silently leak a fixture. */
+export const deleteFixtureEntity = async (
+  apiContext: APIRequestContext,
+  url: string,
+  options?: Parameters<APIRequestContext['delete']>[1]
+): Promise<APIResponse> => {
+  const response = await apiContext.delete(url, options);
+  const status = response.status();
+  if (!response.ok() && !CLEANUP_TOLERATED_STATUSES.has(status)) {
+    throw new Error(
+      `Fixture DELETE ${url}: HTTP ${status}: ${await response.text()}`
+    );
+  }
+  // 401 (JWT expired) and 400 (protected/system entity) are tolerated so
+  // the test doesn't fail on a cleanup issue, but the fixture leaks —
+  // surface it so cleanup regressions don't hide in green runs.
+  if (status === 401 || status === 400) {
+    console.warn(
+      `Fixture DELETE ${url}: HTTP ${status} during cleanup; fixture may leak`
+    );
+  }
+  return response;
+};
+
 /**
  * Fallback for the response body when a caller does not name a type.
  *
@@ -37,7 +100,7 @@ type ResponseBody = any;
  * Throwing here keeps the blame on the call that failed.
  */
 export const okJson = async <T = ResponseBody>(
-  response: APIResponse,
+  response: Pick<APIResponse, 'ok' | 'status' | 'text' | 'json'>,
   label: string
 ): Promise<T> => {
   if (!response.ok()) {
@@ -80,114 +143,6 @@ export const buildFqn = (...segments: string[]): string =>
   segments.map(quoteFqnSegment).join('.');
 
 /**
- * A dependency committed moments earlier can still be invisible to the create
- * that references it. A nightly AUT run recorded `POST /policies` answering 201,
- * `POST /roles` referencing that exact id answering 404 `policy instance ... not
- * found` 15ms later, and a `DELETE` of the same id answering 200 a further 58ms
- * on — so the row was committed the whole time and only the reference lookup
- * lagged. Retry briefly instead of losing the try; a reference that is genuinely
- * wrong still fails, just ~1.8s later.
- */
-const NOT_FOUND_RETRY_ATTEMPTS = 3;
-const NOT_FOUND_RETRY_BASE_DELAY_MS = 300;
-
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-/**
- * Re-send a request while the server answers 404.
- *
- * A 404 means the request was rejected outright, so nothing was partially
- * applied and re-sending is safe. This covers the mirror image of the 409 race:
- * a nightly shard recorded `ApiServiceClass.patch failed (404): apiService
- * instance ... not found` against the very id its own create had just returned.
- * Callers keep their own {@link okJson} handling — this only decides whether the
- * request is worth sending again.
- */
-export const withNotFoundRetry = async (
-  send: () => Promise<APIResponse>
-): Promise<APIResponse> => {
-  let response = await send();
-
-  for (
-    let attempt = 1;
-    attempt <= NOT_FOUND_RETRY_ATTEMPTS && response.status() === 404;
-    attempt++
-  ) {
-    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
-    response = await send();
-  }
-
-  return response;
-};
-
-/**
- * Errors from `apiContext.{post,patch,delete,put,get}` that come from the
- * transport layer, not from an HTTP response — the server closed the socket
- * before answering, or the Node client aborted mid-flight. These are almost
- * always the Dropwizard backend swapping a worker thread under peak parallel
- * load; the same request replayed a moment later succeeds.
- *
- * Match on the message rather than an error class because Playwright wraps the
- * underlying `Error` in its own type and re-emits the original message.
- */
-const NETWORK_ERROR_PATTERNS = [
-  'socket hang up',
-  'ECONNRESET',
-  'ECONNREFUSED',
-  'other side closed',
-  'network socket disconnected',
-];
-
-const isTransientNetworkError = (err: unknown): boolean => {
-  const message = err instanceof Error ? err.message : String(err);
-
-  return NETWORK_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
-};
-
-/**
- * Re-run a raw `apiContext.*` call when it throws a transient network error.
- *
- * Playwright's `apiRequestContext` methods throw synchronously (rather than
- * returning a non-2xx response) when the transport itself fails — `socket hang
- * up`, `ECONNRESET`, etc. The retry loops elsewhere in this file check
- * `response.status()` and so cannot see these; the request never got that far.
- *
- * Wrap the call site's thunk in this helper and a peak-load hiccup becomes a
- * ~600 ms pause instead of an ejected PR at the 0-retry gate:
- *
- *     const response = await withNetworkRetry(() => apiContext.delete(url));
- *
- * A genuine server outage still surfaces after `MAX_ATTEMPTS` tries.
- */
-const NETWORK_RETRY_ATTEMPTS = 3;
-const NETWORK_RETRY_BASE_DELAY_MS = 300;
-
-export const withNetworkRetry = async <T>(
-  send: () => Promise<T>
-): Promise<T> => {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= NETWORK_RETRY_ATTEMPTS; attempt++) {
-    try {
-      return await send();
-    } catch (err) {
-      if (!isTransientNetworkError(err)) {
-        throw err;
-      }
-      lastError = err;
-      if (attempt < NETWORK_RETRY_ATTEMPTS) {
-        await sleep(NETWORK_RETRY_BASE_DELAY_MS * attempt);
-      }
-    }
-  }
-
-  throw lastError;
-};
-
-/**
  * POST that treats "already exists" as success.
  *
  * The nightly topology runs many Playwright processes against a single server,
@@ -209,6 +164,14 @@ export const withNetworkRetry = async <T>(
  * `fqnSegments` are the entity's raw name parts, outermost first. They are quoted
  * and joined here so no call site has to know the FQN escaping rules.
  */
+// Node reports a keep-alive socket the server closed mid-request as a thrown
+// transport error rather than a response, and Playwright does not retry a POST.
+const TRANSPORT_FAILURE =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|connection closed/i;
+
+const isTransportFailure = (error: unknown): boolean =>
+  error instanceof Error && TRANSPORT_FAILURE.test(error.message);
+
 export const createOrFetch = async <T = ResponseBody>(
   apiContext: APIRequestContext,
   options: {
@@ -221,29 +184,20 @@ export const createOrFetch = async <T = ResponseBody>(
   }
 ): Promise<T> => {
   const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
-  // Wrap in withNetworkRetry so a socket hang up on the peak-parallel setup
-  // path (backend swapping a Dropwizard worker under load) becomes a ~600 ms
-  // pause instead of an ejected shard at the 0-retry gate. Every support
-  // class that creates an entity routes through here.
-  let createResponse = await withNetworkRetry(() =>
-    apiContext.post(createPath, { data })
-  );
+  // Retry once on a dead connection. The entity may already have been created
+  // before the socket died, and that is exactly the conflict the 409 branch
+  // below recovers from, so the retry cannot double-create — it either lands
+  // the entity or lands on its own conflict. Anything that is not a transport
+  // failure still propagates untouched.
+  let createResponse;
+  try {
+    createResponse = await apiContext.post(createPath, { data });
+  } catch (error) {
+    if (!isTransportFailure(error)) {
+      throw error;
+    }
 
-  // 404 and 5xx are both "the server did not apply this", so re-sending is
-  // safe in either case — nothing was partially written. The 5xx arm covers a
-  // create whose parent reference is not resolvable yet: DashboardDataModelClass
-  // carried its own copy of this loop for exactly that, and can now drop it.
-  // A genuine failure still surfaces, just after the bounded retries.
-  for (
-    let attempt = 1;
-    attempt <= NOT_FOUND_RETRY_ATTEMPTS &&
-    (createResponse.status() === 404 || createResponse.status() >= 500);
-    attempt++
-  ) {
-    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
-    createResponse = await withNetworkRetry(() =>
-      apiContext.post(createPath, { data })
-    );
+    createResponse = await apiContext.post(createPath, { data });
   }
 
   if (createResponse.status() === 409) {
@@ -256,10 +210,8 @@ export const createOrFetch = async <T = ResponseBody>(
     if (fields) {
       params.push(`fields=${encodeURIComponent(fields)}`);
     }
-    const getResponse = await withNetworkRetry(() =>
-      apiContext.get(
-        `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
-      )
+    const getResponse = await apiContext.get(
+      `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
     );
 
     const existing = await okJson<T>(
@@ -287,4 +239,20 @@ export const createOrFetch = async <T = ResponseBody>(
   }
 
   return await okJson<T>(createResponse, label);
+};
+export const withNotFoundRetry = async (
+  send: () => Promise<APIResponse>
+): Promise<APIResponse> => {
+  let response = await send();
+
+  for (
+    let attempt = 1;
+    attempt <= NOT_FOUND_RETRY_ATTEMPTS && response.status() === 404;
+    attempt++
+  ) {
+    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
+    response = await send();
+  }
+
+  return response;
 };

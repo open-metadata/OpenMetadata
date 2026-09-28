@@ -135,6 +135,18 @@ public interface PipelineServiceClientInterface {
         "This operation is not supported by this pipeline service");
   }
 
+  /* Run the pipeline with options that apply to this run only. The default suits a runner that
+   * rebuilds the whole run from the pipeline on every trigger: it runs a copy of the pipeline with
+   * the options applied. A runner whose config is baked at deploy time has to override this and send
+   * the options with the trigger instead. */
+  default PipelineServiceClientResponse runPipelineWithOptions(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service, RunOptions options) {
+    IngestionPipeline pipelineForRun = options.applyTo(ingestionPipeline);
+    return options.appConfigOverride() == null
+        ? runPipeline(pipelineForRun, service)
+        : runPipeline(pipelineForRun, service, options.appConfigOverride());
+  }
+
   /* Stop and delete a pipeline at the pipeline service */
   PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);
 

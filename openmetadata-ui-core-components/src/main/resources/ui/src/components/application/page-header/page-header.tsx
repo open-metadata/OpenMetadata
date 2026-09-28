@@ -166,9 +166,9 @@ export const PageHeader = ({
         // #EFF8FF border are hardcoded because Tailwind arbitrary values can't
         // take semantic tokens. The border is marked important so it wins over
         // the Card `default` variant's border-secondary. Dark mode drops the
-        // gradient and restores the neutral border on the bg-primary surface.
+        // gradient and restores the neutral border on the Card's bg-surface.
         variant === 'gradient' &&
-          'tw:border-brand-50! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none tw:dark:bg-primary',
+          'tw:border-brand-50! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none',
         className
       )}
       data-testid={dataTestId}

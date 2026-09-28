@@ -468,7 +468,9 @@ test.describe('User with Data Consumer Roles', () => {
         `Failed to patch table ${tableId}: ${await ownerPatchResponse.text()}`
       ).toBeTruthy();
 
-      await dataConsumerPage.goto(tablePageUrl);
+      await dataConsumerPage.goto(tablePageUrl, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(dataConsumerPage);
 
       await checkDataConsumerPermissions(dataConsumerPage);
@@ -562,7 +564,9 @@ test.describe('User with Data Steward Roles', () => {
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    await dataStewardPage.goto(dataStewardPermissionTableUrl);
+    await dataStewardPage.goto(dataStewardPermissionTableUrl, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(dataStewardPage);
 
     await checkStewardPermissions(dataStewardPage);
@@ -1246,6 +1250,16 @@ test.describe('User Profile Persona Interactions', () => {
     await test.step('Navigate back to user profile', async () => {
       await visitOwnProfilePage(adminPage);
       await adminPage.getByTestId('persona-details-card').waitFor();
+
+      // The "Default Persona changed to …" success toast from the add step is a
+      // success variant with no close button, and its react-aria auto-dismiss
+      // timer can be starved by the intervening navigation churn. The toast
+      // region lives at the app root and survives SPA navigation, so the stale
+      // toast can still be on screen — which would make the removal step's
+      // "no notification appears" assertion resolve to it. Reload to guarantee a
+      // clean toast region before asserting the removal shows no notification.
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
+      await adminPage.getByTestId('persona-details-card').waitFor();
     });
 
     // Test removing default persona
@@ -1368,58 +1382,59 @@ base.describe(
       await afterAction();
     });
 
-    base(
-      'User Performance across different entities pages',
-      async ({ browser }) => {
-        base.slow();
-        const { page, afterAction } = await performUserLogin(browser, user);
+    for (const entity of userPerformanceEntities) {
+      base(
+        `User Performance across different entities pages - ${entity.getType()}`,
+        async ({ browser }) => {
+          const { page, afterAction } = await performUserLogin(browser, user);
 
-        for (const entity of userPerformanceEntities) {
-          await entity.visitEntityPage(page);
-          await waitForAllLoadersToDisappear(page);
+          try {
+            await entity.visitEntityPage(page);
+            await waitForAllLoadersToDisappear(page);
 
-          await expect(page.getByTestId('entity-header-name')).toHaveText(
-            entity.entityResponseData.name
-          );
+            await expect(page.getByTestId('entity-header-name')).toHaveText(
+              entity.entityResponseData.name
+            );
 
-          const activityResponse = page.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname.startsWith(
-                '/api/v1/activity/entity/'
-              ) && response.request().method() === 'GET'
-          );
+            const activityResponse = page.waitForResponse(
+              (response) =>
+                new URL(response.url()).pathname.startsWith(
+                  '/api/v1/activity/entity/'
+                ) && response.request().method() === 'GET'
+            );
 
-          await page.getByTestId('activity_feed').click();
-          await activityResponse;
+            await page.getByTestId('activity_feed').click();
+            await activityResponse;
 
-          await waitForAllLoadersToDisappear(page);
+            await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByTestId('global-setting-left-panel').getByText('All')
-          ).toBeVisible();
+            await expect(
+              page.getByTestId('global-setting-left-panel').getByText('All')
+            ).toBeVisible();
 
-          await expect(
-            page.getByTestId('global-setting-left-panel').getByText('Tasks')
-          ).toBeVisible();
+            await expect(
+              page.getByTestId('global-setting-left-panel').getByText('Tasks')
+            ).toBeVisible();
 
-          const lineageResponse = page.waitForResponse(
-            `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
-          );
+            const lineageResponse = page.waitForResponse(
+              `**/api/v1/lineage/scene?*focusFqn=${entity.entityResponseData.fullyQualifiedName}*`
+            );
 
-          await page.getByTestId('lineage').click();
-          await lineageResponse;
+            await page.getByTestId('lineage').click();
+            await lineageResponse;
 
-          await waitForAllLoadersToDisappear(page);
+            await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByTestId(
-              `lineage-node-${entity.entityResponseData.fullyQualifiedName}`
-            )
-          ).toBeVisible();
+            await expect(
+              page.getByTestId(
+                `lineage-node-${entity.entityResponseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+          } finally {
+            await afterAction();
+          }
         }
-
-        await afterAction();
-      }
-    );
+      );
+    }
   }
 );

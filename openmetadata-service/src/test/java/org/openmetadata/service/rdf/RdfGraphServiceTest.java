@@ -28,6 +28,14 @@ import org.junit.jupiter.api.Test;
 class RdfGraphServiceTest {
 
   @Test
+  void graphRequestSupportsRootOnlyTraversal() {
+    final RdfGraphService.GraphRequest request =
+        RdfGraphService.GraphRequest.from(UUID.randomUUID(), "table", 0, null, null);
+
+    assertEquals(0, request.depth());
+  }
+
+  @Test
   void graphRequestNormalizesTypeDepthAndFilters() {
     RdfGraphService.GraphRequest request =
         RdfGraphService.GraphRequest.from(

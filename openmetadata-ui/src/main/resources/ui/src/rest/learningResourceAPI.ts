@@ -16,7 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface LearningResource {
   id: string;

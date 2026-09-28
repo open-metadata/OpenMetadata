@@ -31,7 +31,7 @@ import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import {
   getAddCustomMetricPath,
   getEntityDetailsPath,
@@ -99,7 +99,7 @@ const TabFilters = () => {
   const editDataProfile = useMemo(
     () =>
       permissions &&
-      getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
+      getDerivedPermissionFlags(permissions).can(Operation.EditDataProfile),
     [permissions]
   );
   const createTestCasePermission = useMemo(

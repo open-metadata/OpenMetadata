@@ -96,6 +96,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.PagePermissionsResolver;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -122,6 +123,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 @LatencyPhase
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
+  private static final String INCLUDE_PERMISSIONS_PARAM = "includePermissions";
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final Set<String> allowedFields;
@@ -208,6 +210,40 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
   }
 
+  /**
+   * When a list request opts in with {@code ?includePermissions=true}, attach each listed entity's
+   * permissions for the current user so the UI can render row-level actions without firing one
+   * permission call per entity. No-op (and zero cost) for the default listing.
+   */
+  public final ResultList<T> addPermissions(
+      UriInfo uriInfo, SecurityContext securityContext, ResultList<T> list) {
+    if (isPermissionsRequested(uriInfo) && !nullOrEmpty(list.getData())) {
+      list.setEntityPermissions(
+          PagePermissionsResolver.resolve(
+              authorizer, securityContext, entityType, repository, list.getData()));
+    }
+    return list;
+  }
+
+  private boolean isPermissionsRequested(UriInfo uriInfo) {
+    return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst(INCLUDE_PERMISSIONS_PARAM));
+  }
+
+  /** Cursor-paged list inputs, grouped so the paging helper stays within the parameter limit. */
+  private record CursorPage(
+      Fields fields, ListFilter filter, int limit, String before, String after) {}
+
+  private ResultList<T> listCursorPaged(
+      UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
+    ResultList<T> resultList =
+        page.before() != null // Reverse paging
+            ? repository.listBefore(
+                uriInfo, page.fields(), page.filter(), page.limit(), page.before())
+            : repository.listAfter(
+                uriInfo, page.fields(), page.filter(), page.limit(), page.after());
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
+  }
+
   public ResultList<T> listInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -248,14 +284,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    // List
-    ResultList<T> resultList;
-    if (before != null) { // Reverse paging
-      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else { // Forward paging or first page
-      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, resultList);
+    return listCursorPaged(
+        uriInfo, securityContext, new CursorPage(fields, filter, limitParam, before, after));
   }
 
   public ResultList<T> listInternal(
@@ -273,14 +303,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    // List
-    ResultList<T> resultList;
-    if (before != null) { // Reverse paging
-      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else { // Forward paging or first page
-      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, resultList);
+    return listCursorPaged(
+        uriInfo, securityContext, new CursorPage(fields, filter, limitParam, before, after));
   }
 
   protected ResultList<T> searchInternal(
@@ -304,7 +328,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
     ResultList<T> resultList =
         repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
-    return addHref(uriInfo, resultList);
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
   public ResultList<T> listInternalFromSearch(
@@ -320,16 +344,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<AuthRequest> authRequests)
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-    return repository.listFromSearchWithOffset(
-        uriInfo,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        q,
-        queryString,
-        securityContext);
+    ResultList<T> resultList =
+        repository.listFromSearchWithOffset(
+            uriInfo,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            queryString,
+            securityContext);
+    return addPermissions(uriInfo, securityContext, resultList);
   }
 
   public T getInternal(
@@ -702,6 +728,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  /**
+   * Variant for resources that need a resource-specific authorization decision. It must plumb
+   * If-Match and the impersonation actor exactly as the standard overload does: dropping them
+   * silently disables optimistic locking (a stale ETag overwrites a concurrent update instead of
+   * failing the precondition) and loses impersonation attribution in the change record.
+   */
   public Response patchInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -710,8 +742,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
-        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+        repository.patch(
+            uriInfo,
+            id,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            null,
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

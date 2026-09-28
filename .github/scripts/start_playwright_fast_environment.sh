@@ -206,13 +206,30 @@ pull_image_with_retry() {
   done
 }
 
-pull_image_with_retry "$PW_POSTGRES_IMAGE"
-pull_image_with_retry "$PW_OPENSEARCH_IMAGE"
+# Pulled together rather than one after the other: the whole of this script
+# runs under a 5m `timeout` in setup-openmetadata-test-environment, and the two
+# pulls are the bulk of it. import-export-02 on run 34826046448 spent 22s on
+# postgres and 3m44s on opensearch, leaving 54s for compose-up and the health
+# waits, and was killed at 5m03s — overlapping them would have brought it in
+# under the budget. `wait` is checked per job so a failed pull still stops the
+# script with its own message instead of being swallowed.
+pull_image_with_retry "$PW_POSTGRES_IMAGE" &
+postgres_pull_pid=$!
+pull_image_with_retry "$PW_OPENSEARCH_IMAGE" &
+opensearch_pull_pid=$!
+
+pull_failed=0
+wait "$postgres_pull_pid" || pull_failed=1
+wait "$opensearch_pull_pid" || pull_failed=1
+if [[ $pull_failed -ne 0 ]]; then
+  exit 1
+fi
 
 docker compose -f "$compose_file" -f "$fast_compose_file" up -d --no-build postgresql opensearch
 
 for service in postgresql opensearch; do
-  container_id=$(docker compose -f "$compose_file" -f "$fast_compose_file" ps -q "$service")
+  # -a: without it an exited container yields an empty id and we never reach docker logs below
+  container_id=$(docker compose -f "$compose_file" -f "$fast_compose_file" ps -a -q "$service")
   for _ in $(seq 1 90); do
     status=$(docker inspect "$container_id" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
     [[ "$status" == "healthy" ]] && break

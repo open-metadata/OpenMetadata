@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -649,6 +650,193 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertEquals(ApiStatus.SUCCESS, removeResult.getStatus());
     assertEquals(2, removeResult.getNumberOfRowsProcessed());
     assertEquals(2, removeResult.getNumberOfRowsPassed());
+  }
+
+  @Test
+  void test_domainChangeDetachesConflictingDataProducts(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance");
+    Domain hr = createTestDomain(ns, "hr");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving"))
+                .withDescription("Data product whose domain will move")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+    DataProduct stayingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_staying"))
+                .withDescription("Data product that stays in finance")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_conflict", finance);
+    EntityReference schemaRef = schema.getEntityReference();
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(), new BulkAssets().withAssets(List.of(schemaRef)));
+    bulkAddAssets(
+        stayingProduct.getFullyQualifiedName(), new BulkAssets().withAssets(List.of(schemaRef)));
+
+    moveDataProductDomain(movingProduct, hr);
+
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertTrue(
+        hasDataProduct(schemaDataProducts, movingProduct.getId()),
+        "The moved data product now shares the schema's new domain and must be kept");
+    assertFalse(
+        hasDataProduct(schemaDataProducts, stayingProduct.getId()),
+        "The data product left behind in finance must be detached from the moved schema");
+
+    // The schema must stay writable — before the fix this edit failed domain validation with 400.
+    var editableSchema =
+        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after data product domain move");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  @Test
+  void test_domainChangeDetachesConflictingDataProductsOnInheritedDescendants(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "finance_desc");
+    Domain hr = createTestDomain(ns, "hr_desc");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving_desc"))
+                .withDescription("Data product on the parent schema")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+    DataProduct childProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_child"))
+                .withDescription("Data product on the inheriting child table")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_parent", finance);
+    Table childTable = createChildTable(ns, "inheriting_child", schema, null);
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        childProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(childTable.getEntityReference())));
+
+    moveDataProductDomain(movingProduct, hr);
+
+    List<EntityReference> childDataProducts =
+        SdkClients.adminClient()
+            .tables()
+            .get(childTable.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertFalse(
+        hasDataProduct(childDataProducts, childProduct.getId()),
+        "A data product on an inherited-domain descendant must be detached when its ancestor moves");
+
+    var editableChild =
+        SdkClients.adminClient().tables().get(childTable.getId().toString(), "dataProducts");
+    editableChild.setDescription("edited after ancestor domain move");
+    SdkClients.adminClient().tables().update(editableChild.getId().toString(), editableChild);
+  }
+
+  @Test
+  void test_domainChangeSkipsSoftDeletedAssetsAndDoesNotAbort(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance_soft");
+    Domain hr = createTestDomain(ns, "hr_soft");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving_soft"))
+                .withDescription("Data product with a soft-deleted asset")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var liveSchema = createSchemaWithDomain(ns, "schema_live", finance);
+    var staleSchema = createSchemaWithDomain(ns, "schema_stale", finance);
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(liveSchema.getEntityReference(), staleSchema.getEntityReference())));
+
+    // Soft-delete keeps the data-product relationship, so the stale schema still shows in the
+    // product's asset list. Before the fix, resolving it during detach threw
+    // EntityNotFoundException
+    // and rolled back the whole domain change.
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .delete(
+            staleSchema.getId().toString(), Map.of("hardDelete", "false", "recursive", "false"));
+
+    assertDoesNotThrow(() -> moveDataProductDomain(movingProduct, hr));
+
+    // The live asset was still migrated and stays writable.
+    var editableSchema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(liveSchema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after domain move with a soft-deleted sibling");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  @Test
+  void test_domainRemovalDetachesDataProductsFromAssets(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance_removal");
+
+    DataProduct product =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_removal"))
+                .withDescription("Domains will be cleared")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_removal", finance);
+    bulkAddAssets(
+        product.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+
+    // Clearing the product's domains leaves the schema with no domains; an asset with a data
+    // product but no domains fails validation, so the assignment must be detached.
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(product.getId().toString(), "domains");
+    current.setDomains(List.of());
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertFalse(
+        hasDataProduct(schemaDataProducts, product.getId()),
+        "A data product must be detached from an asset left with no domains");
+
+    var editableSchema =
+        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after domain removal");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString(), "domains");
+    current.setDomains(List.of(targetDomain.getEntityReference()));
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+  }
+
+  private boolean hasDataProduct(List<EntityReference> dataProducts, UUID dataProductId) {
+    return dataProducts != null
+        && dataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId));
   }
 
   @Test

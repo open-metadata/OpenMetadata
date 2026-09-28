@@ -10,12 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OldJsonTree } from '@react-awesome-query-builder/antd';
-import { escapeRegExp, isArray, isEmpty, toLower } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import type { Bucket } from 'Models';
-import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import type { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
@@ -26,25 +22,15 @@ import {
   TEAM_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import {
-  EntityFields,
-  EntityReferenceFields,
-} from '../enums/AdvancedSearch.enum';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import type {
-  ContainerSearchSource,
-  DashboardSearchSource,
-  ExploreSearchSource,
-  MlmodelSearchSource,
-  PipelineSearchSource,
-  SuggestOption,
-  TableSearchSource,
-  TopicSearchSource,
-} from '../interface/search.interface';
-import { getEntityName } from './EntityNameUtils';
+  ExploreQuickFilterField,
+  SearchDropdownOption,
+} from '../interface/quickFilter.interface';
+import { getNameFromFQN } from './FqnUtils';
 import { extractSourceValue } from './SearchPureUtils';
-import { generateUUID } from './StringUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity
@@ -73,32 +59,6 @@ export const getAssetsPageQuickFilters = (
   }
 };
 
-export const getSearchLabel = (itemLabel: string, searchKey: string) => {
-  const htmlCharacterMap: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  };
-  const escapeHtml = (value: string) =>
-    value.replace(/[&<>"']/g, (character) => htmlCharacterMap[character]);
-
-  const escapedLabel = escapeHtml(itemLabel);
-  if (searchKey) {
-    const escapedSearchKey = escapeHtml(searchKey);
-    const regex = new RegExp(escapeRegExp(escapedSearchKey), 'gi');
-    const result = escapedLabel.replace(
-      regex,
-      (match) => `<mark>${match}</mark>`
-    );
-
-    return result;
-  } else {
-    return escapedLabel;
-  }
-};
-
 export const getSelectedOptionLabelString = (
   selectedOptions: SearchDropdownOption[],
   showAllOptions = false
@@ -115,123 +75,25 @@ export const getSelectedOptionLabelString = (
   }
 };
 
-export const getChartsOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const chartRef = (
-    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
-  )._source.charts?.find(
-    (chart) => chart.displayName === option.text || chart.name === option.text
-  );
-
-  const entityName = getEntityName(chartRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getDataModelOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const chartRef = (
-    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
-  )._source.dataModels?.find(
-    (dataModel) =>
-      dataModel.displayName === option.text || dataModel.name === option.text
-  );
-
-  const entityName = getEntityName(chartRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getTasksOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const taskRef = (
-    option as SuggestOption<SearchIndex.PIPELINE, PipelineSearchSource>
-  )._source.tasks?.find(
-    (task) => task.displayName === option.text || task.name === option.text
-  );
-
-  const entityName = getEntityName(taskRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getColumnsOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>,
-  index: SearchIndex
-) => {
-  if (index === SearchIndex.TABLE) {
-    const columnRef = (
-      option as SuggestOption<SearchIndex.TABLE, TableSearchSource>
-    )._source.columns.find(
-      (column) =>
-        column.displayName === option.text || column.name === option.text
-    );
-
-    const entityName = getEntityName(columnRef);
-
-    return isEmpty(entityName) ? option.text : entityName;
-  } else {
-    const dataModel = (
-      option as SuggestOption<SearchIndex.CONTAINER, ContainerSearchSource>
-    )._source.dataModel;
-    const columnRef = dataModel
-      ? dataModel.columns.find(
-          (column) =>
-            column.displayName === option.text || column.name === option.text
-        )
-      : undefined;
-
-    const entityName = getEntityName(columnRef);
-
-    return isEmpty(entityName) ? option.text : entityName;
-  }
-};
-
-export const getSchemaFieldOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const schemaFields = (
-    option as SuggestOption<SearchIndex.TOPIC, TopicSearchSource>
-  )._source.messageSchema?.schemaFields;
-
-  const schemaRef = schemaFields
-    ? schemaFields.find(
-        (field) =>
-          field.displayName === option.text || field.name === option.text
-      )
-    : undefined;
-
-  const entityName = getEntityName(schemaRef);
-
-  return isEmpty(entityName) ? option.text : entityName;
-};
-
-export const getServiceOptions = (
-  option: SuggestOption<SearchIndex, ExploreSearchSource>
-) => {
-  const service = (
-    option as SuggestOption<
-      SearchIndex,
-      | TableSearchSource
-      | DashboardSearchSource
-      | PipelineSearchSource
-      | MlmodelSearchSource
-      | TopicSearchSource
-    >
-  )._source.service;
-
-  return service
-    ? service.displayName ?? service.name ?? option.text
-    : option.text;
-};
-
 export const getQuickFilterSourceFields = (
   field: ExploreQuickFilterField
 ): string | undefined =>
   field.sourceFields ?? QUICK_FILTER_SOURCE_FIELDS[field.key as EntityFields];
+
+// The filter value stays the raw tier FQN (tier.tier1); only the visible label becomes the tier name.
+const formatTierLabel = (value: string): string => {
+  const tierName = getNameFromFQN(value);
+  const defaultTier = tierName.match(/^tier(\d+)$/i);
+
+  return defaultTier ? `Tier${defaultTier[1]}` : tierName;
+};
+
+// Per-field label formatter shared by every place a quick-filter value becomes visible text — dropdown options,
+// selected chips, and labels restored after a URL round trip — so the same value cannot render differently per surface.
+export const getQuickFilterLabelFormatter = (
+  key: string
+): ((value: string) => string) | undefined =>
+  key === EntityFields.TIER ? formatTierLabel : undefined;
 
 const findSourceLabel = (
   sources: unknown[],
@@ -255,15 +117,7 @@ const findSourceLabel = (
   return undefined;
 };
 
-/**
- * Rewrites the labels of already-selected quick-filter values.
- *
- * Only the lowercased bucket key survives a round trip through the URL, so a
- * reloaded or shared listing would render its chips and checked options in
- * lowercase. `resolveLabel` supplies the original casing for one value; a field
- * keeps its identity when nothing resolves, so an unchanged filter set does not
- * re-render. Values that already carry a resolved label are left alone.
- */
+// Rewrites the labels of already-selected quick-filter values.
 export const applyQuickFilterLabels = (
   fields: ExploreQuickFilterField[],
   resolveLabel: (
@@ -278,8 +132,8 @@ export const applyQuickFilterLabels = (
 
     let hasResolvedLabel = false;
     const value = (field.value ?? []).map((option) => {
-      // A label that already differs from the key came from the dropdown, where
-      // the aggregation resolved it against `_source`.
+      // A label that already differs from the key came from the dropdown, where the aggregation resolved it against
+      // `_source`.
       if (option.label !== option.key) {
         return option;
       }
@@ -296,12 +150,8 @@ export const applyQuickFilterLabels = (
     return hasResolvedLabel ? { ...field, value } : field;
   });
 
-/**
- * Recovers selected-value casing from the rows currently listed: every hit of a
- * filtered result set carries the value that matched in its `_source`, so no
- * extra request is needed for the common case. A value whose only matching row
- * sits on another page stays unresolved here — see `useQuickFilterLabels`.
- */
+// Recovers selected-value casing from the rows currently listed: every hit of a filtered result set carries the value
+// that matched in its `_source`, so no extra request is needed for the common case.
 export const hydrateQuickFilterLabels = (
   fields: ExploreQuickFilterField[],
   sources: unknown[]
@@ -312,10 +162,12 @@ export const hydrateQuickFilterLabels = (
 
   return applyQuickFilterLabels(fields, (field, optionKey) => {
     const sourceFields = getQuickFilterSourceFields(field);
-
-    return sourceFields
+    const label = sourceFields
       ? findSourceLabel(sources, sourceFields, optionKey)
       : undefined;
+    const formatter = getQuickFilterLabelFormatter(field.key);
+
+    return label && formatter ? formatter(label) : label;
   });
 };
 
@@ -334,7 +186,7 @@ export const getOptionsFromAggregationBucket = (
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
     .map((option) => {
-      let label = labelFormatter ? labelFormatter(option.key) : option.key;
+      let label = option.key;
 
       if (sourceFields) {
         const topHitsData = (option as Record<string, unknown>)[
@@ -355,105 +207,12 @@ export const getOptionsFromAggregationBucket = (
         }
       }
 
+      // Runs after the sourceFields resolution so formatters (entity type, tier) see the original-cased value, not the
+      // lowercased bucket key.
+      if (labelFormatter) {
+        label = labelFormatter(label);
+      }
+
       return { key: option.key, label, count: option.doc_count ?? 0 };
     });
-};
-
-export const formatQueryValueBasedOnType = (
-  value: string[],
-  field: string,
-  type: string
-) => {
-  if (field.includes('extension') && type === 'text') {
-    return value.map((item) => toLower(item));
-  }
-
-  return value;
-};
-
-export const getCustomPropertyAdvanceSearchEnumOptions = (
-  enumValues: string[]
-) => {
-  return enumValues.reduce((acc: Record<string, string>, value) => {
-    acc[value] = value;
-
-    return acc;
-  }, {});
-};
-
-export const getEmptyJsonTree = (
-  defaultField: string = EntityFields.OWNERS
-): OldJsonTree => {
-  return {
-    id: generateUUID(),
-    type: 'group',
-    properties: {
-      conjunction: 'AND',
-      not: false,
-    },
-    children1: {
-      [generateUUID()]: {
-        type: 'group',
-        properties: {
-          conjunction: 'AND',
-          not: false,
-        },
-        children1: {
-          [generateUUID()]: {
-            type: 'rule',
-            properties: {
-              field: defaultField,
-              operator: null,
-              value: [],
-              valueSrc: ['value'],
-            },
-          },
-        },
-      },
-    },
-  };
-};
-
-export const getEmptyJsonTreeForQueryBuilder = (
-  defaultField: string = EntityReferenceFields.OWNERS,
-  subField = 'fullyQualifiedName'
-): OldJsonTree => {
-  const uuid1 = generateUUID();
-  const uuid2 = generateUUID();
-  const uuid3 = generateUUID();
-
-  return {
-    id: uuid1,
-    type: 'group',
-    properties: {
-      conjunction: 'AND',
-      not: false,
-    },
-    children1: {
-      [uuid2]: {
-        type: 'rule_group',
-        id: uuid2,
-        properties: {
-          conjunction: 'AND',
-          not: false,
-          mode: 'some',
-          field: defaultField,
-          fieldSrc: 'field',
-        },
-        children1: {
-          [uuid3]: {
-            type: 'rule',
-            id: uuid3,
-            properties: {
-              field: `${defaultField}.${subField}`,
-              operator: 'select_equals',
-              value: [],
-              valueSrc: ['value'],
-              fieldSrc: 'field',
-            },
-          },
-        },
-      },
-    },
-  };
 };

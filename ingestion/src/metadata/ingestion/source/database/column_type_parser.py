@@ -310,7 +310,7 @@ class ColumnTypeParser:
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
-    _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*,\s*(\d+)\s*\))?")
+    _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\))?")
 
     try:
         # pylint: disable=import-outside-toplevel
@@ -431,18 +431,20 @@ class ColumnTypeParser:
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
                 "dataTypeDisplay": dtype,
             }
-        if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
-            match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
-            if match.group(2) is not None:  # type: ignore
-                return {
-                    "dataType": ColumnTypeParser.get_column_type(match.group(0)),
-                    "dataTypeDisplay": dtype,
-                    "dataLength": int(match.group(3)),  # type: ignore
-                }
-            return {
-                "dataType": ColumnTypeParser.get_column_type(match.group(0)),
+        decimal_match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
+        if decimal_match:
+            # The digits of a numeric are its precision and scale, never a character length:
+            # dataLength is defined for char/varchar/binary only (entity/data/table.json).
+            parsed: dict[str, object] = {
+                "dataType": ColumnTypeParser.get_column_type(decimal_match.group(0)),
                 "dataTypeDisplay": dtype,
             }
+            if decimal_match.group(3) is not None:
+                parsed["precision"] = int(decimal_match.group(3))
+            # decimal(p) leaves the scale unstated, as SQLAlchemy does for numeric(p).
+            if decimal_match.group(4) is not None:
+                parsed["scale"] = int(decimal_match.group(4))
+            return parsed
         if dtype == "date":
             return {"dataType": "DATE", "dataTypeDisplay": dtype}
         if dtype == "timestamp":

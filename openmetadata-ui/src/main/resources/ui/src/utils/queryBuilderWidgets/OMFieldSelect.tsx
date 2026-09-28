@@ -57,10 +57,7 @@ const buildItemsKey = (nodes: FieldNode[]): string => {
   return parts.join('|');
 };
 
-// RAQB's FieldProps carries no test hook. Callers (see QueryBuilderOMConfig
-// renderField) pass an optional data-testid so the field select stays
-// addressable in Playwright — the operator renderer reuses this component
-// without the hook, so the testid must not be emitted unconditionally.
+// RAQB's FieldProps carries no test hook.
 type OMFieldSelectProps = FieldProps & { dataTestId?: string };
 
 const OMFieldSelect: FC<OMFieldSelectProps> = ({
@@ -71,10 +68,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
   placeholder,
   dataTestId,
 }) => {
-  // RAQB recreates `items` on every render. Keep the mapped array's identity
-  // stable across content-equal renders: react-aria rebuilds the ComboBox
-  // collection when the items identity changes, which resets an uncontrolled
-  // input back to the selected item's label and closes the open popup.
+  // RAQB recreates `items` on every render.
   const itemsKey = buildItemsKey(items as FieldNode[]);
   const selectItems: SelectItemType[] = useMemo(
     () => flattenFieldLeaves(items as FieldNode[]),
@@ -82,26 +76,37 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
     [itemsKey]
   );
 
-  // Control inputValue explicitly: RAQB re-renders (triggered by parent forms
-  // and query actions) race the open popup, and react-aria's uncontrolled
-  // input resets to the selected label on every collection rebuild — wiping
-  // the user's in-progress filter text. A controlled value can't be clobbered.
+  // Control inputValue explicitly: RAQB re-renders (triggered by parent forms and query actions) race the open popup,
+  // and react-aria's uncontrolled input resets to the selected label on every collection rebuild — wiping the user's
+  // in-progress filter text.
   const selectedLabel = useMemo(
     () => selectItems.find((item) => item.id === selectedKey)?.label ?? '',
     [selectItems, selectedKey]
   );
   const [inputValue, setInputValue] = useState(selectedLabel);
-  const lastSelectedKeyRef = useRef(selectedKey);
-  if (lastSelectedKeyRef.current !== selectedKey) {
-    lastSelectedKeyRef.current = selectedKey;
+  // Whether the text in the box is the user's own filter or just the label of whatever is selected.
+  const isUserFilterRef = useRef(false);
+  // The selection this box has already shown, kept in state rather than a ref.
+  const [shownSelection, setShownSelection] = useState({
+    key: selectedKey,
+    label: selectedLabel,
+  });
+  if (
+    shownSelection.key !== selectedKey ||
+    shownSelection.label !== selectedLabel
+  ) {
+    setShownSelection({ key: selectedKey, label: selectedLabel });
     setInputValue(selectedLabel);
+    isUserFilterRef.current = false;
   }
 
-  // ComboBox now uses controlled `items` (not defaultItems) so React Aria no
-  // longer applies a built-in contains-filter. Filter client-side so the user
-  // still sees only items that match their typed text.
+  // ComboBox now uses controlled `items` (not defaultItems) so React Aria no longer applies a built-in contains-filter.
   const filteredItems = useMemo(() => {
-    if (!inputValue || inputValue === selectedLabel) {
+    if (
+      !isUserFilterRef.current ||
+      !inputValue ||
+      inputValue === selectedLabel
+    ) {
       return selectItems;
     }
     const lower = inputValue.toLowerCase();
@@ -113,8 +118,8 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
 
   return (
     <Select.ComboBox
-      // Keep the popup open on transiently-empty filter results — React Aria
-      // otherwise closes it and the interaction dead-ends.
+      // Keep the popup open on transiently-empty filter results — React Aria otherwise closes it and the interaction
+      // dead-ends.
       allowsEmptyCollection
       data-testid={dataTestId}
       inputValue={inputValue}
@@ -125,17 +130,22 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
       shortcut={false}
       showSearchIcon={false}
       size="sm"
-      onInputChange={setInputValue}
+      onInputChange={(next) => {
+        isUserFilterRef.current = true;
+        setInputValue(next);
+      }}
       onSelectionChange={(key) => {
         if (key == null) {
           return;
         }
         const id = String(key);
-        // Reflect the choice immediately: update the label and the sync ref so
-        // the render-time sync doesn't clobber it before RAQB propagates the
-        // new selectedKey back through props.
-        lastSelectedKeyRef.current = id;
-        setInputValue(selectItems.find((item) => item.id === id)?.label ?? id);
+        const label = selectItems.find((item) => item.id === id)?.label ?? id;
+        // Reflect the choice immediately, and record it as shown, so the adjustment above does not blank the box before
+        // RAQB propagates the new `selectedKey` back through props.
+        setShownSelection({ key: id, label });
+        // The box now shows a label, not a filter.
+        isUserFilterRef.current = false;
+        setInputValue(label);
         setField(id);
       }}>
       {(item) => (

@@ -12,7 +12,9 @@
  */
 @import '../../../styles/variables.less';
 
-@markdown-bg-color: var(--om-legacy-color-f8f8fa);
+// Semantic surface so inline code, table headers and callouts follow dark mode
+// (the legacy #f8f8fa alias has no dark value).
+@markdown-bg-color: var(--om-color-bg-secondary);
 
 .service-doc-panel {
   .service-doc-panel-focused {

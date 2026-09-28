@@ -27,6 +27,7 @@ import {
   navigateToDocuments,
   openUploadModal,
   revealFolderRow,
+  scrollUntilResponse,
   searchAndGetDocumentRow,
   selectFolderInSidebar,
   softDeleteDocument,
@@ -191,7 +192,18 @@ test.describe('Context Center - Archive Page', () => {
       await afterAction();
 
       await navigateToArchive(page);
-      await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
+      const archiveRow = page.getByTestId(`archive-row-${documentId}`);
+      if (!(await archiveRow.isVisible())) {
+        await scrollUntilResponse(
+          page,
+          page.getByTestId('archive-view'),
+          archiveRow,
+          (res) =>
+            res.url().includes('/api/v1/contextCenter/drive/files') &&
+            res.url().includes('after=') &&
+            res.request().method() === 'GET'
+        );
+      }
     });
 
     // ── 11. Restore document ─────────────────────────────────────────────────
@@ -241,7 +253,18 @@ test.describe('Context Center - Archive Page', () => {
       await afterAction();
 
       await navigateToArchive(page);
-      await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
+      const archiveRow = page.getByTestId(`archive-row-${documentId}`);
+      if (!(await archiveRow.isVisible())) {
+        await scrollUntilResponse(
+          page,
+          page.getByTestId('archive-view'),
+          archiveRow,
+          (res) =>
+            res.url().includes('/api/v1/contextCenter/drive/files') &&
+            res.url().includes('after=') &&
+            res.request().method() === 'GET'
+        );
+      }
     });
 
     // ── 16. Permanently delete ────────────────────────────────────────────────
@@ -467,7 +490,18 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       );
       await waitForDocumentInArchive(apiContext, documentId);
       await navigateToArchive(page);
-      await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
+      const archiveRow = page.getByTestId(`archive-row-${documentId}`);
+      if (!(await archiveRow.isVisible())) {
+        await scrollUntilResponse(
+          page,
+          page.getByTestId('archive-view'),
+          archiveRow,
+          (res) =>
+            res.url().includes('/api/v1/contextCenter/drive/files') &&
+            res.url().includes('after=') &&
+            res.request().method() === 'GET'
+        );
+      }
     });
   });
 });

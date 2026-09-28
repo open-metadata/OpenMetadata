@@ -78,10 +78,20 @@ const addRule = async (
   // Click on condition combobox
   await page.locator('[data-testid="condition"]').click();
 
-  // Select condition
+  // Select condition. The listener goes up first because typing the condition validates it too,
+  // so the response can arrive before the option is clicked.
   const conditionResponse = page.waitForResponse(
     '/api/v1/policies/validation/condition/*'
   );
+
+  // Type the condition to filter the list. The options are built from every policy function's
+  // examples and the dropdown is virtualized, so an option far enough down the list is not in the
+  // DOM to be clicked - which is what happens whenever a new function is added.
+  await page
+    .locator(
+      '[data-testid="condition"] > .ant-select-selector .ant-select-selection-search-input'
+    )
+    .fill(RULE_DETAILS.condition);
   await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
   await conditionResponse;
 

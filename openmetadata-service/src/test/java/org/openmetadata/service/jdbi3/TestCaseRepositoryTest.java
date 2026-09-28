@@ -3,7 +3,9 @@ package org.openmetadata.service.jdbi3;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -137,6 +140,65 @@ class TestCaseRepositoryTest {
           updated.getTestSuites().stream()
               .anyMatch(suite -> suite.getId().equals(logicalSuite.getId())));
     }
+  }
+
+  @Test
+  void testCaseInheritsTheTestDefinitionDimensionWhenNoneIsGiven() {
+    TestDefinition testDefinition = new TestDefinition().withDataQualityDimension("Accuracy");
+    EntityReference accuracy =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DATA_QUALITY_DIMENSION)
+            .withName("Accuracy");
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      // The inherited case resolves the test definition's dimension by name, not from a reference.
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.DATA_QUALITY_DIMENSION), eq("Accuracy"), any()))
+          .thenReturn(accuracy);
+
+      TestCase withoutDimension = new TestCase();
+      TestCaseRepository.setDataQualityDimension(withoutDimension, testDefinition);
+
+      assertEquals(accuracy, withoutDimension.getDataQualityDimension());
+    }
+  }
+
+  @Test
+  void testCaseKeepsItsOwnDimension() {
+    TestDefinition testDefinition = new TestDefinition().withDataQualityDimension("Accuracy");
+    EntityReference timeliness =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DATA_QUALITY_DIMENSION)
+            .withName("Timeliness");
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReference(any(EntityReference.class), any()))
+          .thenReturn(timeliness);
+
+      TestCase testCase =
+          new TestCase()
+              .withDataQualityDimension(
+                  new EntityReference()
+                      .withType(Entity.DATA_QUALITY_DIMENSION)
+                      .withFullyQualifiedName("Timeliness"));
+      TestCaseRepository.setDataQualityDimension(testCase, testDefinition);
+
+      assertEquals(timeliness, testCase.getDataQualityDimension());
+    }
+  }
+
+  @Test
+  void testCaseWithoutAnyDimensionKeepsNone() {
+    TestCase noDimension = new TestCase();
+    TestCaseRepository.setDataQualityDimension(noDimension, new TestDefinition());
+
+    assertNull(noDimension.getDataQualityDimension());
   }
 
   @Test

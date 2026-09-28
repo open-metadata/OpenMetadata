@@ -22,8 +22,8 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   buildFqn,
+  deleteFixtureEntity,
   okJson,
-  withNetworkRetry,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { fullUuid, uuid } from '../../utils/common';
@@ -447,7 +447,8 @@ export class TableClass extends EntityClass {
 
   async createTestSuiteAndPipelines(
     apiContext: APIRequestContext,
-    testSuite?: TestSuiteData
+    testSuite?: TestSuiteData,
+    scheduleInterval?: string | null
   ) {
     if (isEmpty(this.entityResponseData)) {
       await this.create(apiContext);
@@ -466,7 +467,11 @@ export class TableClass extends EntityClass {
 
     this.testSuiteResponseData = testSuiteData;
 
-    const pipeline = await this.createTestSuitePipeline(apiContext);
+    const pipeline = await this.createTestSuitePipeline(
+      apiContext,
+      undefined,
+      scheduleInterval
+    );
 
     return {
       testSuiteData,
@@ -476,14 +481,13 @@ export class TableClass extends EntityClass {
 
   async createTestSuitePipeline(
     apiContext: APIRequestContext,
-    testCases?: string[]
+    testCases?: string[],
+    scheduleInterval: string | null = '0 * * * *'
   ) {
     const pipelineData = await apiContext
       .post(`/api/v1/services/ingestionPipelines`, {
         data: {
-          airflowConfig: {
-            scheduleInterval: '0 * * * *',
-          },
+          airflowConfig: scheduleInterval === null ? {} : { scheduleInterval },
           name: `pw-test-suite-pipeline-${uuid()}`,
           loggerLevel: 'INFO',
           pipelineType: 'TestSuite',
@@ -516,8 +520,14 @@ export class TableClass extends EntityClass {
       await this.create(apiContext);
     }
 
-    const testCase = await apiContext
-      .post('/api/v1/dataQuality/testCases', {
+    // Checked, not bare .json(): a failed create used to be pushed onto
+    // testCasesResponseData as an error body, so callers read `undefined` for
+    // the name and failed much later somewhere unrelated -- a search that waits
+    // for `q === undefined` simply never resolves.
+    const testCase = await okJson<
+      ResponseDataType & { testSuite?: ResponseDataType }
+    >(
+      await apiContext.post('/api/v1/dataQuality/testCases', {
         data: {
           name: `pw_test_case_${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.fullyQualifiedName}>`,
@@ -528,11 +538,14 @@ export class TableClass extends EntityClass {
           ],
           ...testCaseData,
         },
-      })
-      .then((res) => res.json());
+      }),
+      'TableClass.createTestCase'
+    );
 
-    if (isEmpty(this.testSuiteResponseData)) {
-      this.testSuiteResponseData = testCase?.testSuite;
+    // okJson guarantees testCase now, so only the optional testSuite needs a
+    // guard -- assigning undefined here used to be masked by the untyped read.
+    if (isEmpty(this.testSuiteResponseData) && testCase.testSuite) {
+      this.testSuiteResponseData = testCase.testSuite;
     }
 
     this.testCasesResponseData.push(testCase);
@@ -628,16 +641,11 @@ export class TableClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext, hardDelete = true) {
-    // Service teardown lands on the peak-parallel path — the backend has been
-    // observed to close the socket mid-DELETE ("socket hang up") when many
-    // shards teardown at once. withNetworkRetry replays the transport-level
-    // failure without leaking retry logic into every teardown call site.
-    const serviceResponse = await withNetworkRetry(() =>
-      apiContext.delete(
-        `/api/v1/services/databaseServices/name/${encodeURIComponent(
-          this.serviceResponseData?.fullyQualifiedName ?? ''
-        )}?recursive=true&hardDelete=${hardDelete}`
-      )
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/services/databaseServices/name/${encodeURIComponent(
+        this.serviceResponseData?.fullyQualifiedName ?? ''
+      )}?recursive=true&hardDelete=${hardDelete}`
     );
 
     return {
@@ -647,10 +655,9 @@ export class TableClass extends EntityClass {
   }
 
   async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
-    const tableResponse = await withNetworkRetry(() =>
-      apiContext.delete(
-        `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
-      )
+    const tableResponse = await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
     );
 
     return tableResponse;

@@ -18,7 +18,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import {
-  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_FILTER_OPTIONS,
@@ -29,6 +28,8 @@ import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
@@ -60,11 +61,13 @@ export const TestCases = () => {
     tierOptions,
     serviceOptions,
     dataProductOptions,
+    dimensionOptions,
     debounceFetchTableData,
     debounceFetchTagOptions,
     debounceFetchServiceOptions,
     debounceFetchDataProductOptions,
     testCase,
+    entityPermissions,
     isLoading,
     pagingData,
     showPagination,
@@ -76,6 +79,19 @@ export const TestCases = () => {
     handleShowDeletedChange,
     handleAfterDeleteAction,
   } = useTestCaseListPage();
+
+  // testCasePermission is a resource-level permission (usePermissionProvider().permissions.
+  // testCase, threaded through useTestCaseListPage). Itself OperationPermission-shaped, so it
+  // runs through getDerivedPermissionFlags exactly like an entity-level fetch (Task 8 Batch 3
+  // DatabaseSchemaTable.tsx precedent). Falls back to DEFAULT_ENTITY_PERMISSION (all-false) to
+  // reproduce the old `?.` optional-chaining undefined-is-falsy behavior.
+  const testCaseFlags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
+    [testCasePermission]
+  );
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
     let action: EmptyPlaceholderAction | undefined;
@@ -236,7 +252,8 @@ export const TestCases = () => {
             showSearch
             data-testid="dimension-select-filter"
             getPopupContainer={getPopupContainer}
-            options={TEST_CASE_DIMENSIONS_OPTION}
+            loading={isOptionsLoading}
+            options={dimensionOptions}
             placeholder={t('label.dimension')}
           />
         </Form.Item>
@@ -261,7 +278,7 @@ export const TestCases = () => {
     </>
   );
 
-  if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
+  if (!testCaseFlags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -325,6 +342,7 @@ export const TestCases = () => {
           deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           emptyStateAction={displayedEmptyStateAction}
           enableBulkActions={enableBulkActions}
+          entityPermissions={entityPermissions}
           fetchTestCases={sortTestCase}
           hasActiveFilters={hasListActiveFilters}
           isLoading={isLoading}
