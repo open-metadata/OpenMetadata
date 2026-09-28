@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,23 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { EntityTabs } from '../../../enums/entity.enum';
-
-export interface TabProps {
-  label: JSX.Element;
-  key: EntityTabs;
-  children?: JSX.Element;
-  isHidden?: boolean;
-  forceRender?: boolean;
-}
-
-export interface TabsLabelProps {
-  name: string;
-  id: string;
-  count?: number;
-  isActive?: boolean;
-  description?: string;
-  isBeta?: boolean;
-  isLoading?: boolean;
-}
+export const getExportStyleProperties = (element: Element): string[] =>
+  // Computed visual properties already resolve var(). Copying thousands of
+  // inherited theme variables onto every graph element multiplies clone
+  // work and SVG size without changing the exported pixels.
+  Array.from(window.getComputedStyle(element)).filter(
+    (property) => !property.startsWith('--')
+  );
