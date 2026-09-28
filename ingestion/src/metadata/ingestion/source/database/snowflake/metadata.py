@@ -1313,6 +1313,8 @@ class SnowflakeSource(
         To fetch the view definition, we have followed an optimised approach
         i.e. fetching view definition of all the views in schema storing it
         in cache and using the same cache to fetch the view definition.
+        That cached text is the CREATE statement as submitted, so with includeDDL
+        each view's GET_DDL is fetched instead, same as for tables.
 
         To fetch definition for other types of tables, we have used the
         get_ddl method, since this method only accepts string literal as arguments
@@ -1328,7 +1330,9 @@ class SnowflakeSource(
         try:
             schema_definition = None
             if table_type in (TableType.View, TableType.MaterializedView):
-                schema_definition = inspector.get_view_definition(table_name, schema_name)
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name, include_ddl=self.source_config.includeDDL
+                )
             elif table_type == TableType.Stream:
                 schema_definition = inspector.get_stream_definition(self.connection, table_name, schema_name)
             elif table_type == TableType.SemanticView:
