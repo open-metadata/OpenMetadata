@@ -13,8 +13,8 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { useListingData } from './useListingData';
 
 // Mock dependencies

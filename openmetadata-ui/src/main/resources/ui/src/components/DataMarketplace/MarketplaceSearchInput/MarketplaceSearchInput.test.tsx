@@ -1,0 +1,127 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { SearchIndex } from '../../../enums/search.enum';
+import MarketplaceSearchInput from './MarketplaceSearchInput.component';
+
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../hooks/useSearchStore', () => ({
+  useSearchStore: () => ({
+    isNLPEnabled: true,
+    isNLPActive: false,
+    setNLPActive: jest.fn(),
+    initNLP: jest.fn(),
+  }),
+}));
+
+// `getDomainDetailsPath` reads the store statically, so the mock needs
+// `getState` as well as the hook call.
+const marketplaceState = {
+  dataProductBasePath: '/dataProduct',
+  domainBasePath: '/domain',
+  isMarketplace: true,
+};
+jest.mock('../../../hooks/useMarketplaceStore', () => ({
+  useMarketplaceStore: Object.assign(() => marketplaceState, {
+    getState: () => marketplaceState,
+  }),
+}));
+
+const dataProduct = { id: 'dp1', name: 'Customer 360', fullyQualifiedName: 'dp.c360' };
+const domain = { id: 'd1', name: 'Finance', fullyQualifiedName: 'Finance' };
+
+jest.mock(
+  '../MarketplaceSearchResults/useMarketplaceEntitySearch',
+  () => ({
+    useMarketplaceEntitySearch: () => ({
+      dataProducts: [dataProduct],
+      domains: [domain],
+      isSearching: false,
+    }),
+  })
+);
+
+// Stand-in for the results list: exposes one button per entity so a click can
+// be routed through the real handlers.
+jest.mock(
+  '../MarketplaceSearchResults/MarketplaceSearchResults.component',
+  () => ({
+    __esModule: true,
+    default: ({ onDataProductClick, onDomainClick }: any) => (
+      <div>
+        <button
+          data-testid="pick-data-product"
+          onClick={() => onDataProductClick(dataProduct)}>
+          dp
+        </button>
+        <button data-testid="pick-domain" onClick={() => onDomainClick(domain)}>
+          domain
+        </button>
+      </div>
+    ),
+  })
+);
+
+jest.mock('../../discovery/explore/ExploreHeader/ExploreSearchInput', () => ({
+  ExploreSearchInput: ({ suggestions }: any) => <div>{suggestions}</div>,
+}));
+
+const renderInput = (props: Record<string, unknown>) =>
+  render(
+    <MemoryRouter>
+      <MarketplaceSearchInput showEntityResults {...(props as any)} />
+    </MemoryRouter>
+  );
+
+describe('MarketplaceSearchInput', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('shows a same-type pick in the page list instead of navigating', () => {
+    const onSearchChange = jest.fn();
+    renderInput({ searchCriteria: SearchIndex.DOMAIN, onSearchChange });
+
+    fireEvent.click(screen.getByTestId('pick-domain'));
+
+    expect(onSearchChange).toHaveBeenCalledWith('Finance');
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('opens a pick the page list cannot hold rather than emptying it', () => {
+    const onSearchChange = jest.fn();
+    renderInput({ searchCriteria: SearchIndex.DOMAIN, onSearchChange });
+
+    // A data product name can never match the domain index behind this list.
+    fireEvent.click(screen.getByTestId('pick-data-product'));
+
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/dataProduct/dp.c360',
+      expect.objectContaining({ state: { fromMarketplace: true } })
+    );
+  });
+
+  it('opens every pick on a page with no list', () => {
+    renderInput({ searchCriteria: SearchIndex.MARKETPLACE });
+
+    fireEvent.click(screen.getByTestId('pick-domain'));
+
+    expect(mockNavigate).toHaveBeenCalled();
+  });
+});

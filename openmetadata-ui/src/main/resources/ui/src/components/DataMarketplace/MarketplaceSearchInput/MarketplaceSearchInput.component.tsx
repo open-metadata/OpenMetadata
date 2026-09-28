@@ -161,12 +161,13 @@ const MarketplaceSearchInput = ({
     showEntityResults ? suggestionSearch : ''
   );
 
-  // A page with a list shows the pick there; a page without one (the overview)
-  // has nowhere to put it, so it opens the entity instead.
+  // Show the pick in the list, but only where the list can hold it: the page
+  // searches one index, so pushing the other type's name there matches nothing
+  // and empties the list instead of taking the user to what they clicked.
   const applyOrOpen = useCallback(
-    (name: string, path: string) => {
+    (name: string, path: string, index: SearchIndex) => {
       setIsSearchBoxOpen(false);
-      if (onSearchChange) {
+      if (onSearchChange && index === searchCriteria) {
         debouncedSearch.cancel();
         setSearchValue(name);
         onSearchChange(name);
@@ -175,7 +176,7 @@ const MarketplaceSearchInput = ({
       }
       navigate(path, { state: { fromMarketplace: true } });
     },
-    [onSearchChange, debouncedSearch, navigate]
+    [onSearchChange, searchCriteria, debouncedSearch, navigate]
   );
 
   const handleDataProductClick = useCallback(
@@ -184,7 +185,8 @@ const MarketplaceSearchInput = ({
         getEntityName(dataProduct),
         `${dataProductBasePath}/${getEncodedFqn(
           dataProduct.fullyQualifiedName ?? ''
-        )}`
+        )}`,
+        SearchIndex.DATA_PRODUCT
       ),
     [applyOrOpen, dataProductBasePath]
   );
@@ -193,7 +195,8 @@ const MarketplaceSearchInput = ({
     (domain: Domain) =>
       applyOrOpen(
         getEntityName(domain),
-        getDomainDetailsPath(domain.fullyQualifiedName ?? '')
+        getDomainDetailsPath(domain.fullyQualifiedName ?? ''),
+        SearchIndex.DOMAIN
       ),
     [applyOrOpen]
   );
