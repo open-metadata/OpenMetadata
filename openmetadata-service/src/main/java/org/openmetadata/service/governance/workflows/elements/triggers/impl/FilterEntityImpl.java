@@ -2,14 +2,12 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.PENDING_HELD_CHANGE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -23,7 +21,7 @@ import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -78,28 +76,19 @@ public class FilterEntityImpl implements JavaDelegate {
         WorkflowTriggerFilters.extractEntitySpecificFilter(
             filterExpr != null ? filterExpr.getValue(execution) : null, entityType);
 
+    ChangeRequestRun changeRequest = ChangeRequestRun.from(varHandler).orElse(null);
     boolean passesFilter;
     if (isTagFeedbackCreation(varHandler)) {
       // We skip the entity filtering for this special case
       passesFilter = true;
+    } else if (changeRequest != null) {
+      // A change-request run was admitted at submission with the reviewing workflow's own
+      // include/exclude/filter; only that workflow runs it and every other hook workflow on the
+      // entity type ignores it.
+      passesFilter = mainWorkflowName(execution).equals(changeRequest.workflowName());
     } else {
-      // Present only on the signal the gate raises when it holds a change: exactly the fields this
-      // one edit held off the entity. Absent for a normal entity change event, where the persisted
-      // change description is the change to evaluate. Either way, the accumulated hold (prior edits
-      // still pending for this requester) is never folded into the trigger decision.
-      ChangeDescription heldChange = readHeldChange(varHandler);
-      if (heldChange == null && isPendingChangeWorkflow(execution)) {
-        // A pending-change (hook) workflow reviews held changes only. With no held change on this
-        // signal there is nothing to review, so a plain persisted-change event must not start it -
-        // that would raise an approval task for a change that was never held (an excluded-field
-        // edit, or the workflow's own entityStatus write folded into a later edit's change
-        // description). Only the gate's held-change signal drives a hook workflow.
-        passesFilter = false;
-      } else {
-        passesFilter =
-            passesExcludedFilter(
-                entityLinkStr, excludedFilter, includeFields, filterLogic, heldChange);
-      }
+      passesFilter =
+          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -149,47 +138,23 @@ public class FilterEntityImpl implements JavaDelegate {
     return feedback.getTagFQN().equals(entityLink.getEntityFQN());
   }
 
-  // True when the workflow whose trigger is running holds approval-gated changes (has the
-  // resolvePendingChange hook). Resolved from the running process definition key: the trigger
-  // process is named "<Workflow>Trigger". An unresolved name yields false, so non-hook workflows
-  // and any resolution miss keep their normal event-driven behavior.
-  private boolean isPendingChangeWorkflow(DelegateExecution execution) {
+  private String mainWorkflowName(DelegateExecution execution) {
     String key = WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
-    String workflowName =
-        key != null && key.endsWith("Trigger")
-            ? TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(key)
-            : key;
-    return GovernanceApprovalRegistry.isPendingChangeWorkflow(workflowName);
-  }
-
-  // Flowable process variables are untyped Object; the gate serializes the held change as a JSON
-  // String. Absent (a normal change event) or unparseable means "no held change" and the persisted
-  // change description is used instead.
-  private ChangeDescription readHeldChange(WorkflowVariableHandler varHandler) {
-    ChangeDescription heldChange = null;
-    Object raw = varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, PENDING_HELD_CHANGE_VARIABLE);
-    if (raw instanceof String json && !json.isBlank()) {
-      try {
-        heldChange = JsonUtils.readValue(json, ChangeDescription.class);
-      } catch (Exception e) {
-        log.warn("Could not parse held change from trigger signal; using persisted change", e);
-      }
-    }
-    return heldChange;
+    return key != null && key.endsWith("Trigger")
+        ? TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(key)
+        : String.valueOf(key);
   }
 
   private boolean passesExcludedFilter(
       String entityLinkStr,
       List<String> excludedFilter,
       List<String> includeFields,
-      String filterLogic,
-      ChangeDescription heldChange) {
+      String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-    // Gate path: the held change is exactly this edit's change. Event path: the entity's persisted
-    // change description. A null change description means a Create event.
-    ChangeDescription change = heldChange != null ? heldChange : entity.getChangeDescription();
+    // A null change description means a Create event.
+    ChangeDescription change = entity.getChangeDescription();
 
     boolean fieldBasedFilter;
     if (change == null) {
@@ -201,29 +166,7 @@ public class FilterEntityImpl implements JavaDelegate {
               || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
     }
 
-    // Evaluate the exclusion filter against the proposed entity (this edit's held change applied),
-    // so the trigger and the gate judge the same state - the gate ran the filter before reverting.
-    Map<String, Object> proposedEntity = proposedEntityMap(entity, heldChange);
-    boolean exclusionFilterMatches =
-        WorkflowTriggerFilters.matchesExclusionFilter(filterLogic, proposedEntity);
-    return fieldBasedFilter && !exclusionFilterMatches;
-  }
-
-  // The entity map with this edit's held change applied (updated/added field values overlaid,
-  // deleted fields removed), so the exclusion JsonLogic sees the proposed state rather than the
-  // reverted persisted one. Returns the persisted map unchanged when there is no held change.
-  private Map<String, Object> proposedEntityMap(
-      EntityInterface entity, ChangeDescription heldChange) {
-    Map<String, Object> entityMap = JsonUtils.getMap(entity);
-    if (heldChange != null) {
-      for (FieldChange field : getAppliedFields(heldChange)) {
-        entityMap.put(field.getName(), field.getNewValue());
-      }
-      for (FieldChange field : listOrEmpty(heldChange.getFieldsDeleted())) {
-        entityMap.remove(field.getName());
-      }
-    }
-    return entityMap;
+    return fieldBasedFilter && !WorkflowTriggerFilters.matchesExclusionFilter(filterLogic, entity);
   }
 
   private List<FieldChange> getAllChangedFields(ChangeDescription changeDescription) {
@@ -231,12 +174,6 @@ public class FilterEntityImpl implements JavaDelegate {
     allChanges.addAll(listOrEmpty(changeDescription.getFieldsDeleted()));
     allChanges.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
     return allChanges;
-  }
-
-  private List<FieldChange> getAppliedFields(ChangeDescription changeDescription) {
-    List<FieldChange> applied = new ArrayList<>(listOrEmpty(changeDescription.getFieldsAdded()));
-    applied.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
-    return applied;
   }
 
   private boolean passesFieldBasedFilter(

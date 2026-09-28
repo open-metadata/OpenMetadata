@@ -46,6 +46,7 @@ class ChangeRequestDaoIT {
         .withId(UUID.randomUUID())
         .withEntityType(Entity.GLOSSARY)
         .withEntityId(entityId)
+        .withEntityFullyQualifiedName("daoit.%s".formatted(entityId))
         .withRequestedBy(requester)
         .withOrigin(ChangeRequestOrigin.INTERCEPTED)
         .withWorkflowDefinitionId(UUID.randomUUID())

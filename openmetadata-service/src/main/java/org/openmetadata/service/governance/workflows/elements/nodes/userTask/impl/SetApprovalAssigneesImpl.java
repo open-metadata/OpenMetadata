@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -156,17 +157,25 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               || execution.getVariable("taskEntityId") != null;
       List<String> assigneeList = new ArrayList<>(assignees);
 
-      // Prevent self-approval: the requester is NEVER a task assignee. Task-managed workflows
+      // Prevent self-approval: remove the requester from the assignees. Task-managed workflows
       // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
       // workflows (glossary term / tag approval, certification changes, …) publish it as the
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
-      // workflow family — reading only one silently leaves the other's requester on the list.
-      // Removing the requester may leave the list empty, and that is intentional: an empty list
-      // lets the userApprovalTask auto-approve (event-driven) or fall through to the admin fallback
-      // below (workflow-managed). Re-adding the requester "to keep the task actionable" would
-      // silently reintroduce self-approval, so it is deliberately not done.
+      // workflow family — reading only one silently leaves the other's requester on the list. For
+      // non-workflow-managed tasks only, keep the requester when no one else is available so the
+      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead. A
+      // change request is never given back to its requester: with no one else eligible, the commit
+      // node refuses to apply it and flags it for attention.
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
-      assigneeList.removeAll(requesterEntityLinks);
+      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
+      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
+      boolean reviewsChangeRequest = ChangeRequestRun.from(varHandler).isPresent();
+      if (removedRequester
+          && assigneeList.isEmpty()
+          && !workflowManagedTask
+          && !reviewsChangeRequest) {
+        assigneeList.addAll(preRemovalAssignees);
+      }
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured

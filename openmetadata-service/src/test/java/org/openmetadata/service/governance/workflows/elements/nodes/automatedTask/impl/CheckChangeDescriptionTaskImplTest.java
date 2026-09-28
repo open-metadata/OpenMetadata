@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.AfterEach;
@@ -42,15 +43,14 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.approval.PendingApprovalChangeStore;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
- * Covers {@code CheckChangeDescriptionTask} on an approval-gated change. The gate holds the change
- * off the entity (reverted, no persisted change description of its own), so the node must evaluate
- * the requester's held change via {@link PendingApprovalChangeStore#effective} - not just the
- * entity's persisted diff - to route the workflow. A held-only change carries just {@code
- * fieldsUpdated} (null added/deleted), which the node must tolerate.
+ * Covers {@code CheckChangeDescriptionTask} on a change-request run. The entity is not written while
+ * the request is pending, so the node must evaluate the request's pending revision via {@link
+ * ChangeRequestService#proposedChangeDescription} - not the entity's persisted diff - to route the
+ * workflow. A revision may carry only {@code fieldsUpdated}, which the node must tolerate.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -59,7 +59,7 @@ class CheckChangeDescriptionTaskImplTest {
   private static final String NODE_ID = "CheckChange";
   private static final String RESULT_KEY = NODE_ID + "_result";
   private static final String ENTITY_LINK = "<#E::glossary::DiagGlossary>";
-  private static final String REQUESTER = "alice";
+  private static final UUID CHANGE_REQUEST_ID = UUID.randomUUID();
 
   @Mock private DelegateExecution execution;
   @Mock private Expression conditionExpr;
@@ -68,7 +68,7 @@ class CheckChangeDescriptionTaskImplTest {
 
   private CheckChangeDescriptionTaskImpl delegate;
   private MockedStatic<Entity> mockedEntity;
-  private MockedStatic<PendingApprovalChangeStore> mockedStore;
+  private MockedStatic<ChangeRequestService> mockedService;
   private Map<String, Object> capturedVars;
 
   @BeforeEach
@@ -80,7 +80,8 @@ class CheckChangeDescriptionTaskImplTest {
 
     when(inputNamespaceMapExpr.getValue(execution)).thenReturn("{\"relatedEntity\":\"global\"}");
     when(execution.getVariable("global_relatedEntity")).thenReturn(ENTITY_LINK);
-    when(execution.getVariable("global_updatedBy")).thenReturn(REQUESTER);
+    when(execution.getVariable("global_changeRequestId")).thenReturn(CHANGE_REQUEST_ID.toString());
+    when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
     when(execution.getProcessDefinitionId()).thenReturn("PendingChangeApprovalWorkflow:1:1");
     when(execution.getCurrentActivityId()).thenReturn(NODE_ID);
     when(conditionExpr.getValue(execution)).thenReturn("OR");
@@ -92,7 +93,7 @@ class CheckChangeDescriptionTaskImplTest {
                 Entity.getEntity(
                     any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
         .thenReturn(new Glossary().withName("DiagGlossary").withFullyQualifiedName("DiagGlossary"));
-    mockedStore = mockStatic(PendingApprovalChangeStore.class);
+    mockedService = mockStatic(ChangeRequestService.class);
 
     capturedVars = new HashMap<>();
     doAnswer(
@@ -107,7 +108,7 @@ class CheckChangeDescriptionTaskImplTest {
   @AfterEach
   void tearDown() {
     mockedEntity.close();
-    mockedStore.close();
+    mockedService.close();
   }
 
   @Test
@@ -163,8 +164,8 @@ class CheckChangeDescriptionTaskImplTest {
   }
 
   private void givenEffective(ChangeDescription change) {
-    mockedStore
-        .when(() -> PendingApprovalChangeStore.effective(any(), eq(REQUESTER)))
+    mockedService
+        .when(() -> ChangeRequestService.proposedChangeDescription(eq(CHANGE_REQUEST_ID)))
         .thenReturn(change);
   }
 

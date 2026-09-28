@@ -76,12 +76,14 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -1017,7 +1019,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         permissionAssets(request.getAssets()),
         MetadataOperation.EDIT_GLOSSARY_TERMS);
-    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+    List<BulkResponse> refused =
+        ApprovalGate.refuseGatedAssets(
+            request.getAssets(), Entity.FIELD_TAGS, securityContext.getUserPrincipal().getName());
+    return Response.ok()
+        .entity(
+            ApprovalGate.withRefused(
+                repository.bulkAddAndValidateGlossaryToAssets(id, request), refused))
+        .build();
   }
 
   @PUT
@@ -1071,7 +1080,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         permissionAssets(request.getAssets()),
         MetadataOperation.EDIT_GLOSSARY_TERMS);
-    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+    List<BulkResponse> refused =
+        ApprovalGate.refuseGatedAssets(
+            request.getAssets(), Entity.FIELD_TAGS, securityContext.getUserPrincipal().getName());
+    return Response.ok()
+        .entity(
+            ApprovalGate.withRefused(repository.bulkRemoveGlossaryToAssets(id, request), refused))
+        .build();
   }
 
   /**

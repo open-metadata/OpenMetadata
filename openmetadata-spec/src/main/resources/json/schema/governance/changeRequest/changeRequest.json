@@ -60,6 +60,6 @@
     "createdAt": { "$ref": "../../type/basic.json#/definitions/timestamp" },
     "updatedAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
   },
-  "required": ["id", "entityType", "entityId", "requestedBy", "origin", "workflowDefinitionId", "status", "activeRevisionId", "activeRevisionNumber", "createdAt", "updatedAt"],
+  "required": ["id", "entityType", "entityId", "entityFullyQualifiedName", "requestedBy", "origin", "workflowDefinitionId", "status", "activeRevisionId", "activeRevisionNumber", "createdAt", "updatedAt"],
   "additionalProperties": false
 }

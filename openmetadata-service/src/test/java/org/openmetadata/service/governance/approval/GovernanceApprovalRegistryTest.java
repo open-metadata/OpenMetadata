@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
@@ -53,9 +55,9 @@ class GovernanceApprovalRegistryTest {
   }
 
   private static List<GatingRule> rulesFor(String entityType, WorkflowDefinition wd) {
-    List<GatingRule> rules = new ArrayList<>();
-    GovernanceApprovalRegistry.addRule(entityType, wd, rules);
-    return rules;
+    Map<String, List<GatingRule>> rules = new HashMap<>();
+    GovernanceApprovalRegistry.addRules(wd, rules);
+    return rules.getOrDefault(entityType, List.of());
   }
 
   private static GatingRule onlyRule(String entityType, WorkflowDefinition wd) {

@@ -25,6 +25,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.AfterEach;
@@ -40,9 +41,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -70,7 +69,6 @@ class FilterEntityImplTest {
 
   private FilterEntityImpl delegate;
   private MockedStatic<Entity> mockedEntity;
-  private MockedStatic<GovernanceApprovalRegistry> mockedRegistry;
   private Map<String, Object> capturedVars;
 
   @BeforeEach
@@ -84,12 +82,6 @@ class FilterEntityImplTest {
     when(execution.getVariable("global_relatedEntity")).thenReturn(ENTITY_LINK);
 
     mockedEntity = mockStatic(Entity.class);
-    mockedRegistry = mockStatic(GovernanceApprovalRegistry.class);
-    // Default: not a hook workflow, so the field/filter logic below is what the tests exercise.
-    // The hook-suppression case overrides this to true.
-    mockedRegistry
-        .when(() -> GovernanceApprovalRegistry.isPendingChangeWorkflow(anyString()))
-        .thenReturn(false);
 
     capturedVars = new HashMap<>();
     doAnswer(
@@ -104,7 +96,6 @@ class FilterEntityImplTest {
   @AfterEach
   void tearDown() {
     mockedEntity.close();
-    mockedRegistry.close();
   }
 
   // ---- Event path: no held change on the signal, evaluate the persisted change description ----
@@ -116,9 +107,7 @@ class FilterEntityImplTest {
 
     delegate.execute(execution);
 
-    assertFalse(
-        passesFilter(),
-        "A change to only an excluded field must not fire, even with a hold open elsewhere");
+    assertFalse(passesFilter(), "A change to only an excluded field must not fire");
   }
 
   @Test
@@ -131,65 +120,29 @@ class FilterEntityImplTest {
     assertTrue(passesFilter(), "A change to a non-excluded field must fire");
   }
 
-  // ---- Gate path: held change carried on the signal is the single edit under review ----
+  // ---- Change-request path: admitted at submission, routed only to the reviewing workflow ----
 
   @Test
-  void gatePath_heldGatedField_firesEvenWhenEntityHasNoPersistedChange() {
-    // The gate reverts the held field off the entity, so the persisted change description is null.
+  void changeRequestRun_passesInTheReviewingWorkflowWithoutRefiltering() {
+    // The entity is not written while the request is pending, so there is no persisted change; the
+    // run still passes because admission already applied this workflow's include/exclude/filter.
     givenEntity(glossary().withChangeDescription(null));
-    heldChange(changeOf("tags"));
     exclude("description");
+    changeRequestFor("PendingChangeApprovalWorkflow");
 
     delegate.execute(execution);
 
-    assertTrue(passesFilter(), "The held gated field must drive the trigger on the gate path");
+    assertTrue(passesFilter(), "The reviewing workflow runs its change request");
   }
 
   @Test
-  void gatePath_usesHeldChangeNotPersisted() {
-    // Held change is an excluded field; the entity's persisted change description carries a
-    // non-excluded field. If the trigger read the persisted change it would fire - it must not,
-    // because the edit under review (the held change) touched only an excluded field.
+  void changeRequestRun_isIgnoredByOtherHookWorkflows() {
     givenEntity(glossary().withChangeDescription(changeOf("tags")));
-    heldChange(changeOf("description"));
-    exclude("description");
+    changeRequestFor("SomeOtherApprovalWorkflow");
 
     delegate.execute(execution);
 
-    assertFalse(passesFilter(), "The held change, not the persisted one, decides the gate path");
-  }
-
-  @Test
-  void eventPath_hookWorkflow_noHeldChange_isSuppressed() {
-    // A hook workflow reviews held changes only. An entity-change event with nothing held (e.g. a
-    // description edit whose change description also carries the workflow's own entityStatus write)
-    // must not start it, even though entityStatus is not an excluded field. Suppressed before the
-    // field/filter evaluation, so no entity stub is needed.
-    mockedRegistry
-        .when(() -> GovernanceApprovalRegistry.isPendingChangeWorkflow(anyString()))
-        .thenReturn(true);
-
-    delegate.execute(execution);
-
-    assertFalse(
-        passesFilter(), "A hook workflow must not fire on a plain event with no held change");
-  }
-
-  // ---- Exclusion JsonLogic evaluated against the proposed (held-applied) entity ----
-
-  @Test
-  void jsonLogicFilter_evaluatesProposedEntity_notRevertedEntity() {
-    // Filter excludes the entity when its description equals SKIP. The gate reverted the held
-    // description off the entity (persisted value is 'kept'); the proposed value is 'SKIP'. The
-    // filter must see the proposed value and exclude, matching what the gate decided.
-    givenEntity(glossary().withDescription("kept"));
-    heldChange(changeOfField("description", "SKIP"));
-    filter(Map.of("glossary", "{\"==\":[{\"var\":\"description\"},\"SKIP\"]}"));
-
-    delegate.execute(execution);
-
-    assertFalse(
-        passesFilter(), "Exclusion JsonLogic must evaluate the proposed entity (held applied)");
+    assertFalse(passesFilter(), "Only the workflow that reviews the request runs it");
   }
 
   @Test
@@ -200,32 +153,6 @@ class FilterEntityImplTest {
     delegate.execute(execution);
 
     assertTrue(passesFilter(), "With no held change the persisted entity is not excluded");
-  }
-
-  @Test
-  void jsonLogicFilter_gatePath_excludedWhenDescriptionEqualsClaude() {
-    // Exclude filter: skip the workflow when the glossary description equals "claude". A held gated
-    // field would otherwise fire, but an excluded entity must not go through the workflow at all.
-    givenEntity(glossary().withDescription("claude"));
-    heldChange(changeOf("tags"));
-    filter(Map.of("glossary", "{\"==\":[{\"var\":\"description\"},\"claude\"]}"));
-
-    delegate.execute(execution);
-
-    assertFalse(
-        passesFilter(),
-        "Exclude filter description==claude must stop the workflow despite the hold");
-  }
-
-  @Test
-  void jsonLogicFilter_gatePath_firesWhenDescriptionDoesNotMatch() {
-    givenEntity(glossary().withDescription("something-else"));
-    heldChange(changeOf("tags"));
-    filter(Map.of("glossary", "{\"==\":[{\"var\":\"description\"},\"claude\"]}"));
-
-    delegate.execute(execution);
-
-    assertTrue(passesFilter(), "A non-matching entity is not excluded; the held change fires");
   }
 
   // ---- helpers ----
@@ -239,9 +166,10 @@ class FilterEntityImplTest {
         .thenReturn(glossary);
   }
 
-  private void heldChange(ChangeDescription change) {
-    when(execution.getVariable("global_pendingHeldChange"))
-        .thenReturn(JsonUtils.pojoToJson(change));
+  private void changeRequestFor(String workflowName) {
+    when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
+    when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
+    when(execution.getVariable("global_changeRequestWorkflow")).thenReturn(workflowName);
   }
 
   private void exclude(String... fields) {
@@ -263,11 +191,6 @@ class FilterEntityImplTest {
     List<FieldChange> updated =
         List.of(fieldNames).stream().map(name -> new FieldChange().withName(name)).toList();
     return new ChangeDescription().withFieldsUpdated(updated);
-  }
-
-  private ChangeDescription changeOfField(String name, Object newValue) {
-    return new ChangeDescription()
-        .withFieldsUpdated(List.of(new FieldChange().withName(name).withNewValue(newValue)));
   }
 
   private boolean passesFilter() {

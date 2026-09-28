@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.EntityBuilderConstant;
@@ -287,13 +289,21 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, userName);
+    List<BulkResponse> refused =
+        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DOMAINS, userName);
+    return ApprovalGate.withRefused(
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, userName),
+        refused);
   }
 
   public BulkOperationResult bulkRemoveAssets(
       String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName);
+    List<BulkResponse> refused =
+        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DOMAINS, userName);
+    return ApprovalGate.withRefused(
+        bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName),
+        refused);
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {

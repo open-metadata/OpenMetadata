@@ -15,12 +15,14 @@
 package org.openmetadata.service.governance.approval;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import java.time.Duration;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
@@ -33,51 +35,61 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Resolves the field-gating rules for an entity type from deployed governance workflows. A workflow
- * contributes a rule only when it (1) uses an {@code eventBasedEntity} trigger (edit-driven; periodic
- * and no-op triggers cannot gate an interactive edit), (2) targets the entity type, and (3) actually
- * holds the change behind a human approval task. Reactive workflows that merely set tags, notify, or
- * run a pipeline have no approval node and never hold a field. Each rule mirrors the trigger's own
- * field selection: the {@code include} fields (opt-in), the {@code exclude} fields (used when
- * {@code include} is empty, so an empty {@code include} holds every changed trigger field except
- * those excluded), and the workflow's entity {@code filter}, honored at hold time so a field is not
- * held for an entity the workflow would skip.
+ * contributes a rule only when it uses an {@code eventBasedEntity} trigger, targets the entity type,
+ * and carries a resolvePendingChange hook. Each rule mirrors the trigger's own field selection: the
+ * {@code include} fields (opt-in), the {@code exclude} fields (used when {@code include} is empty),
+ * and the workflow's entity {@code filter}.
  *
- * <p>Results are cached with a short TTL so the hot write path does not list workflow definitions on
- * every update; the cache is bounded. Any resolution failure yields no rules, so the gate stays a
- * no-op and never blocks a write.
+ * <p>Rules are held in one snapshot validated against the workflow-definition epoch (row count and
+ * latest update) on every call, so a workflow created or changed on another node gates here on the
+ * next write. Resolution failures refuse the write rather than letting it publish ungated.
  */
 @Slf4j
 public final class GovernanceApprovalRegistry {
   private static final String EVENT_BASED_ENTITY = "eventBasedEntity";
   private static final String RESOLVE_PENDING_CHANGE_SUBTYPE = "resolvePendingChangeTask";
 
-  private static final Cache<String, List<GatingRule>> RULES_BY_ENTITY_TYPE =
-      Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(Duration.ofSeconds(60)).build();
+  private record Snapshot(String epoch, Map<String, List<GatingRule>> rulesByEntityType) {}
+
+  private static final AtomicReference<Snapshot> SNAPSHOT = new AtomicReference<>();
 
   private GovernanceApprovalRegistry() {}
 
   /**
    * A workflow's field-gating rule for one entity type, mirroring the {@code eventBasedEntity}
-   * trigger's own field logic (see {@link WorkflowTriggerFilters}). {@code includedFields} (if
-   * non-empty) are the exact trigger fields gated; otherwise every changed trigger field except
-   * {@code excludedFields} is gated. {@code filterLogic} is the entity-specific JsonLogic resolved
-   * for this entity type - if it matches at hold time, the entity is excluded and nothing is held.
+   * trigger's own field logic (see {@link WorkflowTriggerFilters}). {@code filterLogic} is the
+   * entity-specific JsonLogic resolved for this entity type; when it matches, the entity is excluded.
    */
   public record GatingRule(
-      List<String> includedFields, List<String> excludedFields, String filterLogic) {}
+      UUID workflowDefinitionId,
+      String workflowName,
+      List<String> includedFields,
+      List<String> excludedFields,
+      String filterLogic) {}
 
+  /** Hook workflows gating this entity type, ordered by workflow name. */
   public static List<GatingRule> gatingRules(String entityType) {
-    return RULES_BY_ENTITY_TYPE.get(entityType, GovernanceApprovalRegistry::compute);
+    // Before the server wires its DAOs (and in DAO-less unit tests) no workflow can exist yet; a
+    // failure to resolve rules once running still refuses the write below.
+    if (Entity.getCollectionDAO() == null) {
+      return List.of();
+    }
+    try {
+      return currentSnapshot().rulesByEntityType().getOrDefault(entityType, List.of());
+    } catch (RuntimeException e) {
+      LOG.error("[ApprovalGate] Could not resolve approval rules for {}", entityType, e);
+      throw new ServiceUnavailableException(
+          "Approval rules are unavailable; the change was not saved. Retry shortly.");
+    }
   }
 
   public static void invalidate() {
-    RULES_BY_ENTITY_TYPE.invalidateAll();
+    SNAPSHOT.set(null);
   }
 
   /**
-   * True when the workflow carries a resolvePendingChangeTask hook (i.e. it holds approval-gated
-   * changes). Lets per-requester behavior such as task supersede apply only to hook workflows,
-   * leaving reactive workflows on their existing entity-level behavior.
+   * True when the workflow carries a resolvePendingChangeTask hook. Lets per-requester behavior such
+   * as task supersede apply only to hook workflows, leaving reactive workflows unchanged.
    */
   public static boolean isPendingChangeWorkflow(UUID workflowDefinitionId) {
     boolean result = false;
@@ -97,11 +109,7 @@ public final class GovernanceApprovalRegistry {
     return result;
   }
 
-  /**
-   * Name overload of {@link #isPendingChangeWorkflow(UUID)} for callers that hold the workflow's
-   * name (e.g. resolved from a running process definition key) rather than its id. Returns false for
-   * an unknown name so a resolution miss leaves behavior unchanged.
-   */
+  /** Name overload of {@link #isPendingChangeWorkflow(UUID)}; false for an unknown name. */
   public static boolean isPendingChangeWorkflow(String workflowName) {
     boolean result = false;
     if (workflowName != null && !workflowName.isBlank()) {
@@ -112,17 +120,43 @@ public final class GovernanceApprovalRegistry {
     return result;
   }
 
-  private static List<GatingRule> compute(String entityType) {
-    List<GatingRule> rules = new ArrayList<>();
-    try {
-      for (WorkflowDefinition definition : listWorkflowDefinitions()) {
-        addRule(entityType, definition, rules);
-      }
-    } catch (Exception e) {
-      LOG.debug("Could not resolve gating rules for '{}'; treating as ungated: {}", entityType, e);
-      rules.clear();
+  // A workflow only gates a change if it opts in by placing a resolvePendingChange hook node.
+  // Reactive workflows - auto-tag, notify, run pipelines - never gate.
+  public static boolean hasPendingChangeHook(WorkflowDefinition definition) {
+    boolean hasHook = false;
+    for (JsonNode node : JsonUtils.valueToTree(definition.getNodes())) {
+      hasHook = hasHook || RESOLVE_PENDING_CHANGE_SUBTYPE.equals(node.path("subType").asText(null));
     }
-    return List.copyOf(rules);
+    return hasHook;
+  }
+
+  public static List<String> targetEntityTypes(JsonNode config) {
+    List<String> types = new ArrayList<>(stringList(config.path("entityTypes")));
+    String single = config.path("entityType").asText(null);
+    if (single != null && !types.contains(single)) {
+      types.add(single);
+    }
+    return types;
+  }
+
+  private static Snapshot currentSnapshot() {
+    String epoch = Entity.getCollectionDAO().changeRequestDAO().workflowDefinitionEpoch();
+    Snapshot snapshot = SNAPSHOT.get();
+    if (snapshot == null || !snapshot.epoch().equals(epoch)) {
+      snapshot = new Snapshot(epoch, compute());
+      SNAPSHOT.set(snapshot);
+    }
+    return snapshot;
+  }
+
+  private static Map<String, List<GatingRule>> compute() {
+    Map<String, List<GatingRule>> rules = new HashMap<>();
+    listWorkflowDefinitions().stream()
+        .sorted(Comparator.comparing(WorkflowDefinition::getName))
+        .forEach(definition -> addRules(definition, rules));
+    Map<String, List<GatingRule>> frozen = new HashMap<>();
+    rules.forEach((entityType, list) -> frozen.put(entityType, List.copyOf(list)));
+    return Map.copyOf(frozen);
   }
 
   @SuppressWarnings("unchecked")
@@ -133,42 +167,23 @@ public final class GovernanceApprovalRegistry {
     return repository.listAll(Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED));
   }
 
-  static void addRule(String entityType, WorkflowDefinition definition, List<GatingRule> rules) {
+  static void addRules(WorkflowDefinition definition, Map<String, List<GatingRule>> rules) {
     JsonNode trigger = JsonUtils.valueToTree(definition.getTrigger());
-    boolean eventBased = EVENT_BASED_ENTITY.equals(trigger.path("type").asText(null));
     JsonNode config = trigger.path("config");
-    if (eventBased && targetsEntityType(config, entityType) && hasPendingChangeHook(definition)) {
-      List<String> includedFields = stringList(config.path("include"));
-      List<String> excludedFields = stringList(config.path("exclude"));
-      String filterLogic = resolveFilter(config, entityType);
-      rules.add(new GatingRule(includedFields, excludedFields, filterLogic));
-    }
-  }
-
-  // A workflow only holds a change if it opts in by placing a resolvePendingChange hook node (which
-  // applies the change on approval or discards it). Workflows without the hook - reactive ones that
-  // auto-tag, notify, or run pipelines - never hold; the edit persists normally and they react as
-  // usual. The hook's presence is the opt-in signal.
-  private static boolean hasPendingChangeHook(WorkflowDefinition definition) {
-    boolean hasHook = false;
-    for (JsonNode node : JsonUtils.valueToTree(definition.getNodes())) {
-      if (RESOLVE_PENDING_CHANGE_SUBTYPE.equals(node.path("subType").asText(null))) {
-        hasHook = true;
-        break;
+    boolean eventBased = EVENT_BASED_ENTITY.equals(trigger.path("type").asText(null));
+    if (eventBased && hasPendingChangeHook(definition)) {
+      for (String entityType : targetEntityTypes(config)) {
+        rules
+            .computeIfAbsent(entityType, ignored -> new ArrayList<>())
+            .add(
+                new GatingRule(
+                    definition.getId(),
+                    definition.getName(),
+                    stringList(config.path("include")),
+                    stringList(config.path("exclude")),
+                    resolveFilter(config, entityType)));
       }
     }
-    return hasHook;
-  }
-
-  private static boolean targetsEntityType(JsonNode config, String entityType) {
-    boolean targets = entityType.equals(config.path("entityType").asText(null));
-    for (JsonNode node : config.path("entityTypes")) {
-      if (targets) {
-        break;
-      }
-      targets = entityType.equals(node.asText(null));
-    }
-    return targets;
   }
 
   private static List<String> stringList(JsonNode array) {
@@ -179,9 +194,8 @@ public final class GovernanceApprovalRegistry {
     return values;
   }
 
-  // Resolve the entity-specific JsonLogic through the SAME extractor the trigger uses, so the gate
-  // and the trigger agree on which entities the filter excludes. config.filter is a JsonNode here;
-  // decode it once to the raw value (String or Map) the shared extractor expects.
+  // Resolve the entity-specific JsonLogic through the same extractor the trigger uses, so the gate
+  // and the trigger agree on which entities the filter excludes.
   private static String resolveFilter(JsonNode config, String entityType) {
     JsonNode filter = config.path("filter");
     Object value =

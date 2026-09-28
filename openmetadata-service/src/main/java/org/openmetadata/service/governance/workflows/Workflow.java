@@ -22,6 +22,9 @@ public class Workflow {
   public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
   public static final String RESULT_VARIABLE = "result";
   public static final String UPDATED_BY_VARIABLE = "updatedBy";
+  public static final String CHANGE_REQUEST_ID_VARIABLE = "changeRequestId";
+  public static final String CHANGE_REQUEST_REVISION_VARIABLE = "changeRequestRevision";
+  public static final String CHANGE_REQUEST_WORKFLOW_VARIABLE = "changeRequestWorkflow";
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
   public static final String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE =
       "workflowInstanceExecutionId";

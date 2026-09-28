@@ -51,6 +51,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
@@ -68,6 +69,8 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
@@ -176,6 +179,12 @@ public class CreateTask implements TaskListener {
 
       // Register with WorkflowHandler for resolution
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+      UUID reviewTaskId = task.getId();
+      ChangeRequestRun.from(varHandler)
+          .ifPresent(
+              run ->
+                  ChangeRequestService.attachTask(
+                      run.changeRequestId(), run.revisionNumber(), reviewTaskId));
 
       // Set the thresholds as task variables for use in WorkflowHandler
       delegateTask.setVariable("approvalThreshold", approvalThreshold);
@@ -575,7 +584,9 @@ public class CreateTask implements TaskListener {
           withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
       updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
       updatedTask.setPayload(
-          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload(), updatedBy));
+          applyProposedChangesIfApproval(
+              taskType, entity, updatedTask.getPayload(), pendingChange(delegateTask)));
+      updatedTask.setPayload(linkChangeRequest(updatedTask.getPayload(), delegateTask));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -666,7 +677,10 @@ public class CreateTask implements TaskListener {
     }
     task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
     task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
-    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload(), updatedBy));
+    task.setPayload(
+        applyProposedChangesIfApproval(
+            taskType, entity, task.getPayload(), pendingChange(delegateTask)));
+    task.setPayload(linkChangeRequest(task.getPayload(), delegateTask));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -1083,11 +1097,27 @@ public class CreateTask implements TaskListener {
    * description.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType, EntityInterface entity, Object payload, String updatedBy) {
+      TaskEntityType taskType, EntityInterface entity, Object payload, ChangeDescription pending) {
     if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
       return payload;
     }
-    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload, updatedBy);
+    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload, pending);
+  }
+
+  private static Object linkChangeRequest(Object payload, DelegateTask delegateTask) {
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask))
+        .map(
+            run ->
+                ChangePreviewUtils.withChangeRequestLink(
+                    payload, run.changeRequestId(), run.revisionNumber()))
+        .orElse(payload);
+  }
+
+  /** The pending revision a change-request run reviews, or null for any other run. */
+  private static ChangeDescription pendingChange(DelegateTask delegateTask) {
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask))
+        .map(run -> ChangeRequestService.proposedChangeDescription(run.changeRequestId()))
+        .orElse(null);
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {

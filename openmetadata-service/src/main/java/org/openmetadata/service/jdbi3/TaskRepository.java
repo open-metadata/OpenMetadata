@@ -890,10 +890,31 @@ public class TaskRepository extends EntityRepository<Task> {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTaskWithWorkflow(
+        task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, null);
+  }
+
+  public Task resolveTaskWithWorkflow(
+      Task task,
+      String transitionId,
+      TaskResolutionType resolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      Integer changeRequestRevision) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
     return TaskWorkflowHandler.getInstance()
-        .resolveTask(task, transitionId, resolutionType, newValue, resolvedPayload, comment, user);
+        .resolveTask(
+            task,
+            transitionId,
+            resolutionType,
+            newValue,
+            resolvedPayload,
+            comment,
+            user,
+            changeRequestRevision);
   }
 
   /**

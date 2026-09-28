@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -21,12 +22,12 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeAction;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
@@ -68,6 +69,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
     GovernanceApprovalRegistry.invalidate();
+    if (!GovernanceApprovalRegistry.hasPendingChangeHook(updated)) {
+      ChangeRequestService.cancelAllForWorkflow(
+          updated.getId(),
+          "Approval workflow %s no longer reviews changes".formatted(updated.getName()));
+    }
   }
 
   @Override
@@ -75,6 +81,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     super.postDelete(entity, hardDelete);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
     GovernanceApprovalRegistry.invalidate();
+    ChangeRequestService.cancelAllForWorkflow(
+        entity.getId(), "Approval workflow %s was deleted".formatted(entity.getName()));
   }
 
   @Override
@@ -203,70 +211,89 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
-    // 6. Pending-change hold must be resolved on every terminal path
+    // 6. Change-request hook workflows resolve the request on every terminal path
     validatePendingChangeResolution(workflowDefinition);
     // 7. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
   }
 
   /**
-   * A workflow that opts into holding approval-gated changes (by carrying at least one {@code
-   * resolvePendingChangeTask} hook) must resolve the hold on every path that can reach an end event.
-   * Otherwise a branch that ends without a commit/discard would leave the user's edit held forever
-   * (data loss). Rejects such a workflow so authors add the missing hooks.
+   * A workflow that reviews change requests (by carrying at least one {@code
+   * resolvePendingChangeTask} hook) must resolve the request on every path that can reach an end
+   * event, must start from edits, and must use a JSON Logic filter.
    */
   private void validatePendingChangeResolution(WorkflowDefinition workflowDefinition) {
     List<WorkflowNodeDefinitionInterface> nodes = listOrEmpty(workflowDefinition.getNodes());
     Set<String> hooks = new HashSet<>();
     Set<String> ends = new HashSet<>();
     String start = null;
-    boolean hasResolvingHook = false;
     for (WorkflowNodeDefinitionInterface node : nodes) {
       String subType = node.getSubType();
       if (NodeSubType.RESOLVE_PENDING_CHANGE_TASK.value().equals(subType)) {
         hooks.add(node.getName());
-        if (isCommitOrDiscardHook(node)) {
-          hasResolvingHook = true;
-        }
       } else if (NodeSubType.END_EVENT.value().equals(subType)) {
         ends.add(node.getName());
       } else if (NodeSubType.START_EVENT.value().equals(subType)) {
         start = node.getName();
       }
     }
-    if (!hooks.isEmpty() && !hasResolvingHook) {
-      throw BadRequestException.of(
-          String.format(
-              "Workflow '%s' holds approval gated changes but every resolvePendingChangeTask node "
-                  + "only holds the change. There is no commit or discard, so the edit would stay "
-                  + "held forever. Add a commit or discard hook.",
-              workflowDefinition.getName()));
+    if (!hooks.isEmpty()) {
+      validateHookTrigger(workflowDefinition);
+      validateJsonLogicFilter(workflowDefinition);
     }
     if (!hooks.isEmpty()
         && start != null
         && reachesEndWithoutHook(workflowDefinition, start, hooks, ends)) {
       throw BadRequestException.of(
           String.format(
-              "Workflow '%s' holds approval gated changes but at least one path reaches an end "
-                  + "event without a commit or discard. Every terminal path must resolve the held "
-                  + "change or the edit would stay held forever.",
+              "Workflow '%s' reviews change requests but at least one path reaches an end event "
+                  + "without a commit or discard. Every terminal path must resolve the change "
+                  + "request or it would stay pending forever.",
               workflowDefinition.getName()));
     }
   }
 
-  // A resolvePendingChangeTask resolves the hold only when it commits or discards it; an action of
-  // hold merely parks the change, so a workflow whose hooks all hold would keep the edit held with
-  // no way to resolve it. The action lives on the node config; read it from the serialized node.
-  private boolean isCommitOrDiscardHook(WorkflowNodeDefinitionInterface node) {
-    boolean resolving = false;
-    Object config = JsonUtils.getMap(node).get("config");
-    if (config instanceof Map<?, ?> configMap) {
-      Object action = configMap.get("action");
-      resolving =
-          ResolvePendingChangeAction.COMMIT.value().equals(action)
-              || ResolvePendingChangeAction.DISCARD.value().equals(action);
+  // Change requests are submitted by edits, and hook workflows start only from them.
+  private void validateHookTrigger(WorkflowDefinition workflowDefinition) {
+    JsonNode trigger = JsonUtils.valueToTree(workflowDefinition.getTrigger());
+    boolean updated = false;
+    for (JsonNode event : trigger.path("config").path("events")) {
+      updated = updated || "Updated".equals(event.asText());
     }
-    return resolving;
+    if (!"eventBasedEntity".equals(trigger.path("type").asText(null)) || !updated) {
+      throw BadRequestException.of(
+          "Workflow '%s' reviews change requests, so it must use an eventBasedEntity trigger on the Updated event"
+              .formatted(workflowDefinition.getName()));
+    }
+  }
+
+  // Hook workflows are evaluated by the RuleEngine at admission; an Elasticsearch query filter
+  // would
+  // be silently ignored there, so it is rejected instead.
+  private void validateJsonLogicFilter(WorkflowDefinition workflowDefinition) {
+    JsonNode filter =
+        JsonUtils.valueToTree(workflowDefinition.getTrigger()).path("config").path("filter");
+    List<String> logics = new ArrayList<>();
+    filter.fields().forEachRemaining(entry -> logics.add(entry.getValue().asText()));
+    if (filter.isTextual()) {
+      logics.add(filter.asText());
+    }
+    for (String logic : logics) {
+      if (isElasticsearchQuery(logic)) {
+        throw BadRequestException.of(
+            "Workflow '%s': approval workflow filters must be JSON Logic; Elasticsearch query filters are not supported"
+                .formatted(workflowDefinition.getName()));
+      }
+    }
+  }
+
+  private static boolean isElasticsearchQuery(String logic) {
+    boolean query = false;
+    if (logic != null && logic.trim().startsWith("{")) {
+      JsonNode parsed = JsonUtils.readTree(logic);
+      query = parsed.has("query") || parsed.has("bool");
+    }
+    return query;
   }
 
   private boolean reachesEndWithoutHook(

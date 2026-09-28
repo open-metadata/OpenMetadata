@@ -71,6 +71,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
@@ -3097,7 +3098,13 @@ public class EntityCsvTest {
 
     try (MockedStatic<Entity> entityStatic = Mockito.mockStatic(Entity.class);
         MockedStatic<SettingsCache> settingsCache = Mockito.mockStatic(SettingsCache.class);
-        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class)) {
+        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
+        MockedStatic<GovernanceApprovalRegistry> approvalRegistry =
+            Mockito.mockStatic(GovernanceApprovalRegistry.class)) {
+      // No approval workflow gates the table in this scenario.
+      approvalRegistry
+          .when(() -> GovernanceApprovalRegistry.gatingRules(Entity.TABLE))
+          .thenReturn(List.of());
       entityStatic.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       for (String ignoredType : List.of(Entity.USER, Entity.TEAM, Entity.PERSONA, Entity.BOT)) {
         EntityRepository<EntityInterface> ignoredRepo = mock(EntityRepository.class);

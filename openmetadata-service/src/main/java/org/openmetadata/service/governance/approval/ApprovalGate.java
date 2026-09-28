@@ -4,7 +4,6 @@
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
- *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,300 +13,287 @@
 
 package org.openmetadata.service.governance.approval;
 
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.PENDING_HELD_CHANGE_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
-import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NullNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import lombok.extern.slf4j.Slf4j;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.WorkflowTriggerFields;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 /**
- * Holds approval-gated field edits out of the entity. When a workflow that opts in (has a
- * resolvePendingChange hook) gates a changed field for the entity type and its {@code filter} does
- * not exclude the entity, the gate reverts each gated field to its approved value (so nothing gated
- * persists and no ChangeEvent fires) and records the proposed values as a pending hold. After the
- * write commits, the governing workflow is triggered directly by signal to review the held change;
- * the hook applies it on approval and discards it on rejection.
- *
- * <p>Field selection mirrors the {@code eventBasedEntity} trigger exactly (see {@link
- * org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters}): a changed
- * top-level field is held when it is a trigger field passing the rule's {@code include}/{@code
- * exclude}, so the gate and the trigger never disagree on what a workflow acts on. Identity and
- * lifecycle fields (see {@link #STRUCTURAL_DENYLIST}) are never held, and a field the request only
- * omits (null) is not mistaken for a change. Edits made by the governance bot (the workflow applying
- * an approved change) are never re-gated. Fails open: any error lets the edit persist.
+ * Admission for approval-gated edits. A human request that changes a gated field is diverted, whole,
+ * into a change request and nothing is published; a request touching only ungated fields, or made by
+ * a bot on its own behalf, proceeds as a normal write. Impersonated requests are gated as the human.
  */
-@Slf4j
 public final class ApprovalGate {
-  private static final ThreadLocal<HeldTrigger> PENDING_TRIGGER = new ThreadLocal<>();
-  private static final ThreadLocal<Boolean> APPLYING_APPROVED_CHANGE = new ThreadLocal<>();
-
-  private ApprovalGate() {}
-
-  private record HeldTrigger(
-      String entityType,
-      String entityFqn,
-      String entityId,
-      String user,
-      ChangeDescription heldChange) {}
-
-  /**
-   * Runs {@code apply} - the write that commits an already-approved held change - with the gate
-   * suspended on this thread, so re-applying the change cannot be re-held into an infinite loop. The
-   * commit runs synchronously on the caller's thread, so the entity write reaches {@link
-   * #stageAndHold} on the same thread and observes this flag. Lets the hook apply the change as its
-   * original author (not a bot), which the field-level bot-deny guards would otherwise strip.
-   */
-  public static void applyExemptFromGate(Runnable apply) {
-    APPLYING_APPROVED_CHANGE.set(Boolean.TRUE);
-    try {
-      apply.run();
-    } finally {
-      APPLYING_APPROVED_CHANGE.remove();
-    }
-  }
-
-  public static void stageAndHold(EntityInterface original, EntityInterface updated, String user) {
-    PENDING_TRIGGER.remove();
-    if (isGateApplicable(user, original, updated)) {
-      // The gate reverts gated tags before the entity updater validates mutual exclusivity, so a
-      // conflicting pair would be held and only surface when the review workflow commits it. Reject
-      // it here - at the edit - instead. Runs before the fail-open below so the conflict propagates
-      // as a bad request rather than being swallowed and written.
-      rejectMutuallyExclusiveGatedTags(updated);
-      try {
-        holdIfGated(original, updated, user);
-      } catch (Exception e) {
-        // Fail open: the gate must never break a write. On any error the edit persists normally.
-        LOG.error("[ApprovalGate] Failed to hold gated change; writing normally", e);
-        PENDING_TRIGGER.remove();
-      }
-    }
-  }
-
-  // When a pending-change rule gates this entity's tags, validate the proposed tags for mutual
-  // exclusivity up front - the entity updater's own check runs against the reverted (empty) tags
-  // and
-  // would miss a held conflict. Resolution errors fall through (the updater still validates a
-  // non-held edit); only a genuine conflict throws, rejecting the edit.
-  private static void rejectMutuallyExclusiveGatedTags(EntityInterface updated) {
-    boolean tagsGated = false;
-    try {
-      String entityType = Entity.getEntityTypeFromObject(updated);
-      for (GatingRule rule : GovernanceApprovalRegistry.gatingRules(entityType)) {
-        if (!WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
-            && WorkflowTriggerFilters.fieldTriggers(
-                WorkflowTriggerFields.TAGS.value(), rule.includedFields(), rule.excludedFields())) {
-          tagsGated = true;
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("[ApprovalGate] Could not resolve tag gating for the mutual-exclusivity check", e);
-      tagsGated = false;
-    }
-    if (tagsGated) {
-      TagLabelUtil.checkMutuallyExclusive(updated.getTags());
-    }
-  }
-
-  public static void submitPending(EntityInterface entity) {
-    HeldTrigger trigger = PENDING_TRIGGER.get();
-    try {
-      if (trigger != null) {
-        triggerReviewWorkflow(trigger);
-      }
-    } catch (Exception e) {
-      LOG.error("[ApprovalGate] Failed to trigger review workflow for '{}'", entity.getId(), e);
-    } finally {
-      PENDING_TRIGGER.remove();
-    }
-  }
-
-  private static boolean isGateApplicable(
-      String user, EntityInterface original, EntityInterface updated) {
-    return !Boolean.TRUE.equals(APPLYING_APPROVED_CHANGE.get())
-        && !GOVERNANCE_BOT.equals(user)
-        && original != null
-        && updated != null
-        && original.getId() != null;
-  }
-
-  // Fields that are never held even when a rule would gate them: identity/lifecycle fields whose
-  // value the gate must not revert. Holding `name`/`fullyQualifiedName` would leave the entity's
-  // identity inconsistent (FQN is recomputed in prepare() before the gate runs); holding `deleted`
-  // would silently defeat a restore-via-PUT (see EntityRepository#updateInternal); `entityStatus`
-  // is
-  // the workflow's own domain and must never be captured as a user edit.
-  private static final Set<String> STRUCTURAL_DENYLIST =
+  private static final Set<String> STRUCTURAL_FIELDS =
       Set.of(
           WorkflowTriggerFields.NAME.value(),
           WorkflowTriggerFields.FULLY_QUALIFIED_NAME.value(),
           WorkflowTriggerFields.DELETED.value(),
           WorkflowTriggerFields.ENTITY_STATUS.value());
+  private static final Set<String> STAGEABLE_FIELDS =
+      Arrays.stream(WorkflowTriggerFields.values())
+          .map(WorkflowTriggerFields::value)
+          .filter(field -> !STRUCTURAL_FIELDS.contains(field))
+          .collect(Collectors.toUnmodifiableSet());
+  private static final Set<String> BOOKKEEPING_FIELDS =
+      Set.of(
+          "version",
+          "updatedAt",
+          "updatedBy",
+          "impersonatedBy",
+          "href",
+          "changeDescription",
+          "incrementalChangeDescription",
+          "changeSummary");
+  private static final String TAGS = WorkflowTriggerFields.TAGS.value();
 
-  private static void holdIfGated(EntityInterface original, EntityInterface updated, String user) {
-    String entityType = Entity.getEntityTypeFromObject(updated);
-    List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
-    if (!rules.isEmpty()) {
-      ObjectNode originalNode = (ObjectNode) JsonUtils.valueToTree(original);
-      ObjectNode updatedNode = (ObjectNode) JsonUtils.valueToTree(updated);
-      Set<String> gatedFields = selectGatedFields(rules, updated, originalNode, updatedNode);
-      List<FieldChange> held = holdGatedFields(originalNode, updatedNode, updated, gatedFields);
-      if (!held.isEmpty()) {
-        LOG.debug(
-            "[ApprovalGate] {} held {} field(s) for {}", entityType, held.size(), original.getId());
-        ChangeDescription heldChange = recordHold(original, held, user);
-        PENDING_TRIGGER.set(
-            new HeldTrigger(
-                entityType,
-                updated.getFullyQualifiedName(),
-                original.getId().toString(),
-                user,
-                heldChange));
-      }
+  private ApprovalGate() {}
+
+  public static Optional<StagedChange> admit(
+      EntityInterface original, EntityInterface updated, String user, String impersonatedBy) {
+    Optional<StagedChange> staged = Optional.empty();
+    if (original != null && original.getId() != null && !isExemptActor(user, impersonatedBy)) {
+      staged = stageIfGated(original, updated, user, impersonatedBy);
+    }
+    return staged;
+  }
+
+  public static void verifyApproved(ApprovedApplication approval, EntityInterface original) {
+    ChangeRequest request =
+        ChangeRequestService.dao().changeRequestDAO().findById(approval.changeRequestId());
+    boolean approved =
+        request != null
+            && request.getStatus() == ChangeRequestStatus.APPROVED
+            && approval.revisionId().equals(request.getActiveRevisionId())
+            && original.getId().equals(request.getEntityId());
+    if (!approved) {
+      throw new IllegalStateException(
+          "Change request %s is not an approved revision of %s"
+              .formatted(approval.changeRequestId(), original.getId()));
     }
   }
 
-  // Mirror the eventBasedEntity trigger's own field selection (WorkflowTriggerFilters): a field is
-  // gated when it actually changed, is holdable, is a trigger field passing the rule's
-  // include/exclude, and the rule's entity filter does not exclude this entity.
-  private static Set<String> selectGatedFields(
+  /**
+   * Bulk relationship writes (add/remove a tag, glossary term, domain or data product on many
+   * assets) cannot be staged per asset, so an asset whose {@code field} a workflow gates for this
+   * human actor is removed from {@code assets} and returned as a refused item. Editing the asset
+   * itself submits the change for approval.
+   */
+  public static List<BulkResponse> refuseGatedAssets(
+      List<EntityReference> assets, String field, String user) {
+    List<BulkResponse> refused = new ArrayList<>();
+    if (assets != null && !isExemptActor(user, null)) {
+      Iterator<EntityReference> candidates = assets.iterator();
+      while (candidates.hasNext()) {
+        EntityReference asset = candidates.next();
+        if (gatesField(asset, field)) {
+          candidates.remove();
+          refused.add(refusal(asset, field));
+        }
+      }
+    }
+    return refused;
+  }
+
+  /** Folds refused assets into a bulk result as failed items. */
+  public static BulkOperationResult withRefused(
+      BulkOperationResult result, List<BulkResponse> refused) {
+    if (!refused.isEmpty()) {
+      List<BulkResponse> failed = new ArrayList<>(listOrEmpty(result.getFailedRequest()));
+      failed.addAll(refused);
+      boolean anySucceeded = !listOrEmpty(result.getSuccessRequest()).isEmpty();
+      result
+          .withFailedRequest(failed)
+          .withNumberOfRowsFailed(orZero(result.getNumberOfRowsFailed()) + refused.size())
+          .withNumberOfRowsProcessed(orZero(result.getNumberOfRowsProcessed()) + refused.size())
+          .withStatus(anySucceeded ? ApiStatus.PARTIAL_SUCCESS : ApiStatus.FAILURE);
+    }
+    return result;
+  }
+
+  private static boolean gatesField(EntityReference asset, String field) {
+    List<GatingRule> rules =
+        GovernanceApprovalRegistry.gatingRules(asset.getType()).stream()
+            .filter(
+                rule ->
+                    WorkflowTriggerFilters.fieldTriggers(
+                        field, rule.includedFields(), rule.excludedFields()))
+            .toList();
+    boolean gated = false;
+    if (!rules.isEmpty()) {
+      EntityInterface entity = Entity.getEntity(asset, "", Include.ALL);
+      gated =
+          rules.stream()
+              .anyMatch(
+                  rule ->
+                      !WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), entity));
+    }
+    return gated;
+  }
+
+  private static BulkResponse refusal(EntityReference asset, String field) {
+    return new BulkResponse()
+        .withRequest(asset)
+        .withStatus(Response.Status.FORBIDDEN.getStatusCode())
+        .withMessage(
+            "Changing %s on %s requires approval; edit the asset to submit the change for review"
+                .formatted(field, asset.getFullyQualifiedName()));
+  }
+
+  private static int orZero(Integer value) {
+    return value == null ? 0 : value;
+  }
+
+  private static boolean isExemptActor(String user, String impersonatedBy) {
+    User actor =
+        impersonatedBy == null
+            ? Entity.findByNameOrNull(Entity.USER, user, Include.NON_DELETED)
+            : null;
+    return actor != null && Boolean.TRUE.equals(actor.getIsBot());
+  }
+
+  private static Optional<StagedChange> stageIfGated(
+      EntityInterface original, EntityInterface updated, String user, String impersonatedBy) {
+    String entityType = Entity.getEntityTypeFromObject(updated);
+    List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
+    return rules.isEmpty()
+        ? Optional.empty()
+        : planStage(rules, entityType, original, updated, user, impersonatedBy);
+  }
+
+  private record GatedBy(GatingRule rule, Set<String> fields) {}
+
+  private static Optional<StagedChange> planStage(
       List<GatingRule> rules,
-      EntityInterface entity,
-      ObjectNode originalNode,
-      ObjectNode updatedNode) {
-    Set<String> changed = changedHoldableFields(originalNode, updatedNode);
-    Set<String> gated = new HashSet<>();
+      String entityType,
+      EntityInterface original,
+      EntityInterface updated,
+      String user,
+      String impersonatedBy) {
+    JsonNode base = JsonUtils.valueToTree(original);
+    JsonNode proposed = JsonUtils.valueToTree(updated);
+    Set<String> changed = changedFields(base, proposed);
+    List<GatedBy> gating = gatingWorkflows(rules, updated, changed);
+    Optional<StagedChange> staged = Optional.empty();
+    if (!gating.isEmpty()) {
+      rejectAmbiguousReview(gating);
+      rejectUnstageable(changed);
+      rejectMutuallyExclusiveTags(updated, changed);
+      GatedBy review = gating.get(0);
+      staged =
+          Optional.of(
+              new StagedChange(
+                  entityType,
+                  original.getId(),
+                  original.getFullyQualifiedName(),
+                  original.getVersion(),
+                  user,
+                  impersonatedBy,
+                  review.rule().workflowDefinitionId(),
+                  MutationPlanner.plan(base, proposed, changed, review.fields())));
+    }
+    return staged;
+  }
+
+  private static List<GatedBy> gatingWorkflows(
+      List<GatingRule> rules, EntityInterface updated, Set<String> changed) {
+    List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
-      if (!WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), entity)) {
-        addRuleGatedFields(rule, changed, gated);
+      Set<String> fields =
+          WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
+              ? Set.of()
+              : gatedFields(rule, changed);
+      if (!fields.isEmpty()) {
+        gating.add(new GatedBy(rule, fields));
+      }
+    }
+    return gating;
+  }
+
+  private static void rejectAmbiguousReview(List<GatedBy> gating) {
+    if (gating.size() > 1) {
+      List<String> owners =
+          gating.stream()
+              .map(g -> "%s: %s".formatted(g.rule().workflowName(), g.fields()))
+              .toList();
+      throw new BadRequestException(
+          "This change touches fields governed by different approval workflows %s; submit them separately"
+              .formatted(owners));
+    }
+  }
+
+  private static Set<String> changedFields(JsonNode base, JsonNode proposed) {
+    Set<String> names = new TreeSet<>();
+    base.fieldNames().forEachRemaining(names::add);
+    proposed.fieldNames().forEachRemaining(names::add);
+    names.removeAll(BOOKKEEPING_FIELDS);
+    names.removeIf(name -> !isChange(name, base.get(name), proposed.get(name)));
+    return names;
+  }
+
+  // An absent/null proposed value is a change only when it clears a scalar of a stageable field;
+  // an omitted collection is merged, not removed, by PUT.
+  private static boolean isChange(String field, JsonNode oldValue, JsonNode newValue) {
+    boolean cleared = newValue == null || newValue.isNull();
+    boolean clearsScalar =
+        cleared
+            && oldValue != null
+            && oldValue.isValueNode()
+            && !oldValue.isNull()
+            && STAGEABLE_FIELDS.contains(field);
+    return clearsScalar || (!cleared && MutationPlanner.differs(oldValue, newValue));
+  }
+
+  private static Set<String> gatedFields(GatingRule rule, Set<String> changed) {
+    Set<String> gated = new HashSet<>();
+    for (String field : changed) {
+      if (STAGEABLE_FIELDS.contains(field)
+          && WorkflowTriggerFilters.fieldTriggers(
+              field, rule.includedFields(), rule.excludedFields())) {
+        gated.add(field);
       }
     }
     return gated;
   }
 
-  private static void addRuleGatedFields(GatingRule rule, Set<String> changed, Set<String> gated) {
-    for (String field : changed) {
-      if (WorkflowTriggerFilters.fieldTriggers(
-          field, rule.includedFields(), rule.excludedFields())) {
-        gated.add(field);
-      }
+  private static void rejectUnstageable(Set<String> changed) {
+    Set<String> unstageable = new TreeSet<>(changed);
+    unstageable.removeAll(STAGEABLE_FIELDS);
+    if (!unstageable.isEmpty()) {
+      throw new BadRequestException(
+          "Fields %s cannot be submitted together with a change that requires approval; submit them separately"
+              .formatted(unstageable));
     }
   }
 
-  // A top level field is holdable when the request either sets a concrete new value that differs
-  // from the approved one, or clears a scalar field that had one. The clear case matters because an
-  // explicit removal of a gated field (a PATCH remove) is a real, destructive change that must be
-  // reviewed, yet it arrives with a null or absent new value. Only scalar clears are held: an
-  // omitted collection (owners, tags) is merged additively by the updater rather than removed, so
-  // treating its absence as a change would hold a PUT that merely left it out.
-  private static Set<String> changedHoldableFields(
-      ObjectNode originalNode, ObjectNode updatedNode) {
-    Set<String> changed = new HashSet<>();
-    Set<String> names = new HashSet<>();
-    originalNode.fieldNames().forEachRemaining(names::add);
-    updatedNode.fieldNames().forEachRemaining(names::add);
-    for (String name : names) {
-      if (STRUCTURAL_DENYLIST.contains(name)) {
-        continue;
-      }
-      JsonNode oldValue = originalNode.get(name);
-      JsonNode newValue = updatedNode.get(name);
-      boolean setsNewValue =
-          newValue != null && !newValue.isNull() && !Objects.equals(oldValue, newValue);
-      boolean clearsScalar =
-          (newValue == null || newValue.isNull())
-              && oldValue != null
-              && !oldValue.isNull()
-              && oldValue.isValueNode();
-      if (setsNewValue || clearsScalar) {
-        changed.add(name);
-      }
+  private static void rejectMutuallyExclusiveTags(EntityInterface updated, Set<String> changed) {
+    if (changed.contains(TAGS)) {
+      TagLabelUtil.checkMutuallyExclusive(updated.getTags());
     }
-    return changed;
-  }
-
-  private static List<FieldChange> holdGatedFields(
-      ObjectNode originalNode,
-      ObjectNode updatedNode,
-      EntityInterface updated,
-      Set<String> gatedFields) {
-    ObjectNode revert = JsonUtils.getObjectMapper().createObjectNode();
-    List<FieldChange> held = new ArrayList<>();
-    for (String field : gatedFields) {
-      JsonNode oldValue = originalNode.get(field);
-      held.add(
-          new FieldChange()
-              .withName(field)
-              .withOldValue(oldValue)
-              .withNewValue(updatedNode.get(field)));
-      revert.set(field, oldValue == null ? NullNode.getInstance() : oldValue);
-    }
-    if (!held.isEmpty()) {
-      revertInPlace(updated, revert);
-    }
-    return held;
-  }
-
-  private static void revertInPlace(EntityInterface updated, ObjectNode revert) {
-    try {
-      JsonUtils.getObjectMapper().readerForUpdating(updated).readValue(revert);
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to revert held fields on entity", e);
-    }
-  }
-
-  // Records this edit's held fields into the requester's accumulating store record and returns the
-  // single-edit change so the trigger raised below can review exactly this edit, not the
-  // accumulation.
-  private static ChangeDescription recordHold(
-      EntityInterface original, List<FieldChange> held, String user) {
-    ChangeDescription pending =
-        new ChangeDescription().withPreviousVersion(original.getVersion()).withFieldsUpdated(held);
-    PendingApprovalChangeStore.accumulate(original.getId(), user, pending);
-    return pending;
-  }
-
-  private static void triggerReviewWorkflow(HeldTrigger trigger) {
-    String signal = "%s-%s".formatted(trigger.entityType(), EventType.ENTITY_UPDATED.toString());
-    MessageParser.EntityLink entityLink =
-        new MessageParser.EntityLink(trigger.entityType(), trigger.entityFqn());
-    Map<String, Object> variables = new LinkedHashMap<>();
-    variables.put(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-        entityLink.getLinkString());
-    variables.put(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE),
-        trigger.entityId());
-    variables.put(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), trigger.user());
-    variables.put(
-        getNamespacedVariableName(GLOBAL_NAMESPACE, PENDING_HELD_CHANGE_VARIABLE),
-        JsonUtils.pojoToJson(trigger.heldChange()));
-    WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
   }
 }

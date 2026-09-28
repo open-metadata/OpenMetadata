@@ -50,6 +50,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
+  public static final String PENDING_CHANGE_HEADER = "X-OpenMetadata-Pending-Change";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateTimeFormatter DATE_FORMAT;
@@ -127,6 +128,7 @@ public final class RestUtil {
     private ChangeEvent changeEvent;
     @Getter private final Response.Status status;
     @Getter private final EventType changeType;
+    @Getter private UUID pendingChangeRequestId;
 
     /**
      * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
@@ -145,9 +147,17 @@ public final class RestUtil {
       this.changeType = changeType;
     }
 
+    public PutResponse<T> withPendingChangeRequestId(UUID changeRequestId) {
+      this.pendingChangeRequestId = changeRequestId;
+      return this;
+    }
+
     public Response toResponse() {
       ResponseBuilder responseBuilder =
           Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
+      if (pendingChangeRequestId != null) {
+        responseBuilder.header(PENDING_CHANGE_HEADER, pendingChangeRequestId.toString());
+      }
       if (changeType.equals(ENTITY_CREATED)
           || changeType.equals(ENTITY_UPDATED)
           || changeType.equals(ENTITY_NO_CHANGE)
@@ -160,16 +170,23 @@ public final class RestUtil {
     }
   }
 
-  public record PatchResponse<T>(Status status, T entity, EventType changeType) {
+  public record PatchResponse<T>(
+      Status status, T entity, EventType changeType, UUID pendingChangeRequestId) {
+    public PatchResponse(Status status, T entity, EventType changeType) {
+      this(status, entity, changeType, null);
+    }
+
     public Response toResponse() {
       ResponseBuilder responseBuilder =
           Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType.value()).entity(entity);
-
-      // Add ETag header if entity implements EntityInterface
-      if (entity != null && entity instanceof org.openmetadata.schema.EntityInterface) {
-        EntityETag.addETagHeader(responseBuilder, (org.openmetadata.schema.EntityInterface) entity);
+      if (pendingChangeRequestId != null) {
+        responseBuilder.header(PENDING_CHANGE_HEADER, pendingChangeRequestId.toString());
       }
-
+      // EntityInterface is an optional capability of T; the ETag applies when the body is an
+      // entity.
+      if (entity instanceof org.openmetadata.schema.EntityInterface entityInterface) {
+        EntityETag.addETagHeader(responseBuilder, entityInterface);
+      }
       return responseBuilder.build();
     }
   }

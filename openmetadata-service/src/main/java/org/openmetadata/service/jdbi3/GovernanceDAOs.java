@@ -416,6 +416,20 @@ public interface GovernanceDAOs {
         "SELECT id FROM change_request WHERE status = 'Approved' AND updatedAt < :before"
             + " ORDER BY updatedAt LIMIT :limit")
     List<String> listApprovedBefore(@Bind("before") long updatedBefore, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), 0)) FROM workflow_definition_entity")
+    String workflowDefinitionEpoch();
+
+    // Clearing the claim makes any in-flight delivery's complete/release a no-op, so a delivery
+    // that fails because of this refusal cannot put the request back to Pending.
+    @SqlUpdate(
+        "UPDATE change_request SET deliveryStatus = 'AttentionRequired', claimToken = NULL,"
+            + " leaseUntil = NULL WHERE id = :id")
+    void markAttentionRequired(@BindUUID("id") UUID id);
+
+    @SqlUpdate("UPDATE change_request SET updatedAt = :updatedAt WHERE id = :id")
+    void backdate(@BindUUID("id") UUID id, @Bind("updatedAt") long updatedAt);
   }
 
   interface ChangeRevisionDAO {

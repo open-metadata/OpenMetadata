@@ -20,6 +20,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -67,6 +68,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
@@ -351,10 +353,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    List<BulkResponse> refused =
+        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DATA_PRODUCTS, userName);
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true, userName);
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    ApprovalGate.withRefused(result, refused);
+    if (refused.isEmpty() && result.getStatus().equals(ApiStatus.SUCCESS)) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.addDataProductsLineage(
             ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
@@ -366,9 +371,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public BulkOperationResult bulkRemoveAssets(
       String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    List<BulkResponse> refused =
+        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DATA_PRODUCTS, userName);
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false, userName);
+    ApprovalGate.withRefused(result, refused);
     for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
       EntityReference ref = (EntityReference) response.getRequest();
       LineageUtil.removeDataProductsLineage(

@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.AfterEach;
@@ -293,10 +294,9 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testSelfApprovalPrevention_eventDrivenSoleRequester_leftEmptyForAutoApprove() {
-    // Event-driven approval (not workflow-managed): the only reviewer is the requester. The
-    // requester must be removed and NOT re-added, leaving the assignee list empty so the
-    // userApprovalTask auto-approves instead of assigning the change to its own author.
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_keptWhenNoOneElse() {
+    // Event-driven approval (not workflow-managed, not a change request): the only reviewer is the
+    // requester, who is kept so the task stays actionable.
     EntityReference creatorRef =
         new EntityReference().withType("user").withFullyQualifiedName("alice");
 
@@ -309,13 +309,27 @@ class SetApprovalAssigneesImplTest {
 
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
-    assertEquals(
-        "[]",
-        assigneesJson,
-        "Event-driven sole-requester must be removed and not re-added, leaving the list empty");
-    assertFalse(
-        (Boolean) capturedVars.get("hasAssignees"),
-        "Empty list on a non-workflow-managed task must auto-approve, never self-approve");
+    assertTrue(assigneesJson.contains("alice"), "sole requester is kept outside change requests");
+  }
+
+  @Test
+  void testSelfApprovalPrevention_changeRequestSoleRequester_neverReassigned() {
+    // A change request is never assigned back to its requester, even when no one else is eligible.
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
+    when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertEquals("[]", assigneesJson, "a change request is never assigned to its requester");
   }
 
   @Test
