@@ -25,7 +25,6 @@ import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import './data-asset-version-header.less';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
 
@@ -42,6 +41,7 @@ function DataAssetsVersionHeader({
   entityType,
   serviceName,
   domainDisplayName,
+  domains,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
 
@@ -90,9 +90,7 @@ function DataAssetsVersionHeader({
                   <DomainLabel
                     multiple
                     domainDisplayName={domainDisplayName}
-                    domains={
-                      (currentVersionData as EntitiesWithDomainField).domains
-                    }
+                    domains={domains}
                     entityFqn={currentVersionData.fullyQualifiedName ?? ''}
                     entityId={currentVersionData.id ?? ''}
                     entityType={entityType}

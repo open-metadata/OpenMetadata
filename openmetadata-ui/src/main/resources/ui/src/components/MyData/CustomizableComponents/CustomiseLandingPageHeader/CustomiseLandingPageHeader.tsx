@@ -52,8 +52,8 @@ const CustomiseHomeModal = withSuspenseFallback(
   lazy(() => import('../CustomiseHomeModal/CustomiseHomeModal'))
 );
 
-const LandingPageDomainSelector = lazy(
-  () => import('./LandingPageDomainSelector')
+const DomainScopeControl = lazy(
+  () => import('../../../common/DomainScopeControl/DomainScopeControl')
 );
 
 const RecentlyViewedCarousel = lazy(() => import('./RecentlyViewedCarousel'));
@@ -307,7 +307,7 @@ const CustomiseLandingPageHeader = ({
             <div className="d-flex items-center gap-4 mb-9">
               <CustomiseSearchBar disabled={!onHomePage} />
               <Suspense fallback={<DomainSelectorPlaceholder />}>
-                <LandingPageDomainSelector disabled={!onHomePage} />
+                <DomainScopeControl disabled={!onHomePage} variant="pill" />
               </Suspense>
             </div>
             <LandingPageRecentlyViewed
