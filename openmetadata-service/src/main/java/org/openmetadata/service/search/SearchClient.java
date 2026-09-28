@@ -334,30 +334,36 @@ public interface SearchClient
 
   String REMOVE_LINEAGE_SCRIPT =
       """
-      def removedKeys = new HashSet();
-      for (def lineage : ctx._source.upstreamLineage) {
-        if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
-          removedKeys.add(lineage.sqlQueryKey);
-        }
-      }
-      ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
-      if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
-        def sqlMap = ctx._source.lineageSqlQueries;
-        def usedKeys = new HashSet();
+      if (ctx._source.upstreamLineage != null) {
+        def removedKeys = new HashSet();
         for (def lineage : ctx._source.upstreamLineage) {
-          if (lineage.containsKey('sqlQueryKey')) {
-            usedKeys.add(lineage.sqlQueryKey);
+          if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
+            removedKeys.add(lineage.sqlQueryKey);
           }
         }
-        removedKeys.removeAll(usedKeys);
-        for (def key : removedKeys) {
-          sqlMap.remove(key);
+        ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
+        if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+          def sqlMap = ctx._source.lineageSqlQueries;
+          def usedKeys = new HashSet();
+          for (def lineage : ctx._source.upstreamLineage) {
+            if (lineage.containsKey('sqlQueryKey')) {
+              usedKeys.add(lineage.sqlQueryKey);
+            }
+          }
+          removedKeys.removeAll(usedKeys);
+          for (def key : removedKeys) {
+            sqlMap.remove(key);
+          }
         }
       }
       """;
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
+      """
+      if (ctx._source.upstreamEntityRelationship != null) {
+        ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId);
+      }
+      """;
 
   String ADD_UPDATE_LINEAGE =
       """
@@ -447,8 +453,13 @@ public interface SearchClient
   // The script is used for updating the entityRelationship attribute of the entity in ES
   // It checks if any duplicate entry is present based on the docId and updates only if it is not
   // present
+  // The match query is caller-supplied, and upstreamEntityRelationship is seeded only by
+  // TableIndex, so the script cannot assume the field exists on every matched doc.
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
       """
+      if (ctx._source.upstreamEntityRelationship == null) {
+        ctx._source.upstreamEntityRelationship = new ArrayList();
+      }
       boolean docIdExists = false;
       for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) {
         if (ctx._source.upstreamEntityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) {

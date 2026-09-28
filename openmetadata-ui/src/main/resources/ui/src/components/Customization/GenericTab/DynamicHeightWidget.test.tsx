@@ -186,10 +186,23 @@ describe('DynamicHeightWidget', () => {
       resizeCallback([{ contentRect: { height: 0 } }]);
 
       // (0 + GRID_VERTICAL_MARGIN) / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN) = 16/116
-      expect(mockOnHeightChange).toHaveBeenCalledWith(
-        'test-widget',
-        16 / 116
+      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 16 / 116);
+    });
+
+    it('does not report height when the widget is not rendered (0x0 rect)', () => {
+      render(
+        <DynamicHeightWidget
+          widget={mockWidget}
+          onHeightChange={mockOnHeightChange}>
+          <div>Test Content</div>
+        </DynamicHeightWidget>
       );
+
+      const resizeCallback = (global.ResizeObserver as jest.Mock).mock
+        .calls[0][0];
+      resizeCallback([{ contentRect: { width: 0, height: 0 } }]);
+
+      expect(mockOnHeightChange).not.toHaveBeenCalled();
     });
 
     it('handles very large height values', () => {
