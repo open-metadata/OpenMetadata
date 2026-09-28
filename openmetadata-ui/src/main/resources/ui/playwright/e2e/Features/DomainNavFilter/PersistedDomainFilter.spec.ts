@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page, Response, test } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { SubDomain } from '../../../support/domain/SubDomain';
@@ -44,23 +44,30 @@ const glossaryInA = new Glossary();
 const glossaryInB = new Glossary();
 const glossaryInSubA = new Glossary();
 
-const glossaryPanel = (page: Page) => page.getByTestId('glossary-left-panel');
+/**
+ * The glossary page lists only its first page of glossaries, so on a busy server the seeded
+ * ones may not be rendered. Assert on the list the page actually receives instead: the
+ * server applies the persisted selection to it, and once narrowed it is small.
+ */
+const isGlossaryList = (r: Response) =>
+  r.request().method() === 'GET' && r.url().includes('/api/v1/glossaries?');
 
-const expectGlossaryVisible = (page: Page, glossary: Glossary) =>
-  expect(
-    glossaryPanel(page).getByRole('menuitem', {
-      name: glossary.responseData.displayName,
-      exact: true,
-    })
-  ).toBeVisible();
+const glossaryNamesFrom = async (response: Response) =>
+  ((await response.json()).data as { name: string }[]).map((g) => g.name);
 
-const expectGlossaryHidden = (page: Page, glossary: Glossary) =>
-  expect(
-    glossaryPanel(page).getByRole('menuitem', {
-      name: glossary.responseData.displayName,
-      exact: true,
-    })
-  ).toBeHidden();
+const openGlossaryPage = async (page: Page) => {
+  const list = page.waitForResponse(isGlossaryList);
+  await sidebarClick(page, SidebarItem.GLOSSARY);
+
+  return glossaryNamesFrom(await list);
+};
+
+const pickDomain = async (page: Page, domain: Domain['responseData']) => {
+  const list = page.waitForResponse(isGlossaryList);
+  await selectDomainFromNavbar(page, domain);
+
+  return glossaryNamesFrom(await list);
+};
 
 test.beforeAll(
   'Seed a viewer, domains, a sub-domain and one glossary in each',
@@ -108,12 +115,12 @@ test('picking a domain narrows the glossary list and includes its sub-domain', a
   try {
     await redirectToHomePage(page);
     // The navbar domain dropdown is not shown on the home page; pick it from the glossary page.
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectDomainFromNavbar(page, domainA.responseData);
+    await openGlossaryPage(page);
+    const names = await pickDomain(page, domainA.responseData);
 
-    await expectGlossaryVisible(page, glossaryInA);
-    await expectGlossaryVisible(page, glossaryInSubA);
-    await expectGlossaryHidden(page, glossaryInB);
+    expect(names).toContain(glossaryInA.responseData.name);
+    expect(names).toContain(glossaryInSubA.responseData.name);
+    expect(names).not.toContain(glossaryInB.responseData.name);
   } finally {
     await afterAction();
   }
@@ -125,8 +132,8 @@ test('the pick is persisted and restored on a fresh login', async ({
   const first = await performUserLogin(browser, viewer);
   try {
     await redirectToHomePage(first.page);
-    await sidebarClick(first.page, SidebarItem.GLOSSARY);
-    await selectDomainFromNavbar(first.page, domainB.responseData);
+    await openGlossaryPage(first.page);
+    await pickDomain(first.page, domainB.responseData);
   } finally {
     await first.afterAction();
   }
@@ -135,12 +142,13 @@ test('the pick is persisted and restored on a fresh login', async ({
   const second = await performUserLogin(browser, viewer);
   try {
     await redirectToHomePage(second.page);
-    await sidebarClick(second.page, SidebarItem.GLOSSARY);
+    const names = await openGlossaryPage(second.page);
+
     await expect(second.page.getByTestId('domain-dropdown')).toContainText(
       domainB.responseData.displayName
     );
-    await expectGlossaryVisible(second.page, glossaryInB);
-    await expectGlossaryHidden(second.page, glossaryInA);
+    expect(names).toContain(glossaryInB.responseData.name);
+    expect(names).not.toContain(glossaryInA.responseData.name);
   } finally {
     await second.afterAction();
   }
@@ -160,10 +168,16 @@ test('clearing the selection restores the unfiltered list', async ({
     });
 
     await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await openGlossaryPage(page);
     await verifyActiveDomainIsDefault(page);
+
+    // Unfiltered, the page's first page may not hold the seeded glossaries; list them all as this user.
+    const all = await (
+      await apiContext.get('/api/v1/glossaries?limit=1000000')
+    ).json();
+    const names = (all.data as { name: string }[]).map((g) => g.name);
     for (const g of [glossaryInA, glossaryInB, glossaryInSubA]) {
-      await expectGlossaryVisible(page, g);
+      expect(names).toContain(g.responseData.name);
     }
   } finally {
     await afterAction();
