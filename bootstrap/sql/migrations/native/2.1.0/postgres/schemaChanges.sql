@@ -42,12 +42,6 @@ CREATE INDEX IF NOT EXISTS idx_test_case_id ON test_case (id);
 -- index and full-scanned the timeline at scale.
 CREATE INDEX IF NOT EXISTS idx_test_case_resolution_status_assignee ON test_case_resolution_status_time_series (assignee, timestamp);
 
--- Column extension keys hash every FQN segment separately and join the hashes with dots.
--- A fourth-level nested table column has eight segments and needs 263 characters.
--- Keep the width aligned with MySQL: 512 supports eleven column levels after the four-part
--- table FQN.
-ALTER TABLE entity_extension ALTER COLUMN extension TYPE VARCHAR(512);
-
 -- Incident summary table: one row per incident (stateId chain), maintained at write time so
 -- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
 -- Column names deliberately mirror the time-series table so ListFilter conditions apply verbatim.
@@ -376,3 +370,10 @@ BEGIN
     ALTER TABLE audit_log_event ALTER COLUMN entity_fqn TYPE TEXT;
   END IF;
 END $$;
+
+-- Announcement type: stored generated column so the list API can filter by type. Rows written
+-- before the field existed have no type key and read back as the Information default.
+ALTER TABLE announcement_entity
+  ADD COLUMN IF NOT EXISTS type character varying(32)
+  GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
+CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);

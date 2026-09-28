@@ -8759,6 +8759,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -23910,6 +23916,12 @@
                       "title": "Database Schema",
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
+                    },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
                     },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
@@ -40581,7 +40593,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -40855,7 +40866,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -41868,59 +41878,6 @@
                         "Sftp"
                       ],
                       "default": "Sftp"
-                    },
-                    "basicAuth": {
-                      "title": "Username/Password Authentication",
-                      "description": "Username and password authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "SFTP password",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "keyAuth": {
-                      "title": "Private Key Authentication",
-                      "description": "SSH private key authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "privateKey": {
-                          "title": "Private Key",
-                          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                          "type": "string",
-                          "format": "password",
-                          "uiFieldType": "fileOrInput"
-                        },
-                        "privateKeyPassphrase": {
-                          "title": "Private Key Passphrase",
-                          "description": "Passphrase for the private key (if encrypted)",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "privateKey"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -41952,6 +41909,7 @@
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -41975,6 +41933,7 @@
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -51338,6 +51297,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -66489,6 +66454,12 @@
                       "title": "Database Schema",
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
+                    },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
                     },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
@@ -83160,7 +83131,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -83434,7 +83404,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -84447,59 +84416,6 @@
                         "Sftp"
                       ],
                       "default": "Sftp"
-                    },
-                    "basicAuth": {
-                      "title": "Username/Password Authentication",
-                      "description": "Username and password authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "SFTP password",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "keyAuth": {
-                      "title": "Private Key Authentication",
-                      "description": "SSH private key authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "privateKey": {
-                          "title": "Private Key",
-                          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                          "type": "string",
-                          "format": "password",
-                          "uiFieldType": "fileOrInput"
-                        },
-                        "privateKeyPassphrase": {
-                          "title": "Private Key Passphrase",
-                          "description": "Passphrase for the private key (if encrypted)",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "privateKey"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -84531,6 +84447,7 @@
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -84554,6 +84471,7 @@
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
                           "properties": {
                             "username": {
                               "title": "Username",

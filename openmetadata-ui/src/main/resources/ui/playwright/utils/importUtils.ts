@@ -44,7 +44,10 @@ import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
 } from './customProperty';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -681,7 +684,9 @@ export const fillTagDetails = async (page: Page, tag: string) => {
   await tagSelectorInput.waitFor({ state: 'visible' });
 
   const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
   await page.keyboard.type(tag);
   await waitForQueryResponse;
@@ -694,15 +699,13 @@ export const fillGlossaryTermDetails = async (
   page: Page,
   glossary: { parent: string; name: string }
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
   await waitForAllLoadersToDisappear(page);
 
   const picker = page.getByTestId('csv-glossary-terms-picker');
-  await expect(picker).toBeVisible();
+  // A forced cell click can select without focusing, so a bare Enter may not open it.
+  await openActiveCellPopover(page, picker, undefined);
 
-  // Filling focuses the trigger's input, and its onFocus opens the tree — a
-  // click here would instead close the grid's cell editor.
+  // The search box lives in the popover; clicking the trigger would close the cell.
   await searchGlossaryPicker(page, glossary.name, picker);
 
   const row = page.getByTestId(
@@ -711,8 +714,11 @@ export const fillGlossaryTermDetails = async (
   await expect(row).toBeVisible();
   await row.click();
 
-  // Same commit affordance as the tag cell beside it.
-  await clickInlineSave(page);
+  // No save button: each toggle is already on the row, so dismissing commits.
+  await page.keyboard.press('Escape');
+  await page
+    .locator('.glossary-term-picker-popover')
+    .waitFor({ state: 'detached' });
 };
 
 export const fillDomainDetails = async (
@@ -721,19 +727,23 @@ export const fillDomainDetails = async (
 ) => {
   await page.keyboard.press('Enter');
 
-  await page.click('[data-testid="domain-selectable-tree-search"]');
+  await page.click(
+    '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
+  );
 
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
   );
 
-  await page.getByTestId('domain-selectable-tree-search').fill(domains.name);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domains.name);
 
   await searchDomain;
 
-  await page.getByTestId(`tree-node-${domains.fullyQualifiedName}`).click();
-  // Multi-select picker: commit the staged selection via the Apply footer.
-  await page.getByTestId('update-btn').click();
+  await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
+  await clickAssociatedTagSave(page);
 };
 
 const getActiveCellPopoverOpenActions = (page: Page) => {

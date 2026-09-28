@@ -21,10 +21,8 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityType } from '../../../enums/entity.enum';
-import { ChangeDescription } from '../../../generated/entity/services/databaseService';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
-import { getDomainDiff } from '../../../utils/EntityVersionUtilsPure';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
@@ -50,18 +48,6 @@ function DataAssetsVersionHeader({
   const extraInfo = useMemo(
     () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
     [entityType, currentVersionData]
-  );
-
-  // Include added AND deleted domains, aligned 1:1 with `domainDisplayName`, so
-  // the DomainTag chips render the deleted-domain diff too. `currentVersionData`
-  // only carries the post-change domains, which drops the deleted chip.
-  const versionDomains = useMemo(
-    () =>
-      getDomainDiff(
-        (currentVersionData as EntitiesWithDomainField).domains ?? [],
-        get(currentVersionData, 'changeDescription') as ChangeDescription
-      ).domains,
-    [currentVersionData]
   );
 
   const icon = useMemo(() => {
@@ -104,7 +90,9 @@ function DataAssetsVersionHeader({
                   <DomainLabel
                     multiple
                     domainDisplayName={domainDisplayName}
-                    domains={versionDomains}
+                    domains={
+                      (currentVersionData as EntitiesWithDomainField).domains
+                    }
                     entityFqn={currentVersionData.fullyQualifiedName ?? ''}
                     entityId={currentVersionData.id ?? ''}
                     entityType={entityType}

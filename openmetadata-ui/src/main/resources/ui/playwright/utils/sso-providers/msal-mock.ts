@@ -272,6 +272,12 @@ export const msalMockProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: false,
   supportsSilentCallback: false,
   usesBackendRefresh: false,
+  hasBackendIssuedRefreshCookie: false,
+  // Mocked SDK — `acquireTokenSilent` / `loginRedirect` are stubbed
+  // in-fixture (see mintResponse), so no real browser /authorize
+  // navigation happens. Scenario 1a asserts on that navigation, so
+  // opt out here; the real MSAL nightly leg (if wired) would.
+  usesPkce: false,
   supportsColdLoadRefresh: true,
 
   isAvailable: () => true,
@@ -306,7 +312,7 @@ export const msalMockProviderFixture: SsoProviderFixture = {
     // rejected on `/users/loggedInUser` (bad signature).
     await installMsalMock(page, adminPat ?? undefined);
 
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // Authenticated app renders the sidebar's home nav. Same waypoint
     // basic.ts uses — keeps downstream assertions provider-agnostic.

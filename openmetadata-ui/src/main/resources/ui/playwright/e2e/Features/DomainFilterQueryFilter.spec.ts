@@ -61,13 +61,9 @@ const getDomainMustClauses = (queryFilter: string): unknown[] => {
 
 const expectQueryVisibleForDomain = async (
   page: Page,
-  table: TableClass,
   domain: Domain,
   queryText: string
 ) => {
-  await table.visitEntityPage(page);
-  await selectDomainFromNavbar(page, domain.responseData);
-
   const queryResponse = page.waitForResponse((response) => {
     const url = new URL(response.url());
     const queryFilter = url.searchParams.get('query_filter') ?? '';
@@ -92,6 +88,7 @@ const expectQueryVisibleForDomain = async (
       )
     );
   });
+  await selectDomainFromNavbar(page, domain.responseData);
   const queriesTab = page.getByTestId('table_queries');
 
   await expect(queriesTab).toBeEnabled();
@@ -184,19 +181,11 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       });
       queryId = (await okJson<Query>(response, 'create multi-table query')).id;
 
-      await redirectToHomePage(page);
-      await expectQueryVisibleForDomain(
-        page,
-        firstTable,
-        firstDomain,
-        queryText
-      );
-      await expectQueryVisibleForDomain(
-        page,
-        secondTable,
-        secondDomain,
-        queryText
-      );
+      // The same query must remain discoverable under both inherited domains,
+      // including when the selected domain came from its other associated table.
+      await firstTable.visitEntityPage(page);
+      await expectQueryVisibleForDomain(page, firstDomain, queryText);
+      await expectQueryVisibleForDomain(page, secondDomain, queryText);
     } finally {
       if (queryId) {
         await apiContext.delete(
@@ -338,7 +327,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       await assignDomainToEntity(apiContext, domainTable, domain);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await redirectToHomePage(page);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
@@ -393,7 +382,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       // Select SubDomain from navbar (requires expanding parent domain tree)
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-dropdown-search').waitFor({
+      await page.getByTestId('domain-selectable-tree').waitFor({
         state: 'visible',
       });
 
@@ -402,17 +391,23 @@ test.describe('Domain Filter - User Behavior Tests', () => {
           response.url().includes('/api/v1/search/query') &&
           response.url().includes('index=domain')
       );
-      // Search the sub-domain directly; the server-side domain search returns
-      // sub-domains too, so no manual parent-tree expansion is needed.
       await page
-        .getByTestId('domain-dropdown-search')
-        .fill(subDomain.responseData.name);
+        .getByTestId('domain-selectable-tree')
+        .getByTestId('searchbar')
+        .fill(domain.responseData.displayName);
       await searchDomainRes6;
+
+      const parentDomainNode = page
+        .locator('.ant-tree-treenode')
+        .filter({ hasText: domain.responseData.displayName })
+        .first();
+
+      await parentDomainNode.locator('.ant-tree-switcher').click();
 
       await waitForAllLoadersToDisappear(page);
 
       const tagSelector6 = page.getByTestId(
-        `tree-node-${subDomain.responseData.fullyQualifiedName}`
+        `tag-${subDomain.responseData.fullyQualifiedName}`
       );
       await tagSelector6.waitFor({ state: 'visible' });
       await tagSelector6.click();
@@ -623,10 +618,10 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Step 3: Clear domain filter by selecting "All Domains"
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-dropdown-search').waitFor({
+      await page.getByTestId('domain-selectable-tree').waitFor({
         state: 'visible',
       });
-      await page.getByTestId('tree-node-All Domains').click();
+      await page.getByTestId('all-domains-selector').click();
       await waitForAllLoadersToDisappear(page);
 
       await verifyActiveDomainIsDefault(page);

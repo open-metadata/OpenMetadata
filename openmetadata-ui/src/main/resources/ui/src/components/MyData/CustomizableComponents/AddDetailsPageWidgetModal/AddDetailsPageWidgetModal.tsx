@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Modal, Tabs, TabsProps } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { isEmpty, sortBy, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
+import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { WidgetSizeInfo } from '../AddWidgetModal/AddWidgetModal.interface';
 import AddWidgetTabContent from '../AddWidgetModal/AddWidgetTabContent';
@@ -59,9 +61,9 @@ function AddDetailsPageWidgetModal({
     [handleAddWidget, placeholderWidgetKey]
   );
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: DetailsTabItem[] = useMemo(
     () =>
-      sortBy(widgetsList, 'name')?.map((widget) => {
+      sortBy(widgetsList, 'name').map((widget) => {
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: GridSizes) => ({
             label: (
@@ -104,11 +106,27 @@ function AddDetailsPageWidgetModal({
 
     return (
       <Tabs
-        destroyInactiveTabPane
+        className="tw:flex-row"
         data-testid="widget-info-tabs"
-        items={tabItems}
-        tabPosition="left"
-      />
+        orientation="vertical">
+        <Tabs.List
+          className="tw:shrink-0 tw:border-r tw:border-secondary tw:p-4"
+          type="line">
+          {tabItems.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabItems.map(({ key, children }) => (
+          <Tabs.Panel
+            className="tw:min-w-0 tw:flex-1 tw:p-4"
+            id={key}
+            key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
   }, [widgetsList, tabItems]);
 

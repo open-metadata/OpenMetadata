@@ -116,7 +116,7 @@ export const OwnerChip = ({
         {avatar}
         {href ? (
           <a
-            className="tw:truncate tw:text-sm tw:text-primary hover:tw:underline"
+            className="tw:truncate tw:text-sm tw:text-primary tw:hover:underline"
             data-testid="owner-link"
             href={href}>
             {nameNode}

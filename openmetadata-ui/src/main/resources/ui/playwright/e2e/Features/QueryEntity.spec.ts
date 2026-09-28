@@ -172,15 +172,29 @@ test('Query Entity', async ({ page }) => {
 
     // Update Tags
     await page.getByTestId('add-tag').click();
-    await page.locator('#tagsForm_tags').click();
-    await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
-    await page.getByTestId(`tag-${queryData.tagFqn}`).first().click();
+
+    await expect(
+      page.getByTestId('classification-tag-picker-search')
+    ).toBeVisible();
+
+    const searchTagResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(queryData.tagFqn)}*`
+    );
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(queryData.tagFqn);
+    await searchTagResponse;
+    await page.getByTestId(`tree-node-${queryData.tagFqn}`).click();
+
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+
     const updateTagResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
-    await page.getByTestId('saveAssociatedTag').click();
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await updateTagResponse;
   });
 

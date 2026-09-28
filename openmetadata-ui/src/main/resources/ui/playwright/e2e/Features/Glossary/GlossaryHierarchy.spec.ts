@@ -300,7 +300,9 @@ test.describe('Glossary Hierarchy', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('change-parent-button').click();
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(
+        page.getByTestId('change-parent-hierarchy-modal')
+      ).toBeVisible();
 
       // Click cancel button
       await page
@@ -310,7 +312,7 @@ test.describe('Glossary Hierarchy', () => {
 
       // Verify modal is closed
       await expect(
-        page.locator('[role="dialog"].change-parent-hierarchy-modal')
+        page.getByTestId('change-parent-hierarchy-modal')
       ).not.toBeVisible();
       await waitForAllLoadersToDisappear(page);
 
@@ -417,17 +419,13 @@ test.describe('Glossary Hierarchy', () => {
       );
 
       // Wait for confirmation modal content to be visible
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeVisible();
+      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
 
       // Click Cancel button
       await page.getByRole('button', { name: 'Cancel' }).click();
 
       // Verify modal content is closed
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeHidden();
+      await expect(page.getByTestId('confirmation-modal')).toBeHidden();
 
       // Verify terms are still at root level (no hierarchy change)
       await expect(

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HTMLAttributes, ReactNode } from 'react';
+import { HTMLAttributes } from 'react';
 
 /**
  * xs — 10 px font / 16 px badge padding
@@ -21,11 +21,6 @@ export type TagSize = 'xs' | 'sm' | 'md';
 
 export interface EntityTagProps extends HTMLAttributes<HTMLSpanElement> {
   label: string;
-  /**
-   * Rich label content rendered in place of `label` text (e.g. a version-diff
-   * decorated node). `label` is still used for the accessible/tooltip text.
-   */
-  labelNode?: ReactNode;
   /** Hex color from ENTITY_PALETTE_HEX. Omit to use DEFAULT_TAG_COLOR. */
   color?: string;
   /**
@@ -48,15 +43,4 @@ export interface EntityTagProps extends HTMLAttributes<HTMLSpanElement> {
   'data-tag-index'?: number;
   /** data-testid for the close/remove button when onDelete is provided. */
   closeButtonTestId?: string;
-  /**
-   * Marks the entity as inherited (e.g. a domain propagated from a parent),
-   * rendering a trailing inherit glyph inside the chip.
-   */
-  inherited?: boolean;
-  /**
-   * Accessible name for the inherit glyph, supplied translated by the consumer
-   * (the library does not own this app string). When omitted the glyph is
-   * decorative (`aria-hidden`).
-   */
-  inheritedLabel?: string;
 }
