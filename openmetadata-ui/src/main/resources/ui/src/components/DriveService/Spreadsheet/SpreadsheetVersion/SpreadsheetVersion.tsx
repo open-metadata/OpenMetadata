@@ -87,17 +87,22 @@ const SpreadsheetVersion = ({
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const handleTabChange = (activeKey: string) => {
     navigate(
@@ -288,6 +293,7 @@ const SpreadsheetVersion = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.SPREADSHEET}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
