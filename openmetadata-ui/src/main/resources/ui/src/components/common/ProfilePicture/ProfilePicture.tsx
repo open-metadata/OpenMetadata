@@ -16,7 +16,7 @@ import { parseInt } from 'lodash';
 import { ComponentProps, useMemo, type ReactNode } from 'react';
 import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/ColorUtils';

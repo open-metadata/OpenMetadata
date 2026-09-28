@@ -33,6 +33,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { LineageData } from '../../../interface/lineage.interface';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
@@ -65,7 +66,6 @@ import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPa
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
 import LineageTabContent from '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent';
-import { LineageData } from '../../Lineage/Lineage.interface';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import {

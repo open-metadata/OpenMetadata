@@ -28,6 +28,7 @@ import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { claimFirstBoot } from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
@@ -293,12 +294,22 @@ export const redirectToHomePage = async (
   // is the only hook that reaches all of them; the call is idempotent.
   await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
+  // Claimed before goto so it cannot miss the boot's auth decision. The
+  // waitForURL below resolves before a signed-out boot redirects to /signin,
+  // and the loader check passes on the login page too, so without this a lost
+  // storageState token surfaces 60s later as an unrelated-looking failure.
+  // Undefined unless this is the context's first navigation.
+  const firstBootRecovery = claimFirstBoot(page, '/my-data');
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForURL('**/my-data', {
     waitUntil: 'domcontentloaded',
   });
+
+  if (await firstBootRecovery) {
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
 
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
@@ -1036,7 +1047,7 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('menuitem', { name: glossaryName, exact: true })
+    .getByRole('link', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -1914,14 +1925,20 @@ export const scrollIntoViewAndSettle = async (locator: Locator) => {
   });
 };
 
+/**
+ * Opens a React Aria Select or ComboBox and clicks one of its options, reopening
+ * it if the popover closed first. `open` defaults to a click; a ComboBox that
+ * does not always reopen on click can pass its own.
+ */
 export const selectOptionWithRetry = async (
   trigger: Locator,
-  option: Locator
+  option: Locator,
+  open: () => Promise<void> = () => trigger.click()
 ) => {
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
       await scrollIntoViewAndSettle(trigger);
-      await trigger.click();
+      await open();
     }
 
     await option.click({ timeout: 2000 });

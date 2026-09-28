@@ -16,6 +16,7 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -140,11 +141,10 @@ export class MlModelClass extends EntityClass {
         },
       })
     );
-
     this.entityResponseData = await okJson(response, 'MlModelClass.patch');
 
     return {
-      entity: response.body,
+      entity: this.entityResponseData,
     };
   }
 
@@ -172,7 +172,8 @@ export class MlModelClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/mlmodelServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`

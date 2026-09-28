@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Request, Route } from '@playwright/test';
+import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 
 /**
  * Reduces the server load a Playwright shard generates.
@@ -242,6 +243,27 @@ const replayableHeaders = (headers: Record<string, string>) =>
     )
   );
 
+const fetchRouteResponse = async (route: Route) => {
+  try {
+    return await route.fetch();
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !/^route\.fetch: (?:socket hang up|(?:read )?ECONNRESET)\b/.test(
+        error.message
+      )
+    ) {
+      throw error;
+    }
+
+    // route.fetch uses a separate HTTP client. Preserve a reset as a failed
+    // browser request instead of an unhandled fixture exception or a retry.
+    await route.abort('connectionreset');
+
+    return undefined;
+  }
+};
+
 const serveBootConfig = async (route: Route) => {
   const request = route.request();
 
@@ -267,7 +289,12 @@ const serveBootConfig = async (route: Route) => {
     return;
   }
 
-  const response = await route.fetch();
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const payload: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
@@ -321,7 +348,12 @@ const serveStaticAsset = async (route: Route) => {
     return;
   }
 
-  const response = await route.fetch();
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const entry: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
@@ -343,14 +375,23 @@ const serveStaticAsset = async (route: Route) => {
  * whichever test owns the route. Losing the target mid-flight is routine here
  * rather than exceptional: boot config is fetched on every navigation, so any
  * test that navigates away or ends while one is in flight would otherwise fail
- * on a request nothing asserts on. Anything else still propagates — a cache
- * that is broken for a real reason must not be silent.
+ * on a request nothing asserts on. Closing the context also disposes the
+ * `route.fetch()` response it owns, so a `body()` read racing teardown fails
+ * with "Response has been disposed" rather than "has been closed". The same
+ * race can also land after Playwright already resolved the route for the closing
+ * page, so `fulfill` reports "Route is already handled!". Anything else still
+ * propagates — a cache that is broken for a real reason must not be
+ * silent.
  */
 const ignoreClosedTarget = async (serve: () => Promise<void>) => {
   try {
     await serve();
   } catch (error) {
-    if (!/has been closed/.test(String(error))) {
+    if (
+      !/has been closed|Response has been disposed|Route is already handled/.test(
+        String(error)
+      )
+    ) {
       throw error;
     }
   }
@@ -372,6 +413,10 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
   }
 
   installed.add(context);
+
+  // Every context entry point already funnels through here, so this is the one
+  // place the lost-storageState-token guard reaches all of them.
+  guardStorageStateBoot(context);
 
   // Guarded like the two below: analytics beacons are fired on navigation and
   // unload, so a `fulfill` here is more likely than either of them to land on a

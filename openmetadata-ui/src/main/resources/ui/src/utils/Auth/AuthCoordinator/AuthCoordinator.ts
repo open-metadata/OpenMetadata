@@ -355,6 +355,25 @@ export class AuthCoordinator {
     if (outcome.role === 'follower') {
       const message = outcome.message;
       if (message.type === 'done' && this.isRenewResult(message.payload)) {
+        // Persist the payload BEFORE applying it in memory. Storage
+        // is the source of truth for the axios request interceptor's
+        // Bearer (via `getOidcToken()`); if the leader's own persist
+        // threw (publish-failure path — abbd913 broadcasts `done`
+        // rather than `failed` so rotating-refresh IdPs don't get
+        // duplicate renewer() calls), storage still holds the OLD
+        // token and requests would 401 with it (gitar-bot
+        // r4083324168). Followers persisting is idempotent with the
+        // leader's own write in the healthy case and is the recovery
+        // path when the leader's write failed.
+        try {
+          await setOidcTokenStrict(message.payload.idToken);
+        } catch {
+          // If our persist ALSO throws (private-mode IndexedDB /
+          // SW crash), keep the token in memory anyway — the tab
+          // stays authenticated for this session even if storage
+          // is unrecoverable. Better than signing out.
+        }
+
         return this.applyRefreshed(message.payload);
       }
 
@@ -437,11 +456,23 @@ export class AuthCoordinator {
       if (this.inflight || !stored) {
         return null;
       }
-      const { exp } = extractDetailsFromToken(stored);
-      if (typeof exp !== 'number' || exp <= 0) {
+      const details = extractDetailsFromToken(stored);
+      // Opaque bot token: no `exp` claim, extractDetailsFromToken
+      // returns `{ exp: undefined, isExpired: false }`. The fast-path
+      // honours it — this is intentional, opaque tokens have no
+      // expiry to check against and are the calling contract for
+      // service-account style credentials. Anything ELSE with an
+      // absent/non-positive exp comes from
+      // extractDetailsFromToken's catch branch (jwt-decode threw),
+      // which sets `isExpired: true` on `{ exp: 0 }` — a corrupt or
+      // torn JWT that must NOT be handed back as a bearer.
+      if (details.exp === undefined && !details.isExpired) {
         return stored;
       }
-      const msRemaining = exp * 1000 - Date.now();
+      if (typeof details.exp !== 'number' || details.exp <= 0) {
+        return null;
+      }
+      const msRemaining = details.exp * 1000 - Date.now();
       if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
         return stored;
       }

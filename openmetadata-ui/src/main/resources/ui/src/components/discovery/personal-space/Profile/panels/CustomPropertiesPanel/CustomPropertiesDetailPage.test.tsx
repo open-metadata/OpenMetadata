@@ -45,16 +45,24 @@ const mockEntityType = {
 };
 
 const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockEntityType);
-const mockUpdateType = jest.fn().mockResolvedValue(mockEntityType);
+const mockDeleteCustomPropertyByName = jest
+  .fn()
+  .mockResolvedValue(mockEntityType);
 const mockGetEntityPermission = jest.fn().mockResolvedValue({
   Create: true,
   EditAll: true,
   Delete: true,
 });
 
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
-  updateType: (id: string, patches: unknown) => mockUpdateType(id, patches),
+  deleteCustomPropertyByName: (fqn: string, name: string) =>
+    mockDeleteCustomPropertyByName(fqn, name),
 }));
 
 jest.mock(
@@ -410,7 +418,7 @@ describe('CustomPropertiesDetailPage', () => {
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
   });
 
-  it('calls updateType when delete is confirmed', async () => {
+  it('deletes the selected property by name when delete is confirmed', async () => {
     render(<CustomPropertiesDetailPage {...defaultProps} />);
 
     await waitFor(() => {
@@ -422,9 +430,9 @@ describe('CustomPropertiesDetailPage', () => {
     fireEvent.click(screen.getByTestId('confirm-delete-btn'));
 
     await waitFor(() => {
-      expect(mockUpdateType).toHaveBeenCalledWith(
-        mockEntityType.id,
-        expect.any(Array)
+      expect(mockDeleteCustomPropertyByName).toHaveBeenCalledWith(
+        mockEntityType.fullyQualifiedName,
+        mockProperty1.name
       );
     });
   });
@@ -457,9 +465,28 @@ describe('CustomPropertiesDetailPage', () => {
     });
   });
 
-  it('shows error toast when updateType fails on delete', async () => {
+  it('drops the property locally when it was already removed elsewhere', async () => {
+    mockDeleteCustomPropertyByName.mockResolvedValueOnce(undefined);
+
+    render(<CustomPropertiesDetailPage {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByLabelText('label.delete')[0]);
+    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('row-stringProp')).not.toBeInTheDocument();
+    });
+
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('shows error toast when the delete fails', async () => {
     const mockError = new Error('Delete failed');
-    mockUpdateType.mockRejectedValueOnce(mockError);
+    mockDeleteCustomPropertyByName.mockRejectedValueOnce(mockError);
 
     render(<CustomPropertiesDetailPage {...defaultProps} />);
 

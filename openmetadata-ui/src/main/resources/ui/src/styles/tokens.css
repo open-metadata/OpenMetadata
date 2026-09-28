@@ -241,6 +241,14 @@
   --om-color-utility-yellow-100: var(--color-utility-yellow-100, #fef7c3);
   --om-color-utility-yellow-700: var(--color-utility-yellow-700, #a15c07);
 
+  /* Legacy antd @orange-7 / @orange-50 / @orange-200 — no upstream palette
+     step matches.
+     Referenced from TSX (tw arbitrary values), so gen-tokens cannot see
+     them; they live here rather than in the generated block. */
+  --om-legacy-color-b93815: #b93815;
+  --om-legacy-color-fef6ee: #fef6ee;
+  --om-legacy-color-f9dbaf: #f9dbaf;
+
   /* Fixed visualization hues are tokenized without changing their existing
      categorical identity across themes. */
   --om-color-visualization-test-success: var(

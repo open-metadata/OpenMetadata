@@ -105,7 +105,7 @@ const SelectedFileChip = ({
     data-testid="credential-file-chip"
     gap={3}>
     <FileIcon
-      className="tw:size-10 tw:shrink-0 dark:tw:hidden"
+      className="tw:size-10 tw:shrink-0 tw:dark:hidden"
       theme="light"
       type={getFileIconType(file.name)}
       variant="default"

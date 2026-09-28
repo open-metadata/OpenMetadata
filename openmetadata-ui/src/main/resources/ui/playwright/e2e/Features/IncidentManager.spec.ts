@@ -654,7 +654,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           response.url().includes('filterType=MENTIONS') &&
           response.request().method() === 'GET'
       );
-      await adminPage.getByText('Mentions').click();
+      await adminPage
+        .locator('.notification-box')
+        .getByRole('tab', { name: /Mentions/ })
+        .click();
       const mention = await mentionResponse;
       expect(mention.status()).toBe(200);
 
