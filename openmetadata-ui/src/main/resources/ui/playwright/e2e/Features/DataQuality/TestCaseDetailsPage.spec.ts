@@ -656,3 +656,67 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  'Test Case Details Page - Run details card',
+  { tag: ['@Observability'] },
+  () => {
+    let detailsTable: TableClass;
+    let detailsTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case whose latest run failed',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        detailsTable = new TableClass();
+        await detailsTable.create(apiContext);
+        const testCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        detailsTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await detailsTable.addTestCaseResult(apiContext, detailsTestCaseFqn, {
+          duration: 2600,
+          result: 'Found rowCount=110 vs. the expected 10000',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '110' }],
+          timestamp: getCurrentMillis() - 60_000,
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await detailsTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('shows the failed run against its expectation', async ({ page }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, detailsTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(
+        card.getByRole('heading', { name: 'Run details' })
+      ).toBeVisible();
+      await expect(card).toHaveAttribute('data-status', 'Failed');
+      await expect(card.getByTestId('run-details-duration')).toHaveText('2.6s');
+      await expect(card.getByTestId('run-details-definition')).toHaveText(
+        'tableRowCountToEqual'
+      );
+      await expect(card.getByTestId('run-details-expected')).toHaveText(
+        '10,000'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('110');
+      await expect(card.getByTestId('run-details-difference')).toHaveText(
+        '-9,890 (-98.9%)'
+      );
+      await expect(card.getByTestId('run-details-comparison')).toBeVisible();
+    });
+  }
+);

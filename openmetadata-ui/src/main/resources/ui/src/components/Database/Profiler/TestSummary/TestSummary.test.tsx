@@ -99,6 +99,7 @@ jest.mock('./TestSummaryGraph', () => {
   return jest.fn().mockImplementation(() => <div>TestSummaryGraph</div>);
 });
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn().mockImplementation((val) => `date-${val}`),
 }));
 jest.mock(
@@ -285,6 +286,21 @@ describe('TestSummary component', () => {
     });
 
     expect(screen.getByTestId('run-summary-failed')).toHaveTextContent('2');
+  });
+
+  it('should show the newest run below the tiles', async () => {
+    mockGetListTestCaseResults.mockResolvedValueOnce({
+      data: [
+        { timestamp: 1, testCaseStatus: 'Success' },
+        { timestamp: 2, testCaseStatus: 'Failed' },
+      ],
+    });
+    render(<TestSummary {...mockProps} />);
+
+    expect(await screen.findByTestId('run-details-card')).toHaveAttribute(
+      'data-status',
+      'Failed'
+    );
   });
 
   const shape = (

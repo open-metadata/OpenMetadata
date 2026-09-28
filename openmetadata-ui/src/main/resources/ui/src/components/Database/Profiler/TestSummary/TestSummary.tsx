@@ -31,6 +31,7 @@ import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import Loader from '../../../common/Loader/Loader';
+import RunDetailsCard from '../../../DataQuality/IncidentManager/RunDetailsCard/RunDetailsCard';
 import { getPastDaysRange } from '../../../observability/DataQuality/Dashboard/calendarDate.utils';
 import DqDateRangeFilter from '../../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -156,7 +157,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
           />
         )}
       </div>
-      {!isGraphLoading && <RunSummaryTiles results={results} />}
+      {!isGraphLoading && (
+        <>
+          <RunSummaryTiles results={results} />
+          <RunDetailsCard results={results} testCase={data} />
+        </>
+      )}
     </Box>
   );
 };

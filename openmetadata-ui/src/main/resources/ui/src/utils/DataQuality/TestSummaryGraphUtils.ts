@@ -162,7 +162,7 @@ export interface ThresholdReference {
   labelValue?: string;
 }
 
-const toFiniteNumber = (value?: string) => {
+export const toFiniteNumber = (value?: string) => {
   // Number('') is 0, so a cleared parameter would otherwise draw a line at 0.
   if (isEmpty(value?.trim())) {
     return undefined;
