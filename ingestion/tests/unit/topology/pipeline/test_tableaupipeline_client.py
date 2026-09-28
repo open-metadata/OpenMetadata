@@ -149,6 +149,8 @@ class FakeTableau:
         self.graphql_status = 200
         self.table_queries_response: dict = {"data": {"databaseTables": []}}
         self.table_queries_status = 200
+        self.field_lineage_response: dict = {"data": {"flows": []}}
+        self.field_lineage_status = 200
 
     def send(self, request: requests.PreparedRequest, **kwargs) -> requests.Response:
         self.requests.append(request)
@@ -204,6 +206,8 @@ class FakeTableau:
             return self._lookup(self.job_details, path, "404003")
         if path.endswith("/api/metadata/graphql") and "databaseTables" in str(request.body):
             return self.table_queries_status, json.dumps(self.table_queries_response), "application/json"
+        if path.endswith("/api/metadata/graphql") and "outputFields" in str(request.body):
+            return self.field_lineage_status, json.dumps(self.field_lineage_response), "application/json"
         if path.endswith("/api/metadata/graphql"):
             return self.graphql_status, json.dumps(self.graphql_response), "application/json"
         return None
@@ -378,6 +382,29 @@ class TestFlowRuns:
         assert [(q["pageNumber"][0], "sort" in q) for q in retries] == [("1", False), ("2", False), ("3", False)]
         assert retries[0]["filter"] == ["flowId:eq:flow-1"]
         assert [run.id for run in runs] == ["run-4", "run-3"]
+
+    def test_unsorted_retry_stops_when_the_server_ignores_paging(self, tableau, monkeypatch):
+        """Get Flow Runs documents no paging: a server that ignores pageNumber
+        answers every page with every run, which must not be read forever."""
+        monkeypatch.setattr(client_module, "PAGE_SIZE", 2)
+        every_run = _runs(
+            _run_xml("run-1", "2025-03-01T10:00:00Z"),
+            _run_xml("run-3", "2025-03-03T10:00:00Z"),
+            _run_xml("run-2", "2025-03-02T10:00:00Z"),
+        )
+        rest_answer = tableau._rest_answer
+
+        def ignore_paging(path, query):
+            if path.endswith("/flows/runs"):
+                return (400, _error("400006"), "text/xml") if "sort" in query else (200, every_run, "text/xml")
+            return rest_answer(path, query)
+
+        tableau._rest_answer = ignore_paging
+
+        runs = _client(number_of_status=2).get_flow_runs("flow-1")
+
+        assert [run.id for run in runs] == ["run-3", "run-2"]
+        assert len(tableau.calls_to("/flows/runs")) == 3
 
     def test_a_failed_run_carries_the_notes_of_its_job(self, tableau):
         tableau.runs_response = (200, _runs(_run_xml("run-1", "2025-03-01T10:00:00Z", status="Failed")))
@@ -557,6 +584,62 @@ class TestFlowLineage:
         assert [table.name for table in lineage.downstream_tables] == ["sales_clean"]
         assert [flow.luid for flow in lineage.next_downstream_flows] == ["flow-2"]
         assert "unnamed tables get no custom SQL lineage" in caplog.text
+
+    def test_output_fields_say_which_inputs_feed_which_outputs(self, tableau):
+        tableau.field_lineage_response = {
+            "data": {
+                "flows": [
+                    {
+                        "outputSteps": [
+                            {
+                                "outputFields": [
+                                    {
+                                        "upstreamTables": [{"id": "gql-orders"}],
+                                        "upstreamDatasources": [],
+                                        "downstreamTables": [{"id": "gql-sales"}],
+                                        "downstreamDatasources": [],
+                                    }
+                                ]
+                            },
+                            {
+                                "outputFields": [
+                                    {
+                                        "upstreamTables": [],
+                                        "upstreamDatasources": [{"id": "gql-ds-in"}],
+                                        "downstreamTables": [],
+                                        "downstreamDatasources": [{"id": "gql-ds-out"}],
+                                    }
+                                ]
+                            },
+                        ]
+                    }
+                ]
+            }
+        }
+
+        fields = _client().get_flow_output_fields("flow-1")
+
+        sent = json.loads(tableau.calls_to("/api/metadata/graphql")[0].body)["query"]
+        assert 'flows(filter: {luid: "flow-1"})' in sent
+        assert [(field.input_ids, field.output_ids) for field in fields] == [
+            ({"gql-orders"}, {"gql-sales"}),
+            ({"gql-ds-in"}, {"gql-ds-out"}),
+        ]
+
+    def test_unparseable_field_lineage_is_none(self, tableau, caplog):
+        tableau.field_lineage_response = {
+            "data": {"flows": [{"outputSteps": [{"outputFields": [{"upstreamTables": "gql-orders"}]}]}]}
+        }
+
+        with caplog.at_level(logging.WARNING):
+            assert _client().get_flow_output_fields("flow-1") == []
+        assert "Unable to parse the field lineage of Tableau flow flow-1" in caplog.text
+
+    def test_an_unreachable_field_lineage_query_is_an_error(self, tableau):
+        tableau.field_lineage_status = 500
+
+        with pytest.raises(TableauMetadataApiError, match="field lineage of flow flow-1"):
+            _client().get_flow_output_fields("flow-1")
 
     def test_named_tables_need_no_custom_sql_query(self, tableau):
         tableau.graphql_response = {"data": {"flows": [{"upstreamTables": [{"id": "gql-named", "name": "orders"}]}]}}

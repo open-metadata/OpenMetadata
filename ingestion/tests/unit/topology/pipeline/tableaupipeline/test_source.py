@@ -16,20 +16,35 @@ yield_pipeline_status → yield_pipeline_lineage_details → post-process), run
 against a fake client and an in-memory OpenMetadata catalog.
 """
 
+import logging
 from datetime import datetime, timezone
+from fnmatch import fnmatchcase
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import BasicAuth
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauMetadataApiError,
 )
+from metadata.ingestion.source.pipeline.tableaupipeline.models import (
+    TableauFlowLineage,
+    TableauLineageDatabase,
+    TableauLineageTable,
+    TableauPublishedDatasource,
+)
+from metadata.utils.fqn import prefix_entity_for_wildcard_search
 
 from ._fixtures import (  # noqa: TID252
     EXTRACT_EXEC_WORKBOOK,
@@ -39,6 +54,7 @@ from ._fixtures import (  # noqa: TID252
 )
 
 SERVICE = "tableau_prep_integration"
+MYSQL_SERVICE = "shop_mysql"
 
 
 def _mock_entity(uuid=None):
@@ -48,16 +64,27 @@ def _mock_entity(uuid=None):
 
 
 class Catalog:
-    """What OpenMetadata already holds, served through the OMeta calls the source makes."""
+    """What OpenMetadata already holds, served through the OMeta calls the source
+    makes. As on the server, lookups by name ignore case and table searches match
+    FQN wildcards."""
 
     def __init__(self):
         self.entities: dict[tuple[type, str], MagicMock] = {}
         self.datamodels: list[tuple[str, MagicMock]] = []
+        # The dbServiceNames of WORKFLOW_CONFIG: a service with databases of its own.
+        self.add_service("warehouse", PostgresConnection(username="u", hostPort="localhost:5432", database="warehouse"))
 
-    def add(self, entity_type: type, fqn: str) -> MagicMock:
+    def add(self, entity_type: type, entity_fqn: str) -> MagicMock:
         entity = _mock_entity()
-        self.entities[(entity_type, fqn)] = entity
+        entity.fullyQualifiedName = FullyQualifiedEntityName(entity_fqn)
+        self.entities[(entity_type, entity_fqn.lower())] = entity
         return entity
+
+    def add_service(self, name: str, config) -> MagicMock:
+        service = MagicMock()
+        service.connection.config = config
+        self.entities[(DatabaseService, name.lower())] = service
+        return service
 
     def add_datamodel(self, name: str) -> MagicMock:
         entity = _mock_entity()
@@ -65,17 +92,26 @@ class Catalog:
         return entity
 
     def get_by_name(self, entity, fqn, **_kwargs):
-        return self.entities.get((entity, fqn))
+        return self.entities.get((entity, fqn.lower()))
 
     def es_search_from_fqn(self, entity_type, fqn_search_string, **_kwargs):
-        if entity_type is not DashboardDataModel:
-            return None
-        return [dm for name, dm in self.datamodels if fqn_search_string == f"*.{name}"] or None
+        if entity_type is DashboardDataModel:
+            return [dm for name, dm in self.datamodels if fqn_search_string == f"*.{name}"] or None
+        pattern = fqn_search_string.lower()
+        return [
+            entity for (kind, key), entity in self.entities.items() if kind is entity_type and fnmatchcase(key, pattern)
+        ] or None
+
+    def search_in_any_service(self, entity_type, fqn_search_string, fetch_multiple_entities=False):
+        matches = self.es_search_from_fqn(
+            entity_type, prefix_entity_for_wildcard_search(entity_type, fqn_search_string)
+        )
+        return matches if fetch_multiple_entities or not matches else matches[0]
 
     def wire(self, source):
         source.metadata.get_by_name.side_effect = self.get_by_name
         source.metadata.es_search_from_fqn.side_effect = self.es_search_from_fqn
-        source.metadata.search_in_any_service.return_value = None
+        source.metadata.search_in_any_service.side_effect = self.search_in_any_service
 
 
 def _lineage(source, pipeline, catalog):
@@ -85,6 +121,24 @@ def _lineage(source, pipeline, catalog):
 
 def _edge(request):
     return (str(request.edge.fromEntity.id.root), str(request.edge.toEntity.id.root))
+
+
+def _id(entity) -> str:
+    return str(entity.id.root)
+
+
+def _asset_edges(requests):
+    return {_edge(r) for r in requests if "pipeline" not in (r.edge.fromEntity.type, r.edge.toEntity.type)}
+
+
+def _table(table_id: str, name: str, schema: str = "public") -> TableauLineageTable:
+    return TableauLineageTable(
+        id=table_id,
+        name=name,
+        full_name=f"[{schema}].[{name}]",
+        schema_=schema,
+        database=TableauLineageDatabase(name="warehouse", connection_type="postgres"),
+    )
 
 
 class TestIngestionFlow:
@@ -224,65 +278,141 @@ class TestPipelineStatus:
 
 
 class TestLineage:
-    def test_flow_sits_between_its_inputs_and_outputs(self, tableau_source):
-        source, _ = tableau_source
+    def _sales_catalog(self):
         catalog = Catalog()
-        flow = catalog.add(Pipeline, f"{SERVICE}.flow-sales")
-        downstream_flow = catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
+        catalog.add(Pipeline, f"{SERVICE}.flow-sales")
+        catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
+        return catalog
+
+    def test_each_input_is_linked_to_the_outputs_its_fields_are_written_to(self, tableau_source):
+        """The Sales flow runs two branches; the tables must not be tied to the
+        republished data source, nor the targets to sales_clean."""
+        source, _ = tableau_source
+        catalog = self._sales_catalog()
         orders = catalog.add(Table, "warehouse.warehouse.public.orders")
         customers = catalog.add(Table, "warehouse.warehouse.public.customers")
         sales_clean = catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
         targets = catalog.add_datamodel("gql-ds-targets")
         published = catalog.add_datamodel("gql-ds-sales-published")
 
-        edges = {_edge(r) for r in _lineage(source, FLOW_SALES, catalog)}
+        edges = _asset_edges(_lineage(source, FLOW_SALES, catalog))
 
-        flow_id = str(flow.id.root)
         assert edges == {
-            (str(orders.id.root), flow_id),
-            (str(customers.id.root), flow_id),
-            (str(targets.id.root), flow_id),
-            (flow_id, str(sales_clean.id.root)),
-            (flow_id, str(published.id.root)),
-            (flow_id, str(downstream_flow.id.root)),
+            (_id(orders), _id(sales_clean)),
+            (_id(customers), _id(sales_clean)),
+            (_id(targets), _id(published)),
         }
 
-    def test_edges_do_not_name_the_pipeline_they_end_at(self, tableau_source):
+    def test_asset_edges_name_the_flow_as_their_pipeline(self, tableau_source):
         source, _ = tableau_source
-        catalog = Catalog()
-        catalog.add(Pipeline, f"{SERVICE}.flow-sales")
-        catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
+        catalog = self._sales_catalog()
+        flow = catalog.entities[(Pipeline, f"{SERVICE}.flow-sales")]
         catalog.add(Table, "warehouse.warehouse.public.orders")
+        catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
 
         requests = _lineage(source, FLOW_SALES, catalog)
 
-        assert requests
-        assert all(r.edge.lineageDetails.pipeline is None for r in requests)
+        asset_requests = [r for r in requests if r.edge.toEntity.type == "table"]
+        assert asset_requests
+        assert {str(r.edge.lineageDetails.pipeline.id.root) for r in asset_requests} == {_id(flow)}
+        assert {r.edge.lineageDetails.pipeline.type for r in asset_requests} == {"pipeline"}
         assert {r.edge.lineageDetails.source for r in requests} == {LineageSource.PipelineLineage}
+
+    def test_the_flow_is_linked_to_the_flows_that_consume_it(self, tableau_source):
+        source, _ = tableau_source
+        catalog = self._sales_catalog()
+        flow = catalog.entities[(Pipeline, f"{SERVICE}.flow-sales")]
+        marketing = catalog.entities[(Pipeline, f"{SERVICE}.flow-marketing")]
+
+        requests = _lineage(source, FLOW_SALES, catalog)
+
+        flow_requests = [r for r in requests if r.edge.toEntity.type == "pipeline"]
+        assert [_edge(r) for r in flow_requests] == [(_id(flow), _id(marketing))]
+        assert flow_requests[0].edge.lineageDetails.pipeline is None
+
+    def test_a_single_input_feeds_every_output_without_asking_for_field_lineage(self, tableau_source, monkeypatch):
+        source, client = tableau_source
+        lineage = TableauFlowLineage(
+            upstream_tables=[_table("t-orders", "orders")],
+            downstream_tables=[_table("t-sales-clean", "sales_clean", schema="mart")],
+            downstream_datasources=[TableauPublishedDatasource(id="gql-ds-sales-published", name="Sales")],
+        )
+        monkeypatch.setattr(client, "get_flow_lineage", lambda _flow_id: lineage)
+        catalog = self._sales_catalog()
+        orders = catalog.add(Table, "warehouse.warehouse.public.orders")
+        sales_clean = catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
+        published = catalog.add_datamodel("gql-ds-sales-published")
+
+        edges = _asset_edges(_lineage(source, FLOW_SALES, catalog))
+
+        assert edges == {(_id(orders), _id(sales_clean)), (_id(orders), _id(published))}
+        assert client.field_lineage_requests == []
+
+    def test_without_field_lineage_several_inputs_and_outputs_draw_no_asset_edges(
+        self, tableau_source, monkeypatch, caplog
+    ):
+        source, client = tableau_source
+        monkeypatch.setattr(client, "get_flow_output_fields", lambda _flow_id: [])
+        catalog = self._sales_catalog()
+        catalog.add(Table, "warehouse.warehouse.public.orders")
+        catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
+
+        with caplog.at_level(logging.WARNING):
+            requests = _lineage(source, FLOW_SALES, catalog)
+
+        assert _asset_edges(requests) == set()
+        assert [r.edge.toEntity.type for r in requests] == ["pipeline"]
+        assert "did not say which inputs of flow Sales Prep Flow feed which of its outputs" in caplog.text
+
+    def test_an_unreachable_field_lineage_query_keeps_the_flow_edges(self, tableau_source, monkeypatch):
+        source, client = tableau_source
+
+        def unreachable(flow_id):
+            raise TableauMetadataApiError(f"Tableau Metadata API query failed for field lineage of flow {flow_id}")
+
+        monkeypatch.setattr(client, "get_flow_output_fields", unreachable)
+        catalog = self._sales_catalog()
+        catalog.add(Table, "warehouse.warehouse.public.orders")
+        catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
+
+        requests = _lineage(source, FLOW_SALES, catalog)
+
+        assert [r.edge.toEntity.type for r in requests] == ["pipeline"]
+
+    def test_a_flow_that_updates_a_table_it_reads_draws_no_edge_onto_itself(self, tableau_source, monkeypatch):
+        source, client = tableau_source
+        lineage = TableauFlowLineage(
+            upstream_tables=[_table("t-orders-in", "orders")],
+            downstream_tables=[_table("t-orders-out", "orders")],
+        )
+        monkeypatch.setattr(client, "get_flow_lineage", lambda _flow_id: lineage)
+        catalog = self._sales_catalog()
+        catalog.add(Table, "warehouse.warehouse.public.orders")
+
+        assert _asset_edges(_lineage(source, FLOW_SALES, catalog)) == set()
 
     def test_data_sources_resolve_by_metadata_api_id_not_luid(self, tableau_source):
         """The dashboard connector names data models after the Metadata API id;
         a lookup by the REST luid never finds them."""
         source, _ = tableau_source
-        catalog = Catalog()
-        catalog.add(Pipeline, f"{SERVICE}.flow-sales")
+        catalog = self._sales_catalog()
+        catalog.add_datamodel("ds-targets")
         catalog.add_datamodel("ds-sales-published")
 
         requests = _lineage(source, FLOW_SALES, catalog)
 
-        assert [r for r in requests if r.edge.toEntity.type == "dashboardDataModel"] == []
+        assert _asset_edges(requests) == set()
 
     def test_every_dashboard_service_ingesting_the_site_gets_the_edge(self, tableau_source):
         source, _ = tableau_source
-        catalog = Catalog()
-        flow = catalog.add(Pipeline, f"{SERVICE}.flow-sales")
+        catalog = self._sales_catalog()
+        targets = catalog.add_datamodel("gql-ds-targets")
         prod = catalog.add_datamodel("gql-ds-sales-published")
         staging = catalog.add_datamodel("gql-ds-sales-published")
 
-        requests = _lineage(source, FLOW_SALES, catalog)
+        edges = _asset_edges(_lineage(source, FLOW_SALES, catalog))
 
-        to_models = {_edge(r) for r in requests if r.edge.toEntity.type == "dashboardDataModel"}
-        assert to_models == {(str(flow.id.root), str(prod.id.root)), (str(flow.id.root), str(staging.id.root))}
+        assert edges == {(_id(targets), _id(prod)), (_id(targets), _id(staging))}
 
     def test_a_downstream_flow_ingested_later_is_linked_in_the_post_process(self, tableau_source):
         source, _ = tableau_source
@@ -295,28 +425,29 @@ class TestLineage:
         downstream = catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
         deferred = [r.right for r in source.yield_pipeline_bulk_lineage_details()]
 
-        assert [_edge(r) for r in deferred] == [(str(flow.id.root), str(downstream.id.root))]
+        assert [_edge(r) for r in deferred] == [(_id(flow), _id(downstream))]
         assert list(source.yield_pipeline_bulk_lineage_details()) == []
 
     def test_named_upstream_table_is_not_expanded_through_other_queries(self, tableau_source):
         source, _ = tableau_source
-        catalog = Catalog()
-        catalog.add(Pipeline, f"{SERVICE}.flow-sales")
+        catalog = self._sales_catalog()
         payroll = catalog.add(Table, "warehouse.warehouse.public.payroll")
+        catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
 
         requests = _lineage(source, FLOW_SALES, catalog)
 
-        assert str(payroll.id.root) not in {_edge(r)[0] for r in requests}
+        assert _id(payroll) not in {_edge(r)[0] for r in requests}
 
     def test_unnamed_upstream_table_resolves_through_its_custom_sql(self, tableau_source):
         source, _ = tableau_source
         catalog = Catalog()
-        flow = catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
+        catalog.add(Pipeline, f"{SERVICE}.flow-marketing")
         orders = catalog.add(Table, "warehouse.warehouse.public.orders")
+        mart = catalog.add(Table, "warehouse.warehouse.mart.marketing_mart")
 
         requests = _lineage(source, FLOW_MARKETING, catalog)
 
-        assert {_edge(r) for r in requests} == {(str(orders.id.root), str(flow.id.root))}
+        assert _asset_edges(requests) == {(_id(orders), _id(mart))}
 
     def test_unresolved_references_emit_no_edges(self, tableau_source):
         source, _ = tableau_source
@@ -324,6 +455,70 @@ class TestLineage:
         catalog.add(Pipeline, f"{SERVICE}.flow-sales")
 
         assert _lineage(source, FLOW_SALES, catalog) == []
+
+
+class TestTableResolution:
+    """Tableau reports a table as its source does; OpenMetadata files it by
+    service type. These are the shapes the dashboard Tableau connector resolves."""
+
+    MYSQL_CUSTOMERS = TableauLineageTable(
+        id="t-customers",
+        name="customers",
+        full_name="[shop].[customers]",
+        schema_="",
+        database=TableauLineageDatabase(name="shop", connection_type="mysql"),
+    )
+
+    def _mysql_catalog(self, source):
+        catalog = Catalog()
+        catalog.add_service(
+            MYSQL_SERVICE, MysqlConnection(username="u", authType=BasicAuth(password="p"), hostPort="localhost:3306")
+        )
+        customers = catalog.add(Table, f"{MYSQL_SERVICE}.default.shop.customers")
+        catalog.wire(source)
+        return customers
+
+    def test_a_single_database_service_is_searched_under_its_default_database(self, tableau_source):
+        """OpenMetadata files a MySQL service under one `default` database, and
+        Tableau's database is the MySQL schema."""
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = [MYSQL_SERVICE]
+        customers = self._mysql_catalog(source)
+
+        assert source._resolve_table_entity(self.MYSQL_CUSTOMERS) is customers
+
+    def test_without_configured_services_the_full_name_finds_the_table(self, tableau_source):
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = []
+        customers = self._mysql_catalog(source)
+
+        assert source._resolve_table_entity(self.MYSQL_CUSTOMERS) is customers
+
+    def test_names_that_match_several_tables_do_not_fall_back_to_looser_ones(self, tableau_source):
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = []
+        catalog = Catalog()
+        catalog.add(Table, "prod.warehouse.public.orders")
+        catalog.add(Table, "staging.warehouse.public.orders")
+        catalog.wire(source)
+
+        assert source._resolve_table_entity(_table("t-orders", "orders")) is None
+
+    def test_upper_case_names_resolve_as_the_server_ignores_case(self, tableau_source):
+        """Tableau reports Snowflake identifiers upper case; OpenMetadata stores them lower case."""
+        source, _ = tableau_source
+        catalog = Catalog()
+        orders = catalog.add(Table, "warehouse.sales_db.public.orders")
+        catalog.wire(source)
+        snowflake_orders = TableauLineageTable(
+            id="t-orders",
+            name="ORDERS",
+            full_name="[SALES_DB].[PUBLIC].[ORDERS]",
+            schema_="PUBLIC",
+            database=TableauLineageDatabase(name="SALES_DB", connection_type="snowflake"),
+        )
+
+        assert source._resolve_table_entity(snowflake_orders) is orders
 
 
 class TestExtractRefresh:

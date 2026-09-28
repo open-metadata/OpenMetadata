@@ -20,6 +20,7 @@ run unmodified against a live OpenMetadata server.
 
 import json
 import re
+import time
 from collections.abc import Iterator
 from urllib.parse import parse_qs, urlparse
 
@@ -56,6 +57,8 @@ TABLEAU_HOST = "tableau-it.example.com"
 PIPELINE_SERVICE = "tableau_pipeline_it"
 DB_SERVICE = "tableau_pipeline_it_warehouse"
 NS = 'xmlns="http://tableau.com/api"'
+WAREHOUSE_TABLES = ("orders", "sales_clean", "customers", "orders_clean", "customers_clean")
+SEARCH_INDEX_TIMEOUT_SECONDS = 60
 
 
 def _flow(flow_id: str, name: str, tags: str = "") -> str:
@@ -88,35 +91,67 @@ def _job(job_id: str, notes: str, target: str = "") -> str:
 
 
 def _table(table_id: str, name: str) -> dict:
+    """A MySQL table as Tableau reports it: the MySQL database is Tableau's
+    database, and there is no schema. OpenMetadata files the same table under
+    its `default` database, with the MySQL database as the schema."""
     return {
         "id": table_id,
         "name": name,
-        "fullName": f"[public].[{name}]",
-        "schema": "public",
+        "fullName": f"[warehouse].[{name}]",
+        "schema": "",
         "database": {"name": "warehouse", "connectionType": "mysql"},
     }
 
 
-# A Prep flow `Sales` reads warehouse.public.orders and writes
-# warehouse.public.sales_clean, which the flow `Ops` reads next. `Sales` is
-# listed first, so its edge to `Ops` can only be drawn after `Ops` is ingested.
+def _flow_lineage(
+    inputs: list[dict],
+    outputs: list[dict],
+    steps: tuple[tuple[str, str], ...] = (),
+    next_flows: tuple[tuple[str, str], ...] = (),
+) -> dict:
+    return {
+        "upstreamTables": inputs,
+        "upstreamDatasources": [],
+        "outputSteps": [{"id": step_id, "name": name} for step_id, name in steps],
+        "downstreamTables": outputs,
+        "downstreamDatasources": [],
+        "nextDownstreamFlows": [{"luid": luid, "name": name} for luid, name in next_flows],
+    }
+
+
+def _output_field(source: str, target: str) -> dict:
+    return {
+        "upstreamTables": [{"id": source}],
+        "upstreamDatasources": [],
+        "downstreamTables": [{"id": target}],
+        "downstreamDatasources": [],
+    }
+
+
+# A Prep flow `Sales` reads warehouse.orders and writes warehouse.sales_clean,
+# which the flow `Ops` reads next. `Sales` is listed first, so its edge to `Ops`
+# can only be drawn after `Ops` is ingested. `Split` runs two branches, orders
+# into orders_clean and customers into customers_clean, which only its field
+# lineage tells apart.
 FLOW_LINEAGE = {
-    "flow-sales": {
-        "upstreamTables": [_table("t-orders", "orders")],
-        "upstreamDatasources": [],
-        "outputSteps": [{"id": "out-clean", "name": "Clean sales"}],
-        "downstreamTables": [_table("t-sales-clean", "sales_clean")],
-        "downstreamDatasources": [],
-        "nextDownstreamFlows": [{"luid": "flow-ops", "name": "Ops"}],
-    },
-    "flow-ops": {
-        "upstreamTables": [_table("t-sales-clean", "sales_clean")],
-        "upstreamDatasources": [],
-        "outputSteps": [],
-        "downstreamTables": [],
-        "downstreamDatasources": [],
-        "nextDownstreamFlows": [],
-    },
+    "flow-sales": _flow_lineage(
+        [_table("t-orders", "orders")],
+        [_table("t-sales-clean", "sales_clean")],
+        steps=(("out-clean", "Clean sales"),),
+        next_flows=(("flow-ops", "Ops"),),
+    ),
+    "flow-ops": _flow_lineage([_table("t-sales-clean", "sales_clean")], []),
+    "flow-split": _flow_lineage(
+        [_table("t-orders", "orders"), _table("t-customers", "customers")],
+        [_table("t-orders-clean", "orders_clean"), _table("t-customers-clean", "customers_clean")],
+        steps=(("out-orders", "Clean orders"), ("out-customers", "Clean customers")),
+    ),
+}
+OUTPUT_FIELDS = {
+    "flow-split": [
+        _output_field("t-orders", "t-orders-clean"),
+        _output_field("t-customers", "t-customers-clean"),
+    ],
 }
 
 
@@ -124,7 +159,11 @@ class FakeTableauSite:
     """A Tableau site answering the REST and Metadata API calls the connector makes."""
 
     def __init__(self):
-        self.flows = [_flow("flow-sales", "Sales", tags='<tag label="finance"/>'), _flow("flow-ops", "Ops")]
+        self.flows = [
+            _flow("flow-sales", "Sales", tags='<tag label="finance"/>'),
+            _flow("flow-ops", "Ops"),
+            _flow("flow-split", "Split"),
+        ]
         self.flow_runs = {
             "flow-sales": [
                 _flow_run("run-2", "flow-sales", "Failed", "2026-09-02T06:00:00Z", "2026-09-02T06:01:30Z"),
@@ -213,6 +252,8 @@ class FakeTableauSite:
             return {"data": {"flowsConnection": {"nodes": [{"id": "gql-flow-sales"}]}}}
         if "publishedDatasources" in query:
             return {"data": {"publishedDatasources": [{"id": "gql-ds-sales"}]}}
+        if "outputFields" in query and luid:
+            return {"data": {"flows": [{"outputSteps": [{"outputFields": OUTPUT_FIELDS.get(luid.group(1), [])}]}]}}
         if "flows(filter" in query and luid:
             lineage = FLOW_LINEAGE.get(luid.group(1))
             return {"data": {"flows": [lineage] if lineage else []}}
@@ -234,8 +275,23 @@ def tableau_site() -> Iterator[FakeTableauSite]:
         yield site
 
 
+def _wait_until_searchable(metadata, schema_fqn: str, count: int) -> None:
+    """Tables resolve through search, which lags a create by the index refresh."""
+    query = (
+        f"/search/fieldQuery?fieldName=fullyQualifiedName&fieldValue={schema_fqn}.*"
+        f"&from=0&size={count}&index=table_search_index&deleted=false"
+    )
+    deadline = time.monotonic() + SEARCH_INDEX_TIMEOUT_SECONDS
+    while len((metadata.client.get(query) or {}).get("hits", {}).get("hits", [])) < count:
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"{count} tables under {schema_fqn} were not searchable in time")
+        time.sleep(1)
+
+
 @pytest.fixture(scope="module")
 def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
+    """A MySQL service as OpenMetadata files it: one `default` database, with
+    the MySQL database `warehouse` as its schema."""
     service = metadata.create_or_update(
         CreateDatabaseServiceRequest(
             name=DB_SERVICE,
@@ -245,8 +301,10 @@ def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
             ),
         )
     )
-    database = metadata.create_or_update(CreateDatabaseRequest(name="warehouse", service=service.fullyQualifiedName))
-    schema = metadata.create_or_update(CreateDatabaseSchemaRequest(name="public", database=database.fullyQualifiedName))
+    database = metadata.create_or_update(CreateDatabaseRequest(name="default", service=service.fullyQualifiedName))
+    schema = metadata.create_or_update(
+        CreateDatabaseSchemaRequest(name="warehouse", database=database.fullyQualifiedName)
+    )
     tables = {
         name: metadata.create_or_update(
             CreateTableRequest(
@@ -255,8 +313,9 @@ def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
                 columns=[Column(name="id", dataType=DataType.INT)],
             )
         )
-        for name in ("orders", "sales_clean")
+        for name in WAREHOUSE_TABLES
     }
+    _wait_until_searchable(metadata, schema.fullyQualifiedName.root, len(tables))
     yield tables
     metadata.delete(entity=DatabaseService, entity_id=service.id, recursive=True, hard_delete=True)
 

@@ -55,6 +55,7 @@ class TestTableauPipelineWorkflow:
         assert extract.displayName == "Sales Extract extract refresh"
         assert [(task.name, task.taskType) for task in extract.tasks] == [("ds-sales", "ExtractRefresh")]
         assert _pipeline(metadata, "flow-ops").displayName == "Ops"
+        assert _pipeline(metadata, "flow-split").displayName == "Split"
 
     def test_flow_runs_are_stored_with_their_failure_reason(self, metadata):
         statuses = sorted(_statuses(metadata, "flow-sales"), key=lambda status: status.timestamp.root)
@@ -78,12 +79,30 @@ class TestTableauPipelineWorkflow:
         ]
         assert statuses[1].error.errorMessage == "Unable to connect to the server warehouse.example.com"
 
-    def test_flow_lineage_links_tables_through_the_flow(self, metadata, warehouse_tables):
+    def test_a_flow_links_the_table_it_reads_to_the_table_it_writes(self, metadata, warehouse_tables):
+        """Tableau reports the MySQL tables as `warehouse.orders`; OpenMetadata
+        files them under `default.warehouse`, and the edge still resolves."""
         sales = _pipeline(metadata, "flow-sales")
         orders, sales_clean = warehouse_tables["orders"], warehouse_tables["sales_clean"]
 
-        assert metadata.get_lineage_edge(orders.id.root, sales.id.root) is not None
-        assert metadata.get_lineage_edge(sales.id.root, sales_clean.id.root) is not None
+        edge = metadata.get_lineage_edge(orders.id.root, sales_clean.id.root)
+
+        assert edge is not None
+        assert edge["edge"]["pipeline"]["id"] == str(sales.id.root)
+        assert metadata.get_lineage_edge(orders.id.root, sales.id.root) is None
+        assert metadata.get_lineage_edge(sales.id.root, sales_clean.id.root) is None
+
+    def test_a_flow_with_separate_branches_links_each_input_to_its_own_output(self, metadata, warehouse_tables):
+        split = _pipeline(metadata, "flow-split")
+        orders, customers = warehouse_tables["orders"], warehouse_tables["customers"]
+        orders_clean, customers_clean = warehouse_tables["orders_clean"], warehouse_tables["customers_clean"]
+
+        for source, target in ((orders, orders_clean), (customers, customers_clean)):
+            edge = metadata.get_lineage_edge(source.id.root, target.id.root)
+            assert edge is not None
+            assert edge["edge"]["pipeline"]["id"] == str(split.id.root)
+        assert metadata.get_lineage_edge(orders.id.root, customers_clean.id.root) is None
+        assert metadata.get_lineage_edge(customers.id.root, orders_clean.id.root) is None
 
     def test_a_flow_listed_before_its_consumer_is_linked_to_it(self, metadata):
         """`Ops` does not exist yet when `Sales` is processed; the post-process

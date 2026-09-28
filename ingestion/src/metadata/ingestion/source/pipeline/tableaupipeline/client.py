@@ -19,6 +19,7 @@ import json
 from collections.abc import Callable, Iterable, Iterator
 
 import requests
+from pydantic import ValidationError
 from requests.adapters import HTTPAdapter
 from tableauserverclient import (
     Filter,
@@ -39,12 +40,14 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     ExtractTargetType,
     TableauFlowLineage,
+    TableauFlowOutputField,
     TableauPipelineDetails,
     TableauPipelineKind,
     TableauReferencedQuery,
     TableauRunItem,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.queries import (
+    TABLEAU_FLOW_FIELD_LINEAGE_QUERY,
     TABLEAU_FLOW_LINEAGE_QUERY,
     TABLEAU_METADATA_API_PROBE_QUERY,
     TABLEAU_PUBLISHED_DATASOURCE_ID_QUERY,
@@ -231,12 +234,19 @@ class TableauPipelineClient:
         return items
 
     def _all_flow_runs(self, flow_id: str) -> Iterator[FlowRunItem]:
-        """Every run of a flow, page by page: unsorted, the newest can be on any page."""
+        """Every run of a flow, page by page: unsorted, the newest can be on any page.
+
+        Get Flow Runs documents no paging, so a server that ignores pageNumber
+        answers every page with the same runs; the first page that adds no run
+        not seen before ends the listing."""
+        seen: set[str] = set()
         page = 1
         while True:
             runs = self.tableau_server.flow_runs.get(self._flow_runs_options(flow_id, page, newest_first=False))
-            yield from runs
-            if len(runs) < PAGE_SIZE:
+            unseen = [run for run in runs if str(run.id) not in seen]
+            seen.update(str(run.id) for run in unseen)
+            yield from unseen
+            if len(runs) < PAGE_SIZE or not unseen:
                 return
             page += 1
 
@@ -475,6 +485,25 @@ class TableauPipelineClient:
             return None
         self._attach_custom_sql(lineage)
         return lineage
+
+    def get_flow_output_fields(self, flow_luid: str) -> list[TableauFlowOutputField]:
+        """The fields a flow's output steps write, each with the inputs it is
+        computed from and the assets it is written to.
+
+        Raises TableauMetadataApiError when the Metadata API cannot be queried."""
+        data = self._metadata_query(
+            TABLEAU_FLOW_FIELD_LINEAGE_QUERY.format(flow_luid=flow_luid), f"field lineage of flow {flow_luid}"
+        )
+        try:
+            return [
+                TableauFlowOutputField.model_validate(field)
+                for flow in (data.get("flows") or [])[:1]
+                for step in flow.get("outputSteps") or []
+                for field in step.get("outputFields") or []
+            ]
+        except ValidationError as exc:
+            logger.warning("Unable to parse the field lineage of Tableau flow %s: %s", flow_luid, exc)
+            return []
 
     def _attach_custom_sql(self, lineage: TableauFlowLineage) -> None:
         """Fetch the custom SQL of the upstream tables Tableau returns without a

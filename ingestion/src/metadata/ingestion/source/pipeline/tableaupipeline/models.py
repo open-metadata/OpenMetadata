@@ -92,6 +92,32 @@ class TableauFlowOutputStep(BaseModel):
     name: str | None = None
 
 
+class TableauAssetId(BaseModel):
+    """A lineage reference the Metadata API is asked for by id only."""
+
+    id: str | None = None
+
+
+class TableauFlowOutputField(BaseModel):
+    """A field an output step writes: the flow inputs it is computed from, and
+    the tables and published data sources it is written to."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    upstream_tables: list[TableauAssetId] = Field(default_factory=list, alias="upstreamTables")
+    upstream_datasources: list[TableauAssetId] = Field(default_factory=list, alias="upstreamDatasources")
+    downstream_tables: list[TableauAssetId] = Field(default_factory=list, alias="downstreamTables")
+    downstream_datasources: list[TableauAssetId] = Field(default_factory=list, alias="downstreamDatasources")
+
+    @property
+    def input_ids(self) -> set[str]:
+        return {ref.id for ref in (*self.upstream_tables, *self.upstream_datasources) if ref.id}
+
+    @property
+    def output_ids(self) -> set[str]:
+        return {ref.id for ref in (*self.downstream_tables, *self.downstream_datasources) if ref.id}
+
+
 class TableauLinkedFlow(BaseModel):
     """A flow that consumes this flow's output (cross-flow lineage)."""
 

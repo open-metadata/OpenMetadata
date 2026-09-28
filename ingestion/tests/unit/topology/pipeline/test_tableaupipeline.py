@@ -394,23 +394,29 @@ class TestLineage:
         mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
             id="flow-abc-123",
             upstream_tables=[TableauLineageTable(id="Tabl-1", name="orders")],
-            downstream_datasources=[TableauPublishedDatasource(id="ds-1", name="Sales")],
+            upstream_datasources=[TableauPublishedDatasource(id="ds-in", name="Targets")],
+            downstream_datasources=[TableauPublishedDatasource(id="ds-out", name="Sales")],
         )
         pipeline_entity = MagicMock()
         pipeline_entity.id = Uuid(root=uuid4())
         datamodel = MagicMock()
         datamodel.id = Uuid(root=uuid4())
+        other_datamodel = MagicMock()
+        other_datamodel.id = Uuid(root=uuid4())
+        datamodels = {"*.ds-in": [datamodel], "*.ds-out": [other_datamodel]}
         source.metadata = create_autospec(OpenMetadata, instance=True)
         source.metadata.get_by_name.return_value = pipeline_entity
         source.metadata.search_in_any_service.side_effect = RuntimeError("search down")
-        source.metadata.es_search_from_fqn.side_effect = lambda entity_type, **_: (
-            [datamodel] if entity_type.__name__ == "DashboardDataModel" else None
+        source.metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, **_: (
+            datamodels.get(fqn_search_string) if entity_type.__name__ == "DashboardDataModel" else None
         )
 
         results = list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS))
 
         assert [r.left.name for r in results if r.left] == ["Lineage"]
-        assert [r.right.edge.toEntity.type for r in results if r.right] == ["dashboardDataModel"]
+        assert [(r.right.edge.fromEntity.id, r.right.edge.toEntity.id) for r in results if r.right] == [
+            (datamodel.id, other_datamodel.id)
+        ]
 
 
 class TestOwners:

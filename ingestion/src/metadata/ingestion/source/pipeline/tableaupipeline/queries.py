@@ -65,6 +65,34 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
 }}
 """
 
+# Which of a flow's inputs feed which of its outputs, read from the lineage of
+# every field its output steps write. Asked for only when a flow has several of
+# each, and in a query of its own: field-level lineage spends Metadata API nodes
+# per field, so the references carry ids only and a flow that exceeds the node
+# budget still keeps the lineage of the main query.
+TABLEAU_FLOW_FIELD_LINEAGE_QUERY = """
+{{
+  flows(filter: {{luid: "{flow_luid}"}}) {{
+    outputSteps {{
+      outputFields {{
+        upstreamTables {{
+          id
+        }}
+        upstreamDatasources {{
+          id
+        }}
+        downstreamTables {{
+          id
+        }}
+        downstreamDatasources {{
+          id
+        }}
+      }}
+    }}
+  }}
+}}
+"""
+
 TABLEAU_TABLE_QUERIES_QUERY = """
 {{
   databaseTables(filter: {{idWithin: [{table_ids}]}}) {{

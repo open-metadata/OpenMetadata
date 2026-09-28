@@ -15,9 +15,10 @@ Tableau Pipeline source: Prep flows and extract refreshes as pipelines
 
 import re
 import traceback
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime
 from functools import partial
+from itertools import product
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -31,9 +32,13 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -59,6 +64,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_table_fqn_from_query_name
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -81,8 +87,9 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.fqn import build_es_fqn_search_string
-from metadata.utils.helpers import clean_uri
+from metadata.utils.helpers import clean_uri, get_database_name_for_lineage
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -112,6 +119,15 @@ TASK_TYPE_EXTRACT_REFRESH = "ExtractRefresh"
 ENTITY_TYPE_TABLE = "table"
 ENTITY_TYPE_PIPELINE = "pipeline"
 ENTITY_TYPE_DASHBOARD_DATA_MODEL = "dashboardDataModel"
+
+# Lookups are keyed on the configured dbServiceNames, so this only has to hold
+# more entries than a realistic lineageInformation lists.
+DATABASE_SERVICE_CACHE_SIZE = 64
+
+# A Tableau table's (database, schema, table) names, as Tableau reports them.
+TableNameParts = tuple[str | None, str | None, str]
+# The OpenMetadata entities a Tableau asset resolves to.
+AssetResolver = Callable[[], list[EntityReference]]
 
 _NOT_FETCHED = object()
 
@@ -143,6 +159,7 @@ class TableaupipelineSource(PipelineServiceSource):
         # Flow -> flow edges whose downstream flow was not ingested yet; only
         # unresolved edges are held, and emitted once every flow is in.
         self._pending_flow_edges: list[tuple[EntityReference, str]] = []
+        self._database_services: LRUCache[DatabaseService | None] = LRUCache(DATABASE_SERVICE_CACHE_SIZE)
 
     def _evict_if_new_flow(self, flow_id: str) -> None:
         """The topology processes one pipeline through every stage in order.
@@ -420,54 +437,164 @@ class TableaupipelineSource(PipelineServiceSource):
     ) -> Iterable[Either[AddLineageRequest]]:
         """Emit lineage edges sourced from the Tableau Metadata API.
 
-        The pipeline is a node in the graph. A flow's inputs (tables, published
-        data sources) point at it, and it points at its outputs (tables it
-        writes, published data sources it produces) and at the flows that
-        consume it; an extract refresh points at the data models it refreshes.
-        Each reference has its own error boundary so one bad reference does not
-        drop the rest."""
+        A flow's edges run from the assets it reads (tables, published data
+        sources) to the assets it writes, with the flow in
+        `lineageDetails.pipeline` as other pipeline connectors draw them, so
+        its inputs and outputs stay adjacent and the platform's pipeline view
+        mode applies. A flow is also linked to the flows that consume it; an
+        extract refresh points at the data models it refreshes. Each reference
+        has its own error boundary so one bad reference does not drop the rest."""
         if pipeline_details.kind == TableauPipelineKind.EXTRACT_REFRESH:
             yield from self._extract_refresh_lineage(pipeline_details)
             return
         flow_lineage = self._get_flow_lineage(pipeline_details.id)
-        if flow_lineage is None or not (
-            flow_lineage.upstream_tables
-            or flow_lineage.upstream_datasources
-            or flow_lineage.downstream_tables
-            or flow_lineage.downstream_datasources
-            or flow_lineage.next_downstream_flows
-        ):
+        if flow_lineage is None:
+            return
+        pairs = self._flow_asset_pairs(pipeline_details, flow_lineage)
+        if not (pairs or flow_lineage.next_downstream_flows):
             return
 
         pipeline_ref = self._get_pipeline_ref(pipeline_details)
         if pipeline_ref is None:
             return
 
-        for table in flow_lineage.upstream_tables:
-            yield from self._edges_or_error(
-                f"upstream table {table.full_name or table.name}",
-                partial(self._table_edges, table, pipeline_ref, upstream=True),
-            )
-        for datasource in flow_lineage.upstream_datasources:
-            yield from self._edges_or_error(
-                f"upstream data source {datasource.name or datasource.id}",
-                partial(self._datasource_edges, datasource.id, datasource.name, pipeline_ref, upstream=True),
-            )
-        for table in flow_lineage.downstream_tables:
-            yield from self._edges_or_error(
-                f"downstream table {table.full_name or table.name}",
-                partial(self._table_edges, table, pipeline_ref, upstream=False),
-            )
-        for datasource in flow_lineage.downstream_datasources:
-            yield from self._edges_or_error(
-                f"downstream data source {datasource.name or datasource.id}",
-                partial(self._datasource_edges, datasource.id, datasource.name, pipeline_ref, upstream=False),
-            )
+        yield from self._flow_asset_edges(flow_lineage, pairs, pipeline_ref)
         for flow in flow_lineage.next_downstream_flows:
             yield from self._edges_or_error(
                 f"downstream flow {flow.name or flow.luid}",
                 partial(self._downstream_flow_edges, flow, pipeline_ref),
             )
+
+    def _flow_asset_pairs(
+        self, pipeline_details: TableauPipelineDetails, flow_lineage: TableauFlowLineage
+    ) -> list[tuple[str, str]]:
+        """The (input, output) pairs of a flow, as Metadata API ids.
+
+        A single input feeds every output, and every input feeds a single
+        output. With several of each a flow can run separate branches, so the
+        pairs come from the lineage of the fields its output steps write; when
+        Tableau cannot say, no pair is drawn rather than every input being tied
+        to every output."""
+        inputs = self._asset_ids([*flow_lineage.upstream_tables, *flow_lineage.upstream_datasources])
+        outputs = self._asset_ids([*flow_lineage.downstream_tables, *flow_lineage.downstream_datasources])
+        if not inputs or not outputs:
+            return []
+        if len(inputs) == 1 or len(outputs) == 1:
+            return [(source, target) for source in inputs for target in outputs]
+        fed = self._field_level_pairs(pipeline_details)
+        if fed is None:
+            return []
+        pairs = [(source, target) for source in inputs for target in outputs if (source, target) in fed]
+        if not pairs:
+            logger.warning(
+                "Tableau did not say which inputs of flow %s feed which of its outputs, so no table or data "
+                "source lineage is drawn for it.",
+                self.get_pipeline_name(pipeline_details),
+            )
+        return pairs
+
+    @staticmethod
+    def _asset_ids(assets: Iterable[TableauLineageTable | TableauPublishedDatasource]) -> list[str]:
+        return list(dict.fromkeys(asset.id for asset in assets if asset.id))
+
+    def _field_level_pairs(self, pipeline_details: TableauPipelineDetails) -> set[tuple[str, str]] | None:
+        """(input, output) pairs read from the fields a flow's output steps
+        write, or None when the Metadata API could not be queried."""
+        try:
+            fields = self.connection.get_flow_output_fields(pipeline_details.id)
+        except TableauMetadataApiError as exc:
+            self._log_metadata_api_failure(exc)
+            return None
+        return {(source, target) for field in fields for source in field.input_ids for target in field.output_ids}
+
+    def _flow_asset_edges(
+        self, flow_lineage: TableauFlowLineage, pairs: list[tuple[str, str]], pipeline_ref: EntityReference
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """An edge from every entity an input resolves to, to every entity its
+        paired output resolves to, naming the flow as the pipeline between them."""
+        if not pairs:
+            return
+        sources, source_errors = self._resolve_assets(self._flow_inputs(flow_lineage), {s for s, _ in pairs})
+        targets, target_errors = self._resolve_assets(self._flow_outputs(flow_lineage), {t for _, t in pairs})
+        yield from source_errors
+        yield from target_errors
+        drawn: set[tuple[str, str]] = set()
+        for source_id, target_id in pairs:
+            for source, target in product(sources.get(source_id, []), targets.get(target_id, [])):
+                edge = (model_str(source.id), model_str(target.id))
+                # A flow that updates a table it also reads must not draw it onto itself.
+                if edge[0] != edge[1] and edge not in drawn:
+                    drawn.add(edge)
+                    yield Either(left=None, right=self._lineage_request(source, target, pipeline=pipeline_ref))
+
+    def _flow_inputs(self, flow_lineage: TableauFlowLineage) -> Iterator[tuple[str | None, str, AssetResolver]]:
+        for table in flow_lineage.upstream_tables:
+            yield table.id, f"upstream table {table.full_name or table.name}", partial(self._upstream_table_refs, table)
+        for datasource in flow_lineage.upstream_datasources:
+            yield (
+                datasource.id,
+                f"upstream data source {datasource.name or datasource.id}",
+                partial(self._datamodel_refs, datasource.id, datasource.name),
+            )
+
+    def _flow_outputs(self, flow_lineage: TableauFlowLineage) -> Iterator[tuple[str | None, str, AssetResolver]]:
+        for table in flow_lineage.downstream_tables:
+            yield (
+                table.id,
+                f"downstream table {table.full_name or table.name}",
+                partial(self._downstream_table_refs, table),
+            )
+        for datasource in flow_lineage.downstream_datasources:
+            yield (
+                datasource.id,
+                f"downstream data source {datasource.name or datasource.id}",
+                partial(self._datamodel_refs, datasource.id, datasource.name),
+            )
+
+    @staticmethod
+    def _resolve_assets(
+        assets: Iterable[tuple[str | None, str, AssetResolver]], wanted: set[str]
+    ) -> tuple[dict[str, list[EntityReference]], list[Either[AddLineageRequest]]]:
+        """The OpenMetadata entities each wanted Tableau asset resolves to, and
+        an error per asset that could not be resolved."""
+        resolved: dict[str, list[EntityReference]] = {}
+        errors: list[Either[AddLineageRequest]] = []
+        for asset_id, label, resolve in assets:
+            if asset_id is None or asset_id not in wanted or asset_id in resolved:
+                continue
+            try:
+                resolved[asset_id] = resolve()
+            except Exception as err:
+                resolved[asset_id] = []
+                errors.append(
+                    Either(
+                        left=StackTraceError(
+                            name="Lineage",
+                            error=f"Error building lineage for {label}: {err}",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                        right=None,
+                    )
+                )
+            else:
+                if not resolved[asset_id]:
+                    logger.debug("No OpenMetadata entity found for Tableau %s", label)
+        return resolved, errors
+
+    def _upstream_table_refs(self, table: TableauLineageTable) -> list[EntityReference]:
+        return [
+            EntityReference(id=entity.id, type=ENTITY_TYPE_TABLE) for entity in self._resolve_upstream_tables(table)
+        ]
+
+    def _downstream_table_refs(self, table: TableauLineageTable) -> list[EntityReference]:
+        entity = self._resolve_table_entity(table)
+        return [EntityReference(id=entity.id, type=ENTITY_TYPE_TABLE)] if entity is not None else []
+
+    def _datamodel_refs(self, datasource_id: str | None, label: str | None) -> list[EntityReference]:
+        return [
+            EntityReference(id=datamodel.id, type=ENTITY_TYPE_DASHBOARD_DATA_MODEL)
+            for datamodel in self._lookup_datamodels(datasource_id, label)
+        ]
 
     def yield_pipeline_bulk_lineage_details(self) -> Iterable[Either[AddLineageRequest]]:
         """Flow -> flow edges whose downstream flow was ingested after its
@@ -504,42 +631,18 @@ class TableaupipelineSource(PipelineServiceSource):
             )
 
     @staticmethod
-    def _lineage_request(from_ref: EntityReference, to_ref: EntityReference) -> AddLineageRequest:
-        """The pipeline is an endpoint of every edge this connector emits, so the
-        edge does not name a pipeline in its details."""
+    def _lineage_request(
+        from_ref: EntityReference, to_ref: EntityReference, pipeline: EntityReference | None = None
+    ) -> AddLineageRequest:
+        """`pipeline` names the flow that moves data between two assets; an edge
+        that has a pipeline at one of its ends names none."""
         return AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=from_ref,
                 toEntity=to_ref,
-                lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
+                lineageDetails=LineageDetails(pipeline=pipeline, source=LineageSource.PipelineLineage),
             )
         )
-
-    def _edge(self, other: EntityReference, pipeline_ref: EntityReference, upstream: bool) -> AddLineageRequest:
-        return self._lineage_request(other, pipeline_ref) if upstream else self._lineage_request(pipeline_ref, other)
-
-    def _table_edges(
-        self, table: TableauLineageTable, pipeline_ref: EntityReference, upstream: bool
-    ) -> list[AddLineageRequest]:
-        if upstream:
-            resolved = self._resolve_upstream_tables(table)
-        else:
-            output = self._resolve_table_entity(table)
-            resolved = [output] if output is not None else []
-        if not resolved:
-            logger.debug("No matching OpenMetadata Table for %s", table.full_name or table.name)
-        return [
-            self._edge(EntityReference(id=entity.id, type=ENTITY_TYPE_TABLE), pipeline_ref, upstream)
-            for entity in resolved
-        ]
-
-    def _datasource_edges(
-        self, datasource_id: str | None, label: str | None, pipeline_ref: EntityReference, upstream: bool
-    ) -> list[AddLineageRequest]:
-        return [
-            self._edge(EntityReference(id=datamodel.id, type=ENTITY_TYPE_DASHBOARD_DATA_MODEL), pipeline_ref, upstream)
-            for datamodel in self._lookup_datamodels(datasource_id, label)
-        ]
 
     def _downstream_flow_edges(self, flow: TableauLinkedFlow, pipeline_ref: EntityReference) -> list[AddLineageRequest]:
         """Pipeline -> pipeline edge to a flow of the same service, deferred to
@@ -566,7 +669,12 @@ class TableaupipelineSource(PipelineServiceSource):
 
     def _extract_refresh_lineage(self, pipeline_details: TableauPipelineDetails) -> Iterable[Either[AddLineageRequest]]:
         """An extract refresh points at the data model(s) it refreshes: the
-        published data source, or each embedded extract of the workbook."""
+        published data source, or each embedded extract of the workbook.
+
+        Unlike a flow it reads no asset of its own. The table -> data model
+        edges it keeps fresh belong to the dashboard Tableau connector, and
+        writing them from here would replace their column lineage whenever
+        overrideLineage is on, so the refresh is the upstream end of its edges."""
         if pipeline_details.target_type is None:
             return
         try:
@@ -584,8 +692,13 @@ class TableaupipelineSource(PipelineServiceSource):
         for datasource_id in datasource_ids:
             yield from self._edges_or_error(
                 f"refreshed data source {datasource_id}",
-                partial(self._datasource_edges, datasource_id, None, pipeline_ref, upstream=False),
+                partial(self._refresh_edges, datasource_id, pipeline_ref),
             )
+
+    def _refresh_edges(self, datasource_id: str, pipeline_ref: EntityReference) -> list[AddLineageRequest]:
+        return [
+            self._lineage_request(pipeline_ref, datamodel) for datamodel in self._datamodel_refs(datasource_id, None)
+        ]
 
     def _lookup_datamodels(self, datasource_id: str | None, label: str | None) -> list[DashboardDataModel]:
         """The DashboardDataModels the dashboard Tableau connector created for a
@@ -665,51 +778,107 @@ class TableaupipelineSource(PipelineServiceSource):
     def _resolve_table_entity(self, table: TableauLineageTable) -> Table | None:
         """Resolve a Tableau table to an OpenMetadata Table entity.
 
+        Tableau names a table as its source reports it, which is not always how
+        OpenMetadata files it: a single-database service (MySQL, Oracle, Hive,
+        ...) has one synthetic database, and what Tableau calls the database is
+        its schema. So the names Tableau reports are tried first, then those in
+        the table's full name, as the dashboard Tableau connector does.
+
         The configured dbServiceNames are authoritative: when set, only they are
-        tried. Without them, a search across every database service is accepted
-        only when it finds exactly one table — a same-named table elsewhere must
-        not receive the edge.
+        tried, each with its own database naming. Without them, a search across
+        every database service is accepted only when it finds exactly one table
+        — a same-named table elsewhere must not receive the edge.
         """
         if not table.name:
             return None
-
-        database_schema_table = fqn.split_table_name(table.name)
-        database_name = (
-            table.database.name if table.database and table.database.name else database_schema_table.get("database")
-        )
-        schema_name = table.schema_ or database_schema_table.get("database_schema")
-        table_name = database_schema_table.get("table") or table.name
-
+        candidates = self._table_name_candidates(table, table.name)
         db_service_names = self.get_db_service_names()
-        for db_service_name in db_service_names:
-            entity_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service_name,
-                database_name=database_name,
-                schema_name=schema_name,
-                table_name=table_name,
-            )
-            entity = self.metadata.get_by_name(entity=Table, fqn=entity_fqn) if entity_fqn else None
-            if entity:
-                return entity
         if db_service_names:
-            return None
+            return self._table_in_services(db_service_names, candidates)
+        return self._unique_table_match(candidates)
 
-        matches = self.metadata.search_in_any_service(
+    @staticmethod
+    def _table_name_candidates(table: TableauLineageTable, name: str) -> list[TableNameParts]:
+        """Tableau's database, schema and table names, then the same parsed from
+        the table's full name: `[db].[schema].[table]`, `[schema].[table]` or
+        `schema.table`."""
+        split = fqn.split_table_name(name)
+        database = table.database.name if table.database and table.database.name else split.get("database")
+        candidates: list[TableNameParts] = [
+            (database, table.schema_ or split.get("database_schema"), split.get("table") or name)
+        ]
+        if table.full_name:
+            full_database, full_schema, full_table = get_table_fqn_from_query_name(
+                table.full_name.replace("[", "").replace("]", "")
+            )
+            if full_table and (full_database, full_schema, full_table) not in candidates:
+                candidates.append((full_database, full_schema, full_table))
+        return candidates
+
+    def _table_in_services(self, service_names: list[str], candidates: list[TableNameParts]) -> Table | None:
+        """The first table a configured service holds, trying Tableau's own names
+        in every service before the full name's."""
+        for parts in candidates:
+            for service_name in service_names:
+                entity = self._table_in_service(service_name, parts)
+                if entity is not None:
+                    return entity
+        return None
+
+    def _table_in_service(self, service_name: str, parts: TableNameParts) -> Table | None:
+        database_name, schema_name, table_name = parts
+        service = self._database_service(service_name)
+        if service is not None:
+            database_name = self._service_database_name(service, database_name)
+        entity_fqn = fqn.build(
+            metadata=self.metadata,
             entity_type=Table,
-            fqn_search_string=build_es_fqn_search_string(
-                database_name=database_name or "",
-                schema_name=schema_name or "",
-                service_name="*",
-                table_name=table_name,
-            ),
-            fetch_multiple_entities=True,
+            service_name=service_name,
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
         )
-        if isinstance(matches, list) and len(matches) == 1:
-            return matches[0]
-        if matches:
-            logger.debug("Tableau table %s matches several OpenMetadata tables; skipping it", table.full_name)
+        return self.metadata.get_by_name(entity=Table, fqn=entity_fqn) if entity_fqn else None
+
+    def _database_service(self, service_name: str) -> DatabaseService | None:
+        if service_name not in self._database_services:
+            service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+            if service is None:
+                logger.warning("Database service %s from dbServiceNames is not in OpenMetadata", service_name)
+            self._database_services.put(service_name, service)
+        return self._database_services.get(service_name)
+
+    @staticmethod
+    def _service_database_name(service: DatabaseService, tableau_database: str | None) -> str | None:
+        """The OpenMetadata database a service files Tableau's database under:
+        a single-database service's configured or `default` one. BigQuery's is
+        left to the search, as the dashboard Tableau connector has done since
+        #12570 fixed its BigQuery lineage."""
+        config = service.connection.config if service.connection else None
+        if isinstance(config, BigQueryConnection):
+            tableau_database = None
+        return get_database_name_for_lineage(service, tableau_database)
+
+    def _unique_table_match(self, candidates: list[TableNameParts]) -> Table | None:
+        """The table the first matching names find across every database
+        service, when they find exactly one; names that find several resolve to
+        none rather than falling back to looser ones."""
+        for database_name, schema_name, table_name in candidates:
+            matches = self.metadata.search_in_any_service(
+                entity_type=Table,
+                fqn_search_string=build_es_fqn_search_string(
+                    database_name=database_name or "",
+                    schema_name=schema_name or "",
+                    service_name="*",
+                    table_name=table_name,
+                ),
+                fetch_multiple_entities=True,
+            )
+            if matches:
+                if isinstance(matches, list) and len(matches) == 1:
+                    return matches[0]
+                logger.debug("Tableau table %s matches several OpenMetadata tables; skipping it", table_name)
+                return None
         return None
 
     def yield_pipeline_status(self, pipeline_details: TableauPipelineDetails) -> Iterable[Either[OMetaPipelineStatus]]:
@@ -787,4 +956,5 @@ class TableaupipelineSource(PipelineServiceSource):
     def close(self) -> None:
         self._evict_if_new_flow("")
         self._pending_flow_edges = []
+        self._database_services.clear()
         super().close()

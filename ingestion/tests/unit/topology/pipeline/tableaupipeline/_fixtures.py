@@ -19,7 +19,9 @@ files on the import path, so importing them as modules fails in CI.
 from datetime import datetime, timezone
 
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
+    TableauAssetId,
     TableauFlowLineage,
+    TableauFlowOutputField,
     TableauFlowOutputStep,
     TableauLineageDatabase,
     TableauLineageTable,
@@ -143,6 +145,25 @@ SALES_LINEAGE = TableauFlowLineage(
     ],
 )
 
+# The Sales flow runs two branches: its tables are cleaned into sales_clean,
+# and its targets data source is republished. Field lineage says so; an
+# every-input-to-every-output guess would tie the tables to the republished
+# data source too.
+SALES_OUTPUT_FIELDS = [
+    TableauFlowOutputField(
+        upstream_tables=[TableauAssetId(id="Table-orders"), TableauAssetId(id="Table-customers")],
+        downstream_tables=[TableauAssetId(id="Table-sales-clean")],
+    ),
+    TableauFlowOutputField(
+        upstream_tables=[TableauAssetId(id="Table-orders")],
+        downstream_tables=[TableauAssetId(id="Table-sales-clean")],
+    ),
+    TableauFlowOutputField(
+        upstream_datasources=[TableauAssetId(id="gql-ds-targets")],
+        downstream_datasources=[TableauAssetId(id="gql-ds-sales-published")],
+    ),
+]
+
 MARKETING_LINEAGE = TableauFlowLineage(
     upstream_tables=[
         TableauLineageTable(
@@ -154,6 +175,15 @@ MARKETING_LINEAGE = TableauFlowLineage(
                 )
             ],
         )
+    ],
+    downstream_tables=[
+        TableauLineageTable(
+            id="Table-marketing-mart",
+            name="marketing_mart",
+            full_name="[mart].[marketing_mart]",
+            schema_="mart",
+            database=TableauLineageDatabase(name="warehouse", connection_type="postgres"),
+        ),
     ],
 )
 
@@ -225,6 +255,10 @@ FLOW_RUNS_BY_FLOW: dict[str, list[TableauRunItem]] = {
 LINEAGE_BY_FLOW: dict[str, TableauFlowLineage | None] = {
     "flow-sales": SALES_LINEAGE,
     "flow-marketing": MARKETING_LINEAGE,
+}
+
+OUTPUT_FIELDS_BY_FLOW: dict[str, list[TableauFlowOutputField]] = {
+    "flow-sales": SALES_OUTPUT_FIELDS,
 }
 
 USER_EMAIL_BY_ID: dict[str, str | None] = {

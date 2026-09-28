@@ -33,6 +33,7 @@ from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
+    TableauFlowOutputField,
     TableauPipelineDetails,
     TableauRunItem,
 )
@@ -46,6 +47,7 @@ from ._fixtures import (  # noqa: TID252
     FLOW_RUNS_BY_FLOW,
     FLOW_SALES,
     LINEAGE_BY_FLOW,
+    OUTPUT_FIELDS_BY_FLOW,
     USER_EMAIL_BY_ID,
     WORKFLOW_CONFIG,
 )
@@ -58,6 +60,7 @@ class FakeTableauPipelineClient:
         self.sign_out_called = False
         self.cleanup_called = False
         self.lineage_requests: list[str] = []
+        self.field_lineage_requests: list[str] = []
 
     extract_refresh_listing_complete = True
 
@@ -79,6 +82,10 @@ class FakeTableauPipelineClient:
     def get_flow_lineage(self, flow_id: str) -> TableauFlowLineage | None:
         self.lineage_requests.append(flow_id)
         return LINEAGE_BY_FLOW.get(flow_id)
+
+    def get_flow_output_fields(self, flow_id: str) -> list[TableauFlowOutputField]:
+        self.field_lineage_requests.append(flow_id)
+        return OUTPUT_FIELDS_BY_FLOW.get(flow_id, [])
 
     def get_user_email(self, user_id: str) -> str | None:
         return USER_EMAIL_BY_ID.get(user_id)
