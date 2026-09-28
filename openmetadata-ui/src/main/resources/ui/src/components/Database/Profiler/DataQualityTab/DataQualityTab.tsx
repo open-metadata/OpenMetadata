@@ -33,9 +33,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
@@ -104,7 +104,7 @@ const COLUMN_LAYOUT: Record<
 // built-in horizontal scroll engages on narrow viewports; long-identifier
 // columns (name/table) are capped with maxWidth. The actions column is pinned to
 // the right; its opaque background (matching the header/row state) is applied via
-// className (bg-secondary header, bg-primary body, group-hover/selected) so it
+// className (bg-secondary header, bg-surface body, group-hover/selected) so it
 // stays consistent with the rest of the row instead of looking detached.
 const getColumnLayoutStyle = (
   id: string,
@@ -836,7 +836,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Box>
         </Table.Cell>
         <Table.Cell
-          className="tw:whitespace-nowrap tw:bg-primary tw:group-hover:bg-secondary tw:group-selected:bg-secondary"
+          className="tw:whitespace-nowrap tw:bg-surface tw:group-hover:bg-secondary tw:group-selected:bg-secondary"
           style={getColumnLayoutStyle('actions', 1)}>
           <Box
             onClick={(e) => e.stopPropagation()}

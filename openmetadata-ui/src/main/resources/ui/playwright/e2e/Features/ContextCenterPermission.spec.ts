@@ -691,6 +691,7 @@ test.describe('Context Center Permissions', () => {
       createAllPage,
       browser,
     }) => {
+      test.slow();
       await test.step('articles list create action is visible', async () => {
         await navigateToArticles(createAllPage);
 

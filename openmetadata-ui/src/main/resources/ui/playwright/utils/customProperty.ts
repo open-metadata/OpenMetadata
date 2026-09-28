@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+  Response,
+} from '@playwright/test';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -122,6 +128,44 @@ const addTablePropertyRow = async (page: Page) => {
   }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
 };
 
+const selectEnumOption = async (page: Page, scope: Locator, value: string) => {
+  await scope
+    .getByTestId('enum-select')
+    .getByRole('button', { name: /Enum Values/ })
+    .click();
+  await page.getByRole('option', { name: value, exact: true }).click();
+  await clickOutside(page);
+};
+
+// Core DatePicker/TimePicker are segmented react-aria fields: type digits into
+// the first segment and focus auto-advances (assumes the en-US month/day/year order).
+const fillCoreDateTimePicker = async (
+  page: Page,
+  scope: Locator,
+  propertyType: string,
+  value: string
+) => {
+  const [date, time] =
+    propertyType === 'time-cp' ? [undefined, value] : value.split(' ');
+
+  if (date) {
+    const [year, month, day] = date.split('-');
+    await scope.getByTestId('date-time-picker').getByRole('button').click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('spinbutton', { name: 'month' }).click();
+    await page.keyboard.type(`${month}${day}${year}`);
+    await dialog.getByRole('button', { name: 'Apply' }).click();
+  }
+
+  if (time) {
+    await scope
+      .getByTestId('time-picker')
+      .getByRole('spinbutton', { name: 'hour' })
+      .click();
+    await page.keyboard.type(time.replace(/:/g, ''));
+  }
+};
+
 export const setValueForProperty = async (data: {
   page: Page;
   propertyName: string;
@@ -181,11 +225,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'enum':
-      await container.locator('#enumValues').click();
-      // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-      await container.locator('#enumValues').fill(value, { force: true });
-      await container.locator('#enumValues').press('Enter');
-      await clickOutside(page);
+      await selectEnumOption(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -220,26 +260,10 @@ export const setValueForProperty = async (data: {
       break;
     }
 
-    case 'time-cp': {
-      await expect(
-        container.locator('[data-testid="time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="time-picker"]').click();
-      await container.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
+    case 'time-cp':
     case 'date-cp':
     case 'dateTime-cp': {
-      await expect(
-        container.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="date-time-picker"]').click();
-      await container.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.keyboard.press('Enter');
+      await fillCoreDateTimePicker(page, container, propertyType, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -822,6 +846,86 @@ export const addCustomPropertiesForEntity = async ({
   ).toBeVisible();
 };
 
+/**
+ * Records every custom-property save PATCH from before the click. The UI
+ * patches a property by name with a `test` guard and retries when a concurrent
+ * edit shifted the list, so a save can be one or more stale-index rejections
+ * (400) followed by the attempt that lands. Call `expectSaved` after asserting
+ * the visible outcome, so a failed save reports on that assertion first.
+ */
+export const recordCustomPropertySaves = (page: Page) => {
+  const saves: Response[] = [];
+  const onResponse = (res: Response) => {
+    if (
+      res.url().includes('/api/v1/metadata/types/') &&
+      res.request().method() === 'PATCH'
+    ) {
+      saves.push(res);
+    }
+  };
+  page.on('response', onResponse);
+
+  return {
+    expectSaved: async () => {
+      await expect.poll(() => saves.at(-1)?.status()).toBe(200);
+      page.off('response', onResponse);
+
+      // Anything before the successful save must be a rejected attempt the UI
+      // retried, not a failure that was silently dropped.
+      expect(saves.slice(0, -1).map((res) => res.status())).toEqual(
+        saves.slice(0, -1).map(() => 400)
+      );
+    },
+  };
+};
+
+/**
+ * Removes one custom property by name without touching the others. Replacing
+ * the whole list from an earlier read would drop properties that concurrently
+ * running specs added in between, so this removes by index guarded by a `test`
+ * on the name, rebuilt from a fresh read if the list shifted.
+ */
+export const removeCustomPropertyViaApi = async (
+  apiContext: APIRequestContext,
+  typeFqn: string,
+  propertyName: string
+) => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const typeRes = await apiContext.get(
+      `/api/v1/metadata/types/name/${typeFqn}?fields=customProperties`
+    );
+    const type = (await typeRes.json()) as {
+      id: string;
+      customProperties?: { name: string }[];
+    };
+    const index = (type.customProperties ?? []).findIndex(
+      (property) => property.name === propertyName
+    );
+
+    if (index === -1) {
+      return;
+    }
+
+    const res = await apiContext.patch(`/api/v1/metadata/types/${type.id}`, {
+      data: [
+        {
+          op: 'test',
+          path: `/customProperties/${index}/name`,
+          value: propertyName,
+        },
+        { op: 'remove', path: `/customProperties/${index}` },
+      ],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    });
+
+    if (res.ok()) {
+      return;
+    }
+  }
+
+  throw new Error(`Could not remove custom property ${propertyName}`);
+};
+
 export const editCreatedProperty = async (
   page: Page,
   propertyName: string,
@@ -877,15 +981,12 @@ export const editCreatedProperty = async (
     await clickOutside(page);
   }
 
-  const patchRequest = page.waitForResponse('/api/v1/metadata/types/*');
+  const saves = recordCustomPropertySaves(page);
 
   await page.locator('button[type="submit"]').click();
 
-  const response = await patchRequest;
-
-  expect(response.status()).toBe(200);
-
   await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+  await saves.expectSaved();
 
   // Fetching for updated descriptions for the created custom property
   await expect(
@@ -931,21 +1032,14 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
-  const patchResponse = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/metadata/types/') &&
-      res.request().method() === 'PATCH',
-    { timeout: 30_000 }
-  );
+  const saves = recordCustomPropertySaves(page);
 
   await page.locator('[data-testid="save-button"]').click();
-  const response = await patchResponse;
-
-  expect(response.status()).toBe(200);
 
   // ConfirmationModal is destroyOnClose: assert the body text unmounts so
   // the modal mask is gone before the next sidebar click in callers' loops.
   await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
+  await saves.expectSaved();
   await expect(
     page.locator(`[data-row-key="${propertyName}"]`)
   ).not.toBeVisible();
@@ -1061,11 +1155,7 @@ export const editColumnCustomProperty = async (
   } else if (propertyType === 'email') {
     await page.getByTestId('email-input').fill(testValue);
   } else if (propertyType === 'enum') {
-    await page.getByTestId('enum-select').click();
-    await page
-      .locator('.ant-select-item-option-content')
-      .getByText(testValue, { exact: true })
-      .click();
+    await selectEnumOption(page, page.locator('body'), testValue);
   } else if (propertyType === 'table-cp') {
     await addTablePropertyRow(page);
 
@@ -1107,13 +1197,12 @@ export const editColumnCustomProperty = async (
       await page.keyboard.press('Escape');
     }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
-    // Ant Design Pickers
-    const picker = page.getByTestId(
-      propertyType === 'time-cp' ? 'time-picker' : 'date-time-picker'
+    await fillCoreDateTimePicker(
+      page,
+      page.locator('body'),
+      propertyType,
+      testValue
     );
-    await picker.click();
-    await page.keyboard.type(testValue);
-    await page.keyboard.press('Enter');
   } else if (['string', 'integer', 'number'].includes(propertyType)) {
     const valueInput = page.getByTestId('value-input');
     await expect(valueInput).toBeVisible();
@@ -1378,19 +1467,18 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
       break;
 
-    case 'enum':
-      await page.click('#enumValues');
-      while (
-        (await page.locator('.ant-select-selection-item-remove').count()) > 0
-      ) {
-        await page.locator('.ant-select-selection-item-remove').first().click();
+    case 'enum': {
+      const clearAll = container
+        .getByTestId('enum-select')
+        .getByRole('button', { name: 'Clear all' });
+      if (await clearAll.isVisible()) {
+        await clearAll.click();
       }
-      await page.fill('#enumValues', value);
-      await page.locator(`.ant-select-item-option[title="${value}"]`).click();
-      await clickOutside(page);
+      await selectEnumOption(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
+    }
 
     case 'timestamp':
       await expect(
@@ -1400,16 +1488,6 @@ export const updateCustomPropertyInRightPanel = async (data: {
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
-
-    case 'time-cp': {
-      await expect(page.locator('[data-testid="time-picker"]')).toBeVisible();
-      await page.locator('[data-testid="time-picker"]').click();
-      await page.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
@@ -1422,14 +1500,10 @@ export const updateCustomPropertyInRightPanel = async (data: {
       break;
     }
 
+    case 'time-cp':
     case 'date-cp':
     case 'dateTime-cp': {
-      await expect(
-        page.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await page.locator('[data-testid="date-time-picker"]').click();
-      await page.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.locator('[data-testid="date-time-picker"]').press('Enter');
+      await fillCoreDateTimePicker(page, container, propertyType, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;

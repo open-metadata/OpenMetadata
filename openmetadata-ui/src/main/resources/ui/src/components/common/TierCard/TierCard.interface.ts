@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { Tag } from '../../../generated/entity/classification/tag';
 
@@ -27,7 +26,14 @@ export interface TierCardProps {
   tierCardClassName?: string;
   footerActionButtonsClassName?: string;
   updateTier?: (value?: Tag) => Promise<void>;
+  /**
+   * Uncontrolled (no `open`): a react-aria pressable trigger (core Button,
+   * ButtonUtility, or `Pressable`), wired up by PopoverTrigger.
+   * Controlled: only the anchor the card is positioned against; the caller
+   * owns whatever opens it.
+   */
   children?: ReactNode;
-  popoverProps?: PopoverProps;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onClose?: () => void;
 }

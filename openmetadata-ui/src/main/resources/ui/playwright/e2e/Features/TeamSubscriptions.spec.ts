@@ -281,7 +281,7 @@ test.describe('Team Subscriptions', { tag: ['@Platform', '@Teams'] }, () => {
     });
 
     await test.step('Reload page and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await verifyWebhookIcon(page, 'generic-icon', endpoint);

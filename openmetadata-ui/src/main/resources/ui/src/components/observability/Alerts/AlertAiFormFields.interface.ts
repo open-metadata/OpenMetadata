@@ -19,6 +19,7 @@ import {
   Destination,
   EventFilterRule,
 } from '../../../generated/events/eventSubscription';
+import { EventType } from '../../../generated/type/changeEvent';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
@@ -46,6 +47,11 @@ export interface AlertAiFormFieldsProps {
   showBasicFields?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
+  /**
+   * Classic alert forms only offer templates when `alertsClassBase` registers
+   * a template widget (Collate); OSS has none and cannot save one.
+   */
+  shouldShowTemplateSection?: boolean;
   supportedFilters?: EventFilterRule[];
   supportedTriggers?: EventFilterRule[];
   templates?: NotificationTemplate[];
@@ -58,6 +64,7 @@ interface AlertAiFormBaseProps
     AlertAiFormFieldsProps,
     'isViewOnly' | 'onChange' | 'showBasicFields' | 'value'
   > {
+  fieldDocDisplay?: 'popover' | 'panel';
   formId?: string;
   showHint?: boolean;
 }
@@ -99,6 +106,7 @@ export interface RuleSectionProps {
   containerEntities?: string[];
   field: RuleSectionField;
   selectedSource?: string;
+  supportedEventTypes?: EventType[];
   supportedRules?: EventFilterRule[];
   title: string;
   isViewOnly?: boolean;
@@ -110,6 +118,7 @@ export interface RuleSectionProps {
 export interface RuleArgumentFieldProps {
   argument: string;
   containerEntities?: string[];
+  supportedEventTypes?: EventType[];
   field: RuleSectionField;
   index: number;
   name: number;

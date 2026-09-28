@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 export type BotResponseDataType = {
@@ -89,7 +93,8 @@ export class BotClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/bots/${this.responseData.id}?hardDelete=true&recursive=false`
     );
 
@@ -105,7 +110,6 @@ export class BotClass {
         },
       })
     );
-
     this.responseData = await okJson(response, 'BotClass.patch');
 
     return await okJson(response, 'BotClass.patch');

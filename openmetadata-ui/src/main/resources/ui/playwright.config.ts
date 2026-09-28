@@ -51,11 +51,16 @@ const entityDependencies = hasPreseededState
   : ['setup', 'entity-data-setup'];
 const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
 const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
+// SearchIndexApplication.spec.ts triggers a full reindex, which swaps the shared search indexes
+// under every co-scheduled worker: an owner change made mid-reindex is missing from the
+// rebuilt index (Teams.spec.ts "Team assets should" read 0 assets). It runs in the
+// single-worker Reindex lane alongside the other reindexing specs.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
+      '**/SearchIndexApplication.spec.ts',
     ]
   : [];
 // Tests tagged @quarantine are known-flaky and must not run in any lane, so a
@@ -290,11 +295,11 @@ export default defineConfig({
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
-        // Every SSO spec lives under Auth/ and mutates the backend's
-        // authenticationConfiguration via applyProviderConfig — the main
-        // project must never pick them up, or entity/domain/search tests
-        // would race a mid-run auth swap. The `sso-auth` project owns
-        // these specs exclusively (fullyParallel:false, workers:1).
+        // Every SSO/login/auth-config spec lives under /Auth/** and
+        // runs under the `sso-auth` project (fullyParallel:false,
+        // workers:1) so its backend `authenticationConfiguration`
+        // mutations via applyProviderConfig can't race feature
+        // specs here.
         '**/Auth/**',
         '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
@@ -342,12 +347,20 @@ export default defineConfig({
       // specs listed here plus the new parametrized SsoScenarios file
       // that runs 9 flows against every SsoProviderFixture in the matrix.
       name: 'sso-auth',
-      testMatch: [
-        '**/SsoScenarios.spec.ts',
-        '**/OktaSelfSignupClaims.spec.ts',
-        '**/SSOSelfSignup.spec.ts',
-        '**/SSOSessionLimit.spec.ts',
-      ],
+      // Every auth/login-related spec lives under /Auth/**. The
+      // `chromium` and `Basic` projects testIgnore that same tree,
+      // so the mid-run backend `authenticationConfiguration`
+      // mutations this suite performs can't race feature specs.
+      testMatch: ['**/Auth/**/*.spec.ts'],
+      // Login.spec.ts and LoginConfiguration.spec.ts read
+      // `playwright/.auth/admin.json` (written by auth.setup.ts) via
+      // test.use({storageState}), so the setup project must run
+      // before this one. Per-provider SsoScenarios legs that mutate
+      // the backend still work — auth.setup.ts runs BEFORE the
+      // scenario's beforeAll swaps the provider, and the Basic-only
+      // moved specs run only on the Basic leg where the setup's
+      // admin session stays valid.
+      dependencies: authDependencies,
       use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
@@ -501,6 +514,7 @@ export default defineConfig({
             testMatch: [
               '**/SearchSeparation/*.spec.ts',
               '**/*AfterReindex.spec.ts',
+              '**/SearchIndexApplication.spec.ts',
             ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },

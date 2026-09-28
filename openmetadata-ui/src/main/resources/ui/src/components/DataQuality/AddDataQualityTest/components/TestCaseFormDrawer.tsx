@@ -35,7 +35,6 @@ import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
-import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
@@ -215,8 +214,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
-      const pipelineTestSuite =
-        (created.testSuite as TestSuite | undefined) ?? testSuite;
+      const pipelineTestSuite = created.testSuite ?? testSuite;
       if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
         return;
       }
@@ -224,7 +222,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const pipeline = buildTestSuitePipelinePayload(values, {
         testSuite: pipelineTestSuite,
         createdTestCaseName: created.name,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // Prefer the raw form FQN: `canCreatePipeline` is gated on it, so it can
+        // be submitted while `selectedTableData` is still being fetched.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         table,
       });
 
@@ -300,7 +302,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         selectedColumn: formContext?.selectedColumn,
         selectedTestLevel: formContext?.selectedTestLevel ?? TestLevel.TABLE,
         table,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // `resolveEntityLink` falls back to '' when every source is empty, so
+        // this must also prefer the raw form FQN over the fetched table.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         generateName: formContext?.generateName ?? (() => ''),
       });
 

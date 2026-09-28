@@ -17,9 +17,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import {
   getTagName,
@@ -67,20 +66,22 @@ const TierWidget = () => {
   };
 
   const canEdit = useMemo(
-    () =>
-      getPrioritizedEditPermission(permissions, Operation.EditTier) &&
-      !isVersionView,
+    () => getDerivedPermissionFlags(permissions).canEditTier && !isVersionView,
     [permissions, isVersionView]
   );
 
   const tierEditControl = tier ? (
     <WidgetEditButton
+      aria-expanded={isEditing}
+      aria-haspopup="dialog"
       data-testid="edit-tier"
       title={t('label.edit-entity', { entity: t('label.tier') })}
       onClick={() => setIsEditing(true)}
     />
   ) : (
     <WidgetPlusButton
+      aria-expanded={isEditing}
+      aria-haspopup="dialog"
       data-testid="add-tier"
       title={t('label.add-entity', { entity: t('label.tier') })}
       onClick={() => setIsEditing(true)}
@@ -106,17 +107,15 @@ const TierWidget = () => {
     <TierCard
       currentTier={tier?.tagFQN}
       footerActionButtonsClassName="p-x-md"
-      popoverProps={{
-        open: isEditing,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
+      open={isEditing}
       tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}>
+      onClose={() => setIsEditing(false)}
+      onOpenChange={(visible: boolean) => {
+        if (!visible) {
+          setIsEditing(false);
+        }
+      }}>
       {tier && <div data-testid="tier-selector-display">{tierDisplay}</div>}
     </TierCard>
   );

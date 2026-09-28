@@ -46,6 +46,10 @@ public final class RdfBackgroundScheduler implements Managed {
     LOG.info("RDF background scheduler started with {} workers", poolSize);
   }
 
+  public synchronized ScheduledFuture<?> schedule(Runnable task, long delay, TimeUnit unit) {
+    return getOrCreateExecutor().schedule(task, delay, unit);
+  }
+
   public synchronized ScheduledFuture<?> scheduleWithFixedDelay(
       Runnable task, long initialDelay, long delay, TimeUnit unit) {
     return getOrCreateExecutor().scheduleWithFixedDelay(task, initialDelay, delay, unit);

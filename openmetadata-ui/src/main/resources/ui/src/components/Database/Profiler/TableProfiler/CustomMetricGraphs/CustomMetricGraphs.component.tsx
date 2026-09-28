@@ -41,7 +41,7 @@ import {
 } from '../../../../../utils/ChartUtils';
 import { CustomDQTooltip } from '../../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import {
   showErrorToast,
   showSuccessToast,
@@ -72,7 +72,7 @@ const CustomMetricGraphs = ({
   } = useTableProfiler();
   const editPermission =
     permissions &&
-    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+    getDerivedPermissionFlags(permissions).can(Operation.EditDataProfile);
   const deletePermission = permissions?.Delete || false;
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
