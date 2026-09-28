@@ -16,10 +16,16 @@ package org.openmetadata.service.jobs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.jobs.BackgroundJob;
 
 class JobDAOTest {
   private static final String ONTOLOGY_BULK_FILTER = "'ONTOLOGY_BULK'";
@@ -37,5 +43,47 @@ class JobDAOTest {
     assertTrue(update.value().contains(RUNNING_FILTER));
     assertTrue(update.value().contains(STALENESS_FILTER));
     assertEquals(2, method.getParameterCount());
+  }
+
+  @Test
+  void pageQueueReschedulesAnExistingPendingJob() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockPageForMemoryQueue("page-id")).thenReturn("page-id");
+    when(jobDao.reschedulePendingPageMemoryJob("page-id", 100L, 50L)).thenReturn(1);
+
+    jobDao.enqueuePageMemoryJob("page-id", "{\"pageId\":\"page-id\"}", "admin", 100L, 50L);
+
+    verify(jobDao, never())
+        .insertJobInternal(
+            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            "PageMemoryExtractionJobHandler",
+            "{\"pageId\":\"page-id\"}",
+            "admin",
+            100L);
+  }
+
+  @Test
+  void pageQueueInsertsWhenNoPendingJobExists() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockPageForMemoryQueue("page-id")).thenReturn("page-id");
+
+    jobDao.enqueuePageMemoryJob("page-id", "{\"pageId\":\"page-id\"}", "admin", 100L, 50L);
+
+    verify(jobDao)
+        .insertJobInternal(
+            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            "PageMemoryExtractionJobHandler",
+            "{\"pageId\":\"page-id\"}",
+            "admin",
+            100L);
+  }
+
+  @Test
+  void pageQueueSkipsADeletedSource() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+
+    jobDao.enqueuePageMemoryJob("missing", "{\"pageId\":\"missing\"}", "admin", 100L, 50L);
+
+    verify(jobDao, never()).reschedulePendingPageMemoryJob("missing", 100L, 50L);
   }
 }

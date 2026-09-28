@@ -652,10 +652,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (refs.isEmpty()) {
       return new ArrayList<>();
     }
-    // Batch-load in one query instead of a get() per ref (avoids N+1). Reconciliation only reads
-    // stored fields (question/status/answer/...), so the relationship-free fetch is sufficient.
+    // Batch-load both stored content and relationship-backed anchors. Reconciliation repairs older
+    // extracted pills whose primaryEntity was not populated, while preserving any human-chosen
+    // primaryEntity and the source link on update.
     List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
-    return find(ids, Include.NON_DELETED);
+    List<ContextMemory> memories = find(ids, Include.NON_DELETED);
+    setFieldsInBulk(getFields("primaryEntity,sourceEntity"), memories);
+    return memories;
   }
 
   /**
