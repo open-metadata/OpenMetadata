@@ -57,6 +57,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
@@ -81,7 +82,6 @@ import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
-  ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';

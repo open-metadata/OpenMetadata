@@ -17,11 +17,9 @@ import { capitalize } from 'lodash';
 import type { FC } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import {
-  ResourceEntity,
-  type OperationPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { type OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { ServiceCategoryPlural } from '../enums/service.enum';
 import type { APICollection } from '../generated/entity/data/apiCollection';
 import type { Database } from '../generated/entity/data/database';

@@ -2173,13 +2173,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     [columns]
   );
 
-  const selectedKeys = useMemo(() => {
-    const ids = columnGridListing.selectedEntities.filter(
-      (id) => id !== '__loading' && id !== '__empty'
-    );
-
-    return new Set(ids);
-  }, [columnGridListing.selectedEntities]);
+  const selectedKeys = useMemo(
+    () => new Set(columnGridListing.selectedEntities),
+    [columnGridListing.selectedEntities]
+  );
 
   const handleTableSelectionChange = useCallback(
     (keys: Set<string> | 'all') => {
@@ -2195,10 +2192,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return;
       }
 
-      const validKeys = Array.from(keys).filter(
-        (id) => id !== '__loading' && id !== '__empty'
-      );
-      const validSet = new Set(validKeys);
+      const nextKeys = Array.from(keys);
       const previousSelected = new Set(columnGridListing.selectedEntities);
       const finalSelection = new Set<string>();
       const addDescendantsToSelection = (rowId: string) => {
@@ -2206,10 +2200,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           finalSelection.add(descId)
         );
       };
-      validKeys.forEach(addDescendantsToSelection);
+      nextKeys.forEach(addDescendantsToSelection);
 
       previousSelected.forEach((id) => {
-        if (validSet.has(id)) {
+        if (keys.has(id)) {
           return;
         }
         getAllDescendantIds(id).forEach((descId) =>
@@ -2217,7 +2211,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       });
 
-      validKeys.forEach((id) => {
+      nextKeys.forEach((id) => {
         const entity = columnGridListing.entities.find((e) => e.id === id);
         const isGroupParent =
           entity?.isGroup && (entity.occurrenceCount ?? 0) > 1;
@@ -2251,110 +2245,80 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     ]
   );
 
-  const tableItems = useMemo(() => {
-    if (columnGridListing.loading) {
-      return [{ id: '__loading', __loading: true }];
-    }
-
-    if (isEmpty(filteredEntities) && hasActiveFiltersOrSearch) {
-      return [{ id: '__empty', __empty: true }];
-    }
-
-    return filteredEntities;
-  }, [columnGridListing.loading, filteredEntities, hasActiveFiltersOrSearch]);
-
-  const spanColumn = useMemo(() => [{ id: 'span' as const }], []);
-
+  // Loader is an overlay, not a row: a fixed-`colSpan` row breaks react-aria's cell count.
   const dataTable = useMemo(
     () => (
-      <Table
-        className={TABLE_LAYOUT_CLASSES}
-        data-testid="table-view-container"
-        selectedKeys={selectedKeys}
-        selectionMode="multiple"
-        onSelectionChange={(keys) => {
-          if (keys === 'all') {
-            handleTableSelectionChange('all');
-          } else {
-            handleTableSelectionChange(keys as Set<string>);
-          }
-        }}>
-        <Table.Header className="tw:bg-transparent" columns={tableColumns}>
-          {(column) => (
-            <Table.Head
-              id={column.id}
-              isRowHeader={column.id === 'columnName'}
-              key={column.id}
-              label={t((column as { labelKey: string }).labelKey)}
-              style={{ width: COLUMN_WIDTH_PERCENT[column.id] }}
-            />
-          )}
-        </Table.Header>
-        <Table.Body items={tableItems as Iterable<ColumnGridRowData>}>
-          {(item) => {
-            const entity = item as ColumnGridRowData & {
-              __loading?: boolean;
-              __empty?: boolean;
-            };
-
-            if (entity.__loading) {
-              return (
-                <Table.Row columns={spanColumn} id="__loading" key="__loading">
-                  {() => (
-                    <Table.Cell colSpan={tableColumns.length}>
-                      <div className="tw:flex tw:justify-center tw:py-4">
-                        <Loader />
-                      </div>
-                    </Table.Cell>
-                  )}
-                </Table.Row>
-              );
+      <div
+        aria-busy={columnGridListing.loading}
+        className={classNames('tw:relative', {
+          // With no rows the table is only its header, so reserve room for the spinner.
+          'tw:min-h-40': columnGridListing.loading && isEmpty(filteredEntities),
+        })}>
+        {columnGridListing.loading && (
+          <div
+            className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60"
+            data-testid="column-grid-loader">
+            <Loader />
+          </div>
+        )}
+        <Table
+          aria-label={t('label.column-bulk-operations')}
+          className={TABLE_LAYOUT_CLASSES}
+          data-testid="table-view-container"
+          selectedKeys={selectedKeys}
+          selectionMode="multiple"
+          onSelectionChange={(keys) => {
+            if (keys === 'all') {
+              handleTableSelectionChange('all');
+            } else {
+              handleTableSelectionChange(keys as Set<string>);
             }
-
-            if (entity.__empty) {
-              return (
-                <Table.Row columns={spanColumn} id="__empty" key="__empty">
-                  {() => (
-                    <Table.Cell colSpan={tableColumns.length}>
-                      <div className="tw:py-4 tw:text-center tw:text-tertiary">
-                        {t('server.no-records-found')}
-                      </div>
-                    </Table.Cell>
-                  )}
-                </Table.Row>
-              );
-            }
-
-            const isChildRow = Boolean(entity.parentId || entity.isStructChild);
-            const isParentExpanded =
-              columnGridListing.expandedRows.has(entity.id) ||
-              columnGridListing.expandedStructRows.has(entity.id);
-
-            return (
-              <ColumnGridRow
-                columnWidthPercent={COLUMN_WIDTH_PERCENT}
-                entity={entity}
-                isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
-                isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
-                isSelected={columnGridListing.isSelected(entity.id)}
-                key={entity.id}
-                renderColumnNameCell={renderColumnNameCellFinal}
-                renderDescriptionCell={renderDescriptionCellAdapter}
-                renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
-                renderPathCell={renderPathCellAdapter}
-                renderTagsCell={renderTagsCellAdapter}
-                showParentChildColors={isChildRow || isParentExpanded}
-                tableColumns={tableColumns}
+          }}>
+          <Table.Header className="tw:bg-transparent" columns={tableColumns}>
+            {(column) => (
+              <Table.Head
+                id={column.id}
+                isRowHeader={column.id === 'columnName'}
+                key={column.id}
+                label={t((column as { labelKey: string }).labelKey)}
+                style={{ width: COLUMN_WIDTH_PERCENT[column.id] }}
               />
-            );
-          }}
-        </Table.Body>
-      </Table>
+            )}
+          </Table.Header>
+          <Table.Body items={filteredEntities}>
+            {(entity) => {
+              const isChildRow = Boolean(
+                entity.parentId || entity.isStructChild
+              );
+              const isParentExpanded =
+                columnGridListing.expandedRows.has(entity.id) ||
+                columnGridListing.expandedStructRows.has(entity.id);
+
+              return (
+                <ColumnGridRow
+                  columnWidthPercent={COLUMN_WIDTH_PERCENT}
+                  entity={entity}
+                  isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
+                  isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
+                  isSelected={columnGridListing.isSelected(entity.id)}
+                  key={entity.id}
+                  renderColumnNameCell={renderColumnNameCellFinal}
+                  renderDescriptionCell={renderDescriptionCellAdapter}
+                  renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
+                  renderPathCell={renderPathCellAdapter}
+                  renderTagsCell={renderTagsCellAdapter}
+                  showParentChildColors={isChildRow || isParentExpanded}
+                  tableColumns={tableColumns}
+                />
+              );
+            }}
+          </Table.Body>
+        </Table>
+      </div>
     ),
     [
-      tableItems,
+      filteredEntities,
       tableColumns,
-      spanColumn,
       selectedKeys,
       handleTableSelectionChange,
       columnGridListing.loading,
@@ -2577,8 +2541,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Single source of truth for the empty state: no columns to show and not
   // mid-load. Drives both the placeholder and hiding the search/filter toolbar.
+  // Skip while rows are being built, or the table unmounts for that frame.
   const isColumnDataEmpty =
-    !columnGridListing.loading && isEmpty(filteredEntities);
+    !columnGridListing.loading &&
+    !columnGridListing.isBuildingRows &&
+    isEmpty(filteredEntities);
 
   // Pick the empty state that matches why the list is empty: an active search
   // shows the "no matching results" hint, active filters show the filter

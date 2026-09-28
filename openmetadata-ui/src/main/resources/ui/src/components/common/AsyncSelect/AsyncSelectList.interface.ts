@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DefaultOptionType } from 'antd/lib/select';
-import { PagingResponse } from './AsyncSelect';
+import { PagingResponse } from '../../../interface/common/paging.interface';
 
 export interface AsyncSelectListProps {
   api: (
