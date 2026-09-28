@@ -19,6 +19,7 @@ import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import App from './App';
+import { DocumentTitleProvider } from './components/common/DocumentTitle/DocumentTitleProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
@@ -92,10 +93,12 @@ const AppRoot: FC = () => {
           <I18nextProvider i18n={i18n}>
             <AntDConfigProvider>
               <HelmetProvider>
-                <ErrorBoundary>
-                  <App />
-                  <ToastProvider />
-                </ErrorBoundary>
+                <DocumentTitleProvider>
+                  <ErrorBoundary>
+                    <App />
+                    <ToastProvider />
+                  </ErrorBoundary>
+                </DocumentTitleProvider>
               </HelmetProvider>
             </AntDConfigProvider>
           </I18nextProvider>
