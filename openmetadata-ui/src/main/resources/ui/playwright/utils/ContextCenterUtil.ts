@@ -758,6 +758,30 @@ export const createArticleViaApi = async (
   return body;
 };
 
+/**
+ * The governance workflow approves a new article asynchronously as
+ * governance-bot, bumping its version. Tests relying on a stable version
+ * (e.g. local drafts, which are discarded once the server version moves)
+ * must wait for it to settle.
+ */
+export const waitForArticleApproved = async (
+  apiContext: APIRequestContext,
+  articleFqn: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/contextCenter/pages/name/${encodeURIComponent(articleFqn)}`
+        );
+
+        return (await response.json()).entityStatus;
+      },
+      { timeout: 30_000, intervals: [500, 1_000, 2_000] }
+    )
+    .toBe('Approved');
+};
+
 export const createQuickLinkViaApi = async (
   apiContext: APIRequestContext,
   displayName: string,

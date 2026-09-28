@@ -21,7 +21,14 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { Key } from 'react';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
@@ -98,7 +105,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
   );
 
   // Push header updates up to ProfilePage whenever the internal view changes.
-  useEffect(() => {
+  // Layout effect so the header commits with the new view: from a passive effect
+  // the parent update lands a task later, leaving the previous view's breadcrumb
+  // (whose crumbs route differently) clickable for a frame.
+  useLayoutEffect(() => {
     if (!onHeaderChange) {
       return;
     }
