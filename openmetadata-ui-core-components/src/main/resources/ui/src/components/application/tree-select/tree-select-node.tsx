@@ -29,6 +29,7 @@ export interface TreeSelectTreeItemContentProps<T> {
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
+  maxIndentLevel?: number;
   onNodeClick: () => void;
 }
 
@@ -62,6 +63,7 @@ export const TreeSelectTreeItemContent = <T,>({
   multiple,
   disabled,
   hasChildItems,
+  maxIndentLevel = 2,
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
@@ -75,7 +77,7 @@ export const TreeSelectTreeItemContent = <T,>({
       className="tw:text-sm tw:font-normal tw:text-primary"
       hasChildItems={hasChildItems}
       indentPerLevel={28}
-      maxIndentLevel={2}
+      maxIndentLevel={maxIndentLevel}
       showExpandIcon={showExpandIcon}>
       {() => (
         <div
@@ -83,6 +85,7 @@ export const TreeSelectTreeItemContent = <T,>({
             'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
             isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
           )}
+          data-selected={isSelected}
           data-testid={`tree-node-${node.id}`}
           role="presentation"
           onClick={(event) => {
@@ -124,6 +127,9 @@ export const TreeSelectTreeItemContent = <T,>({
           <Typography
             className={cx(
               'not-prose tw:grow tw:truncate',
+              // Single-choice rows carry no checkbox, so weight is the only
+              // affordance telling the user which row is active.
+              isSelected && 'tw:font-medium tw:text-primary',
               node.disabled && 'tw:text-disabled'
             )}
             title={node.label}>

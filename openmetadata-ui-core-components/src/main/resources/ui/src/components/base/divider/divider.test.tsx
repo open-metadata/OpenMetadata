@@ -24,6 +24,13 @@ describe('Divider', () => {
     expect(rule()).toHaveClass('tw:h-px', 'tw:bg-border-secondary');
   });
 
+  it('uses the stronger border token for primary rules', () => {
+    render(<Divider color="primary" orientation="vertical" />);
+
+    expect(rule()).toHaveClass('tw:w-px', 'tw:bg-border-primary');
+    expect(rule()).not.toHaveClass('tw:bg-border-secondary');
+  });
+
   // A background cannot be dashed, so the dashed variant has to switch from a
   // filled box to a border.
   it('draws a dashed horizontal rule as a border', () => {
