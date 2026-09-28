@@ -80,11 +80,14 @@ jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
 );
 
-jest.mock('../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
-  return function TitleBreadcrumb() {
-    return <div data-testid="breadcrumb">Breadcrumb</div>;
-  };
-});
+jest.mock(
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return function TitleBreadcrumb() {
+      return <div data-testid="breadcrumb">Breadcrumb</div>;
+    };
+  }
+);
 
 const mockGetAppConfiguration = getAppConfiguration as jest.Mock;
 const mockPatchAppConfiguration = patchAppConfiguration as jest.Mock;
