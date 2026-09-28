@@ -25,6 +25,25 @@
       "default": "Inline",
       "additionalProperties": false
     },
+    "tabularValueCount": {
+      "javaType": "org.openmetadata.schema.attachments.TabularValueCount",
+      "description": "One value of a column and how many rows carry it.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "required": [
+        "value",
+        "count"
+      ],
+      "additionalProperties": false
+    },
     "tabularColumn": {
       "javaType": "org.openmetadata.schema.attachments.TabularColumn",
       "description": "One column of a tabular file with the statistics the Query Runner read for it, kept as the worker wrote them.",
@@ -50,9 +69,28 @@
         },
         "nullPercentage": {
           "type": "string"
+        },
+        "distinctCount": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Exact number of distinct values."
+        },
+        "valuesCount": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Number of non-null values."
+        },
+        "topValues": {
+          "type": "array",
+          "description": "The most frequent values of a text column with their counts, most frequent first; at most fifty, so a small domain is listed in full.",
+          "items": {
+            "$ref": "#/definitions/tabularValueCount"
+          }
         }
       },
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false
     },
     "tabularRelation": {
@@ -75,7 +113,9 @@
           }
         }
       },
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "additionalProperties": false
     },
     "tabularProfile": {
@@ -161,6 +201,10 @@
       "$ref": "../type/basic.json#/definitions/entityLink"
     }
   },
-  "required": ["id", "fileName", "entityLink"],
+  "required": [
+    "id",
+    "fileName",
+    "entityLink"
+  ],
   "additionalProperties": false
 }
