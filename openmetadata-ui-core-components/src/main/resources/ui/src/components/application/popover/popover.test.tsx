@@ -118,6 +118,23 @@ describe('PopoverTrigger — hover', () => {
 
     expect(onClick).toHaveBeenCalled();
   });
+
+  // A modal Popover renders a fixed inset-0 underlay while open, which under
+  // hover covers the trigger: pointerleave fires, the panel closes, the
+  // underlay goes with it, the pointer is over the trigger again and it
+  // reopens — flicker. jsdom cannot see that (no hit-testing), but the same
+  // modal path also locks page scroll, and that *is* observable, so this
+  // stands in for the underlay being gone.
+  it('does not lock page scroll — hover popovers are non-modal', async () => {
+    const user = userEvent.setup();
+    render(<HoverCard />);
+    setupPointerModality();
+
+    await user.hover(screen.getByTestId('anchor'));
+    await screen.findByTestId('inner-action');
+
+    expect(document.documentElement).not.toHaveStyle({ overflow: 'hidden' });
+  });
 });
 
 describe('PopoverTrigger — press (default, unchanged)', () => {

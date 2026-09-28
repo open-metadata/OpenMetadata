@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useHover } from '@react-aria/interactions';
 import { mergeProps } from '@react-aria/utils';
 import type { DOMAttributes, ReactNode } from 'react';
 import {
@@ -34,6 +33,7 @@ import {
   OverlayArrow as AriaOverlayArrow,
   Popover as AriaPopover,
 } from 'react-aria-components';
+import { useHover } from 'react-aria';
 import { cx } from '@/utils/cx';
 
 /**
@@ -200,6 +200,7 @@ export const Popover = ({
   return (
     <AriaPopover
       {...hoverProps}
+      isNonModal={hoverProps ? true : undefined}
       offset={offset}
       {...popoverProps}
       className={(state) =>

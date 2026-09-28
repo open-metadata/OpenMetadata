@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
 
@@ -44,6 +45,8 @@ const ConfirmationModal = ({
   visible,
 }: ConfirmationModalProps) => {
   const { t } = useTranslation();
+  const headerId = useId();
+  const bodyId = useId();
 
   return (
     // `maskClosable={false}` -> `isDismissable={false}`: a confirmation is
@@ -54,22 +57,36 @@ const ConfirmationModal = ({
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
         <Dialog
-          className={className}
+          // react-aria names a Dialog from a title-slot Heading, which this
+          // does not use — the header is a node carrying a test id. Without
+          // this the dialog is announced unnamed and react-aria warns. The
+          // SCIM caller passes an empty header and titles itself in the body,
+          // so fall back to that.
+          aria-labelledby={header ? headerId : bodyId}
           data-testid="confirmation-modal"
+          // antd's `className` landed on `.ant-modal`, which is the panel —
+          // core's `className` is the outer wrapper, so styling goes here.
+          panelClassName={className}
           onClose={onCancel}>
-          {/* Dialog's own `title` prop takes a string; this header is a node
-              carrying a test id, so it goes through Dialog.Header instead. */}
-          <Dialog.Header>
-            <Typography
-              className={headerClassName}
-              data-testid="modal-header"
-              weight="bold">
-              {header}
-            </Typography>
-          </Dialog.Header>
+          {/* Rendered only when there is a header: the SCIM delete prompt
+              passes an empty one and supplies its own heading in the body,
+              which antd handled by hiding the header with CSS. */}
+          {header && (
+            <Dialog.Header>
+              <Typography
+                className={headerClassName}
+                data-testid="modal-header"
+                id={headerId}
+                weight="bold">
+                {header}
+              </Typography>
+            </Dialog.Header>
+          )}
           <Dialog.Content>
             <div className={classNames('h-20', bodyClassName)}>
-              <Typography data-testid="body-text">{bodyText}</Typography>
+              <Typography data-testid="body-text" id={bodyId}>
+                {bodyText}
+              </Typography>
             </div>
           </Dialog.Content>
           <Dialog.Footer className={classNames('justify-end', footerClassName)}>
