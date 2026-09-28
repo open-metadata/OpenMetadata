@@ -120,7 +120,8 @@ export const getTaskTitleParts = (
 
   return (
     getPrefixedEntityTitle(task, t) ?? {
-      title: getPlainDescription(task) || task.taskId || '',
+      // A title is one run of text; the description's lines join with spaces.
+      title: getPlainDescription(task).replace(/\n/g, ' ') || task.taskId || '',
     }
   );
 };

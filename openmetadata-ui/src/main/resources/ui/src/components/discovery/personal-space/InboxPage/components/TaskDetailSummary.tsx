@@ -160,7 +160,10 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
           weight="semibold">
           {callout.label}
         </Typography>
-        <Typography className="tw:break-words" size="text-sm">
+        {/* Keeps the paragraphs of a description on their own lines. */}
+        <Typography
+          className="tw:break-words tw:whitespace-pre-line"
+          size="text-sm">
           {callout.text}
         </Typography>
       </Box>

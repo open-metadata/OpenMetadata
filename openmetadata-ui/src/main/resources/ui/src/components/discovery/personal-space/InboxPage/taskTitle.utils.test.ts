@@ -156,6 +156,18 @@ describe('getTaskTitle', () => {
     ).toBe("Dashboards show yesterday's numbers & totals");
   });
 
+  it('joins a multi-paragraph description into one title line', () => {
+    expect(
+      getTaskTitle(
+        task({
+          about: undefined,
+          description: '<p>Need access for Q3.</p><p>Owner approved.</p>',
+        }),
+        t
+      )
+    ).toBe('Need access for Q3. Owner approved.');
+  });
+
   it('falls back to the task id when nothing else is available', () => {
     expect(
       getTaskTitle(task({ about: undefined, description: undefined }), t)

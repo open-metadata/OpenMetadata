@@ -432,6 +432,24 @@ describe('getPlainDescription', () => {
     ).toBe("It's late & <empty>");
   });
 
+  // textContent alone would read "Need access for Q3.Owner approved."
+  it('puts each paragraph and line break on its own line', () => {
+    expect(
+      getPlainDescription({
+        description:
+          '<p>Need access for Q3.</p><p>Owner approved.</p>line one<br>line two',
+      })
+    ).toBe('Need access for Q3.\nOwner approved.\nline one\nline two');
+  });
+
+  it('lists items on their own lines and drops blank ones', () => {
+    expect(
+      getPlainDescription({
+        description: '<ul><li><p>first</p></li><li>second</li></ul><p> </p>',
+      })
+    ).toBe('first\nsecond');
+  });
+
   it('keeps an encoded tag as text rather than markup', () => {
     expect(
       getPlainDescription({ description: '&lt;img src=x onerror=alert(1)&gt;' })

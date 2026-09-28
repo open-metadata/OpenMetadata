@@ -40,26 +40,39 @@ import { getTaskResolutionSummary } from './taskResolution.utils';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
+// Elements that end a line of text. textContent alone joins them with no
+// separator, so "<p>Q3.</p><p>Approved.</p>" would read "Q3.Approved.".
+const LINE_BREAKING_ELEMENTS =
+  'p, div, li, br, tr, h1, h2, h3, h4, h5, h6, blockquote, pre';
+
 /**
- * A task description as plain text: tags stripped and entities decoded.
+ * A task description as plain text, one line per paragraph: tags stripped and
+ * entities decoded.
  *
  * Descriptions are stored as sanitized HTML/markdown, and the server's
  * sanitizer encodes punctuation on update (`'` becomes `&#39;` once a workflow
  * saves the task), so anything drawing the description outside a rich-text
  * renderer must decode it. The parsed document is inert — nothing in it runs or
- * loads — and the text is rendered escaped by React.
+ * loads — and the text is rendered escaped by React. Blank lines are dropped.
  */
 export const getPlainDescription = (
   task: Pick<Task, 'description'>
 ): string => {
   const html = task.description?.trim();
+  if (!html) {
+    return '';
+  }
 
-  return html
-    ? (
-        new DOMParser().parseFromString(html, 'text/html').body.textContent ??
-        ''
-      ).trim()
-    : '';
+  const { body } = new DOMParser().parseFromString(html, 'text/html');
+  body
+    .querySelectorAll(LINE_BREAKING_ELEMENTS)
+    .forEach((element) => element.after('\n'));
+
+  return (body.textContent ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n');
 };
 
 // The description as a labelled callout, or none when it has no text.
