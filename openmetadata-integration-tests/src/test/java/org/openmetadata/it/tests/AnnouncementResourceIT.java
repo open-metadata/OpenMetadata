@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.AnnouncementColor;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -269,6 +270,127 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
 
     Announcement fetched = getEntity(created.getId().toString());
     assertEquals(AnnouncementType.Issue, fetched.getType());
+  }
+
+  @Test
+  void testCustomAnnouncementRoundTripsItsColourAndName(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("custom-ann"))
+            .withDescription("Custom announcement")
+            .withType(AnnouncementType.Custom)
+            .withColor(AnnouncementColor.Pink)
+            .withCustomTypeName("Release")
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = createEntity(request);
+    assertEquals(AnnouncementColor.Pink, created.getColor());
+    assertEquals("Release", created.getCustomTypeName());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementColor.Pink, fetched.getColor());
+    assertEquals("Release", fetched.getCustomTypeName());
+  }
+
+  /**
+   * Without a {@code recordChange} for each field, a patch that touches only the colour or only the
+   * custom name is silently a no-op - the same way a type-only patch was before the type field
+   * recorded its change.
+   */
+  @Test
+  void testPatchAnnouncementColourOnly(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("colour-patch-ann"))
+                .withDescription("Custom announcement")
+                .withType(AnnouncementType.Custom)
+                .withColor(AnnouncementColor.Pink)
+                .withCustomTypeName("Release")
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+
+    created.setColor(AnnouncementColor.Blue);
+    Announcement updated = patchEntity(created.getId().toString(), created);
+    assertEquals(AnnouncementColor.Blue, updated.getColor());
+    assertEquals(AnnouncementColor.Blue, getEntity(created.getId().toString()).getColor());
+  }
+
+  @Test
+  void testPatchAnnouncementCustomTypeNameOnly(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("custom-name-patch-ann"))
+                .withDescription("Custom announcement")
+                .withType(AnnouncementType.Custom)
+                .withColor(AnnouncementColor.Pink)
+                .withCustomTypeName("Release")
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+
+    created.setCustomTypeName("Rollout");
+    Announcement updated = patchEntity(created.getId().toString(), created);
+    assertEquals("Rollout", updated.getCustomTypeName());
+    assertEquals("Rollout", getEntity(created.getId().toString()).getCustomTypeName());
+  }
+
+  /**
+   * The drawer's status tabs rely on the window, not on the stored {@code status}. An announcement
+   * whose window has closed since it was written still carries {@code status: Active} in its JSON,
+   * so a filter reading that column would put it under the wrong tab.
+   */
+  @Test
+  void testListAnnouncementsByStatusDerivesTheWindow(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    long day = 86400000L;
+    String entityLink = "<#E::table::" + ns.prefix("service.db.schema.status") + ">";
+
+    Announcement active =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("status-active"))
+                .withDescription("Active announcement")
+                .withEntityLink(entityLink)
+                .withStartTime(now - day)
+                .withEndTime(now + day));
+    Announcement scheduled =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("status-scheduled"))
+                .withDescription("Scheduled announcement")
+                .withEntityLink(entityLink)
+                .withStartTime(now + day)
+                .withEndTime(now + 2 * day));
+    Announcement expired =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("status-expired"))
+                .withDescription("Expired announcement")
+                .withEntityLink(entityLink)
+                .withStartTime(now - 2 * day)
+                .withEndTime(now - day));
+
+    assertEquals(List.of(active.getId()), idsForStatus(entityLink, AnnouncementStatus.Active));
+    assertEquals(
+        List.of(scheduled.getId()), idsForStatus(entityLink, AnnouncementStatus.Scheduled));
+    assertEquals(List.of(expired.getId()), idsForStatus(entityLink, AnnouncementStatus.Expired));
+  }
+
+  private List<UUID> idsForStatus(String entityLink, AnnouncementStatus status) {
+    return listEntities(
+            new ListParams()
+                .addQueryParam("status", status.value())
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100))
+        .getData()
+        .stream()
+        .map(Announcement::getId)
+        .toList();
   }
 
   @Test

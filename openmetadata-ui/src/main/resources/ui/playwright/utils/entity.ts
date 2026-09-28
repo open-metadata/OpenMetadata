@@ -1540,13 +1540,14 @@ const announcementForm = async (
 ) => {
   await page.fill('#title', data.title);
 
-  await page.click('#startTime');
-  await page.fill('#startTime', `${data.startDate}`);
-  await page.press('#startTime', 'Enter');
-
-  await page.click('#endTime');
-  await page.fill('#endTime', `${data.endDate}`);
-  await page.press('#startTime', 'Enter');
+  // `fill` alone is enough for a native `<input type="date">`. The old
+  // click-then-Enter dance is left over from the antd DatePicker and is now
+  // actively harmful: the picker indicator is stretched across the whole
+  // control so a click opens the native picker, and the Enter then commits
+  // whatever date that picker has highlighted — today — silently overwriting
+  // the end date that was just filled.
+  await page.fill('#startTime', data.startDate);
+  await page.fill('#endTime', data.endDate);
 
   // Scoped to the announcement dialog, not the page: this form opens over an
   // entity page that has description editors of its own, and an unscoped
@@ -1578,7 +1579,10 @@ const announcementForm = async (
     throw new Error('Announcement creation response did not include an id');
   }
 
-  await page.click('[data-testid="announcement-close"]');
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
   if (hideAlert) {
     await toastNotification(page, /Announcement created successfully/i);
   }
@@ -1606,8 +1610,8 @@ export const createAnnouncement = async (
 
   await page.getByTestId('add-announcement').click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(
-    'Make an announcement'
+  await expect(page.getByTestId('add-announcement-dialog')).toContainText(
+    'Add Announcement'
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
@@ -1627,8 +1631,7 @@ export const createAnnouncement = async (
 export const replyAnnouncement = async (page: Page) => {
   await page
     .locator('[data-testid="entity-header-announcements"]')
-    .locator('[data-testid^="announcement-item-"]')
-    .first()
+    .getByTestId('announcement-title-btn')
     .click();
 
   await page.hover(
@@ -1717,9 +1720,9 @@ export const deleteAnnouncement = async (page: Page) => {
     await deleteAction.click({ timeout: 2000 });
   }).toPass({ timeout: 30000 });
 
-  const modalText = await page.textContent('.ant-modal-body');
+  const deleteConfirm = page.getByTestId('announcement-delete-confirm');
 
-  expect(modalText).toContain(
+  await expect(deleteConfirm).toContainText(
     'Are you sure you want to permanently delete this message?'
   );
 
@@ -1728,7 +1731,7 @@ export const deleteAnnouncement = async (page: Page) => {
       response.url().includes('/api/v1/announcements/') &&
       response.request().method() === 'DELETE'
   );
-  await page.click('[data-testid="save-button"]');
+  await deleteConfirm.getByTestId('save-button').click();
   await deleteAnnouncementResponse;
 
   await page.reload();
@@ -1772,21 +1775,24 @@ export const editAnnouncement = async (
   }).toPass({ timeout: 30000 });
 
   // Wait for the edit announcement modal to open
-  await expect(page.locator('.ant-modal-header')).toContainText(
-    'Edit an Announcement'
+  await expect(page.getByTestId('edit-announcement-dialog')).toContainText(
+    'Edit Announcement'
   );
 
   // Clear and fill the title field
-  await page.fill('[data-testid="edit-announcement"] #title', '');
-  await page.fill('[data-testid="edit-announcement"] #title', data.title);
+  await page.fill('[data-testid="edit-announcement-dialog"] #title', '');
+  await page.fill(
+    '[data-testid="edit-announcement-dialog"] #title',
+    data.title
+  );
 
   // Clear and fill the description field
   await page
-    .locator('[data-testid="edit-announcement"]')
+    .locator('[data-testid="edit-announcement-dialog"]')
     .locator(descriptionBox)
     .fill('');
   await page
-    .locator('[data-testid="edit-announcement"]')
+    .locator('[data-testid="edit-announcement-dialog"]')
     .locator(descriptionBox)
     .fill(data.description);
 
@@ -1797,15 +1803,14 @@ export const editAnnouncement = async (
       response.request().method() === 'PATCH'
   );
   await page
-    .locator(
-      '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
-    )
+    .getByTestId('edit-announcement-dialog')
+    .getByTestId('announcement-submit')
     .click();
   await updateResponse;
 
   // Wait for modal to close
   await expect(
-    page.locator('[data-testid="edit-announcement"]')
+    page.locator('[data-testid="edit-announcement-dialog"]')
   ).not.toBeVisible();
 
   // Verify the changes were applied within the drawer
@@ -1813,7 +1818,10 @@ export const editAnnouncement = async (
   await expect(drawerAnnouncementCard).toContainText(data.description);
 
   // Close the announcement drawer
-  await page.locator('[data-testid="announcement-close"]').click();
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
 
   await expect(page.getByTestId('announcement-drawer')).not.toBeVisible();
 };
@@ -1836,8 +1844,8 @@ export const createInactiveAnnouncement = async (
 
   await page.getByTestId('add-announcement').click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(
-    'Make an announcement'
+  await expect(page.getByTestId('add-announcement-dialog')).toContainText(
+    'Add Announcement'
   );
 
   const announcementId = await announcementForm(
@@ -1850,15 +1858,21 @@ export const createInactiveAnnouncement = async (
   await page.getByTestId('announcement-button').click();
 
   const announcementDrawer = page.getByTestId('announcement-drawer');
-  const inactiveAnnouncement = announcementDrawer
-    .getByTestId('announcement-card')
-    .filter({ hasText: data.title });
+
+  // The dates above are 6-11 days out, so this announcement is Scheduled, not
+  // Expired. The old assertion used the "inactive announcements" divider, which
+  // counted anything not currently active; the status tabs separate the two.
+  await announcementDrawer.getByTestId('announcement-status-Scheduled').click();
 
   await expect(
-    announcementDrawer.getByTestId('inActive-announcements')
+    announcementDrawer
+      .getByTestId('announcement-card')
+      .filter({ hasText: data.title })
   ).toBeVisible();
-  await expect(inactiveAnnouncement).toBeVisible();
-  await page.getByTestId('announcement-close').click();
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
 
   return announcementId;
 };

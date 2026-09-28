@@ -22,13 +22,50 @@
       "javaType": "org.openmetadata.schema.type.AnnouncementType",
       "description": "Severity/category of the announcement, used to style it in the UI.",
       "type": "string",
-      "enum": ["Information", "Warning", "Issue"],
+      "enum": ["Information", "Warning", "Issue", "Deprecation", "Custom"],
       "javaEnums": [
         {"name": "Information"},
         {"name": "Warning"},
-        {"name": "Issue"}
+        {"name": "Issue"},
+        {"name": "Deprecation"},
+        {"name": "Custom"}
       ],
       "default": "Information"
+    },
+    "announcementColor": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementColor",
+      "description": "Palette family the announcement is rendered with. Only meaningful when the type is `Custom`; every other type derives its colour from the type itself.",
+      "type": "string",
+      "enum": [
+        "gray",
+        "brand",
+        "error",
+        "warning",
+        "success",
+        "gray-blue",
+        "blue-light",
+        "blue",
+        "blue-dark",
+        "indigo",
+        "purple",
+        "pink",
+        "orange"
+      ],
+      "javaEnums": [
+        {"name": "Gray"},
+        {"name": "Brand"},
+        {"name": "Error"},
+        {"name": "Warning"},
+        {"name": "Success"},
+        {"name": "GrayBlue"},
+        {"name": "BlueLight"},
+        {"name": "Blue"},
+        {"name": "BlueDark"},
+        {"name": "Indigo"},
+        {"name": "Purple"},
+        {"name": "Pink"},
+        {"name": "Orange"}
+      ]
     }
   },
   "properties": {
@@ -66,6 +103,15 @@
     "endTime": {
       "description": "End time when the announcement expires.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "color": {
+      "$ref": "#/definitions/announcementColor"
+    },
+    "customTypeName": {
+      "description": "Label shown in place of the type name when the type is `Custom`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
     },
     "status": {
       "$ref": "#/definitions/announcementStatus"

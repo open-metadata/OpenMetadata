@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,35 +11,24 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Modal, Space } from 'antd';
-import { DateTime } from 'luxon';
-import { FC, useMemo } from 'react';
+import { FC } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
-import { AnnouncementEntity } from '../../../rest/announcementsAPI';
-import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
-import { getField } from '../../../utils/formUtils';
+import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import DatePicker from '../../common/DatePicker/DatePicker';
-import { CreateAnnouncement } from './AddAnnouncementModal';
-import './announcement-modal.less';
+import AnnouncementForm from './AnnouncementForm.component';
+import { toAnnouncementTypeFields } from './announcementFormUtils';
+import {
+  AnnouncementFormValues,
+  EditableAnnouncement,
+} from './AnnouncementModal.interface';
 
 interface Props {
-  announcement: Pick<
-    AnnouncementEntity,
-    'description' | 'startTime' | 'endTime'
-  >;
+  announcement: EditableAnnouncement;
   announcementTitle: string;
   open: boolean;
   onCancel: () => void;
-  onConfirm: (
-    title: string,
-    announcement: Pick<
-      AnnouncementEntity,
-      'description' | 'startTime' | 'endTime'
-    >
-  ) => void;
+  onConfirm: (title: string, announcement: EditableAnnouncement) => void;
 }
 
 const EditAnnouncementModal: FC<Props> = ({
@@ -51,118 +40,55 @@ const EditAnnouncementModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation();
 
-  const handleConfirm = ({
-    title,
-    description,
-    startTime,
-    endTime,
-  }: CreateAnnouncement) => {
-    const startTimeMs = startTime.toMillis();
-    const endTimeMs = endTime.toMillis();
+  const form = useForm<AnnouncementFormValues>({
+    mode: 'onChange',
+    defaultValues: {
+      title: announcementTitle,
+      description: announcement.description,
+      type: announcement.type ?? AnnouncementType.Information,
+      color: announcement.color,
+      customTypeName: announcement.customTypeName,
+      startTime: announcement.startTime,
+      endTime: announcement.endTime,
+    },
+  });
 
-    if (startTimeMs >= endTimeMs) {
-      showErrorToast(t('message.announcement-invalid-start-time'));
-    } else {
-      const updatedAnnouncement = {
-        ...announcement,
-        description,
-        startTime: startTimeMs,
-        endTime: endTimeMs,
-      };
+  const handleConfirm = (values: AnnouncementFormValues) => {
+    const { title, description, startTime, endTime } = values;
 
-      onConfirm(title, updatedAnnouncement);
+    // The `required` rules gate submit, so both dates are set by the time this
+    // runs; the guard is what narrows the form's optional type to the `number`
+    // the API takes.
+    if (startTime == null || endTime == null) {
+      return;
     }
+
+    if (startTime >= endTime) {
+      showErrorToast(t('message.announcement-invalid-start-time'));
+
+      return;
+    }
+
+    onConfirm(title, {
+      ...announcement,
+      description,
+      startTime,
+      endTime,
+      ...toAnnouncementTypeFields(values),
+    });
   };
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: `${t('label.description')}:`,
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: announcement.description,
-        placeHolder: t('message.write-your-announcement-lowercase'),
-      },
-    }),
-    [announcement.description]
-  );
-
   return (
-    <Modal
-      centered
-      className="announcement-modal"
-      closable={false}
-      data-testid="edit-announcement"
-      maskClosable={false}
-      okButtonProps={{
-        form: 'announcement-form',
-        type: 'primary',
-        htmlType: 'submit',
-      }}
-      okText={t('label.save')}
+    <AnnouncementForm
+      description={t('message.edit-announcement-description')}
+      form={form}
       open={open}
-      title={t('label.edit-an-announcement')}
-      width={720}
-      onCancel={onCancel}>
-      <Form
-        data-testid="announcement-form"
-        id="announcement-form"
-        initialValues={{
-          title: announcementTitle,
-          description: announcement.description,
-          startTime: DateTime.fromMillis(announcement.startTime),
-          endTime: DateTime.fromMillis(announcement.endTime),
-        }}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleConfirm}>
-        <Form.Item
-          label={`${t('label.title')}:`}
-          messageVariables={{ fieldName: 'title' }}
-          name="title"
-          rules={[
-            {
-              required: true,
-              max: 124,
-              min: 5,
-            },
-          ]}>
-          <Input placeholder={t('label.announcement-title')} type="text" />
-        </Form.Item>
-        <Space className="announcement-date-space" size={16}>
-          <Form.Item
-            label={t('label.start-date-time-zone', {
-              timeZone: getTimeZone(),
-            })}
-            messageVariables={{ fieldName: 'startTime' }}
-            name="startTime"
-            rules={[
-              {
-                required: true,
-              },
-            ]}>
-            <DatePicker className="w-full" />
-          </Form.Item>
-          <Form.Item
-            label={t('label.end-date-time-zone', {
-              timeZone: getTimeZone(),
-            })}
-            messageVariables={{ fieldName: 'endTime' }}
-            name="endTime"
-            rules={[
-              {
-                required: true,
-              },
-            ]}>
-            <DatePicker className="w-full" />
-          </Form.Item>
-        </Space>
-        {getField(descriptionField)}
-      </Form>
-    </Modal>
+      submitLabel={t('label.save')}
+      testId="edit-announcement-dialog"
+      title={t('label.edit-entity', { entity: t('label.announcement') })}
+      onCancel={onCancel}
+      onSubmit={handleConfirm}
+    />
   );
 };
 

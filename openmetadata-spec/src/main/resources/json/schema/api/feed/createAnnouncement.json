@@ -23,6 +23,15 @@
       "$ref": "../../entity/feed/announcement.json#/definitions/announcementType",
       "default": "Information"
     },
+    "color": {
+      "$ref": "../../entity/feed/announcement.json#/definitions/announcementColor"
+    },
+    "customTypeName": {
+      "description": "Label shown in place of the type name when the type is `Custom`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
     "entityLink": {
       "description": "Link to the entity this announcement is about.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
