@@ -15,6 +15,7 @@ import { ButtonUtility } from '@openmetadata/ui-core-components';
 import type { ButtonProps } from 'antd';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
+import { forwardRef } from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
@@ -26,34 +27,33 @@ export type IconButtonProps = ButtonProps & {
   newLook?: boolean;
 };
 
-export const EditIconButton = ({
-  title,
-  className,
-  size,
-  newLook,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      {newLook ? (
-        <Button
-          className={classNames('bordered', className)}
-          icon={<EditIcon />}
-          size={size}
-          {...props}
-        />
-      ) : (
-        <Button
-          className={className}
-          icon={<EditIcon className="table-action-icon" />}
-          size="small"
-          type="text"
-          {...props}
-        />
-      )}
-    </Tooltip>
-  );
-};
+// Forwards its ref so react-aria's Pressable can make it a PopoverTrigger child.
+export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ title, className, size, newLook, ...props }, ref) => {
+    return (
+      <Tooltip title={title}>
+        {newLook ? (
+          <Button
+            className={classNames('bordered', className)}
+            icon={<EditIcon />}
+            ref={ref}
+            size={size}
+            {...props}
+          />
+        ) : (
+          <Button
+            className={className}
+            icon={<EditIcon className="table-action-icon" />}
+            ref={ref}
+            size="small"
+            type="text"
+            {...props}
+          />
+        )}
+      </Tooltip>
+    );
+  }
+);
 
 export const RequestIconButton = ({
   title,

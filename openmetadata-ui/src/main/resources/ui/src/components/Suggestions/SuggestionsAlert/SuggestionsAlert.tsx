@@ -15,13 +15,13 @@ import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { SuggestionType } from '../../../types/taskSuggestion';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
-import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import './suggestions-alert.less';
 import { SuggestionsAlertProps } from './SuggestionsAlert.interface';
 

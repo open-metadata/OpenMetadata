@@ -13,10 +13,8 @@
 
 import { useQueries } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import {
   DerivedPermissionFlags,

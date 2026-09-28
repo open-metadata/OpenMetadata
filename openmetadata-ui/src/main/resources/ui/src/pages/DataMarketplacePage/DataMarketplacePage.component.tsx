@@ -161,6 +161,8 @@ const DataMarketplacePage = ({
   const gridWrapperClassName = `marketplace-grid-wrapper${
     renderPageHeader ? ' tw:!max-w-none' : ''
   }`;
+  // The AI shell header band sits 8px in; its content follows the 16px gutter.
+  const contentPaddingClassName = renderPageHeader ? 'tw:px-4' : 'p-x-box';
 
   return (
     <div className="tw:h-full tw:overflow-y-auto">
@@ -185,11 +187,11 @@ const DataMarketplacePage = ({
           </div>
         )}
         <div className={gridWrapperClassName} dir="ltr">
-          <div className="p-x-box">
+          <div className={contentPaddingClassName}>
             <AnnouncementsWidgetV2 widgetKey="announcements" />
           </div>
           <div
-            className="grid-container p-x-box tw:flex tw:flex-col"
+            className={`grid-container tw:flex tw:flex-col ${contentPaddingClassName}`}
             style={renderPageHeader ? AI_MODE_GRID_STYLE : CLASSIC_GRID_STYLE}>
             {widgets}
           </div>

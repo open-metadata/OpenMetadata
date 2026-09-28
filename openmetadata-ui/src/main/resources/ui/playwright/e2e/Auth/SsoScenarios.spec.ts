@@ -159,7 +159,7 @@ for (const fixture of FIXTURES) {
 
   test.describe(
     `SSO / ${fixture.name} [${fixture.slug}]`,
-    { tag: [`@${fixture.slug}`, '@sso-matrix'] },
+    { tag: [`@${fixture.slug}`, '@sso-matrix', '@sso'] },
     () => {
       // A test failure must NOT retry: retries re-run beforeAll, but the
       // backend is now on this fixture's provider and /api/v1/auth/login no
@@ -253,6 +253,65 @@ for (const fixture of FIXTURES) {
         });
       });
 
+      // Scenario 1a — every fixture with `usesPkce: true` MUST request
+      // its OIDC /authorize with `code_challenge` + `code_challenge_method=S256`.
+      // Regressing to the implicit flow (no `code_challenge`) or
+      // dropping S256 for `plain` silently downgrades security on
+      // every browser-driven OIDC flow — public clients have no
+      // `client_secret` to bind the code exchange, so PKCE is the
+      // only proof-of-possession the token endpoint has. Gated on a
+      // dedicated `usesPkce` capability rather than
+      // `expectedResponseType` (which only keycloak-oidc-public
+      // declares) so Auth0 / Okta / MSAL SDK paths are also covered
+      // (gitar-bot r4084334634).
+      if (fixture.usesPkce) {
+        test('public OIDC /authorize request carries PKCE code_challenge + S256', async ({
+          page,
+        }) => {
+          test.slow();
+
+          // Snapshot every navigation to a URL whose path looks like an
+          // OIDC /authorize endpoint. Provider fixtures redirect to
+          // various IdP hosts (Keycloak, mock-oidc, Okta) so match on
+          // the path pattern rather than a fixed host.
+          const authorizeUrls: string[] = [];
+          page.on('request', (req) => {
+            const url = req.url();
+            // Match a REAL IdP authorization endpoint. Keycloak
+            // exposes it as `/realms/{realm}/protocol/openid-connect/auth`,
+            // Auth0 / Okta / most others as `.../authorize`. Exclude
+            // URLs on the OM host's `/api/` prefix so OM's own
+            // `/api/v1/system/config/auth` config endpoint isn't
+            // mis-matched (gitar-bot r4101190852).
+            const path = new URL(url).pathname;
+            if (
+              !path.startsWith('/api/') &&
+              /\/authorize(\?|$)|\/openid-connect\/auth(\?|$)/i.test(path)
+            ) {
+              authorizeUrls.push(url);
+            }
+          });
+
+          await fixture.performLogin(page);
+
+          const authorizeWithPkce = authorizeUrls
+            .map((u) => new URL(u).searchParams)
+            .find((params) => params.get('code_challenge') !== null);
+
+          expect(
+            authorizeWithPkce,
+            `no /authorize navigation carried a code_challenge — saw ${JSON.stringify(
+              authorizeUrls
+            )}`
+          ).toBeDefined();
+          expect(authorizeWithPkce?.get('code_challenge_method')).toBe('S256');
+          // The verifier itself must NEVER be on the wire on the
+          // authorize step — only on the token exchange. Belt-and-braces
+          // so a client that mistakenly sent both wouldn't slip past.
+          expect(authorizeWithPkce?.get('code_verifier')).toBeNull();
+        });
+      }
+
       // Scenario 2 — logout clears storage and returns to /signin. Tokens
       // live in the SW/IndexedDB `app_state` JSON (see `SwTokenStorageUtils`,
       // keys `primary` / `secondary`), with a `localStorage['app_state']`
@@ -333,6 +392,65 @@ for (const fixture of FIXTURES) {
         expect(remainingTokens.idbHasToken).toBe(false);
       });
 
+      // Scenario 2a — SDK-driven public providers (Auth0 memory-mode,
+      // MSAL sessionStorage, oidc-client via the OM ServiceWorker /
+      // IndexedDB) must NEVER surface a refresh_token in
+      // window.localStorage. A regression flipping Auth0's
+      // `cacheLocation` to `localstorage` or MSAL's `cacheLocation` to
+      // `localStorage` is a silent exfil risk on any XSS bug — this
+      // scenario is the tripwire. Gated to public + SDK-driven:
+      // backend-refresh providers keep their refresh_token in an
+      // HttpOnly cookie the browser can't see, so localStorage is a
+      // non-issue for them (Scenario 3c covers the cookie flags).
+      //
+      // Detection: EITHER the literal `refresh_token` substring
+      // (SDK's structured JSON dumps) OR a known OM-owned key
+      // (`app_state`, `oidcIdToken`) — the OM SW/IndexedDB fallback
+      // serialises tokens as `{"primary":"<opaque>","secondary":"<opaque>"}`
+      // where the opaque strings contain no `refresh_token` substring
+      // (greptile P2 r4084367161). The tripwire has to catch the
+      // structural presence, not just the string.
+      if (fixture.clientType === 'public' && !fixture.usesBackendRefresh) {
+        test('SDK-driven public providers do not leak refresh_token into localStorage', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const localStorageDump = await page.evaluate(() => {
+            const dump: Record<string, string> = {};
+            for (let i = 0; i < localStorage.length; i += 1) {
+              const key = localStorage.key(i);
+              if (key) {
+                dump[key] = localStorage.getItem(key) ?? '';
+              }
+            }
+
+            return dump;
+          });
+
+          // OM's SwTokenStorageUtils falls back to `localStorage['app_state']`
+          // when SW+IDB aren't available; that key holds `{primary, secondary}`
+          // where either slot can be a refresh_token. Legacy `oidcIdToken`
+          // is on the same list — nothing should write it anymore.
+          const OM_TOKEN_KEYS = new Set(['app_state', 'oidcIdToken']);
+          const offenders = Object.entries(localStorageDump).filter(
+            ([key, value]) =>
+              OM_TOKEN_KEYS.has(key) || /refresh_?token/i.test(value)
+          );
+
+          expect(
+            offenders,
+            `token-shaped values surfaced in localStorage keys: ${offenders
+              .map(([k]) => k)
+              .join(', ')}. Full dump keys: ${Object.keys(
+              localStorageDump
+            ).join(', ')}`
+          ).toEqual([]);
+        });
+      }
+
       // Scenario 3 — silent refresh recovers an expired token. `forceTokenExpiry`
       // mangles the stored JWT's `exp` claim; the coordinator's boot path (or
       // its axios 401 interceptor) must detect the expired token and drive a
@@ -370,6 +488,65 @@ for (const fixture of FIXTURES) {
           });
           expect(page.url()).not.toContain('/signin');
         });
+
+        // Scenario 3c — after login, the OM-issued session/refresh
+        // cookie MUST be HttpOnly + SameSite (Lax|Strict). Regressing
+        // either flag silently ships an XSS / CSRF hole. Gated at
+        // registration time on `hasBackendIssuedRefreshCookie` (a
+        // stricter subset of `usesBackendRefresh` — providers that
+        // carry the session inside the JWT body without a cookie opt
+        // out here rather than needing a runtime `test.skip`).
+        //
+        // Assertion runs against `context.cookies()` (Playwright's
+        // context-level API surfaces HttpOnly cookies that
+        // `document.cookie` would hide by definition). Watching the
+        // /auth/refresh response's Set-Cookie header would false-fail
+        // here because OM issues the session cookie ONCE on the
+        // initial login and refresh returns only the new access
+        // token in the body — the cookie is already sitting in the
+        // browser jar.
+        //
+        // `Secure` is intentionally NOT asserted because the dev
+        // Playwright stack runs over plain HTTP (the browser drops
+        // Secure cookies under HTTP anyway, so the assertion would
+        // fail even on a correctly-flagged prod build).
+        if (fixture.hasBackendIssuedRefreshCookie) {
+          test('backend session cookie is HttpOnly + SameSite after login', async ({
+            page,
+          }) => {
+            test.slow();
+
+            await fixture.performLogin(page);
+
+            const cookies = await page.context().cookies();
+            // Filter to the exact OM-emitted cookie name (see
+            // SessionCookieUtil.COOKIE_NAME on the backend — only
+            // `OM_SESSION` today; `OM_*` reserved for the future).
+            // An earlier permissive `/session/i` filter picked up
+            // unrelated cookies like `__session` (docker seed / test
+            // infra) and false-failed on those third-party flags.
+            const omAuthCookies = cookies.filter((c) => /^OM_/.test(c.name));
+
+            expect(
+              omAuthCookies.length,
+              `${
+                fixture.slug
+              } declares hasBackendIssuedRefreshCookie:true but no OM_* cookie in the jar after login. Cookies seen: ${JSON.stringify(
+                cookies.map((c) => c.name)
+              )}`
+            ).toBeGreaterThan(0);
+
+            for (const cookie of omAuthCookies) {
+              expect(cookie.httpOnly, `${cookie.name} must be HttpOnly`).toBe(
+                true
+              );
+              expect(
+                cookie.sameSite,
+                `${cookie.name} must be SameSite Lax or Strict (got ${cookie.sameSite})`
+              ).toMatch(/^(Lax|Strict)$/);
+            }
+          });
+        }
       }
 
       // Scenario 3b — persistent server-side 401 stops looping within a
@@ -604,16 +781,29 @@ for (const fixture of FIXTURES) {
         test('silent-callback iframe does not load the full app', async ({
           page,
         }) => {
+          // Track each `resp.body()` promise so we can wait on the
+          // batch BEFORE asserting. Without this, a large-bundle load
+          // whose body-read resolves AFTER `goto` returns can slip
+          // past the check silently (greptile P2 r4084367151).
           const responses: Array<{ url: string; size: number }> = [];
-          page.on('response', async (resp) => {
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
             if (
-              resp.url().endsWith('.js') ||
-              resp.url().endsWith('.js.map') ||
-              resp.url().endsWith('.css')
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
             ) {
-              const body = await resp.body().catch(() => null);
-              responses.push({ url: resp.url(), size: body?.length ?? 0 });
+              return;
             }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
           });
 
           // `waitUntil: 'load'` fires once every top-level resource — the
@@ -630,6 +820,8 @@ for (const fixture of FIXTURES) {
             page.getByTestId(APP_BAR_HOME_TESTID)
           ).not.toBeAttached();
           await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
 
           // Bundle-size budget: no single JS chunk larger than 500 KB should
           // load for this route. The full-app bundle is >2 MB, so exceeding
@@ -704,6 +896,73 @@ for (const fixture of FIXTURES) {
           // resolved a promise into the void.
           const storedAfter = await readStoredPrimaryToken(page);
           expect(storedAfter).toBe(renewedToken);
+        });
+
+        // Scenario 11 (deferred) — silent-refresh failure must land on
+        // /signin, not spin on the iframe. The first attempt at this
+        // scenario fault-injected the /silent-callback response, but
+        // oidc-client's UserManager can bypass the iframe entirely when
+        // a cached refresh_token is available (its refresh_token grant
+        // path — CI leg observed the renewer resolving successfully
+        // instead of hitting the mocked callback). Fault-injecting at
+        // the /authorize URL with prompt=none or invalidating the
+        // IdP-side session is the correct hook and needs a follow-up.
+        // Coordinator-side rejection handling is fully covered by the
+        // unit tests in AuthCoordinator.test.ts; the missing coverage
+        // here is only the end-to-end propagation of an IdP-side
+        // silent-refresh failure into /signin.
+      }
+
+      // Scenario 7a — mirror of scenario 7 for confidential clients.
+      // Confidential OIDC doesn't use the /silent-callback iframe at
+      // all (refresh runs through OM's server-side /auth/refresh),
+      // so navigating there must render an empty stub. A regression
+      // that mounts AppRoot under a shared route would silently boot
+      // the full app inside a hidden iframe for confidential builds
+      // too; catch it symmetrically with the public case.
+      if (fixture.clientType === 'confidential') {
+        test('confidential /silent-callback route does not mount the full app', async ({
+          page,
+        }) => {
+          test.slow();
+
+          // Track each `resp.body()` promise and wait on the batch
+          // BEFORE asserting on `responses`, so a large-bundle load
+          // that resolves after `goto` returns can't slip past the
+          // check (greptile P2 r4084367151 — the same pattern lives
+          // in Scenario 7; fixing both together in follow-up work).
+          const responses: Array<{ url: string; size: number }> = [];
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
+            if (
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
+            ) {
+              return;
+            }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
+          });
+
+          await page.goto('/silent-callback', { waitUntil: 'load' });
+
+          await expect(
+            page.getByTestId(APP_BAR_HOME_TESTID)
+          ).not.toBeAttached();
+          await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
+
+          const largeChunks = responses.filter((r) => r.size > 500_000);
+          expect(largeChunks).toEqual([]);
         });
       }
 

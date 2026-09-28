@@ -21,6 +21,7 @@ import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import { LineageConfig } from '../../interface/lineage.interface';
 import {
   getLineageByEntityCount,
   getLineageDataByFQN,
@@ -32,7 +33,6 @@ import {
 } from '../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
 import { ColumnLevelLineageNode } from '../Lineage/Lineage.interface';
 import LineageTable from './LineageTable';
 import { EImpactLevel } from './LineageTable.interface';
