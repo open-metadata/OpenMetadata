@@ -65,5 +65,7 @@ export const handleCardContainerKeyDown =
 // button's base style handed to the card, the core Card focus outline has no
 // colour of its own, and the transparent border reserves the 1px the ghost
 // variant's hover border adds so hovering does not shift the feed list.
+// overflow-visible undoes Card's default clipping so the reply editor's
+// absolutely positioned @mention list is not cut off at the card edge.
 export const CARD_CONTAINER_CLASS_NAME =
-  'tw:select-none tw:whitespace-nowrap tw:border tw:border-transparent tw:outline-focus-ring';
+  'tw:select-none tw:whitespace-nowrap tw:border tw:border-transparent tw:outline-focus-ring tw:overflow-visible';
