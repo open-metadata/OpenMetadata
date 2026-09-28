@@ -281,6 +281,33 @@ describe('Typography variant (antd parity)', () => {
     }
   );
 
+  it('defaults rel on target="_blank" links, like antd Typography.Link', () => {
+    render(
+      <>
+        <Typography href="https://a.test" target="_blank" variant="link">
+          External
+        </Typography>
+        <Typography
+          href="https://b.test"
+          rel="nofollow"
+          target="_blank"
+          variant="link">
+          Custom
+        </Typography>
+        <Typography href="/local" variant="link">
+          Local
+        </Typography>
+      </>
+    );
+
+    expect(screen.getByText('External')).toHaveAttribute(
+      'rel',
+      'noopener noreferrer'
+    );
+    expect(screen.getByText('Custom')).toHaveAttribute('rel', 'nofollow');
+    expect(screen.getByText('Local')).not.toHaveAttribute('rel');
+  });
+
   it('lets `as` override the variant element', () => {
     render(
       <Typography as="article" variant="text">
