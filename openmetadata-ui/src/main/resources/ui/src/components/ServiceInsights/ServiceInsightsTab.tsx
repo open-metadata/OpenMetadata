@@ -151,7 +151,9 @@ const ServiceInsightsTab = ({
       const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(6);
 
       const chartsList = [
-        ...PLATFORM_INSIGHTS_CHARTS,
+        ...PLATFORM_INSIGHTS_CHARTS.filter(
+          (chart) => chart !== SystemChartType.HealthyDataAssets
+        ),
         ...(widgets.PIIDistributionWidget
           ? [SystemChartType.PIIDistribution]
           : []),
@@ -159,12 +161,23 @@ const ServiceInsightsTab = ({
           ? [SystemChartType.TierDistribution]
           : []),
       ];
+      const filter = `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`;
 
-      const chartsData = await getMultiChartsPreviewByName(chartsList, {
-        start: sevenDaysAgoTimestampInMs,
-        end: currentTimestampInMs,
-        filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
-      });
+      // Test results carry their run time, unlike the midnight snapshots the other charts read,
+      // so a window ending at today's 00:00 would leave today's healthy bucket always empty.
+      const [coverageChartsData, healthyChartData] = await Promise.all([
+        getMultiChartsPreviewByName(chartsList, {
+          start: sevenDaysAgoTimestampInMs,
+          end: currentTimestampInMs,
+          filter,
+        }),
+        getMultiChartsPreviewByName([SystemChartType.HealthyDataAssets], {
+          start: sevenDaysAgoTimestampInMs,
+          end: getCurrentMillis(),
+          filter,
+        }),
+      ]);
+      const chartsData = { ...coverageChartsData, ...healthyChartData };
 
       await getDataAssetsCount();
 

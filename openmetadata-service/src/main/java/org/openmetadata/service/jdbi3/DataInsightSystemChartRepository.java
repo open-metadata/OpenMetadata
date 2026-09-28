@@ -119,7 +119,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   private static final Set IGNORE_OTHER_SERVICE_CHARTS =
       Set.of(
-          "healthy_data_assets",
+          "healthy_data_assets_live",
           "total_data_assets_live",
           "pipeline_status_live",
           "assets_with_pii_live",

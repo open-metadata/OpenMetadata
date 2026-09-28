@@ -14,12 +14,15 @@
 import { act, render } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { ServicesType } from '../../interface/service.interface';
 import {
+  getMultiChartsPreviewByName,
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
+import { getCurrentDayStartGMTinMillis } from '../../utils/date-time/DateTimeUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import ServiceInsightsTab from './ServiceInsightsTab';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
@@ -77,6 +80,8 @@ jest.mock('../../utils/EntityIconUtils', () => ({
   getEntityIcon: jest.fn().mockReturnValue(null),
 }));
 
+const mockGetMultiChartsPreviewByName =
+  getMultiChartsPreviewByName as jest.Mock;
 const mockSetChartDataStreamConnection =
   setChartDataStreamConnection as jest.Mock;
 const mockStopChartDataStreamConnection =
@@ -223,5 +228,59 @@ describe('ServiceInsightsTab', () => {
 
     expect(mockSetChartDataStreamConnection).not.toHaveBeenCalled();
     expect(mockStopChartDataStreamConnection).not.toHaveBeenCalled();
+  });
+
+  it("should read healthy data assets up to now so today's test runs are counted", async () => {
+    const dayMs = 86400000;
+    const todayStart = getCurrentDayStartGMTinMillis();
+    const healthyResults = [0, 1, 2, 3, 4, 5, 6].map((daysAgo) => ({
+      day: todayStart - (6 - daysAgo) * dayMs,
+      count: daysAgo === 6 ? 73.42 : 50,
+    }));
+    mockGetMultiChartsPreviewByName.mockImplementation(
+      (chartNames: SystemChartType[]) =>
+        Promise.resolve(
+          chartNames.includes(SystemChartType.HealthyDataAssets)
+            ? {
+                [SystemChartType.HealthyDataAssets]: {
+                  results: healthyResults,
+                },
+              }
+            : {}
+        )
+    );
+    const { PlatformInsightsWidget } =
+      serviceUtilClassBase.getInsightsTabWidgets('databaseServices');
+
+    await renderTab({
+      workflowStatesData: {
+        mainInstanceState: { status: WorkflowStatus.Finished },
+        subInstanceStates: [],
+      },
+    });
+
+    const healthyCall = mockGetMultiChartsPreviewByName.mock.calls.find(
+      ([chartNames]) => chartNames.includes(SystemChartType.HealthyDataAssets)
+    );
+    const coverageCall = mockGetMultiChartsPreviewByName.mock.calls.find(
+      ([chartNames]) => chartNames.includes(SystemChartType.DescriptionCoverage)
+    );
+
+    expect(healthyCall?.[0]).toEqual([SystemChartType.HealthyDataAssets]);
+    expect(healthyCall?.[1].end).toBeGreaterThan(todayStart);
+    expect(coverageCall?.[0]).not.toContain(SystemChartType.HealthyDataAssets);
+    expect(coverageCall?.[1].end).toBe(todayStart);
+    expect(PlatformInsightsWidget).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        chartsData: expect.arrayContaining([
+          expect.objectContaining({
+            chartType: SystemChartType.HealthyDataAssets,
+            currentPercentage: 73.4,
+            numberOfDays: 6,
+          }),
+        ]),
+      }),
+      expect.anything()
+    );
   });
 });
