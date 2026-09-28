@@ -23,4 +23,8 @@ public class ReflectionException extends WebServiceException {
   public ReflectionException(String message) {
     super(Response.Status.INTERNAL_SERVER_ERROR, REFLECTION_ERROR, message);
   }
+
+  public ReflectionException(String message, Throwable cause) {
+    super(Response.Status.INTERNAL_SERVER_ERROR, REFLECTION_ERROR, message, cause);
+  }
 }

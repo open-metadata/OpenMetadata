@@ -148,8 +148,8 @@ const TreeItemComponent = <T extends object>({
           state.isDisabled && 'tw:opacity-50 tw:cursor-not-allowed',
           state.isFocusVisible &&
             'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
-          'data-[dragging]:tw:opacity-50 data-[dragging]:tw:outline-2 data-[dragging]:tw:-outline-offset-2 data-[dragging]:tw:outline-brand-300',
-          'data-[drop-target]:tw:bg-brand-primary_alt data-[drop-target]:tw:outline-2 data-[drop-target]:tw:-outline-offset-2 data-[drop-target]:tw:outline-brand-300',
+          'tw:data-[dragging]:opacity-50 tw:data-[dragging]:outline-2 tw:data-[dragging]:-outline-offset-2 tw:data-[dragging]:outline-brand-300',
+          'tw:data-[drop-target]:bg-brand-primary tw:data-[drop-target]:outline-2 tw:data-[drop-target]:-outline-offset-2 tw:data-[drop-target]:outline-brand-300',
           typeof className === 'function' ? className(state) : className
         )
       }>
@@ -184,6 +184,7 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
           className
         )
       }
+      data-testid="tree-expand-btn"
       slot="chevron">
       <ChevronRight
         aria-hidden="true"
@@ -267,7 +268,7 @@ const TreeItemContentComponent = ({
               'tw:relative tw:flex tw:items-center tw:gap-3 tw:py-1.5 tw:pr-1.5',
               'tw:rounded-md tw:text-sm tw:font-medium tw:text-secondary',
               'tw:hover:bg-primary_hover',
-              'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
+              'tw:group-selected/tree-item:bg-brand-primary tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
             style={{

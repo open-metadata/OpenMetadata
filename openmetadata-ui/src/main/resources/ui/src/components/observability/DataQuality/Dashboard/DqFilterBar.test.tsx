@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 import { DqFilterBar } from './DqFilterBar';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -135,7 +136,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 const buildSearchFilter = (overrides: Record<string, any> = {}) => ({
-  type: 'search' as const,
+  type: DQ_FILTER_TYPES.SEARCH,
   key: 'tags',
   label: 'Tags',
   searchKey: 'tags',
@@ -152,7 +153,7 @@ const buildSearchFilter = (overrides: Record<string, any> = {}) => ({
 });
 
 const buildOwnerFilter = (overrides: Record<string, any> = {}) => ({
-  type: 'owner' as const,
+  type: DQ_FILTER_TYPES.OWNER,
   key: 'owner',
   label: 'Owner',
   selectedOwners: [],

@@ -12,8 +12,8 @@
  */
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { File } from '../../../generated/entity/data/file';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export interface FileDetailsProps {
   fileDetails: File;

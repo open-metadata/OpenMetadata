@@ -181,9 +181,8 @@ export const usePageHeader = (config: PageHeaderConfig) => {
         actions={renderShellActions()}
         badge={renderBadge()}
         breadcrumb={config.breadcrumb}
-        className="tw:mb-5"
+        className="tw:mb-4"
         data-testid="page-header-container"
-        density="compact"
         icon={renderLeading()}
         subtitle={displayDescription}
         title={title}

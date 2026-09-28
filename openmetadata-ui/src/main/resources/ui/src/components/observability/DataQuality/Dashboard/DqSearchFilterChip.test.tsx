@@ -23,6 +23,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     label,
     options,
     selectedValues,
+    bordered,
     commitMode,
     isOpen,
     resolveMissingLabel,
@@ -30,7 +31,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onSearch,
     onOpenChange,
   }: FilterSelectProps) => (
-    <div data-isopen={isOpen ? 'true' : 'false'} data-testid={testId}>
+    <div
+      data-bordered={bordered ? 'true' : 'false'}
+      data-isopen={isOpen ? 'true' : 'false'}
+      data-testid={testId}>
       <span data-testid="trigger-label">
         {selectedValues.length > 0
           ? `${label} · ${selectedValues.length}`
@@ -83,6 +87,15 @@ const getDefaultProps = (searchOverrides: Record<string, any> = {}) => ({
 describe('DqSearchFilterChip', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should render a bordered pill trigger, like the chips beside it', () => {
+    render(<DqSearchFilterChip {...(getDefaultProps() as any)} />);
+
+    expect(screen.getByTestId('search-dropdown-tags')).toHaveAttribute(
+      'data-bordered',
+      'true'
+    );
   });
 
   it('should render the trigger with the plain label when nothing is selected', () => {

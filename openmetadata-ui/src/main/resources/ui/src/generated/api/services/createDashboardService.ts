@@ -42,9 +42,14 @@ export interface CreateDashboardService {
     /**
      * Owners of this dashboard service.
      */
-    owners?:     EntityReference[];
-    serviceType: DashboardServiceType;
-    style?:      Style;
+    owners?: EntityReference[];
+    /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    serviceType:        DashboardServiceType;
+    style?:             Style;
     /**
      * Tags for this Dashboard Service.
      */
@@ -100,6 +105,8 @@ export interface DashboardConnection {
  *
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
+ *
+ * Rill Connection Config
  *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
@@ -186,6 +193,8 @@ export interface Connection {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
@@ -329,6 +338,8 @@ export interface Connection {
      *
      * Client SSL verification.
      *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
+     *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
      */
@@ -426,6 +437,8 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * API token to authenticate with Rill.
      *
      * API token to authenticate with Omni.
      */
@@ -1423,6 +1436,7 @@ export enum DashboardServiceType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    Rill = "Rill",
     SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
@@ -1487,6 +1501,42 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
 }
 
 /**

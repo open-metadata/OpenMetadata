@@ -75,6 +75,8 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.QueryFilterShape;
+import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -97,6 +99,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 public class ElasticSearchSearchManager implements SearchManagementClient {
+  private static final String EMPTY_JSON_OBJECT = "{}";
+
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final String clusterAlias;
@@ -516,29 +520,19 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private void applyQueryFilter(
       ElasticSearchRequestBuilder requestBuilder,
       org.openmetadata.schema.search.SearchRequest request) {
-    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
-      try {
-        String queryToProcess = EsUtils.parseJsonQuery(request.getQueryFilter());
-        Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
-        Query existingQuery = requestBuilder.query();
-        if (existingQuery != null) {
-          Query combinedQuery =
-              Query.of(
-                  q ->
-                      q.bool(
-                          b -> {
-                            b.must(existingQuery);
-                            b.filter(filterQuery);
-                            return b;
-                          }));
-          requestBuilder.query(combinedQuery);
-        } else {
-          requestBuilder.query(filterQuery);
-        }
-      } catch (Exception ex) {
-        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
+    String queryFilter = request.getQueryFilter();
+    if (nullOrEmpty(queryFilter) || EMPTY_JSON_OBJECT.equals(queryFilter)) {
+      return;
     }
+    String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
+    Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryDsl)));
+    Query existingQuery = requestBuilder.query();
+    requestBuilder.query(
+        existingQuery == null ? filterQuery : filteredBy(existingQuery, filterQuery));
+  }
+
+  private static Query filteredBy(Query existingQuery, Query filterQuery) {
+    return Query.of(q -> q.bool(b -> b.must(existingQuery).filter(filterQuery)));
   }
 
   /**
@@ -1618,16 +1612,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private static SearchException buildSearchException(ElasticsearchException e) {
-    String detail = e.getMessage();
-    ErrorCause error = e.error();
-    if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
-      String rootCauses =
-          error.rootCause().stream()
-              .map(c -> c.type() + ": " + c.reason())
-              .collect(Collectors.joining("; "));
-      detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
+    return SearchEngineErrors.searchFailure(e.status(), e.getMessage(), rootCauses(e.error()));
+  }
+
+  private static List<String> rootCauses(ErrorCause error) {
+    if (error == null || error.rootCause() == null) {
+      return List.of();
     }
-    return new SearchException(String.format("Search failed due to %s", detail));
+    return error.rootCause().stream().map(c -> c.type() + ": " + c.reason()).toList();
   }
 
   private ElasticSearchRequestBuilder buildHierarchyQuery(

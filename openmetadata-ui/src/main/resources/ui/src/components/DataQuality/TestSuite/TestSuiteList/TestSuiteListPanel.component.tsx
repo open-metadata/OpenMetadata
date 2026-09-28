@@ -87,7 +87,7 @@ export const TestSuiteListPanel = ({
 
   return (
     <Box
-      className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+      className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
       data-testid="test-suite-list-panel"
       direction="col">
       <Box align="center" className="tw:p-4" gap={4} justify="between">

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "UnityCatalogConnection",
   "description": "UnityCatalog Connection Config",
   "type": "object",
@@ -52,7 +51,6 @@
       "oneOf": [
         {
           "title": "Personal Access Token",
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Personal Access Token authentication for Databricks.",
           "javaType": "org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken",
           "type": "object",
@@ -71,7 +69,6 @@
         },
         {
           "title": "Databricks OAuth",
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "OAuth2 Machine-to-Machine authentication using Service Principal credentials for Databricks.",
           "javaType": "org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth",
           "type": "object",
@@ -96,7 +93,6 @@
         },
         {
           "title": "Azure AD Setup",
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Azure Active Directory authentication for Azure Databricks workspaces using Service Principal.",
           "javaType": "org.openmetadata.schema.services.connections.database.databricks.AzureADSetup",
           "type": "object",
@@ -141,6 +137,12 @@
       "title": "Database Schema",
       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
       "type": "string"
+    },
+    "includeMetricViews": {
+      "title": "Include Metric Views",
+      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+      "type": "boolean",
+      "default": true
     },
     "connectionTimeout": {
       "title": "Connection Timeout",
@@ -369,7 +371,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -399,7 +400,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",

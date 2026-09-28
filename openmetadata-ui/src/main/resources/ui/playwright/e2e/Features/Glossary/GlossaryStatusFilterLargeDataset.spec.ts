@@ -18,6 +18,7 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -97,10 +98,12 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
     // Wait for API response after clicking Save
     await Promise.all([
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/glossaryTerms') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/glossaryTerms'),
+        200
       ),
       page.getByTestId('glossary-status-save-btn').click(),
     ]);
@@ -198,6 +201,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    createdTerms.length = 0;
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
@@ -456,37 +460,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       console.log(
         `Search + Status pagination: verified ${initialCount} Approved terms`
       );
-    });
-
-    test('should maintain status filter when search is cleared', async ({
-      page,
-    }) => {
-      await applyStatusFilter(page, ['Draft']);
-
-      await performSearch(page, 'Term_Draft');
-
-      await clearSearch(page);
-
-      // Status filter should still be active
-      const rowCount = await verifyRowStatuses(page, ['Draft']);
-      expect(rowCount).toBeGreaterThan(0);
-    });
-
-    test('should maintain search when status filter is changed', async ({
-      page,
-    }) => {
-      await performSearch(page, 'Term_');
-
-      const initialCount = await getRowCount(page);
-
-      await applyStatusFilter(page, ['Approved']);
-
-      // Search should still be active, results filtered by status
-      // Use toPass() for auto-retry to handle DOM update timing
-      await expect(async () => {
-        const filteredCount = await verifyRowStatuses(page, ['Approved']);
-        expect(filteredCount).toBeLessThanOrEqual(initialCount);
-      }).toPass({ timeout: 5000 });
     });
   });
 

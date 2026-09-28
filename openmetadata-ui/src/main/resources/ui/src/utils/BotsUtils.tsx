@@ -12,6 +12,7 @@
  */
 
 import { Select } from 'antd';
+import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS } from '../constants/User.constants';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
 import {
@@ -83,4 +84,20 @@ export const getTokenExpiry = (expiry: number) => {
     tokenExpiryDate: formatDateTimeLong(expiry, DATE_TIME_WEEKDAY_WITH_ORDINAL),
     isTokenExpired,
   };
+};
+
+// Returns the JWT `iat` (issued-at) claim in milliseconds, or null if the token
+// is missing/opaque. The bot entity's updatedAt does not change when a token is
+// regenerated, so callers use this to display the current token's creation time.
+export const getTokenIssuedAtMs = (jwtToken?: string): number | null => {
+  if (!jwtToken) {
+    return null;
+  }
+  try {
+    const { iat } = jwtDecode<JwtPayload>(jwtToken);
+
+    return iat ? iat * 1000 : null;
+  } catch {
+    return null;
+  }
 };

@@ -28,7 +28,7 @@ import {
   Tag01,
   Type01,
 } from '@untitledui/icons';
-import Select, { DefaultOptionType } from 'antd/lib/select';
+import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
@@ -39,6 +39,7 @@ import {
   ReactNode,
   RefObject,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -47,14 +48,18 @@ import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
 import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
-import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import ExpressionCodeCell from '../../components/common/EntityImport/ExpressionCodeCell/ExpressionCodeCell.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
+import { fqnsToGlossaryTags } from '../../components/common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
-import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
+import {
+  KeyDownStopPropagationWrapper,
+  onKeyDownStopPropagation,
+} from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
@@ -2206,6 +2211,18 @@ const getCsvTagsEditor: CSVEditorFactory = ({ entityType, options }) => {
   };
 };
 
+const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
+// Matches react-aria's own trigger-to-popover gap.
+const CSV_PICKER_POPOVER_GAP = 8;
+// Focus the popover's search box: the in-cell trigger has nothing to type into.
+const CSV_PICKER_FOCUS_TRAP = {
+  initialFocus: `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"] input`,
+};
+
+// CSV stores glossary terms as a `;`-joined list of FQNs.
+const csvValueToGlossaryTags = (value: string): TagLabel[] =>
+  fqnsToGlossaryTags(value ? value.split(';') : []);
+
 const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
   column,
   entityType,
@@ -2227,46 +2244,89 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+    const triggerRef = useRef<HTMLDivElement | null>(null);
+    const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
+    const [popoverOffset, setPopoverOffset] = useState(CSV_PICKER_POPOVER_GAP);
+
+    // The popover is portaled and mounts a frame late, so poll until it is there.
+    useEffect(() => {
+      let frame = 0;
+      const findPopover = () => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
+        );
+        if (el) {
+          setPopoverEl(el);
+        } else {
+          frame = requestAnimationFrame(findPopover);
+        }
+      };
+      findPopover();
+
+      return () => cancelAnimationFrame(frame);
+    }, []);
+
+    // Hang the popover off the cell: its own gap would overlap the taller row.
+    useLayoutEffect(() => {
+      const trigger = triggerRef.current;
+      const cell = trigger?.closest('.rdg-cell');
+
+      if (trigger && cell) {
+        setPopoverOffset(
+          cell.getBoundingClientRect().bottom -
+            trigger.getBoundingClientRect().bottom +
+            CSV_PICKER_POPOVER_GAP
+        );
+      }
+    }, []);
+
     useMultiContainerFocusTrap({
-      containers: [containerRef.current, dropdownContainerRef.current],
+      containers: [containerRef.current, popoverEl],
       active: true,
+      options: CSV_PICKER_FOCUS_TRAP,
     });
+
     useEditCellHeightReporter(
       containerRef,
       rowIdx,
       options.onEditCellHeightChange
     );
 
-    const value = row[column.key];
-    const tags = value ? value?.split(';') : [];
+    const value = toString(row[column.key] ?? '');
+    const terms = useMemo(() => csvValueToGlossaryTags(value), [value]);
 
-    const handleChange = (option: DefaultOptionType | DefaultOptionType[]) => {
-      if (Array.isArray(option)) {
-        onRowChange({
-          ...row,
-          [column.key]: option.map((tag) => toString(tag.value)).join(';'),
-        });
-      } else {
-        onRowChange({
-          ...row,
-          [column.key]: toString(option.value),
-        });
-      }
+    const handleChange = (selected: TagLabel[]) => {
+      onRowChange({
+        ...row,
+        [column.key]: selected.map((term) => term.tagFQN).join(';'),
+      });
     };
 
     return (
-      <div ref={containerRef}>
-        <TreeAsyncSelectList
-          defaultValue={tags}
-          dropdownContainerRef={dropdownContainerRef}
-          dropdownMatchSelectWidth={false}
-          optionClassName="tag-select-box"
-          onCancel={() => {
-            onClose(false);
-          }}
+      // No save/cancel: each toggle is written to the row, so closing is enough.
+      // No height: the row is measured from this container, so it must not stretch.
+      <div
+        ref={containerRef}
+        role="presentation"
+        onKeyDown={onKeyDownStopPropagation}>
+        <GlossaryTermPicker
+          isOpen
+          // Fill the cell; the wrapper is inline-block, which would shrink the trigger.
+          className="tw:block tw:w-full"
+          data-testid={CSV_GLOSSARY_PICKER_TESTID}
+          offset={popoverOffset}
+          // A custom trigger moves the search box and footer into the popover.
+          renderTrigger={() => (
+            <div
+              className="bulk-edit-custom-property-cell-trigger"
+              data-testid={CSV_GLOSSARY_PICKER_TESTID}
+              ref={triggerRef}>
+              <CsvCellPreview column={column.key} value={value} />
+            </div>
+          )}
+          value={terms}
           onChange={handleChange}
-          onSubmit={() => onClose(true)}
+          onOpenChange={(open) => !open && onClose(true, true)}
         />
       </div>
     );
@@ -2333,14 +2393,18 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
       );
     };
 
+    // The popover takes focus on open, so its keydowns bubble (via the portal)
+    // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
     return (
-      <TierCard
-        currentTier={value}
-        popoverProps={{ open: true }}
-        updateTier={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </TierCard>
+      <KeyDownStopPropagationWrapper>
+        <TierCard
+          open
+          currentTier={value}
+          updateTier={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </TierCard>
+      </KeyDownStopPropagationWrapper>
     );
   };
 };

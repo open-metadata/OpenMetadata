@@ -922,11 +922,16 @@ export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
   const searchInput = header
     .getByTestId('search-input')
     .getByLabel('Search Articles');
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.url().includes('index=page')
-  );
+  const searchResPromise = page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.includes('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'page' &&
+      url.searchParams.get('q') ===
+        searchTerm.replaceAll(/["']/g, String.raw`\$&`)
+    );
+  });
 
   await searchInput.fill(searchTerm);
   const searchRes = await searchResPromise;

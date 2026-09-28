@@ -13,7 +13,14 @@
 Airbyte Source Model module
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from .constants import (  # noqa: TID252
+    NAMESPACE_CUSTOM_FORMATS,
+    NAMESPACE_DESTINATION,
+    NAMESPACE_SOURCE,
+    SOURCE_NAMESPACE_TOKEN,
+)
 
 
 class AirbyteWorkspace(BaseModel):
@@ -42,6 +49,35 @@ class AirbyteSyncCatalog(BaseModel):
     streams: list[AirbyteSyncCatalogEntry] | None = None
 
 
+def _stream_name(item: object) -> str | None:
+    """The ``name`` of a raw response entry or of an already-built stream, if it has one."""
+    if isinstance(item, AirbyteStream):
+        return item.name
+    return item.get("name") if isinstance(item, dict) else None
+
+
+class AirbyteConnectionConfigurations(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    streams: list[AirbyteStream] | None = None
+
+    @field_validator("streams", mode="before")
+    @classmethod
+    def _drop_streams_without_name(cls, value: object) -> object:
+        """Drop malformed entries before validation instead of failing the whole connection.
+
+        The public API is not guaranteed to omit a stray nameless entry; one bad stream
+        must not block lineage for every other stream on the connection. An entry that is
+        already an ``AirbyteStream`` is kept, so building this model in code behaves the same
+        as parsing it from a response -- a plain ``isinstance(item, dict)`` test dropped every
+        such entry and left ``streams`` empty with no error, the same silent-loss failure this
+        validator exists to contain.
+        """
+        if not isinstance(value, list):
+            return value
+        return [item for item in value if _stream_name(item)]
+
+
 class AirbyteConnectionModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -49,25 +85,55 @@ class AirbyteConnectionModel(BaseModel):
     name: str | None = None
     sourceId: str | None = None  # noqa: N815
     destinationId: str | None = None  # noqa: N815
-    # Internal API (`api/v1`) returns a full `syncCatalog`; the public API
-    # (`api/public/v1`) returns the stream list under `configurations.streams`.
+    # The internal API (`/connections/list`) nests streams under `syncCatalog.streams[].stream`,
+    # while the public API (`api/public/v1`) returns them flat under `configurations.streams`.
     syncCatalog: AirbyteSyncCatalog | None = None  # noqa: N815
-    configurations: dict | None = None
+    configurations: AirbyteConnectionConfigurations | None = None
+    # Airbyte resolves the destination namespace from the connection, not from the namespace the
+    # source reported, so every destination name depends on these two fields.
+    namespaceDefinition: str | None = None  # noqa: N815
+    namespaceFormat: str | None = None  # noqa: N815
+    prefix: str | None = None
 
     @property
     def resolved_streams(self) -> list[AirbyteStream]:
-        """Streams from whichever API responded (cf. resolved_type/resolved_configuration).
-
-        A database source's public-API entries carry `name` + `namespace`;
-        schemaless sources omit `namespace`. Issue #26993.
-        """
+        """Streams from whichever API responded (cf. resolved_type/resolved_configuration)."""
         if self.syncCatalog and self.syncCatalog.streams:
             return [entry.stream for entry in self.syncCatalog.streams if entry.stream]
-        return [
-            AirbyteStream(name=s["name"], namespace=s.get("namespace"))
-            for s in (self.configurations or {}).get("streams") or []
-            if isinstance(s, dict) and s.get("name")
-        ]
+        if self.configurations and self.configurations.streams:
+            return self.configurations.streams
+        return []
+
+    def destination_namespace(self, stream: AirbyteStream) -> str | None:
+        """
+        The namespace the destination writes under, which is not always the one the source
+        reported. ``destination`` is the API default, so an absent value means no namespace.
+        """
+        definition = self.namespaceDefinition or NAMESPACE_DESTINATION
+        if definition == NAMESPACE_SOURCE:
+            return stream.namespace
+        if definition in NAMESPACE_CUSTOM_FORMATS:
+            # Per the public API schema: a blank format behaves like ``destination``, and
+            # ``${SOURCE_NAMESPACE}`` like ``source``.
+            if not self.namespaceFormat:
+                return None
+            return self.namespaceFormat.replace(SOURCE_NAMESPACE_TOKEN, stream.namespace or "") or None
+        return None
+
+    def destination_stream(self, stream: AirbyteStream) -> AirbyteStream:
+        """
+        The stream as the destination writes it: prefixed name, connection-resolved namespace.
+
+        ``prefix`` is prepended to the stream name before the destination ever sees it, so every
+        destination name -- table, container path, topic, index -- is built from this stream
+        rather than from the one the source reported.
+        """
+        return stream.model_copy(
+            update={
+                "name": f"{self.prefix or ''}{stream.name}",
+                "namespace": self.destination_namespace(stream),
+            }
+        )
 
 
 class AirbyteJobAttempt(BaseModel):

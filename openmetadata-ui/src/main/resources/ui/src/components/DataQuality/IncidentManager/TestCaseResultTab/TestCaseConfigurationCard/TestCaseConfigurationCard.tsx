@@ -181,7 +181,7 @@ const TestCaseConfigurationCard = ({
 
   return (
     <div
-      className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-bg-primary tw:shadow-xs"
+      className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-xs"
       data-testid="test-case-configuration-card">
       <Box
         align="center"

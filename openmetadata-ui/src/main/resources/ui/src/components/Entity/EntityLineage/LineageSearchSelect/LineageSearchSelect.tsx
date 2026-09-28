@@ -209,9 +209,25 @@ const LineageSearchSelect = () => {
         (node: Node) => node.data.node.fullyQualifiedName === value
       );
       if (selectedNode) {
-        const { position } = selectedNode;
         onNodeClick(selectedNode);
-        reactFlowInstance?.setCenter(position.x, position.y, {
+
+        // Centre on what is actually drawn. LineageMap keeps the laid-out nodes
+        // in its own state and feeds them to React Flow; the array reached here
+        // through the provider is a different one, whose nodes are seeded at the
+        // origin and never carry the ELK coordinates. Centring on those puts the
+        // viewport at (0,0), and since the canvas renders with
+        // onlyRenderVisibleElements, the node just picked is never drawn -- the
+        // drawer opens on it while the graph sits somewhere else entirely.
+        // Matching on fullyQualifiedName, the same key the lookup above uses,
+        // avoids depending on the two arrays sharing node ids.
+        const renderedPosition = reactFlowInstance
+          ?.getNodes()
+          .find(
+            (node) => node.data?.node?.fullyQualifiedName === value
+          )?.position;
+        const { x, y } = renderedPosition ?? selectedNode.position;
+
+        reactFlowInstance?.setCenter(x, y, {
           duration: ZOOM_TRANSITION_DURATION,
           zoom: zoomValue,
         });

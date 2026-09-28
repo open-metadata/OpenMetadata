@@ -1,0 +1,111 @@
+#  Copyright 2026 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Expected OM catalog derived from authored MySQL declarations and an independent type map."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean
+from sqlalchemy.dialects import mysql
+
+from metadata.generated.schema.entity.data.table import DataType, TableType
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
+
+from ..features.database.catalog.derive import derive_expected_service
+from ..features.database.catalog.type_map import CORE_TYPE_MAP, TypeMap
+from ..features.database.catalog.types import (
+    ExpectedColumn,
+    ExpectedService,
+    ExpectedStoredProcedure,
+    ExpectedTable,
+)
+from .baseline import build_mysql_baseline
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
+
+MYSQL_TYPE_MAP: TypeMap = {
+    **CORE_TYPE_MAP,
+    Boolean: DataType.TINYINT,  # MySQL stores BOOL as TINYINT(1).
+    # Integer variants — explicit entries so MRO doesn't resolve through Integer → INT.
+    mysql.TINYINT: DataType.TINYINT,
+    mysql.MEDIUMINT: DataType.INT,  # no MEDIUMINT in OM DataType
+    mysql.DOUBLE: DataType.DOUBLE,  # mysql.DOUBLE extends Float; needs override
+    # String-size variants — extend _StringType, not Text; without these CORE resolves to VARCHAR.
+    mysql.TINYTEXT: DataType.TEXT,  # no TINYTEXT in OM DataType
+    mysql.MEDIUMTEXT: DataType.MEDIUMTEXT,
+    mysql.LONGTEXT: DataType.TEXT,  # LONGTEXT absent from enum.
+    # Binary-family — extend _Binary; CORE's LargeBinary → BLOB doesn't cover these.
+    mysql.BINARY: DataType.BINARY,
+    mysql.VARBINARY: DataType.VARBINARY,
+    mysql.TINYBLOB: DataType.BLOB,  # no TINYBLOB in OM DataType
+    mysql.MEDIUMBLOB: DataType.MEDIUMBLOB,
+    mysql.LONGBLOB: DataType.LONGBLOB,
+    # Dialect-only types absent from CORE.
+    mysql.YEAR: DataType.YEAR,
+    mysql.BIT: DataType.BIT,
+    mysql.SET: DataType.SET,
+    # mysql.JSON / ENUM / BLOB / TIMESTAMP / VARCHAR / CHAR / TEXT: resolved via CORE MRO.
+}
+
+
+def mysql_expected(
+    service_name: str,
+    *,
+    schema: str,
+    tables: Collection[str] | None = None,
+) -> ExpectedService:
+    """Return the expected MySQL catalog for ``service_name``.
+
+    ``tables=None`` returns the full catalog; ``tables=[...]`` filters to
+    named tables only for complete-inventory filter checks.
+    """
+    expected = derive_expected_service(
+        service_name=service_name,
+        service_type=DatabaseServiceType.Mysql,
+        metadata=build_mysql_baseline(schema).metadata,
+        type_map=MYSQL_TYPE_MAP,
+        database="default",
+        views=[_expected_customer_txn_summary_view()],
+        stored_procedures=[
+            ExpectedStoredProcedure(name="sp_active_customer_count"),
+            ExpectedStoredProcedure(name="sp_update_customer_status"),
+        ],
+    )
+
+    if tables is not None:
+        kept = set(tables)
+        schema = expected.databases[0].schemas[0]
+        schema.tables[:] = [t for t in schema.tables if t.name in kept]
+
+    return expected
+
+
+def _expected_customer_txn_summary_view() -> ExpectedTable:
+    """Return the hand-authored ExpectedTable for the view (tableType=View).
+
+    Columns declared manually; not in SQLAlchemy MetaData. ``COUNT(*)``
+    → BIGINT; ``COALESCE(SUM(DECIMAL), 0)`` → DECIMAL.
+    """
+    return ExpectedTable(
+        name="customer_txn_summary",
+        table_type=TableType.View,
+        columns=[
+            ExpectedColumn("customer_id", DataType.INT),
+            ExpectedColumn("full_name", DataType.VARCHAR),
+            ExpectedColumn("customer_status", DataType.VARCHAR),
+            ExpectedColumn("txn_count", DataType.BIGINT),
+            ExpectedColumn("total_amount", DataType.DECIMAL),
+        ],
+    )

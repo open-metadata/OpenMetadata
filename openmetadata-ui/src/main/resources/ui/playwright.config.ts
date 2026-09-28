@@ -51,11 +51,16 @@ const entityDependencies = hasPreseededState
   : ['setup', 'entity-data-setup'];
 const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
 const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
+// SearchIndexApplication.spec.ts triggers a full reindex, which swaps the shared search indexes
+// under every co-scheduled worker: an owner change made mid-reindex is missing from the
+// rebuilt index (Teams.spec.ts "Team assets should" read 0 assets). It runs in the
+// single-worker Reindex lane alongside the other reindexing specs.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
+      '**/SearchIndexApplication.spec.ts',
     ]
   : [];
 // Tests tagged @quarantine are known-flaky and must not run in any lane, so a
@@ -227,6 +232,15 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
+    /* Emulate prefers-reduced-motion so CSS/react-aria trigger and overlay
+     * transitions resolve instantly — a click landing before the animation
+     * settles is a common flake source. Pixel/geometry-sensitive projects
+     * (visual-regression, Knowledge Graph, Ontology RDF) opt back out via
+     * reducedMotion: 'no-preference' below, because the graph's fit/centering
+     * geometry shifts under reduced motion and the snapshot/geometry
+     * assertions are calibrated for the default motion path. */
+    reducedMotion: 'reduce',
+
     /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -307,6 +321,8 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
         storageState: 'playwright/.auth/admin.json',
+        // Snapshots are captured under the default motion path.
+        reducedMotion: 'no-preference',
       },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -369,14 +385,18 @@ export default defineConfig({
     },
     {
       name: 'Knowledge Graph',
-      use: { ...devices['Desktop Chrome'] },
+      // The graph's fit/centering geometry differs under reduced motion, so
+      // its boundingBox assertions run on the default motion path.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       dependencies: ['setup', 'entity-data-setup'],
       grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
     },
     {
       name: 'Ontology RDF',
-      use: { ...devices['Desktop Chrome'] },
+      // Same graph canvas as Knowledge Graph — keep the default motion path so
+      // fit/centering geometry matches the assertions.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
@@ -486,6 +506,7 @@ export default defineConfig({
             testMatch: [
               '**/SearchSeparation/*.spec.ts',
               '**/*AfterReindex.spec.ts',
+              '**/SearchIndexApplication.spec.ts',
             ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },
