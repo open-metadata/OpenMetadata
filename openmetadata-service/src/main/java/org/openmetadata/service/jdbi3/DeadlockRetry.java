@@ -15,6 +15,7 @@ import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.sql.SQLException;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,6 +47,11 @@ public final class DeadlockRetry {
           .build();
 
   private static final Retry RETRY = Retry.of("db-deadlock", CONFIG);
+  private static final int MYSQL_LOCK_WAIT_TIMEOUT = 1205;
+  private static final int MYSQL_DEADLOCK = 1213;
+  private static final String SERIALIZATION_FAILURE = "40001";
+  private static final String POSTGRES_DEADLOCK = "40P01";
+  private static final String DEADLOCK_MESSAGE = "Deadlock found when trying to get lock";
 
   static {
     RETRY
@@ -80,6 +86,20 @@ public final class DeadlockRetry {
   /** {@code true} if {@code throwable} (or any cause in its chain) is a MySQL/Postgres deadlock or
    * lock-wait timeout that is safe to retry as a fresh transaction. */
   public static boolean isDeadlock(Throwable throwable) {
+    return anyInChain(throwable, DeadlockRetry::isDeadlockSqlException);
+  }
+
+  /**
+   * {@code true} if {@code throwable} (or any cause in its chain) means the database rolled back the
+   * whole transaction: a MySQL deadlock, or a Postgres deadlock or serialization failure. A MySQL
+   * lock wait timeout rolls back only its statement, so it does not count, even though Connector/J
+   * reports it with the same SQLState {@code 40001}.
+   */
+  public static boolean isTransactionRolledBack(Throwable throwable) {
+    return anyInChain(throwable, DeadlockRetry::rolledBackTransaction);
+  }
+
+  private static boolean anyInChain(Throwable throwable, Predicate<SQLException> matches) {
     // Walk every link — JDBI wraps SQLException in UnableToExecuteStatementException, and some
     // drivers wrap the deadlock further with a connection-release or cleanup exception that
     // ends up as the terminal cause. Checking only the leaf would miss those cases and silently
@@ -87,11 +107,11 @@ public final class DeadlockRetry {
     Throwable current = throwable;
     int guard = 0;
     while (current != null && guard++ < 32) {
-      if (current instanceof SQLException sqlException && isDeadlockSqlException(sqlException)) {
+      if (current instanceof SQLException sqlException && matches.test(sqlException)) {
         return true;
       }
       String message = current.getMessage();
-      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+      if (message != null && message.contains(DEADLOCK_MESSAGE)) {
         return true;
       }
       if (current.getCause() == current) {
@@ -106,9 +126,17 @@ public final class DeadlockRetry {
     String sqlState = sqlException.getSQLState();
     int errorCode = sqlException.getErrorCode();
     // MySQL: 1213 deadlock, 1205 lock-wait timeout. Postgres: 40P01 deadlock. Generic: 40001.
-    return "40001".equals(sqlState)
-        || "40P01".equals(sqlState)
-        || errorCode == 1213
-        || errorCode == 1205;
+    return SERIALIZATION_FAILURE.equals(sqlState)
+        || POSTGRES_DEADLOCK.equals(sqlState)
+        || errorCode == MYSQL_DEADLOCK
+        || errorCode == MYSQL_LOCK_WAIT_TIMEOUT;
+  }
+
+  private static boolean rolledBackTransaction(SQLException sqlException) {
+    String sqlState = sqlException.getSQLState();
+    int errorCode = sqlException.getErrorCode();
+    boolean rollbackState =
+        SERIALIZATION_FAILURE.equals(sqlState) || POSTGRES_DEADLOCK.equals(sqlState);
+    return errorCode == MYSQL_DEADLOCK || (rollbackState && errorCode != MYSQL_LOCK_WAIT_TIMEOUT);
   }
 }

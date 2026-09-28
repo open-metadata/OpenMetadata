@@ -18,7 +18,7 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 @Slf4j
 public class OMSqlLogger implements SqlLogger {
-  /** Deadlocks and lock wait timeouts, tagged with the DAO method whose statement lost. */
+  /** Deadlocks that rolled back a transaction, tagged with the DAO method whose statement lost. */
   public static final String DEADLOCK_METRIC = "db.deadlocks";
 
   public static final String STATEMENT_TAG = "statement";
@@ -139,8 +139,12 @@ public class OMSqlLogger implements SqlLogger {
 
   @Override
   public void logException(StatementContext context, SQLException exception) {
-    if (DeadlockRetry.isDeadlock(exception)) {
+    if (DeadlockRetry.isTransactionRolledBack(exception)) {
       recordDeadlock(extractDaoMethod(context.getRenderedSql()));
+    } else if (DeadlockRetry.isDeadlock(exception)) {
+      LOG.warn(
+          "Lock wait timeout on {}; the database rolled back the statement",
+          extractDaoMethod(context.getRenderedSql()));
     }
     abortedTransactionGuard.onStatementFailure(context, exception);
   }
@@ -149,7 +153,7 @@ public class OMSqlLogger implements SqlLogger {
     DEADLOCK_COUNTERS
         .computeIfAbsent(statement, name -> Metrics.counter(DEADLOCK_METRIC, STATEMENT_TAG, name))
         .increment();
-    LOG.warn("Deadlock or lock wait timeout on {}; the database rolled it back", statement);
+    LOG.warn("Deadlock on {}; the database rolled back the transaction", statement);
   }
 
   private String extractDaoMethod(String sql) {

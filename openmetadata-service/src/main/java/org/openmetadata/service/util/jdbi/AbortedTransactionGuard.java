@@ -29,10 +29,11 @@ import org.openmetadata.service.jdbi3.DeadlockRetry;
 /**
  * Refuses to commit a transaction that the database has already rolled back.
  *
- * <p>A deadlock makes MySQL roll back the whole transaction, and a lock wait timeout rolls back
- * the statement. Code that catches that error and carries on runs its remaining statements in a
- * fresh transaction, so committing would persist only part of the unit of work. Instead the commit
- * becomes a rollback that rethrows the original failure, which {@link DeadlockRetry} replays.
+ * <p>A deadlock makes MySQL roll back the whole transaction. Code that catches that error and
+ * carries on runs its remaining statements in a fresh transaction, so committing would persist only
+ * part of the unit of work. Instead the commit becomes a rollback that rethrows the original
+ * failure, which {@link DeadlockRetry} replays. A lock wait timeout is left alone: it rolls back
+ * only its statement, so the rest of the transaction is still what the caller wrote.
  */
 @Slf4j
 public final class AbortedTransactionGuard extends DelegatingTransactionHandler {
@@ -43,10 +44,10 @@ public final class AbortedTransactionGuard extends DelegatingTransactionHandler 
     super(delegate);
   }
 
-  /** Remembers a deadlock or lock wait timeout that hit a statement inside a transaction. */
+  /** Remembers a failure that made the database roll back the statement's whole transaction. */
   public void onStatementFailure(final StatementContext context, final SQLException failure) {
     final Connection connection = context.getConnection();
-    if (DeadlockRetry.isDeadlock(failure) && isInTransaction(connection)) {
+    if (DeadlockRetry.isTransactionRolledBack(failure) && isInTransaction(connection)) {
       abortedTransactions.put(connection, failure);
     }
   }
@@ -66,6 +67,8 @@ public final class AbortedTransactionGuard extends DelegatingTransactionHandler 
   }
 
   private final class GuardedTransaction extends DelegatingTransactionHandler {
+    private boolean rolledBackOnRefusal;
+
     private GuardedTransaction(final TransactionHandler delegate) {
       super(delegate);
     }
@@ -73,6 +76,7 @@ public final class AbortedTransactionGuard extends DelegatingTransactionHandler 
     @Override
     public void begin(final Handle handle) {
       abortedTransactions.remove(handle.getConnection());
+      rolledBackOnRefusal = false;
       super.begin(handle);
     }
 
@@ -80,11 +84,7 @@ public final class AbortedTransactionGuard extends DelegatingTransactionHandler 
     public void commit(final Handle handle) {
       final SQLException failure = abortedTransactions.remove(handle.getConnection());
       if (failure != null) {
-        super.rollback(handle);
-        throw new TransactionException(
-            "The database rolled back this transaction after a deadlock or lock wait timeout,"
-                + " so the statements that ran after it were not committed",
-            failure);
+        throw refuseCommit(handle, failure);
       }
       super.commit(handle);
     }
@@ -92,7 +92,29 @@ public final class AbortedTransactionGuard extends DelegatingTransactionHandler 
     @Override
     public void rollback(final Handle handle) {
       abortedTransactions.remove(handle.getConnection());
-      super.rollback(handle);
+      // JDBI rolls back again after a failed commit. A second rollback runs in auto-commit mode,
+      // which the MySQL driver rejects with SQLState 08003, and the pool then evicts the
+      // connection.
+      if (!rolledBackOnRefusal) {
+        super.rollback(handle);
+      }
+      rolledBackOnRefusal = false;
+    }
+
+    private TransactionException refuseCommit(final Handle handle, final SQLException failure) {
+      final TransactionException refusal =
+          new TransactionException(
+              "The database rolled back this transaction, so the statements that ran after the"
+                  + " failure were not committed: "
+                  + failure.getMessage(),
+              failure);
+      try {
+        super.rollback(handle);
+        rolledBackOnRefusal = true;
+      } catch (RuntimeException rollbackFailure) {
+        refusal.addSuppressed(rollbackFailure);
+      }
+      return refusal;
     }
   }
 }
