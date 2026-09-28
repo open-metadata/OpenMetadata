@@ -270,10 +270,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             # sets. The tag is skipped rather than failing the run: StatusWarningHandler counts the logged
             # warning in the run status, not as a failure.
             logger.warning(
-                "%sSkipped tag [%s.%s]: classification and tag names cannot contain '\"', '>', '::' or control characters",
+                "%sSkipped tag [%s.%s]: classification and tag names must be 1 to %d characters long and cannot"
+                " contain '\"', '>', '::' or control characters",
                 f"{entity_fqn}: " if entity_fqn else "",
                 classification_name,
                 tag_name,
+                fqn.ENTITY_NAME_MAX_LENGTH,
             )
             return None
         tag = self.tag_canonicalizer.resolve(

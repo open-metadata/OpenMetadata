@@ -292,7 +292,9 @@ def test_default_stages_emit_registered_definitions_and_preserve_labels(default_
         ("Class", "gold\n"),
         ("Class", "a > b"),
         ("Class", "a::b"),
+        ("Class", "x" * 257),
         ('BAD"CLASS', "Valid"),
+        ("", "Valid"),
     ],
 )
 def test_unnameable_tag_is_skipped_with_a_warning(source, status, classification_name, tag_name):
