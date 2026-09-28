@@ -60,7 +60,9 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.entityLineage import ColumnLineage, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
@@ -72,6 +74,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_table_fqn_from_query_name,
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.progress.modes import ProgressMode
@@ -80,6 +83,12 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardUsage,
 )
 from metadata.ingestion.source.dashboard.tableau.client import TableauClient
+from metadata.ingestion.source.dashboard.tableau.metrics import (
+    build_metric_request,
+    datasource_dimensions,
+    metric_fields_parents_first,
+    related_metric_names,
+)
 from metadata.ingestion.source.dashboard.tableau.models import (
     ChartUrl,
     DataSource,
@@ -141,6 +150,15 @@ class TableauSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
+        # Source tables the lineage pass resolved for each datasource of the current workbook,
+        # kept so metric lineage reuses them instead of searching again. Reset per workbook.
+        self._datasource_source_tables: dict[str, list[tuple[UpstreamTable, Table]]] = {}
+        if self.source_config.includeMetrics and not self.source_config.includeDataModels:
+            logger.warning(
+                "includeMetrics is enabled but includeDataModels is disabled: calculated measures "
+                "are read off the data models, so no Metric will be ingested. "
+                "Enable includeDataModels to ingest metrics."
+            )
 
     @classmethod
     def create(
@@ -535,6 +553,11 @@ class TableauSource(DashboardServiceSource):
                         table.luid or table.id,
                     )
                 for om_table_and_query in om_tables or []:
+                    if self.source_config.includeMetrics:
+                        # Two embedded datasources on one published datasource resolve its tables twice.
+                        source_tables = self._datasource_source_tables.setdefault(upstream_data_model.id, [])
+                        if (table, om_table_and_query.table) not in source_tables:
+                            source_tables.append((table, om_table_and_query.table))
                     column_lineage = self._get_column_lineage(
                         table,
                         om_table_and_query.table,
@@ -795,6 +818,109 @@ class TableauSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def yield_dashboard_lineage(self, dashboard_details: TableauDashboard) -> Iterable[Either]:
+        """Lineage, then the workbook's calculated measures as Metrics.
+
+        Metrics come last: the base stage's Barrier has persisted the data models they
+        reference as `assets`, and the lineage pass has resolved their source tables.
+        """
+        self._datasource_source_tables = {}
+        yield from super().yield_dashboard_lineage(dashboard_details)
+        if self.source_config.includeMetrics and self.source_config.includeDataModels:
+            yield from self.yield_datamodel_metrics(dashboard_details)
+
+    def yield_datamodel_metrics(self, dashboard_details: TableauDashboard) -> Iterable[Either]:
+        """One Metric per calculated measure of the workbook's datasources, plus its lineage."""
+        service = self.context.get().dashboard_service  # pyright: ignore[reportAttributeAccessIssue]
+        datasources = {
+            datasource.id: datasource
+            for data_model in dashboard_details.dataModels or []
+            for datasource in (data_model, *(data_model.upstreamDatasources or []))
+        }
+        # ponytail: a published datasource shared by N workbooks re-PUTs its metrics N times;
+        # the writes are idempotent, track emitted names across workbooks if that cost shows up.
+        for datasource in datasources.values():
+            metric_fields = metric_fields_parents_first(datasource)
+            if not metric_fields:
+                continue
+            # A missing data model was filtered out or failed; its measures follow it.
+            data_model_entity = self._get_datamodel(datasource)
+            if not data_model_entity:
+                continue
+            asset = EntityReference(id=data_model_entity.id, type="dashboardDataModel")
+            dimensions = datasource_dimensions(datasource)
+            emitted: set[str] = set()
+            for field in metric_fields:
+                try:
+                    related = [name for name in related_metric_names(service, datasource, field) if name in emitted]
+                    metric_request = build_metric_request(
+                        service, datasource, field, dimensions, asset=asset, related_metrics=related
+                    )
+                    yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
+                    metric_name = model_str(metric_request.name)
+                    emitted.add(metric_name)
+                    yield from self._yield_metric_lineage(datasource, field, metric_name, related)
+                except Exception as err:
+                    yield Either(  # pyright: ignore[reportCallIssue]
+                        left=StackTraceError(
+                            name=field.name or field.id,
+                            error=f"Error yielding Metric for Tableau field [{field.name or field.id}]: {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+    def _yield_metric_lineage(
+        self,
+        datasource: DataSource,
+        field: DatasourceField,
+        metric_name: str,
+        related: list[str],
+    ) -> Iterable[Either[OMetaFQNLineageRequest]]:
+        """Metric -> Metric and Table -> Metric edges, addressed by FQN (a Metric's FQN is its name).
+
+        Not routed through `yield_lineage_request`: with `overrideLineage` the sink deletes every
+        DashboardLineage edge into the target before adding one, so a metric fed by two parents
+        or two tables would keep only the last.
+        """
+        for parent_name in related:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                right=OMetaFQNLineageRequest(
+                    from_entity_fqn=parent_name,
+                    from_entity_type="metric",
+                    to_entity_fqn=metric_name,
+                    to_entity_type="metric",
+                    lineage_details=LineageDetails(source=LineageSource.DashboardLineage),
+                )
+            )
+
+        column_ids = {column.id for column in field.upstreamColumns or [] if column}
+        for upstream_table, table_entity in self._datasource_source_tables.get(datasource.id, []):
+            from_columns = [
+                FullyQualifiedEntityName(from_column)
+                for column in upstream_table.columns or []
+                if column.id in column_ids
+                and column.name
+                and (from_column := get_column_fqn(table_entity=table_entity, column=column.name))
+            ]
+            # The measure reads nothing from this table.
+            if not from_columns:
+                continue
+            # The server accepts exactly one column endpoint on a Metric: the metric's own FQN.
+            yield Either(  # pyright: ignore[reportCallIssue]
+                right=OMetaFQNLineageRequest(
+                    from_entity_fqn=model_str(table_entity.fullyQualifiedName),
+                    from_entity_type="table",
+                    to_entity_fqn=metric_name,
+                    to_entity_type="metric",
+                    lineage_details=LineageDetails(
+                        source=LineageSource.DashboardLineage,
+                        columnsLineage=[
+                            ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(metric_name))
+                        ],
+                    ),
+                )
+            )
 
     def yield_dashboard_chart(self, dashboard_details: TableauDashboard) -> Iterable[Either[CreateChartRequest]]:
         """
