@@ -20,9 +20,17 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { useSearchStore } from '../../../hooks/useSearchStore';
+import { getDomainDetailsPath } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 import { ExploreSearchInput } from '../../discovery/explore/ExploreHeader/ExploreSearchInput';
+import MarketplaceSearchResults from '../MarketplaceSearchResults/MarketplaceSearchResults.component';
+import { useMarketplaceEntitySearch } from '../MarketplaceSearchResults/useMarketplaceEntitySearch';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const SUGGESTION_DEBOUNCE_MS = 400;
@@ -40,6 +48,12 @@ interface MarketplaceSearchInputProps {
   onSearchChange?: (value: string) => void;
   /** Placeholder text. Defaults to Explore's. */
   placeholder?: string;
+  /**
+   * Show matching domains and data products in the popover instead of
+   * Explore's suggestions. For a page with no list of its own - the overview,
+   * where these results are the only thing a query can produce.
+   */
+  showEntityResults?: boolean;
 }
 
 /**
@@ -51,7 +65,10 @@ const MarketplaceSearchInput = ({
   searchQuery,
   onSearchChange,
   placeholder,
+  showEntityResults,
 }: MarketplaceSearchInputProps) => {
+  const navigate = useNavigate();
+  const { dataProductBasePath } = useMarketplaceStore();
   const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const [searchValue, setSearchValue] = useState(searchQuery ?? '');
   const [suggestionSearch, setSuggestionSearch] = useState('');
@@ -139,6 +156,33 @@ const MarketplaceSearchInput = ({
     [isNLPActive, setNLPActive]
   );
 
+  const { dataProducts, domains, isSearching } = useMarketplaceEntitySearch(
+    showEntityResults ? suggestionSearch : ''
+  );
+
+  const handleDataProductClick = useCallback(
+    (dataProduct: DataProduct) => {
+      setIsSearchBoxOpen(false);
+      navigate(
+        `${dataProductBasePath}/${getEncodedFqn(
+          dataProduct.fullyQualifiedName ?? ''
+        )}`,
+        { state: { fromMarketplace: true } }
+      );
+    },
+    [navigate, dataProductBasePath]
+  );
+
+  const handleDomainClick = useCallback(
+    (domain: Domain) => {
+      setIsSearchBoxOpen(false);
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''), {
+        state: { fromMarketplace: true },
+      });
+    },
+    [navigate]
+  );
+
   return (
     <ExploreSearchInput
       isNLPActive={isNLPActive}
@@ -149,6 +193,17 @@ const MarketplaceSearchInput = ({
       searchCriteria={searchCriteria}
       searchValue={searchValue}
       suggestionSearch={suggestionSearch}
+      suggestions={
+        showEntityResults ? (
+          <MarketplaceSearchResults
+            dataProducts={dataProducts}
+            domains={domains}
+            isSearching={isSearching}
+            onDataProductClick={handleDataProductClick}
+            onDomainClick={handleDomainClick}
+          />
+        ) : undefined
+      }
       onClearSearch={handleClearSearch}
       onNLPToggle={handleNLPToggle}
       onSearchBoxOpenChange={setIsSearchBoxOpen}

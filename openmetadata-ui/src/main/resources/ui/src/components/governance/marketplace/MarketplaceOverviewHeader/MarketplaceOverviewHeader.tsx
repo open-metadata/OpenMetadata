@@ -56,6 +56,7 @@ export const MarketplaceOverviewHeader: FC = () => {
           className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
           data-testid="marketplace-header-search">
           <MarketplaceSearchInput
+            showEntityResults
             placeholder={t('label.search-for-type', {
               type: `${t('label.data-product-plural')}, ${t(
                 'label.domain-plural'

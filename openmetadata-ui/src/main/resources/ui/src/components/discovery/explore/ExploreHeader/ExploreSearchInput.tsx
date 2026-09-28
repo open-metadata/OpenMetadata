@@ -22,7 +22,7 @@ import {
 import { isAppleDevice } from '@react-aria/utils';
 import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
-import type { FormEvent, RefObject } from 'react';
+import type { FormEvent, ReactNode, RefObject } from 'react';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCloseCircleOutlined } from '../../../../assets/svg/close-circle-outlined.svg';
@@ -44,6 +44,8 @@ export interface ExploreSearchInputProps {
   searchCriteria?: SearchIndex;
   /** Placeholder text. Defaults to Explore's own. */
   placeholder?: string;
+  /** Popover body. Defaults to Explore's entity suggestions. */
+  suggestions?: ReactNode;
   searchContainerRef: RefObject<HTMLFormElement>;
   onSearchChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -119,6 +121,43 @@ const SEARCH_PLACEHOLDER_KEY = 'message.explore-search-placeholder';
 
 const getSearchShortcutLabel = () => (isAppleDevice() ? '⌘K' : 'Ctrl+K');
 
+/** Explore's own suggestions, unless the caller supplies its own results. */
+const PopoverBody = ({
+  suggestions,
+  isNLPActive,
+  isSearchBoxOpen,
+  searchCriteria,
+  suggestionSearch,
+  onSearchBoxOpenChange,
+  onSuggestionSelect,
+}: Pick<
+  ExploreSearchInputProps,
+  | 'suggestions'
+  | 'isNLPActive'
+  | 'isSearchBoxOpen'
+  | 'searchCriteria'
+  | 'suggestionSearch'
+  | 'onSearchBoxOpenChange'
+  | 'onSuggestionSelect'
+>) => {
+  if (suggestions) {
+    return <>{suggestions}</>;
+  }
+
+  return (
+    <Suspense fallback={null}>
+      <Suggestions
+        isNLPActive={isNLPActive}
+        isOpen={isSearchBoxOpen}
+        searchCriteria={searchCriteria}
+        searchText={suggestionSearch}
+        setIsOpen={onSearchBoxOpenChange}
+        onSearchTextUpdate={onSuggestionSelect}
+      />
+    </Suspense>
+  );
+};
+
 export const ExploreSearchInput = ({
   searchValue,
   suggestionSearch,
@@ -127,6 +166,7 @@ export const ExploreSearchInput = ({
   isNLPEnabled,
   searchCriteria,
   placeholder,
+  suggestions,
   searchContainerRef,
   onSearchChange,
   onSubmit,
@@ -258,16 +298,15 @@ export const ExploreSearchInput = ({
               isNLPActive ? NLP_SUGGESTION_ITEM_CLASS : ''
             }`}
             data-testid="explore-search-results">
-            <Suspense fallback={null}>
-              <Suggestions
-                isNLPActive={isNLPActive}
-                isOpen={isSearchBoxOpen}
-                searchCriteria={searchCriteria}
-                searchText={suggestionSearch}
-                setIsOpen={onSearchBoxOpenChange}
-                onSearchTextUpdate={onSuggestionSelect}
-              />
-            </Suspense>
+            <PopoverBody
+              isNLPActive={isNLPActive}
+              isSearchBoxOpen={isSearchBoxOpen}
+              searchCriteria={searchCriteria}
+              suggestionSearch={suggestionSearch}
+              suggestions={suggestions}
+              onSearchBoxOpenChange={onSearchBoxOpenChange}
+              onSuggestionSelect={onSuggestionSelect}
+            />
           </div>
         </SelectPopover>
       </form>
