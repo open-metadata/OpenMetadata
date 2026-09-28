@@ -33,7 +33,9 @@ const waitForChangeSummarySource = async (
           `/api/v1/changeSummary/table/${tableId}`
         );
         if (!response.ok()) {
-          return null;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
         const data = await response.json();
 
