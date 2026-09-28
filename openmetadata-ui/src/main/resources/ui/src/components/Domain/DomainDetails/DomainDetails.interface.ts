@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 
 export interface DomainDetailsProps {
   domain: Domain;

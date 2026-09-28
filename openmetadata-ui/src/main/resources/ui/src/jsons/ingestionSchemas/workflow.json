@@ -1396,6 +1396,22 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "apiServiceNames": {
+                      "title": "API Service Names List",
+                      "description": "List of API Service Names for creation of lineage",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "searchServiceNames": {
+                      "title": "Search Service Names List",
+                      "description": "List of Search Service Names for creation of lineage",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
                     }
                   }
                 },
@@ -8602,6 +8618,10 @@
                         "sampleDataStorageConfig": {
                           "title": "Storage Config for Sample Data",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/sampleDataStorageConfig"
+                        },
+                        "supportsQueryComment": {
+                          "title": "Supports Query Comment",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         }
                       },
                       "additionalProperties": false,
