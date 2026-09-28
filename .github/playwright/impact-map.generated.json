@@ -3144,6 +3144,7 @@
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -3834,7 +3835,6 @@
         "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts",
-        "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/GlossaryVersionPage.spec.ts",
@@ -5200,8 +5200,6 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataProductDomainMigration.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
@@ -5492,15 +5490,6 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DomainLabelV2/DomainLabelV2.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Pages/UserDetails.spec.ts"
       ]
     },
     {
@@ -7278,15 +7267,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/CustomiseLandingPageHeader/LandingPageDomainSelector.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
-        "playwright/e2e/Features/RTL.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/CustomiseLandingPageHeader/RecentlyViewedCarousel.tsx"
       ],
       "specs": [
@@ -7628,12 +7608,10 @@
       "specs": [
         "playwright/e2e/Features/ColumnSorting.spec.ts",
         "playwright/e2e/Features/Container.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/ImpactAnalysis.spec.ts",
         "playwright/e2e/Features/OnlineUsers.spec.ts",
@@ -7648,7 +7626,6 @@
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
@@ -8444,15 +8421,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/PropertyInput.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/PropertyValue.tsx"
       ],
       "specs": [
@@ -8595,86 +8563,32 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainDisplay/DomainDisplay.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/BulkEditEntity.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
-        "playwright/e2e/Features/DataProductDomainMigration.spec.ts",
-        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
-        "playwright/e2e/Flow/IngestionBot.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/DomainAdvanced.spec.ts",
-        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/Tag.spec.ts",
-        "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
-        "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/DomainLabel/DomainLabel.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
-        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts"
       ]
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainLabel/DomainLabelNew.tsx"
+        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainScopeControl/DomainScopeControl.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
+        "playwright/e2e/Features/RTL.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainTags/DomainTags.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Pages/UserDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainSelectableList/DomainSelectableListNew.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/UserDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainSelectableTree/DomainSelectableTree.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
-        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
-        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
-        "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/UserDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/DomainSelectableTree/DomainSelectableTreeNew.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
-        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
-        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
-        "playwright/e2e/Features/DomainIsolation/DomainDropdownIsolation.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/UserDetails.spec.ts"
+        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts"
       ]
     },
     {
@@ -9668,16 +9582,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
-        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionsPage/ConnectionsListView.tsx"
       ],
       "specs": [
@@ -9697,10 +9601,26 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiDiagnosticTab.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiFormFields.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/Observability.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiRecentEventsTab.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts"
       ]
     },
     {
@@ -11760,8 +11680,6 @@
       "specs": [
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataProductDomainMigration.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
