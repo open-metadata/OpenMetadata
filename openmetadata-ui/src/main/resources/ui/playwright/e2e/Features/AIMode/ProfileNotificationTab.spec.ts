@@ -168,7 +168,7 @@ test('Single Filter Alert', async ({ page }) => {
 
     // Remove existing filter from creation before adding new ones
     await page.click('[data-testid="remove-filters-0"]');
-    await page.getByTestId('filter-0').waitFor({ state: 'detached' });
+    await expect(page.getByTestId('filters-0')).toHaveCount(0);
 
     await addMultipleFiltersProfile({ page, user1, user2, domain, dashboard });
 
@@ -294,7 +294,7 @@ test('Multiple Filters Alert', async ({ page }) => {
 
     for (let i = 5; i >= 0; i--) {
       await page.click(`[data-testid="remove-filters-${i}"]`);
-      await page.getByTestId(`filter-${i}`).waitFor({ state: 'detached' });
+      await expect(page.getByTestId(`filters-${i}`)).toHaveCount(0);
     }
 
     for (let i = 5; i > 0; i--) {
