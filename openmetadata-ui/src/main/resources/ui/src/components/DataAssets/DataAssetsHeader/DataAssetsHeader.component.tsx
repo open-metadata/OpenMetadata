@@ -171,6 +171,7 @@ export const DataAssetsHeader = ({
   onUpdateRetentionPeriod,
   extraDropdownContent,
   badge,
+  headerActions,
   isDqAlertSupported = false,
   isCustomizedView = false,
   disableRunAgentsButton = true,
@@ -1270,6 +1271,7 @@ export const DataAssetsHeader = ({
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
             <ChangeRequestsIndicator entityId={dataAsset.id ?? ''} />
+            {headerActions}
             {renderManageButton()}
           </div>
         </div>

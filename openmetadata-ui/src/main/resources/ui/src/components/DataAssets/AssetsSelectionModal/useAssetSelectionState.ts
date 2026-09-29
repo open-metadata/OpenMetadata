@@ -26,6 +26,7 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../generated/entity/data/metric';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   Domain,
@@ -51,6 +52,8 @@ import {
   addAssetsToGlossaryTerm,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
+import { getMetricByFqn } from '../../../rest/metricsAPI';
+import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
@@ -104,12 +107,13 @@ export const useAssetSelectionState = ({
       AssetsOfEntity.GLOSSARY,
       AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
       AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
+      AssetsOfEntity.METRIC,
     ].includes(type)
       ? SearchIndex.DATA_ASSET
       : SearchIndex.ALL
   );
   const [activeEntity, setActiveEntity] = useState<
-    Domain | DataProduct | Tag
+    Domain | DataProduct | Tag | Metric
   >();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -158,7 +162,7 @@ export const useAssetSelectionState = ({
   );
 
   const fetchCurrentEntity = useCallback(async () => {
-    let data: GlossaryTerm | Tag | Domain | DataProduct | undefined;
+    let data: GlossaryTerm | Tag | Domain | DataProduct | Metric | undefined;
 
     switch (type) {
       case AssetsOfEntity.DOMAIN:
@@ -184,6 +188,11 @@ export const useAssetSelectionState = ({
 
       case AssetsOfEntity.TAG:
         data = await getTagByFqn(entityFqn);
+
+        break;
+
+      case AssetsOfEntity.METRIC:
+        data = await getMetricByFqn(entityFqn);
 
         break;
 
@@ -331,6 +340,8 @@ export const useAssetSelectionState = ({
           addAssetsToGlossaryTerm(activeEntity as GlossaryTerm, entities),
         [AssetsOfEntity.TAG]: () =>
           addAssetsToTags(activeEntity.id ?? '', entities),
+        [AssetsOfEntity.METRIC]: () =>
+          addMetricTabAssets(activeEntity.fullyQualifiedName ?? '', entities),
       };
 
       let res;
