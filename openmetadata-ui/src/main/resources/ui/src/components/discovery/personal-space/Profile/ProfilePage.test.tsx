@@ -14,6 +14,15 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
+jest.mock('hooks/useSettingsHash', () => ({
+  useSettingsHash: () => ({
+    state: { tab: null, subPath: '', params: {} },
+    setHash: jest.fn(),
+    clearHash: jest.fn(),
+    updateParams: jest.fn(),
+  }),
+}));
+
 const mockGetUserByName = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
@@ -50,6 +59,10 @@ jest.mock('./components/AccessTokenPanel', () => ({
 jest.mock('./tabs/PermissionsTab', () => ({
   __esModule: true,
   default: () => <div data-testid="content-permissions" />,
+}));
+jest.mock('./tabs/notification/NotificationPanel', () => ({
+  __esModule: true,
+  default: () => <div data-testid="content-notification" />,
 }));
 // "My Connections" is no longer built in — a plugin contributes it through the
 // `profile.tabs` extension point, so the page is exercised with one such tab.
