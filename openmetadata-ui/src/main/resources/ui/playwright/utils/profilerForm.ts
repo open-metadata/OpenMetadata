@@ -13,7 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../constant/service';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
-import { redirectToHomePage } from './common';
+import { chooseSelectOption, redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { selectOnDemandSchedule } from './scheduleInterval';
 import { visitServiceDetailsPage } from './service';
@@ -84,8 +84,10 @@ export const selectSampleConfigType = async (
   page: Page,
   type: 'STATIC' | 'DYNAMIC'
 ) => {
-  await page.getByTestId('sample-config-type-select').click();
-  await page.locator(`[data-key="${type}"]`).click();
+  await chooseSelectOption(
+    page.getByTestId('sample-config-type-select'),
+    page.getByRole('listbox').locator(`[data-key="${type}"]`)
+  );
 };
 
 export const isCreatePipelineCall = (url: string, method: string) =>
