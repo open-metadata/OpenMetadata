@@ -21,6 +21,7 @@ A field reached through a published datasource is reported by the embedded datas
 bare field with no role, so each measure is ingested once, from the datasource defining it.
 """
 
+import re
 from collections.abc import Iterator
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
@@ -61,6 +62,9 @@ _METRIC_TYPE_BY_AGGREGATION = {
     "varp": MetricType.VARIANCE,
 }
 
+_LINE_COMMENT = re.compile(r"//[^\n]*")
+_AGGREGATE_CALL = re.compile(r"^(\w+)\s*\((.*)\)$", re.DOTALL)
+
 
 def tableau_metric_name(service: str, datasource_id: str, field_id: str) -> str:
     """Stable, globally unique name for a Tableau calculated measure.
@@ -77,6 +81,24 @@ def is_metric_field(field: DatasourceField) -> bool:
 
 def map_metric_type(aggregation: str | None) -> MetricType:
     return _METRIC_TYPE_BY_AGGREGATION.get((aggregation or "").lower(), MetricType.OTHER)
+
+
+def formula_aggregation(formula: str | None) -> str | None:
+    """The aggregate a formula consists of, when the whole formula is one call: ``COUNTD([x])``.
+
+    Tableau Cloud reports ``aggregation`` as null for calculated fields, so the formula is the
+    only place it survives. ``SUM([a]) / MIN([b])`` is not one call -- its first parenthesis
+    closes before the end -- and stays unclassified rather than being labelled a SUM.
+    """
+    match = _AGGREGATE_CALL.match(_LINE_COMMENT.sub("", formula or "").strip())
+    if not match or match.group(1).lower() not in _METRIC_TYPE_BY_AGGREGATION:
+        return None
+    depth = 0
+    for char in match.group(2):
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        if depth < 0:
+            return None
+    return match.group(1)
 
 
 def map_unit_of_measurement(default_format: str | None) -> UnitOfMeasurement | None:
@@ -149,17 +171,18 @@ def build_metric_request(
     The formula is Tableau's calculation language, not SQL, hence ``External``.
     """
     name = field.name or field.id
+    aggregation = field.aggregation or formula_aggregation(field.formula)
     return CreateMetricRequest(  # pyright: ignore[reportCallIssue]
         name=EntityName(tableau_metric_name(service, datasource.id, field.id)),
         displayName=name,
         description=Markdown(field.description) if field.description else None,
-        metricType=map_metric_type(field.aggregation),
+        metricType=map_metric_type(aggregation),
         metricExpression=MetricExpression(language=Language.External, code=field.formula),  # pyright: ignore[reportCallIssue]
         unitOfMeasurement=map_unit_of_measurement(field.defaultFormat),
         measures=[
             MetricMeasure(  # pyright: ignore[reportCallIssue]
                 name=name,
-                aggregation=field.aggregation,
+                aggregation=aggregation,
                 description=field.description,
                 expression=field.formula,
             )

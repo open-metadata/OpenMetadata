@@ -31,6 +31,7 @@ from metadata.ingestion.source.dashboard.tableau.metadata import TableauSource
 from metadata.ingestion.source.dashboard.tableau.metrics import (
     build_metric_request,
     datasource_dimensions,
+    formula_aggregation,
     metric_fields_parents_first,
     tableau_metric_name,
 )
@@ -138,13 +139,18 @@ ORDERS = Table(
 
 
 def _data_model(datasource: DataSource) -> DashboardDataModel:
+    model_fqn = f"{SERVICE}.model.{datasource.id}"
     return DashboardDataModel(
         id=uuid.uuid4(),
         name=datasource.id,
-        fullyQualifiedName=f"{SERVICE}.model.{datasource.id}",
+        fullyQualifiedName=model_fqn,
         service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         dataModelType="TableauPublishedDatasource",
-        columns=[],
+        # One column per datasource field, named by field id, as `get_column_info` builds them.
+        columns=[
+            Column(name=field.id, dataType=DataType.RECORD, fullyQualifiedName=f"{model_fqn}.{field.id}")
+            for field in datasource.fields or []
+        ],
     )
 
 
@@ -224,14 +230,17 @@ def test_lineage_stage_emits_metrics_with_assets_and_lineage(make_source):
     edges = {
         (edge.from_entity_fqn, edge.to_entity_fqn): edge for edge in outputs if isinstance(edge, OMetaFQNLineageRequest)
     }
+    model_fqn = DATA_MODELS[PUBLISHED.id].fullyQualifiedName.root
     assert set(edges) == {
         (total_sales_name, margin_name),
-        (TABLE_FQN, total_sales_name),
-        (TABLE_FQN, margin_name),
+        (model_fqn, total_sales_name),
+        (model_fqn, margin_name),
     }
-    margin_columns = edges[(TABLE_FQN, margin_name)].lineage_details.columnsLineage[0]
+    margin_edge = edges[(model_fqn, margin_name)]
+    assert margin_edge.from_entity_type == "dashboardDataModel"
+    margin_columns = margin_edge.lineage_details.columnsLineage[0]
     assert margin_columns.toColumn.root == margin_name
-    assert sorted(column.root for column in margin_columns.fromColumns) == [f"{TABLE_FQN}.profit", f"{TABLE_FQN}.sales"]
+    assert [column.root for column in margin_columns.fromColumns] == [f"{model_fqn}.{MARGIN.id}"]
 
 
 def test_metrics_disabled_by_default(make_source):
@@ -247,3 +256,29 @@ def test_filtered_out_datasource_emits_no_metrics(make_source):
         outputs = [either.right for either in source.yield_datamodel_metrics(dashboard)]
 
     assert outputs == []
+
+
+@pytest.mark.parametrize(
+    ("formula", "expected"),
+    [
+        ("COUNTD([User LUID])", "COUNTD"),
+        ("// distinct users\nCOUNTD([User LUID])", "COUNTD"),
+        ("SUM(IF [a] THEN ([b]) END)", "SUM"),
+        ("SUM([Total Size (GB)])/MIN([Storage Quota (GB)])", None),
+        ("{ FIXED : COUNTD([User Email])}", None),
+        ("ROUND(TODAY()-[Last Accessed At])", None),
+        (None, None),
+    ],
+)
+def test_formula_aggregation_only_when_the_whole_formula_is_one_aggregate(formula, expected):
+    assert formula_aggregation(formula) == expected
+
+
+def test_metric_type_falls_back_to_the_formula_when_tableau_reports_no_aggregation():
+    """Tableau Cloud returns aggregation=null for every calculated field."""
+    field = DatasourceField(id="f-users", name="Users", formula="COUNTD([User LUID])", role="MEASURE")
+
+    request = build_metric_request(SERVICE, PUBLISHED, field, [])
+
+    assert request.metricType == MetricType.COUNT
+    assert request.measures[0].aggregation == "COUNTD"

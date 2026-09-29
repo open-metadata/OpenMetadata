@@ -41,6 +41,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.measures import looker_metric_name
 from metadata.ingestion.source.dashboard.looker.metadata import (
     DATAMODEL_LINEAGE_SENTINEL,
@@ -78,15 +79,25 @@ def _config(**source_config) -> dict:
     }
 
 
-def _data_model(name: str) -> DashboardDataModel:
+def _data_model(name: str, view: LookMlView | None = None) -> DashboardDataModel:
+    """A view's data model carries one column per dimension and measure, as the stage writes it."""
+    model_fqn = f"{SERVICE}.model.{name}"
     return DashboardDataModel(
         id=uuid.uuid4(),
         name=name,
         displayName=name,
+        fullyQualifiedName=model_fqn,
         service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         dataModelType=DataModelType.LookMlView,
-        columns=[],
+        columns=[
+            column.model_copy(update={"fullyQualifiedName": f"{model_fqn}.{model_str(column.name)}"})
+            for column in (get_columns_from_model(view) if view else [])
+        ],
     )
+
+
+def _view_model_fqn(view_name: str) -> str:
+    return f"{SERVICE}.model.my_model_{view_name}_view"
 
 
 def _source_table() -> Table:
@@ -215,7 +226,10 @@ def _run_bulk_stage(
     flushed = False
 
     def build_data_model(data_model_name):
-        return _data_model(data_model_name) if flushed else None
+        if not flushed:
+            return None
+        view = next((view for name, view in views.items() if data_model_name == f"my_model_{name}_view"), None)
+        return _data_model(data_model_name, view)
 
     with (
         patch.object(LookerSource, "register_record_datamodel", return_value=None),
@@ -404,24 +418,34 @@ def test_a_derived_measure_is_emitted_after_the_parent_it_references(records):
     assert parent < child
 
 
-def test_table_to_metric_lineage_carries_column_lineage():
-    records = _run_bulk_stage({"includeMetrics": True}, db_service_prefixes=["trino"])
-    metric_name = looker_metric_name(SERVICE, PROJECT, "my_view", "total_revenue")
-
+def _view_edge(records, measure: str) -> OMetaFQNLineageRequest:
+    metric_name = looker_metric_name(SERVICE, PROJECT, "my_view", measure)
     (edge,) = [
         edge
         for edge in _metric_lineage(records)
-        if edge.from_entity_type == "table" and edge.to_entity_fqn == metric_name
+        if edge.from_entity_type == "dashboardDataModel" and edge.to_entity_fqn == metric_name
     ]
+    return edge
 
-    assert edge.from_entity_fqn == "trino.db.schema.my_table"
+
+def test_a_metric_is_fed_by_the_view_that_declares_it(records):
+    """The measure is a field of its view; the view's Table -> View lineage reaches the warehouse."""
+    edge = _view_edge(records, "total_revenue")
+
+    assert edge.from_entity_fqn == _view_model_fqn("my_view")
     assert [
         ([model_str(column) for column in c.fromColumns], model_str(c.toColumn))
         for c in edge.lineage_details.columnsLineage
-    ] == [(["trino.db.schema.my_table.amount"], metric_name)]
+    ] == [([f"{_view_model_fqn('my_view')}.total_revenue"], edge.to_entity_fqn)]
 
 
-def test_the_column_lineage_target_is_the_metric_itself():
+def test_metric_lineage_never_skips_the_view_to_reach_a_table():
+    records = _run_bulk_stage({"includeMetrics": True}, db_service_prefixes=["trino"])
+
+    assert {edge.from_entity_type for edge in _metric_lineage(records)} == {"dashboardDataModel", "metric"}
+
+
+def test_the_column_lineage_target_is_the_metric_itself(records):
     """A Metric has `measures`, not columns, so its own FQN is its only column endpoint.
 
     `LineageRepository.getChildrenNames` answers `{metricFqn}` for a metric, and
@@ -429,12 +453,10 @@ def test_the_column_lineage_target_is_the_metric_itself():
     back 200 having stored nothing. Addressing the measure as `<metric>.measure.<name>` is
     exactly that silent drop, so the target is pinned here.
     """
-    records = _run_bulk_stage({"includeMetrics": True}, db_service_prefixes=["trino"])
-
     targets = [
         (model_str(column_lineage.toColumn), edge.to_entity_fqn)
         for edge in _metric_lineage(records)
-        if edge.from_entity_type == "table"
+        if edge.from_entity_type == "dashboardDataModel"
         for column_lineage in edge.lineage_details.columnsLineage or []
     ]
 
@@ -442,45 +464,10 @@ def test_the_column_lineage_target_is_the_metric_itself():
     assert all(to_column == metric_fqn for to_column, metric_fqn in targets)
 
 
-def test_every_source_column_of_a_measure_rides_one_edge():
-    """One `toColumn` is valid on a metric, so the columns are `fromColumns` of a single entry.
+def test_a_measure_missing_from_the_view_file_still_links_to_its_view(records):
+    """`api_only_measure` is reported by the API but absent from the LookML, so the view has
+    no column for it: the edge stands at entity level rather than inventing a column."""
+    edge = _view_edge(records, "api_only_measure")
 
-    Emitting one ColumnLineage per source column would be the same target repeated, and the
-    server keeps only what the last entry resolves to.
-    """
-    views = _views()
-    views["my_view"].measures[0].sql = "${TABLE}.amount + ${TABLE}.id"
-    records = _run_bulk_stage({"includeMetrics": True}, db_service_prefixes=["trino"], views=views)
-
-    metric_name = looker_metric_name(SERVICE, PROJECT, "my_view", "total_revenue")
-    (edge,) = [
-        edge
-        for edge in _metric_lineage(records)
-        if edge.from_entity_type == "table" and edge.to_entity_fqn == metric_name
-    ]
-
-    (column_lineage,) = edge.lineage_details.columnsLineage
-    assert [model_str(column) for column in column_lineage.fromColumns] == [
-        "trino.db.schema.my_table.amount",
-        "trino.db.schema.my_table.id",
-    ]
-
-
-def test_a_derived_measure_resolves_its_columns_transitively():
-    """`avg_revenue` never names a column; it reaches `amount` through `${total_revenue}`."""
-    records = _run_bulk_stage({"includeMetrics": True}, db_service_prefixes=["trino"])
-    metric_name = looker_metric_name(SERVICE, PROJECT, "my_view", "avg_revenue")
-
-    (edge,) = [
-        edge
-        for edge in _metric_lineage(records)
-        if edge.from_entity_type == "table" and edge.to_entity_fqn == metric_name
-    ]
-
-    assert [[model_str(column) for column in c.fromColumns] for c in edge.lineage_details.columnsLineage] == [
-        ["trino.db.schema.my_table.amount"]
-    ]
-
-
-def test_no_table_lineage_without_a_configured_db_service(records):
-    assert [edge for edge in _metric_lineage(records) if edge.from_entity_type == "table"] == []
+    assert edge.from_entity_fqn == _view_model_fqn("my_view")
+    assert edge.lineage_details.columnsLineage is None
