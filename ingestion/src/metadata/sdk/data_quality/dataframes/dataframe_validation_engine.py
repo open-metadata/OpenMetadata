@@ -81,10 +81,12 @@ class DataFrameValidationEngine:
             execution_date=Timestamp(root=int(datetime.now().timestamp() * 1000)),
         )
 
+        # Timed around the whole call, as in TestSuiteInterface.run_test_case.
         start = time.perf_counter()
         try:
             result = validator.run_validation()
-            return result  # noqa: RET504, TRY300
+            result.duration = elapsed_ms(start)
+            return result  # noqa: TRY300
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
@@ -93,6 +95,7 @@ class DataFrameValidationEngine:
                 TestCaseStatus.Aborted,
                 message,
                 [],
+                exc=err,
             )
             result.duration = elapsed_ms(start)
             return result

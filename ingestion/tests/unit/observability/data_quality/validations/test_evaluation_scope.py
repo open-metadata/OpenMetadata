@@ -291,7 +291,6 @@ class TestResultMessages:
         assert result.errorDetails.errorType == "ValueError"
         assert result.errorDetails.message == "no such column"
         assert result.errorDetails.stackTrace.rstrip().endswith("ValueError: no such column")
-        assert result.duration is not None
 
     def test_a_missing_scope_reports_the_full_table(self):
         """An older server, or a caller that does not go through the test suite interface"""

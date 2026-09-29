@@ -144,9 +144,12 @@ class TestSuiteInterface(ABC):
         validator_builder = self._get_validator_builder(test_case, entity_type)
         validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
+        # Timed here, around the whole call, so work a validator does before or after the base
+        # validation (runtime parameters, predicted values) is counted too.
         start = time.perf_counter()
         try:
             test_result = validator.run_validation()
+            test_result.duration = elapsed_ms(start)
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
             if self._should_collect_failed_rows_sample():
                 validator.result_with_failed_samples(response)
@@ -165,6 +168,7 @@ class TestSuiteInterface(ABC):
                 TestCaseStatus.Aborted,
                 message,
                 [],
+                exc=err,
             )
             test_result.duration = elapsed_ms(start)
             return TestCaseResultResponse(testCase=test_case, testCaseResult=test_result)

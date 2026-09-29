@@ -255,6 +255,15 @@ class TestEdgeCases:
         assert result.success is False
         assert result.test_results[0].testCaseStatus is TestCaseStatus.Aborted
 
+    def test_a_run_records_its_duration(self):
+        validator = DataFrameValidator(Mock())
+        validator.add_test(ColumnValuesToBeNotNull(column="email"))
+
+        result = validator.validate(pd.DataFrame({"email": ["a@b.c"]})).test_results[0]
+
+        assert result.testCaseStatus is TestCaseStatus.Success
+        assert result.duration > 0
+
     def test_a_validator_crash_is_aborted_with_duration_and_error_details(self):
         df = pd.DataFrame({"email": ["a@b.c"]})
         validator = DataFrameValidator(Mock())

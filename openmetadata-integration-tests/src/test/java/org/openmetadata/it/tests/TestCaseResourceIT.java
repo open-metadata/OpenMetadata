@@ -4286,17 +4286,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     CreateTestCaseResult create = abortedResultWithErrorDetails();
     client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
 
-    Awaitility.await("Wait for test case result to be reflected")
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(500, TimeUnit.MILLISECONDS)
-        .untilAsserted(
-            () ->
-                assertDurationAndErrorDetails(
-                    create,
-                    client
-                        .testCases()
-                        .get(testCase.getId().toString(), "testCaseResult")
-                        .getTestCaseResult()));
+    assertDurationAndErrorDetails(
+        create,
+        client.testCases().get(testCase.getId().toString(), "testCaseResult").getTestCaseResult());
 
     List<TestCaseResult> stored = listTestCaseResults(testCase.getFullyQualifiedName());
     assertEquals(1, stored.size());
@@ -4320,7 +4312,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void test_testCaseResultSearchLatestReturnsDurationAndErrorDetails(TestNamespace ns) {
+  void get_testCaseResultSearchLatestWithDurationAndErrorDetails_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     TestCase testCase = createRowCountTestCase(client, ns, "result_latest_error_details");
     CreateTestCaseResult create = abortedResultWithErrorDetails();

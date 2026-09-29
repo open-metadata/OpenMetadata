@@ -29,6 +29,7 @@ from typing import (
 from uuid import uuid4
 
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
 from metadata.data_quality.validations import result_messages, thresholds, utils
@@ -84,14 +85,50 @@ def elapsed_ms(start: float) -> float:
     return (time.perf_counter() - start) * 1000
 
 
+# A trace or message is stored in the result, both search indexes and every search response, and
+# drivers put whole SQL statements and bound parameters in them, so both are capped.
+MAX_STACK_TRACE_CHARS = 16_000
+MAX_ERROR_MESSAGE_CHARS = 2_000
+TRUNCATION_MARKER = "... [truncated {count} characters]\n"
+
+
+def _root_error_type(exc: BaseException) -> str:
+    """Name of the driver exception behind a SQLAlchemy error, or of the exception itself
+
+    SQLAlchemy wraps the driver's exception (e.g. psycopg2 `QueryCanceled` for a statement
+    timeout) and keeps it on `orig`; our validators also re-raise as a bare `SQLAlchemyError`
+    with the wrapped one chained behind it. The driver type is what says what went wrong.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        orig = getattr(current, "orig", None)
+        if orig is not None:
+            return type(orig).__name__
+        if not isinstance(current, SQLAlchemyError):
+            break
+        current = current.__cause__ or current.__context__
+    return type(exc).__name__
+
+
+def _keep_head(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[:limit] + TRUNCATION_MARKER.format(count=len(text) - limit).rstrip()
+
+
+def _keep_tail(text: str, limit: int) -> str:
+    # The raising frame and the exception line are at the end of a traceback.
+    return text if len(text) <= limit else TRUNCATION_MARKER.format(count=len(text) - limit) + text[-limit:]
+
+
 def error_details(exc: BaseException | None) -> TestCaseErrorDetails | None:
     """Structured details of the exception that aborted a test run"""
     if exc is None:
         return None
     return TestCaseErrorDetails(
-        errorType=type(exc).__name__,
-        message=str(exc),
-        stackTrace="".join(traceback.format_exception(exc)),
+        errorType=_root_error_type(exc),
+        message=_keep_head(str(exc), MAX_ERROR_MESSAGE_CHARS),
+        stackTrace=_keep_tail("".join(traceback.format_exception(exc)), MAX_STACK_TRACE_CHARS),
     )
 
 
@@ -175,13 +212,6 @@ class BaseTestValidator(ABC):
         return min(value, MAX_TOP_DIMENSIONS)
 
     def run_validation(self) -> TestCaseResult:
-        """Run the validation and record its wall-clock duration on the result"""
-        start = time.perf_counter()
-        test_result = self._run_validation_with_dimensions()
-        test_result.duration = elapsed_ms(start)
-        return test_result
-
-    def _run_validation_with_dimensions(self) -> TestCaseResult:
         """Template method defining the validation flow with optional dimensional analysis
 
         This method orchestrates the overall validation process:
@@ -821,6 +851,8 @@ class BaseTestValidator(ABC):
         passed_rows: int | None = None,
         min_bound: float | None = None,
         max_bound: float | None = None,
+        *,
+        exc: BaseException | None = None,
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -829,6 +861,7 @@ class BaseTestValidator(ABC):
             status (TestCaseStatus): failed, success, aborted
             result (str): test case result
             test_result_value (List[TestResultValue]): test result value to display in UI
+            exc (BaseException): the exception that aborted the run; defaults to the one being handled
         Returns:
             TestCaseResult:
         """
@@ -841,9 +874,14 @@ class BaseTestValidator(ABC):
             # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
             minBound=None if min_bound == float("-inf") else min_bound,
             maxBound=None if max_bound == float("inf") else max_bound,
-            # Every Aborted call site runs inside an `except` block, so the active exception is the
-            # cause; reading it here spares each validator from threading it through.
-            errorDetails=error_details(sys.exc_info()[1]) if status == TestCaseStatus.Aborted else None,
+            # Validators build their Aborted result inside the `except` block that caught the error,
+            # so without an explicit `exc` the exception being handled is the cause; that spares each
+            # of them from threading it through.
+            errorDetails=(
+                error_details(exc if exc is not None else sys.exc_info()[1])
+                if status == TestCaseStatus.Aborted
+                else None
+            ),
         )
 
         if (row_count is not None and row_count != 0) and (
