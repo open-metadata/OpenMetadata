@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Tooltip } from 'antd';
+import {
+  Skeleton,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { cloneElement, ReactElement, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../context/LimitsProvider/useLimitsStore';
+import { getEntityNameLabel } from '../utils/EntityNameUtils';
 
 interface LimitWrapperProps {
   children: ReactElement;
@@ -30,25 +36,26 @@ interface LimitWrapperProps {
  * @returns - Wrapped component
  */
 const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
+  const { t } = useTranslation();
   const { getResourceLimit, resourceLimit, config, setBannerDetails } =
     useLimitStore();
   const [loading, setLoading] = useState(true);
 
-  const initResourceLimit = async () => {
-    await getResourceLimit(resource);
-
-    setLoading(false);
-  };
-
   useEffect(() => {
+    let isMounted = true;
+
     if (resource && config?.enable) {
-      initResourceLimit();
+      setLoading(true);
+      void getResourceLimit(resource)
+        .catch(noop)
+        .finally(() => isMounted && setLoading(false));
     }
 
     return () => {
+      isMounted = false;
       setBannerDetails(null);
     };
-  }, [resource, config?.enable]);
+  }, [resource, config?.enable, getResourceLimit, setBannerDetails]);
   const currentLimits = resourceLimit[resource];
 
   const limitReached = currentLimits?.limitReached;
@@ -59,20 +66,50 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
   }
 
   if (loading) {
-    return <Skeleton active />;
+    return (
+      <div aria-label={t('label.loading')} role="status">
+        <Skeleton height={36} variant="rounded" width="100%" />
+      </div>
+    );
   }
 
-  return limitReached ? (
-    <Tooltip
-      title={`You have used ${currentLimits?.currentCount} out of ${currentLimits?.configuredLimit.limits.hardLimit} limit`}>
-      <span>
-        {cloneElement(children, {
+  const resourceLabel =
+    {
+      dataAssets: t('label.data-asset-plural'),
+      dataQuality: t('label.data-quality'),
+      eventsubscription: t('label.event-subscription'),
+      knowledgeCenter: t('label.context-center'),
+    }[resource] ?? getEntityNameLabel(resource);
+  const limitMessage = `${t('server.entity-limit-reached', {
+    entity: resourceLabel,
+  })} (${currentLimits?.currentCount}/${
+    currentLimits?.configuredLimit.limits.hardLimit
+  })`;
+  const disabledActionProps =
+    typeof children.type === 'string'
+      ? { disabled: true, onClick: noop }
+      : {
           disabled: true,
+          isDisabled: true,
           onClick: noop,
-          classNames: classNames(children.props.className, 'disabled'),
-        })}
-      </span>
-    </Tooltip>
+          onPress: noop,
+        };
+
+  return limitReached ? (
+    <span className="tw:relative tw:inline-flex">
+      {cloneElement(children, {
+        ...disabledActionProps,
+        className: classNames(children.props.className, 'disabled'),
+      })}
+      <Tooltip title={limitMessage}>
+        <TooltipTrigger
+          aria-label={limitMessage}
+          className="tw:absolute tw:inset-0 tw:size-full tw:cursor-not-allowed tw:opacity-0"
+          data-testid="limit-reached-trigger">
+          <span aria-hidden="true" />
+        </TooltipTrigger>
+      </Tooltip>
+    </span>
   ) : (
     children
   );

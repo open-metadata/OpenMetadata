@@ -781,6 +781,7 @@ public class CreateTask implements TaskListener {
         && currentWorkflowDefinitionId != null
         && prior.getWorkflowInstanceId() != null
         && !isTerminalTaskStatus(prior.getStatus())
+        && prior.getResolution() == null
         && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
         && currentWorkflowDefinitionId.equals(resolvePriorWorkflowDefinitionId(prior));
   }

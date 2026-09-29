@@ -454,6 +454,8 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude Process Chains that match the pattern.
  *
+ * Regex exclude or include pipelines that match the pattern.
+ *
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -994,6 +996,8 @@ export interface RequestConnection {
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
+ * Tableau Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -1314,6 +1318,8 @@ export interface Connection {
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Tableau Server URL.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -1908,8 +1914,10 @@ export interface Connection {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
@@ -1919,7 +1927,9 @@ export interface Connection {
     includeSynonyms?: boolean;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -2229,6 +2239,11 @@ export interface Connection {
      * Hostname of the Couchbase service.
      */
     hostport?: string;
+    /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
     /**
      * Enable dataflow for ingestion
      */
@@ -2681,6 +2696,8 @@ export interface Connection {
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -2691,6 +2708,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -2857,6 +2876,12 @@ export interface Connection {
      * {"S3_Connector": "my-s3-service"}
      */
     serviceMapping?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -4854,8 +4879,10 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
@@ -4907,7 +4934,9 @@ export interface DatabaseConnectionClass {
     tableFilterPattern?: FilterPattern;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -5792,6 +5821,7 @@ export enum AirflowConnectionType {
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
+    TableauPipeline = "TableauPipeline",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
     Timescale = "Timescale",

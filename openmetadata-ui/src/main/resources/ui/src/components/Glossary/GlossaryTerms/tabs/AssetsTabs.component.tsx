@@ -46,10 +46,12 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../../generated/entity/data/metric';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { Response as BulkResponse } from '../../../../generated/type/bulkOperationResult';
@@ -72,6 +74,8 @@ import {
   getGlossaryTermByFQN,
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
+import { getMetricByFqn } from '../../../../rest/metricsAPI';
+import { removeMetricTabAssets } from '../../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
@@ -86,6 +90,7 @@ import {
   getQuickFilterQuery,
 } from '../../../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
+import { getMetricAssetsQueryFilter } from '../../../../utils/MetricEntityUtils/MetricPureUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import {
@@ -110,7 +115,9 @@ import {
   SourceType,
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
-import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
+import { AssetsTabsProps } from './AssetsTabs.interface';
+
+type AssetsTabEntity = Domain | DataProduct | GlossaryTerm | Tag | Metric;
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -118,7 +125,7 @@ export interface AssetsTabRef {
 }
 
 const checkDomainDryRunImpacts = async (
-  activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
+  activeEntity: AssetsTabEntity,
   entities: EntityReference[]
 ): Promise<BulkResponse[] | undefined> => {
   const dryRunResult = await removeAssetsFromDomain(
@@ -137,10 +144,7 @@ const removePortsHandler =
       | AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
       | AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
   ) =>
-  async (
-    activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
-    entities: EntityReference[]
-  ) => {
+  async (activeEntity: AssetsTabEntity, entities: EntityReference[]) => {
     await removePortsFromDataProduct(
       activeEntity.fullyQualifiedName ?? '',
       entities,
@@ -152,7 +156,7 @@ const removeAssetsHandlers: Partial<
   Record<
     AssetsOfEntity,
     (
-      activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
+      activeEntity: AssetsTabEntity,
       entities: EntityReference[]
     ) => Promise<void>
   >
@@ -175,6 +179,12 @@ const removeAssetsHandlers: Partial<
   [AssetsOfEntity.TAG]: async (activeEntity, entities) => {
     await removeAssetsFromTags(activeEntity.id ?? '', entities);
   },
+  [AssetsOfEntity.METRIC]: async (activeEntity, entities) => {
+    await removeMetricTabAssets(
+      activeEntity.fullyQualifiedName ?? '',
+      entities
+    );
+  },
   [AssetsOfEntity.DOMAIN]: async (activeEntity, entities) => {
     await removeAssetsFromDomain(
       activeEntity.fullyQualifiedName ?? '',
@@ -188,7 +198,7 @@ const removeAssetsHandlers: Partial<
 
 const removeAssetsByType = async (
   type: AssetsOfEntity,
-  activeEntity: Domain | DataProduct | GlossaryTerm | Tag,
+  activeEntity: AssetsTabEntity,
   entities: EntityReference[]
 ) => {
   await removeAssetsHandlers[type]?.(activeEntity, entities);
@@ -243,6 +253,9 @@ const queryParamBuilders: Partial<
   [AssetsOfEntity.GLOSSARY]: (entityFqn) =>
     getTermQuery({ 'tags.tagFQN': entityFqn ?? '' }),
   [AssetsOfEntity.TAG]: (entityFqn) => getTagAssetsQueryFilter(entityFqn ?? ''),
+  // Without the caller's filter of linked asset ids, match nothing rather than every asset.
+  [AssetsOfEntity.METRIC]: (_entityFqn, queryFilter) =>
+    queryFilter ?? getMetricAssetsQueryFilter([]),
 };
 
 interface AssetsFilterBarProps {
@@ -426,6 +439,7 @@ const AssetsTabs = forwardRef(
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
           AssetsOfEntity.TAG,
+          AssetsOfEntity.METRIC,
         ].includes(type),
       [type]
     );
@@ -435,9 +449,7 @@ const AssetsTabs = forwardRef(
     const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
-    const [activeEntity, setActiveEntity] = useState<
-      Domain | DataProduct | GlossaryTerm | Tag
-    >();
+    const [activeEntity, setActiveEntity] = useState<AssetsTabEntity>();
 
     const [selectedItems, setSelectedItems] = useState<
       Map<string, EntityDetailUnion>
@@ -608,6 +620,11 @@ const AssetsTabs = forwardRef(
 
         case AssetsOfEntity.TAG:
           data = await getTagByFqn(fqn);
+
+          break;
+
+        case AssetsOfEntity.METRIC:
+          data = await getMetricByFqn(fqn);
 
           break;
         default:

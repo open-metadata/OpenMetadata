@@ -40,6 +40,9 @@ const WorkflowCard = ({ data, onClick, className }: WorkflowCardProps) => {
     <Card
       className={classNames(
         'tw:min-h-40 tw:flex tw:flex-col tw:p-4 tw:cursor-pointer',
+        // Hover matches the AI Automations template card / entity cards.
+        'tw:shadow-xs tw:transition-[box-shadow,transform,border-color] tw:duration-160 tw:ease-in-out',
+        'tw:hover:border-brand-300 tw:hover:shadow-lg tw:hover:-translate-y-0.5',
         className
       )}
       data-testid={data.key}

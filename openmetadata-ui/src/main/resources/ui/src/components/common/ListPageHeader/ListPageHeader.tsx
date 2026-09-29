@@ -66,9 +66,8 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
           showHome={false}
         />
       }
-      className="tw:mb-5"
+      className="tw:mb-4"
       data-testid="list-page-header"
-      density="compact"
       subtitle={subtitleKey ? t(subtitleKey) : undefined}
       title={t(titleKey)}
       variant="gradient"

@@ -825,7 +825,7 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Verify asset now has its own SLA (no inherited icon)', async () => {
       // Reload to get fresh data
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify SLA section exists using the correct test ID
@@ -1364,7 +1364,7 @@ test.describe('Data Contract Inheritance', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Refresh the page to ensure we get the latest contract state
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract from Data Product is now displayed

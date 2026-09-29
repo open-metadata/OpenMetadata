@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, List, Tabs, Typography } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Badge, Button, List, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -297,19 +298,17 @@ const NotificationBox = ({
         {t('label.notification-plural')}
       </Typography.Title>
       <Tabs
-        className="tabs-new"
-        defaultActiveKey="Task"
-        size="small"
-        tabBarGutter={24}
-        tabBarStyle={{
-          borderBottom: '1px solid #DCE3EC',
-          margin: '0px',
-          paddingLeft: '16px',
-          color: 'inherit',
-        }}
-        onTabClick={updateActiveTab}>
-        {tabsInfo.map(({ name, key }) => (
-          <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
+        defaultSelectedKey={NotificationTabsKey.TASK}
+        onSelectionChange={(key) => updateActiveTab(String(key))}>
+        <Tabs.List className="tw:gap-6 tw:px-4" size="sm" type="underline">
+          {tabsInfo.map(({ name, key }) => (
+            <Tabs.Item id={key} key={key}>
+              {getTabTitle(name, key)}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabsInfo.map(({ key }) => (
+          <Tabs.Panel id={key} key={key}>
             {isLoading ? (
               <div className="h-64 d-flex items-center justify-center">
                 <Loader size="small" />
@@ -317,7 +316,7 @@ const NotificationBox = ({
             ) : (
               notificationList
             )}
-          </Tabs.TabPane>
+          </Tabs.Panel>
         ))}
       </Tabs>
     </div>

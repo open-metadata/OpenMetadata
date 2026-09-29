@@ -1,18 +1,27 @@
 package org.openmetadata.service.cache;
 
+import com.google.common.collect.Lists;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
 public class CachedEntityDao {
+  /** Caps a single DEL so evicting a very large cascade never blocks Redis on one command. */
+  static final int MAX_KEYS_PER_DELETE = 1_000;
+
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final CacheConfig config;
+
+  /** One entity's cached variants: the id hash (base and reference) and the by-name aliases. */
+  public record EntityKey(String entityType, UUID id, String fqn) {}
 
   public Optional<String> getBase(UUID entityId, String entityType) {
     if (EntityCacheBypass.isSkipped()) {
@@ -34,7 +43,8 @@ public class CachedEntityDao {
   }
 
   /**
-   * Write-through cache: Store entity in cache (called after DB write)
+   * Store an entity's JSON. Only readers call this, with the row they loaded from the database;
+   * writers evict instead.
    */
   public void putBase(String entityType, UUID entityId, String entityJson) {
     if (EntityCacheBypass.isSkipped()) {
@@ -69,7 +79,8 @@ public class CachedEntityDao {
   }
 
   /**
-   * Write-through cache: Store entity by name for fast name-based lookups
+   * Store an entity's JSON under its FQN for name-based lookups. Only readers call this, with the
+   * row they loaded from the database; writers evict instead.
    */
   public void putByName(String entityType, String fqn, String entityJson) {
     if (EntityCacheBypass.isSkipped()) {
@@ -214,6 +225,31 @@ public class CachedEntityDao {
     // reference alias still live (or the reverse) and cache a half-stale view of the same entity.
     cache.del(cacheKeyEntity, cacheKeyRef);
     LOG.debug("Invalidated cache for entity by name: {} -> {}", entityType, fqn);
+  }
+
+  /**
+   * Evicts every cached variant of a batch of entities in one DEL (split only past {@link
+   * #MAX_KEYS_PER_DELETE} keys). A committed batch has to turn over at once: evicted entity by
+   * entity, a reader finds one entity fresh while a sibling still serves its pre-write copy.
+   */
+  public void invalidateEntities(List<EntityKey> entities) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
+    List<String> cacheKeys = entities.stream().flatMap(this::cacheKeysOf).toList();
+    for (List<String> chunk : Lists.partition(cacheKeys, MAX_KEYS_PER_DELETE)) {
+      cache.del(chunk.toArray(String[]::new));
+    }
+  }
+
+  private Stream<String> cacheKeysOf(EntityKey entity) {
+    Stream<String> nameKeys =
+        entity.fqn() == null
+            ? Stream.empty()
+            : Stream.of(
+                keys.entityByName(entity.entityType(), entity.fqn()),
+                keys.refByName(entity.entityType(), entity.fqn()));
+    return Stream.concat(Stream.of(keys.entity(entity.entityType(), entity.id())), nameKeys);
   }
 
   // Additional invalidation methods for delete operations

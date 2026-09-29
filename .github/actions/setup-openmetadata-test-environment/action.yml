@@ -183,10 +183,23 @@ runs:
     # Saved here rather than at job end so a later failure (server startup,
     # tests) still leaves the venv cached. Fork PRs under pull_request_target
     # skip the save — actions/cache-poisoning; their restore above still runs.
+    # merge_group is excluded for the same reason setup-uv's enable-cache is
+    # gated above: the queue's gh-readonly-queue/* ref dies when its entry
+    # merges or is dequeued, but the ~1 GB venv saved under it (x2 — one per
+    # Python version the py-tests matrix runs) stays charged against the
+    # repo's 10 GB LRU budget until evicted. Measured 2026-09-10 03:44-03:49:
+    # four om-venv entries, 3.98 GB, on two dead queue refs — the largest
+    # ephemeral writer left after #33085 — and in the same window the
+    # main-scoped playwright-distribution and playwright-ingestion-image
+    # entries the warmer had saved 25 minutes earlier were LRU-evicted.
+    # The restore above stays unconditional so queue runs still hit main's
+    # copy; only the write is gated, exactly as playwright-e2e-reusable.yml
+    # does for every one of its own saves.
     - name: Save ingestion Python venv
       if: >-
         ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
         steps.cache-python-venv.outputs.cache-hit != 'true' &&
+        github.event_name != 'merge_group' &&
         !(github.event_name == 'pull_request_target' &&
           github.event.pull_request.head.repo.full_name != github.repository) }}
       continue-on-error: true

@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -146,14 +147,22 @@ class EntityCacheLoadRaceTest {
     UUID id = UUID.randomUUID();
     ImmutablePair<String, UUID> key = new ImmutablePair<>(Entity.PIPELINE, id);
     Pipeline softDeleted = pipeline(id, true);
+    var nameKey =
+        EntityRepository.cacheNameKey(Entity.PIPELINE, softDeleted.getFullyQualifiedName());
     String softDeletedJson = JsonUtils.pojoToJson(softDeleted);
     CachedEntityDao cachedEntityDao =
         new CachedEntityDao(
-            new ReadBeforeFirstDelete(() -> EntityRepository.CACHE_WITH_ID.get(key)),
+            new ReadBeforeFirstDelete(
+                () -> {
+                  assertEquals(softDeletedJson, EntityRepository.CACHE_WITH_ID.get(key));
+                  assertEquals(softDeletedJson, EntityRepository.CACHE_WITH_NAME.get(nameKey));
+                }),
             new CacheKeys("om-test"),
             new CacheConfig());
     cachedEntityDao.putBase(Entity.PIPELINE, id, softDeletedJson);
+    cachedEntityDao.putByName(Entity.PIPELINE, nameKey.getRight(), softDeletedJson);
     EntityRepository.CACHE_WITH_ID.put(key, softDeletedJson);
+    EntityRepository.CACHE_WITH_NAME.put(nameKey, softDeletedJson);
 
     try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
       cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(cachedEntityDao);
@@ -164,6 +173,9 @@ class EntityCacheLoadRaceTest {
     assertNull(
         EntityRepository.CACHE_WITH_ID.getIfPresent(key),
         "a read racing the refresh must not leave the soft-deleted copy in the cache");
+    assertNull(EntityRepository.CACHE_WITH_NAME.getIfPresent(nameKey));
+    assertTrue(cachedEntityDao.getBase(id, Entity.PIPELINE).isEmpty());
+    assertTrue(cachedEntityDao.getByName(Entity.PIPELINE, nameKey.getRight()).isEmpty());
   }
 
   private static Pipeline pipeline(UUID id, boolean deleted) {
