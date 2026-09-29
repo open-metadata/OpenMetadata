@@ -3985,6 +3985,32 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         "displayName should be refreshed from the re-imported ODPS name");
   }
 
+  @Test
+  void importFromODPS_matchesExistingNonSlugProductByProductId(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
+    String domainFqn = domain.getFullyQualifiedName();
+    // A valid entityName that is NOT a slug (contains spaces), as a product created
+    // via UI/API can be. Export writes this verbatim into productID, so re-import must
+    // match it by the raw productID rather than the sanitized slug.
+    String nonSlugId = "Customer 360 " + UUID.randomUUID().toString().substring(0, 8);
+
+    DataProduct created =
+        SdkClients.adminClient()
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(nonSlugId)
+                    .withDescription("non-slug data product")
+                    .withDomains(List.of(domainFqn)));
+
+    DataProduct reimported = putOdps(domainFqn, buildOdpsDoc(nonSlugId, "[DEV] " + nonSlugId));
+
+    assertEquals(
+        created.getId(),
+        reimported.getId(),
+        "re-import of a non-slug productID must update the existing product, not create a duplicate");
+  }
+
   private DataProduct putOdps(String domainFqn, ODPSDataProduct odps) {
     return SdkClients.adminClient()
         .getHttpClient()
