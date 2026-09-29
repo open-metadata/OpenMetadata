@@ -208,7 +208,7 @@ class TestTrinoMetadata(unittest.TestCase):
             )
 
 
-class TestTrinoIcebergDetection(unittest.TestCase):
+class TestTrinoIcebergDetection:
     def _make_mock_source(self, connector_name, table_names):
         mock_self = Mock()
         mock_self.context.get.return_value.database = "test_catalog"

@@ -1,3 +1,14 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 """Trino types a table from its catalog's connector, so a `delta_lake` catalog must reach the
 API as `DeltaLake`. The `delta` catalog and the `minio` (hive) catalog share one metastore, which
 is the deployment where the type matters."""
@@ -55,6 +66,13 @@ def create_delta_table(trino_container):
             conn.execute(
                 text("INSERT INTO delta.delta_schema.delta_sales VALUES (1, 'emea', 10.5), (2, 'apac', 20.25)")
             )
+            conn.commit()
+        yield
+        with engine.connect() as conn:
+            # The delta and minio catalogs share one metastore, so leaving the schema behind
+            # would expose an unreadable Delta table to every later module in this package.
+            conn.execute(text("DROP TABLE IF EXISTS delta.delta_schema.delta_sales"))
+            conn.execute(text("DROP SCHEMA IF EXISTS delta.delta_schema"))
             conn.commit()
     finally:
         engine.dispose()
