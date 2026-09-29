@@ -418,6 +418,66 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
         idsForStatusAndActive(entityLink, AnnouncementStatus.Scheduled, false));
   }
 
+  /**
+   * The list filter derives status from the window, so the payload has to as well — otherwise
+   * `?status=Expired` returns an announcement whose own `status` field still reads `Active`.
+   */
+  @Test
+  void testStatusOnReadTracksTheWindowNotTheStoredValue(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    long day = 86400000L;
+
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("status-on-read"))
+                .withDescription("Born active")
+                .withStartTime(now - day)
+                .withEndTime(now + day));
+    assertEquals(AnnouncementStatus.Active, created.getStatus());
+
+    // Push the window into the past; the stored snapshot is not rewritten by a patch.
+    created.setStartTime(now - 2 * day);
+    created.setEndTime(now - day);
+    patchEntity(created.getId().toString(), created);
+
+    assertEquals(AnnouncementStatus.Expired, getEntity(created.getId().toString()).getStatus());
+  }
+
+  @Test
+  void testCustomAnnouncementRequiresItsName(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("custom-no-name"))
+            .withDescription("Custom with no label")
+            .withType(AnnouncementType.Custom)
+            .withColor(AnnouncementColor.Pink)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    assertThrows(Exception.class, () -> createEntity(request));
+  }
+
+  /** Colour and name are Custom-only, so the server drops them rather than storing dead data. */
+  @Test
+  void testNonCustomAnnouncementDropsColourAndName(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("warning-with-colour"))
+                .withDescription("Warning that tried to carry a colour")
+                .withType(AnnouncementType.Warning)
+                .withColor(AnnouncementColor.Pink)
+                .withCustomTypeName("Ignored")
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+
+    assertNull(created.getColor());
+    assertNull(created.getCustomTypeName());
+  }
+
   private List<UUID> idsForStatusAndActive(
       String entityLink, AnnouncementStatus status, boolean active) {
     return listEntities(

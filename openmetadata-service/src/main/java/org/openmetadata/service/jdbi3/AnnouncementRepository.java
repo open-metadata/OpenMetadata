@@ -79,16 +79,45 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     if (announcement.getType() == null) {
       announcement.setType(AnnouncementType.Information);
     }
-    if (announcement.getStatus() == null) {
-      long now = System.currentTimeMillis();
-      if (announcement.getEndTime() < now) {
-        announcement.setStatus(AnnouncementStatus.Expired);
-      } else if (announcement.getStartTime() > now) {
-        announcement.setStatus(AnnouncementStatus.Scheduled);
-      } else {
-        announcement.setStatus(AnnouncementStatus.Active);
-      }
+    validateTypeFields(announcement);
+    announcement.setStatus(deriveStatus(announcement));
+  }
+
+  /**
+   * Status is a function of the time window, never of what was stored. Writing it on create and
+   * leaving it alone thereafter let the field drift: an announcement whose window had closed still
+   * reported {@code Active}, so the list filter — which derives the status — and the payload
+   * disagreed. Deriving it on both write and read keeps the stored column from mattering for
+   * correctness.
+   */
+  private AnnouncementStatus deriveStatus(Announcement announcement) {
+    long now = System.currentTimeMillis();
+    if (announcement.getEndTime() < now) {
+      return AnnouncementStatus.Expired;
     }
+    return announcement.getStartTime() > now
+        ? AnnouncementStatus.Scheduled
+        : AnnouncementStatus.Active;
+  }
+
+  /**
+   * `color` and `customTypeName` only mean anything on a {@code Custom} announcement. The form
+   * enforces that, but API, MCP and script callers do not go through the form, so without this the
+   * server would store a colour the UI never reads or a Custom announcement with no label.
+   */
+  private void validateTypeFields(Announcement announcement) {
+    if (announcement.getType() != AnnouncementType.Custom) {
+      announcement.setColor(null);
+      announcement.setCustomTypeName(null);
+      return;
+    }
+
+    if (nullOrEmpty(announcement.getCustomTypeName())
+        || announcement.getCustomTypeName().isBlank()) {
+      throw new IllegalArgumentException(
+          "customTypeName is required when the announcement type is Custom");
+    }
+    announcement.setCustomTypeName(announcement.getCustomTypeName().trim());
   }
 
   @Override
@@ -112,6 +141,7 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
 
   @Override
   public void setFields(Announcement announcement, Fields fields, RelationIncludes includes) {
+    announcement.setStatus(deriveStatus(announcement));
     announcement.setOwners(
         fields.contains(FIELD_OWNERS) ? getOwners(announcement) : announcement.getOwners());
     announcement.setDomains(
