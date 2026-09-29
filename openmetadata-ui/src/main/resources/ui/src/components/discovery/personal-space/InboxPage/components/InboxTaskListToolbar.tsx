@@ -143,6 +143,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
           data-testid="inbox-tasks-status-filter"
           label={t('label.status')}
           options={statusOptions}
+          popoverClassName="tw:w-56"
           selectedValues={statusFilter}
           selectionMode="multiple"
           triggerVariant="button"
