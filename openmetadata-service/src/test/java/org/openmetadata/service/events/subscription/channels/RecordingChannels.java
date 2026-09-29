@@ -41,7 +41,7 @@ public final class RecordingChannels implements ChannelProvider {
     }
 
     @Override
-    public Optional<ChannelRenderer> newRenderer() {
+    public Optional<ChannelRenderer> renderer() {
       return Optional.empty();
     }
 

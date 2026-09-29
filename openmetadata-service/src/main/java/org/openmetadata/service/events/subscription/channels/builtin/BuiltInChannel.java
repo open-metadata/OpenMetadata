@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.events.subscription.channels.builtin;
 
+import com.google.common.base.Suppliers;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
@@ -36,8 +37,13 @@ record BuiltInChannel(
     BiFunction<EventSubscription, SubscriptionDestination, Destination<ChangeEvent>> publishers)
     implements Channel {
 
+  // Built once, when first asked for: the email renderer reads its envelope as it is built.
+  BuiltInChannel {
+    rendererOrNull = rendererOrNull == null ? null : Suppliers.memoize(rendererOrNull::get);
+  }
+
   @Override
-  public Optional<ChannelRenderer> newRenderer() {
+  public Optional<ChannelRenderer> renderer() {
     return Optional.ofNullable(rendererOrNull).map(Supplier::get);
   }
 
