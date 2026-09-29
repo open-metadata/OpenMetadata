@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-export const PROFILE_NAV_IDS = new Set([
-  'profile',
-  'permissions',
-  'access-token',
-  'my-connections',
-  'access-control',
-  'custom-properties',
-  'notification',
-  'members',
-]);
+import { FC } from 'react';
+
+import type { MembersUsersPanelProps } from './Members.types';
+import MembersUsersPanel from './MembersUsersPanel';
+
+const MembersAdminsPanel: FC<MembersUsersPanelProps> = (props) => (
+  <MembersUsersPanel {...props} isAdmin />
+);
+
+export default MembersAdminsPanel;

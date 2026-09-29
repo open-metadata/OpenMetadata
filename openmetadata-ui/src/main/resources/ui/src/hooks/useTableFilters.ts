@@ -83,6 +83,11 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
       }
       navigate(
         {
+          // Preserve the current hash — omitting it makes react-router drop the
+          // fragment, which wipes hash-driven state (e.g. the `#members/...`
+          // tab that keeps the personal-space overlay open) on every table
+          // filter/search/page change.
+          hash: globalThis.location.hash,
           search: qs.stringify(mergedQueryParams, {
             addQueryPrefix: true,
             arrayFormat: 'brackets', // This will format arrays as key[0]=value&key[1]=value

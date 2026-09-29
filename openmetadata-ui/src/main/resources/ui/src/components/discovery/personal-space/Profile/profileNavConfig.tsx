@@ -19,6 +19,7 @@ import {
   Settings02,
   ShieldTick,
   User01,
+  Users01,
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
@@ -32,6 +33,7 @@ import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomProperti
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
+import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
@@ -43,7 +45,8 @@ export type ProfileNavId =
   | 'access-control'
   | 'bots'
   | 'custom-properties'
-  | 'notification';
+  | 'notification'
+  | 'members';
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
 export type ProfileNavGroup =
@@ -196,6 +199,18 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
 ];
 
 export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'members',
+    group: 'workspace',
+    label: 'label.member-plural',
+    description: 'message.members-settings-description',
+    icon: Users01,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <MembersPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'custom-properties',
     group: 'workspace',
