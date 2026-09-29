@@ -319,6 +319,9 @@
                 <include>testcontainers.properties</include>
                 <include>docker-java.properties</include>
                 <include>META-INF/services/**</include>
+                <!-- SearchTestImages (org/openmetadata/it/server/**) copies this archive into the
+                     Docker build context, so it has to travel with the published harness. -->
+                <include>opensearch-plugins/**</include>
               </includes>
             </configuration>
           </execution>
@@ -422,6 +425,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -467,10 +471,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
@@ -482,7 +494,6 @@
                     <junit.jupiter.execution.parallel.config.strategy>${integrationTests.parallelStrategy}</junit.jupiter.execution.parallel.config.strategy>
                     <junit.jupiter.execution.parallel.config.fixed.parallelism>${integrationTests.parallelism}</junit.jupiter.execution.parallel.config.fixed.parallelism>
                     <junit.jupiter.execution.parallel.config.fixed.max-pool-size>${integrationTests.maxPoolSize}</junit.jupiter.execution.parallel.config.fixed.max-pool-size>
-                    <excludedGroups>scale</excludedGroups>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -535,6 +546,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -580,10 +592,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
@@ -648,6 +668,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -694,10 +715,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
@@ -762,6 +791,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -807,10 +837,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
@@ -874,6 +912,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -919,10 +958,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
@@ -985,6 +1032,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1031,10 +1079,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
@@ -1114,6 +1170,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1161,10 +1218,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:16-alpine</databaseImage>
@@ -1230,6 +1295,7 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
+                    <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
@@ -1277,10 +1343,18 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
                   </excludes>
+                  <!-- excludedGroups must be a direct <configuration> child: nested inside
+                       <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
+                       JUnit Platform tag filter). @Tag("multi-node") classes start extra servers in
+                       this JVM, so they must never share a fork with the concurrent suites; the file
+                       excludes above say the same thing, and this tag filter is what keeps a newly
+                       added one from silently landing here when someone forgets the file list. -->
+                  <excludedGroups>scale,multi-node</excludedGroups>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
                     <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
