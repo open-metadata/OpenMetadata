@@ -25,8 +25,9 @@ import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, ChevronUp, XClose } from '@untitledui/icons';
+import { Check, ChevronDown, ChevronUp, XClose } from '@untitledui/icons';
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -47,10 +48,27 @@ const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);
 
+// Consecutive options that share a `group` are listed under one heading.
+const groupRuns = (options: FilterSelectOption[]) =>
+  options.reduce<{ group?: string; options: FilterSelectOption[] }[]>(
+    (runs, option) => {
+      const last = runs[runs.length - 1];
+      if (last && last.group === option.group) {
+        last.options.push(option);
+      } else {
+        runs.push({ group: option.group, options: [option] });
+      }
+
+      return runs;
+    },
+    []
+  );
+
 export const TriggerButton = ({
   hasSelection,
   isOpen,
   text,
+  supportingText,
   label,
   count,
   placeholder,
@@ -63,6 +81,7 @@ export const TriggerButton = ({
   hasSelection: boolean;
   isOpen?: boolean;
   text: string;
+  supportingText?: string;
   label: string;
   count?: number;
   placeholder?: string;
@@ -116,6 +135,11 @@ export const TriggerButton = ({
           )}
           data-testid={`search-dropdown-${label}`}>
           {hasSelection ? text : placeholder ?? text}
+          {hasSelection && supportingText && (
+            <span className="tw:ml-2 tw:font-normal tw:text-tertiary">
+              {supportingText}
+            </span>
+          )}
         </span>
         {countBadge}
         <ChevronDown
@@ -233,11 +257,14 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
+  showCheck,
   isNullOption,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
+  /** Marks the selected row with a check, as core Select does. */
+  showCheck?: boolean;
   /** The pinned "No <X>" row, which the design mutes relative to real options. */
   isNullOption?: boolean;
 }) => {
@@ -291,6 +318,11 @@ const OptionRow = ({
             className="not-prose tw:grow tw:truncate"
             title={optionText(option)}>
             {option.label}
+            {option.supportingText && (
+              <span className="tw:ml-2 tw:text-tertiary">
+                {option.supportingText}
+              </span>
+            )}
           </Typography>
           {!hideCounts && option.count !== undefined && (
             <Typography
@@ -307,6 +339,12 @@ const OptionRow = ({
               weight="regular">
               {option.count.toLocaleString()}
             </Typography>
+          )}
+          {showCheck && state.isSelected && (
+            <Check
+              aria-hidden="true"
+              className="tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-brand-secondary_alt"
+            />
           )}
         </span>
       )}
@@ -378,10 +416,12 @@ const FilterSelect = ({
     }
     const missing = selectedValues
       .filter((value) => !known.has(value))
-      .map((value) => ({
-        value,
-        label: resolveMissingLabel?.(value) ?? value,
-      }));
+      .map(
+        (value): FilterSelectOption => ({
+          value,
+          label: resolveMissingLabel?.(value) ?? value,
+        })
+      );
 
     return missing.length > 0 ? [...missing, ...options] : options;
   }, [options, selectedValues, nullOption, resolveMissingLabel]);
@@ -409,18 +449,17 @@ const FilterSelect = ({
       : undefined;
   }, [nullOption, onSearch, query]);
 
-  const triggerText = useMemo(() => {
-    if (isMulti) {
-      // The selection count renders as a separate pill badge on the trigger.
-      return label;
-    }
-    const selected = [
-      ...(nullOption ? [nullOption] : []),
-      ...mergedOptions,
-    ].find((option) => option.value === selectedValues[0]);
-
-    return selected ? optionText(selected) : label;
-  }, [isMulti, selectedValues, label, mergedOptions, nullOption]);
+  const selectedOption = useMemo(
+    () =>
+      isMulti
+        ? undefined
+        : [...(nullOption ? [nullOption] : []), ...mergedOptions].find(
+            (option) => option.value === selectedValues[0]
+          ),
+    [isMulti, selectedValues, mergedOptions, nullOption]
+  );
+  // A multi selection shows its count as a separate pill badge instead.
+  const triggerText = selectedOption ? optionText(selectedOption) : label;
 
   const chips = useMemo(() => {
     if (!isChips) {
@@ -686,6 +725,7 @@ const FilterSelect = ({
             isOpen={isOpen}
             label={label}
             placeholder={placeholder}
+            supportingText={selectedOption?.supportingText}
             testId={testId}
             text={triggerText}
             variant={triggerVariant}
@@ -780,14 +820,30 @@ const FilterSelect = ({
                   showCheckbox={isMulti}
                 />
               )}
-              {displayedOptions.map((option) => (
-                <OptionRow
-                  hideCounts={hideCounts}
-                  key={option.value}
-                  option={option}
-                  showCheckbox={isMulti}
-                />
-              ))}
+              {groupRuns(displayedOptions).map(({ group, options: rows }) => {
+                const rowNodes = rows.map((option) => (
+                  <OptionRow
+                    hideCounts={hideCounts}
+                    key={option.value}
+                    option={option}
+                    // The input variant stands in for a form select, so its
+                    // single selection is marked the way core Select marks it.
+                    showCheck={!isMulti && triggerVariant === 'input'}
+                    showCheckbox={isMulti}
+                  />
+                ));
+
+                return group ? (
+                  <Dropdown.Section id={group} key={group}>
+                    <Dropdown.SectionHeader className="tw:px-4 tw:pt-2 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                      {group}
+                    </Dropdown.SectionHeader>
+                    {rowNodes}
+                  </Dropdown.Section>
+                ) : (
+                  <Fragment key={rows[0].value}>{rowNodes}</Fragment>
+                );
+              })}
             </Dropdown.Menu>
           )}
 

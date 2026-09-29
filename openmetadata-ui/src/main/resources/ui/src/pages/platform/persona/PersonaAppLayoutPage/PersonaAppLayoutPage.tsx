@@ -18,10 +18,10 @@ import {
   Card,
   Divider,
   Dropdown,
+  FilterSelect,
   Grid,
   RadioButton,
   RadioGroup,
-  Select,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -133,6 +133,20 @@ export const PersonaAppLayoutPage = ({
   const [viewModes, setViewModes] = useState(persistedViewModes);
 
   const personaName = getEntityName(personaDetails);
+  const landingPageOptions = LANDING_PAGE_SECTIONS.flatMap(
+    ({ titleKey, options }) =>
+      options.map(({ path, labelKey }) => ({
+        value: path,
+        label: (
+          <Typography className="not-prose" weight="semibold">
+            {t(labelKey)}
+          </Typography>
+        ),
+        textValue: t(labelKey),
+        supportingText: path,
+        group: t(titleKey),
+      }))
+  );
   const configuredPages = VIEW_MODE_PAGES.filter(({ page }) => viewModes[page]);
   const addablePages = VIEW_MODE_PAGES.filter(({ page }) => !viewModes[page]);
 
@@ -177,11 +191,7 @@ export const PersonaAppLayoutPage = ({
         pageTitle={t('label.customize-entity', {
           entity: t('label.app-layout'),
         })}>
-        {/* The Select list closes when focus moves to another element, and a
-            click on plain page content moves it nowhere. Being focusable lets
-            this box take that focus, as a modal's dialog does, so an outside
-            click closes the list. */}
-        <Box direction="col" gap={5} tabIndex={-1}>
+        <Box direction="col" gap={5}>
           <CustomizablePageHeader
             disableSave={disableSave}
             personaName={personaName}
@@ -240,29 +250,17 @@ export const PersonaAppLayoutPage = ({
             <PreferenceRow
               description={t('message.default-landing-page-description')}
               title={t('label.default-landing-page')}>
-              <Select
-                aria-label={t('label.default-landing-page')}
+              <FilterSelect
+                hideCounts
                 data-testid="default-landing-page-select"
-                fontSize="sm"
-                selectedKey={landingPage}
-                size="md"
-                onSelectionChange={(key) => key && setLandingPage(String(key))}>
-                {LANDING_PAGE_SECTIONS.map((section) => (
-                  <Select.Section id={section.titleKey} key={section.titleKey}>
-                    <Select.SectionHeader className="tw:px-3.5 tw:pt-3 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
-                      {t(section.titleKey)}
-                    </Select.SectionHeader>
-                    {section.options.map((option) => (
-                      <Select.Item
-                        id={option.path}
-                        key={option.path}
-                        label={t(option.labelKey)}
-                        supportingText={option.path}
-                      />
-                    ))}
-                  </Select.Section>
-                ))}
-              </Select>
+                label={t('label.default-landing-page')}
+                options={landingPageOptions}
+                popoverClassName="tw:w-(--trigger-width)"
+                selectedValues={[landingPage]}
+                selectionMode="single"
+                triggerVariant="input"
+                onChange={([path]) => path && setLandingPage(path)}
+              />
             </PreferenceRow>
 
             <Divider />
@@ -350,30 +348,14 @@ export const PersonaAppLayoutPage = ({
                               entity: t('label.page'),
                             })}
                           </Dropdown.SectionHeader>
-                          {addablePages.map(({ page, labelKey, views }) => (
+                          {addablePages.map(({ page, labelKey }) => (
                             <Dropdown.Item
                               data-testid={`add-view-mode-page-${page}`}
                               id={page}
                               key={page}
-                              textValue={t(labelKey)}>
-                              <Box gap={4} justify="between">
-                                <Typography
-                                  as="span"
-                                  className="tw:text-primary"
-                                  size="text-md">
-                                  {t(labelKey)}
-                                </Typography>
-                                <Typography
-                                  as="span"
-                                  className="tw:text-tertiary">
-                                  {views
-                                    .map((view) =>
-                                      t(PAGE_VIEW_MODE_LABEL_KEYS[view])
-                                    )
-                                    .join(' · ')}
-                                </Typography>
-                              </Box>
-                            </Dropdown.Item>
+                              label={t(labelKey)}
+                              textValue={t(labelKey)}
+                            />
                           ))}
                         </Dropdown.Section>
                       </Dropdown.Menu>

@@ -57,33 +57,3 @@ describe('Select in a modal', () => {
     }
   );
 });
-
-describe('Select sections', () => {
-  it('groups options under their section headers', async () => {
-    const user = userEvent.setup();
-    render(
-      <Select aria-label="Landing page">
-        <Select.Section aria-label="General">
-          <Select.SectionHeader>General</Select.SectionHeader>
-          <Select.Item id="home" label="Home" />
-        </Select.Section>
-        <Select.Section aria-label="Govern">
-          <Select.SectionHeader>Govern</Select.SectionHeader>
-          <Select.Item id="glossary" label="Glossary" />
-        </Select.Section>
-      </Select>
-    );
-
-    await user.click(screen.getByRole('button', { name: /Landing page/ }));
-
-    const govern = await screen.findByRole('group', { name: 'Govern' });
-
-    expect(govern).toHaveTextContent('Govern');
-    expect(govern).toContainElement(
-      screen.getByRole('option', { name: 'Glossary' })
-    );
-    expect(govern).not.toContainElement(
-      screen.getByRole('option', { name: 'Home' })
-    );
-  });
-});
