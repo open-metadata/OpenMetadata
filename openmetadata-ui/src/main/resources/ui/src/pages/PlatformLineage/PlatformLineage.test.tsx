@@ -243,9 +243,8 @@ jest.mock('../../components/Lineage/Lineage.component', () => ({
   default: jest.fn(() => <div>Lineage</div>),
 }));
 
-jest.mock('../../context/LineageProvider/LineageProvider', () => ({
-  __esModule: true,
-  default: jest.fn(({ children }: { children: React.ReactNode }) => (
+jest.mock('../../components/Lineage/Lineage/Lineage', () => ({
+  Lineage: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
 }));
@@ -259,8 +258,8 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
 
 const mockLineage = require('../../components/Lineage/Lineage.component')
   .default as jest.Mock;
-const mockLineageProvider =
-  require('../../context/LineageProvider/LineageProvider').default as jest.Mock;
+const mockLineageWrapper = require('../../components/Lineage/Lineage/Lineage')
+  .Lineage as jest.Mock;
 const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
   .default as jest.Mock;
 const mockEntitySuggestionOption =
@@ -361,7 +360,7 @@ describe('PlatformLineage Component Logic', () => {
       <div>EntitySuggestionOption</div>
     ));
     mockLineage.mockImplementation(() => <div>Lineage</div>);
-    mockLineageProvider.mockImplementation(
+    mockLineageWrapper.mockImplementation(
       ({ children }: { children: React.ReactNode }) => <div>{children}</div>
     );
     mockPageLayoutV1.mockImplementation(
@@ -926,11 +925,11 @@ describe('PlatformLineage Component Logic', () => {
       });
     });
 
-    it('should wrap Lineage in LineageProvider', async () => {
+    it('should wrap Lineage in the Lineage provider component', async () => {
       render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
-        expect(mockLineageProvider).toHaveBeenCalled();
+        expect(mockLineageWrapper).toHaveBeenCalled();
         expect(mockLineage).toHaveBeenCalled();
       });
     });
