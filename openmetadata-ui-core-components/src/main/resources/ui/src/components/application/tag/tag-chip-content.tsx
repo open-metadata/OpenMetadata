@@ -32,8 +32,14 @@ interface TagChipContentProps {
   /** Rendered when `icon` is not provided. */
   defaultIcon: ReactNode;
   labelClassName?: string;
+  /** Test id set on the label element (e.g. the legacy `domain-link` hook). */
+  labelTestId?: string;
+  /** Rich label content rendered in place of `label` (e.g. a diff node). */
+  labelContent?: ReactNode;
   iconSize: number;
   iconTestId?: string;
+  /** Rendered after the label, inside the chip (e.g. an inherit glyph). */
+  trailing?: ReactNode;
 }
 
 /**
@@ -47,8 +53,11 @@ export const TagChipContent: FC<TagChipContentProps> = ({
   icon,
   defaultIcon,
   labelClassName,
+  labelTestId,
+  labelContent,
   iconSize,
   iconTestId,
+  trailing,
 }) => {
   const iconNode = icon ? (
     <Suspense fallback={null}>
@@ -60,8 +69,10 @@ export const TagChipContent: FC<TagChipContentProps> = ({
 
   const labelNode = (
     <div style={{ maxWidth }}>
-      <span className={cx('tw:block tw:truncate', labelClassName)}>
-        {label}
+      <span
+        className={cx('tw:block tw:truncate', labelClassName)}
+        data-testid={labelTestId}>
+        {labelContent ?? label}
       </span>
     </div>
   );
@@ -77,6 +88,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
         </span>
       )}
       {labelNode}
+      {trailing}
     </div>
   );
 };

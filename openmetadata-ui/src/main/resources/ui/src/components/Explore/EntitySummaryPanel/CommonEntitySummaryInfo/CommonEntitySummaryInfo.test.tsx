@@ -50,7 +50,24 @@ describe('CommonEntitySummaryInfo component', () => {
       'http://localhost:8080/tree?dag_id=presto_etl'
     );
     expect(externalURL.getAttribute('target')).toEqual('_blank');
+    expect(externalURL.getAttribute('rel')).toEqual('noopener noreferrer');
     expect(getByTestId(externalURL, 'external-link-icon')).toBeInTheDocument();
+  });
+
+  it('should not render a non-http(s) external URL as href', () => {
+    render(
+      <CommonEntitySummaryInfo
+        {...mockProps}
+        entityInfo={mockCommonEntityInfo.map((info) =>
+          info.isExternal ? { ...info, url: 'javascript:alert(1)' } : info
+        )}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('Pipeline URL-value')).not.toHaveAttribute(
+      'href'
+    );
   });
 
   it('Component should render correct fields for Lineage page', () => {

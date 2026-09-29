@@ -195,10 +195,6 @@ jest.mock('../../components/Lineage/Lineage.component', () =>
   jest.fn().mockReturnValue(<>EntityLineage</>)
 );
 
-jest.mock('../../context/LineageProvider/LineageProvider', () =>
-  jest.fn().mockReturnValue(<>LineageProvider</>)
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
