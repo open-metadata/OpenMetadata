@@ -187,13 +187,27 @@ describe('getTaskStatusBucket', () => {
     ).toBe(TaskStatusBucket.PendingApproval);
   });
 
-  // Approved but not yet granted: open, yet the outcome is what it reads as.
-  it('files an approved access request under Approved though it is open', () => {
+  // Approved but not yet granted: still open, the grant still to do, so it
+  // stays under the Open tab's options rather than the Approved outcome.
+  it('files an access request awaiting grant as in flight, not Approved', () => {
+    const awaitingGrant = {
+      status: TaskStatus.Approved,
+      type: TaskType.DataAccessRequest,
+    };
+
+    expect(
+      bucketOf({ ...awaitingGrant, assignees: [{ id: 'u1' }] } as Partial<Task>)
+    ).toBe(TaskStatusBucket.PendingApproval);
+    expect(
+      bucketOf({ ...awaitingGrant, assignees: [{ id: 'u9' }] } as Partial<Task>)
+    ).toBe(TaskStatusBucket.InReview);
+  });
+
+  it('files a closed approved task under Approved', () => {
     expect(
       bucketOf({
         status: TaskStatus.Approved,
-        type: TaskType.DataAccessRequest,
-        assignees: [{ id: 'u1' }],
+        type: TaskType.GlossaryApproval,
       } as Partial<Task>)
     ).toBe(TaskStatusBucket.Approved);
   });
