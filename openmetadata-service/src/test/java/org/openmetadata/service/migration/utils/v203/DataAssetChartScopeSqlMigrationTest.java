@@ -39,6 +39,8 @@ class DataAssetChartScopeSqlMigrationTest {
 
   private static final String EXPECTED_EXCLUDE_GROUPS =
       "[\"tag\",\"glossaryTerm\",\"dataProduct\"]";
+  // 2.0.3 also carries unrelated migrations (RDF app config), so only chart statements count.
+  private static final String CHART_UPDATE = "UPDATE di_chart_entity";
   private static final Pattern NAME_IN_LIST = Pattern.compile("name IN \\(([^)]*)\\)");
   private static final Pattern QUOTED_NAME = Pattern.compile("'([a-z0-9_]+)'");
 
@@ -97,7 +99,7 @@ class DataAssetChartScopeSqlMigrationTest {
   @MethodSource("dialects")
   void migrationIsGuardedOnTheStoredValue(final String dialect) throws IOException {
     final String sql = read(dialect);
-    final long updates = sql.lines().filter(line -> line.startsWith("UPDATE ")).count();
+    final long updates = sql.lines().filter(line -> line.startsWith(CHART_UPDATE)).count();
     final long guards = sql.lines().filter(line -> line.contains("<>")).count();
 
     assertEquals(2, updates, dialect + " should rewrite the filter and the breakdown groups");
@@ -150,7 +152,10 @@ class DataAssetChartScopeSqlMigrationTest {
             mock(OpenMetadataApplicationConfig.class),
             false);
     migrationFile.parseSQLFiles();
-    final List<String> statements = migrationFile.getPostDDLScripts();
+    final List<String> statements =
+        migrationFile.getPostDDLScripts().stream()
+            .filter(statement -> statement.contains(CHART_UPDATE))
+            .toList();
 
     assertEquals(2, statements.size(), dialect + " should parse into two UPDATE statements");
     assertTrue(
