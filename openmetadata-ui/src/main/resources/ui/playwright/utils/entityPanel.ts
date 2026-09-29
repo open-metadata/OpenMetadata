@@ -173,7 +173,7 @@ export const openEntitySummaryPanel = async ({
 
       const tab = page
         .getByTestId('explore-left-panel')
-        .getByRole('menuitem', { name: exploreTab });
+        .getByRole('tab', { name: exploreTab });
       await tab.waitFor({ state: 'visible' });
       await tab.click();
       await waitForAllLoadersToDisappear(page);

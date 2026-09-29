@@ -268,7 +268,7 @@ test.describe(
         await test.step('Read the count from the first left panel result tab', async () => {
           const firstTabCountText = await page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
+            .getByRole('tab')
             .first()
             .getByTestId('filter-count')
             .textContent();
@@ -347,7 +347,7 @@ test.describe(
         await test.step('Read filtered count from the first left panel tab', async () => {
           const filteredCountText = await page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
+            .getByRole('tab')
             .first()
             .getByTestId('filter-count')
             .textContent();

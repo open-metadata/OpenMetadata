@@ -81,7 +81,7 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 8
     },
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -646,7 +646,7 @@
   },
   "playwright/e2e/Pages/ExploreBrowse.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts": {

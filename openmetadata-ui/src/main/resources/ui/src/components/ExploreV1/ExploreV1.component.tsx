@@ -13,12 +13,14 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card as CoreCard,
   Divider,
   Dropdown,
   PaginationCardWithControls,
+  Tabs,
   Toggle,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
@@ -29,10 +31,10 @@ import {
   InfoCircle,
   Trash01,
 } from '@untitledui/icons';
-import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
+import { Card, Col, Modal, Radio, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
+import { isEmpty, isString, isUndefined, lowerCase, noop, omit } from 'lodash';
 import Qs from 'qs';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -1051,20 +1053,52 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
     if (searchQueryParam) {
       return (
-        <Menu
-          className="custom-menu"
-          data-testid="explore-left-panel"
-          items={tabItems}
-          mode="inline"
-          rootClassName="left-container"
-          selectedKeys={[activeTabKey]}
-          onClick={(info) => {
-            if (info && info.key !== activeTabKey) {
-              onChangeSearchIndex(info.key as ExploreSearchIndex);
+        <Tabs
+          orientation="vertical"
+          selectedKey={activeTabKey}
+          onSelectionChange={(key) => {
+            if (key !== activeTabKey) {
+              onChangeSearchIndex(key as ExploreSearchIndex);
               setShowSummaryPanel(false);
             }
-          }}
-        />
+          }}>
+          <Tabs.List
+            fullWidth
+            aria-label={t('label.browse-estate')}
+            className="tw:w-full"
+            data-testid="explore-left-panel"
+            type="button-gray">
+            {tabItems.map(
+              ({ key, label, icon: Icon, iconClassName, count }) => (
+                <Tabs.Item
+                  data-testid={`${lowerCase(label)}-tab`}
+                  id={key}
+                  key={key}>
+                  {({ isSelected }) => (
+                    <>
+                      <Icon
+                        className={classNames(
+                          'tw:size-4 tw:shrink-0',
+                          iconClassName
+                        )}
+                      />
+                      <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-left">
+                        {label}
+                      </span>
+                      <Badge
+                        color={isSelected ? 'brand' : 'gray'}
+                        data-testid="filter-count"
+                        size="sm"
+                        type="pill-color">
+                        {count}
+                      </Badge>
+                    </>
+                  )}
+                </Tabs.Item>
+              )
+            )}
+          </Tabs.List>
+        </Tabs>
       );
     }
 
@@ -1086,6 +1120,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     onChangeSearchIndex,
     selectedEntityTypes,
     queryFilter,
+    t,
   ]);
 
   useEffect(() => {

@@ -20,6 +20,7 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { useAdvanceSearch } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -181,14 +182,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div data-testid="explore-pagination" />
   );
 
+  const { Badge, Tabs } = jest.requireActual(
+    '@openmetadata/ui-core-components'
+  );
+
   return {
     Alert,
+    Badge,
     Box,
     Button,
     Card,
     Divider,
     Dropdown,
     PaginationCardWithControls,
+    Tabs,
     Toggle,
     Typography,
   };
@@ -464,6 +471,9 @@ describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.location.search = '';
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '',
+    }));
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
@@ -484,6 +494,31 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
+  });
+
+  it('lists entity types as selectable tabs while searching', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?search=customer',
+    }));
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    const leftPanel = screen.getByTestId('explore-left-panel');
+    const tablesTab = within(leftPanel).getByTestId('tables-tab');
+
+    expect(leftPanel).toHaveAttribute('role', 'tablist');
+    expect(tablesTab).toHaveAttribute('aria-selected', 'true');
+    expect(within(tablesTab).getByTestId('filter-count')).toHaveTextContent(
+      '60'
+    );
+
+    fireEvent.click(tablesTab);
+
+    expect(onChangeSearchIndex).not.toHaveBeenCalled();
+
+    fireEvent.click(within(leftPanel).getByTestId('databases-tab'));
+
+    expect(onChangeSearchIndex).toHaveBeenCalledWith('database');
   });
 
   it('normalizes out-of-range current page to the last available page', async () => {

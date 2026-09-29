@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../styles/variables.less';
-
 @quick-filters-container-height: 86px;
 
 .search-export-modal {
@@ -30,7 +28,6 @@
   // bg-primary — the canvas tone — so they didn't read as surfaces. Put them on
   // bg-surface, matching the search card.
   .dark-mode & .ant-card,
-  .dark-mode & .explore-tree,
   .dark-mode
     &
     .entity-summary-panel-container
@@ -69,13 +66,6 @@
     height: 16px;
   }
 
-  .explore-tab-label {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-  }
-
   .explore-main-card {
     .ant-card {
       border-bottom: 0;
@@ -86,34 +76,6 @@
     .ant-card-body {
       height: 100%;
       overflow-y: auto;
-    }
-  }
-
-  .explore-tree {
-    overflow: auto;
-
-    .ant-tree-switcher-icon {
-      width: 16px;
-      height: 16px;
-      stroke-width: 1.5;
-    }
-
-    .ant-tree-switcher_open:hover,
-    .ant-tree-switcher_close:hover {
-      background-color: @grey-2;
-    }
-
-    .ant-tree-title {
-      width: 100%;
-      padding: var(--om-space-4);
-    }
-
-    .ant-tree-node-selected {
-      background-color: @radio-button-checked-bg !important;
-    }
-
-    .ant-tree-treenode {
-      padding: 0;
     }
   }
 }
@@ -127,25 +89,4 @@
   .explore-results-row {
     column-gap: 16px;
   }
-}
-
-// Browse Estate while searching (entity-type menu): same hover and selected
-// surface as the sidebar nav items; antd's light-blue selected fill glares in
-// dark mode.
-.custom-menu[data-testid='explore-left-panel'] .ant-menu-item {
-  border-radius: var(--om-radius-sm);
-
-  &:hover {
-    background-color: var(
-      --ask-hover,
-      var(--tw-background-color-secondary_hover)
-    );
-  }
-}
-
-.dark-mode
-  .custom-menu[data-testid='explore-left-panel']
-  .ant-menu-item-selected {
-  background-color: var(--ask-selected-surface, var(--color-bg-brand-primary));
-  color: var(--ask-selected-fg, var(--om-color-brand-300));
 }

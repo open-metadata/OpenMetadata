@@ -331,20 +331,14 @@ const ExplorePageV1: FC<unknown> = () => {
 
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
-    const items = generateTabItems(tabsInfo, searchHitCounts, searchIndex);
+    const items = generateTabItems(tabsInfo, searchHitCounts);
 
     return searchQueryParam
       ? items.filter((tabItem) => {
           return tabItem.count > 0 || tabItem.key === searchCriteria;
         })
       : items;
-  }, [
-    tabsInfo,
-    searchHitCounts,
-    searchIndex,
-    searchQueryParam,
-    searchCriteria,
-  ]);
+  }, [tabsInfo, searchHitCounts, searchQueryParam, searchCriteria]);
 
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
