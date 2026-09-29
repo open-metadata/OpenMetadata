@@ -244,7 +244,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         if (page === newPage) {
           setRoles(data.data || []);
           setPaging(data.paging);
-          setHashPage(newPage, undefined, undefined, pageSize);
+          setHashPage(newPage, undefined, currentPaging.after, pageSize);
         }
       }
     } catch (error) {
@@ -289,6 +289,9 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
   useEffect(() => {
     if (currentPage <= 1 || !hashCursor) {
+      if (currentPage > 1) {
+        setHashPage(1, undefined, undefined, pageSize);
+      }
       fetchRoles(undefined, 1);
     } else if (hashCursorType === 'before') {
       fetchRoles({ before: hashCursor }, currentPage);

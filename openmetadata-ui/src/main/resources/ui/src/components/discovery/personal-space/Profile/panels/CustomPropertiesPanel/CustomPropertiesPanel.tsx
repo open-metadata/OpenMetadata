@@ -100,9 +100,14 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
       return;
     }
 
-    resolvedFqnRef.current = parsedHash.entityFqn;
-    getTypeByFQN(parsedHash.entityFqn)
+    const requestedFqn = parsedHash.entityFqn;
+    resolvedFqnRef.current = requestedFqn;
+    getTypeByFQN(requestedFqn)
       .then((entityType) => {
+        if (resolvedFqnRef.current !== requestedFqn) {
+          return;
+        }
+
         if (parsedHash.action === 'add') {
           setSubView({ type: 'add', entityType });
         } else if (
@@ -264,7 +269,12 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         id === CRUMB.DETAIL &&
         (subView.type === 'add' || subView.type === 'edit')
       ) {
-        setSubView({ type: 'detail', entityType: subView.entityType });
+        const next: CustomPropertiesSubView = {
+          type: 'detail',
+          entityType: subView.entityType,
+        };
+        setSubView(next);
+        setHash('custom-properties', viewToSubPath(next));
       }
     },
     [subView, setHash]

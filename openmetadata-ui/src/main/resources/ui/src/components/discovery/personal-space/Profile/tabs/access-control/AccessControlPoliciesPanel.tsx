@@ -244,7 +244,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         if (page === newPage) {
           setPolicies(data.data || []);
           setPaging(data.paging);
-          setHashPage(newPage, undefined, undefined, pageSize);
+          setHashPage(newPage, undefined, currentPaging.after, pageSize);
         }
       }
     } catch (error) {
@@ -289,6 +289,9 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
   useEffect(() => {
     if (currentPage <= 1 || !hashCursor) {
+      if (currentPage > 1) {
+        setHashPage(1, undefined, undefined, pageSize);
+      }
       fetchPolicies(undefined, 1);
     } else if (hashCursorType === 'before') {
       fetchPolicies({ before: hashCursor }, currentPage);

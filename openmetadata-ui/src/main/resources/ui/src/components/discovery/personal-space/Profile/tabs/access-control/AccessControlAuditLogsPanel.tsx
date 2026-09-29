@@ -219,6 +219,9 @@ const AccessControlAuditLogsPanel: React.FC<
   useEffect(() => {
     pageCursorsRef.current = {};
     if (currentPage <= 1 || !hashCursor) {
+      if (currentPage > 1) {
+        setHashPage(1, undefined, undefined, pageSize);
+      }
       fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
     } else if (hashCursorType === 'before') {
       fetchAuditLogs({ before: hashCursor }, undefined, currentPage);
@@ -338,7 +341,7 @@ const AccessControlAuditLogsPanel: React.FC<
 
           setLogs(response.data);
           setPaging(response.paging ?? INITIAL_PAGING);
-          setHashPage(newPage, undefined, undefined, pageSize);
+          setHashPage(newPage, undefined, cursor, pageSize);
 
           if (response.paging?.after) {
             pageCursorsRef.current[newPage] = response.paging.after;
