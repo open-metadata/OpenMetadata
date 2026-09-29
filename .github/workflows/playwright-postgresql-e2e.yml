@@ -114,34 +114,13 @@ jobs:
       full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
       protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
-      # Split the retry policy by event so the two runs answer different
-      # questions:
-      #
-      #   pull_request(_target) → 0 retries. A test that only passes on a
-      #     retry is flakiness the author owns; surfacing it as a hard fail
-      #     on PR CI is how it gets fixed before it lands. Prevents authors
-      #     from bouncing off the merge queue's own retry noise later.
-      #
-      #   merge_group → 1 retry. Once code has been reviewed and PR CI has
-      #     ratified it, a single CI-infrastructure hiccup (a network blip,
-      #     a browser startup race, docker image pull) should not eject the
-      #     PR. The queue is the wrong place to relitigate a real product
-      #     failure vs. a transient — that is what PR CI is for.
-      #
-      # workflow_dispatch keeps the reusable's default of 1 (nothing to
-      # protect against on a manual run). Nightlies pass their own explicit
-      # `retries: 2` in their own callers and are unaffected.
-      #
-      # Numeric expression + inverted ternary. Earlier version used the
-      # string form `'0' / '1'` to work around GH Actions' `X && Y || Z`
-      # short-circuit on falsy `0`, but passing a string to the reusable's
-      # `type: number` input silently prevented the reusable-call job from
-      # scheduling on `pull_request` runs (verified on PR #32833 run
-      # 34104637012: no `playwright / *` jobs, only playwright-summary).
-      # Invert the predicate so `0` is always the ELSE branch, never the
-      # middle — no short-circuit trap, and the value is a real integer
-      # that `type: number` accepts unambiguously.
-      retries: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && 1 || 0 }}
+      # One retry everywhere while the first-attempt signal is collected: the
+      # main-health job alerts Slack on every failure and flaky pass so each can
+      # be fixed. Once main runs clean, flip PRs to zero retries with:
+      #   retries: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && 1 || 0 }}
+      # (numeric, inverted so `0` is the else branch: `X && 0 || 1` would
+      # short-circuit to 1, and a string breaks the reusable's `type: number`).
+      retries: 1
 
   playwright-summary:
     name: >-
@@ -553,6 +532,14 @@ jobs:
           MATRIX_OUTCOME: ${{ needs.playwright.outputs.playwright_ci_result }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
+          # main's flake baseline lets the ledger separate a retry pass this run
+          # introduced (newRetryPassStableIds) from one main already has. Report
+          # only; a missing baseline just means every retry pass is unattributed.
+          baseline_args=()
+          if git fetch --depth=1 --no-tags origin ci/playwright-timing 2>/dev/null &&
+            git show FETCH_HEAD:flake-baseline.json > "$RUNNER_TEMP/flake-baseline.json" 2>/dev/null; then
+            baseline_args=(--retry-baseline "$RUNNER_TEMP/flake-baseline.json")
+          fi
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \
             --status-glob 'results/playwright-results-json-*/ci-status.json' \
@@ -562,6 +549,7 @@ jobs:
             --source-sha "$SOURCE_SHA" \
             --coverage "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json" \
             --artifact-integrity-outcome "${{ steps.normalize-results.outcome }}" \
+            ${baseline_args[@]+"${baseline_args[@]}"} \
             --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
 
       - name: Upload Playwright shadow-gate ledger
@@ -678,6 +666,172 @@ jobs:
   #     drifting/shifting significantly produce a commit
   #   * fetch → regenerate → push retry loop (3 attempts) absorbs races
   #     with the queue landing merges mid-refresh
+  # After each full run on main, record what main itself does not reliably
+  # pass and alert on it: failures to #ci-cleanup, flaky passes (failed first,
+  # passed on retry) to #pw-health. The flake baseline lives next to the timing
+  # baseline on ci/playwright-timing, so PR summaries can tell a flake they
+  # introduced from one main already has.
+  main-health:
+    name: Main health
+    needs: [playwright, playwright-summary]
+    if: |
+      always() &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.playwright.outputs.playwright_ci_result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: write
+    env:
+      DATA_BRANCH: ci/playwright-timing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Download all results JSON
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: playwright-results-json-*
+          path: results
+          merge-multiple: false
+
+      - name: Keep only the newest attempt per shard
+        continue-on-error: true
+        run: python3 .github/scripts/keep_latest_playwright_attempt.py results
+
+      - name: Classify the run and refresh the flake baseline
+        id: classify
+        env:
+          EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
+          MATRIX_OUTCOME: ${{ needs.playwright.outputs.playwright_ci_result }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          data="$RUNNER_TEMP/timing-data"
+          ledger="$RUNNER_TEMP/main-health/outcome.json"
+          # Regenerate inside the retry loop: the timing refresh pushes to the
+          # same branch, so a rejected push re-reads the latest baseline.
+          for attempt in 1 2 3; do
+            rm -rf "$data"
+            git fetch --no-tags origin "$DATA_BRANCH"
+            git worktree prune
+            git worktree add --detach "$data" FETCH_HEAD
+            git -C "$data" config user.email "github-actions[bot]@users.noreply.github.com"
+            git -C "$data" config user.name "github-actions[bot]"
+            baseline_args=() current=()
+            if [[ -f "$data/flake-baseline.json" ]]; then
+              baseline_args=(--retry-baseline "$data/flake-baseline.json")
+              cp "$data/flake-baseline.json" "$RUNNER_TEMP/previous-flake-baseline.json"
+              current=(--current "$RUNNER_TEMP/previous-flake-baseline.json")
+            fi
+
+            python3 .github/scripts/classify_playwright_outcome.py \
+              --report-glob 'results/playwright-results-json-*/results.json' \
+              --status-glob 'results/playwright-results-json-*/ci-status.json' \
+              --matrix-outcome "$MATRIX_OUTCOME" \
+              --expected-matrix-json "$EXPECTED_MATRIX" \
+              --profile postgresql-main \
+              --source-sha "$SOURCE_SHA" \
+              ${baseline_args[@]+"${baseline_args[@]}"} \
+              --output "$ledger" || exit 1
+            echo "classification=$(jq -r .classification "$ledger")" >> "$GITHUB_OUTPUT"
+
+            python3 .github/scripts/refresh_flake_baseline.py \
+              --ledger "$ledger" \
+              ${current[@]+"${current[@]}"} \
+              --output "$data/flake-baseline.json" \
+              --window 10 \
+              --threshold 2 \
+              --run-id "$GITHUB_RUN_ID" \
+              --source-sha "$SOURCE_SHA" \
+              --summary "$RUNNER_TEMP/flake-baseline-summary.md"
+            rc=$?
+            # 3 = the run measured nothing (cancelled, no results): keep the
+            # stored baseline rather than ageing real entries out of the window.
+            if [[ "$rc" -eq 3 ]]; then exit 0; fi
+            if [[ "$rc" -ne 0 ]]; then exit "$rc"; fi
+            cat "$RUNNER_TEMP/flake-baseline-summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+            git -C "$data" add flake-baseline.json
+            if git -C "$data" diff --cached --quiet; then exit 0; fi
+            git -C "$data" commit -q -m "chore(playwright): update flake baseline from run ${GITHUB_RUN_ID}"
+            if git -C "$data" push origin "HEAD:refs/heads/$DATA_BRANCH"; then exit 0; fi
+            echo "Push rejected on attempt $attempt ($DATA_BRANCH moved); retrying." >&2
+          done
+          echo "Failed to push the flake baseline after 3 attempts." >&2
+          exit 1
+
+      - name: Publish the result to the job summary
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          ledger="$RUNNER_TEMP/main-health/outcome.json"
+          [[ -f "$ledger" ]] || exit 0
+          jq -r '
+            "### Playwright on main",
+            "",
+            "- Classification: `\(.classification)`",
+            "- Tests: \(.counts.tests) · failed \(.counts.failed) · passed only on retry \(.counts.retryPassed) · skipped \(.counts.skipped)",
+            (.infrastructureIssues[:10][] | "- :warning: \(.)"),
+            (.failures[:20][] | "- FAILED `\(.file)` › \(.title)"),
+            (.retryPasses[:20][] | "- FLAKY `\(.file)` › \(.title)")
+          ' "$ledger" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the main-health ledger
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-main-health-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/main-health/outcome.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      # Failures are an incident with an owner (#ci-cleanup); flaky passes are
+      # the fix list for dropping PR retries (#pw-health).
+      - name: Build the Slack message
+        id: slack
+        if: ${{ always() && steps.classify.outputs.classification != '' && steps.classify.outputs.classification != 'passed' }}
+        continue-on-error: true
+        env:
+          CLASSIFICATION: ${{ steps.classify.outputs.classification }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          set -euo pipefail
+          case "$CLASSIFICATION" in
+            passed_with_retries|cancelled) channel=C0C008ZAK0V; emoji=':large_yellow_circle:' ;;  # #pw-health
+            *) channel=C0AC5T013V1; emoji=':red_circle:' ;;  # #ci-cleanup
+          esac
+          jq -n --arg channel "$channel" --arg emoji "$emoji" \
+            --arg cls "$CLASSIFICATION" --arg sha "${GITHUB_SHA:0:7}" \
+            --arg commit "$COMMIT_URL" --arg run "$RUN_URL" \
+            --slurpfile ledger "$RUNNER_TEMP/main-health/outcome.json" '
+            $ledger[0] as $l |
+            {channel: $channel, text: ([
+              "\($emoji) *Playwright on main* — `\($cls)` at <\($commit)|\($sha)>",
+              "\($l.counts.failed) failed and \($l.counts.retryPassed) passed only on retry, of \($l.counts.tests) tests."
+            ] + [$l.failures[:10][] | "• FAILED `\(.file)` › \(.title)"]
+              + [$l.retryPasses[:10][] | "• FLAKY `\(.file)` › \(.title)"]
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/slack.json"
+
+      - name: Post to Slack
+        if: ${{ always() && steps.slack.outcome == 'success' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # The action discards Slack API errors by default.
+          errors: true
+          payload-file-path: ${{ runner.temp }}/slack.json
+
   refresh-timing-baseline:
     name: Refresh timing baseline
     needs: [playwright, playwright-summary]

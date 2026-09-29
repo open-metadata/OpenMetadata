@@ -81,12 +81,36 @@ def test_queue_shards_enforce_coverage_but_allow_one_retry():
     assert "--require-single-attempt" not in coverage["run"]
 
 
-def test_retry_policy_is_zero_on_prs_and_one_elsewhere():
+def test_retry_policy_is_one_everywhere_during_the_flake_week():
     caller = workflow("playwright-postgresql-e2e.yml")
-    expression = caller["jobs"]["playwright"]["with"]["retries"]
-    assert "pull_request" in expression and "pull_request_target" in expression
-    assert expression.replace(" ", "").endswith("&&1||0}}")
+    assert caller["jobs"]["playwright"]["with"]["retries"] == 1
+    # The flip to zero PR retries is documented next to the value, so it is a
+    # deliberate one-line change once main-health reports main is clean.
+    text = (WORKFLOWS / "playwright-postgresql-e2e.yml").read_text()
+    assert '"pull_request","pull_request_target"' in text
 
+
+def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():
+    caller = workflow("playwright-postgresql-e2e.yml")
+    job = caller["jobs"]["main-health"]
+    assert "github.ref == 'refs/heads/main'" in job["if"]
+    assert "merge_group" not in job["if"]
+    assert job["env"]["DATA_BRANCH"] == "ci/playwright-timing"
+    script = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "HEAD:main" not in script
+    assert "refresh_flake_baseline.py" in script
+    assert "--threshold 2" in script and "--window 10" in script
+    slack = next(step for step in job["steps"] if step["name"] == "Build the Slack message")
+    # Anything but a clean pass alerts: flaky passes included.
+    assert "classification != 'passed'" in slack["if"]
+    assert "passed_with_retries" in slack["run"]
+
+
+def test_pr_summary_reads_the_flake_baseline_report_only():
+    step = summary_step("Evaluate zero-retry gate in shadow mode")
+    assert "flake-baseline.json" in step["run"]
+    assert "--retry-baseline" in step["run"]
+    assert "--enforce" not in step["run"]
 
 def test_shard_status_records_execution_identity():
     status = next(
