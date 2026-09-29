@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,36 +50,38 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
         const Icon = card.icon;
 
         return (
-          <Card key={card.id} size="md">
+          <Card
+            isClickable
+            key={card.id}
+            size="md"
+            onClick={() => onNavigate(card.view)}>
             <Card.Content>
-              <Button
-                className="tw:w-full tw:text-left tw:no-underline"
-                color="link-color"
+              <Box
+                align="start"
                 data-testid={`notification-card-${card.id}`}
-                onPress={() => onNavigate(card.view)}>
-                <Box align="start" direction="row" gap={4}>
-                  <Box
-                    align="center"
-                    className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
-                    justify="center">
-                    <Icon className="tw:size-6 tw:text-secondary" />
-                  </Box>
-                  <Box className="tw:min-w-0" direction="col" gap={1}>
-                    <Typography
-                      className="tw:text-primary"
-                      size="text-sm"
-                      weight="semibold">
-                      {t(card.titleKey)}
-                    </Typography>
-                    <Typography
-                      className="tw:text-tertiary tw:line-clamp-2"
-                      size="text-sm"
-                      weight="regular">
-                      {t(card.descriptionKey)}
-                    </Typography>
-                  </Box>
+                direction="row"
+                gap={4}>
+                <Box
+                  align="center"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  justify="center">
+                  <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>
-              </Button>
+                <Box className="tw:min-w-0" direction="col" gap={1}>
+                  <Typography
+                    className="tw:text-primary"
+                    size="text-sm"
+                    weight="semibold">
+                    {t(card.titleKey)}
+                  </Typography>
+                  <Typography
+                    className="tw:text-tertiary tw:line-clamp-2"
+                    size="text-sm"
+                    weight="regular">
+                    {t(card.descriptionKey)}
+                  </Typography>
+                </Box>
+              </Box>
             </Card.Content>
           </Card>
         );
