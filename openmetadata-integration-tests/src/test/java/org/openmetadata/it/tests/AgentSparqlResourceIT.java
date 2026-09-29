@@ -57,8 +57,11 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -66,8 +69,8 @@ import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
 import org.slf4j.LoggerFactory;
 
 /**
- * Contract tests for {@code POST /v1/rdf/sparql/agent} over real HTTP: explicit opt-in
- * authorization, bot impersonation, pre-resource error mapping, query policy, completeness, and
+ * Contract tests for {@code POST /v1/rdf/sparql/agent} over real HTTP: the Data Consumer default
+ * grant and its opt-out, bot impersonation, pre-resource error mapping, query policy, completeness, and
  * conservative projection readiness.
  *
  * <p>Fixture triples are written to a dedicated named graph. Agent reads use the default-graph
@@ -81,6 +84,9 @@ public class AgentSparqlResourceIT {
   private static final String IMPERSONATE_HEADER = "X-Impersonate-User";
   private static final String STATUS = AppExtension.ExtensionType.STATUS.toString();
   private static final String RDF_INDEX_APP = "RdfIndexApp";
+  private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
+  private static final String DATA_CONSUMER_GRANT_RULE =
+      "DataConsumerPolicy-ExecuteSparqlQuery-Rule";
   private static final long TOKEN_TTL_SECONDS = 3600;
   private static final int FIXTURE_BATCH_ROWS = 400;
   private static final Deque<Runnable> CLEANUP = new ArrayDeque<>();
@@ -93,6 +99,8 @@ public class AgentSparqlResourceIT {
   private static String grantedUserName;
   private static String wildcardToken;
   private static String deniedToken;
+  private static String namedDenyUserName;
+  private static String namedDenyToken;
   private static String plainToken;
   private static String plainUserName;
   private static String impersonatingBotToken;
@@ -208,15 +216,45 @@ public class AgentSparqlResourceIT {
   }
 
   @Test
-  void wildcardAllPolicyDoesNotGrantTheEndpoint() throws Exception {
-    assertError(
-        post(wildcardToken, query(selectFixture())), 403, AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN);
+  void callerInheritingDataConsumerIsAllowed() throws Exception {
+    assertEquals(Permission.Access.ALLOW, sparqlAccess(plainUserName));
+
+    success(plainToken, selectFixture());
   }
 
   @Test
-  void callerWithoutGrantIsForbidden() throws Exception {
+  void deniedOperationOverridesTheDataConsumerGrant() throws Exception {
     assertError(
-        post(plainToken, query(selectFixture())), 403, AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN);
+        post(namedDenyToken, query(selectFixture())),
+        403,
+        AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN);
+
+    assertEquals(Permission.Access.DENY, sparqlAccess(namedDenyUserName));
+  }
+
+  @Test
+  void removingTheDataConsumerRuleWithdrawsTheGrant() throws Exception {
+    withoutDataConsumerGrant(
+        () -> {
+          assertError(
+              post(plainToken, query(selectFixture())),
+              403,
+              AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN);
+          assertEquals(Permission.Access.NOT_ALLOW, sparqlAccess(plainUserName));
+        });
+
+    assertEquals(Permission.Access.ALLOW, sparqlAccess(plainUserName));
+    success(plainToken, selectFixture());
+  }
+
+  @Test
+  void wildcardAllPolicyDoesNotGrantTheEndpoint() throws Exception {
+    withoutDataConsumerGrant(
+        () ->
+            assertError(
+                post(wildcardToken, query(selectFixture())),
+                403,
+                AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN));
   }
 
   @Test
@@ -253,7 +291,7 @@ public class AgentSparqlResourceIT {
   @Test
   void impersonatedUserWithoutGrantGetsNoBotFallback() throws Exception {
     assertError(
-        post(impersonatingBotToken, query(selectFixture()), plainUserName),
+        post(impersonatingBotToken, query(selectFixture()), namedDenyUserName),
         403,
         AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN);
   }
@@ -417,6 +455,57 @@ public class AgentSparqlResourceIT {
     success(grantedToken, selectFixture());
   }
 
+  /**
+   * The rule ships in the seeded Data Consumer policy, so a caller with no grant of their own only
+   * exists while an admin has removed it. The class is {@code @Isolated}, so nothing else observes
+   * the policy while it is edited, and the rule is always put back.
+   */
+  private static void withoutDataConsumerGrant(ThrowingRunnable body) throws Exception {
+    Rule grant = removeDataConsumerGrant();
+    try {
+      body.run();
+    } finally {
+      restoreDataConsumerGrant(grant);
+    }
+  }
+
+  private static Rule removeDataConsumerGrant() {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy = admin.policies().getByName(DATA_CONSUMER_POLICY, "rules");
+    Rule grant =
+        policy.getRules().stream()
+            .filter(rule -> DATA_CONSUMER_GRANT_RULE.equals(rule.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(DATA_CONSUMER_GRANT_RULE + " must be seeded"));
+    policy.getRules().remove(grant);
+    admin.policies().update(policy.getId(), policy);
+    return grant;
+  }
+
+  private static void restoreDataConsumerGrant(Rule grant) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy current = admin.policies().getByName(DATA_CONSUMER_POLICY, "rules");
+    current.getRules().add(grant);
+    admin.policies().update(current.getId(), current);
+  }
+
+  private static Permission.Access sparqlAccess(String userName) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/permissions/rdf?user=" + userName, null);
+    return JsonUtils.readValue(response, ResourcePermission.class).getPermissions().stream()
+        .filter(permission -> permission.getOperation() == MetadataOperation.EXECUTE_SPARQL_QUERY)
+        .findFirst()
+        .orElseThrow()
+        .getAccess();
+  }
+
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run() throws Exception;
+  }
+
   private static String selectFixture() {
     return "SELECT ?p ?o WHERE { <" + fixture + "table> ?p ?o }";
   }
@@ -573,6 +662,13 @@ public class AgentSparqlResourceIT {
     grantedToken = tokenFor(grantedUserName);
     wildcardToken = tokenFor(user(admin, "wildcard", List.of(wildcardRole.getId())));
     deniedToken = tokenFor(user(admin, "denied", List.of(grantRole.getId(), denyRole.getId())));
+    Role namedDenyRole =
+        role(
+            admin,
+            "namedDeny",
+            rule(MetadataOperation.EXECUTE_SPARQL_QUERY, Entity.RDF, Rule.Effect.DENY));
+    namedDenyUserName = user(admin, "nameddeny", List.of(namedDenyRole.getId()));
+    namedDenyToken = tokenFor(namedDenyUserName);
     plainUserName = user(admin, "plain", List.of());
     plainToken = tokenFor(plainUserName);
 

@@ -377,3 +377,28 @@ ALTER TABLE announcement_entity
   ADD COLUMN IF NOT EXISTS type character varying(32)
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
+
+-- Data Consumer can run agent SPARQL queries by default (#34231). Seed data never updates a policy
+-- that already exists, so existing installs get the rule here. As a schema-changes statement it is
+-- recorded in SERVER_MIGRATION_SQL_LOGS and runs once, so an admin who later removes the rule does
+-- not get it back on a subsequent upgrade. The NOT EXISTS guard keeps a replay from duplicating it.
+UPDATE policy_entity
+SET json = jsonb_set(
+    json,
+    '{rules}',
+    COALESCE(json -> 'rules', '[]'::jsonb) || jsonb_build_array(
+        jsonb_build_object(
+            'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
+            'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
+            'resources', jsonb_build_array('all'),
+            'operations', jsonb_build_array('ExecuteSparqlQuery'),
+            'effect', 'allow'
+        )
+    )
+)
+WHERE name = 'DataConsumerPolicy'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(COALESCE(json -> 'rules', '[]'::jsonb)) AS existing_rule
+    WHERE existing_rule ->> 'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+  );

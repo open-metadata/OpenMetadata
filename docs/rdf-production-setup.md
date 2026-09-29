@@ -104,6 +104,28 @@ For datasets populated outside OpenMetadata, follow Jena's
 [text-index backfill procedure](https://jena.apache.org/documentation/query/text-query.html#building-a-text-index)
 with a separate assembler description for each text dataset while Fuseki is stopped.
 
+## Access to the agent SPARQL endpoint
+
+`POST /v1/rdf/sparql/agent` is the read-only endpoint the AI agent's knowledge-graph tool calls as
+the signed-in user. It requires the `ExecuteSparqlQuery` operation on the `rdf` resource.
+
+- **Default.** The Data Consumer policy grants it through its own rule,
+  `DataConsumerPolicy-ExecuteSparqlQuery-Rule`. Every user inherits Data Consumer through the
+  Organization team, so users can run agent SPARQL queries on a fresh install and after upgrading
+  to 2.1.0. The upgrade adds the rule to an existing `DataConsumerPolicy` once; if you delete it
+  afterwards, later upgrades do not restore it.
+- **Restricted viewing.** The endpoint evaluates queries over the whole projected graph and does
+  not filter by asset (#33224). If you restrict what users can view through custom policies,
+  **delete `DataConsumerPolicy-ExecuteSparqlQuery-Rule`**, or those users can query assets they
+  cannot otherwise see.
+- **Opting out.** Delete that rule to withdraw the grant from everyone. To withdraw it from
+  specific users, give them a role with a deny rule for `ExecuteSparqlQuery`; a deny rule wins
+  over the inherited grant. Admins always pass.
+- **Granting selectively.** With the rule deleted, grant the operation to chosen roles with a
+  policy rule that names `ExecuteSparqlQuery`. A wildcard `All` allow rule does not grant it.
+
+`GET /v1/permissions/rdf?user=<name>` reports the effective result for a user.
+
 ## Capacity planning
 
 TDB2 storage varies with URI and literal width. A useful planning range for OpenMetadata graphs is

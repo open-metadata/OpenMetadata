@@ -500,3 +500,22 @@ DEALLOCATE PREPARE announcement_type_index_stmt;
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+-- Data Consumer can run agent SPARQL queries by default (#34231). Seed data never updates a policy
+-- that already exists, so existing installs get the rule here. As a schema-changes statement it is
+-- recorded in SERVER_MIGRATION_SQL_LOGS and runs once, so an admin who later removes the rule does
+-- not get it back on a subsequent upgrade. The NOT EXISTS guard keeps a replay from duplicating it.
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
+        'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
+        'resources', JSON_ARRAY('all'),
+        'operations', JSON_ARRAY('ExecuteSparqlQuery'),
+        'effect', 'allow'
+    )
+)
+WHERE name = 'DataConsumerPolicy'
+  AND JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name') IS NULL;
