@@ -746,6 +746,94 @@ jobs:
                 --dir "$run_dir" || true
             done
 
+      - name: Verify Playwright HTTP helpers
+        # PR code must not inherit the runner's cache credentials or write to
+        # its workspace. These tests only need loopback HTTP inside the container.
+        run: |
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/playwright test \
+            --config=playwright/helper-tests.config.ts --output=/tmp/helper-test-results
+
+      - name: Prepare component library for browser helper tests
+        if: ${{ !inputs.ref }}
+        run: |
+          core_dir="openmetadata-ui-core-components/src/main/resources/ui"
+          core_output="$RUNNER_TEMP/playwright-core"
+          # Docker cannot create nested mount targets inside the read-only checkout.
+          mkdir -p "$core_dir/node_modules" "$core_dir/dist"
+          mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
+          # Dependency installation can execute repository-controlled package-manager
+          # configuration even with lifecycle scripts disabled. Keep it off the runner.
+          docker run --rm --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=4g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
+            --workdir "/workspace/$core_dir" \
+            node:22.22.2-bookworm-slim \
+            yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache
+
+          # Only temporary build output is writable; dependencies and source stay read-only.
+          mkdir -p "$core_output/node_modules/.vite-temp"
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules,readonly" \
+            --mount "type=bind,source=$core_output/dist,target=/workspace/$core_dir/dist" \
+            --mount "type=bind,source=$core_output/vite-temp,target=/workspace/$core_dir/node_modules/.vite-temp" \
+            --workdir "/workspace/$core_dir" \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/vite build
+
+      - name: Verify browser helper behavior
+        id: verify-browser-helpers
+        if: ${{ !inputs.ref }}
+        # Shared helper behavior is independent of shard data. Gate planning
+        # once, before fan-out, with the real compiled components and browser.
+        run: |
+          core_dir="openmetadata-ui-core-components/src/main/resources/ui"
+          # The workspace is mounted read-only and /tmp is a tmpfs in a --rm
+          # container, so anything written to either dies with the container.
+          # Give the run one writable mount and point Playwright's output at it,
+          # otherwise a failure here is a single line of `list` output.
+          mkdir -p "$RUNNER_TEMP/browser-helper-results"
+          docker run --rm --network none --read-only --shm-size=1g \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/playwright-core/node_modules,target=/workspace/$core_dir/node_modules,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/playwright-core/dist,target=/workspace/$core_dir/dist,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/browser-helper-results,target=/artifacts" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true \
+            --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
+            mcr.microsoft.com/playwright:v1.57.0-jammy \
+            ./node_modules/.bin/playwright test \
+            --config=playwright/browser-helper-tests.config.ts
+
+      - name: Upload browser helper failure diagnostics
+        uses: actions/upload-artifact@v6
+        # Failure-only, so a green run uploads nothing. Without this the traces
+        # and results.json the container just wrote are discarded with it.
+        if: ${{ !inputs.ref && (failure() || cancelled()) }}
+        continue-on-error: true
+        with:
+          name: playwright-browser-helper-results
+          path: ${{ runner.temp }}/browser-helper-results
+          retention-days: 5
+          if-no-files-found: ignore
+
       - name: Discover tests
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
