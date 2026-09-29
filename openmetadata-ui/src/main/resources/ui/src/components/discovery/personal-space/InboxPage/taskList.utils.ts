@@ -139,26 +139,29 @@ const OUTCOME_BUCKET: Partial<Record<TaskStatus, TaskStatusBucket>> = {
   [TaskStatus.Revoked]: TaskStatusBucket.Rejected,
 };
 
+// Open statuses that mean someone is already on it. Approved is here because
+// the only open approved task is an access request awaiting its grant.
 const IN_REVIEW_STATUSES = new Set<TaskStatus>([
   TaskStatus.InProgress,
   TaskStatus.Pending,
   TaskStatus.ManualRevoke,
+  TaskStatus.Approved,
 ]);
 
 /**
  * Which Status option a task falls under, or none (Cancelled, Expired, Failed).
  *
- * The outcome comes first, so an access request approved but not yet granted
- * reads Approved even though it is still open. Among open tasks, one the viewer
- * holds is theirs to act on, which outranks the stage it is in.
+ * Only a closed task reads its outcome. An open one is still work in flight —
+ * an access request approved but not yet granted too, since the grant is still
+ * to do — so it stays under the options the Open tab offers. Among open tasks,
+ * one the viewer holds is theirs to act on, which outranks the stage it is in.
  */
 export const getTaskStatusBucket = (
   task: Pick<Task, 'status' | 'type' | 'assignees'>,
   currentUserIds: ReadonlySet<string>
 ): TaskStatusBucket | undefined => {
-  const outcome = OUTCOME_BUCKET[task.status];
-  if (outcome || !isTaskOpen(task)) {
-    return outcome;
+  if (!isTaskOpen(task)) {
+    return OUTCOME_BUCKET[task.status];
   }
   if ((task.assignees ?? []).some(({ id }) => currentUserIds.has(id))) {
     return TaskStatusBucket.PendingApproval;
