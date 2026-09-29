@@ -7,11 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -165,6 +167,13 @@ public class ContextMemoryLifecycleIT {
   }
 
   @Test
+  void creatingWithoutStatus_defaultsToActive(TestNamespace ns) {
+    ContextMemory memory = admin().create(memory(ns, "default-active"));
+
+    assertEquals(ContextMemoryStatus.ACTIVE, memory.getStatus());
+  }
+
+  @Test
   void disputes_areResolvedAndValidated(TestNamespace ns) {
     ContextMemory other = admin().create(memory(ns, "other-view"));
     ContextMemory memory = admin().create(memory(ns, "disputed"));
@@ -224,6 +233,28 @@ public class ContextMemoryLifecycleIT {
 
     assertEquals(ContextMemorySourceType.CONVERSATION_EXTRACTION, edited.getSourceType());
     assertEquals(ContextMemoryType.LEARNING, edited.getMemoryType());
+  }
+
+  @Test
+  void aSupersededMemory_isSearchableByItsSuccessor(TestNamespace ns) {
+    ContextMemory keeper = admin().create(memory(ns, "search-keeper"));
+    ContextMemory duplicate = admin().create(memory(ns, "search-duplicate"));
+    admin().patch(idOf(duplicate), supersede(keeper, "Indexed with its successor"));
+    String query = String.format("supersededBy.id:\"%s\"", keeper.getId());
+
+    Awaitility.await("the superseded memory is indexed with its successor")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    SdkClients.adminClient()
+                        .search()
+                        .query(query)
+                        .index("context_memory_search_index")
+                        .execute()
+                        .contains(idOf(duplicate))));
   }
 
   private static CreateContextMemory memory(TestNamespace ns, String name) {

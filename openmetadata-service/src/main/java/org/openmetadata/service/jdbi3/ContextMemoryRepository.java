@@ -57,8 +57,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   public static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
-  static final String FIELD_RELATED_ENTITIES = "relatedEntities";
-  static final String FIELD_SOURCE_FILE = "sourceFile";
+  public static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  public static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   private static final String PATCH_FIELDS =
       FIELD_PRIMARY_ENTITY
@@ -399,6 +399,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private static void prepareLifecycle(ContextMemory memory, boolean update) {
     if (!update) {
+      if (memory.getStatus() == null) {
+        memory.setStatus(ContextMemoryStatus.ACTIVE);
+      }
       ContextMemoryLifecycle.applyCreate(memory, ContextMemoryRepository::resolveLiveMemory);
     }
   }
