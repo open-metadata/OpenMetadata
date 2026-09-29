@@ -188,6 +188,56 @@ jobs:
       # rewrite the check result. Use the base branch's SHA on pull_request_target so
       # only reviewed-and-merged versions of these scripts ever run. Everything else
       # keeps github.sha (PR merge commit / merge-queue commit / dispatch ref).
+      # Merge-queue failures go to #ci-cleanup. Queue runs upload no reports and
+      # never check out code here, so this is inline: the failed shards' results
+      # (they upload on failure only), the failed jobs, and the queued PRs.
+      - name: Download failed merge-queue shard results
+        if: ${{ failure() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: playwright-results-json-*
+          path: queue-results
+          merge-multiple: false
+
+      - name: Build the merge-queue failure message
+        id: queue-slack
+        if: ${{ failure() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -uo pipefail
+          prs=$(grep -oE 'pr-[0-9]+' <<< "$HEAD_REF" | sed 's/pr-//' | sort -u | tr '\n' ' ')
+          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure") | .name' 2>/dev/null | sort -u || true)
+          # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
+          tests=$(find queue-results -name results.json -type f -print0 2>/dev/null |
+            xargs -0 -r jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select(.status == "unexpected") | "\($s.file) › \($s.title)"] | .[]' 2>/dev/null |
+            sort -u || true)
+          jq -n --arg channel C0AC5T013V1 --arg prs "$prs" --arg jobs "$jobs" --arg tests "$tests" \
+            --arg run "$RUN_URL" --arg repo "$REPO_URL" '
+            def lines($s): $s | split("\n") | map(select(length > 0));
+            {channel: $channel, text: ([
+              ":red_circle: *Merge queue: Playwright failed*" +
+                (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
+            ] + [lines($tests)[:15][] | "• FAILED `\(.)`"]
+              + (if (lines($tests) | length) == 0 then [lines($jobs)[:10][] | "• job `\(.)`"] else [] end)
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-slack.json"
+
+      - name: Post the merge-queue failure to Slack (ci-cleanup)
+        if: ${{ failure() && github.event_name == 'merge_group' && steps.queue-slack.outcome == 'success' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/queue-slack.json
+
       - name: Checkout
         if: ${{ github.event_name != 'merge_group' }}
         id: checkout
@@ -667,8 +717,8 @@ jobs:
   #   * fetch → regenerate → push retry loop (3 attempts) absorbs races
   #     with the queue landing merges mid-refresh
   # After each full run on main, record what main itself does not reliably
-  # pass and alert on it: failures to #ci-cleanup, flaky passes (failed first,
-  # passed on retry) to #pw-health. The flake baseline lives next to the timing
+  # pass and alert #pw-health on any failure or flaky pass (failed first, passed
+  # on retry). #ci-cleanup is reserved for merge-queue failures. The flake baseline lives next to the timing
   # baseline on ci/playwright-timing, so PR summaries can tell a flake they
   # introduced from one main already has.
   main-health:
@@ -793,8 +843,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      # Failures are an incident with an owner (#ci-cleanup); flaky passes are
-      # the fix list for dropping PR retries (#pw-health).
+      # Everything from main goes to #pw-health: failures and flaky passes are
+      # the fix list for dropping PR retries.
       - name: Build the Slack message
         id: slack
         if: ${{ always() && steps.classify.outputs.classification != '' && steps.classify.outputs.classification != 'passed' }}
@@ -805,9 +855,10 @@ jobs:
           COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
         run: |
           set -euo pipefail
+          channel=C0C008ZAK0V  # #pw-health
           case "$CLASSIFICATION" in
-            passed_with_retries|cancelled) channel=C0C008ZAK0V; emoji=':large_yellow_circle:' ;;  # #pw-health
-            *) channel=C0AC5T013V1; emoji=':red_circle:' ;;  # #ci-cleanup
+            passed_with_retries|cancelled) emoji=':large_yellow_circle:' ;;
+            *) emoji=':red_circle:' ;;
           esac
           jq -n --arg channel "$channel" --arg emoji "$emoji" \
             --arg cls "$CLASSIFICATION" --arg sha "${GITHUB_SHA:0:7}" \

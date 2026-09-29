@@ -103,7 +103,26 @@ def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():
     slack = next(step for step in job["steps"] if step["name"] == "Build the Slack message")
     # Anything but a clean pass alerts: flaky passes included.
     assert "classification != 'passed'" in slack["if"]
-    assert "passed_with_retries" in slack["run"]
+    # Everything from main goes to #pw-health; #ci-cleanup is queue-only.
+    assert "C0C008ZAK0V" in slack["run"]
+    assert "C0AC5T013V1" not in slack["run"]
+
+
+def test_merge_queue_failures_alert_ci_cleanup_without_checked_out_code():
+    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "steps"
+    ]
+    alert = [s for s in steps if "failure() && github.event_name == 'merge_group'" in s.get("if", "")]
+    assert {s["name"] for s in alert} >= {
+        "Build the merge-queue failure message",
+        "Post the merge-queue failure to Slack (ci-cleanup)",
+    }
+    build = next(s for s in alert if s.get("id") == "queue-slack")
+    assert "C0AC5T013V1" in build["run"]
+    # Queue runs never check out code in the summary job, so the alert must not
+    # run repository scripts.
+    assert ".github/scripts" not in build["run"]
+    assert 'select(.status == "unexpected")' in build["run"]
 
 
 def test_pr_summary_reads_the_flake_baseline_report_only():
@@ -127,6 +146,8 @@ def test_merge_groups_upload_no_reports():
     for step in steps:
         if step["name"] == "Gate verified merge-group shards":
             continue
+        if "failure() && github.event_name == 'merge_group'" in step["if"]:
+            continue  # the #ci-cleanup alert: runs only when the queue fails
         assert "github.event_name != 'merge_group'" in step["if"], step["name"]
     # A green queue run costs no artifact storage, but a broken one must still
     # leave evidence: re-running it locally is a different SHA on a moving base.
