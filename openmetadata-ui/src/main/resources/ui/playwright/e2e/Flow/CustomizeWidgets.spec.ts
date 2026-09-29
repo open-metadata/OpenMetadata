@@ -33,7 +33,11 @@ import {
   verifyWidgetHeaderNavigation,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
-import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
+import {
+  addKpi,
+  deleteKpiRequest,
+  deleteKpisOnCharts,
+} from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
@@ -390,6 +394,13 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
   test.slow(true);
 
   const kpi = await test.step('Add KPI', async () => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await deleteKpisOnCharts(apiContext, ['owner']);
+    } finally {
+      await afterAction();
+    }
+
     await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
