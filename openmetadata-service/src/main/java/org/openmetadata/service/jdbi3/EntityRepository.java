@@ -7873,7 +7873,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 relationship.ordinal(),
                 "",
                 null,
-                EntityDAO.physicalTableName(fromEntity));
+                Entity.getEntityRepository(fromEntity).getDao().getTableName());
     if (rowsWritten == 0) {
       LOG.warn(
           "Dropped relationship {} {} -> {} ({}) because the from-entity no longer exists; a concurrent delete won the race.",

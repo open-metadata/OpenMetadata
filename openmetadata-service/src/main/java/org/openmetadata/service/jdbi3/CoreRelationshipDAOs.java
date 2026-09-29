@@ -715,12 +715,6 @@ public interface CoreRelationshipDAOs {
                 + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb)) "
                 + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) VALUES "
-                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb)) "
-                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
-        connectionType = POSTGRES)
     void insert(
         @BindUUID("fromId") UUID fromId,
         @BindUUID("toId") UUID toId,
@@ -738,6 +732,15 @@ public interface CoreRelationshipDAOs {
      * reachable by neither {@code GET} nor {@code DELETE} and that poisons every later bulk operation
      * touching the asset. The existence check runs inside the same statement (and therefore the same
      * transaction and lock scope) as the insert, so a delete that commits in between is observed.
+     *
+     * <p>PostgreSQL takes a {@code FOR SHARE} lock on the source row: a {@code DELETE} of the same
+     * entity that is still uncommitted when this statement runs forces this statement to wait, and
+     * once the delete commits the locked row is re-checked and gone, so the {@code WHERE EXISTS} —
+     * and with it the insert — yields zero rows. The {@code DO UPDATE ... WHERE} clause keeps that
+     * guarantee for the re-insert path: an {@code ON CONFLICT} update of an existing edge is a no-op
+     * when the source row vanished. MySQL's {@code INSERT ... SELECT} already re-reads the source
+     * table under its own statement-level locking, so it keeps the plain {@code FROM <fromTable>}
+     * form.
      */
     @ConnectionAwareSqlUpdate(
         value =
@@ -750,8 +753,9 @@ public interface CoreRelationshipDAOs {
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) "
                 + "SELECT :fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, (:json :: jsonb) "
-                + "WHERE EXISTS (SELECT 1 FROM <fromTable> f WHERE f.id = :fromId) "
-                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json",
+                + "FROM <fromTable> f WHERE f.id = :fromId FOR SHARE "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET json = EXCLUDED.json "
+                + "WHERE EXISTS (SELECT 1 FROM <fromTable> f WHERE f.id = :fromId)",
         connectionType = POSTGRES)
     int insertIfFromEntityExists(
         @BindUUID("fromId") UUID fromId,

@@ -816,6 +816,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
         searchRepository.updateEntity(ref);
+      } catch (EntityNotFoundException e) {
+        // The from-side entity (this data product) was deleted while this request was in flight.
+        // A not-found must escape the per-asset catch-and-collect below: swallowing it would turn a
+        // single-asset call into a FAILURE bulk row (HTTP 400) instead of the intended 404.
+        throw e;
       } catch (RuleValidationException e) {
         LOG.warn(
             "Validation failed for asset {} in bulk operation: {}", ref.getId(), e.getMessage());
