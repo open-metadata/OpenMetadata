@@ -19,6 +19,7 @@ import static org.openmetadata.service.migration.utils.v210.DataContractEntityRe
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
+import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
@@ -71,5 +72,6 @@ public class Migration extends MigrationProcessImpl {
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
     backfillCreationAudit(handle, POSTGRES);
+    removeCreatedSentinel(handle, POSTGRES);
   }
 }
