@@ -37,6 +37,11 @@
 name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
+  # Daily full run on main. Merge groups upload no reports, so this (plus manual
+  # full dispatches) is what feeds ci/playwright-timing and the full-suite timing
+  # artifacts PR planning downloads.
+  schedule:
+    - cron: '30 2 * * *'
   workflow_dispatch:
     inputs:
       full_suite:
@@ -678,7 +683,7 @@ jobs:
     needs: [playwright, playwright-summary]
     if: |
       always() &&
-      github.event_name == 'workflow_dispatch' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       needs.playwright.outputs.detect_changes_mode == 'full' &&
       needs.playwright-summary.result == 'success'
@@ -687,17 +692,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      # NOTE: pushing to a protected `main` requires the token identity to
-      # be on the branch-protection bypass list. RELEASE_BOT_TOKEN is the
-      # same identity auto-revert-release.yml uses to push release
-      # branches; GITHUB_TOKEN is the fallback for repos where Actions is
-      # allowed to bypass.
+      # The baseline lives on the data-only `ci/playwright-timing` branch, not
+      # main: main only takes changes through the merge queue (every direct push
+      # was rejected with GH013), and a push there would reset every in-flight
+      # queue entry. The data branch has no ruleset, so the workflow token can
+      # push to it directly.
       - name: Checkout
         uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: true
-          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Download timing history artifact
         uses: actions/download-artifact@v7
@@ -716,29 +720,29 @@ jobs:
           fi
           echo "history_path=$history" >> "$GITHUB_OUTPUT"
 
-      - name: Refresh baseline and commit to main
+      - name: Refresh baseline on ci/playwright-timing
         env:
           HISTORY_PATH: ${{ steps.locate.outputs.history_path }}
           RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DATA_BRANCH: ci/playwright-timing
         run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-
-          # Regenerate INSIDE the retry loop: each attempt rebuilds the
-          # baseline against the freshly-fetched main, so a queue merge (or
-          # a concurrent refresh run) landing mid-refresh changes the
-          # regeneration input instead of producing a rejected push — the
-          # race that killed the bot-branch design (run 32354038772).
+          data="$RUNNER_TEMP/timing-data"
+          # Regenerate inside the retry loop so a concurrent refresh landing first
+          # changes the input rather than producing a rejected push.
           for attempt in 1 2 3; do
-            git fetch origin main
-            git reset --hard origin/main
+            rm -rf "$data"
+            git fetch --no-tags origin "$DATA_BRANCH"
+            git worktree prune
+            git worktree add --detach "$data" FETCH_HEAD
+            git -C "$data" config user.email "github-actions[bot]@users.noreply.github.com"
+            git -C "$data" config user.name "github-actions[bot]"
 
             set +e
             python3 .github/scripts/refresh_timing_baseline.py \
               --history "$HISTORY_PATH" \
-              --current .github/playwright/timing-baseline.json \
-              --output .github/playwright/timing-baseline.json \
+              --current "$data/timing-baseline.json" \
+              --output "$data/timing-baseline.json" \
               --source-run-id "$RUN_ID" \
               --min-materiality-percent 10 \
               --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
@@ -753,40 +757,22 @@ jobs:
               exit "$rc"
             fi
 
-            if git diff --quiet -- .github/playwright/timing-baseline.json; then
-              echo "Baseline identical to main; nothing to commit."
+            if git -C "$data" diff --quiet -- timing-baseline.json; then
+              echo "Baseline unchanged; nothing to commit."
               exit 0
             fi
 
-            git add .github/playwright/timing-baseline.json
-            git commit \
-              -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID} [skip ci]" \
+            git -C "$data" add timing-baseline.json
+            git -C "$data" commit \
+              -m "chore(playwright): refresh timing baseline from run ${RUN_ID}" \
               -m "$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")" \
               -m "Source: ${RUN_URL}"
-            push_rc=0
-            push_output=$(git push origin HEAD:main 2>&1) || push_rc=$?
-            echo "$push_output"
-            if [[ "$push_rc" -eq 0 ]]; then
-              echo "Baseline refreshed on main (attempt $attempt)."
+            if git -C "$data" push origin "HEAD:refs/heads/$DATA_BRANCH"; then
+              echo "Baseline refreshed on $DATA_BRANCH (attempt $attempt)."
+              cat "$RUNNER_TEMP/baseline-refresh-summary.md" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            # A ruleset/branch-protection rejection (GH013: "changes must be
-            # made through the merge queue") is a CONFIGURATION gap, not a
-            # pipeline failure: the token identity is not on main's bypass
-            # list yet. Failing the job here turns every full-mode
-            # merge_group run red and ejects innocent PRs (runs 32750389130,
-            # 32750390655) — the exact failure mode this pipeline exists to
-            # prevent. Surface loudly, skip gracefully.
-            if grep -qE "GH013|rule violations|protected branch" <<< "$push_output"; then
-              echo "::warning::Baseline refresh skipped: push to main rejected by repository ruleset (GH013). Grant the workflow token (RELEASE_BOT_TOKEN or Actions) bypass on main's ruleset to enable auto-refresh."
-              {
-                echo "## ⚠️ Timing-baseline auto-refresh blocked by ruleset"
-                echo
-                echo "The direct push to \`main\` was rejected (GH013). The refresh is skipped — downstream planning keeps using the current baseline. Grant the workflow token bypass on the main ruleset to enable it."
-              } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            echo "Push rejected (main moved during refresh); retrying." >&2
+            echo "Push rejected ($DATA_BRANCH moved during refresh); retrying." >&2
           done
 
           echo "Failed to push refreshed baseline after 3 attempts." >&2

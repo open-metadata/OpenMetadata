@@ -115,8 +115,30 @@ def test_merge_groups_upload_no_reports():
         assert "failure()" in condition, step["name"]
 
 
-def test_baseline_refresh_comes_from_full_dispatch_on_main():
-    refresh = workflow("playwright-postgresql-e2e.yml")["jobs"]["refresh-timing-baseline"]
+def test_baseline_refresh_writes_the_data_branch_from_full_runs_on_main():
+    caller = workflow("playwright-postgresql-e2e.yml")
+    assert caller[True]["schedule"], "a scheduled full run must feed the baseline"
+    refresh = caller["jobs"]["refresh-timing-baseline"]
+    assert "github.event_name == 'schedule'" in refresh["if"]
     assert "github.event_name == 'workflow_dispatch'" in refresh["if"]
     assert "github.ref == 'refs/heads/main'" in refresh["if"]
     assert "merge_group" not in refresh["if"]
+    script = "\n".join(step.get("run", "") for step in refresh["steps"])
+    # main is merge-queue only: a direct push there is rejected (GH013) and
+    # would reset in-flight queue entries.
+    assert "HEAD:main" not in script
+    [push] = [step for step in refresh["steps"] if "DATA_BRANCH" in step.get("env", {})]
+    assert push["env"]["DATA_BRANCH"] == "ci/playwright-timing"
+    assert 'HEAD:refs/heads/$DATA_BRANCH' in push["run"]
+
+
+def test_planning_reads_the_data_branch_baseline():
+    steps = workflow("playwright-e2e-reusable.yml")["jobs"]["plan-playwright"]["steps"]
+    names = [step["name"] for step in steps]
+    fetch = names.index("Fetch auto-refreshed timing baseline")
+    assert fetch < names.index("Build duration-aware shard plans")
+    step = steps[fetch]
+    assert step.get("continue-on-error") is True
+    assert "ci/playwright-timing" in step["run"]
+    # The planner's history loop only picks up files with this name.
+    assert "playwright-timing-history.json" in step["run"]
