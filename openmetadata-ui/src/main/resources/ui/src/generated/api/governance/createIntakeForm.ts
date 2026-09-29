@@ -31,6 +31,10 @@ export interface CreateIntakeForm {
      */
     entityType: TargetEntityType;
     /**
+     * Fields included in this IntakeForm. Fields with required=true are enforced.
+     */
+    formFields?: IntakeFormField[];
+    /**
      * Unique name of the IntakeForm.
      */
     name: string;
@@ -39,7 +43,7 @@ export interface CreateIntakeForm {
      */
     owners?: EntityReference[];
     /**
-     * Additional required fields enforced by this IntakeForm.
+     * Deprecated compatibility input for required fields. Use formFields instead.
      */
     requiredFields?: RequiredField[];
 }
@@ -53,6 +57,46 @@ export enum TargetEntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
     GlossaryTerm = "glossaryTerm",
+}
+
+/**
+ * A field included in this IntakeForm.
+ */
+export interface IntakeFormField {
+    /**
+     * Optional override for the validation error message when a required field is missing.
+     */
+    errorMessage?: string;
+    /**
+     * Whether a form field refers to a native entity attribute or a custom property defined via
+     * the Type system.
+     */
+    fieldKind: FieldKind;
+    /**
+     * Human-friendly label used on the intake form UI and in validation error messages.
+     */
+    fieldLabel: string;
+    /**
+     * Path to the field on the entity. Native paths are simple attribute names (e.g.,
+     * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
+     */
+    fieldPath: string;
+    /**
+     * Whether this field must have a value before the entity can be created or updated.
+     */
+    required?: boolean;
+}
+
+/**
+ * Whether a form field refers to a native entity attribute or a custom property defined via
+ * the Type system.
+ *
+ * Whether a required field refers to a native entity attribute or a custom property defined
+ * via the Type system.
+ */
+export enum FieldKind {
+    CustomProperty = "customProperty",
+    Native = "native",
 }
 
 /**
@@ -129,13 +173,4 @@ export interface RequiredField {
      * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
      */
     fieldPath: string;
-}
-
-/**
- * Whether a required field refers to a native entity attribute or a custom property defined
- * via the Type system.
- */
-export enum FieldKind {
-    CustomProperty = "customProperty",
-    Native = "native",
 }

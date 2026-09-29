@@ -564,6 +564,64 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
         "Parent reference must match on the list path");
   }
 
+  /**
+   * A nested directory must inherit its domain from its parent directory (not the drive service)
+   * on the bulk list path, even when the parent field is not requested: the parent reference is
+   * needed internally for inheritance and must not leak into the response.
+   */
+  @Test
+  void test_listInheritsDomainFromParentDirectoryWithoutParentField(TestNamespace ns) {
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    org.openmetadata.schema.entity.domains.Domain parentDomain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("dir_parent_domain"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain assigned to the parent directory"));
+
+    Directory parentDir =
+        getDirectoryService()
+            .create(
+                new CreateDirectory()
+                    .withName(ns.prefix("domain_parent"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withDomains(java.util.List.of(parentDomain.getFullyQualifiedName())));
+
+    Directory nestedDir =
+        getDirectoryService()
+            .create(
+                new CreateDirectory()
+                    .withName(ns.prefix("domain_nested"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withParent(parentDir.getFullyQualifiedName()));
+
+    ListParams params =
+        new ListParams()
+            .setService(driveService.getFullyQualifiedName())
+            .setFields("domains")
+            .setLimit(1000);
+    Directory listedNested = findInList(params, nestedDir.getId());
+    assertNotNull(listedNested, "Nested directory must be present in the list response");
+    assertTrue(
+        listedNested.getParent() == null,
+        "Parent was not requested and must not be returned on the list path");
+    assertNotNull(
+        listedNested.getDomains(),
+        "Nested directory must inherit a domain on the list path even without the parent field");
+    assertEquals(1, listedNested.getDomains().size());
+    assertEquals(
+        parentDomain.getFullyQualifiedName(),
+        listedNested.getDomains().getFirst().getFullyQualifiedName(),
+        "Nested directory must inherit its domain from the parent directory, not the drive service");
+    assertTrue(
+        Boolean.TRUE.equals(listedNested.getDomains().getFirst().getInherited()),
+        "The domain must be marked inherited");
+  }
+
   private Directory findInList(ListParams params, UUID id) {
     ListResponse<Directory> response = listEntities(params);
     Directory match = null;

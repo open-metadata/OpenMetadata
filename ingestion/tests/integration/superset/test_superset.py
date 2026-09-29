@@ -64,8 +64,10 @@ from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPIS
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from metadata.ingestion.source.dashboard.superset.models import (
+    ChartResult,
     DatabaseResult,
     DataSourceResult,
+    DSColumns,
     FetchChart,
     FetchColumn,
     FetchDashboard,
@@ -199,6 +201,27 @@ EXPECTED_CHART_2 = CreateChartRequest(
 )
 MOCK_DATASOURCE = [FetchColumn(id=11, type="INT()", column_name="Population", table_name="sample_table")]
 
+# A Superset calculated column commonly has no declared type
+CALCULATED_COLUMN_FORMULA = "CASE WHEN state = 'CA' THEN num ELSE 0 END"
+MOCK_CALCULATED_COLUMN_DB = [
+    FetchColumn(
+        id=12,
+        type=None,
+        column_name="num_california",
+        table_name="sample_table",
+        expression=CALCULATED_COLUMN_FORMULA,
+    )
+]
+MOCK_CALCULATED_COLUMN_API = [
+    DSColumns(id=12, type=None, column_name="num_california", expression=CALCULATED_COLUMN_FORMULA)
+]
+# A calculated column can also have its type set -- must keep that type (not
+# fall back to UNKNOWN) while still getting the formula surfaced.
+TYPED_CALCULATED_COLUMN_FORMULA = "price * 2"
+MOCK_TYPED_CALCULATED_COLUMN_API = [
+    DSColumns(id=13, type="BIGINT", column_name="double_price", expression=TYPED_CALCULATED_COLUMN_FORMULA)
+]
+
 # EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
 # EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
 EXPECTED_ALL_CHARTS_DB = {1: MOCK_CHART_DB_2}
@@ -217,6 +240,20 @@ MOCK_DATASOURCE_RESPONSE = SupersetDatasource(
     )
 )
 MOCK_DATABASE_RESPONSE = ListDatabaseResult(result=DatabaseResult(database_name="examples", id=1, parameters=None))
+
+MOCK_DATASOURCE_RESPONSE_WITH_SQL = SupersetDatasource(
+    id=99,
+    result=DataSourceResult.model_validate(
+        {
+            "table_name": "sample_table",
+            "sql": "SELECT id FROM sample_table",
+            "description": "rollup dataset",
+            "url": "/tablemodelview/edit/99",
+            "schema": "main",
+            "columns": [{"id": 11, "column_name": "Population", "type": "INT"}],
+        }
+    ),
+)
 
 
 def setup_sample_data(postgres_container):
@@ -277,7 +314,9 @@ def setup_sample_data(postgres_container):
         """  # noqa: N806
         INSERT_TABLES_DATA = """
             INSERT INTO tables(id, table_name, schema, database_id)
-            VALUES (99, 'sample_table', 'main', 5);
+            VALUES
+                (99, 'sample_table', 'main', 5),
+                (100, 'calc_table', 'main', 5);
         """  # noqa: N806
         CREATE_TABLE_COLUMNS_TABLE = """
             CREATE TABLE table_columns (
@@ -286,17 +325,29 @@ def setup_sample_data(postgres_container):
                 table_id INTEGER,
                 column_name VARCHAR(255),
                 type VARCHAR(255),
-                description VARCHAR(255)
+                description VARCHAR(255),
+                expression VARCHAR(4000)
             );
         """  # noqa: N806
         CREATE_TABLE_COLUMNS_DATA = """
-            INSERT INTO 
+            INSERT INTO
                 table_columns(id, table_name, table_id, column_name, type, description)
-            VALUES 
-                (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description'), 
+            VALUES
+                (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description'),
                 (1199, 'sample_table', 99, 'timestamp', 'VARCHAR', 'dummy description'),
                 (1299, 'sample_table', 99, 'price', 'VARCHAR', 'dummy description');
-        """  # noqa: N806, W291
+        """  # noqa: N806
+        # Calculated columns as Superset actually stores them: no physical DB column
+        # backs them, so `type` is frequently left NULL by whoever created them.
+        # Kept on a separate table_id (100) so it doesn't disturb the other tests'
+        # exact-column-set assertions against table_id 99.
+        CREATE_CALCULATED_COLUMNS_DATA = """
+            INSERT INTO
+                table_columns(id, table_name, table_id, column_name, type, description, expression)
+            VALUES
+                (1399, 'calc_table', 100, 'is_expensive', NULL, NULL, 'CASE WHEN price > 100 THEN 1 ELSE 0 END'),
+                (1499, 'calc_table', 100, 'double_price', 'BIGINT', NULL, 'price * 2');
+        """  # noqa: N806
 
         connection.execute(sqlalchemy.text(CREATE_TABLE_AB_USER))
         connection.execute(sqlalchemy.text(INSERT_AB_USER_DATA))
@@ -310,6 +361,7 @@ def setup_sample_data(postgres_container):
         connection.execute(sqlalchemy.text(INSERT_TABLES_DATA))
         connection.execute(sqlalchemy.text(CREATE_TABLE_COLUMNS_TABLE))
         connection.execute(sqlalchemy.text(CREATE_TABLE_COLUMNS_DATA))
+        connection.execute(sqlalchemy.text(CREATE_CALCULATED_COLUMNS_DATA))
 
 
 INITIAL_SETUP = True
@@ -631,6 +683,139 @@ class SupersetUnitTest(TestCase):
         self.superset_db.prepare()
         parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
         assert parsed_datasource[0].dataType.value == "INT"
+        # column name is the real column_name, not the numeric superset column id
+        assert parsed_datasource[0].name.root == "Population"
+
+    def test_calculated_column_missing_type_not_dropped_db(self):
+        """
+        A calculated column with no declared type must still be ingested (as UNKNOWN)
+        instead of being silently dropped, and its SQL formula must be surfaced in
+        the column description. DB-source path (FetchColumn).
+        """
+        self.superset_db.prepare()
+        parsed_datasource = self.superset_db.get_column_info(MOCK_CALCULATED_COLUMN_DB)
+        assert len(parsed_datasource) == 1
+        assert parsed_datasource[0].dataType.value == "UNKNOWN"
+        assert CALCULATED_COLUMN_FORMULA in str(parsed_datasource[0].description.root)
+
+    def test_calculated_column_missing_type_not_dropped_api(self):
+        """
+        Same as test_calculated_column_missing_type_not_dropped_db, but for the
+        API-source path (DSColumns).
+        """
+        parsed_datasource = self.superset_api.get_column_info(MOCK_CALCULATED_COLUMN_API)
+        assert len(parsed_datasource) == 1
+        assert parsed_datasource[0].dataType.value == "UNKNOWN"
+        assert CALCULATED_COLUMN_FORMULA in str(parsed_datasource[0].description.root)
+
+    def test_typed_calculated_column_keeps_type_and_formula_api(self):
+        """
+        A calculated column that DOES have a type set must keep that real type
+        (not fall back to UNKNOWN), while still getting its formula surfaced.
+        """
+        parsed_datasource = self.superset_api.get_column_info(MOCK_TYPED_CALCULATED_COLUMN_API)
+        assert parsed_datasource[0].dataType.value == "BIGINT"
+        assert TYPED_CALCULATED_COLUMN_FORMULA in str(parsed_datasource[0].description.root)
+
+    def test_calculated_columns_end_to_end_via_sql_db(self):
+        """
+        Round-trips real rows through the actual FETCH_COLUMN SQL query (not a
+        hand-built mock), covering the mix a real dataset has: physical columns
+        with a type, a calculated column missing its type, and a calculated
+        column that does have one -- all fetched from table_id 100 in one call.
+        """
+        self.superset_db.prepare()
+        fetched_columns = self.superset_db.get_column_list(100)
+        parsed_columns = {c.name.root: c for c in self.superset_db.get_column_info(fetched_columns)}
+
+        assert parsed_columns["is_expensive"].dataType.value == "UNKNOWN"
+        assert "CASE WHEN price > 100" in str(parsed_columns["is_expensive"].description.root)
+
+        assert parsed_columns["double_price"].dataType.value == "BIGINT"
+        assert TYPED_CALCULATED_COLUMN_FORMULA in str(parsed_columns["double_price"].description.root)
+
+    def test_datamodel_fields_api(self):
+        """
+        API datamodel carries sql, description and sourceUrl from the dataset payload
+        """
+        self.superset_api.all_charts = {69: MOCK_CHART}
+        with patch.object(
+            self.superset_api.client,
+            "fetch_datasource",
+            return_value=MOCK_DATASOURCE_RESPONSE_WITH_SQL,
+        ):
+            data_model = next(self.superset_api.yield_datamodel(MOCK_DASHBOARD)).right
+        assert data_model.sql.root == "SELECT id FROM sample_table"
+        assert data_model.description.root == "rollup dataset"
+        assert str(data_model.sourceUrl.root).endswith("/tablemodelview/edit/99")
+        assert data_model.columns[0].name.root == "Population"
+
+    def test_api_get_input_tables_parses_dataset_sql(self):
+        """
+        API _get_input_tables parses the virtual dataset SQL to reach the real source tables
+        """
+        with patch.object(
+            self.superset_api.client,
+            "fetch_datasource",
+            return_value=MOCK_DATASOURCE_RESPONSE_WITH_SQL,
+        ):
+            result = self.superset_api._get_input_tables(ChartResult(datasource_id=99))
+        source_tables = [fetch_chart.table_name for fetch_chart, _ in result]
+        self.assertIn("sample_table", source_tables)
+
+    def test_api_get_source_table_fqn_uses_parsed_table(self):
+        """
+        SQL-parsed source table fqn uses the parsed table name, not the datasource's own table
+        """
+        with (
+            patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE),
+            patch.object(self.superset_api.client, "fetch_datasource", return_value=MOCK_DATASOURCE_RESPONSE),
+            patch.object(self.superset_api.client, "fetch_database", return_value=MOCK_DATABASE_RESPONSE),
+        ):
+            fqn = self.superset_api._get_source_table_fqn(  # pylint: disable=protected-access
+                FetchChart(table_name="orders", schema="main", datasource_id=1),
+                MOCK_DB_POSTGRES_SERVICE.name.root,
+            )
+        self.assertEqual(fqn, "test_postgres.*.main.orders")
+
+    def test_api_fetch_datasource_is_cached(self):
+        """
+        Repeated fetch_datasource for the same id resolves from cache, hitting the network once
+        """
+        with patch.object(self.superset_api.client.client, "get", return_value={"id": 1}) as mock_get:
+            self.superset_api.client.fetch_datasource(7)
+            self.superset_api.client.fetch_datasource(7)
+            self.superset_api.client.fetch_datasource(8)
+        self.assertEqual(mock_get.call_count, 2)
+
+    def test_api_fetch_datasource_failure_is_retryable(self):
+        """
+        A failed/empty fetch is not cached, so a later call for the same id retries instead of
+        being served the poisoned empty result
+        """
+        with patch.object(self.superset_api.client.client, "get", side_effect=[None, {"id": 5}]) as mock_get:
+            first = self.superset_api.client.fetch_datasource(5)
+            second = self.superset_api.client.fetch_datasource(5)
+        self.assertIsNone(first.id)
+        self.assertEqual(second.id, 5)
+        self.assertEqual(mock_get.call_count, 2)
+
+    def test_api_source_table_fqn_missing_db_service_does_not_crash(self):
+        """
+        When the db service prefix is not registered in OM, fqn resolution degrades gracefully
+        instead of raising on a None DatabaseService
+        """
+        with (
+            patch.object(OpenMetadata, "get_by_name", return_value=None),
+            patch.object(self.superset_api.client, "fetch_datasource", return_value=MOCK_DATASOURCE_RESPONSE),
+            patch.object(self.superset_api.client, "fetch_database", return_value=MOCK_DATABASE_RESPONSE),
+        ):
+            fqn = self.superset_api._get_source_table_fqn(  # pylint: disable=protected-access
+                FetchChart(table_name="orders", schema="main", datasource_id=1),
+                "missing_service",
+            )
+        self.assertIn("orders", fqn)
+        self.assertIn("missing_service", fqn)
 
     def test_is_table_to_table_lineage(self):
         table = Table(name="table_name", schema=Schema(name="schema_name"))

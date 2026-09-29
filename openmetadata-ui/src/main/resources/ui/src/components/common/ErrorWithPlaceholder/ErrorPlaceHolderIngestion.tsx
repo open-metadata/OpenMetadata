@@ -78,7 +78,7 @@ const ErrorPlaceHolderIngestion = ({
   }, [isAirflowPlatform, cardClassName]);
 
   return (
-    <div className="m-t-lg text-base font-medium">
+    <div className="text-base font-medium">
       {isFetchingStatus ? <Loader /> : airflowSetupGuide}
     </div>
   );

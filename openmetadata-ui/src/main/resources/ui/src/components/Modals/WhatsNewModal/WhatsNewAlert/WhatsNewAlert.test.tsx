@@ -22,10 +22,10 @@ const mockSetItem = jest.fn();
 
 jest.mock('cookie-storage', () => ({
   CookieStorage: class {
-    getItem(...args: any[]) {
+    getItem(...args: unknown[]) {
       return mockGetItem(...args);
     }
-    setItem(...args: any[]) {
+    setItem(...args: unknown[]) {
       return mockSetItem(...args);
     }
     constructor() {
@@ -80,7 +80,7 @@ jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
 // Mock i18n
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: { version?: string | number }) => {
       const translations: Record<string, string> = {
         'label.version-number': `Version ${options?.version || ''}`,
         'label.new-update-announcement': 'New Update Announcement',

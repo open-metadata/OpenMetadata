@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { TFunction } from 'i18next';
 import type React from 'react';
 import {
   PLACEHOLDER_ROUTE_FQN,
@@ -21,11 +22,19 @@ import {
 } from '../constants/constants';
 import { EntityTabs } from '../enums/entity.enum';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
+import { getEncodedFqn } from './StringUtils';
 
 export interface MemoryMetadataItem {
   key: string;
   label: string;
   value: React.ReactNode;
+}
+
+export interface ContextCenterBreadcrumbItem {
+  label: React.ReactNode;
+  href?: string;
+  icon?: React.FC<{ className?: string }>;
+  ariaLabel?: string;
 }
 
 class ContextCenterClassBase {
@@ -37,16 +46,12 @@ class ContextCenterClassBase {
     return false;
   }
 
-  public getCardStyle(): React.CSSProperties {
-    return {};
+  public getHeaderCardClassName(): string {
+    return '';
   }
 
   public isBreadcrumbInsideCard(): boolean {
     return false;
-  }
-
-  public getBreadcrumbClassName(): string {
-    return '';
   }
 
   public getContainerClassName(): string {
@@ -71,6 +76,17 @@ class ContextCenterClassBase {
 
   public getMemoriesListPath(): string {
     return ROUTES.CONTEXT_CENTER_MEMORIES;
+  }
+
+  public getAIContextListPath(): string {
+    return ROUTES.CONTEXT_CENTER_AI_CONTEXT;
+  }
+
+  public getAIContextPath(personaFqn: string): string {
+    return ROUTES.CONTEXT_CENTER_AI_CONTEXT_DETAIL.replace(
+      PLACEHOLDER_ROUTE_FQN,
+      getEncodedFqn(personaFqn)
+    );
   }
 
   public getArticlePath(
@@ -103,6 +119,19 @@ class ContextCenterClassBase {
 
   public getMemoryMetadataList(_memory: ContextMemory): MemoryMetadataItem[] {
     return [];
+  }
+
+  public getMemoryPromptTranslationKey(): string {
+    return 'message.what-should-ai-remember';
+  }
+
+  public getContextCenterRootBreadcrumb(
+    t: TFunction
+  ): ContextCenterBreadcrumbItem {
+    return {
+      label: t('label.context-center'),
+      href: this.getContextCenterPath(),
+    };
   }
 }
 

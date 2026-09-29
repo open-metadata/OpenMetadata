@@ -79,7 +79,10 @@ jest.mock('./AnnouncementItemV3.component', () => ({
     announcement: AnnouncementEntity;
     onClick: () => void;
   }) => (
-    <div data-testid="mock-announcement-item" onClick={onClick}>
+    <div
+      data-testid="mock-announcement-item"
+      role="presentation"
+      onClick={onClick}>
       {announcement.displayName}
     </div>
   ),

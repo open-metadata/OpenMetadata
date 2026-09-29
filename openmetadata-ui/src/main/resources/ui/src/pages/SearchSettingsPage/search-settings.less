@@ -17,24 +17,24 @@
 }
 
 .settings-row {
-  margin: 18px;
-  margin-bottom: 24px;
+  margin: var(--om-space-18);
+  margin-bottom: var(--om-space-24);
   background-color: var(--tw-color-bg-primary);
   border: 1px solid @border-color-1;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
 }
 
 .global-settings-cards-container {
   display: flex;
-  gap: 20px;
+  gap: var(--om-space-20);
   flex-wrap: wrap;
-  margin: -10px;
-  margin-bottom: 8px;
+  margin: calc(-1 * var(--om-space-10));
+  margin-bottom: var(--om-space-8);
 
   .global-setting-card {
-    padding: 32px 20px;
+    padding: var(--om-space-32) var(--om-space-20);
     border: 1px solid @grey-100;
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
     background-color: @grey-50;
     flex: 0 0 calc(25% - 15px);
     min-width: 250px;
@@ -46,9 +46,9 @@
     &__content {
       flex: 1;
       min-width: 0;
-      font-size: 14px;
-      font-weight: 500;
-      margin-right: 16px;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
+      margin-right: var(--om-space-16);
     }
 
     &__action {
@@ -60,9 +60,9 @@
 .boosts-section {
   .ant-collapse {
     .ant-collapse-item {
-      margin-bottom: 16px;
+      margin-bottom: var(--om-space-16);
       border: 1px solid @grey-100;
-      border-radius: 10px;
+      border-radius: var(--om-radius-10);
       overflow: hidden;
 
       &:last-child {
@@ -90,7 +90,7 @@
   background-color: @primary-heading-color;
   border: 1px solid @primary-heading-color;
   color: var(--tw-color-text-white);
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   &:hover {
     background-color: @primary-heading-color;
     border-color: @primary-heading-color;
@@ -107,31 +107,31 @@
   background-color: transparent;
 
   .ant-collapse-item {
-    margin-bottom: 16px;
+    margin-bottom: var(--om-space-16);
 
     &.term-boost-panel {
       border: 1px solid @border-color-1;
       background-color: @grey-50;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
       overflow: hidden;
     }
 
     &.field-value-boost-panel {
       border: 1px solid @border-color-1;
       background-color: @grey-50;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
       overflow: hidden;
     }
   }
 }
 
 .count-label {
-  padding: 2px 8px;
+  padding: var(--om-space-2) var(--om-space-8);
   background-color: @primary-button-background;
-  border-radius: 16px;
+  border-radius: var(--om-radius-2xl);
   color: @primary-heading-color;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
 }
 
 .field-value-boost-modal {
@@ -140,7 +140,7 @@
   }
 
   .ant-form-item {
-    margin-bottom: 16px;
+    margin-bottom: var(--om-space-16);
   }
 
   .range-inputs {

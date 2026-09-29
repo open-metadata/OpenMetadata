@@ -80,6 +80,7 @@ jest.mock('antd', () => ({
   Select: ({ onChange, onSearch, 'data-testid': testId }: MockSelectProps) => (
     <div>
       <input
+        aria-label="Search"
         data-testid={testId}
         onChange={(e) => onSearch?.(e.target.value)}
       />
@@ -156,7 +157,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }) => (
       <>
         {isOpen && (
-          <div data-testid="modal-overlay" onClick={() => onOpenChange(false)}>
+          <div
+            aria-label="Modal overlay"
+            data-testid="modal-overlay"
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpenChange(false)}
+            onKeyDown={() => onOpenChange(false)}>
             {children}
           </div>
         )}
@@ -192,7 +199,7 @@ describe('AddToBundleSuiteModal', () => {
     render(<AddToBundleSuiteModal {...mockProps} />);
 
     expect(getListTestSuitesBySearch).toHaveBeenCalledWith({
-      q: '*',
+      q: undefined,
       limit: 15,
       testSuiteType: 'logical',
       includeEmptyTestSuites: true,
@@ -309,7 +316,7 @@ describe('AddToBundleSuiteModal', () => {
 
     expect(getListTestSuitesBySearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        q: '*bundle*',
+        q: 'bundle',
       })
     );
 

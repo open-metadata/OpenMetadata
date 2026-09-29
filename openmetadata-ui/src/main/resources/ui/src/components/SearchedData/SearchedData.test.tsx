@@ -19,7 +19,7 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import { PropsWithChildren } from 'react';
+import { type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { TAG_CONSTANT } from '../../constants/Tag.constants';
@@ -41,6 +41,7 @@ const TestWrapper = ({ children }: PropsWithChildren) => {
 
 const mockData: SearchedDataProps['data'] = [
   {
+    _id: 'search-hit-1',
     _index: SearchIndex.TABLE,
     _source: {
       id: '1',
@@ -72,6 +73,7 @@ const mockData: SearchedDataProps['data'] = [
     },
   },
   {
+    _id: 'search-hit-2',
     _index: SearchIndex.TABLE,
     _source: {
       id: '2',
@@ -88,6 +90,7 @@ const mockData: SearchedDataProps['data'] = [
     },
   },
   {
+    _id: 'search-hit-3',
     _index: SearchIndex.TABLE,
     _source: {
       id: '3',
@@ -105,8 +108,16 @@ const mockData: SearchedDataProps['data'] = [
   },
 ];
 
-const mockPaginate = jest.fn();
 const mockHandleSummaryPanelDisplay = jest.fn();
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    Badge: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  };
+});
 
 jest.mock('../Database/TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(
@@ -130,12 +141,15 @@ const MOCK_PROPS = {
   currentPage: 0,
   data: mockData,
   handleSummaryPanelDisplay: mockHandleSummaryPanelDisplay,
-  onPaginationChange: mockPaginate,
   selectedEntityId: 'name1',
   totalValue: 10,
 };
 
 describe('Test SearchedData Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Component should render', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
       wrapper: TestWrapper,

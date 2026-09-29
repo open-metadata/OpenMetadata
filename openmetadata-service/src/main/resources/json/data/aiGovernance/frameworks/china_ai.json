@@ -1,0 +1,44 @@
+{
+  "framework": {
+    "name": "china_ai",
+    "displayName": "China AI Regulations",
+    "description": "CAC Interim Measures for the Management of Generative AI Services — China's national AI rules.",
+    "reference": "CAC Interim Measures",
+    "region": "China",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "SemiAnnual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel"],
+      "regions": ["China"],
+      "riskClasses": [],
+      "deploymentStages": []
+    }
+  },
+  "controls": [
+    {
+      "code": "cn-1",
+      "name": "cn-1",
+      "displayName": "Algorithm Filing",
+      "category": "Governance",
+      "description": "File the algorithm with the CAC if the service has public-opinion or social-mobilization properties.",
+      "evidenceRequirements": ["CAC filing receipt"]
+    },
+    {
+      "code": "cn-2",
+      "name": "cn-2",
+      "displayName": "Content Labeling",
+      "category": "Transparency",
+      "description": "AI-generated content must be clearly labeled for end users.",
+      "evidenceRequirements": ["Content labeling spec"]
+    },
+    {
+      "code": "cn-3",
+      "name": "cn-3",
+      "displayName": "Security Assessment",
+      "category": "Risk",
+      "description": "Security assessment required for services with public-opinion or social-mobilization attributes.",
+      "evidenceRequirements": ["Security assessment report"]
+    }
+  ]
+}

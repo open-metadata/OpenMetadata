@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Type, cast  # noqa: UP035
+from collections.abc import Sequence  # noqa: TC003
+from typing import Any, cast
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Metric
@@ -14,7 +15,7 @@ class Metrics(BaseEntity[Metric, CreateMetricRequest]):
     """SDK facade for metric entities."""
 
     @classmethod
-    def entity_type(cls) -> Type[Metric]:  # noqa: UP006
+    def entity_type(cls) -> type[Metric]:
         return Metric
 
     @classmethod

@@ -12,8 +12,6 @@
 Source connection handler for Grafana
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -30,27 +28,23 @@ from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: GrafanaConnectionConfig) -> GrafanaApiClient:
-    """
-    Create connection to Grafana
-    """
-    return GrafanaApiClient(
-        host_port=connection.hostPort,
-        api_key=connection.apiKey.get_secret_value(),
-        verify_ssl=connection.verifySSL or True,
-        page_size=connection.pageSize or 100,
-    )
-
-
 class GrafanaConnection(BaseConnection[GrafanaConnectionConfig, GrafanaApiClient]):
     def _get_client(self) -> GrafanaApiClient:
-        return get_connection(self.service_connection)
+        """
+        Create connection to Grafana
+        """
+        return GrafanaApiClient(
+            host_port=str(self.service_connection.hostPort),
+            api_key=self.service_connection.apiKey.get_secret_value(),
+            verify_ssl=(self.service_connection.verifySSL if self.service_connection.verifySSL is not None else True),
+            page_size=self.service_connection.pageSize or 100,
+        )
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection to Grafana instance

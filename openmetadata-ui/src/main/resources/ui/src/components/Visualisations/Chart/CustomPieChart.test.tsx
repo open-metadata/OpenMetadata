@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
-import { TEXT_GREY_MUTED } from '../../../constants/constants';
 import CustomPieChart from './CustomPieChart.component';
+
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    emptyFill: '#123456',
+    inactive: '#234567',
+  }),
+}));
 
 describe('CustomPieChart', () => {
   const mockData = [
@@ -39,7 +45,7 @@ describe('CustomPieChart', () => {
     const centerLabel = getByText(label);
 
     expect(centerLabel).toBeInTheDocument();
-    expect(centerLabel).toHaveAttribute('fill', TEXT_GREY_MUTED);
+    expect(centerLabel).toHaveAttribute('fill', '#234567');
   });
 
   it('renders the center label when label is a React element', () => {
@@ -79,6 +85,36 @@ describe('CustomPieChart', () => {
     const cells = container.querySelectorAll('path.recharts-pie-sector');
     cells.forEach((cell, index) => {
       expect(cell).toHaveAttribute('fill', mockData[index].color);
+    });
+  });
+
+  it('keeps a tiny non-zero segment visible by default', async () => {
+    const { container } = render(
+      <CustomPieChart
+        data={[
+          { name: 'Covered', value: 1, color: '#0088FE' },
+          { name: 'Not Covered', value: 115_508, color: '#FF8042' },
+        ]}
+        name="test-chart"
+        onSegmentClick={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      const segments = container.querySelectorAll('path.recharts-sector');
+
+      expect(segments).toHaveLength(3);
+
+      const coordinatePairs =
+        segments[1]
+          .getAttribute('d')
+          ?.match(/-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?/g) ?? [];
+      const [startX, startY] = coordinatePairs[0]?.split(',').map(Number) ?? [
+        0, 0,
+      ];
+      const [endX, endY] = coordinatePairs[3]?.split(',').map(Number) ?? [0, 0];
+
+      expect(Math.hypot(endX - startX, endY - startY)).toBeGreaterThan(1);
     });
   });
 

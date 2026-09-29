@@ -83,4 +83,12 @@ const Loader: FunctionComponent<Props> = ({
   );
 };
 
+// Use for blocking page-level loads only, so route and initial entity loaders
+// stay in the same position instead of jumping between bare spinner layouts.
+export const PageLoader = () => (
+  <div className="ant-layout-content flex-center">
+    <Loader />
+  </div>
+);
+
 export default Loader;

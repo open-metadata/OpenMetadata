@@ -28,7 +28,7 @@ class TrinoSampler(SQASampler):
 
     def __init__(self, *args, **kwargs):
         # pylint: disable=import-outside-toplevel
-        from trino.sqlalchemy.dialect import TrinoDialect  # noqa: PLC0415
+        from trino.sqlalchemy.dialect import TrinoDialect
 
         TrinoDialect._json_deserializer = None
 

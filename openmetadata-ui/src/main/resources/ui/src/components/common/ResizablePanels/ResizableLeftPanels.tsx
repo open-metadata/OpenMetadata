@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +45,43 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
     setIsLeftPanelCollapsed((prev) => !prev);
   };
 
+  const renderFirstPanelCard = () =>
+    hideFirstPanel ? null : (
+      <Card
+        className={classNames(
+          'reflex-card tw:flex tw:h-full tw:flex-col',
+          firstPanel.cardClassName
+        )}
+        data-testid="resizable-left-panel-card">
+        {firstPanel.title && (
+          <Box
+            align="center"
+            className={classNames(
+              'tw:shrink-0 tw:p-4',
+              firstPanel.titleContainerClassName
+            )}
+            gap={2}>
+            <Typography
+              as="span"
+              className={firstPanel.titleClassName}
+              size="text-sm"
+              weight={firstPanel.titleStrong ?? true ? 'semibold' : 'regular'}>
+              {firstPanel.title}
+            </Typography>
+            {showLearningIcon && (
+              <LearningIcon
+                pageId={learningPageId}
+                title={learningTitle ?? t('label.explore')}
+              />
+            )}
+          </Box>
+        )}
+        <Card.Content className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-0">
+          {firstPanel.children}
+        </Card.Content>
+      </Card>
+    );
+
   return (
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
@@ -57,27 +99,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
           onStopResize={(args) => {
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
-          {!hideFirstPanel && (
-            <Card
-              className="reflex-card card-padding-0"
-              title={
-                firstPanel.title && (
-                  <div className="d-flex align-items-center gap-2">
-                    <Typography.Text strong className="m-b-0 text-sm">
-                      {firstPanel.title}
-                    </Typography.Text>
-                    {showLearningIcon && (
-                      <LearningIcon
-                        pageId={learningPageId}
-                        title={learningTitle ?? t('label.explore')}
-                      />
-                    )}
-                  </div>
-                )
-              }>
-              {firstPanel.children}
-            </Card>
-          )}
+          {renderFirstPanelCard()}
         </ReflexElement>
 
         <ReflexSplitter
@@ -85,17 +107,15 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
             hidden: hideFirstPanel,
           })}>
           {isLeftPanelCollapsed && (
-            <Card className="reflex-card card-padding-0">
-              <Tooltip placement="right" title={t('label.expand')}>
-                <Button
-                  className="mr-2"
-                  data-testid="sidebar-toggle"
-                  icon={<SidebarCollapsedIcon height={20} width={20} />}
-                  size="middle"
-                  type="text"
-                  onClick={handleCollapse}
-                />
-              </Tooltip>
+            <Card className="reflex-card tw:p-1">
+              <ButtonUtility
+                color="tertiary"
+                data-testid="sidebar-toggle"
+                icon={SidebarCollapsedIcon}
+                tooltip={t('label.expand')}
+                tooltipPlacement="right"
+                onClick={handleCollapse}
+              />
             </Card>
           )}
           {!isLeftPanelCollapsed && (

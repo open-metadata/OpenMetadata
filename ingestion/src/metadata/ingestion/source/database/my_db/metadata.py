@@ -12,7 +12,7 @@
 MyDb source module
 """
 
-from typing import Optional, cast
+from typing import cast
 
 from metadata.generated.schema.entity.services.connections.database.myDbConnection import (
     MyDbConnection,
@@ -27,7 +27,7 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 
 class MyDbSource(CommonDbSourceService):
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = cast(MyDbConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(connection, MyDbConnection):

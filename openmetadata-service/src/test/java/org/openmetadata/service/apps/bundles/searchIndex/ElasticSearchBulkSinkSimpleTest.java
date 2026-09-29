@@ -90,6 +90,13 @@ class ElasticSearchBulkSinkSimpleTest {
     assertEquals(false, recreateIndex);
   }
 
+  @Test
+  void testIsVectorEmbeddingEnabledForEntity() {
+    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("table"));
+    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
+    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
+  }
+
   /**
    * Mirror of {@code OpenSearchBulkSinkSimpleTest#semaphoreTimeoutRecordsPermanentFailure...}.
    * The Elasticsearch sink shares the leaked-future failure mode — without the bounded

@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
 
 // The table Data Quality tab paginates at PAGE_SIZE_BASE (15). Creating 16 test
@@ -27,7 +29,7 @@ const table = new TableClass();
 
 test.describe(
   'Table Data Quality tab pagination',
-  { tag: ['@Features', '@Observability'] },
+  { tag: ['@Features', '@Observability', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll(
       'Create a table with test cases beyond the page size',
@@ -65,13 +67,14 @@ test.describe(
 
       await test.step('Next page fetches data and updates the page indicator', async () => {
         const [page2Response] = await Promise.all([
-          page.waitForResponse(
+          waitForResponseWithStatus(
+            page,
             (response) =>
               response
                 .url()
                 .includes('/api/v1/dataQuality/testCases/search/list') &&
-              response.request().method() === 'GET' &&
-              response.status() === 200
+              response.request().method() === 'GET',
+            200
           ),
           page.getByTestId('next').click(),
         ]);

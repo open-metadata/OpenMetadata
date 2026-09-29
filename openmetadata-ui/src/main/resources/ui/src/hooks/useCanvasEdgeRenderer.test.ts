@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { renderHook } from '@testing-library/react';
-import { RefObject } from 'react';
-import { Edge, Node } from 'reactflow';
+import type { RefObject } from 'react';
+import type { Edge, Node } from 'reactflow';
+import type { LineageEdgeColors } from '../utils/EdgeStyleUtils';
 import { useCanvasEdgeRenderer } from './useCanvasEdgeRenderer';
 
 const mockGetNode = jest.fn();
@@ -39,6 +39,7 @@ const mockUseLineageStore = {
   selectedColumn: undefined,
   columnsInCurrentPages: new Map<string, string[]>(),
   setIsCanvasReady: jest.fn(),
+  isRepositioning: false,
 };
 
 jest.mock('./useLineageStore', () => ({
@@ -64,6 +65,7 @@ jest.mock('../utils/EdgeStyleUtils', () => ({
     opacity: 1,
     strokeWidth: 2,
   }),
+  computeEdgeVisualState: jest.fn().mockReturnValue('default'),
 }));
 
 jest.mock('../utils/EntityLineageEdgeUtils', () => ({
@@ -93,6 +95,10 @@ const createMockCanvas = () => {
     lineJoin: 'miter',
     fillStyle: '',
     beginPath: jest.fn(),
+    rect: jest.fn(),
+    roundRect: jest.fn(),
+    measureText: jest.fn().mockReturnValue({ width: 12 }),
+    fillText: jest.fn(),
     moveTo: jest.fn(),
     lineTo: jest.fn(),
     closePath: jest.fn(),
@@ -104,16 +110,13 @@ const createMockCanvas = () => {
   return { canvas, ctx };
 };
 
-const createMockTheme = (): Theme =>
-  ({
-    palette: {
-      primary: { main: '#1890ff' },
-      allShades: {
-        indigo: { 600: '#3F51B5' },
-        error: { 600: '#F44336' },
-      },
-    },
-  } as unknown as Theme);
+const createMockColors = (): LineageEdgeColors => ({
+  primary: '#1890ff',
+  columnHighlight: '#3F51B5',
+  dqHighlight: '#F44336',
+  labelBackground: '#FFFFFF',
+  labelText: '#475467',
+});
 
 const createMockEdge = (overrides: Partial<Edge> = {}): Edge => ({
   id: 'edge-1',
@@ -140,6 +143,7 @@ describe('useCanvasEdgeRenderer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseLineageStore.isRepositioning = false;
     const { canvas, ctx } = createMockCanvas();
     mockCanvas = canvas;
     mockCtx = ctx;
@@ -168,9 +172,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -184,15 +189,42 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
     result.current.redraw();
 
     expect(requestAnimationFrame).toHaveBeenCalled();
+  });
+
+  it('schedules a redraw when the active theme changes', () => {
+    const colors = createMockColors();
+    const dqHighlightedEdges = new Set<string>();
+    const edges: Edge[] = [];
+    const initialProps: { theme: 'light' | 'dark' } = { theme: 'light' };
+    const { rerender } = renderHook(
+      ({ theme }: { theme: 'light' | 'dark' }) =>
+        useCanvasEdgeRenderer({
+          canvasRef,
+          colors,
+          containerHeight: 600,
+          containerWidth: 800,
+          dqHighlightedEdges,
+          edges,
+          theme,
+        }),
+      { initialProps }
+    );
+    const initialRedrawCount = (requestAnimationFrame as jest.Mock).mock.calls
+      .length;
+
+    rerender({ theme: 'dark' });
+
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(initialRedrawCount + 1);
   });
 
   it('draws visible edges', () => {
@@ -216,13 +248,84 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
     expect(mockCtx.stroke).toHaveBeenCalled();
+  });
+
+  it('uses the base stroke width for invalid rollup weights', () => {
+    const edge = createMockEdge({
+      data: {
+        isColumnLineage: false,
+        isRollup: true,
+        weight: -2,
+      },
+    });
+    const node1 = createMockNode('node-1');
+    const node2 = createMockNode('node-2');
+
+    mockGetNode.mockImplementation((id: string) =>
+      id === 'node-1' ? node1 : node2
+    );
+
+    const { isEdgeInViewport } = require('../utils/CanvasUtils');
+    isEdgeInViewport.mockReturnValue(true);
+
+    renderHook(() =>
+      useCanvasEdgeRenderer({
+        canvasRef,
+        edges: [edge],
+        dqHighlightedEdges: new Set(),
+        colors: createMockColors(),
+        containerWidth: 800,
+        containerHeight: 600,
+        theme: 'light',
+      })
+    );
+
+    expect(mockCtx.lineWidth).toBe(2);
+  });
+
+  it('uses a rectangular label background when roundRect is unavailable', () => {
+    const edge = createMockEdge({
+      data: {
+        isColumnLineage: false,
+        isRollup: true,
+        weight: 2,
+      },
+    });
+    const node1 = createMockNode('node-1');
+    const node2 = createMockNode('node-2');
+
+    mockGetNode.mockImplementation((id: string) =>
+      id === 'node-1' ? node1 : node2
+    );
+    Object.defineProperty(mockCtx, 'roundRect', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const { isEdgeInViewport } = require('../utils/CanvasUtils');
+    isEdgeInViewport.mockReturnValue(true);
+
+    renderHook(() =>
+      useCanvasEdgeRenderer({
+        canvasRef,
+        edges: [edge],
+        dqHighlightedEdges: new Set(),
+        colors: createMockColors(),
+        containerWidth: 800,
+        containerHeight: 600,
+        theme: 'light',
+      })
+    );
+
+    expect(mockCtx.rect).toHaveBeenCalled();
   });
 
   it('filters edges by viewport visibility', () => {
@@ -236,9 +339,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -264,9 +368,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -306,9 +411,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -344,9 +450,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -393,9 +500,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -448,9 +556,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -466,9 +575,10 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
@@ -503,12 +613,100 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
+        theme: 'light',
       })
     );
 
     expect(mockCtx.setLineDash).toHaveBeenCalledWith([6, 4]);
+  });
+
+  it('reuses drawn paths for visual changes and rebuilds changed geometry', () => {
+    const path = {
+      edgePath: 'M 0,0 C 100,0 100,100 200,100',
+      edgeCenterX: 100,
+      edgeCenterY: 50,
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 100,
+    };
+    const edge = createMockEdge({ data: { computedPath: path } });
+    const props: Parameters<typeof useCanvasEdgeRenderer>[0] = {
+      canvasRef,
+      edges: [edge],
+      dqHighlightedEdges: new Set<string>(),
+      colors: createMockColors(),
+      containerWidth: 800,
+      containerHeight: 600,
+      theme: 'light',
+      isPathHighlightActive: false,
+      pathHighlightedEdgeIds: new Set([edge.id]),
+    };
+    const { rerender } = renderHook(useCanvasEdgeRenderer, {
+      initialProps: props,
+    });
+    const initialPath = (mockCtx.stroke as jest.Mock).mock.calls[0][0];
+    mockUseViewport.mockReturnValue({ x: 25, y: 50, zoom: 1.5 });
+    rerender(props);
+    rerender({ ...props, isPathHighlightActive: true });
+
+    expect(mockCtx.stroke).toHaveBeenLastCalledWith(initialPath);
+    expect(mockCtx.strokeStyle).toBe(props.colors.primary);
+    expect(Path2D).toHaveBeenCalledTimes(1);
+
+    const strokeCount = (mockCtx.stroke as jest.Mock).mock.calls.length;
+    rerender({ ...props, isPathHighlightActive: true, theme: 'dark' });
+
+    expect(mockCtx.stroke).toHaveBeenCalledTimes(strokeCount + 1);
+    expect(mockCtx.stroke).toHaveBeenLastCalledWith(initialPath);
+    expect(Path2D).toHaveBeenCalledTimes(1);
+
+    const movedPath = 'M 0,0 C 150,0 150,100 300,100';
+    rerender({
+      ...props,
+      edges: [
+        {
+          ...edge,
+          data: {
+            computedPath: { ...path, edgePath: movedPath, targetX: 300 },
+          },
+        },
+      ],
+    });
+
+    expect(Path2D).toHaveBeenLastCalledWith(movedPath);
+    expect(Path2D).toHaveBeenCalledTimes(2);
+    expect(mockCtx.stroke).not.toHaveBeenLastCalledWith(initialPath);
+  });
+
+  it('does not hit-test invisible edges while the graph is repositioning', () => {
+    global.OffscreenCanvas = jest.fn().mockImplementation(() => ({
+      getContext: () => ({ isPointInStroke: () => true }),
+    })) as unknown as typeof OffscreenCanvas;
+    const edge = createMockEdge();
+    const props: Parameters<typeof useCanvasEdgeRenderer>[0] = {
+      canvasRef,
+      edges: [edge],
+      dqHighlightedEdges: new Set<string>(),
+      colors: createMockColors(),
+      containerWidth: 800,
+      containerHeight: 600,
+      theme: 'light',
+    };
+    const { result, rerender } = renderHook(useCanvasEdgeRenderer, {
+      initialProps: props,
+    });
+    const rect = new DOMRect(0, 0, 800, 600);
+
+    expect(result.current.getEdgeAtPoint(50, 50, rect)).toBe(edge);
+
+    mockUseLineageStore.isRepositioning = true;
+    rerender(props);
+
+    expect(result.current.visibleEdgesRef.current).toEqual([]);
+    expect(result.current.getEdgeAtPoint(50, 50, rect)).toBeNull();
   });
 });

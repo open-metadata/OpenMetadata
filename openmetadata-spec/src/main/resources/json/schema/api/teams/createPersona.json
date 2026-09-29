@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/teams/createPersona.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreatePersonaRequest",
   "description": "Persona entity",
   "type": "object",
@@ -26,6 +26,10 @@
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
+    },
+    "contextDefinition": {
+      "description": "Rules and settings used to materialize the shared AI context for this persona.",
+      "$ref": "../../type/personaContextDefinition.json"
     },
     "domains" : {
       "description": "Fully qualified names of the domains the Persona belongs to.",

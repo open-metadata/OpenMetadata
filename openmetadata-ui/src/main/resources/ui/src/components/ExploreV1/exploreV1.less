@@ -24,23 +24,44 @@
 }
 
 .explore-page {
+  margin-bottom: var(--om-space-20);
+
+  // Dark: the containers (filters, browse tree, results, summary) used
+  // bg-primary — the canvas tone — so they didn't read as surfaces. Put them on
+  // bg-surface, matching the search card.
+  .dark-mode & .ant-card,
+  .dark-mode & .explore-tree,
+  .dark-mode
+    &
+    .entity-summary-panel-container
+    .summary-panel-container
+    .content-area,
+  .dark-mode & .entity-summary-panel-container .title-section {
+    background: var(--om-color-bg-surface);
+  }
+
+  // Dark: result cards sit on bg-secondary, a step below the bg-surface
+  // containers (the page background is set by the AI-mode wrapper).
+  .dark-mode & [data-testid='search-results'] .explore-search-card {
+    background: var(--om-color-bg-secondary);
+  }
+
   .content-height-with-resizable-panel {
-    height: calc(
-      100vh - @om-navbar-height - @quick-filters-container-height - @size-xs
-    );
+    // 86px quick-filters bar (@quick-filters-container-height) + 8px gap
+    --content-panel-offset: 94px;
     overflow-y: auto;
 
     &.filter-applied {
-      height: calc(
-        100vh - @om-navbar-height - @quick-filters-container-height - @size-xs -
-          40px // filter applied height adjustment
-      );
+      // + 40px applied-filters row
+      --content-panel-offset: 134px;
     }
   }
 
   .explore-page-right-panel {
-    // fixed width to right panel
-    flex: 0 0 400px;
+    flex: 0 0 clamp(360px, 26vw, 440px);
+    max-width: 440px;
+    min-width: 360px;
+    overflow: auto;
   }
 
   .explore-icon {
@@ -56,18 +77,15 @@
   }
 
   .explore-main-card {
-    // body should occupy 100% height
+    .ant-card {
+      border-bottom: 0;
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
     .ant-card-body {
       height: 100%;
       overflow-y: auto;
-    }
-
-    // pagination sticky
-    .ant-pagination {
-      bottom: -20px;
-      background: var(--tw-color-bg-primary);
-      margin: -10px;
-      border-radius: 12px;
     }
   }
 
@@ -75,9 +93,9 @@
     overflow: auto;
 
     .ant-tree-switcher-icon {
-      width: 12px;
-      height: 12px;
-      color: @grey-4;
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.5;
     }
 
     .ant-tree-switcher_open:hover,
@@ -87,7 +105,7 @@
 
     .ant-tree-title {
       width: 100%;
-      padding: 4px;
+      padding: var(--om-space-4);
     }
 
     .ant-tree-node-selected {
@@ -97,5 +115,16 @@
     .ant-tree-treenode {
       padding: 0;
     }
+  }
+}
+
+// AI shell padding standard: 16px between Explore's stacked blocks.
+.assistant-content .explore-page {
+  > .m-b-box {
+    margin-bottom: 16px;
+  }
+
+  .explore-results-row {
+    column-gap: 16px;
   }
 }

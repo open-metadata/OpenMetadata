@@ -12,10 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
+import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
 import removeMarkdown from 'remove-markdown';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
+import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {
@@ -54,9 +56,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
   const wordsCount = words.length;
 
   if (wordsCount === 1) {
-    // In case of only one word (possibly too long URL)
-    // return the whole word instead of trimming
-    return content.split(' ')[0];
+    return slicedContent;
   }
 
   // Eliminate word at the end to avoid using broken words
@@ -72,10 +72,20 @@ export const removeOuterEscapes = (input: string) => {
 };
 
 /**
+ * `btoa` alone treats every JS character as a Latin-1 byte, so non-ASCII input
+ * is silently corrupted (`\u00a3` -> `a3` instead of `c2 a3`) and input above
+ * U+00FF throws. Encode to UTF-8 bytes first, since consumers (the login API)
+ * decode the base64 as UTF-8. See issue #28694.
+ *
  * @param text plain text
- * @returns base64 encoded text
+ * @returns base64 encoding of the UTF-8 bytes of `text`
  */
-export const getBase64EncodedString = (text: string): string => btoa(text);
+export const getBase64EncodedString = (text: string): string =>
+  btoa(
+    Array.from(new TextEncoder().encode(text), (byte) =>
+      String.fromCharCode(byte)
+    ).join('')
+  );
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replaceAll(' ', slugString);
@@ -88,19 +98,82 @@ export const slugify = (value: string) =>
     .replaceAll(/^-+|-+$/g, '');
 
 // will add back slash "\" before quote in string if present
-export const getQueryWithSlash = (query: string): string =>
-  query.replaceAll(/["']/g, String.raw`\$&`);
+export const getQueryWithSlash = (query: string): string => {
+  const trimmed = query.trim();
+  // escapeESReservedCharacters already escapes "&" upstream of this call;
+  // re-escaping a query that is purely those already-escaped characters
+  // sends Elasticsearch a term with no actual content, so drop it instead.
+  if (/^[\\&]+$/.test(trimmed)) {
+    return '';
+  }
+
+  /*
+   * Always escape a raw single quote. Escape a double quote only when it
+   * isn't already escaped: escapeESReservedCharacters pre-escapes " -> \"
+   * for callers that use it (e.g. Suggestions.tsx), while other callers
+   * (e.g. TagsUtils#fetchGlossaryList) pass raw text straight here and
+   * still need an unescaped quote escaped so it doesn't break
+   * Elasticsearch's query_string parser. A quote is only actually escaped
+   * when it's preceded by an odd number of backslashes -- an even run
+   * (including zero) resolves to literal backslashes, leaving the quote
+   * itself unescaped. Walking the string once (instead of a `(\\*)"` regex)
+   * avoids the super-linear backtracking a quantified-group-then-literal
+   * pattern causes on long non-matching backslash runs.
+   */
+  let result = '';
+  let precedingBackslashes = 0;
+  for (const char of query) {
+    if (char === '\\') {
+      precedingBackslashes += 1;
+      result += char;
+
+      continue;
+    }
+    if (char === "'") {
+      result += String.raw`\'`;
+    } else if (char === '"') {
+      result += precedingBackslashes % 2 === 1 ? char : String.raw`\"`;
+    } else {
+      result += char;
+    }
+    precedingBackslashes = 0;
+  }
+
+  return result;
+};
+
+const SAFE_URL_PROTOCOLS = ['http:', 'https:'];
 
 /**
- * Convert a template string into HTML DOM nodes
- * Same as React.createElement(type, options, children)
- * @param  {String} str The template string
- * @return {Node}       The template HTML
+ * Returns the URL only when it is an absolute http(s) URL, otherwise undefined.
+ * Use before rendering any user- or ingestion-supplied URL as an `href`, so
+ * `javascript:`/`data:` URLs never become clickable.
+ */
+export const getSafeHttpUrl = (url?: string): string | undefined => {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    return SAFE_URL_PROTOCOLS.includes(new URL(url).protocol) ? url : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Convert a template string into HTML DOM nodes.
+ * Input is sanitized with DOMPurify before being parsed to prevent stored
+ * XSS from stored user content (e.g. entity name/displayName) — see
+ * GHSA-59gm-6h39-397f. DOMPurify's default profile preserves the benign
+ * markup callers rely on (<span class>, <mark>, <em>, <ins>, <del>) while
+ * stripping <iframe>, <script>, event handler attributes, and
+ * javascript:/data: URLs.
  */
 export const stringToHTML = function (
   strHTML: string
 ): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(strHTML) : strHTML;
+  return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;
 };
 
 /**
@@ -198,6 +271,19 @@ export const getErrorText = (
   return errorText || fallbackText;
 };
 
+export const getPermissionErrorText = (
+  value: AxiosError | string,
+  fallbackText: string
+): string => {
+  const isForbidden =
+    !isString(value) &&
+    get(value, 'response.status') === ClientErrors.FORBIDDEN;
+
+  return isForbidden
+    ? i18n.t('message.operation-forbidden-please-contact-admin')
+    : getErrorText(value, fallbackText);
+};
+
 /**
  *
  * @param fqn - Value to be encoded
@@ -249,13 +335,14 @@ export const customServiceComparator = (a: string, b: string): number => {
  */
 export const replacePlus = (fqn: string) => fqn.replaceAll('+', ' ');
 
+// Looked up one character at a time by the character class in escapeESReservedCharacters,
+// so every key here must be a single character — a multi-character key would be unreachable.
 export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '+': String.raw`\+`,
   '-': String.raw`\-`,
   '=': String.raw`\=`,
   '&': String.raw`\&`,
-  '&&': String.raw`\&&`,
-  '||': String.raw`\||`,
+  '|': String.raw`\|`,
   '>': String.raw`\>`,
   '<': String.raw`\<`,
   '!': String.raw`\!`,

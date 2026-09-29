@@ -24,6 +24,8 @@ const sizes = {
 export interface TimePickerValue {
   hour: number;
   minute: number;
+  /** Only emitted when `granularity="second"`. */
+  second?: number;
 }
 
 export interface TimePickerProps
@@ -60,10 +62,21 @@ export const TimePicker = ({
   hourCycle = 12,
   ...props
 }: TimePickerProps) => {
-  const ariaValue = value ? new Time(value.hour, value.minute) : null;
+  const ariaValue = value
+    ? new Time(value.hour, value.minute, value.second)
+    : null;
+  const withSeconds = props.granularity === 'second';
 
   const handleChange = (time: TimeValue | null) => {
-    onChange?.(time ? { hour: time.hour, minute: time.minute } : null);
+    onChange?.(
+      time
+        ? {
+            hour: time.hour,
+            minute: time.minute,
+            ...(withSeconds && { second: time.second }),
+          }
+        : null
+    );
   };
 
   return (
@@ -84,12 +97,15 @@ export const TimePicker = ({
 
           <AriaGroup
             className={cx(
-              'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
-              'tw:focus-within:ring-2 tw:focus-within:ring-brand',
+              // Border drawn with outline, not a ring: WebKit does not pixel-snap
+              // box-shadow, so rings thin/vanish in Safari when zoomed out.
+              'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
+              'tw:focus-within:outline-2 tw:focus-within:-outline-offset-2 tw:focus-within:outline-brand',
               isDisabled &&
-                'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled',
-              isInvalid && 'tw:ring-error_subtle',
-              isInvalid && 'tw:focus-within:ring-2 tw:focus-within:ring-error',
+                'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled',
+              isInvalid && 'tw:outline-error_subtle',
+              isInvalid &&
+                'tw:focus-within:outline-2 tw:focus-within:-outline-offset-2 tw:focus-within:outline-error',
               sizes[size],
               wrapperClassName
             )}>

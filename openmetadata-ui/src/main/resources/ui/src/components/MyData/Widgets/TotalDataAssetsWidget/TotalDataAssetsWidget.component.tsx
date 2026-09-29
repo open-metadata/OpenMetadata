@@ -32,24 +32,26 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
+import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
-import { GRAY_600 } from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useChartColors } from '../../../../hooks/useChartColors';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
 import { generatePalette } from '../../../../styles/colorPallet';
+import { getDataInsightPathWithFqn } from '../../../../utils/DataInsightPureUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -69,6 +71,7 @@ const TotalDataAssetsWidget = ({
   handleLayoutUpdate,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
+  const { axis } = useChartColors();
   const navigate = useNavigate();
   const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -251,7 +254,7 @@ const TotalDataAssetsWidget = ({
                 />
                 <text
                   dy={8}
-                  fill={GRAY_600}
+                  fill={axis}
                   fontSize={28}
                   fontWeight={600}
                   textAnchor="middle"
@@ -301,9 +304,15 @@ const TotalDataAssetsWidget = ({
           <div className="date-selector-container">
             {availableDates.map(({ day, dayString }) => (
               <div
+                aria-label={dayString}
                 className={`date-box ${selectedDate === day ? 'selected' : ''}`}
                 key={day}
-                onClick={() => setSelectedDate(day)}>
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedDate(day)}
+                onKeyDown={handleKeyboardActivation(() =>
+                  setSelectedDate(day)
+                )}>
                 <div className="day font-semibold text-sm">
                   {dayString.split(' ')[0]}
                 </div>
@@ -315,6 +324,7 @@ const TotalDataAssetsWidget = ({
       </div>
     );
   }, [
+    axis,
     availableDates,
     selectedDate,
     selectedDateData,
@@ -357,7 +367,7 @@ const TotalDataAssetsWidget = ({
         title={t('label.data-insight-total-entity-summary')}
         widgetKey={widgetKey}
         onSortChange={(key) => setSelectedSortBy(key)}
-        onTitleClick={() => navigate(ROUTES.DATA_INSIGHT)}
+        onTitleClick={() => navigate(getDataInsightPathWithFqn())}
       />
     ),
     [

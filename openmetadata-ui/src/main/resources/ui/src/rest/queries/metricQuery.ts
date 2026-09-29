@@ -11,24 +11,28 @@
  *  limitations under the License.
  */
 
-import { QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import { TabSpecificField } from '../../enums/entity.enum';
-import { Metric } from '../../generated/entity/data/metric';
+import type { Metric } from '../../generated/entity/data/metric';
 import { getMetricByFqn } from '../metricsAPI';
 
 // Field list the detail page reads on mount. Inlined here rather than imported from a
 // Utils file to keep the cache-key surface stable across edits to unrelated UI code.
 export const METRIC_DEFAULT_FIELDS = [
-  TabSpecificField.DATA_PRODUCTS,
-  TabSpecificField.DERIVED_FROM,
-  TabSpecificField.DOMAINS,
-  TabSpecificField.EXTENSION,
-  TabSpecificField.FOLLOWERS,
   TabSpecificField.OWNERS,
+  TabSpecificField.EXPERTS,
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.VOTES,
+  TabSpecificField.EXTENSION,
   TabSpecificField.RELATED_METRICS,
   TabSpecificField.REVIEWERS,
-  TabSpecificField.TAGS,
-  TabSpecificField.VOTES,
+  TabSpecificField.PARENT,
+  TabSpecificField.CHILDREN,
+  TabSpecificField.CHILDREN_COUNT,
+  'metricGroup',
 ].join(',');
 
 /**

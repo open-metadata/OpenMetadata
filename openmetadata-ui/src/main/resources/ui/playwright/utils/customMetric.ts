@@ -16,6 +16,7 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
+import { clickCodeEditor } from './codeEditor';
 import { toastNotification } from './common';
 import {
   ObservabilityFeature,
@@ -111,7 +112,7 @@ export const createCustomMetric = async ({
     await page.click(`[title="${metric.column}"]`);
   }
   if (metric.expression) {
-    await page.click('.CodeMirror-scroll');
+    await clickCodeEditor(page);
     await page.keyboard.type(metric.expression);
   }
   const createMetricResponse = page.waitForResponse(
@@ -147,9 +148,6 @@ export const deleteCustomMetric = async ({
   await page.click(`[data-testid="${metric.name}-custom-metrics-menu"]`);
   await page.getByRole('menuitemradio', { name: 'Delete' }).click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(metric.name);
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteMetricResponse = page.waitForResponse(
     isColumnMetric
       ? `/api/v1/tables/*/customMetric/${metric.column}/${metric.name}*`

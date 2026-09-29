@@ -61,7 +61,7 @@ test('filter survives a tree click and both stack as removable chips', async ({
     const applyRes = page.waitForResponse(
       '/api/v1/search/query?*index=dataAsset*'
     );
-    await page.getByTestId('table-checkbox').check();
+    await page.getByTestId('drop-down-menu').getByTestId('table').click();
     await applyRes;
     await page.keyboard.press('Escape');
 
@@ -109,6 +109,7 @@ test('filter survives a tree click and both stack as removable chips', async ({
     expect(url.searchParams.get('browsePath')).toBeNull();
     expect(url.searchParams.get('quickFilter')).toBeNull();
 
+    await expect(page.getByTestId('explore-query-filter-chips')).toBeVisible();
     await expect(page.getByTestId('query-bar-empty-text')).toBeVisible();
     await expect(
       page.getByTestId('query-chip-entityType.keyword-table')
@@ -123,7 +124,7 @@ test('selecting an asset type grays out incompatible tree categories', async ({
   const applyRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId('table-checkbox').check();
+  await page.getByTestId('drop-down-menu').getByTestId('table').click();
   await applyRes;
   await page.keyboard.press('Escape');
 

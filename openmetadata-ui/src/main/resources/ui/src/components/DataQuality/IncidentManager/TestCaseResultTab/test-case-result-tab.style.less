@@ -13,8 +13,8 @@
 @import (reference) '../../../../styles/variables.less';
 
 .test-case-result-tooltip.ant-tooltip .ant-tooltip-inner {
-  background-color: var(--tw-color-bg-primary);
-  color: @black;
+  background-color: var(--om-color-bg-surface);
+  color: var(--om-color-text-primary);
   border-radius: @border-rad-sm;
   font-size: @size-sm;
   font-weight: @font-medium;
@@ -38,10 +38,11 @@
 .test-case-result-tab {
   .test-case-result-tab-graph {
     border: 1px solid @grey-200;
-    border-radius: 10px;
+    border-radius: var(--om-radius-10);
     padding: @size-md;
+    background: var(--om-color-bg-surface);
   }
-  .CodeMirror-gutters {
+  .cm-gutters {
     background-color: @grey-5;
   }
   .parameter-value {
@@ -50,8 +51,9 @@
 
   // Parameter section styles
   .parameter-container {
-    border-radius: 10px;
-    background: @grey-25;
+    border-radius: var(--om-radius-10);
+    border: 1px solid @grey-200;
+    background: var(--om-color-bg-surface);
     padding: @size-md;
   }
 
@@ -110,12 +112,15 @@
   .sql-expression-container {
     padding: @size-md;
     width: 100%;
+    border-radius: var(--om-radius-10);
+    border: 1px solid @grey-200;
+    background: var(--om-color-bg-surface);
 
     .custom-code-mirror-theme {
-      .CodeMirror {
-        background: var(--tw-color-bg-primary);
+      .cm-editor {
+        background: var(--om-color-bg-surface);
       }
-      .CodeMirror-gutters {
+      .cm-gutters {
         background-color: @grey-25;
       }
     }

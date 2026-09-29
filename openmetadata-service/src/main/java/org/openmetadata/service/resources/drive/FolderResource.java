@@ -53,7 +53,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "contextCenterDriveFolders")
 public class FolderResource extends EntityResource<Folder, FolderRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/folders/";
-  public static final String FIELDS = "owners,tags,parent,children,domains,followers";
+  public static final String FIELDS = "owners,tags,parent,children,domains,followers,childrenCount";
   private final FolderMapper mapper = new FolderMapper();
 
   public static class FolderContents {
@@ -73,7 +73,7 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("parent,children", MetadataOperation.VIEW_BASIC);
+    addViewOperation("parent,children,childrenCount", MetadataOperation.VIEW_BASIC);
     return List.of();
   }
 

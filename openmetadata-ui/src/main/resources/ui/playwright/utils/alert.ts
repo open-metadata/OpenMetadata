@@ -25,17 +25,19 @@ import {
   ALERT_WITH_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
-import { DELETE_TERM } from '../constant/common';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
+import { okJson } from './apiResponse';
 import {
   clickOutside,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
 } from './common';
 import {
   getEntityDisplayName,
@@ -49,6 +51,7 @@ import {
   visitNotificationAlertPage,
 } from './notificationAlert';
 import { visitObservabilityAlertPage } from './observabilityAlert';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const generateAlertName = () => `0%alert-playwright-${uuid()}`;
 
@@ -181,16 +184,38 @@ export const findPageWithAlert = async (
 ) => {
   const { id } = alertDetails;
   await waitForAllLoadersToDisappear(page);
+
+  // The alerts page renders no [data-testid="loader"], so the wait above is
+  // vacuous here, and the table body renders zero rows while a fetch is in
+  // flight. isHidden() does NOT wait, so sampling it against an unpainted table
+  // reports a false "not on this page"; isEnabled() DOES wait, so it resolves
+  // after the paint and reports Next as enabled. That mismatch walked the
+  // pagination past the alert, and because the walk is forward-only and returns
+  // silently, the caller's click then waited out the whole test budget on a row
+  // sitting on an earlier page. Wait for the body to paint before sampling.
+  await expect(page.locator('[data-row-key]').first()).toBeVisible();
+
   // Support both core-ui Table (id attr) and legacy Ant Design Table (data-row-key)
   const alertRow = page.locator(`[id="${id}"], [data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
-  if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
-    const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
-    await nextButton.click();
-    await getAlerts;
-    await waitForAllLoadersToDisappear(page);
-    await findPageWithAlert(page, alertDetails);
+
+  if (await alertRow.isVisible()) {
+    return;
   }
+
+  // isVisible() before isEnabled(): isEnabled() waits for attachment with no
+  // timeout, so on a single-page list — where pagination is not rendered at all
+  // — it would block indefinitely.
+  if (!(await nextButton.isVisible()) || !(await nextButton.isEnabled())) {
+    throw new Error(
+      `Alert "${alertDetails.name}" (${id}) was not found on any page of the alerts list.`
+    );
+  }
+
+  const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
+  await nextButton.click();
+  await getAlerts;
+  await findPageWithAlert(page, alertDetails);
 };
 
 export const deleteAlertSteps = async (
@@ -200,15 +225,10 @@ export const deleteAlertSteps = async (
 ) => {
   await page.getByTestId(`alert-delete-${name}`).click();
 
-  await expect(page.locator('.ant-modal-header')).toHaveText(
-    `Delete subscription "${displayName}"`
-  );
-
-  await page.fill('[data-testid="confirmation-text-input"]', DELETE_TERM);
-
-  const deleteAlert = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'DELETE' && response.status() === 200
+  const deleteAlert = waitForResponseWithStatus(
+    page,
+    (response) => response.request().method() === 'DELETE',
+    200
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteAlert;
@@ -990,18 +1010,20 @@ export const inputBasicAlertInformation = async ({
   });
 
   // Enter description
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(ALERT_DESCRIPTION);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, ALERT_DESCRIPTION);
 
-  // Select all source
-  await page.click('[data-testid="add-source-button"]');
-
-  await page
+  const sourceOption = page
     .getByTestId('drop-down-menu')
-    .getByTestId(`${sourceName}-option`)
-    .click();
+    .getByTestId(`${sourceName}-option`);
+  const sourceSelect = page.getByTestId('source-select');
+  const sourceTrigger = page.getByTestId('add-source-button');
+  await sourceTrigger.click();
+  await expect(sourceOption).toBeVisible();
+  await waitForAntdPopupToSettle(page);
+  await sourceOption.click();
 
-  await expect(page.getByTestId('source-select')).toHaveText(sourceDisplayName);
+  await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
 export const saveAlertAndVerifyResponse = async (page: Page) => {
@@ -1113,29 +1135,45 @@ export const waitForRecentEventsToFinishExecution = async (
 ) => {
   const { apiContext } = await getApiContext(page);
 
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/events/subscriptions/name/${name}/eventsRecord?listCountOnly=true`
-          )
-          .then((res) => res.json());
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext
+            .get(
+              `/api/v1/events/subscriptions/name/${encodeURIComponent(
+                name
+              )}/eventsRecord?listCountOnly=true`
+            )
+            .then((res) =>
+              okJson<{ pendingEventsCount: number; totalEventsCount: number }>(
+                res,
+                `Subscription ${name} events`
+              )
+            );
 
-        return (
-          response.pendingEventsCount === 0 &&
-          response.totalEventsCount === totalEventsCount
-        );
-      },
-      {
-        // Custom expect message for reporting, optional.
-        message: 'Wait for pending events to complete',
-        intervals: [5_000, 10_000, 15_000, 20_000],
-        timeout: 900_000,
-      }
-    )
-    // Move ahead when the pending events count is 0
-    .toEqual(true);
+          if (
+            !Number.isFinite(response.pendingEventsCount) ||
+            !Number.isFinite(response.totalEventsCount)
+          ) {
+            throw new Error(`Invalid event counts for subscription ${name}`);
+          }
+
+          return (
+            response.pendingEventsCount === 0 &&
+            response.totalEventsCount === totalEventsCount
+          );
+        },
+        {
+          message: 'Wait for pending events to complete',
+          intervals: [5_000, 10_000, 15_000, 20_000],
+          timeout: 900_000,
+        }
+      )
+      .toEqual(true);
+  } finally {
+    await apiContext.dispose();
+  }
 };
 
 export const checkRecentEventDetails = async ({
@@ -1158,15 +1196,15 @@ export const checkRecentEventDetails = async ({
   );
 
   // Verify Recent Events tab
-  const getRecentEvents = page.waitForResponse(
+  const getRecentEvents = waitForResponseWithStatus(
+    page,
     (response) =>
       response
         .url()
         .includes(
           `/api/v1/events/subscriptions/id/${alertDetails.id}/listEvents?limit=15&paginationOffset=0`
-        ) &&
-      response.request().method() === 'GET' &&
-      response.status() === 200
+        ) && response.request().method() === 'GET',
+    200
   );
 
   await page.getByRole('tab').getByText('Recent Events').click();
@@ -1208,15 +1246,15 @@ export const checkRecentEventDetails = async ({
     .locator('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]')
     .waitFor();
 
-  const getFailedEvents = page.waitForResponse(
+  const getFailedEvents = waitForResponseWithStatus(
+    page,
     (response) =>
       response
         .url()
         .includes(
           `/api/v1/events/subscriptions/id/${alertDetails.id}/listEvents?status=failed&limit=15&paginationOffset=0`
-        ) &&
-      response.request().method() === 'GET' &&
-      response.status() === 200
+        ) && response.request().method() === 'GET',
+    200
   );
 
   await page.click('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]');

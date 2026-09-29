@@ -154,7 +154,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
             return response.value;
           }
 
-          return;
+          return undefined;
         })
         .filter(Boolean);
 

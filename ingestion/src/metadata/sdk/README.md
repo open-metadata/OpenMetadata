@@ -45,7 +45,7 @@ Supported environment variables:
 
 - `OPENMETADATA_HOST` or `OPENMETADATA_SERVER_URL`
 - `OPENMETADATA_JWT_TOKEN` or `OPENMETADATA_API_KEY`
-- `OPENMETADATA_VERIFY_SSL`
+- `OPENMETADATA_VERIFY_SSL` (default `true`; set `false` to skip certificate verification)
 - `OPENMETADATA_CA_BUNDLE`
 - `OPENMETADATA_CLIENT_TIMEOUT`
 

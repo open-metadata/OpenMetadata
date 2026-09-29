@@ -97,6 +97,44 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
     return titleMap[pageId] || pageId;
   }, [pageId, title, t]);
 
+  let drawerContent: React.ReactNode;
+  if (isLoading) {
+    drawerContent = (
+      <div className="learning-drawer-loading">
+        <Spin
+          data-testid="loader"
+          indicator={<LoadingOutlined spin style={{ fontSize: 24 }} />}
+        />
+      </div>
+    );
+  } else if (hasError) {
+    drawerContent = (
+      <Empty
+        description={t('message.failed-to-load-learning-resources')}
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+      />
+    );
+  } else if (resources.length === 0) {
+    drawerContent = (
+      <Empty
+        description={t('message.no-learning-resources-available')}
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+      />
+    );
+  } else {
+    drawerContent = (
+      <div className="learning-drawer-cards">
+        {resources.map((resource) => (
+          <LearningResourceCard
+            key={resource.id}
+            resource={resource}
+            onClick={handleResourceClick}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <>
       <Drawer
@@ -120,36 +158,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         }
         width={576}
         onClose={onClose}>
-        <div className="learning-drawer-content">
-          {isLoading ? (
-            <div className="learning-drawer-loading">
-              <Spin
-                data-testid="loader"
-                indicator={<LoadingOutlined spin style={{ fontSize: 24 }} />}
-              />
-            </div>
-          ) : hasError ? (
-            <Empty
-              description={t('message.failed-to-load-learning-resources')}
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          ) : resources.length === 0 ? (
-            <Empty
-              description={t('message.no-learning-resources-available')}
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          ) : (
-            <div className="learning-drawer-cards">
-              {resources.map((resource) => (
-                <LearningResourceCard
-                  key={resource.id}
-                  resource={resource}
-                  onClick={handleResourceClick}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <div className="learning-drawer-content">{drawerContent}</div>
       </Drawer>
 
       {selectedResource && (

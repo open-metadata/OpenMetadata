@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from 'antd';
+import { Button, Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
-import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
-import { CardStyle } from '../../../../generated/entity/feed/thread';
 import {
-  getEntityFQN,
-  getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
@@ -42,15 +38,6 @@ const ActivityDescriptionFeed = withSuspenseFallback(
   )
 );
 
-const DescriptionFeedNew = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew'
-      )
-  )
-);
-
 const ActivityOwnersFeed = withSuspenseFallback(
   lazy(
     () =>
@@ -58,16 +45,6 @@ const ActivityOwnersFeed = withSuspenseFallback(
         '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/ActivityOwnersFeed'
       )
   )
-);
-
-const OwnersFeed = withSuspenseFallback(
-  lazy(
-    () => import('../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed')
-  )
-);
-
-const TagsFeed = withSuspenseFallback(
-  lazy(() => import('../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed'))
 );
 
 const ActivityFeedEditor = withSuspenseFallback(
@@ -95,17 +72,6 @@ const FeedCardBodyNew = ({
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
   const isActivityEvent = !isUndefined(activity);
-
-  const { entityFQN, entityType, cardStyle } = useMemo(() => {
-    const aboutValue = feed?.about ?? activity?.about ?? '';
-
-    return {
-      entityFQN:
-        getEntityFQN(aboutValue) ?? activity?.entity?.fullyQualifiedName ?? '',
-      entityType: getEntityType(aboutValue) ?? activity?.entity?.type ?? '',
-      cardStyle: feed?.cardStyle ?? '',
-    };
-  }, [feed, activity]);
 
   const handleSave = useCallback(() => {
     onUpdate?.(postMessage ?? '');
@@ -151,34 +117,6 @@ const FeedCardBodyNew = ({
       );
     }
 
-    if (!isPost && feed) {
-      if (cardStyle === CardStyle.Description) {
-        return <DescriptionFeedNew feed={feed} />;
-      }
-
-      if (cardStyle === CardStyle.Tags) {
-        return <TagsFeed feed={feed} />;
-      }
-
-      if (cardStyle === CardStyle.Owner) {
-        return (
-          <OwnersFeed
-            feed={feed}
-            isForFeedTab={isForFeedTab}
-            showThread={showThread}
-          />
-        );
-      }
-
-      if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-        <Card bordered className="activity-feed-reply-card-message">
-          <Typography.Text className="activity-feed-comment-text">
-            {message}
-          </Typography.Text>
-        </Card>;
-      }
-    }
-
     return (
       <RichTextEditorPreviewerNew
         className="text-wrap"
@@ -189,10 +127,7 @@ const FeedCardBodyNew = ({
     isPost,
     message,
     postMessage,
-    cardStyle,
     feed,
-    entityType,
-    entityFQN,
     isActivityEvent,
     activity,
     isForFeedTab,
@@ -209,19 +144,18 @@ const FeedCardBodyNew = ({
           editAction={
             <div className="d-flex justify-end gap-2 m-r-xss">
               <Button
-                className="border border-primary text-primary rounded-4"
+                color="secondary-brand"
                 data-testid="cancel-button"
-                size="small"
-                onClick={onEditCancel}>
+                size="xs"
+                onPress={onEditCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="rounded-4"
+                color="primary"
                 data-testid="save-button"
-                disabled={!message.length}
-                size="small"
-                type="primary"
-                onClick={handleSave}>
+                isDisabled={!message.length}
+                size="xs"
+                onPress={handleSave}>
                 {t('label.save')}
               </Button>
             </div>
@@ -237,19 +171,18 @@ const FeedCardBodyNew = ({
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return (
-    <div
+    <Card
       className={classNames(
-        showThread ? 'show-thread' : 'hide-thread',
-        feed?.cardStyle === 'description' ? 'description' : '',
-        !showThread &&
-          feed?.cardStyle === 'description' &&
-          feed?.fieldOperation === 'updated'
-          ? 'updated'
-          : '',
-        isFeedWidget && 'feed-widget-body'
+        'tw:overflow-y-auto',
+        showThread
+          ? [
+              'tw:max-h-100',
+              isFeedWidget ? 'tw:mt-2.5 tw:px-4 tw:py-3' : 'tw:mt-5 tw:p-5',
+            ]
+          : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide'
       )}>
       {feedBodyRender}
-    </div>
+    </Card>
   );
 };
 

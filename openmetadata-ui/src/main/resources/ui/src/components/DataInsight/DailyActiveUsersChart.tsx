@@ -26,16 +26,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
-  DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { DailyActiveUsers } from '../../generated/dataInsight/type/dailyActiveUsers';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { CustomTooltip, renderLegend } from '../../utils/DataInsightChartUtils';
@@ -58,6 +57,8 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { t } = useTranslation();
+  const { axis, dataInsightSeries, grid, inactive } =
+    useDataInsightChartColors();
 
   const { data, total, relativePercentage } = useMemo(
     () => getFormattedActiveUsersData(dailyActiveUsers),
@@ -105,25 +106,27 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
           <Col span={DI_STRUCTURE.leftContainerSpan}>
             <ResponsiveContainer debounce={1} height={GRAPH_HEIGHT}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
-                <CartesianGrid
-                  stroke={GRAPH_BACKGROUND_COLOR}
-                  vertical={false}
-                />
+                <CartesianGrid stroke={grid} vertical={false} />
                 <Legend
                   align="left"
                   content={() =>
-                    renderLegend({ payload: [] } as LegendProps, [])
+                    renderLegend(
+                      { payload: [] } as LegendProps,
+                      [],
+                      undefined,
+                      inactive
+                    )
                   }
                   layout="vertical"
                   verticalAlign="top"
                   wrapperStyle={{ left: '0px', top: '0px' }}
                 />
-                <XAxis dataKey="timestamp" />
-                <YAxis />
+                <XAxis dataKey="timestamp" tick={{ fill: axis }} />
+                <YAxis tick={{ fill: axis }} />
                 <Tooltip content={<CustomTooltip />} />
                 <Line
                   dataKey="activeUsers"
-                  stroke={DATA_INSIGHT_GRAPH_COLORS[3]}
+                  stroke={dataInsightSeries[3]}
                   type="monotone"
                 />
               </LineChart>

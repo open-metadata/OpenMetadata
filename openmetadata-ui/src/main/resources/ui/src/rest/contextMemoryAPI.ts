@@ -12,17 +12,24 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from '../components/common/AsyncSelect/AsyncSelect';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { ListParams } from '../interface/API.interface';
-import APIClient from '../rest/index';
+import { PagingResponse } from '../interface/common/paging.interface';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/contextCenter/memories';
 
 export type ContextMemoryListParams = ListParams & {
   sourceFileId?: string;
   sourceEntityId?: string;
+  q?: string;
+  assets?: string;
+  author?: string;
+  pinned?: boolean;
+  sortBy?: 'updatedAt' | 'usageCount' | 'updatedBy';
+  sortOrder?: 'asc' | 'desc';
+  offset?: number;
 };
 
 export const getListContextMemories = async (
@@ -57,6 +64,20 @@ export const deleteContextMemory = async (id: string) => {
   await APIClient.delete(`${BASE_URL}/${id}`);
 };
 
+export const pinContextMemory = async (id: string) => {
+  const response = await APIClient.put<ContextMemory>(`${BASE_URL}/${id}/pin`);
+
+  return response.data;
+};
+
+export const unpinContextMemory = async (id: string) => {
+  const response = await APIClient.delete<ContextMemory>(
+    `${BASE_URL}/${id}/pin`
+  );
+
+  return response.data;
+};
+
 export const getContextMemoryById = async (
   id: string,
   fields?: string
@@ -64,6 +85,20 @@ export const getContextMemoryById = async (
   const response = await APIClient.get<ContextMemory>(`${BASE_URL}/${id}`, {
     params: fields ? { fields } : undefined,
   });
+
+  return response.data;
+};
+
+export const getContextMemoryByName = async (
+  name: string,
+  fields?: string
+): Promise<ContextMemory> => {
+  const response = await APIClient.get<ContextMemory>(
+    `${BASE_URL}/name/${encodeURIComponent(name)}`,
+    {
+      params: fields ? { fields } : undefined,
+    }
+  );
 
   return response.data;
 };

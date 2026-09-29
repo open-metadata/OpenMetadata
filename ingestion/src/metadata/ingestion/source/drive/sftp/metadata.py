@@ -16,7 +16,8 @@ import io
 import mimetypes
 import stat
 import traceback
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -45,12 +46,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.drive.drive_service import DriveServiceSource
-from metadata.ingestion.source.drive.sftp.connection import SftpClient, get_connection
 from metadata.ingestion.source.drive.sftp.models import SftpDirectoryInfo, SftpFileInfo
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_directory, filter_by_file
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+    from metadata.ingestion.source.drive.sftp.connection import SftpClient
 
 logger = ingestion_logger()
 
@@ -81,24 +89,26 @@ class SftpSource(DriveServiceSource):
         self.source_config: DriveServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection: SftpConnection = self.config.serviceConnection.root.config
-        self.client: SftpClient = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client: SftpClient = cast("BaseConnection", self._connection).client
         self.connection_obj = self.client
 
-        self._directories_cache: Dict[str, SftpDirectoryInfo] = {}  # noqa: UP006
-        self._files_by_parent_cache: Dict[str, List[SftpFileInfo]] = {}  # noqa: UP006
-        self._directory_fqn_cache: Dict[str, str] = {}  # noqa: UP006
-        self._current_directory_context: Optional[str] = None  # noqa: UP045
+        self._directories_cache: dict[str, SftpDirectoryInfo] = {}
+        self._files_by_parent_cache: dict[str, list[SftpFileInfo]] = {}
+        self._directory_fqn_cache: dict[str, str] = {}
+        self._current_directory_context: str | None = None
         self._root_files_processed: bool = False
-        self._root_directory_prefixes: List[str] = []  # noqa: UP006
+        self._root_directory_prefixes: list[str] = []
 
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SftpConnection = config.serviceConnection.root.config
@@ -106,7 +116,7 @@ class SftpSource(DriveServiceSource):
             raise InvalidSourceException(f"Expected SftpConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _build_directory_path(self, full_path: str) -> List[str]:  # noqa: UP006
+    def _build_directory_path(self, full_path: str) -> list[str]:
         """Build directory path as list of components, stripping root directory prefix."""
         clean_path = full_path.strip("/")
         if not clean_path:
@@ -119,7 +129,7 @@ class SftpSource(DriveServiceSource):
                 break
         return components
 
-    def _get_full_path_for_stripped(self, stripped_path: List[str]) -> Optional[str]:  # noqa: UP006, UP045
+    def _get_full_path_for_stripped(self, stripped_path: list[str]) -> str | None:
         """Reconstruct the full SFTP path from stripped path components."""
         if not stripped_path:
             return None
@@ -153,8 +163,8 @@ class SftpSource(DriveServiceSource):
     def _fetch_directories_recursive(
         self,
         path: str,
-        directories: Dict[str, SftpDirectoryInfo],  # noqa: UP006
-        parent_path: Optional[str] = None,  # noqa: UP045
+        directories: dict[str, SftpDirectoryInfo],
+        parent_path: str | None = None,
     ) -> None:
         """Recursively fetch directories starting from given path."""
         try:
@@ -262,9 +272,9 @@ class SftpSource(DriveServiceSource):
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
-    def _sort_directories_by_hierarchy(self) -> List[str]:  # noqa: UP006
+    def _sort_directories_by_hierarchy(self) -> list[str]:
         """Sort directories hierarchically (parents before children)."""
-        children_map: Dict[str, List[str]] = {}  # noqa: UP006
+        children_map: dict[str, list[str]] = {}
         root_directories = []
 
         for full_path, directory_info in self._directories_cache.items():
@@ -423,7 +433,13 @@ class SftpSource(DriveServiceSource):
             )
 
     def register_record_directory(self, directory_request: CreateDirectoryRequest) -> None:
-        """Build FQN using complete directory path for nested directories."""
+        """
+        Build FQN using complete directory path for nested directories.
+
+        The FQN must match what the create request stores. Stale-entity deletion removes anything
+        absent from this set, so a bare-name FQN for a nested directory deletes it right after it
+        was ingested.
+        """
         if self._current_directory_context and self._current_directory_context in self._directories_cache:
             directory_info = self._directories_cache[self._current_directory_context]
 
@@ -444,6 +460,33 @@ class SftpSource(DriveServiceSource):
             )
 
         self.directory_source_state.add(directory_fqn)
+
+    def register_record_file(
+        self,
+        file_request: CreateFileRequest,
+        directory_path: list[str] | None = None,
+    ) -> None:
+        """
+        Record the file FQN exactly as the create request will be stored.
+
+        The base implementation builds it from a single context directory, which does not match
+        the stored FQN for nested directories and cannot represent a root-level file at all. A
+        mismatch here is not cosmetic: stale-entity deletion treats anything missing from this
+        set as deleted at the source, so a wrong FQN removes a file that was just ingested.
+        """
+        service_name = self.context.get().drive_service  # pyright: ignore[reportAttributeAccessIssue]
+        if directory_path:
+            file_fqn = fqn.build(
+                self.metadata,
+                entity_type=File,
+                service_name=service_name,
+                directory_path=directory_path,
+                file_name=file_request.name.root,
+            )
+        else:
+            # A root-level file has no parent directory, which fqn.build rejects.
+            file_fqn = fqn._build(service_name, file_request.name.root)
+        self.file_source_state.add(file_fqn)
 
     def yield_file(self, directory_path: str) -> Iterable[Either[CreateFileRequest]]:  # noqa: C901
         """Process all files in given directory."""
@@ -506,7 +549,7 @@ class SftpSource(DriveServiceSource):
                                     columns=columns,
                                 )
 
-                                self.register_record_file(request)
+                                self.register_record_file(request, directory_path=None)
                                 yield Either(right=request)
 
                                 if sample_data:
@@ -544,7 +587,11 @@ class SftpSource(DriveServiceSource):
             if directory_path in self._directory_fqn_cache:
                 directory_reference = self._directory_fqn_cache[directory_path]
             if directory_path in self._directories_cache:
-                directory_path_components = self._directories_cache[directory_path].path
+                directory_info = self._directories_cache[directory_path]
+                # `path` is optional; fall back to the bare name as the create/register sites
+                # for directories do. Without it a nested file would register the root-level
+                # FQN and be deleted as stale right after being ingested.
+                directory_path_components = directory_info.path or [directory_info.name]
 
             for file_info in files_in_directory:
                 try:
@@ -584,7 +631,7 @@ class SftpSource(DriveServiceSource):
                             columns=columns,
                         )
 
-                        self.register_record_file(request)
+                        self.register_record_file(request, directory_path=directory_path_components)
                         yield Either(right=request)
 
                         if sample_data:
@@ -646,8 +693,8 @@ class SftpSource(DriveServiceSource):
             self._directory_fqn_cache.clear()
             self._root_files_processed = False
 
-            if self.client:
-                self.client.close()
+            if self._connection is not None:
+                self._connection.close()
 
         except Exception as e:
             logger.error(f"Error closing SFTP source: {e}")
@@ -666,7 +713,7 @@ class SftpSource(DriveServiceSource):
     def _ingest_sample_data_for_file(
         self,
         file_name: str,
-        directory_path: Optional[List[str]],  # noqa: UP006, UP045
+        directory_path: list[str] | None,
         sample_data: TableData,
     ) -> None:
         """
@@ -707,7 +754,7 @@ class SftpSource(DriveServiceSource):
 
     def _extract_csv_schema(
         self, file_path: str, filename: str, extract_sample_data: bool = False
-    ) -> tuple[Optional[List[Column]], Optional[TableData]]:  # noqa: UP006, UP045
+    ) -> tuple[list[Column] | None, TableData | None]:
         """
         Extract column schema and optionally sample data from CSV file.
 

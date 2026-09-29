@@ -16,8 +16,8 @@ import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
-import { KPI_WIDGET_GRAPH_COLORS } from '../../../../../constants/Widgets.constant';
 import { KpiTargetType } from '../../../../../generated/api/dataInsight/kpi/createKpiRequest';
+import { useDataInsightChartColors } from '../../../../../hooks/insights/useDataInsightChartColors';
 import { UIKpiResult } from '../../../../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../../../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../../../../utils/date-time/DateTimeUtils';
@@ -28,36 +28,40 @@ interface KPILegendProps {
   isFullSize: boolean;
 }
 
+const GoalCompleted = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="goal-completed-container">
+      <CheckIcon />
+      <Typography.Text>{t('label.goal-completed')}</Typography.Text>
+    </div>
+  );
+};
+
+const GoalMissed = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="goal-missed-container">
+      <WarningOutlined />
+      <Typography.Text>{t('label.goal-missed')}</Typography.Text>
+    </div>
+  );
+};
+
 const KPILegend: React.FC<KPILegendProps> = ({
   kpiLatestResultsRecord,
   isFullSize,
 }) => {
   const { t } = useTranslation();
+  const { kpiSeries } = useDataInsightChartColors();
   const entries = Object.entries(kpiLatestResultsRecord);
-
-  const GoalCompleted = () => {
-    return (
-      <div className="goal-completed-container">
-        <CheckIcon />
-        <Typography.Text>{t('label.goal-completed')}</Typography.Text>
-      </div>
-    );
-  };
-
-  const GoalMissed = () => {
-    return (
-      <div className="goal-missed-container">
-        <WarningOutlined />
-        <Typography.Text>{t('label.goal-missed')}</Typography.Text>
-      </div>
-    );
-  };
 
   return (
     <div className="w-full h-full kpi-legend d-flex flex-column p-sm">
       {entries.map(([key, resultData], index) => {
-        const color =
-          KPI_WIDGET_GRAPH_COLORS[index % KPI_WIDGET_GRAPH_COLORS.length];
+        const color = kpiSeries[index % kpiSeries.length];
         const daysLeft = getDaysRemaining(resultData.endDate);
         const targetResult = resultData.targetResult[0];
 
@@ -71,6 +75,20 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
         const isTargetMet = targetResult.targetMet;
         const isTargetMissed = !targetResult.targetMet && daysLeft <= 0;
+
+        let centerContent: JSX.Element;
+        if (isTargetMet) {
+          centerContent = <GoalCompleted />;
+        } else if (isTargetMissed) {
+          centerContent = <GoalMissed />;
+        } else {
+          centerContent = (
+            <Typography.Text className="text-xss font-semibold kpi-legend-days-left text-center">
+              {daysLeft <= 0 ? 0 : daysLeft}{' '}
+              {t('label.days-left').toUpperCase()}
+            </Typography.Text>
+          );
+        }
 
         if (isFullSize) {
           return (
@@ -107,18 +125,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
                     {suffix}
                   </Typography.Text>
                 </div>
-                <div className="kpi-legend-center-section">
-                  {isTargetMet ? (
-                    <GoalCompleted />
-                  ) : isTargetMissed ? (
-                    <GoalMissed />
-                  ) : (
-                    <Typography.Text className="text-xss font-semibold kpi-legend-days-left text-center">
-                      {daysLeft <= 0 ? 0 : daysLeft}{' '}
-                      {t('label.days-left').toUpperCase()}
-                    </Typography.Text>
-                  )}
-                </div>
+                <div className="kpi-legend-center-section">{centerContent}</div>
                 <div className="kpi-legend-value-section">
                   <Typography.Text className="text-xss kpi-legend-value">
                     {target.toFixed(0)}

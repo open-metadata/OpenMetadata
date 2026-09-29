@@ -13,7 +13,12 @@
 
 import { Alert } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
+import {
+  CustomValidator,
+  FormValidation,
+  RegistryFieldsType,
+  RJSFSchema,
+} from '@rjsf/utils';
 
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import {
@@ -26,6 +31,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   AIRFLOW_HYBRID,
@@ -47,6 +53,8 @@ import {
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
+  getFieldSchemaForId,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
@@ -56,6 +64,7 @@ import {
   wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
 import { shouldTestConnection } from '../../../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import AuthSelectField from '../../../common/Form/JSONSchema/JSONSchemaFields/AuthSelectField/AuthSelectField';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -82,12 +91,16 @@ const ConnectionConfigForm = forwardRef<
       serviceType,
       serviceCategory,
       status,
+      onBlur,
       onCancel,
       onSave,
       onFocus,
       disableTestConnection = false,
       isSubmitDisabled: isSubmitDisabledFromParent = false,
+      additionalMissingFieldsCount = 0,
+      isAdditionalValidationPending = false,
       onTestConnectionStatusChange,
+      onValidateAdditionalRequiredFields,
     }: Readonly<ConnectionConfigFormProps>,
     ref
   ) => {
@@ -160,7 +173,18 @@ const ConnectionConfigForm = forwardRef<
     }, [serviceCategory, serviceType]);
 
     const handleRequiredFieldsValidation = () => {
-      return Boolean(formRef.current?.validateForm());
+      let isRjsfValid = true;
+      // flushSync commits RJSF's error setState to the DOM before
+      // onValidateAdditionalRequiredFields runs its own state update
+      // (setNameError). Without this, both setState calls batch together
+      // and RJSF's getSnapshotBeforeUpdate may see an empty
+      // schemaValidationErrors, clearing the field error highlights.
+      flushSync(() => {
+        isRjsfValid = Boolean(formRef.current?.validateForm());
+      });
+      const isAdditionalValid = onValidateAdditionalRequiredFields?.() ?? true;
+
+      return isRjsfValid && isAdditionalValid;
     };
 
     const handleSave = async (data: IChangeEvent<ConfigData>) => {
@@ -194,10 +218,11 @@ const ConnectionConfigForm = forwardRef<
     );
 
     const shouldShowIPAlert = useMemo(() => {
+      const isAirflowSchemaWithHostIp =
+        !isEmpty(connSch.schema) && isAirflowAvailable && hostIp;
+
       return (
-        !isEmpty(connSch.schema) &&
-        isAirflowAvailable &&
-        hostIp &&
+        isAirflowSchemaWithHostIp &&
         (platform !== AIRFLOW_HYBRID ||
           ingestionRunner === COLLATE_SAAS ||
           ingestionRunner === COLLATE_SAAS_RUNNER)
@@ -219,6 +244,41 @@ const ConnectionConfigForm = forwardRef<
           propertiesWithoutDefaultFilterPatternFields as RJSFSchema['properties'],
       }),
       [connectionSchema, propertiesWithoutDefaultFilterPatternFields]
+    );
+
+    const customValidate: CustomValidator<ConfigData> = useCallback(
+      (formData, errors) => {
+        const secretPrefixErrors =
+          serviceUtilClassBase.validateSecretPrefixFields(
+            schemaWithoutDefaultFilterPatternFields,
+            (formData ?? {}) as Record<string, unknown>
+          );
+
+        secretPrefixErrors.forEach(({ path, message }) => {
+          const target = path.reduce<FormValidation<unknown>>((node, key) => {
+            const record = node as unknown as Record<
+              string | number,
+              FormValidation<unknown>
+            >;
+            record[key] ??= {} as FormValidation<unknown>;
+
+            return record[key];
+          }, errors as FormValidation<unknown>);
+
+          if (typeof target.addError === 'function') {
+            target.addError(message);
+          } else {
+            const legacyTarget = target as FormValidation<unknown> & {
+              __errors?: string[];
+            };
+            legacyTarget.__errors ??= [];
+            legacyTarget.__errors.push(message);
+          }
+        });
+
+        return errors;
+      },
+      [schemaWithoutDefaultFilterPatternFields]
     );
 
     const uiSchema = useMemo(() => {
@@ -283,6 +343,29 @@ const ConnectionConfigForm = forwardRef<
       setCurrentFormData(validConfig);
     }, [validConfig]);
 
+    // Custom fields (arrays, toggles) and section headers emit focus through
+    // formContext.handleFocus instead of RJSF's form-level onFocus, so the
+    // same enriched handler must be wired to both paths.
+    const handleFieldFocus = useCallback(
+      (id: string) => {
+        const schemaMeta = getFieldSchemaForId(
+          schemaWithoutDefaultFilterPatternFields,
+          id
+        );
+        const section = getConnectionFieldSection(
+          schemaWithoutDefaultFilterPatternFields,
+          id
+        );
+        onFocus(id, { ...schemaMeta, section });
+      },
+      [onFocus, schemaWithoutDefaultFilterPatternFields]
+    );
+
+    const formContext = useMemo(
+      () => ({ handleFocus: handleFieldFocus }),
+      [handleFieldFocus]
+    );
+
     useEffect(() => {
       const current = (currentFormData as Record<string, unknown>)?.[RUNNER];
       if (typeof current === 'string') {
@@ -331,8 +414,11 @@ const ConnectionConfigForm = forwardRef<
               flattenAuthTypeIntoConfig(currentFormData, connSch.schema)
             }
             hostIp={hostIp}
+            isFormValidationPending={isAdditionalValidationPending}
             isTestingDisabled={disableTestConnection}
-            missingRequiredFieldsCount={missingRequiredFieldsCount}
+            missingRequiredFieldsCount={
+              missingRequiredFieldsCount + additionalMissingFieldsCount
+            }
             serviceCategory={serviceCategory}
             serviceName={data?.name}
             onTestConnectionStatusChange={handleTestConnectionStatusChange}
@@ -363,11 +449,12 @@ const ConnectionConfigForm = forwardRef<
         <AirflowMessageBanner />
         <FormBuilderV1
           cancelText={cancelText ?? ''}
+          customValidate={customValidate}
           fields={customFields}
+          formContext={formContext}
           formData={currentFormData}
           hideFooter={hideFooter}
           isSubmitDisabled={isSubmitDisabled}
-          noValidate={!isEmpty(connSch.schema)}
           okText={okText ?? ''}
           ref={formRef}
           schema={schemaWithoutDefaultFilterPatternFields}
@@ -376,9 +463,10 @@ const ConnectionConfigForm = forwardRef<
             ObjectFieldTemplate: ConnectionObjectFieldTemplate,
           }}
           uiSchema={uiSchema}
+          onBlur={() => onBlur?.()}
           onCancel={onCancel}
           onChange={handleFormChange}
-          onFocus={onFocus}
+          onFocus={handleFieldFocus}
           onSubmit={handleSave}>
           {formChildren}
         </FormBuilderV1>

@@ -602,6 +602,49 @@ class DefaultRecreateHandlerTest {
       assertTrue(aliases.contains("all"));
       assertTrue(aliases.contains("dataAsset"));
     }
+
+    @Test
+    @DisplayName("Data Insights alias survives the reindex alias swap")
+    void testDataInsightAliasSurvivesReindexSwap() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("test_case_resolution_status_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+
+      IndexMapping indexMapping =
+          IndexMapping.builder()
+              .indexName("test_case_resolution_status_search_index")
+              .alias("testCaseResolutionStatus")
+              .parentAliases(List.of())
+              .childAliases(List.of())
+              .dataInsightAliases(List.of("di-data-assets-testcaseresolutionstatus"))
+              .build();
+      when(repo.getIndexMapping("testCaseResolutionStatus")).thenReturn(indexMapping);
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("testCaseResolutionStatus")
+                .canonicalIndex("test_case_resolution_status_search_index")
+                .stagedIndex("test_case_resolution_status_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      Set<String> aliases =
+          aliasState.indexAliases.get("test_case_resolution_status_search_index_rebuild_new");
+      assertTrue(
+          aliases.contains("di-data-assets-testcaseresolutionstatus"),
+          "Data Insights alias must follow the staged index after the reindex swap so custom "
+              + "charts keep reading the reindexed data");
+      assertTrue(aliases.contains("testCaseResolutionStatus"));
+    }
   }
 
   @Nested

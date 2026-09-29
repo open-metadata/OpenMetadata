@@ -42,7 +42,9 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -432,7 +434,8 @@ public class GlossaryCsvRelationTypesIT {
    * that mutates these settings must use the same key on a {@link ResourceLock} so JUnit serialises
    * across classes; a class-local synchronized block would only guard intra-class concurrency.
    */
-  private static final String SETTINGS_RESOURCE_KEY = "glossaryTermRelationSettings";
+  private static final String SETTINGS_RESOURCE_KEY =
+      SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS;
 
   @Test
   void testImportPreservesMixedRelationsViaApi(TestNamespace ns) throws Exception {
@@ -595,6 +598,7 @@ public class GlossaryCsvRelationTypesIT {
           imported.getRelatedTerms().get(0).getRelationType(),
           "Custom relation type should be preserved through CSV import");
     } finally {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
       cleanupCustomTypes(customType, inverseType);
     }
   }
@@ -652,31 +656,26 @@ public class GlossaryCsvRelationTypesIT {
     putRelationSettings(payload);
   }
 
-  private void cleanupCustomTypes(String... customTypes) {
-    try {
-      JsonNode current = getRelationSettings();
-      ArrayNode types = (ArrayNode) current.get("config_value").get("relationTypes");
-      ArrayNode filtered = OBJECT_MAPPER.createArrayNode();
-      for (JsonNode type : types) {
-        String name = type.get("name").asText();
-        boolean drop = false;
-        for (String custom : customTypes) {
-          if (custom.equals(name)) {
-            drop = true;
-            break;
-          }
-        }
-        if (!drop) {
-          filtered.add(type);
+  private void cleanupCustomTypes(String... customTypes) throws Exception {
+    JsonNode current = getRelationSettings();
+    ArrayNode types = (ArrayNode) current.get("config_value").get("relationTypes");
+    ArrayNode filtered = OBJECT_MAPPER.createArrayNode();
+    for (JsonNode type : types) {
+      String name = type.get("name").asText();
+      boolean drop = false;
+      for (String custom : customTypes) {
+        if (custom.equals(name)) {
+          drop = true;
+          break;
         }
       }
-      ObjectNode payload = OBJECT_MAPPER.createObjectNode();
-      payload.set("relationTypes", filtered);
-      putRelationSettings(payload);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to cleanup custom relation types {}: {}", List.of(customTypes), e.getMessage());
+      if (!drop) {
+        filtered.add(type);
+      }
     }
+    ObjectNode payload = OBJECT_MAPPER.createObjectNode();
+    payload.set("relationTypes", filtered);
+    putRelationSettings(payload);
   }
 
   private JsonNode getRelationSettings() throws Exception {

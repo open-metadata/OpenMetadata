@@ -1,0 +1,60 @@
+{
+  "framework": {
+    "name": "uk_ai_regulation",
+    "displayName": "UK AI Regulation",
+    "description": "UK DSIT pro-innovation regulatory framework — five cross-sectoral principles for AI applied through existing regulators.",
+    "reference": "DSIT pro-innovation",
+    "region": "United Kingdom",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "Annual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel"],
+      "regions": ["UK"],
+      "riskClasses": [],
+      "deploymentStages": []
+    }
+  },
+  "controls": [
+    {
+      "code": "uk-1",
+      "name": "uk-1",
+      "displayName": "Safety, Security & Robustness",
+      "category": "Quality",
+      "description": "AI systems should function in a robust, secure and safe way throughout their lifecycle.",
+      "evidenceRequirements": ["Security review"]
+    },
+    {
+      "code": "uk-2",
+      "name": "uk-2",
+      "displayName": "Appropriate Transparency & Explainability",
+      "category": "Transparency",
+      "description": "Outputs and decision-making processes are explained appropriately.",
+      "evidenceRequirements": ["Model card"]
+    },
+    {
+      "code": "uk-3",
+      "name": "uk-3",
+      "displayName": "Fairness",
+      "category": "Risk",
+      "description": "AI systems must comply with UK laws and not undermine rights of individuals.",
+      "evidenceRequirements": ["Fairness assessment"]
+    },
+    {
+      "code": "uk-4",
+      "name": "uk-4",
+      "displayName": "Accountability & Governance",
+      "category": "Governance",
+      "description": "Governance measures ensure effective oversight of AI systems with clear accountability.",
+      "evidenceRequirements": ["Accountability framework"]
+    },
+    {
+      "code": "uk-5",
+      "name": "uk-5",
+      "displayName": "Contestability & Redress",
+      "category": "Process",
+      "description": "Users and affected parties can contest harmful AI outcomes.",
+      "evidenceRequirements": ["Appeals process documentation"]
+    }
+  ]
+}

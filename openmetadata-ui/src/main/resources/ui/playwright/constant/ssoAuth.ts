@@ -24,4 +24,8 @@ export const SSO_ENV = {
   KEYCLOAK_SAML_BASE_URL: 'KEYCLOAK_SAML_BASE_URL',
   KEYCLOAK_SAML_AZURE_REALM: 'KEYCLOAK_SAML_AZURE_REALM',
   KEYCLOAK_SAML_PRINCIPAL_DOMAIN: 'KEYCLOAK_SAML_PRINCIPAL_DOMAIN',
+  // Container-network address of the Keycloak fixture, used for the URLs the
+  // OpenMetadata server fetches itself (discovery, JWKS) rather than the ones
+  // the browser is redirected to.
+  KEYCLOAK_INTERNAL_BASE_URL: 'KEYCLOAK_INTERNAL_BASE_URL',
 } as const;

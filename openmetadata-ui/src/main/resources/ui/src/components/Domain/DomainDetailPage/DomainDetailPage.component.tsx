@@ -18,13 +18,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import {
   addFollower,
   patchDomains,
@@ -43,7 +44,6 @@ import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import '../domain.less';
 import DomainDetails from '../DomainDetails/DomainDetails.component';
@@ -126,6 +126,9 @@ const DomainDetailPage = () => {
         const response = await patchDomains(activeDomain.id, jsonPatch);
 
         setActiveDomain(response);
+        // Re-fetch with full fields so the cache includes extension,
+        // votes, certification — fields the PATCH response omits.
+        void queryClient.invalidateQueries({ queryKey: domainCacheKey });
 
         if (activeDomain?.name !== updatedData.name) {
           navigate(getDomainPath(response.fullyQualifiedName));

@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import { expect, test as base, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
 import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { sidebarClick } from '../../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },
@@ -29,16 +34,13 @@ let workflowName: string;
 let periodicWorkflowName: string;
 
 async function navigateToWorkflowsListPage(page: Page) {
-  await page.hover('[data-testid="left-sidebar"]');
-  await page.click(`[data-testid="${SidebarItem.GOVERNANCE}"]`);
-
   const listResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/governance/workflowDefinitions') &&
       response.request().method() === 'GET'
   );
 
-  await page.click('[data-testid="app-bar-item-workflows"]');
+  await sidebarClick(page, SidebarItem.WORKFLOWS);
   await listResponse;
   await waitForAllLoadersToDisappear(page);
 }
@@ -174,8 +176,8 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
             ],
             edges: [
               { from: 'Start', to: 'ApprovalTask' },
-              { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'true' },
-              { from: 'ApprovalTask', to: 'RejectedEnd', condition: 'false' },
+              { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'approve' },
+              { from: 'ApprovalTask', to: 'RejectedEnd', condition: 'reject' },
             ],
           },
         }
@@ -387,11 +389,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await sidebar.getByTestId('save-node-configuration-button').click();
         await expect(sidebar).not.toBeVisible();
 
-        const saveResponse = page.waitForResponse(
+        const saveResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes('/api/v1/governance/workflowDefinitions') &&
-            response.request().method() === 'PUT' &&
-            response.ok()
+            response.request().method() === 'PUT',
+          'ok'
         );
 
         await page.getByTestId('save-workflow-button').click();
@@ -410,11 +413,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await navigateToWorkflowDetailPage(page, workflowName);
         await enterEditMode(page);
 
-        const saveResponse = page.waitForResponse(
+        const saveResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes('/api/v1/governance/workflowDefinitions') &&
-            response.request().method() === 'PUT' &&
-            response.ok()
+            response.request().method() === 'PUT',
+          'ok'
         );
 
         await page.getByTestId('save-workflow-button').click();
@@ -587,12 +591,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                   {
                     from: 'ApprovalTask',
                     to: 'ApprovedEnd',
-                    condition: 'true',
+                    condition: 'approve',
                   },
                   {
                     from: 'ApprovalTask',
                     to: 'RejectedEnd',
-                    condition: 'false',
+                    condition: 'reject',
                   },
                 ],
               },

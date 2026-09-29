@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs, Typography } from 'antd';
+import {
+  Box,
+  Card,
+  Divider,
+  Owner,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -43,11 +50,10 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DataQualitySection from '../../../common/DataQualitySection';
+import DataQualitySection from '../../../common/DataQualitySection/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
@@ -63,16 +69,22 @@ import {
 } from './DataQualityTab.interface';
 import './DataQualityTab.less';
 
+const DATA_QUALITY_TAB_KEY = 'data-quality';
+
 const DetailItem: React.FC<DetailItemProps> = ({
   label,
   value,
   showDottedBorder = false,
 }) => (
-  <div
-    className={`test-case-detail-item ${showDottedBorder ? 'dotted-row' : ''}`}>
-    <Typography.Text className="detail-label">{label}</Typography.Text>
-    <div className="detail-value">{value}</div>
-  </div>
+  <>
+    <div className="test-case-detail-item tw:flex tw:items-center tw:gap-1">
+      <Typography className="tw:min-w-15" color="secondary" size="text-xs">
+        {`${label}:`}
+      </Typography>
+      <div>{value}</div>
+    </div>
+    {showDottedBorder && <Divider dashed />}
+  </>
 );
 
 const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
@@ -157,8 +169,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
         {
           label: t('label.assignee'),
           value: (
-            <div className="assignee-info">
-              <OwnerLabel
+            <div className="tw:ml-1">
+              <Owner
                 owners={assignee ? [assignee] : []}
                 placeHolder={t('label.no-entity', {
                   entity: t('label.assignee'),
@@ -212,45 +224,49 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   }, [isIncidentMode, columnName, testCase.incidentId, severity, incident, t]);
 
   return (
-    <Card
-      bordered={false}
-      className="test-case-card"
-      style={{ borderRadius: '0px' }}>
-      <div className="test-case-card-content">
-        <div className="test-case-header">
-          <div className="test-case-title-section">
-            <Link
-              className="test-case-name"
-              data-testid={`test-case-${testCaseName}`}
-              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
-                testCase.fullyQualifiedName ?? ''
-              )}>
-              {testCaseName}
-            </Link>
-          </div>
-          <div className="test-case-status-section">
-            <StatusBadgeV2
-              label={status || 'Unknown'}
-              showIcon={false}
-              status={statusBadgeType}
-            />
-          </div>
-        </div>
-
-        {/* Details Section */}
-        <div className="test-case-details">
-          {detailItems.map((item, index) => (
-            <DetailItem
-              key={`${item.label}-${index}`}
-              label={item.label}
-              showDottedBorder={item.showDottedBorder}
-              value={item.value}
-            />
-          ))}
-        </div>
-      </div>
+    <Card className="test-case-card tw:mx-4" size="sm">
+      <Card.Header
+        extra={
+          <StatusBadgeV2
+            className="test-case-status-section"
+            label={status || 'Unknown'}
+            showIcon={false}
+            status={statusBadgeType}
+          />
+        }
+        title={
+          <Link
+            className="test-case-name tw:line-clamp-2 tw:break-words"
+            data-testid={`test-case-${testCaseName}`}
+            to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+              testCase.fullyQualifiedName ?? ''
+            )}>
+            {testCaseName}
+          </Link>
+        }
+      />
+      <Card.Content className="tw:flex tw:flex-col tw:gap-2 tw:text-xs">
+        {detailItems.map((item) => (
+          <DetailItem
+            key={item.label}
+            label={item.label}
+            showDottedBorder={item.showDottedBorder}
+            value={item.value}
+          />
+        ))}
+      </Card.Content>
     </Card>
   );
+};
+
+const INCIDENT_FILTER_STATUS_MAP: Record<
+  IncidentFilterStatus,
+  TestCaseResolutionStatusTypes
+> = {
+  new: TestCaseResolutionStatusTypes.New,
+  ack: TestCaseResolutionStatusTypes.ACK,
+  assigned: TestCaseResolutionStatusTypes.Assigned,
+  resolved: TestCaseResolutionStatusTypes.Resolved,
 };
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -269,7 +285,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     total: 0,
   });
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
-  const [activeTab, setActiveTab] = useState<string>('data-quality');
+  const [activeTab, setActiveTab] = useState<string>(DATA_QUALITY_TAB_KEY);
   const [searchText, setSearchText] = useState<string>('');
 
   // Incident-related state
@@ -514,27 +530,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         return false;
       }
 
-      let matchesStatus = false;
-      switch (activeIncidentFilter) {
-        case 'new':
-          matchesStatus = status === TestCaseResolutionStatusTypes.New;
-
-          break;
-        case 'ack':
-          matchesStatus = status === TestCaseResolutionStatusTypes.ACK;
-
-          break;
-        case 'assigned':
-          matchesStatus = status === TestCaseResolutionStatusTypes.Assigned;
-
-          break;
-        case 'resolved':
-          matchesStatus = status === TestCaseResolutionStatusTypes.Resolved;
-
-          break;
-        default:
-          return false;
-      }
+      const matchesStatus =
+        status === INCIDENT_FILTER_STATUS_MAP[activeIncidentFilter];
 
       if (!searchText) {
         return matchesStatus;
@@ -598,23 +595,24 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     if (filteredTestCases.length > 0) {
       return (
-        <Row gutter={[0, 12]} style={{ marginLeft: '-16px' }}>
+        <Box className="tw:-ml-4" direction="col" gap={3}>
           {filteredTestCases.map((testCase) => (
-            <Col key={testCase.id} span={24}>
-              <TestCaseCard testCase={testCase} />
-            </Col>
+            <TestCaseCard key={testCase.id} testCase={testCase} />
           ))}
-        </Row>
+        </Box>
       );
     }
 
     return (
-      <div className="no-test-cases">
-        <Typography.Text className="no-data-placeholder">
+      <div className="no-test-cases tw:px-4 tw:py-8 tw:text-center">
+        <Typography
+          className="no-data-placeholder"
+          color="secondary"
+          size="text-xs">
           {t('label.no-entity', {
             entity: t('label.test-case-plural'),
           })}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   };
@@ -630,29 +628,28 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     if (filteredIncidents.length > 0) {
       return (
-        <Row gutter={[0, 12]}>
+        <Box direction="col" gap={3}>
           {filteredIncidents.map((incident) => (
-            <Col key={incident.id} span={24}>
-              <TestCaseCard
-                incident={incident}
-                testCase={convertIncidentToTestCase(incident)}
-              />
-            </Col>
+            <TestCaseCard
+              incident={incident}
+              key={incident.id}
+              testCase={convertIncidentToTestCase(incident)}
+            />
           ))}
-        </Row>
+        </Box>
       );
     }
 
     return (
-      <div className="no-incidents">
-        <Typography.Text className="text-grey-muted">
+      <div className="no-incidents tw:p-6 tw:text-center">
+        <Typography color="secondary" size="text-sm">
           {t('message.no-entity-found-for-name', {
             entity: t('label.incident-plural'),
             name: `${t('label.type-filed-name', {
               fieldName: startCase(activeIncidentFilter),
             })}`,
           })}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   };
@@ -672,15 +669,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           className="text-grey-14 m-t-lg"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
+          <Typography
+            as="div"
+            className="text-center p-x-md no-data-placeholder tw:mb-4"
+            color="secondary"
+            size="text-xs">
             {t('message.no-data-quality-test-message')}
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolderNew>
       );
     }
 
     return (
-      <div className="data-quality-tab-content">
+      <div className="data-quality-tab-content tw:h-screen tw:pl-4">
         <DataQualitySection
           isDataQualityTab
           activeFilter={activeFilter}
@@ -695,7 +696,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           }}
           onFilterChange={handleFilterChange}
         />
-        <div className="test-case-cards-section">
+        <div className="test-case-cards-section tw:mt-4">
           <div className="p-b-md p-r-md">
             <SearchBarComponent
               containerClassName="searchbar-container"
@@ -729,16 +730,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             className="text-grey-14"
             icon={<AddPlaceHolderIcon height={100} width={100} />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
+            <Typography
+              as="div"
+              className="text-center p-x-md no-data-placeholder tw:mb-4"
+              color="secondary"
+              size="text-xs">
               {t('message.no-data-quality-test-message')}
-            </Typography.Paragraph>
+            </Typography>
           </ErrorPlaceHolderNew>
         </div>
       );
     }
 
     return (
-      <div className="incidents-tab-content">
+      <div className="incidents-tab-content tw:px-4">
         <div className="incidents-stats-container">
           <div className="incidents-stats-cards-container">
             <button
@@ -747,40 +752,48 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('new')}>
-              <Typography.Text className="stat-count new">
+              <Typography className="stat-count new">
                 {incidentCounts.new}
-              </Typography.Text>
-              <Typography.Text className="stat-label new">
+              </Typography>
+              <Typography className="stat-label new">
                 {t('label.new')}
-              </Typography.Text>
+              </Typography>
             </button>
-            <div aria-hidden="true" className="stat-card-vertical-divider" />
+            <Divider
+              aria-hidden="true"
+              className="tw:my-3"
+              orientation="vertical"
+            />
             <button
               className={`incident-stat-card ack-card ${
                 activeIncidentFilter === 'ack' ? 'active' : ''
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('ack')}>
-              <Typography.Text className="stat-count ack">
+              <Typography className="stat-count ack">
                 {incidentCounts.ack}
-              </Typography.Text>
-              <Typography.Text className="stat-label ack">
+              </Typography>
+              <Typography className="stat-label ack">
                 {t('label.acknowledged')}
-              </Typography.Text>
+              </Typography>
             </button>
-            <div aria-hidden="true" className="stat-card-vertical-divider" />
+            <Divider
+              aria-hidden="true"
+              className="tw:my-3"
+              orientation="vertical"
+            />
             <button
               className={`incident-stat-card assigned-card ${
                 activeIncidentFilter === 'assigned' ? 'active' : ''
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('assigned')}>
-              <Typography.Text className="stat-count assigned">
+              <Typography className="stat-count assigned">
                 {incidentCounts.assigned}
-              </Typography.Text>
-              <Typography.Text className="stat-label assigned">
+              </Typography>
+              <Typography className="stat-label assigned">
                 {t('label.assigned')}
-              </Typography.Text>
+              </Typography>
             </button>
           </div>
           <div>
@@ -790,12 +803,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               })}
               type="button"
               onClick={() => handleIncidentFilterChange('resolved')}>
-              <Typography.Text className="resolved-label">
+              <Typography className="resolved-label">
                 {t('label.-with-colon', { text: t('label.resolved') })}
-              </Typography.Text>
-              <Typography.Text className="resolved-value">
+              </Typography>
+              <Typography className="resolved-value">
                 {incidentCounts.resolved}
-              </Typography.Text>
+              </Typography>
             </button>
           </div>
         </div>
@@ -811,49 +824,25 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               onSearch={setSearchText}
             />
           </div>
-          <div className="incident-cards-section">{renderIncidentCards()}</div>
+          <div className="incident-cards-section tw:-mx-4">
+            {renderIncidentCards()}
+          </div>
         </div>
       </div>
     );
   };
 
-  // Tab items configuration
   const tabItems = [
     {
-      key: 'data-quality',
-      label: (
-        <span
-          className={`tab-header-container ${
-            activeTab === 'data-quality' ? 'active' : ''
-          }`}>
-          {t('label.data-quality')}
-          <span
-            className={`data-quality-tab-count ${
-              activeTab === 'data-quality' ? 'active' : ''
-            }`}>
-            {statusCounts.total}
-          </span>
-        </span>
-      ),
+      key: DATA_QUALITY_TAB_KEY,
+      label: t('label.data-quality'),
+      count: statusCounts.total,
       children: renderDataQualityTabContent(),
     },
     {
       key: 'incidents',
-      label: (
-        <span
-          className={`tab-header-container ${
-            activeTab === 'incidents' ? 'active' : ''
-          }`}>
-          {t('label.incident-plural')}
-
-          <span
-            className={`data-quality-tab-count ${
-              activeTab === 'incidents' ? 'active' : ''
-            }`}>
-            {incidentCounts.total}
-          </span>
-        </span>
-      ),
+      label: t('label.incident-plural'),
+      count: incidentCounts.total,
       children: renderIncidentsTabContent(),
     },
   ];
@@ -881,13 +870,31 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   return (
     <div className="data-quality-tab-container">
       <Tabs
-        activeKey={activeTab}
-        className={classNames('data-quality-tabs', {
-          'column-detail-data-quality-tabs': isColumnDetailPanel,
-        })}
-        items={tabItems}
-        onChange={handleTabChange}
-      />
+        className="data-quality-tabs"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(String(key))}>
+        <Tabs.List
+          className={classNames(
+            'tw:sticky tw:z-3 tw:gap-8 tw:bg-surface tw:px-4 tw:pt-2.5',
+            // Sits below the sticky entity title, which the column panel and the side drawer do not render.
+            isColumnDetailPanel
+              ? 'tw:top-0'
+              : 'tw:top-[54px] tw:[.drawer-summary-panel-container_&]:top-0'
+          )}
+          size="sm"
+          type="underline">
+          {tabItems.map(({ key, label, count }) => (
+            <Tabs.Item badge={count} id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabItems.map(({ key, children }) => (
+          <Tabs.Panel id={key} key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     </div>
   );
 };

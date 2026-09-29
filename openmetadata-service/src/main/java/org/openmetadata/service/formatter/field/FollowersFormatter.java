@@ -13,13 +13,13 @@
 
 package org.openmetadata.service.formatter.field;
 
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 public class FollowersFormatter extends DefaultFieldFormatter {
   public FollowersFormatter(
-      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
     super(messageDecorator, thread, fieldChange);
   }
 

@@ -13,21 +13,7 @@
 
 @import (reference) '../../../styles/variables.less';
 
-.ant-tabs.ant-tabs-left.contract-tabs {
-  .ant-tabs-content-holder {
-    flex: 1;
-    padding: @size-lg;
-    border-radius: 0 8px 8px 8px;
-
-    .ant-tabs-tabpane {
-      margin-top: 0;
-      border: none;
-      padding: 0;
-      background: var(--tw-color-bg-primary);
-      height: initial;
-      overflow: initial;
-    }
-  }
+.contract-tabs {
   .contract-prev-button,
   .contract-next-button {
     display: flex;
@@ -35,15 +21,15 @@
     justify-content: center;
     padding: @size-xs @size-sm;
     border: 1px solid @grey-300;
-    border-radius: 8px;
-    font-weight: 600;
-    gap: 4px;
+    border-radius: var(--om-radius-lg);
+    font-weight: var(--om-font-weight-semibold);
+    gap: var(--om-space-4);
     box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
       0px 0px 0px 1px @grey-27 inset;
 
     .anticon {
-      margin-top: 2px;
-      margin-left: 6px;
+      margin-top: var(--om-space-2);
+      margin-left: var(--om-space-6);
     }
   }
   .contract-prev-button {
@@ -59,9 +45,6 @@
         color: @grey-700;
       }
     }
-  }
-  .ant-tabs-left-content {
-    height: 100%;
   }
   .ant-checkbox-checked {
     .ant-checkbox-inner {
@@ -80,81 +63,10 @@
       &::after {
         width: 7px;
         height: 2px;
-        border-radius: 8px;
+        border-radius: var(--om-radius-lg);
         border: 1px solid @primary-color;
       }
     }
-  }
-  .ant-tabs-nav {
-    width: 200px;
-    height: initial;
-    border: none;
-    padding: 0;
-    padding-top: 20px;
-    background: transparent;
-
-    .ant-tabs-nav-list {
-      width: 100%;
-
-      .ant-tabs-tab {
-        width: 100%;
-        padding: 16px 20px;
-        margin: 0;
-        border: none;
-        border-radius: 8px 0 0 8px;
-        background: transparent;
-        color: @de-active-color;
-        font-weight: 500;
-        transition: all 0.2s ease;
-
-        & + .ant-tabs-tab {
-          margin-top: 8px;
-        }
-
-        &:hover {
-          background: @grey-36;
-          color: @blue-43;
-        }
-
-        &.ant-tabs-tab-active {
-          background: @grey-37;
-          color: @blue-42;
-          border-right: 3px solid @blue-42;
-
-          .ant-tabs-tab-btn {
-            color: @blue-42;
-            font-weight: 600;
-          }
-        }
-
-        .ant-tabs-tab-btn {
-          width: 100%;
-          text-align: left;
-          font-size: 14px;
-          line-height: 20px;
-
-          &:focus {
-            color: inherit;
-          }
-        }
-      }
-    }
-
-    .ant-tabs-ink-bar {
-      display: none;
-    }
-  }
-
-  .ant-tabs-tabpane {
-    padding: 24px;
-    background: var(--tw-color-bg-primary);
-  }
-
-  // Content area styling
-  .ant-tabs-content {
-    background: var(--tw-color-bg-primary);
-    min-height: 500px;
-    border-radius: 0 8px 8px 8px;
   }
   .schema-table-name {
     color: @grey-600;
@@ -164,22 +76,22 @@
   // Contract detail Forms
   .contract-detail-form-tab-title {
     display: block;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--om-font-size-lg);
+    font-weight: var(--om-font-weight-semibold);
     color: @grey-900;
   }
 
   .contract-detail-form-tab-description {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     color: @grey-600;
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
   }
 
   .contract-form-content-container {
-    margin-top: 20px;
+    margin-top: var(--om-space-20);
     background: var(--tw-color-bg-primary);
-    padding: 20px;
-    border-radius: 8px;
+    padding: var(--om-space-20);
+    border-radius: var(--om-radius-lg);
     border: 1px solid @border-color-7;
     box-shadow: @button-box-shadow-default;
     display: flex;
@@ -202,19 +114,19 @@
 
   & > div:first-child {
     background: transparent;
-    padding: 0 0 20px 0;
+    padding: 0 0 var(--om-space-20) 0;
   }
 
   // Form styling within tabs
   .ant-form {
     .ant-form-item {
-      margin-bottom: 20px;
+      margin-bottom: var(--om-space-20);
 
       .ant-form-item-label {
-        padding-bottom: 8px;
+        padding-bottom: var(--om-space-8);
         label {
-          font-size: 14px;
-          font-weight: 500;
+          font-size: var(--om-font-size-sm);
+          font-weight: var(--om-font-weight-medium);
           color: @grey-700;
 
           &.ant-form-item-required::before {
@@ -224,27 +136,27 @@
       }
     }
 
-    input[type='text'],
-    .ant-picker {
-      color: @grey-700;
-      font-weight: 500;
-      min-height: 40px;
-      border: 1px solid @grey-300;
-      border-radius: 8px;
-      box-shadow: 0 1px 2px 0px @grey-27;
-    }
+    // input[type='text'],
+    // .ant-picker {
+    //   color: @grey-700;
+    //   font-weight: var(--om-font-weight-medium);
+    //   min-height: 40px;
+    //   border: 1px solid @grey-300;
+    //   border-radius: var(--om-radius-lg);
+    //   box-shadow: 0 1px 2px 0px @grey-27;
+    // }
 
     .ant-input-number-input {
       color: @grey-700;
-      font-weight: 500;
-      border-radius: 8px;
+      font-weight: var(--om-font-weight-medium);
+      border-radius: var(--om-radius-lg);
       min-height: 40px;
       box-shadow: 0 1px 2px 0px @grey-27;
     }
 
     .ant-select-selector,
     .ant-mentions {
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
       border: 1px solid @grey-300;
       color: @grey-700;
       min-height: 40px;
@@ -258,7 +170,7 @@
       > .ant-select-selection-search {
         input[type='search'] {
           height: 40px;
-          font-weight: 500;
+          font-weight: var(--om-font-weight-medium);
         }
       }
     }
@@ -287,41 +199,41 @@
 .contract-tab-icon {
   width: 24px;
   height: 24px;
-  margin-right: 8px;
+  margin-right: var(--om-space-8);
 }
 
 .add-contract-card {
   .add-contract-card-header {
     .ant-btn.add-contract-cancel-button {
-      margin-right: 8px;
+      margin-right: var(--om-space-8);
       border: 1px solid @grey-300;
       color: @grey-700;
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
       box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
         0px 0px 0px 1px @grey-27 inset;
     }
 
     .ant-btn.add-contract-save-button {
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
     }
   }
 
   .add-contract-card-title {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--om-font-size-lg);
+    font-weight: var(--om-font-weight-semibold);
     color: @grey-900;
   }
 
   .add-contract-card-description {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     color: @grey-600;
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
     margin-bottom: 0;
   }
 
   > .ant-card-body {
     padding: 0;
-    padding-left: 20px;
+    padding-left: var(--om-space-20);
   }
 }
 
@@ -330,14 +242,14 @@
     color: @grey-700;
     box-shadow: 0px 1px 2px 0px @grey-27;
     border: 1px solid @grey-300;
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
   }
 
   .ant-select-selector,
   .ant-mentions {
     border: 1px solid @grey-300;
     color: @grey-700;
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
     min-height: 40px !important;
     box-shadow: 0 1px 2px 0px @grey-27;
 

@@ -12,8 +12,9 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DefaultOptionType } from 'antd/lib/select';
+import { PagingResponse } from '../../../interface/common/paging.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { AsyncSelect, PagingResponse } from './AsyncSelect';
+import { AsyncSelect } from './AsyncSelect';
 
 // Mock dependencies
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -29,7 +30,7 @@ jest.mock('../Loader/Loader', () => {
 // Mock debounce to make tests synchronous
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: any) => fn,
+  debounce: (fn: unknown) => fn,
 }));
 
 const mockOptions: DefaultOptionType[] = [

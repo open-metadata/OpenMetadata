@@ -14,13 +14,13 @@ Test Tableau connector with CLI - Enhanced with comprehensive lineage and metada
 """
 
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 import pytest
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.api.status import Status
 
 from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
@@ -73,6 +73,9 @@ class TableauExpectedValues:
         "order_id",
         "quantity",
     ]
+
+    # Calculated fields keep the RECORD wrapper; every other field collapses
+    EXPECTED_RECORD_FIELDS = {"Sales Summary (Custom SQL)"}  # noqa: RUF012
 
     # Expected tags
     EXPECTED_TAGS = ["Analytics", "workbook"]  # noqa: RUF012
@@ -150,22 +153,22 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
     # FILTER CONFIGURATION METHODS
     # ================================
 
-    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_includes_dashboards(self) -> list[str]:
         return TableauExpectedValues.INCLUDE_DASHBOARDS
 
-    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
+    def get_excludes_dashboards(self) -> list[str]:
         return TableauExpectedValues.EXCLUDE_DASHBOARDS
 
-    def get_includes_charts(self) -> List[str]:  # noqa: UP006
+    def get_includes_charts(self) -> list[str]:
         return TableauExpectedValues.INCLUDE_CHARTS
 
-    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
+    def get_excludes_charts(self) -> list[str]:
         return TableauExpectedValues.EXCLUDE_CHARTS
 
-    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_includes_datamodels(self) -> list[str]:
         return TableauExpectedValues.INCLUDE_DATAMODELS
 
-    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
+    def get_excludes_datamodels(self) -> list[str]:
         return TableauExpectedValues.EXCLUDE_DATAMODELS
 
     # ================================
@@ -500,17 +503,29 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             params={"service": TableauExpectedValues.SERVICE_NAME},
         ).entities
 
-        for datamodel in datamodels:
+        # The Tableau site is shared and gains workbooks outside this test's control, so
+        # assert only on the fixture this test owns instead of on everything ingested.
+        for datamodel in (dm for dm in datamodels if dm.name.root in TableauExpectedValues.EXPECTED_DATAMODEL_NAMES):
             if hasattr(datamodel, "columns") and datamodel.columns:
                 for column in datamodel.columns:
                     if hasattr(column, "dataType") and column.dataType:
-                        # Check if field type matches expected
-                        field_type = str(column.dataType)
-                        self.assertIn(
-                            "DataType.RECORD",
-                            field_type,
-                            f"Field '{column.name.root}' should have tableau-related type",
-                        )
+                        if column.displayName in TableauExpectedValues.EXPECTED_RECORD_FIELDS:
+                            self.assertEqual(
+                                column.dataType,
+                                DataType.RECORD,
+                                f"Calculated field '{column.displayName}' should keep the RECORD wrapper",
+                            )
+                        elif column.displayName in TableauExpectedValues.EXPECTED_DATAMODEL_FIELDS:
+                            self.assertNotEqual(
+                                column.dataType,
+                                DataType.RECORD,
+                                f"Field '{column.displayName}' should have collapsed to its real type",
+                            )
+                            self.assertNotEqual(
+                                column.dataType,
+                                DataType.UNKNOWN,
+                                f"Field '{column.displayName}' should have a resolved type",
+                            )
 
     @pytest.mark.order(11)
     def test_lineage(self) -> None:
@@ -560,7 +575,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         entity_type,
         name: str,
         service: str = TableauExpectedValues.SERVICE_NAME,
-        fields: List = ["tags", "charts"],  # noqa: B006, UP006
+        fields: list = ["tags", "charts"],  # noqa: B006
     ):
         """Helper to get entity by name or displayName"""
         entities = self.openmetadata.list_entities(

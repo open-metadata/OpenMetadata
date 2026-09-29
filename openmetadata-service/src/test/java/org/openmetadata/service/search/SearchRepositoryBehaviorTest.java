@@ -12,8 +12,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -23,10 +25,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,12 +38,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -63,7 +70,9 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -75,16 +84,25 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
+import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -120,6 +138,14 @@ class SearchRepositoryBehaviorTest {
           .alias("databaseService")
           .childAliases(List.of(Entity.DATABASE))
           .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
+          .build();
+
+  private static final IndexMapping MLMODEL_SERVICE_MAPPING =
+      IndexMapping.builder()
+          .indexName("mlmodel_service_search_index")
+          .alias("mlModelService")
+          .childAliases(List.of("mlmodel"))
+          .indexMappingFile("/elasticsearch/%s/mlmodel_service_index_mapping.json")
           .build();
 
   private static final IndexMapping DATABASE_MAPPING =
@@ -207,6 +233,7 @@ class SearchRepositoryBehaviorTest {
                 Map.entry(Entity.DOMAIN, DOMAIN_MAPPING),
                 Map.entry(Entity.DATA_PRODUCT, DATA_PRODUCT_MAPPING),
                 Map.entry(Entity.DATABASE_SERVICE, DATABASE_SERVICE_MAPPING),
+                Map.entry(Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_MAPPING),
                 Map.entry(Entity.TAG, TABLE_MAPPING),
                 Map.entry(Entity.GLOSSARY_TERM, TABLE_MAPPING),
                 Map.entry(Entity.GLOSSARY, TABLE_MAPPING),
@@ -237,8 +264,12 @@ class SearchRepositoryBehaviorTest {
 
       for (String entityType : MOCK_ENTITY_TYPES) {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
-        EntityRepository<?> mockRepo = mock(EntityRepository.class);
+        EntityRepository<?> mockRepo =
+            Entity.QUERY.equals(entityType)
+                ? mock(QueryRepository.class)
+                : mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
+        doReturn(true).when(mockRepo).isSearchIndexable(any());
         repoMap.put(entityType, mockRepo);
         org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
             org.openmetadata.service.search.capability.EntityIndexCapability.forEntity(entityType));
@@ -371,6 +402,20 @@ class SearchRepositoryBehaviorTest {
   }
 
   /**
+   * When an entity's {@code entityIndexMap} key differs from its {@code alias} (the mlModel service
+   * key is {@code mlmodelService} but its alias is {@code mlModelService}), a query for the alias
+   * must still resolve to the single canonical index. Without alias resolution the token misses the
+   * by-key lookup, passes through as a raw ES alias, and fans out to every index that carries it —
+   * for {@code mlModelService} that includes {@code mlmodel_search_index}, so the response leaks
+   * mlModel assets alongside the services.
+   */
+  @Test
+  void getIndexOrAliasNameResolvesEntityAliasWhenKeyCasingDiffers() {
+    assertEquals(
+        "cluster_mlmodel_service_search_index", repository.getIndexOrAliasName("mlModelService"));
+  }
+
+  /**
    * Compound aliases like {@code "all"} and {@code "dataAsset"} have no entry in
    * {@code entityIndexMap} (they're meta-aliases registered against many entities at index
    * creation time). The resolver passes them through with the cluster prefix so ES expands them
@@ -392,6 +437,39 @@ class SearchRepositoryBehaviorTest {
   void getIndexOrAliasNameIsIdempotentForAlreadyPrefixedTokens() {
     assertEquals(
         "cluster_table_search_index", repository.getIndexOrAliasName("cluster_table_search_index"));
+  }
+
+  @Test
+  void getIndexOrAliasNameUsesDataInsightsDataStreamPrefix() {
+    for (String index : List.of("di-data-assets*", "di-data-assets-*", "di-data-assets-table")) {
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName(index));
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName("cluster-" + index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesClusterAliasesStartingWithDataInsightsPrefix() {
+    SearchRepository diCluster = newRepository(Map.of(), "di-data-assets-prod");
+    for (String index :
+        List.of("di-data-assets-prod_table_search_index", "di-data-assets-prod-di-data-assets-*")) {
+      assertEquals(index, diCluster.getIndexOrAliasName(index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesDataInsightsWithoutClusterAlias() {
+    assertEquals(
+        "di-data-assets-*", newRepository(Map.of(), null).getIndexOrAliasName("di-data-assets-*"));
+    assertEquals(
+        "di-data-assets-table",
+        newRepository(Map.of(), "").getIndexOrAliasName("di-data-assets-table"));
+  }
+
+  @Test
+  void getIndexOrAliasNameResolvesMixedDataInsightsAndEntityIndexes() {
+    assertEquals(
+        "cluster_table_search_index,cluster-di-data-assets-*,cluster_dataAsset",
+        repository.getIndexOrAliasName("table, di-data-assets-*, dataAsset"));
   }
 
   /**
@@ -522,6 +600,49 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntityIndexDeletesStaleDocumentForNonIndexableEntity() throws IOException {
+    UUID entityId = UUID.randomUUID();
+    Table entity = mock(Table.class);
+    when(entity.getEntityReference())
+        .thenReturn(
+            new EntityReference()
+                .withId(entityId)
+                .withType(Entity.TABLE)
+                .withName("private-memory"));
+    when(entity.getId()).thenReturn(entityId);
+    when(entity.getFullyQualifiedName()).thenReturn("svc.db.schema.private-memory");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(entity);
+
+    repository.createEntityIndex(entity);
+
+    verify(searchClient).deleteEntity("cluster_table_search_index", entityId.toString());
+    verify(searchClient, never())
+        .createEntity(any(String.class), any(String.class), any(String.class));
+  }
+
+  @Test
+  void createEntityIndexPreservesEntityTypeWhenSearchIsUnavailable() throws IOException {
+    UUID entityId = UUID.randomUUID();
+    EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
+    when(searchClient.isClientAvailable()).thenReturn(false);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.createEntityIndex(entity);
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  entityId.toString(),
+                  entity.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntityIndex: Search client unavailable"));
+      verify(searchClient, never())
+          .createEntity(any(String.class), any(String.class), any(String.class));
+    }
+  }
+
+  @Test
   void createEntitiesIndexBulkWritesDocumentsOfTheSameType() throws IOException {
     EntityInterface first = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityInterface second = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
@@ -539,11 +660,60 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable()
+      throws IOException {
+    EntityInterface hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
+    EntityInterface visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(hidden);
+    when(searchClient.isClientAvailable()).thenReturn(false);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.createEntitiesIndex(List.of(hidden, visible));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  visible.getId().toString(),
+                  visible.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  hidden.getId().toString(),
+                  hidden.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"),
+          never());
+    }
+  }
+
+  @Test
   void createEntitiesIndexSkipsFailedDocumentsAndContinuesBulkCreate() throws IOException {
     EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
     EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(searchIndexFactory.buildIndex(Entity.TABLE, broken))
         .thenThrow(new IllegalStateException("cannot index broken entity"));
+    when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
+        .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
+
+    repository.createEntitiesIndex(List.of(broken, valid));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_table_search_index"), docsCaptor.capture());
+    assertEquals(1, docsCaptor.getValue().size());
+    assertEquals(
+        valid.getId().toString(), docsCaptor.getValue().getFirst().keySet().iterator().next());
+  }
+
+  @Test
+  void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws IOException {
+    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    when(broken.getEntityReference())
+        .thenThrow(new IllegalStateException("cannot resolve entity reference"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
         .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
 
@@ -664,6 +834,83 @@ class SearchRepositoryBehaviorTest {
     verify(spyRepository)
         .propagateToRelatedEntities(
             eq(Entity.TAG), eq(changeDescription), eq(TABLE_MAPPING), eq(tag));
+  }
+
+  @Test
+  void updateEntityIndexFencesLogicalSuiteFallbackWithItsRevision() {
+    UUID testCaseId = UUID.randomUUID();
+    TestCase testCase = mock(TestCase.class);
+    EntityReference entityReference =
+        new EntityReference().withId(testCaseId).withType(Entity.TEST_CASE);
+    when(testCase.getEntityReference()).thenReturn(entityReference);
+    when(testCase.getId()).thenReturn(testCaseId);
+    when(testCase.getFullyQualifiedName()).thenReturn("service.testCase");
+    SearchIndex searchIndex = mock(SearchIndex.class);
+    when(searchIndex.buildSearchIndexDoc(any(DocBuildContext.class)))
+        .thenReturn(
+            Map.of(
+                "name",
+                "testCase",
+                Entity.FIELD_TEST_SUITES,
+                List.of(Map.of("id", UUID.randomUUID().toString()))));
+    when(searchIndexFactory.buildIndex(Entity.TEST_CASE, testCase)).thenReturn(searchIndex);
+
+    repository.updateEntityIndex(testCase, 17L);
+
+    ArgumentCaptor<DocBuildContext> buildContext = ArgumentCaptor.forClass(DocBuildContext.class);
+    verify(searchIndex).buildSearchIndexDoc(buildContext.capture());
+    assertEquals(17L, buildContext.getValue().relationshipRevision());
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> document = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
+    verify(searchClient)
+        .updateEntity(
+            eq("cluster_test_case_search_index"),
+            eq(testCaseId.toString()),
+            document.capture(),
+            script.capture());
+    assertEquals(17L, document.getValue().get("testSuitesRevision"));
+    assertEquals("testCase", document.getValue().get("name"));
+    assertTrue(script.getValue().contains("params.testSuitesRevision >="));
+  }
+
+  @Test
+  void updateEntityIndexFencesLogicalTestSuiteFallbackWithItsRevision() {
+    UUID testSuiteId = UUID.randomUUID();
+    TestSuite testSuite = mock(TestSuite.class);
+    EntityReference entityReference =
+        new EntityReference().withId(testSuiteId).withType(Entity.TEST_SUITE);
+    when(testSuite.getEntityReference()).thenReturn(entityReference);
+    when(testSuite.getId()).thenReturn(testSuiteId);
+    when(testSuite.getFullyQualifiedName()).thenReturn("logicalSuite");
+    when(testSuite.getBasic()).thenReturn(false);
+    SearchIndex searchIndex = mock(SearchIndex.class);
+    when(searchIndex.buildSearchIndexDoc(any(DocBuildContext.class)))
+        .thenReturn(
+            Map.of(
+                "name",
+                "logicalSuite",
+                "tests",
+                List.of(Map.of("id", UUID.randomUUID().toString()))));
+    when(searchIndexFactory.buildIndex(Entity.TEST_SUITE, testSuite)).thenReturn(searchIndex);
+
+    repository.updateEntityIndex(testSuite, 21L);
+
+    ArgumentCaptor<DocBuildContext> buildContext = ArgumentCaptor.forClass(DocBuildContext.class);
+    verify(searchIndex).buildSearchIndexDoc(buildContext.capture());
+    assertEquals(21L, buildContext.getValue().relationshipRevision());
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> document = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
+    verify(searchClient)
+        .updateEntity(
+            eq("cluster_test_suite_search_index"),
+            eq(testSuiteId.toString()),
+            document.capture(),
+            script.capture());
+    assertEquals(21L, document.getValue().get("testsRevision"));
+    assertEquals("logicalSuite", document.getValue().get("name"));
+    assertTrue(script.getValue().contains("params.testsRevision >="));
   }
 
   @Test
@@ -1178,6 +1425,11 @@ class SearchRepositoryBehaviorTest {
             "cluster_table_search_index",
             entity.getId().toString(),
             new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
+    final UUID entityId = entity.getId();
+    final String entityFqn = entity.getFullyQualifiedName();
+    QueryRepository queryRepository = (QueryRepository) Entity.getEntityRepository(Entity.QUERY);
+    verify(queryRepository)
+        .forEachQueryBatchForDomainSource(eq(Entity.TABLE), eq(entityId), eq(entityFqn), any());
 
     EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);
@@ -1800,10 +2052,22 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void getScriptWithParamsBuildsFollowerDescriptionAndQueryUsageUpdates() {
+  void getScriptWithParamsBuildsFollowerDescriptionAndReducedQueryDomainUpdates() {
     EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
+    EntityReference queryDomain =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("analytics")
+            .withDisplayName("Analytics")
+            .withFullyQualifiedName("analytics")
+            .withDescription("Analytics domain")
+            .withDeleted(false)
+            .withInherited(true)
+            .withHref(URI.create("http://localhost/api/v1/domains/analytics"));
     when(queryEntity.getUpdatedAt()).thenReturn(1234L);
     when(queryEntity.getDescription()).thenReturn("Updated query description");
+    when(queryEntity.getDomains()).thenReturn(List.of(queryDomain));
 
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
@@ -1832,11 +2096,23 @@ class SearchRepositoryBehaviorTest {
     assertTrue(script.contains("ctx._source.description = params.description;"));
     assertTrue(script.contains("ctx._source.usageSummary = params.usageSummary;"));
     assertTrue(script.contains("ctx._source.queryUsedIn = params.queryUsedIn;"));
+    assertTrue(script.contains("ctx._source.domains = params.domains;"));
     assertEquals(1234L, params.get("updatedAt"));
     assertEquals("Updated query description", params.get(Entity.FIELD_DESCRIPTION));
     assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
     assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
     assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
+    assertEquals(
+        List.of(
+            Map.of(
+                "id", queryDomain.getId().toString(),
+                "type", Entity.DOMAIN,
+                "name", "analytics",
+                "displayName", "Analytics",
+                "fullyQualifiedName", "analytics",
+                "description", "Analytics domain",
+                "deleted", false)),
+        params.get(Entity.FIELD_DOMAINS));
   }
 
   @Test
@@ -2318,7 +2594,7 @@ class SearchRepositoryBehaviorTest {
     when(context.getParentAliases(any()))
         .thenAnswer(invocation -> List.of("parent_" + invocation.getArgument(0)));
 
-    doNothing()
+    doReturn(true)
         .doThrow(new RuntimeException("boom"))
         .when(recreateIndexHandler)
         .finalizeReindex(any(EntityReindexContext.class), eq(true));
@@ -2349,9 +2625,10 @@ class SearchRepositoryBehaviorTest {
         .updateChildren(
             SearchClient.GLOBAL_SEARCH_ALIAS,
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                "domain.id", domain.getId().toString()),
+                "domains.id", domain.getId().toString()),
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT,
+                Map.of("id", domain.getId().toString())));
     verify(searchClient)
         .deleteEntityByFields(
             List.of("cluster_domain_search_index"),
@@ -2664,30 +2941,54 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void reformatVectorIndexWithDimensionAddsMetaAndPreservesInvalidJson() throws Exception {
-    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-    when(embeddingClient.getModelId()).thenReturn("test-model");
-    setPrivateField(repository, "embeddingClient", embeddingClient);
+  void readIndexMappingReturnsMappingForKnownIndex() {
+    String mapping = repository.readIndexMapping(TABLE_MAPPING);
+    assertNotNull(mapping);
+    assertFalse(mapping.isBlank());
+  }
 
-    String updated =
-        (String)
-            invokePrivateMethod(
-                repository,
-                "reformatVectorIndexWithDimension",
-                new Class<?>[] {String.class, int.class},
-                "{\"mappings\":{}}",
-                768);
+  @Test
+  void createOrUpdateIndexTemplatesEnrichesContentForElasticsearch() throws Exception {
+    SearchRepository esRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            null);
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    doNothing().when(searchClient).createOrUpdateIndexTemplate(any(), any(), any());
 
-    assertTrue(updated.contains("\"embedding_model\":\"test-model\""));
-    assertTrue(updated.contains("\"embedding_dimension\":768"));
-    assertEquals(
-        "not-json",
-        invokePrivateMethod(
-            repository,
-            "reformatVectorIndexWithDimension",
-            new Class<?>[] {String.class, int.class},
-            "not-json",
-            384));
+    try (var esUtils = mockStatic(EsUtils.class)) {
+      esUtils
+          .when(() -> EsUtils.enrichIndexMappingForElasticsearch(any()))
+          .thenAnswer(invocation -> invocation.getArgument(0));
+
+      esRepository.createOrUpdateIndexTemplates();
+
+      esUtils.verify(
+          () -> EsUtils.enrichIndexMappingForElasticsearch(any()),
+          org.mockito.Mockito.atLeastOnce());
+    }
+  }
+
+  @Test
+  void createOrUpdateIndexTemplatesSkipsEnrichmentForOpenSearch() throws Exception {
+    SearchRepository openSearchRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.OPENSEARCH,
+            null);
+    when(searchClient.getSearchType()).thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+
+    doNothing().when(searchClient).createOrUpdateIndexTemplate(any(), any(), any());
+
+    try (var esUtils = mockStatic(EsUtils.class)) {
+      openSearchRepository.createOrUpdateIndexTemplates();
+
+      esUtils.verify(() -> EsUtils.enrichIndexMappingForElasticsearch(any()), never());
+    }
   }
 
   @Test
@@ -2766,7 +3067,61 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-    verify(vectorService).ensureHybridSearchPipeline(0.4, 0.6);
+    verify(vectorService).ensureHybridSearchPipeline(0.6, 0.4);
+  }
+
+  @Test
+  void initializeVectorSearchServiceInitializesElasticSearchVectorSupport() throws Exception {
+    NaturalLanguageSearchConfiguration nlConfig =
+        new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true);
+    SearchRepository esRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            nlConfig);
+    SearchRepository spyRepository = spy(esRepository);
+    ElasticSearchClient elasticSearchClient = mock(ElasticSearchClient.class);
+    ElasticsearchClient rawClient = mock(ElasticsearchClient.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
+
+    when(elasticSearchClient.getNewClient()).thenReturn(rawClient);
+    when(embeddingClient.getDimension()).thenReturn(1536);
+    doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
+    doReturn(embeddingClient)
+        .when(spyRepository)
+        .createEmbeddingClient(nullable(LLMConfiguration.class));
+    setPrivateField(spyRepository, "searchClient", elasticSearchClient);
+
+    try (var settingsCacheMock = mockStatic(SettingsCache.class);
+        var vectorServiceMock = mockStatic(ElasticSearchVectorService.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(null);
+      vectorServiceMock
+          .when(
+              () ->
+                  ElasticSearchVectorService.init(
+                      rawClient,
+                      embeddingClient,
+                      VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER))
+          .thenAnswer(invocation -> null);
+      vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
+
+      spyRepository.initializeVectorSearchService();
+
+      vectorServiceMock.verify(
+          () ->
+              ElasticSearchVectorService.init(
+                  rawClient,
+                  embeddingClient,
+                  VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER));
+    }
+
+    assertSame(embeddingClient, spyRepository.getEmbeddingClient());
+    assertSame(vectorService, spyRepository.getVectorIndexService());
+    assertNotNull(spyRepository.getVectorEmbeddingHandler());
   }
 
   @Test
@@ -2798,6 +3153,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchBySourceUrl("https://src")).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest)).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global")).thenReturn(response);
+    when(searchClient.getEntityTypeCounts(request, "global", subjectContext)).thenReturn(response);
     when(searchClient.getQueryCostRecords("service")).thenReturn(queryCostResult);
 
     assertSame(response, repository.previewSearch(request, subjectContext, null));
@@ -2809,6 +3165,9 @@ class SearchRepositoryBehaviorTest {
     assertSame(response, repository.searchBySourceUrl("https://src"));
     assertSame(response, repository.aggregate(aggregationRequest));
     assertSame(response, repository.getEntityTypeCounts(request, "global"));
+    // The subject-aware overload is what SearchResource calls, so a ContextMemory count matches
+    // what the same caller sees in the listing instead of being capped at org-wide memories.
+    assertSame(response, repository.getEntityTypeCounts(request, "global", subjectContext));
     assertSame(queryCostResult, repository.getQueryCostRecords("service"));
   }
 
@@ -2925,6 +3284,194 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void bulkTimeoutCompletedDuringClosePropagatesWithoutReplayOrRetry() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    String serviceId = service.getId().toString();
+    when(service.getChangeDescription())
+        .thenReturn(
+            changeDescription(
+                List.of(),
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_DISPLAY_NAME)
+                        .withOldValue("Old Service")
+                        .withNewValue("New Service")),
+                List.of()));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(false);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+                })) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      ElasticSearchBulkSink bulkSink = bulkSinks.constructed().getFirst();
+      InOrder propagationOrder = inOrder(bulkSink, searchClient);
+      propagationOrder.verify(bulkSink).close();
+      propagationOrder
+          .verify(searchClient)
+          .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
+      verify(searchClient, never())
+          .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
+      retryQueue.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void bulkFailureDoesNotPropagateAnUnconfirmedRoot() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+    when(service.getChangeDescription()).thenReturn(displayNameChange);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(true);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(1));
+                })) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      ElasticSearchBulkSink bulkSink = bulkSinks.constructed().getFirst();
+      verify(bulkSink).close();
+      verify(searchClient, never())
+          .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(service),
+                  eq(displayNameChange),
+                  eq(
+                      "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback"),
+                  any(IOException.class)));
+    }
+  }
+
+  @Test
+  void nonQuiescentBulkDefersPropagationUntilRetryCompletes() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+    when(service.getChangeDescription()).thenReturn(displayNameChange);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(false);
+                  when(bulkSink.getActiveBulkRequestCount()).thenReturn(1);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+                })) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      verify(searchClient, never())
+          .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(service),
+                  eq(displayNameChange),
+                  eq(
+                      "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback"),
+                  any(IOException.class)));
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void partiallyFailedBulkPropagatesOnlyConfirmedRoots() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface failedService =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "failed-service");
+    EntityInterface successfulService =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "successful-service");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+    when(failedService.getChangeDescription()).thenReturn(displayNameChange);
+    when(successfulService.getChangeDescription()).thenReturn(displayNameChange);
+    AtomicReference<BulkSink.FailureCallback> failureCallback = new AtomicReference<>();
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  doAnswer(
+                          invocation -> {
+                            failureCallback.set(invocation.getArgument(0));
+                            return null;
+                          })
+                      .when(bulkSink)
+                      .setFailureCallback(any());
+                  doAnswer(
+                          invocation -> {
+                            failureCallback
+                                .get()
+                                .onFailure(
+                                    Entity.DATABASE_SERVICE,
+                                    failedService.getId().toString(),
+                                    failedService.getFullyQualifiedName(),
+                                    "rejected",
+                                    IndexingFailureRecorder.FailureStage.PROCESS);
+                            return null;
+                          })
+                      .when(bulkSink)
+                      .write(any(), any());
+                  when(bulkSink.flushAndAwait(60)).thenReturn(true);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+                })) {
+      repository.updateEntitiesIndex(List.of(failedService, successfulService));
+
+      ArgumentCaptor<Pair<String, String>> parentMatch = ArgumentCaptor.forClass(Pair.class);
+      verify(searchClient).updateChildren(any(List.class), parentMatch.capture(), any(Pair.class));
+      assertEquals(successfulService.getId().toString(), parentMatch.getValue().getValue());
+      verify(bulkSinks.constructed().getFirst()).close();
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  failedService, displayNameChange, "updateEntitiesBulk PROCESS: rejected"));
+      retryQueue.verifyNoMoreInteractions();
+    }
+  }
+
+  @Test
   void createReindexHandlerAndDeleteRelationshipHelpersUseExpectedImplementations() {
     repository.createReindexHandler();
 
@@ -3018,6 +3565,7 @@ class SearchRepositoryBehaviorTest {
             Entity.DOMAIN,
             Entity.DATA_PRODUCT,
             Entity.DATABASE_SERVICE,
+            Entity.MLMODEL_SERVICE,
             Entity.TAG,
             Entity.GLOSSARY_TERM,
             Entity.GLOSSARY,

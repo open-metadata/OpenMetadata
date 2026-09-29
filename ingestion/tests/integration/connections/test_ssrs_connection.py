@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnect
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.ssrs.client import MAX_RETRIES, SsrsClient
-from metadata.ingestion.source.dashboard.ssrs.connection import get_connection
+from metadata.ingestion.source.dashboard.ssrs.connection import SsrsConnection as SsrsConnectionHandler
 
 
 class _MockHandler(BaseHTTPRequestHandler):
@@ -112,34 +112,34 @@ def ssrs_always_failing_url():
 class TestSsrsConnection:
     def test_get_connection(self, ssrs_mock_url):
         connection = SsrsConnection(hostPort=ssrs_mock_url, username="test_user", password="test_pass")
-        client = get_connection(connection)
+        client = SsrsConnectionHandler(connection).client
         assert isinstance(client, SsrsClient)
 
     def test_get_connection_test_access(self, ssrs_mock_url):
         connection = SsrsConnection(hostPort=ssrs_mock_url, username="test_user", password="test_pass")
-        client = get_connection(connection)
+        client = SsrsConnectionHandler(connection).client
         client.test_access()
 
     def test_get_connection_test_get_reports(self, ssrs_mock_url):
         connection = SsrsConnection(hostPort=ssrs_mock_url, username="test_user", password="test_pass")
-        client = get_connection(connection)
+        client = SsrsConnectionHandler(connection).client
         client.test_get_reports()
 
     def test_connection_bad_host(self):
         connection = SsrsConnection(hostPort="http://localhost:1", username="test_user", password="test_pass")
-        client = get_connection(connection)
+        client = SsrsConnectionHandler(connection).client
         with pytest.raises(SourceConnectionException):
             client.test_access()
 
     def test_connection_bad_host_get_reports(self):
         connection = SsrsConnection(hostPort="http://localhost:1", username="test_user", password="test_pass")
-        client = get_connection(connection)
+        client = SsrsConnectionHandler(connection).client
         with pytest.raises(SourceConnectionException):
             client.test_get_reports()
 
     def test_get_reports_retries_transient_failures(self, ssrs_flaky_url):
         connection = SsrsConnection(hostPort=ssrs_flaky_url, username="test_user", password="test_pass")
-        client = get_connection(connection)
+        client = SsrsConnectionHandler(connection).client
         reports = list(client.get_reports())
         assert reports == []
         assert _FlakyHandler.request_count == 3
@@ -153,7 +153,7 @@ class TestSsrsConnection:
             username="test_user",
             password="test_pass",
         )
-        client = get_connection(connection)
+        client = SsrsConnectionHandler(connection).client
         with pytest.raises(SourceConnectionException):
             list(client.get_reports())
         assert _AlwaysFailingHandler.request_count == MAX_RETRIES + 1

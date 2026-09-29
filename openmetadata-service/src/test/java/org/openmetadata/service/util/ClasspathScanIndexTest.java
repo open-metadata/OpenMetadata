@@ -1,0 +1,56 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.util;
+
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ScanResult;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.Function;
+import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.databases.TableResource;
+import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
+
+class ClasspathScanIndexTest {
+  @Test
+  void closesScanAfterEagerlyCachingSupportedAnnotationQueries() {
+    ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .enableMethodInfo()
+            .acceptPackages("org.openmetadata", "io.collate")
+            .scan();
+
+    ClasspathScanIndex index = new ClasspathScanIndex(scanResult);
+
+    List<Class<?>> repositories = index.getClassesWithAnnotation(Repository.class);
+    List<Class<?>> collections = index.getClassesWithAnnotation(Collection.class);
+    List<Class<?>> conditionFunctions = index.getClassesWithMethodAnnotation(Function.class);
+
+    assertTrue(scanResult.isClosed());
+    assertSame(repositories, index.getClassesWithAnnotation(Repository.class));
+    assertSame(collections, index.getClassesWithAnnotation(Collection.class));
+    assertSame(conditionFunctions, index.getClassesWithMethodAnnotation(Function.class));
+    assertThrows(UnsupportedOperationException.class, repositories::clear);
+    assertTrue(repositories.contains(SystemRepository.class));
+    assertTrue(collections.contains(TableResource.class));
+    assertTrue(conditionFunctions.contains(RuleEvaluator.class));
+  }
+}

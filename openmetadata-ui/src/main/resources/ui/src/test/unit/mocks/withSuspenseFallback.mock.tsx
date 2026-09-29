@@ -30,4 +30,8 @@ export function withSuspenseFallback<T extends object>(
   });
 }
 
+// Route-level chunks use a visible fallback in production, but unit tests keep
+// the mock silent to avoid unrelated loader assertions across router tests.
+export const withPageSuspenseFallback = withSuspenseFallback;
+
 export default withSuspenseFallback;

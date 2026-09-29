@@ -12,37 +12,32 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import LineageControlButtons from './LineageControlButtons';
 
 const mockNavigate = jest.fn();
-const mockToggleColumnView = jest.fn();
 const mockZoomIn = jest.fn();
 const mockZoomOut = jest.fn();
 const mockFitView = jest.fn();
 const mockSetCenter = jest.fn();
 const mockGetNodes = jest.fn();
-const mockRedraw = jest.fn();
-const mockZoomTo = jest.fn();
-
 const mockReactFlowInstance = {
   zoomIn: mockZoomIn,
   zoomOut: mockZoomOut,
-  zoomTo: mockZoomTo,
   fitView: mockFitView,
   setCenter: mockSetCenter,
   getNodes: mockGetNodes,
-  getZoom: jest.fn().mockReturnValue(1),
 };
 
-const mockLineageProviderValues = {
-  activeLayer: [],
+const mockLineageState = {
+  selectedColumn: null,
+  setSelectedColumn: jest.fn(),
+  setTracedColumns: jest.fn(),
   isEditMode: false,
-  expandAllColumns: false,
-  toggleColumnView: mockToggleColumnView,
-  reactFlowInstance: mockReactFlowInstance,
-  redraw: mockRedraw,
+  tracedColumns: new Set<string>(),
+  reactFlowInstance: mockReactFlowInstance as
+    | typeof mockReactFlowInstance
+    | undefined,
 };
 
 jest.mock('react-router-dom', () => ({
@@ -55,21 +50,10 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
   default: jest.fn(() => ({ search: '' })),
 }));
 
-jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn().mockImplementation(() => ({
-    ...mockLineageProviderValues,
-    reactFlowInstance: mockReactFlowInstance,
-  })),
-}));
-
 jest.mock('../../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn(() => ({
-    selectedColumn: null,
-    setSelectedColumn: jest.fn(),
-    setTracedColumns: jest.fn(),
-    isEditMode: false,
-    tracedColumns: new Set(),
-  })),
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockLineageState) : mockLineageState
+  ),
 }));
 
 const mockOnToggleMiniMap = jest.fn();
@@ -79,6 +63,10 @@ const mockProps = {
 };
 
 describe('LineageControlButtons', () => {
+  beforeEach(() => {
+    mockLineageState.reactFlowInstance = mockReactFlowInstance;
+  });
+
   describe('Rendering', () => {
     it('should render all control buttons', () => {
       render(
@@ -103,7 +91,7 @@ describe('LineageControlButtons', () => {
 
       const miniMapButton = screen.getByTestId('toggle-mind-map');
 
-      expect(miniMapButton).toHaveClass('Mui-selected');
+      expect(miniMapButton).toHaveAttribute('data-selected', 'true');
     });
   });
 
@@ -181,10 +169,7 @@ describe('LineageControlButtons', () => {
     });
 
     it('should handle missing reactFlowInstance gracefully', () => {
-      (useLineageProvider as jest.Mock).mockReturnValueOnce({
-        ...mockLineageProviderValues,
-        reactFlowInstance: undefined,
-      });
+      mockLineageState.reactFlowInstance = undefined;
 
       render(
         <MemoryRouter>
@@ -221,7 +206,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.fit-to-screen'));
 
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2 });
+      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2, maxZoom: 1 });
     });
 
     it('should call fitView with selected nodes when "Refocus to selected" is clicked', () => {
@@ -258,7 +243,21 @@ describe('LineageControlButtons', () => {
       });
     });
 
-    it('should call redraw when "Rearrange nodes" is clicked', () => {
+    it('should call onRearrange when "Rearrange nodes" is clicked', () => {
+      const mockOnRearrange = jest.fn();
+      render(
+        <MemoryRouter>
+          <LineageControlButtons {...mockProps} onRearrange={mockOnRearrange} />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByText('label.rearrange-nodes'));
+
+      expect(mockOnRearrange).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not throw when "Rearrange nodes" is clicked without onRearrange', () => {
       render(
         <MemoryRouter>
           <LineageControlButtons {...mockProps} />
@@ -266,9 +265,10 @@ describe('LineageControlButtons', () => {
       );
 
       fireEvent.click(screen.getByTestId('fit-screen'));
-      fireEvent.click(screen.getByText('label.rearrange-nodes'));
 
-      expect(mockRedraw).toHaveBeenCalledTimes(1);
+      expect(() =>
+        fireEvent.click(screen.getByText('label.rearrange-nodes'))
+      ).not.toThrow();
     });
 
     it('should call setCenter when "Refocus to home" is clicked', () => {
@@ -300,10 +300,7 @@ describe('LineageControlButtons', () => {
     });
 
     it('should handle missing reactFlowInstance gracefully', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        reactFlowInstance: undefined,
-      });
+      mockLineageState.reactFlowInstance = undefined;
 
       render(
         <MemoryRouter>

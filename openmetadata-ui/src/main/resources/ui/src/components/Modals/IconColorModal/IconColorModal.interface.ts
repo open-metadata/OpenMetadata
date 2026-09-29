@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Style } from '../../../generated/type/schema';
+import { IconDefinition } from '../../common/IconPicker/IconPicker.interface';
+import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 
-export interface IconColorModalProps {
-  open: boolean;
-  style?: Style;
-  onSubmit: (value: Style) => Promise<void>;
-  onCancel: () => void;
+export interface IconColorModalProps extends StyleModalProps {
+  /**
+   * Shown in the picker trigger while nothing is selected, and listed first in
+   * the icon grid. Defaults to the tag icon.
+   */
+  defaultIcon?: IconDefinition;
 }

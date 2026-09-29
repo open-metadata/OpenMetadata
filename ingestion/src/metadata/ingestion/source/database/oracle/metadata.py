@@ -14,11 +14,12 @@
 
 import traceback
 import types
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
-from sqlalchemy.engine import Inspector
+from sqlalchemy.engine import Inspector, Row
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -48,27 +49,26 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.oracle.models import (
-    FetchObjectList,
-    OracleStoredObject,
-)
+from metadata.ingestion.source.database.oracle.models import OracleStoredObject
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PACKAGES,
     ORACLE_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
-    _get_constraint_data,
     denormalize_name,
     get_all_view_definitions,
     get_columns,
+    get_foreign_keys,
     get_indexes_preserve_case,
     get_mview_names,
     get_mview_names_dialect,
+    get_pk_constraint,
     get_table_comment,
     get_table_comment_preserve_case,
     get_table_names,
     get_table_prefix_from_connection,
+    get_unique_constraints,
     get_view_definition,
     get_view_definition_preserve_case,
     get_view_names,
@@ -109,7 +109,9 @@ OracleDialect.get_view_names = get_view_names_dialect
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
-OracleDialect._get_constraint_data = _get_constraint_data
+OracleDialect.get_pk_constraint = get_pk_constraint
+OracleDialect.get_unique_constraints = get_unique_constraints
+OracleDialect.get_foreign_keys = get_foreign_keys
 
 
 class OracleSource(CommonDbSourceService):
@@ -122,7 +124,9 @@ class OracleSource(CommonDbSourceService):
         super().__init__(config, metadata)
         dialect = self.engine.dialect
         dialect.table_prefix = get_table_prefix_from_connection(self.service_connection)
-        if getattr(self.service_connection, "preserveIdentifierCase", False):
+        preserve_identifier_case = getattr(self.service_connection, "preserveIdentifierCase", False)
+        dialect.preserve_identifier_case = preserve_identifier_case  # type: ignore
+        if preserve_identifier_case:
             dialect.normalize_name = types.MethodType(normalize_name, dialect)
             dialect.denormalize_name = types.MethodType(denormalize_name, dialect)
             dialect.get_table_comment = types.MethodType(get_table_comment_preserve_case, dialect)
@@ -130,7 +134,7 @@ class OracleSource(CommonDbSourceService):
             dialect.get_indexes = types.MethodType(get_indexes_preserve_case, dialect)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: OracleConnection = config.serviceConnection.root.config
         if not isinstance(connection, OracleConnection):
@@ -157,7 +161,7 @@ class OracleSource(CommonDbSourceService):
 
         return regular_tables + material_tables
 
-    def process_result(self, data: FetchObjectList):
+    def process_result(self, data: Iterable[Row[Any]]):
         """Process data as per our stored procedure format"""
         result_dict = {}
 
@@ -179,7 +183,7 @@ class OracleSource(CommonDbSourceService):
             schema = schema.upper()
         prefix = getattr(self.engine.dialect, "table_prefix", "DBA")
         with self.engine.connect() as conn:
-            results: FetchObjectList = conn.execute(text(query.format(schema=schema, prefix=prefix))).all()
+            results = conn.execute(text(query.format(prefix=prefix)), {"schema": schema}).all()
         results = self.process_result(data=results)
         for row in results.items():
             stored_procedure = OracleStoredObject(

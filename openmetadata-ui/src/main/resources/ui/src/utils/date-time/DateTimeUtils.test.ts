@@ -652,10 +652,14 @@ describe('convertSecondsToHumanReadableFormat', () => {
       }
 
       // Verify specific case from original bug: 362.6 days < 366.6 days
-      const nov27 = formattedResults.find((r) => r.days === 362.6);
-      const nov19 = formattedResults.find((r) => r.days === 366.6);
+      const nov27 = formattedResults.find(
+        (r) => r.days === 362.6
+      ) as (typeof formattedResults)[number];
+      const nov19 = formattedResults.find(
+        (r) => r.days === 366.6
+      ) as (typeof formattedResults)[number];
 
-      expect(Math.abs(nov27!.seconds)).toBeLessThan(Math.abs(nov19!.seconds));
+      expect(Math.abs(nov27.seconds)).toBeLessThan(Math.abs(nov19.seconds));
 
       // Verify we have 16 consecutive days
       expect(formattedResults).toHaveLength(16);
@@ -723,10 +727,12 @@ describe('convertSecondsToHumanReadableFormat', () => {
       }
 
       // Verify 361 days shows as 1Y 1d (not wrapping incorrectly)
-      const day361 = results.find((r) => r.description.includes('361 days'));
+      const day361 = results.find((r) =>
+        r.description.includes('361 days')
+      ) as (typeof results)[number];
 
-      expect(day361!.formatted).toContain('1Y');
-      expect(day361!.formatted).toContain('1d');
+      expect(day361.formatted).toContain('1Y');
+      expect(day361.formatted).toContain('1d');
     });
   });
 });

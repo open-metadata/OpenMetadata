@@ -34,11 +34,14 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -77,6 +80,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     supportsTags = true;
     supportsDomains = true;
     supportsDataProducts = true;
+    supportsDataProductAssetsSearch = false;
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = true;
@@ -1426,6 +1430,150 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   }
 
   /**
+   * Regression test for issue #29510: glossaryStatus column must be parsed case-insensitively.
+   * Users supplying valid status values in any casing (draft, APPROVED, drAFT, deprecated, etc.)
+   * should produce a successful import with the canonical {@link EntityStatus} stored on the term.
+   * Invalid values must still surface as a clear validation error.
+   */
+  @Test
+  void test_importCsv_glossaryStatusIsCaseInsensitive(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+    String header =
+        client.glossaries().exportCsv(glossary.getName()).lines().findFirst().orElse("");
+    assertTrue(header.contains("glossaryStatus"), "Exported header must include glossaryStatus");
+
+    List<StatusCase> cases =
+        List.of(
+            new StatusCase(ns.prefix("statusDraft"), "Lower Draft", "draft (lower)", "draft"),
+            new StatusCase(
+                ns.prefix("statusApproved"), "Upper Approved", "approved (upper)", "APPROVED"),
+            new StatusCase(
+                ns.prefix("statusDeprecated"),
+                "Lower Deprecated",
+                "deprecated (lower)",
+                "deprecated"),
+            new StatusCase(ns.prefix("statusMixed"), "Mixed Draft", "drAFT (mixed)", "drAFT"));
+
+    StringBuilder csvBuilder = new StringBuilder(header).append('\n');
+    for (StatusCase c : cases) {
+      csvBuilder.append(
+          buildStatusRow(header, c.termName(), c.displayName(), c.description(), c.csvCasing()));
+    }
+
+    String resultJson =
+        client.glossaries().importCsv(glossary.getName(), csvBuilder.toString(), false);
+    CsvImportResult importResult = JsonUtils.readValue(resultJson, CsvImportResult.class);
+    assertEquals(
+        ApiStatus.SUCCESS,
+        importResult.getStatus(),
+        "Case-insensitive glossaryStatus import should succeed. Result: " + resultJson);
+    assertEquals(cases.size(), importResult.getNumberOfRowsPassed());
+    assertEquals(0, importResult.getNumberOfRowsFailed());
+
+    String resultsCsv = importResult.getImportResultsCsv();
+    assertNotNull(resultsCsv, "Per-row import results should be present. Result: " + resultJson);
+    for (StatusCase c : cases) {
+      boolean rowSucceeded =
+          resultsCsv
+              .lines()
+              .anyMatch(
+                  line ->
+                      line.startsWith("success")
+                          && line.contains(c.termName())
+                          && line.contains("," + c.csvCasing() + ","));
+      assertTrue(
+          rowSucceeded,
+          "Row for '"
+              + c.termName()
+              + "' with casing '"
+              + c.csvCasing()
+              + "' should be reported as success. importResultsCsv="
+              + resultsCsv);
+    }
+
+    for (StatusCase c : cases) {
+      GlossaryTerm term =
+          client.glossaryTerms().getByName(glossary.getFullyQualifiedName() + "." + c.termName());
+      assertNotNull(
+          term.getEntityStatus(),
+          "Imported term '" + c.termName() + "' must have an entityStatus assigned");
+    }
+  }
+
+  private record StatusCase(
+      String termName, String displayName, String description, String csvCasing) {}
+
+  /** Invalid glossaryStatus values must still surface as a clear validation failure. */
+  @Test
+  void test_importCsv_glossaryStatusInvalidValueFails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+    String header =
+        client.glossaries().exportCsv(glossary.getName()).lines().findFirst().orElse("");
+
+    String badTermName = ns.prefix("statusBad");
+    String csv =
+        header
+            + "\n"
+            + buildStatusRow(header, badTermName, "Bad Status", "invalid status", "not-a-status");
+
+    String resultJson = client.glossaries().importCsv(glossary.getName(), csv, false);
+    assertNotNull(resultJson);
+    CsvImportResult importResult = JsonUtils.readValue(resultJson, CsvImportResult.class);
+    assertTrue(
+        importResult.getNumberOfRowsFailed() != null && importResult.getNumberOfRowsFailed() >= 1,
+        "Import should report at least one failed row. Result: " + resultJson);
+    assertTrue(
+        importResult.getImportResultsCsv() != null
+            && importResult.getImportResultsCsv().contains("not-a-status"),
+        "Failure message should reference the invalid status value. Result: " + resultJson);
+    assertTrue(
+        importResult.getImportResultsCsv().contains("is invalid"),
+        "Failure message should mark the value as invalid. Result: " + resultJson);
+  }
+
+  private static String buildStatusRow(
+      String header, String name, String displayName, String description, String status) {
+    String[] columns = header.split(",");
+    int statusIdx = -1;
+    int nameIdx = -1;
+    int displayIdx = -1;
+    int descIdx = -1;
+    for (int i = 0; i < columns.length; i++) {
+      String col = columns[i].trim();
+      if (col.equals("glossaryStatus")) {
+        statusIdx = i;
+      } else if (col.equals("name*") || col.equals("name")) {
+        nameIdx = i;
+      } else if (col.equals("displayName")) {
+        displayIdx = i;
+      } else if (col.equals("description")) {
+        descIdx = i;
+      }
+    }
+    String[] row = new String[columns.length];
+    for (int i = 0; i < row.length; i++) {
+      row[i] = "";
+    }
+    if (nameIdx >= 0) {
+      row[nameIdx] = "\"" + name + "\"";
+    }
+    if (displayIdx >= 0) {
+      row[displayIdx] = "\"" + displayName + "\"";
+    }
+    if (descIdx >= 0) {
+      row[descIdx] = "\"" + description + "\"";
+    }
+    if (statusIdx >= 0) {
+      row[statusIdx] = status;
+    }
+    return String.join(",", row) + "\n";
+  }
+
+  /**
    * Regression test: glossary terms must keep their assigned domains through a CSV export/import
    * round-trip (the UI "bulk edit" flow). Domains were silently dropped because the glossary CSV
    * had no domains column.
@@ -1698,5 +1846,60 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           imported.getReviewers().size(),
           "Glossary reviewer count should match");
     }
+  }
+
+  // Domain filter (#31173): GET /glossaries?domain=<fqn> must scope the list by domain.
+
+  private record DomainGlossary(Domain domain, Glossary glossary) {}
+
+  private DomainGlossary seedGlossaryInDomain(TestNamespace ns, String suffix) {
+    final Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("domain-" + suffix))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain " + suffix));
+    final Glossary glossary =
+        createEntity(
+            createRequest(ns.prefix("glossary-" + suffix), ns)
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    return new DomainGlossary(domain, glossary);
+  }
+
+  // High limit so a busy shared test instance cannot page a target glossary out of the results.
+  private List<Glossary> listGlossariesByDomain(String domainFqn) {
+    return listEntities(new ListParams().setDomain(domainFqn).setLimit(1000000)).getData();
+  }
+
+  @Test
+  void test_listGlossaries_domainFilterIncludesGlossaryInThatDomain(TestNamespace ns) {
+    final DomainGlossary seeded = seedGlossaryInDomain(ns, "a");
+    final List<Glossary> listed = listGlossariesByDomain(seeded.domain().getFullyQualifiedName());
+    assertTrue(
+        listed.stream().anyMatch(g -> g.getId().equals(seeded.glossary().getId())),
+        "Glossary in the domain must be listed when filtering by that domain");
+  }
+
+  @Test
+  void test_listGlossaries_domainFilterExcludesGlossaryInOtherDomain(TestNamespace ns) {
+    final DomainGlossary target = seedGlossaryInDomain(ns, "a");
+    final DomainGlossary other = seedGlossaryInDomain(ns, "b");
+    final List<Glossary> listed = listGlossariesByDomain(target.domain().getFullyQualifiedName());
+    assertFalse(
+        listed.stream().anyMatch(g -> g.getId().equals(other.glossary().getId())),
+        "Glossary in another domain must not be listed when filtering by this domain");
+  }
+
+  @Test
+  void test_listGlossaries_emptyDomainReturnsUnfiltered(TestNamespace ns) {
+    final DomainGlossary seeded = seedGlossaryInDomain(ns, "a");
+    // Empty domain must be treated as no filter, not resolved as an FQN (which would 404).
+    final List<Glossary> listed =
+        listEntities(new ListParams().setDomain("").setLimit(1000000)).getData();
+    assertTrue(
+        listed.stream().anyMatch(g -> g.getId().equals(seeded.glossary().getId())),
+        "Empty domain filter must not 404 and must return glossaries");
   }
 }

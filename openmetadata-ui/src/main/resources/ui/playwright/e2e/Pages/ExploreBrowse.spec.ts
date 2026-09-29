@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { expect, test } from '../../support/fixtures/base';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
   expandSchemaInExploreTree,
@@ -25,19 +29,57 @@ import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
-const dashboard = new DashboardClass();
+// Explore tree's service bucket is capped at 166 and sorted alphabetically
+// (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
+// a digit guarantees these services land within that bucket regardless of how
+// many other `pw-*` services have accumulated.
+const table = new TableClass(undefined, undefined, {
+  name: `0-pw-database-service-${uuid()}`,
+});
+const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
-  await page
+  const switcher = page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
-    .locator('.ant-tree-switcher svg')
     .first()
-    .click();
+    .locator('.ant-tree-switcher');
 
+  const isExpanded = async () =>
+    ((await switcher.getAttribute('class')) ?? '').includes(
+      'ant-tree-switcher_open'
+    );
+
+  if (await isExpanded()) {
+    return;
+  }
+
+  // Set up response listener BEFORE clicking. After #29642, ExploreTree skips
+  // setIsLoading on browse selections, so loader-based waiting is unreliable.
+  // Response-based waiting (the same pattern used in expandServiceInExploreTree
+  // etc.) anchors on the actual data fetch so children are fully rendered before
+  // we interact with them.
+  // ServiceType nodes drill down through POST /search/aggregate (service.style
+  // top hits for custom icons); every other level still uses GET /search/query.
+  // A node only fetches its children the first time it opens though, so a caller
+  // re-expanding a node the tree already holds gets no request at all — hence the
+  // bound and the tolerance for it never arriving. Left unbounded this waits the
+  // full 30s default, which is enough to exhaust a caller's whole retry budget.
+  const res = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query?') ||
+        (response.url().endsWith('/api/v1/search/aggregate') &&
+          response.request().method() === 'POST'),
+      { timeout: 15_000 }
+    )
+    .catch(() => undefined);
+
+  await switcher.locator('svg').first().click({ timeout: 10_000 });
+  await res;
+  await expect(switcher).toHaveClass(/ant-tree-switcher_open/);
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -68,7 +110,7 @@ const selectDataAssetType = async (page: Page, optionKey: string) => {
   const applyRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId(`${optionKey}-checkbox`).check();
+  await page.getByTestId('drop-down-menu').getByTestId(optionKey).click();
   await applyRes;
   await page.keyboard.press('Escape');
   await waitForAllLoadersToDisappear(page);
@@ -190,7 +232,7 @@ test.describe(
       expect(filteredCount).toBeLessThan(unfilteredCount);
     });
 
-    test('result-card breadcrumb collapses a deep path and expands on click', async ({
+    test('every result-card breadcrumb links to its hierarchy destination', async ({
       page,
     }) => {
       test.slow();
@@ -203,18 +245,61 @@ test.describe(
       await searchRes;
       await waitForAllLoadersToDisappear(page);
 
-      // The middle crumbs are collapsed into a clickable "…" menu — the trail
+      const card = page.getByTestId(
+        `table-data-card_${table.entityResponseData.fullyQualifiedName}`
+      );
+      const breadcrumb = card.getByRole('list', { name: 'Breadcrumb' });
+      const serviceLink = breadcrumb.getByRole('link', {
+        name: table.serviceResponseData.name,
+      });
+      const schemaLink = breadcrumb.getByRole('link', {
+        name: table.schemaResponseData.name,
+      });
+
+      await expect(serviceLink).toHaveAttribute(
+        'href',
+        `/service/databaseServices/${getEncodedFqn(
+          table.serviceResponseData.name
+        )}`
+      );
+      await expect(schemaLink).toHaveAttribute(
+        'href',
+        `/databaseSchema/${getEncodedFqn(
+          table.schemaResponseData.fullyQualifiedName
+        )}`
+      );
+
+      // The middle crumb is collapsed into a clickable "…" menu — the trail
       // stays compact (first / … / last) instead of spanning the whole card.
-      const collapseButton = page
-        .getByRole('button', { name: 'Show hidden breadcrumbs' })
-        .first();
+      const collapseButton = breadcrumb.getByRole('button', {
+        name: 'Show hidden breadcrumbs',
+      });
       await expect(collapseButton).toBeVisible();
 
-      // Clicking the "…" reveals the hidden middle crumbs.
       await collapseButton.click();
-      await expect(
-        page.getByRole('menu', { name: 'Hidden breadcrumbs' })
-      ).toBeVisible();
+      const hiddenBreadcrumbs = page.getByRole('menu', {
+        name: 'Hidden breadcrumbs',
+      });
+      const databaseLink = hiddenBreadcrumbs.getByRole('menuitemradio', {
+        name: table.databaseResponseData.name,
+      });
+
+      await expect(databaseLink).toHaveAttribute(
+        'href',
+        `/database/${getEncodedFqn(
+          table.databaseResponseData.fullyQualifiedName
+        )}`
+      );
+
+      await page.keyboard.press('Escape');
+      await schemaLink.click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/databaseSchema/${getEncodedFqn(
+            table.schemaResponseData.fullyQualifiedName
+          )}$`
+        )
+      );
     });
 
     test('browsing the tree stacks removable QUERY chips and filters results', async ({
@@ -235,11 +320,7 @@ test.describe(
       });
 
       await test.step('Removing the service-type chip clears the browse', async () => {
-        const removeRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('remove-browse-chip-serviceType').click();
-        await removeRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -254,13 +335,17 @@ test.describe(
       test.slow();
 
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
-        await expandTreeNode(page, 'Databases');
+        const serviceTitle = page.getByTestId(
+          `explore-tree-title-${table.service.serviceType.toLowerCase()}`
+        );
 
-        await page
-          .getByTestId(
-            `explore-tree-title-${table.service.serviceType.toLowerCase()}`
-          )
-          .click();
+        await waitForAllLoadersToDisappear(page);
+        if (!(await serviceTitle.isVisible())) {
+          await expandTreeNode(page, 'Databases');
+        }
+        await expect(serviceTitle).toBeVisible();
+        await serviceTitle.click();
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
 
         await waitForAllLoadersToDisappear(page);
 
@@ -278,11 +363,7 @@ test.describe(
       });
 
       await test.step('Query-panel Clear restores the full browse estate', async () => {
-        const clearRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('clear-all-chips').click();
-        await clearRes;
         await waitForAllLoadersToDisappear(page);
 
         const url = new URL(page.url());
@@ -315,6 +396,76 @@ test.describe(
       await expect(
         dashboardLeaf.locator('..').locator('.explore-node-count')
       ).toBeVisible();
+    });
+
+    test('selecting a schema keeps the drilled path expanded and highlights it', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceName = table.serviceResponseData.name;
+      const dbName = table.databaseResponseData.name;
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+
+      // Selecting a hierarchical node used to rebuild the tree from the static
+      // structure, collapsing the drilled path and clearing the highlight.
+      const browseRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId(`explore-tree-title-${schemaName}`).click();
+      await browseRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await test.step('the drilled path stays expanded (no collapse)', async () => {
+        expect(page.url()).toContain('browsePath');
+        await expect(
+          page.getByTestId(`explore-tree-title-${serviceName}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`explore-tree-title-${dbName}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`explore-tree-title-${schemaName}`)
+        ).toBeVisible();
+      });
+
+      await test.step('the selected schema stays highlighted', async () => {
+        await expect(rootTreeNode(page, schemaName)).toHaveClass(
+          /ant-tree-treenode-selected/
+        );
+      });
+    });
+
+    test('selecting the Tables leaf highlights the leaf, not its parent schema', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+
+      // The schema expands to its entity-type leaves; clicking Tables stores the
+      // type in quickFilter and only the schema path in browsePath. The
+      // highlight used to snap back up to the schema because it was re-derived
+      // from browsePath, which omits the leaf's type.
+      await expect(page.getByTestId('explore-tree-title-table')).toBeVisible();
+
+      const browseRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId('explore-tree-title-table').click();
+      await browseRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(rootTreeNode(page, 'table')).toHaveClass(
+        /ant-tree-treenode-selected/
+      );
+      await expect(rootTreeNode(page, schemaName)).not.toHaveClass(
+        /ant-tree-treenode-selected/
+      );
     });
   }
 );

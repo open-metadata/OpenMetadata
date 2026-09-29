@@ -47,8 +47,8 @@ jest.mock('react-router-dom', () => {
   const MockLink = forwardRef<
     HTMLAnchorElement,
     { children?: ReactNode; to?: unknown }
-  >(({ children, to: _to, ...props }, ref) => (
-    <a href="#" ref={ref} {...props}>
+  >(({ children, to, ...props }, ref) => (
+    <a href={to as string} ref={ref} {...props}>
       {children}
     </a>
   ));

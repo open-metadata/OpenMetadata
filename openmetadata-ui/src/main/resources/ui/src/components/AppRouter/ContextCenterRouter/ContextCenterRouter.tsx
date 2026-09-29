@@ -14,9 +14,9 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import withSuspenseFallback from '../withSuspenseFallback';
+import { withPageSuspenseFallback } from '../withSuspenseFallback';
 
-const ContextCenterDashboardPage = withSuspenseFallback(
+const ContextCenterDashboardPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -25,7 +25,7 @@ const ContextCenterDashboardPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterArticlesPage = withSuspenseFallback(
+const ContextCenterArticlesPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -34,7 +34,7 @@ const ContextCenterArticlesPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterDocumentsPage = withSuspenseFallback(
+const ContextCenterDocumentsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -43,7 +43,7 @@ const ContextCenterDocumentsPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterMemoriesPage = withSuspenseFallback(
+const ContextCenterMemoriesPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -52,7 +52,7 @@ const ContextCenterMemoriesPage = withSuspenseFallback(
   )
 );
 
-const KnowledgeCenterFilterPage = withSuspenseFallback(
+const KnowledgeCenterFilterPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -61,7 +61,25 @@ const KnowledgeCenterFilterPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterArchivePage = withSuspenseFallback(
+const ContextCenterAIContextPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterAIContextPage/ContextCenterAIContextPage'
+      )
+  )
+);
+
+const ContextCenterAIContextDetailPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../pages/ContextCenterPage/ContextCenterAIContextPage/ContextCenterAIContextDetailPage'
+      )
+  )
+);
+
+const ContextCenterArchivePage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -74,15 +92,12 @@ const ContextCenterRouter = () => {
   return (
     <Routes>
       <Route
-        element={<Navigate replace to={ROUTES.CONTEXT_CENTER_DASHBOARD} />}
+        element={<Navigate replace to={ROUTES.CONTEXT_CENTER_OVERVIEW} />}
         path="/"
       />
       <Route
         element={<ContextCenterDashboardPage />}
-        path={ROUTES.CONTEXT_CENTER_DASHBOARD.replace(
-          ROUTES.CONTEXT_CENTER,
-          ''
-        )}
+        path={ROUTES.CONTEXT_CENTER_OVERVIEW.replace(ROUTES.CONTEXT_CENTER, '')}
       />
       {[
         ROUTES.CONTEXT_CENTER_ARTICLES,
@@ -111,6 +126,20 @@ const ContextCenterRouter = () => {
       <Route
         element={<KnowledgeCenterFilterPage />}
         path={ROUTES.CONTEXT_CENTER_FILTER.replace(ROUTES.CONTEXT_CENTER, '')}
+      />
+      <Route
+        element={<ContextCenterAIContextPage />}
+        path={ROUTES.CONTEXT_CENTER_AI_CONTEXT.replace(
+          ROUTES.CONTEXT_CENTER,
+          ''
+        )}
+      />
+      <Route
+        element={<ContextCenterAIContextDetailPage />}
+        path={ROUTES.CONTEXT_CENTER_AI_CONTEXT_DETAIL.replace(
+          ROUTES.CONTEXT_CENTER,
+          ''
+        )}
       />
       <Route
         element={<ContextCenterArchivePage />}

@@ -12,6 +12,12 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
 type ClassificationData = {
@@ -47,32 +53,32 @@ export class ClassificationClass {
       this.responseData.displayName ?? this.data.displayName
     );
 
-    await expect(page.locator('.activeCategory')).toContainText(
-      this.responseData.displayName ?? this.data.displayName
-    );
+    await expect(
+      page.locator('[data-testid="tags-left-panel"] [aria-current="page"]')
+    ).toContainText(this.responseData.displayName ?? this.data.displayName);
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/classifications', {
+    this.responseData = await createOrFetch(apiContext, {
+      label: 'ClassificationClass.create',
+      createPath: '/api/v1/classifications',
+      fqnSegments: [this.data.name],
       data: this.data,
     });
-
-    this.responseData = await response.json();
 
     return this.responseData;
   }
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const response = await apiContext.patch(
-      `/api/v1/classifications/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/classifications/${this.responseData.id}`, {
         data: payload,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'ClassificationClass.patch');
 
     return this.responseData;
   }
@@ -82,7 +88,8 @@ export class ClassificationClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/classifications/${this.responseData.id}?recursive=true&hardDelete=true`
     );
 

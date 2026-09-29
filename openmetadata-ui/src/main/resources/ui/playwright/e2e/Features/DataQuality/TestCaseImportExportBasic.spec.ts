@@ -111,7 +111,7 @@ const getFqn = (table: TableClass): string => {
 test.describe(
   'Test Case Bulk Import/Export - Admin User',
   {
-    tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`],
+    tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'],
   },
   () => {
     const table = new TableClass();
@@ -271,8 +271,10 @@ test.describe(
 
 test.describe(
   'Test Case Import/Export/Edits - Permissions',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
+    test.describe.configure({ mode: 'default' });
+
     const table = new TableClass();
 
     test.beforeAll(async ({ browser }) => {
@@ -555,7 +557,7 @@ test.describe(
 
 test.describe(
   'Test Case Bulk Edit - Cancel Redirect',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
 
@@ -608,7 +610,7 @@ test.describe(
 
 test.describe(
   'Logical Test Suite - Bulk Import/Export/Edit Operations',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const testSuiteName = `pw-logical-suite-${uuid()}`;
 
@@ -647,7 +649,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -668,7 +672,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -688,7 +694,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -711,7 +719,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 

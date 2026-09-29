@@ -46,7 +46,9 @@ Du hittar mer information om Oracle-anslutningen i <a href="https://docs.open-me
 $$section
 ### Schema $(id="scheme")
 
-**oracle+cx_oracle**: Sqlalchemy-schema för att ansluta till Oracle.
+**oracle+oracledb**: SQLAlchemy-schema för att ansluta till Oracle.
+
+**oracle+cx_oracle**: Föråldrat kompatibilitetsvärde. Anslutningar använder python-oracledb.
 $$
 
 $$section

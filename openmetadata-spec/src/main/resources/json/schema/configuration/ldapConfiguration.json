@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/configuration/ldapConfiguration.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LdapConfiguration",
   "description": "LDAP Configuration",
   "type": "object",
@@ -72,6 +72,11 @@
     "groupMemberAttributeName": {
       "description": "Group Member Name attribute name",
       "type": "string"
+    },
+    "recursiveGroupMembership": {
+      "description": "Enable transitive group membership resolution for Active Directory nested groups using LDAP_MATCHING_RULE_IN_CHAIN.",
+      "type": "boolean",
+      "default": false
     },
     "authRolesMapping": {
       "description": "Json string of roles mapping between LDAP roles and Ranger roles",

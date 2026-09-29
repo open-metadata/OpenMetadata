@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { expect, test as base } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -39,6 +40,7 @@ import {
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -92,7 +94,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.describe('Tag Page with Admin Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -104,8 +106,6 @@ test.describe('Tag Page with Admin Roles', () => {
   });
   const user1 = new UserClass();
   const domain = new Domain();
-
-  test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -135,12 +135,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('entity-name-modal')).toBeVisible();
 
     await adminPage
       .getByPlaceholder('Enter display name')
@@ -150,7 +150,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('save-button').click();
     await updateName;
 
-    await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
+    await expect(
+      adminPage.getByTestId('entity-header-display-name')
+    ).toHaveText('TestDisplayName');
   });
 
   test('Restyle Tag', async ({ adminPage }) => {
@@ -160,17 +162,19 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Style' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByTestId('icon-color-modal')).toBeVisible();
 
     await adminPage.getByTestId('icon-picker-btn').click();
-    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
     await adminPage
-      .getByRole('button', { name: 'Select color #F14C75' })
+      .getByRole('button', { name: 'Cube01', exact: true })
+      .click();
+    await adminPage
+      .getByRole('button', { name: 'Select color #1470EF' })
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
@@ -190,14 +194,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByTestId('manage-button').click();
 
     await expect(
-      adminPage.locator('.ant-dropdown-placement-bottomRight')
+      adminPage.getByTestId('manage-dropdown-list-container')
     ).toBeVisible();
 
     await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
 
-    await expect(adminPage.getByRole('dialog')).toBeVisible();
-
-    await adminPage.getByTestId('confirmation-text-input').fill('DELETE');
+    await expect(adminPage.getByTestId('delete-modal')).toBeVisible();
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();
@@ -209,6 +211,7 @@ test.describe('Tag Page with Admin Roles', () => {
   });
 
   test('Add and Remove Assets', async ({ adminPage }) => {
+    test.slow();
     await redirectToHomePage(adminPage);
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
 
@@ -232,7 +235,8 @@ test.describe('Tag Page with Admin Roles', () => {
       `/tags/${encodeURIComponent(
         classification.responseData.fullyQualifiedName ??
           classification.responseData.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -252,11 +256,12 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await fillTagForm(adminPage, domain);
 
-    const createTagResponse = adminPage.waitForResponse(
+    const createTagResponse = waitForResponseWithStatus(
+      adminPage,
       (response) =>
         response.url().includes('/api/v1/tags') &&
-        response.request().method() === 'POST' &&
-        response.ok()
+        response.request().method() === 'POST',
+      'ok'
     );
 
     await submitForm(adminPage);
@@ -267,7 +272,8 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.goto(
       `/tag/${encodeURIComponent(
         createdTagData.fullyQualifiedName ?? NEW_TAG.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -382,9 +388,11 @@ test.describe('Tag Page with Admin Roles', () => {
         .first();
       await expect(classificationEntry).toBeVisible({ timeout: 30000 });
       await classificationEntry.click();
-      await expect(adminPage.locator('.activeCategory')).toContainText(
-        classification1.responseData.displayName
-      );
+      await expect(
+        adminPage.locator(
+          '[data-testid="tags-left-panel"] [aria-current="page"]'
+        )
+      ).toContainText(classification1.responseData.displayName);
     };
 
     await openClassification();
@@ -415,7 +423,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
@@ -440,7 +448,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
@@ -455,10 +463,8 @@ test.describe('Tag Page with Admin Roles', () => {
 });
 
 test.describe('Tag Page with Data Consumer Roles', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -497,6 +503,10 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     adminPage,
     dataConsumerPage,
   }) => {
+    // Three full navigation cycles (add, filter check, remove) overrun the
+    // default budget on slow CI shards — the merge-queue ejection in #32629.
+    test.slow();
+
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataConsumerPage);
 
@@ -530,10 +540,8 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 });
 
 test.describe('Tag Page with Data Steward Roles', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -565,6 +573,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
     adminPage,
     dataStewardPage,
   }) => {
+    test.slow();
     const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataStewardPage);
 
@@ -584,10 +593,8 @@ test.describe('Tag Page with Data Steward Roles', () => {
 });
 
 test.describe('Tag Page with Limited EditTag Permission', () => {
-  test.slow(true);
-
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -633,6 +640,14 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     adminPage,
     limitedAccessPage,
   }) => {
+    // Two authenticated contexts (admin + limitedAccess) plus asset setup,
+    // add and remove flows on a separate user, and two full tag.visitPage
+    // navigations. Empirically ~90 s on a fresh CI runner — the default 60 s
+    // budget makes the second visitPage race with test teardown, leaving
+    // removeAssetsFromTag's response wait dangling with a closed context on
+    // retry. test.slow() extends the budget to what the flow actually needs.
+    test.slow();
+
     const { afterAction } = await getApiContext(adminPage);
     const { assets, otherAsset, assetCleanup } = await setupAssetsForTag(
       adminPage

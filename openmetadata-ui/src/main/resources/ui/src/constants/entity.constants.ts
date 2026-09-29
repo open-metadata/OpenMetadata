@@ -16,6 +16,7 @@ import { EntityField } from './Feeds.constants';
 
 export const FEED_COUNT_INITIAL_DATA: FeedCounts = {
   conversationCount: 0,
+  activityCount: 0,
   totalTasksCount: 0,
   openTaskCount: 0,
   closedTaskCount: 0,

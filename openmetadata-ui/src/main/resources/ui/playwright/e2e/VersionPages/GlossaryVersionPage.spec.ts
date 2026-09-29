@@ -52,88 +52,94 @@ test('Glossary', async ({ page }) => {
   await glossary.create(apiContext);
   await glossary.patch(apiContext, GLOSSARY_PATCH_PAYLOAD);
 
-  await test.step('Version changes', async () => {
-    await glossary.visitPage(page);
+  try {
+    await test.step('Version changes', async () => {
+      await glossary.visitPage(page);
 
-    await page.click('[data-testid="version-button"]');
+      await page.click('[data-testid="version-button"]');
 
-    await expect(
-      page
-        .getByTestId('asset-description-container')
-        .getByTestId('markdown-parser')
-        .locator('span')
-        .filter({ hasText: 'Description' })
-    ).toBeVisible();
+      await expect(
+        page
+          .getByTestId('asset-description-container')
+          .getByTestId('markdown-parser')
+          .locator('span')
+          .filter({ hasText: 'Description' })
+      ).toBeVisible();
 
-    await expect(
-      page.locator(
-        '.diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-      )
-    ).toBeVisible();
+      await expect(
+        page.locator('[data-testid="tag-PersonalData.SpecialCategory"]')
+      ).toBeVisible();
 
-    await expect(
-      page.locator('.diff-added [data-testid="tag-PII.Sensitive"]')
-    ).toBeVisible();
-  });
-
-  await test.step('Should display the owner & reviewer changes', async () => {
-    await glossary.visitPage(page);
-
-    await expect(page.getByTestId('version-button')).toHaveText(/0.2/);
-
-    await addMultiOwner({
-      page,
-      ownerNames: [user.getUserDisplayName()],
-      activatorBtnDataTestId: 'add-owner',
-      resultTestId: 'glossary-right-panel-owner-link',
-      endpoint: EntityTypeEndpoint.Glossary,
-      isSelectableInsideForm: true,
-      type: 'Users',
+      await expect(
+        page.locator('[data-testid="tag-PII.Sensitive"]')
+      ).toBeVisible();
     });
 
-    await page.reload();
-    const versionPageResponse = page.waitForResponse(
-      `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
-    );
-    await page.click('[data-testid="version-button"]');
-    await versionPageResponse;
-    await waitForAllLoadersToDisappear(page);
+    await test.step('Should display the owner & reviewer changes', async () => {
+      await glossary.visitPage(page);
 
-    await expect(
-      page.locator(
-        '[data-testid="glossary-right-panel-owner-link"] [data-testid="diff-added"]'
-      )
-    ).toBeVisible();
+      await expect(page.getByTestId('version-button')).toHaveText(/0.2/);
 
-    const glossaryRes = page.waitForResponse(
-      'api/v1/glossaryTerms?directChildrenOf=*'
-    );
-    await page.click('[data-testid="version-button"]');
-    await glossaryRes;
-    await waitForAllLoadersToDisappear(page);
+      await addMultiOwner({
+        page,
+        ownerNames: [user.getUserDisplayName()],
+        activatorBtnDataTestId: 'add-owner',
+        resultTestId: 'glossary-right-panel-owner-link',
+        endpoint: EntityTypeEndpoint.Glossary,
+        isSelectableInsideForm: true,
+        type: 'Users',
+      });
 
-    await addMultiOwner({
-      page,
-      ownerNames: [reviewer.getUserDisplayName()],
-      activatorBtnDataTestId: 'Add',
-      resultTestId: 'glossary-reviewer-name',
-      endpoint: EntityTypeEndpoint.Glossary,
-      type: 'Users',
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      const versionPageResponse = page.waitForResponse(
+        `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
+      );
+      await page.click('[data-testid="version-button"]');
+      await versionPageResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator(
+          '[data-testid="glossary-right-panel-owner-link"] [data-testid="diff-added"]'
+        )
+      ).toBeVisible();
+
+      const glossaryRes = page.waitForResponse(
+        'api/v1/glossaryTerms?directChildrenOf=*'
+      );
+      await page.click('[data-testid="version-button"]');
+      await glossaryRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await addMultiOwner({
+        page,
+        ownerNames: [reviewer.getUserDisplayName()],
+        activatorBtnDataTestId: 'Add',
+        resultTestId: 'glossary-reviewer-name',
+        endpoint: EntityTypeEndpoint.Glossary,
+        type: 'Users',
+      });
+
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      const versionPageResponse2 = page.waitForResponse(
+        `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
+      );
+      await page.click('[data-testid="version-button"]');
+      await versionPageResponse2;
+
+      await expect(
+        page.locator(
+          '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
+        )
+      ).toBeVisible();
     });
-
-    await page.reload();
-    await page.click('[data-testid="version-button"]');
-    await versionPageResponse;
-
-    await expect(
-      page.locator(
-        '[data-testid="glossary-reviewer"] [data-testid="diff-added"]'
-      )
-    ).toBeVisible();
-  });
-
-  await glossary.delete(apiContext);
-  await afterAction();
+  } finally {
+    try {
+      await glossary.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  }
 });
 
 test('GlossaryTerm', async ({ page }) => {
@@ -155,17 +161,15 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-      page.locator(
-        '.diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-      )
+      page.locator('[data-testid="tag-PersonalData.SpecialCategory"]')
     ).toBeVisible();
 
     await expect(
-      page.locator('.diff-added [data-testid="tag-PII.Sensitive"]')
+      page.locator('[data-testid="tag-PII.Sensitive"]')
     ).toBeVisible();
 
     await expect(
-      page.locator('[data-testid="test-synonym"].diff-added')
+      page.locator('[data-testid="test-synonym"][data-diff="added"]')
     ).toBeVisible();
 
     await expect(
@@ -173,7 +177,9 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-      page.locator('.diff-added [data-testid="reference-link-reference1"]')
+      page.locator(
+        '[data-testid="reference-link-reference1"][data-diff="added"]'
+      )
     ).toBeVisible();
   });
 
@@ -192,7 +198,7 @@ test('GlossaryTerm', async ({ page }) => {
       type: 'Users',
     });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     const versionPageResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
     );
@@ -222,7 +228,7 @@ test('GlossaryTerm', async ({ page }) => {
       type: 'Users',
     });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     // Verify the reviewer was actually added before checking version diff
     await expect(
@@ -232,7 +238,6 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await page.click('[data-testid="version-button"]');
-    await versionPageResponse;
 
     // Wait for the version dialog to be fully loaded
     await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
@@ -306,8 +311,11 @@ test('Navigate between versions', async ({ page }) => {
     // Verify the version dialog is still visible
     await expect(page.locator('[role="dialog"]')).toBeVisible();
   } finally {
-    await glossary.delete(apiContext);
-    await afterAction();
+    try {
+      await glossary.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   }
 });
 
@@ -341,8 +349,11 @@ test('Return to current version from history', async ({ page }) => {
     // Verify version button shows current version
     await expect(page.getByTestId('version-button')).toBeVisible();
   } finally {
-    await glossary.delete(apiContext);
-    await afterAction();
+    try {
+      await glossary.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   }
 });
 
@@ -359,7 +370,9 @@ test('Version diff shows synonym changes', async ({ page }) => {
     await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Check for synonym diff
-    const synonymDiff = page.locator('[data-testid="test-synonym"].diff-added');
+    const synonymDiff = page.locator(
+      '[data-testid="test-synonym"][data-diff="added"]'
+    );
 
     await expect(synonymDiff).toBeVisible();
   } finally {
@@ -381,7 +394,7 @@ test('Version diff shows reference changes', async ({ page }) => {
 
     // Check for reference diff
     const referenceDiff = page.locator(
-      '.diff-added [data-testid="reference-link-reference1"]'
+      '[data-testid="reference-link-reference1"][data-diff="added"]'
     );
 
     await expect(referenceDiff).toBeVisible();

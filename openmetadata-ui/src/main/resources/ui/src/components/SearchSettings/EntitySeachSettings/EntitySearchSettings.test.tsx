@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import {
   BoostMode,
@@ -127,7 +133,9 @@ describe('EntitySearchSettings', () => {
       screen.getByTestId('entity-search-settings-header')
     ).toBeInTheDocument();
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('field-configurations')).toBeInTheDocument();
+    expect(screen.getByText('label.ranking-detail-plural')).toBeInTheDocument();
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    expect(screen.getByTestId('add-field-btn')).toBeInTheDocument();
   });
 
   it('Should not override preview config with undefined searchFields before entity config loads', async () => {
@@ -245,5 +253,126 @@ describe('EntitySearchSettings', () => {
     // the entity config after the save response is processed.
     expect(entityConfig).not.toHaveProperty('allowedFields');
     expect(entityConfig).not.toHaveProperty('assetTypeConfigurations');
+  });
+
+  it('Should omit cleared ranking stage weight while saving', async () => {
+    const configWithRanking = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          ...mockSearchConfig.assetTypeConfigurations[0],
+          ranking: {
+            enabled: true,
+            stages: [
+              {
+                name: 'exactName',
+                fields: ['name.keyword'],
+                weight: 100,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockUseApplicationStore.mockReturnValue({
+      appPreferences: { searchConfig: configWithRanking },
+      setAppPreferences: mockSetAppPreferences,
+    });
+
+    (updateSettingsConfig as jest.Mock).mockImplementation((settings) =>
+      Promise.resolve({ data: settings })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '' },
+    });
+
+    const { handleSaveChanges } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleSaveChanges();
+    });
+
+    await waitFor(() => {
+      const settings = (updateSettingsConfig as jest.Mock).mock.calls[0][0];
+      const entityConfig = settings.config_value.assetTypeConfigurations.find(
+        (config: { assetType: string }) => config.assetType === 'table'
+      );
+
+      expect(entityConfig.ranking.stages[0]).not.toHaveProperty('weight');
+    });
+  });
+
+  it('Should update the selected unnamed ranking stage while saving', async () => {
+    const configWithRanking = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          ...mockSearchConfig.assetTypeConfigurations[0],
+          ranking: {
+            enabled: true,
+            stages: [
+              {
+                fields: ['name.keyword'],
+                weight: 100,
+              },
+              {
+                fields: ['description'],
+                weight: 40,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockUseApplicationStore.mockReturnValue({
+      appPreferences: { searchConfig: configWithRanking },
+      setAppPreferences: mockSetAppPreferences,
+    });
+
+    (updateSettingsConfig as jest.Mock).mockImplementation((settings) =>
+      Promise.resolve({ data: settings })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('ranking-stage-unnamed-0')).toBeInTheDocument();
+    expect(screen.getByTestId('ranking-stage-unnamed-1')).toBeInTheDocument();
+
+    fireEvent.change(screen.getAllByRole('spinbutton')[1], {
+      target: { value: '' },
+    });
+
+    const { handleSaveChanges } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleSaveChanges();
+    });
+
+    await waitFor(() => {
+      const settings = (updateSettingsConfig as jest.Mock).mock.calls[0][0];
+      const entityConfig = settings.config_value.assetTypeConfigurations.find(
+        (config: { assetType: string }) => config.assetType === 'table'
+      );
+
+      expect(entityConfig.ranking.stages[0].weight).toBe(100);
+      expect(entityConfig.ranking.stages[1]).not.toHaveProperty('weight');
+    });
   });
 });

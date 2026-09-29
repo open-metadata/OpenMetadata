@@ -24,12 +24,10 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
-import org.openmetadata.service.jdbi3.FeedRepository;
 
 /**
  * Resolves entity existence for relationship cleanup in bulk instead of one row at a time.
@@ -49,23 +47,21 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
 
   private final Map<String, EntityRepository<?>> entityRepositories;
   private final Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositories;
-  private final FeedRepository feedRepository;
   private final Cache<String, Boolean> existenceCache;
 
   public BatchEntityExistenceResolver(
       Map<String, EntityRepository<?>> entityRepositories,
-      Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositories,
-      FeedRepository feedRepository) {
+      Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositories) {
     this.entityRepositories = entityRepositories;
     this.entityTimeSeriesRepositories = entityTimeSeriesRepositories;
-    this.feedRepository = feedRepository;
     this.existenceCache = Caffeine.newBuilder().maximumSize(MAX_CACHE_ENTRIES).build();
   }
 
   /**
    * Resolves the existence of both endpoints of every relationship in the batch using one bulk
    * query per entity type. Endpoints already cached and entity types without a regular repository
-   * (time series, threads) are skipped here and resolved lazily by {@link #exists(UUID, String)}.
+   * (time series, conversations, threads) are skipped here and resolved lazily by {@link
+   * #exists(UUID, String)}.
    */
   public void prefetch(List<CollectionDAO.EntityRelationshipObject> batch) {
     Map<String, Set<UUID>> idsByType = collectRegularEntityIds(batch);
@@ -147,9 +143,26 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
       result = existsInEntityRepository(entityId, entityType);
     } else if (entityTimeSeriesRepositories.containsKey(entityType)) {
       result = existsInTimeSeriesRepository(entityId, entityType);
+    } else if (Entity.CONVERSATION.equals(entityType)) {
+      result = existsInConversationRepository(entityId);
     } else if (Entity.THREAD.equals(entityType)) {
-      result = existsInFeedRepository(entityId);
+      result = false;
     } else {
+      result = true;
+    }
+    return result;
+  }
+
+  private boolean existsInConversationRepository(UUID entityId) {
+    boolean result;
+    try {
+      result = Entity.getConversationRepository().exists(entityId);
+    } catch (Exception ex) {
+      LOG.debug(
+          "Entity {}:{} existence check failed: {}",
+          Entity.CONVERSATION,
+          entityId,
+          ex.getMessage());
       result = true;
     }
     return result;
@@ -173,19 +186,6 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
       result = entityTimeSeriesRepositories.get(entityType).existsById(entityId);
     } catch (Exception ex) {
       LOG.debug("Entity {}:{} existence check failed: {}", entityType, entityId, ex.getMessage());
-      result = true;
-    }
-    return result;
-  }
-
-  private boolean existsInFeedRepository(UUID entityId) {
-    boolean result;
-    try {
-      result = feedRepository.get(entityId) != null;
-    } catch (EntityNotFoundException e) {
-      result = false;
-    } catch (Exception ex) {
-      LOG.debug("Thread {} existence check failed: {}", entityId, ex.getMessage());
       result = true;
     }
     return result;

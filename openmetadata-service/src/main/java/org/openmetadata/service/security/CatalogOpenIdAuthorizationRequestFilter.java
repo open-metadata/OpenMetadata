@@ -76,9 +76,17 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
   private void setSecurityContext(
       ContainerRequestContext requestContext, CatalogPrincipal catalogPrincipal) {
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    String activePersona = requestContext.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER);
     CatalogSecurityContext catalogSecurityContext =
         new CatalogSecurityContext(
-            catalogPrincipal, scheme, SecurityContext.BASIC_AUTH, new HashSet<>());
+            catalogPrincipal,
+            scheme,
+            SecurityContext.BASIC_AUTH,
+            new HashSet<>(),
+            false,
+            null,
+            activePersona);
     requestContext.setSecurityContext(catalogSecurityContext);
+    ActivePersonaContext.setActivePersona(activePersona);
   }
 }

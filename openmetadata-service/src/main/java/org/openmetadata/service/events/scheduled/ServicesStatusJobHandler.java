@@ -77,6 +77,7 @@ public class ServicesStatusJobHandler {
         .withSchedule(
             SimpleScheduleBuilder.simpleSchedule()
                 .withIntervalInSeconds(checkInterval)
+                .withMisfireHandlingInstructionNextWithExistingCount()
                 .repeatForever())
         .build();
   }

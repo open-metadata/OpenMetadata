@@ -17,11 +17,25 @@
  * `User Retention`.
  */
 export interface Metric {
+    /**
+     * Data assets (tables, columns, dashboards, etc.) this metric is computed on or applies to.
+     * Establishes a first-class metric-to-asset relationship so the metric can be surfaced as
+     * context for those assets.
+     */
+    assets?:        EntityReference[];
     certification?: AssetCertification;
     /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
+    /**
+     * Immediate child metrics (variants) of this metric.
+     */
+    children?: EntityReference[];
+    /**
+     * Count of immediate, non-deleted child metrics. Computed on read and never stored.
+     */
+    childrenCount?: number;
     /**
      * Custom unit of measurement when unitOfMeasurement is OTHER.
      */
@@ -48,6 +62,10 @@ export interface Metric {
      */
     description?: string;
     /**
+     * Dimensions associated with this metric from a semantic layer.
+     */
+    dimensions?: MetricDimension[];
+    /**
      * Display Name that identifies this metric.
      */
     displayName?: string;
@@ -60,9 +78,17 @@ export interface Metric {
      */
     entityStatus?: EntityStatus;
     /**
+     * Users who are experts in this Metric.
+     */
+    experts?: EntityReference[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Filters applied to this metric.
+     */
+    filters?: MetricFilter[];
     /**
      * Followers of this API Collection.
      */
@@ -92,9 +118,18 @@ export interface Metric {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Measures associated with this metric from a semantic layer.
+     */
+    measures?: MetricMeasure[];
+    /**
      * Expression used to compute the metric.
      */
     metricExpression?: MetricExpression;
+    /**
+     * Metric Group this metric belongs to, if any. A group organizes metrics for browsing;
+     * membership is a relationship, so it is derived on read and never stored on the metric.
+     */
+    metricGroup?: EntityReference;
     /**
      * Type of the metric.
      */
@@ -106,7 +141,13 @@ export interface Metric {
     /**
      * Owners of this metrics.
      */
-    owners?:   EntityReference[];
+    owners?: EntityReference[];
+    /**
+     * Parent metric this metric is a variant of. Metric fully qualified names stay flat, so the
+     * hierarchy is tracked purely through CONTAINS relationships and reparenting never rewrites
+     * the fully qualified name.
+     */
+    parent?:   EntityReference;
     provider?: ProviderType;
     /**
      * Related Metrics.
@@ -141,6 +182,76 @@ export interface Metric {
      * Votes on the entity.
      */
     votes?: Votes;
+}
+
+/**
+ * Data assets (tables, columns, dashboards, etc.) this metric is computed on or applies to.
+ * Establishes a first-class metric-to-asset relationship so the metric can be surfaced as
+ * context for those assets.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Reference to the data contract for this entity.
+ *
+ * Derived: the context memory from which the Memory Agent created this metric (DERIVED_FROM
+ * edge, read-only projection).
+ *
+ * Metric Group this metric belongs to, if any. A group organizes metrics for browsing;
+ * membership is a relationship, so it is derived on read and never stored on the metric.
+ *
+ * Parent metric this metric is a variant of. Metric fully qualified names stay flat, so the
+ * hierarchy is tracked purely through CONTAINS relationships and reparenting never rewrites
+ * the fully qualified name.
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
 }
 
 /**
@@ -424,64 +535,37 @@ export interface FieldChange {
 }
 
 /**
- * Reference to the data contract for this entity.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * List of data products this entity is part of.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Derived: the context memory from which the Memory Agent created this metric (DERIVED_FROM
- * edge, read-only projection).
+ * A dimension associated with a metric from a semantic layer.
  */
-export interface EntityReference {
+export interface MetricDimension {
     /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
+     * Description of the dimension.
      */
     description?: string;
     /**
-     * Display Name that identifies this entity.
+     * Expression used to compute the dimension.
      */
-    displayName?: string;
+    expression?: string;
     /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
+     * Fully qualified name of the dimension, in the format 'metricFQN.dimension.<name>'.
      */
     fullyQualifiedName?: string;
     /**
-     * Link to the entity resource.
+     * Name of the dimension.
      */
-    href?: string;
+    name: string;
     /**
-     * Unique identifier that identifies an entity instance.
+     * Type of the dimension.
      */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
+    type?: Type;
+}
+
+/**
+ * Type of the dimension.
+ */
+export enum Type {
+    Categorical = "CATEGORICAL",
+    Time = "TIME",
 }
 
 /**
@@ -501,6 +585,16 @@ export enum EntityStatus {
 }
 
 /**
+ * A filter applied to a metric.
+ */
+export interface MetricFilter {
+    /**
+     * SQL WHERE clause for the filter.
+     */
+    where: string;
+}
+
+/**
  * Metric's granularity.
  *
  * This schema defines the type of Metric's granularity.
@@ -514,6 +608,32 @@ export enum MetricGranularity {
     Second = "SECOND",
     Week = "WEEK",
     Year = "YEAR",
+}
+
+/**
+ * A measure associated with a metric from a semantic layer.
+ */
+export interface MetricMeasure {
+    /**
+     * Aggregation function for the measure (e.g., sum, count, average).
+     */
+    aggregation?: string;
+    /**
+     * Description of the measure.
+     */
+    description?: string;
+    /**
+     * Expression used to compute the measure.
+     */
+    expression?: string;
+    /**
+     * Fully qualified name of the measure, in the format 'metricFQN.measure.<name>'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the measure.
+     */
+    name: string;
 }
 
 /**
@@ -548,7 +668,10 @@ export enum Language {
  */
 export enum MetricType {
     Average = "AVERAGE",
+    Conversion = "CONVERSION",
     Count = "COUNT",
+    Cumulative = "CUMULATIVE",
+    Derived = "DERIVED",
     Max = "MAX",
     Median = "MEDIAN",
     Min = "MIN",
@@ -556,6 +679,7 @@ export enum MetricType {
     Other = "OTHER",
     Percentage = "PERCENTAGE",
     Ratio = "RATIO",
+    Simple = "SIMPLE",
     StandardDeviation = "STANDARD_DEVIATION",
     Sum = "SUM",
     Variance = "VARIANCE",

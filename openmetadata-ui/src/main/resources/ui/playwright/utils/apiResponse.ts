@@ -1,0 +1,258 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { APIRequestContext, APIResponse } from '@playwright/test';
+
+// Preserved for the many support classes that still call withNotFoundRetry
+// against just-created entity ids where the server occasionally answers 404
+// briefly (row is committed, reference lookup lags ~15ms). See withNotFoundRetry
+// for the full explanation and the reproduction that motivates it.
+const NOT_FOUND_RETRY_ATTEMPTS = 3;
+const NOT_FOUND_RETRY_BASE_DELAY_MS = 300;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+export const assertFulfilled = (results: PromiseSettledResult<unknown>[]) => {
+  const failures = results.filter(
+    (result): result is PromiseRejectedResult => result.status === 'rejected'
+  );
+  if (failures.length) {
+    const errors = failures.map((failure) => failure.reason);
+    throw new AggregateError(
+      errors,
+      `Parallel fixture operations failed:\n${errors.map(String).join('\n')}`
+    );
+  }
+};
+
+export const settleAll = async (operations: Iterable<unknown>) => {
+  assertFulfilled(await Promise.allSettled(operations));
+};
+
+// 401 during teardown means the JWT expired mid-test — the fixture may
+// leak, but failing the whole test on a cleanup auth error is worse than
+// warning and moving on (the same reason main's bare apiContext.delete
+// tolerated it silently). 404 is already-gone. 400 covers protected
+// "system entity" classifications the server refuses to hard-delete —
+// same class: fixture leak, not a test-correctness issue. Everything
+// else surfaces. 403 stays a hard fail: it means the token is valid but
+// the caller lacks permission, which is a real test-setup bug.
+const CLEANUP_TOLERATED_STATUSES = new Set([400, 401, 404]);
+
+/** Cleanup is idempotent, but a real HTTP error must not silently leak a fixture. */
+export const deleteFixtureEntity = async (
+  apiContext: APIRequestContext,
+  url: string,
+  options?: Parameters<APIRequestContext['delete']>[1]
+): Promise<APIResponse> => {
+  const response = await apiContext.delete(url, options);
+  const status = response.status();
+  if (!response.ok() && !CLEANUP_TOLERATED_STATUSES.has(status)) {
+    throw new Error(
+      `Fixture DELETE ${url}: HTTP ${status}: ${await response.text()}`
+    );
+  }
+  // 401 (JWT expired) and 400 (protected/system entity) are tolerated so
+  // the test doesn't fail on a cleanup issue, but the fixture leaks —
+  // surface it so cleanup regressions don't hide in green runs.
+  if (status === 401 || status === 400) {
+    console.warn(
+      `Fixture DELETE ${url}: HTTP ${status} during cleanup; fixture may leak`
+    );
+  }
+  return response;
+};
+
+/**
+ * Fallback for the response body when a caller does not name a type.
+ *
+ * Prefer passing one — `okJson<ResponseDataType>(res, label)` — and the support
+ * classes now do at every site where the value escapes the method. This alias
+ * exists for the remaining callers that read a field straight off the body:
+ * `APIResponse.json()` is itself `Promise<any>`, and the generated response types
+ * declare `id` and `fullyQualifiedName` optional, so a stricter default makes
+ * specs that legitimately rely on them fail to compile. Naming the escape hatch
+ * keeps it deliberate and greppable rather than an implicit `any` per call.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ResponseBody = any;
+
+/**
+ * Read a response body, failing at the request that actually broke.
+ *
+ * `await response.json()` on its own returns the *error* body for a non-2xx
+ * response, and support classes assign that straight onto `responseData`. The
+ * entity's `id` and `fullyQualifiedName` disappear, nothing throws, and the run
+ * only breaks much later somewhere unrelated — a failed PATCH has been observed
+ * surfacing as a 30s `waitForResponse` timeout several steps downstream.
+ * Throwing here keeps the blame on the call that failed.
+ */
+export const okJson = async <T = ResponseBody>(
+  response: Pick<APIResponse, 'ok' | 'status' | 'text' | 'json'>,
+  label: string
+): Promise<T> => {
+  if (!response.ok()) {
+    throw new Error(
+      `${label} failed (${response.status()}): ${await response.text()}`
+    );
+  }
+
+  return (await response.json()) as T;
+};
+
+/**
+ * Mirrors `FullyQualifiedName.needsQuoting` on the server: a segment has to be
+ * quoted when it contains the separator or a quote of its own.
+ */
+const needsQuoting = (name: string): boolean =>
+  name.includes('.') || name.includes('"');
+
+/**
+ * Quote one raw name the way the server's `FullyQualifiedName.quoteName` does —
+ * note the escape doubles the quote (`"` becomes `""`), it does not backslash it.
+ *
+ * `.` separates FQN segments, so the name `PW%domain.1e518933` reads as two
+ * segments and a lookup for it 404s while the quoted form returns 200 (checked
+ * against a running server). Names are generated per fixture, so treat any
+ * segment as capable of carrying a separator rather than auditing them one by one.
+ */
+export const quoteFqnSegment = (name: string): string =>
+  needsQuoting(name) ? `"${name.replace(/"/g, '""')}"` : name;
+
+/**
+ * Build an FQN from raw name segments, quoting each one.
+ *
+ * Callers pass the parts they already hold — `[service, database, schema, table]`
+ * — instead of interpolating them into a string themselves, so a separator
+ * appearing in any future fixture name is handled here rather than silently
+ * producing a lookup for an FQN that does not exist.
+ */
+export const buildFqn = (...segments: string[]): string =>
+  segments.map(quoteFqnSegment).join('.');
+
+/**
+ * POST that treats "already exists" as success.
+ *
+ * The nightly topology runs many Playwright processes against a single server,
+ * so two workers can race to create the same fixture. A 409 there does not mean
+ * the test cannot proceed — the entity the caller asked for exists — so fetch it
+ * by name and carry on. Any other failure still throws via {@link okJson}.
+ *
+ * `fetchPath` defaults to the conventional `<createPath>/name` lookup; pass it
+ * explicitly for the few collections that do not follow that convention.
+ *
+ * Pass `fields` whenever the caller applies relationship mutations after create.
+ * The API returns `null` for any field not asked for, so a bare lookup reports
+ * `domains: null` on an entity that already has a domain, and a caller that then
+ * re-applies its own `add /domains/0` is rejected with `RULE_VIOLATION: Multiple
+ * Domains are not allowed`. Only request fields the collection actually declares
+ * — `policies` and `roles`, for instance, do not accept `domains` and answer an
+ * unknown field with a 400.
+ *
+ * `fqnSegments` are the entity's raw name parts, outermost first. They are quoted
+ * and joined here so no call site has to know the FQN escaping rules.
+ */
+// Node reports a keep-alive socket the server closed mid-request as a thrown
+// transport error rather than a response, and Playwright does not retry a POST.
+const TRANSPORT_FAILURE =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|connection closed/i;
+
+const isTransportFailure = (error: unknown): boolean =>
+  error instanceof Error && TRANSPORT_FAILURE.test(error.message);
+
+export const createOrFetch = async <T = ResponseBody>(
+  apiContext: APIRequestContext,
+  options: {
+    label: string;
+    createPath: string;
+    fqnSegments: string[];
+    data: object;
+    fetchPath?: string;
+    fields?: string;
+  }
+): Promise<T> => {
+  const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
+  // Retry once on a dead connection. The entity may already have been created
+  // before the socket died, and that is exactly the conflict the 409 branch
+  // below recovers from, so the retry cannot double-create — it either lands
+  // the entity or lands on its own conflict. Anything that is not a transport
+  // failure still propagates untouched.
+  let createResponse;
+  try {
+    createResponse = await apiContext.post(createPath, { data });
+  } catch (error) {
+    if (!isTransportFailure(error)) {
+      throw error;
+    }
+
+    createResponse = await apiContext.post(createPath, { data });
+  }
+
+  if (createResponse.status() === 409) {
+    const entityFqn = buildFqn(...fqnSegments);
+    const lookupPath = fetchPath ?? `${createPath}/name`;
+    // include=all so a soft-deleted entity is still found. It keeps its name, so the
+    // create really does conflict, but the default lookup hides it and the recovery
+    // would fail with a 404 that reads as though the conflict never happened.
+    const params = [`include=all`];
+    if (fields) {
+      params.push(`fields=${encodeURIComponent(fields)}`);
+    }
+    const getResponse = await apiContext.get(
+      `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
+    );
+
+    const existing = await okJson<T>(
+      getResponse,
+      `${label}: fetch existing "${entityFqn}"`
+    );
+
+    // `include=all` above will happily return a soft-deleted entity, and handing
+    // one back gives the caller an id that 404s on its next write -- surfacing
+    // as "instance not found" several calls later, far from the cause.
+    //
+    // No caller is known to reach this: fixture names carry a uuid, and the
+    // shared fixtures are hard-deleted in teardown, so a soft-deleted name
+    // collision should not be constructible. It is kept because the cost is one
+    // comparison and the alternative failure is very hard to read -- not because
+    // it was observed. Delete it rather than build on it if it stays unreached.
+    if ((existing as { deleted?: boolean })?.deleted) {
+      throw new Error(
+        `${label}: "${entityFqn}" exists but is soft-deleted, so it cannot be written ` +
+          `to. Something is reusing a name across a delete -- do not silently adopt it.`
+      );
+    }
+
+    return existing;
+  }
+
+  return await okJson<T>(createResponse, label);
+};
+export const withNotFoundRetry = async (
+  send: () => Promise<APIResponse>
+): Promise<APIResponse> => {
+  let response = await send();
+
+  for (
+    let attempt = 1;
+    attempt <= NOT_FOUND_RETRY_ATTEMPTS && response.status() === 404;
+    attempt++
+  ) {
+    await sleep(NOT_FOUND_RETRY_BASE_DELAY_MS * attempt);
+    response = await send();
+  }
+
+  return response;
+};

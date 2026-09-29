@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.auth;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URI;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
  * This metadata describes the OAuth 2.0 protected resource (MCP server)
  * and points to the authorization servers that issue tokens for it.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ProtectedResourceMetadata {
 
   @JsonProperty("resource")

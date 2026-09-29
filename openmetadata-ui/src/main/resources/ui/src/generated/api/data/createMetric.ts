@@ -15,6 +15,10 @@
  */
 export interface CreateMetric {
     /**
+     * Data assets (tables, dashboards, etc.) this metric is computed on or applies to.
+     */
+    assets?: EntityReference[];
+    /**
      * Custom unit of measurement when unitOfMeasurement is OTHER.
      */
     customUnitOfMeasurement?: string;
@@ -27,6 +31,10 @@ export interface CreateMetric {
      */
     description?: string;
     /**
+     * Dimensions associated with this metric from a semantic layer.
+     */
+    dimensions?: MetricDimension[];
+    /**
      * Display Name that identifies this metric.
      */
     displayName?: string;
@@ -35,17 +43,34 @@ export interface CreateMetric {
      */
     domains?: string[];
     /**
+     * List of fully qualified user names for users who are experts in this metric.
+     */
+    experts?: string[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Filters applied to this metric.
+     */
+    filters?: MetricFilter[];
     /**
      * Metric's granularity.
      */
     granularity?: MetricGranularity;
     /**
+     * Measures associated with this metric from a semantic layer.
+     */
+    measures?: MetricMeasure[];
+    /**
      * Expression used to compute the metric.
      */
     metricExpression?: MetricExpression;
+    /**
+     * Fully qualified name of the Metric Group this metric hierarchy belongs to. Children
+     * inherit their parent's group.
+     */
+    metricGroup?: string;
     /**
      * Type of the metric.
      */
@@ -57,7 +82,11 @@ export interface CreateMetric {
     /**
      * Owners of this metric
      */
-    owners?:   EntityReference[];
+    owners?: EntityReference[];
+    /**
+     * Fully qualified name of the parent metric this metric is a variant of.
+     */
+    parent?:   string;
     provider?: ProviderType;
     /**
      * Other array of related metric fully qualified names that are related to this Metric.
@@ -78,68 +107,7 @@ export interface CreateMetric {
 }
 
 /**
- * Metric's granularity.
- *
- * This schema defines the type of Metric's granularity.
- */
-export enum MetricGranularity {
-    Day = "DAY",
-    Hour = "HOUR",
-    Minute = "MINUTE",
-    Month = "MONTH",
-    Quarter = "QUARTER",
-    Second = "SECOND",
-    Week = "WEEK",
-    Year = "YEAR",
-}
-
-/**
- * Expression used to compute the metric.
- */
-export interface MetricExpression {
-    /**
-     * This schema defines the type of the language used for Metric Formula's Code.
-     */
-    code?: string;
-    /**
-     * This schema defines the type of the language used for Metric Expression Code.
-     */
-    language?: Language;
-}
-
-/**
- * This schema defines the type of the language used for Metric Expression Code.
- */
-export enum Language {
-    External = "External",
-    Java = "Java",
-    JavaScript = "JavaScript",
-    Python = "Python",
-    SQL = "SQL",
-}
-
-/**
- * Type of the metric.
- *
- * This schema defines the type of Metric.
- */
-export enum MetricType {
-    Average = "AVERAGE",
-    Count = "COUNT",
-    Max = "MAX",
-    Median = "MEDIAN",
-    Min = "MIN",
-    Mode = "MODE",
-    Other = "OTHER",
-    Percentage = "PERCENTAGE",
-    Ratio = "RATIO",
-    StandardDeviation = "STANDARD_DEVIATION",
-    Sum = "SUM",
-    Variance = "VARIANCE",
-}
-
-/**
- * Owners of this metric
+ * Data assets (tables, dashboards, etc.) this metric is computed on or applies to.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -192,6 +160,141 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * A dimension associated with a metric from a semantic layer.
+ */
+export interface MetricDimension {
+    /**
+     * Description of the dimension.
+     */
+    description?: string;
+    /**
+     * Expression used to compute the dimension.
+     */
+    expression?: string;
+    /**
+     * Fully qualified name of the dimension, in the format 'metricFQN.dimension.<name>'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the dimension.
+     */
+    name: string;
+    /**
+     * Type of the dimension.
+     */
+    type?: Type;
+}
+
+/**
+ * Type of the dimension.
+ */
+export enum Type {
+    Categorical = "CATEGORICAL",
+    Time = "TIME",
+}
+
+/**
+ * A filter applied to a metric.
+ */
+export interface MetricFilter {
+    /**
+     * SQL WHERE clause for the filter.
+     */
+    where: string;
+}
+
+/**
+ * Metric's granularity.
+ *
+ * This schema defines the type of Metric's granularity.
+ */
+export enum MetricGranularity {
+    Day = "DAY",
+    Hour = "HOUR",
+    Minute = "MINUTE",
+    Month = "MONTH",
+    Quarter = "QUARTER",
+    Second = "SECOND",
+    Week = "WEEK",
+    Year = "YEAR",
+}
+
+/**
+ * A measure associated with a metric from a semantic layer.
+ */
+export interface MetricMeasure {
+    /**
+     * Aggregation function for the measure (e.g., sum, count, average).
+     */
+    aggregation?: string;
+    /**
+     * Description of the measure.
+     */
+    description?: string;
+    /**
+     * Expression used to compute the measure.
+     */
+    expression?: string;
+    /**
+     * Fully qualified name of the measure, in the format 'metricFQN.measure.<name>'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the measure.
+     */
+    name: string;
+}
+
+/**
+ * Expression used to compute the metric.
+ */
+export interface MetricExpression {
+    /**
+     * This schema defines the type of the language used for Metric Formula's Code.
+     */
+    code?: string;
+    /**
+     * This schema defines the type of the language used for Metric Expression Code.
+     */
+    language?: Language;
+}
+
+/**
+ * This schema defines the type of the language used for Metric Expression Code.
+ */
+export enum Language {
+    External = "External",
+    Java = "Java",
+    JavaScript = "JavaScript",
+    Python = "Python",
+    SQL = "SQL",
+}
+
+/**
+ * Type of the metric.
+ *
+ * This schema defines the type of Metric.
+ */
+export enum MetricType {
+    Average = "AVERAGE",
+    Conversion = "CONVERSION",
+    Count = "COUNT",
+    Cumulative = "CUMULATIVE",
+    Derived = "DERIVED",
+    Max = "MAX",
+    Median = "MEDIAN",
+    Min = "MIN",
+    Mode = "MODE",
+    Other = "OTHER",
+    Percentage = "PERCENTAGE",
+    Ratio = "RATIO",
+    Simple = "SIMPLE",
+    StandardDeviation = "STANDARD_DEVIATION",
+    Sum = "SUM",
+    Variance = "VARIANCE",
 }
 
 /**

@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import { isUndefined } from 'lodash';
 import * as path from 'path';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
+import { okJson, settleAll } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { getCustomPropertyCreationData } from '../../utils/customPropertyAdvancedSearchUtils';
 import { DataProduct } from '../domain/DataProduct';
@@ -107,7 +108,7 @@ export class EntityDataClass {
     classification: 'Tier',
   });
   static readonly classification1 = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   static readonly tag1 = new TagClass({
@@ -184,8 +185,13 @@ export class EntityDataClass {
       `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
     );
 
-    const typesData = (await typesInfo.json()).data;
-    const createdMetadataType = await cpMetadataType.json();
+    const typesData = (
+      await okJson(typesInfo, 'EntityDataClass.setupCustomPropertyData')
+    ).data;
+    const createdMetadataType = await okJson(
+      cpMetadataType,
+      'EntityDataClass.setupCustomPropertyData'
+    );
 
     // Map and prepare the data required for creating custom properties of different types
     const cpCreationData = getCustomPropertyCreationData(typesData);
@@ -198,11 +204,15 @@ export class EntityDataClass {
       const typeData = cpCreationData[type.name as keyof typeof cpCreationData];
 
       if (!isUndefined(typeData)) {
-        await apiContext.put(
+        const response = await apiContext.put(
           `/api/v1/metadata/types/${createdMetadataType.id}`,
           {
             data: typeData,
           }
+        );
+        await okJson(
+          response,
+          `Create ${type.name} custom property for ${entityType}`
         );
       }
     }
@@ -269,7 +279,7 @@ export class EntityDataClass {
       this.worksheet2.create(apiContext),
     ];
 
-    await Promise.allSettled(promises);
+    await settleAll(promises);
 
     // Keeping these creations separate as they depend on
     // Entity creation above
@@ -282,7 +292,7 @@ export class EntityDataClass {
       this.tag1.create(apiContext),
     ];
 
-    await Promise.allSettled(dependentEntityCreationPromises);
+    await settleAll(dependentEntityCreationPromises);
 
     const entityTypesToSetup = Object.values(CUSTOM_PROPERTIES_ENTITIES).map(
       (entity) => entity.name
@@ -354,7 +364,7 @@ export class EntityDataClass {
       this.worksheet2.delete(apiContext),
     ];
 
-    return await Promise.allSettled(promises);
+    return await settleAll(promises);
   }
 
   static saveResponseData() {
@@ -646,7 +656,7 @@ export class EntityDataClass {
         }
       }
     } catch (error) {
-      // Silently fail if file doesn't exist or can't be read
+      throw new Error(`Unable to load shared fixture data: ${String(error)}`);
     }
   }
 }

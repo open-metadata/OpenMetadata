@@ -16,45 +16,11 @@
 .service-details-page {
   background-color: @grey-9;
 
-  /* Tabs */
-  .ant-tabs-top > .ant-tabs-nav::before {
-    display: none;
-  }
-
-  // Entity Details Page css
-  .entity-details-page-tabs {
-    .ant-tabs-nav {
-      .ant-tabs-nav-wrap {
-        overflow: initial;
-      }
-    }
-  }
-
-  .ant-tabs-tab + .ant-tabs-tab {
-    margin: 0 0 0 24px;
-  }
-
-  .ant-tabs-nav {
-    padding: 4px 20px 8px 20px;
-    background-color: var(--tw-color-bg-primary);
-    border-radius: @border-rad-sm;
-    border: 1px solid @grey-15;
-  }
-
-  .ant-tabs.tabs-new .ant-tabs-tabpane {
-    background-color: transparent;
-  }
-
+  // Connection configuration and service attributes are separate cards now, so the tab is a
+  // plain stack rather than one bordered panel wrapping both.
   .connection-tab-content {
-    background-color: var(--tw-color-bg-primary);
-    border-radius: @border-rad-sm;
-    border: 1px solid @grey-15;
-  }
-
-  .connection-tab-content {
-    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--om-space-16);
   }
 }

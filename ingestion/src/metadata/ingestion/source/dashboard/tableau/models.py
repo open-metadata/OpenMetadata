@@ -14,7 +14,6 @@ Tableau Source Model module
 """
 
 import uuid
-from typing import Dict, List, Optional, Set, Union  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -30,8 +29,8 @@ class TableauBaseModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     # in case of personal space workbooks, the project id is returned as a UUID
-    id: Union[str, uuid.UUID]  # noqa: UP007
-    name: Optional[str] = None  # noqa: UP045
+    id: str | uuid.UUID
+    name: str | None = None
 
     # pylint: disable=no-self-argument
     @field_validator("id", mode="before")
@@ -82,7 +81,7 @@ class TableauOwner(TableauBaseModel):
     Aux class for Owner object of the tableau_api_lib response
     """
 
-    email: Optional[str] = None  # noqa: UP045
+    email: str | None = None
 
 
 class TableauDatasource(BaseModel):
@@ -90,8 +89,8 @@ class TableauDatasource(BaseModel):
     Model for downstream datasource information
     """
 
-    id: Optional[str] = None  # noqa: UP045
-    name: Optional[str] = None  # noqa: UP045
+    id: str | None = None
+    name: str | None = None
 
 
 class CustomSQLTable(TableauBaseModel):
@@ -100,8 +99,8 @@ class CustomSQLTable(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
-    downstreamDatasources: Optional[List[TableauDatasource]] = None  # noqa: N815, UP006, UP045
-    query: Optional[str] = None  # noqa: UP045
+    downstreamDatasources: list[TableauDatasource] | None = None  # noqa: N815
+    query: str | None = None
 
 
 class CustomSQLTablesResponse(BaseModel):
@@ -109,42 +108,42 @@ class CustomSQLTablesResponse(BaseModel):
     Model for the custom SQL tables response
     """
 
-    data: Dict[str, List[CustomSQLTable]]  # noqa: UP006
+    data: dict[str, list[CustomSQLTable]]
 
 
 class UpstreamColumn(BaseModel):
     id: str
-    name: Optional[str] = None  # noqa: UP045
-    remoteType: Optional[str] = None  # noqa: N815, UP045
+    name: str | None = None
+    remoteType: str | None = None  # noqa: N815
 
 
 class DatasourceField(BaseModel):
     id: str
-    name: Optional[str] = None  # noqa: UP045
-    upstreamColumns: Optional[List[Union[UpstreamColumn, None]]] = None  # noqa: N815, UP006, UP007, UP045
-    description: Optional[str] = None  # noqa: UP045
-    formula: Optional[str] = None  # noqa: UP045
+    name: str | None = None
+    upstreamColumns: list[UpstreamColumn | None] | None = None  # noqa: N815
+    description: str | None = None
+    formula: str | None = None
 
 
 class UpstreamTableColumn(BaseModel):
     id: str
-    name: Optional[str] = None  # noqa: UP045
+    name: str | None = None
 
 
 class TableauDatabase(BaseModel):
     id: str
-    name: Optional[str] = None  # noqa: UP045
+    name: str | None = None
 
 
 class UpstreamTable(BaseModel):
     id: str
     luid: str
-    name: Optional[str] = None  # noqa: UP045
-    fullName: Optional[str] = None  # noqa: N815, UP045
-    schema_: Optional[str] = Field(None, alias="schema")  # noqa: UP045
-    columns: Optional[List[UpstreamTableColumn]] = None  # noqa: UP006, UP045
-    database: Optional[TableauDatabase] = None  # noqa: UP045
-    referencedByQueries: Optional[List[CustomSQLTable]] = None  # noqa: N815, UP006, UP045
+    name: str | None = None
+    fullName: str | None = None  # noqa: N815
+    schema_: str | None = Field(None, alias="schema")
+    columns: list[UpstreamTableColumn] | None = None
+    database: TableauDatabase | None = None
+    referencedByQueries: list[CustomSQLTable] | None = None  # noqa: N815
 
     @field_validator("referencedByQueries", mode="before")
     @classmethod
@@ -157,22 +156,22 @@ class UpstreamTable(BaseModel):
 
 class DataSource(BaseModel):
     id: str
-    name: Optional[str] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    projectName: Optional[str] = None  # noqa: N815, UP045
-    tags: Optional[List[TableauDataModelTag]] = []  # noqa: UP006, UP045
-    fields: Optional[List[DatasourceField]] = None  # noqa: UP006, UP045
-    upstreamTables: Optional[List[UpstreamTable]] = None  # noqa: N815, UP006, UP045
-    upstreamDatasources: Optional[List["DataSource"]] = None  # noqa: N815, UP006, UP045
+    name: str | None = None
+    description: str | None = None
+    projectName: str | None = None  # noqa: N815
+    tags: list[TableauDataModelTag] | None = []
+    fields: list[DatasourceField] | None = None
+    upstreamTables: list[UpstreamTable] | None = None  # noqa: N815
+    upstreamDatasources: list["DataSource"] | None = None  # noqa: N815
 
 
 class TableauDatasources(BaseModel):
-    nodes: Optional[List[DataSource]] = None  # noqa: UP006, UP045
-    totalCount: Optional[int] = None  # noqa: N815, UP045
+    nodes: list[DataSource] | None = None
+    totalCount: int | None = None  # noqa: N815
 
 
 class TableauDatasourcesConnection(BaseModel):
-    embeddedDatasourcesConnection: Optional[TableauDatasources] = None  # noqa: N815, UP045
+    embeddedDatasourcesConnection: TableauDatasources | None = None  # noqa: N815
 
 
 class TableauChart(TableauBaseModel):
@@ -180,10 +179,10 @@ class TableauChart(TableauBaseModel):
     Aux class for Chart object of the tableau_api_lib response
     """
 
-    owner: Optional[TableauOwner] = None  # noqa: UP045
-    tags: Optional[Set] = []  # noqa: UP006, UP045
-    contentUrl: Optional[str] = ""  # noqa: N815, UP045
-    sheetType: Optional[str] = ChartType.Other.value  # noqa: N815, UP045
+    owner: TableauOwner | None = None
+    tags: set | None = []
+    contentUrl: str | None = ""  # noqa: N815
+    sheetType: str | None = ChartType.Other.value  # noqa: N815
 
 
 class TableauDashboard(TableauBaseModel):
@@ -193,15 +192,15 @@ class TableauDashboard(TableauBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    project: Optional[TableauBaseModel] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    owner: Optional[TableauOwner] = None  # noqa: UP045
-    tags: Optional[Set] = []  # noqa: UP006, UP045
-    webpageUrl: Optional[str] = None  # noqa: N815, UP045
-    charts: Optional[List[TableauChart]] = None  # noqa: UP006, UP045
-    dataModels: Optional[List[DataSource]] = []  # noqa: N815, UP006, UP045
-    custom_sql_queries: Optional[List[str]] = None  # noqa: UP006, UP045
-    user_views: Optional[int] = None  # noqa: UP045
+    project: TableauBaseModel | None = None
+    description: str | None = None
+    owner: TableauOwner | None = None
+    tags: set | None = []
+    webpageUrl: str | None = None  # noqa: N815
+    charts: list[TableauChart] | None = None
+    dataModels: list[DataSource] | None = []  # noqa: N815
+    custom_sql_queries: list[str] | None = None
+    user_views: int | None = None
 
 
 class TableAndQuery(BaseModel):
@@ -210,4 +209,4 @@ class TableAndQuery(BaseModel):
     """
 
     table: Table
-    query: Optional[str] = None  # noqa: UP045
+    query: str | None = None

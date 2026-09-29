@@ -18,8 +18,10 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import {
+  AssetTypeConfiguration,
   BoostMode,
   Modifier,
+  RankingStage,
   ScoreMode,
   SearchSettings,
 } from '../generated/configuration/searchSettings';
@@ -69,6 +71,190 @@ export const getEntitySearchConfig = (
   return searchConfig.assetTypeConfigurations.find(
     (config) => config.assetType === entityType
   );
+};
+
+const PRIMARY_NAME_FIELDS = ['name', 'displayName', 'fullyQualifiedName'];
+const RANKING_FIELD_SUFFIXES = ['.keyword', '.ngram', '.compound'];
+
+const normalizeRankingField = (field: string) => {
+  for (const suffix of RANKING_FIELD_SUFFIXES) {
+    if (field.endsWith(suffix)) {
+      return field.slice(0, -suffix.length);
+    }
+  }
+
+  return field;
+};
+
+const isPrimaryNameField = (field: string) =>
+  PRIMARY_NAME_FIELDS.includes(normalizeRankingField(field));
+
+const isDescriptionContextField = (field: string) => {
+  const lowerField = field.toLowerCase();
+
+  return (
+    lowerField.includes('description') ||
+    lowerField === 'querytext' ||
+    lowerField === 'extractedtext'
+  );
+};
+
+const withFallbackFields = (
+  fields: Set<string>,
+  fallbackFields: string[] = []
+) => {
+  const rankingFields = [...fields];
+
+  return rankingFields.length > 0 ? rankingFields : fallbackFields;
+};
+
+const deriveExactNameFields = (
+  configuredFields: string[],
+  fallbackFields: string[]
+) => {
+  const fields = new Set<string>();
+
+  ['displayName.keyword', 'name.keyword', 'fullyQualifiedName.keyword'].forEach(
+    (field) => {
+      if (configuredFields.includes(field)) {
+        fields.add(field);
+      }
+    }
+  );
+
+  if (configuredFields.includes('displayName')) {
+    fields.add('displayName.keyword');
+  }
+  if (configuredFields.includes('name')) {
+    fields.add('name.keyword');
+  }
+  if (configuredFields.includes('fullyQualifiedName')) {
+    fields.add('fullyQualifiedName');
+  }
+
+  return withFallbackFields(fields, fallbackFields);
+};
+
+const deriveCloseNameFields = (
+  configuredFields: string[],
+  fallbackFields: string[]
+) => {
+  const fields = new Set(
+    configuredFields.filter(
+      (field) =>
+        isPrimaryNameField(field) &&
+        !field.endsWith('.keyword') &&
+        !field.endsWith('.ngram')
+    )
+  );
+
+  return withFallbackFields(fields, fallbackFields);
+};
+
+const deriveNgramNameFields = (
+  configuredFields: string[],
+  fallbackFields: string[]
+) => {
+  const fields = new Set(
+    configuredFields.filter(
+      (field) => field.endsWith('.ngram') && isPrimaryNameField(field)
+    )
+  );
+
+  return withFallbackFields(fields, fallbackFields);
+};
+
+const deriveDescriptionFields = (
+  configuredFields: string[],
+  fallbackFields: string[]
+) => {
+  const fields = new Set(configuredFields.filter(isDescriptionContextField));
+
+  return withFallbackFields(fields, fallbackFields);
+};
+
+const deriveStructuralFields = (
+  configuredFields: string[],
+  fallbackFields: string[]
+) => {
+  const fields = new Set(
+    configuredFields.filter(
+      (field) =>
+        !isPrimaryNameField(field) &&
+        !isDescriptionContextField(field) &&
+        !field.startsWith('extension.')
+    )
+  );
+
+  return withFallbackFields(fields, fallbackFields);
+};
+
+const deriveRankingStageFields = (
+  stage: RankingStage,
+  configuredFields: string[]
+) => {
+  const fallbackFields = stage.fields ?? [];
+
+  if (configuredFields.length === 0) {
+    return fallbackFields;
+  }
+
+  const stageName = (stage.name ?? '').toLowerCase();
+
+  if (stageName.includes('exact')) {
+    return deriveExactNameFields(configuredFields, fallbackFields);
+  }
+  if (stageName.includes('partial') || stageName.includes('ngram')) {
+    return deriveNgramNameFields(configuredFields, fallbackFields);
+  }
+  if (stageName.includes('close') || stageName.includes('name')) {
+    return deriveCloseNameFields(configuredFields, fallbackFields);
+  }
+  if (stageName.includes('description')) {
+    return deriveDescriptionFields(configuredFields, fallbackFields);
+  }
+
+  return deriveStructuralFields(configuredFields, fallbackFields);
+};
+
+export const getEffectiveRankingConfiguration = (
+  searchConfig: SearchSettings | undefined,
+  assetConfig: AssetTypeConfiguration | null
+) => {
+  if (assetConfig?.ranking) {
+    return assetConfig.ranking;
+  }
+
+  const defaultRanking = searchConfig?.defaultConfiguration?.ranking;
+
+  if (!defaultRanking) {
+    return undefined;
+  }
+
+  const configuredFields =
+    assetConfig?.searchFields?.map((fieldBoost) => fieldBoost.field) ?? [];
+
+  return {
+    ...defaultRanking,
+    signals: defaultRanking.signals
+      ? {
+          ...defaultRanking.signals,
+          fields: defaultRanking.signals.fields
+            ? [...defaultRanking.signals.fields]
+            : undefined,
+        }
+      : undefined,
+    stages: defaultRanking.stages?.map((stage) => ({
+      ...stage,
+      fields: deriveRankingStageFields(stage, configuredFields),
+    })),
+    stopWords: defaultRanking.stopWords
+      ? [...defaultRanking.stopWords]
+      : undefined,
+    stopWordsByLanguage: defaultRanking.stopWordsByLanguage
+      ? { ...defaultRanking.stopWordsByLanguage }
+      : undefined,
+  };
 };
 
 export const boostModeOptions = Object.values(BoostMode).map((value) => ({

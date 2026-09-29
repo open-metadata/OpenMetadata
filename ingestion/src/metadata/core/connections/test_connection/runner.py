@@ -11,12 +11,9 @@
 """
 The orchestrator behind ``BaseConnection.test_connection``.
 
-It fetches the definition (which owns step order, category and mandatory flags),
-resolves each step to a ``@check`` method on the provider, runs them in that
-order, and maps every outcome to a result. A missing check becomes a visible
-``Skipped`` - never a crash. Once a gate step fails, every subsequent step is
-skipped as ``ConnectionNotEstablished``. The workflow is patched after each step
-so the UI sees honest progress.
+Runs each definition step in order against the provider's ``@check`` methods. A
+missing check is a visible ``Skipped``, never a crash; once a gate fails the rest
+are skipped. The workflow is patched after each step so the UI sees progress.
 """
 
 from __future__ import annotations
@@ -37,7 +34,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionDefinit
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     SkipReason,
-    Status,
     StatusType,
     TestConnectionResult,
     TestConnectionStepResult,
@@ -229,7 +225,11 @@ def _is_gate(step: TestConnectionStep) -> bool:
 
 
 def _final_status(result: TestConnectionResult) -> StatusType:
-    """Successful only if every mandatory step passed; a mandatory step that
-    failed or did not run fails the whole test."""
-    mandatory_passed = all(step.status == Status.Passed for step in result.steps if step.mandatory)
+    """Successful only if every mandatory step's check passed; a mandatory step
+    that failed or did not run fails the whole test.
+
+    Reads ``passed`` (the outcome) rather than ``status`` (the severity), so a
+    mandatory step that passed with a non-blocking caveat (``Warning`` but
+    ``passed`` is ``True``) still counts as successful."""
+    mandatory_passed = all(step.passed for step in result.steps if step.mandatory)
     return StatusType.Successful if mandatory_passed else StatusType.Failed

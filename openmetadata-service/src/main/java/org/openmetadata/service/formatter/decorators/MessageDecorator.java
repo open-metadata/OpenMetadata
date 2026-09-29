@@ -13,11 +13,10 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getConversation;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThreadEntity;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getDataContractUrl;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
 import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
@@ -40,17 +39,18 @@ import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.formatter.util.ActivityMessageFormatter;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.branding.MessageBrandingResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,43 +154,6 @@ public interface MessageDecorator<T> {
     return entityUrl;
   }
 
-  @SneakyThrows
-  default String buildThreadUrl(
-      ThreadType threadType, String entityType, EntityInterface entityInterface) {
-
-    String activeTab =
-        threadType.equals(ThreadType.Task) ? "activity_feed/tasks" : "activity_feed/all";
-
-    String fqn = resolveFullyQualifiedName(entityType, entityInterface);
-    String entityUrl = "";
-    switch (entityType) {
-      case Entity.TEST_CASE:
-        if (entityInterface instanceof TestCase testCase) {
-          entityUrl = getEntityUrl("test-case", testCase.getFullyQualifiedName(), "issues");
-        }
-        break;
-
-      case Entity.GLOSSARY_TERM:
-        entityUrl = getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
-        break;
-
-      case Entity.TAG:
-        entityUrl = getEntityUrl("tags", fqn.split("\\.")[0], "");
-        break;
-
-      case Entity.INGESTION_PIPELINE:
-        entityUrl = getIngestionPipelineUrl(this, entityType, entityInterface);
-        break;
-
-      default:
-        entityUrl = getEntityUrl(entityType, fqn, activeTab);
-    }
-
-    // Fallback in case of no match
-    LOG.debug("buildThreadUrl for Alert: {}", entityUrl);
-    return entityUrl;
-  }
-
   // Helper function to resolve FQN if null or empty
   private String resolveFullyQualifiedName(String entityType, EntityInterface entityInterface) {
     String fqn = entityInterface.getFullyQualifiedName();
@@ -207,11 +170,11 @@ public interface MessageDecorator<T> {
         .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
         .orElseGet(
             () -> {
-              if (event.getEntityType().equals(Entity.THREAD)) {
-                Thread thread = getThreadEntity(event);
-                return nullOrEmpty(thread.getEntityRef())
-                    ? thread.getId().toString()
-                    : thread.getEntityRef().getFullyQualifiedName();
+              if (event.getEntityType().equals(Entity.CONVERSATION)) {
+                Conversation conversation = getConversation(event);
+                return nullOrEmpty(conversation.getEntityRef())
+                    ? conversation.getId().toString()
+                    : conversation.getEntityRef().getFullyQualifiedName();
               } else {
                 EntityInterface entityInterface = getEntity(event);
                 return entityInterface.getFullyQualifiedName();
@@ -220,7 +183,7 @@ public interface MessageDecorator<T> {
   }
 
   default T buildOutgoingMessage(String publisherName, ChangeEvent event) {
-    if (event.getEntityType().equals(Entity.THREAD)) {
+    if (event.getEntityType().equals(Entity.CONVERSATION)) {
       return buildThreadMessage(publisherName, event);
     } else if (Entity.getEntityList().contains(event.getEntityType())) {
       return buildEntityMessage(publisherName, event);
@@ -302,200 +265,55 @@ public interface MessageDecorator<T> {
       }
       message.setHeader(headerText);
     }
-    List<Thread> thread = FeedUtils.getThreadWithMessage(this, event);
+    List<FormattedMessage> formattedMessages = ActivityMessageFormatter.format(this, event);
     List<String> messages = new ArrayList<>();
-    thread.forEach(entry -> messages.add(entry.getMessage()));
+    formattedMessages.forEach(entry -> messages.add(entry.getMessage()));
     message.setMessages(messages);
     return message;
   }
 
   default OutgoingMessage createThreadMessage(String publisherName, ChangeEvent event) {
-    OutgoingMessage message = new OutgoingMessage();
-    message.setUserName(event.getUserName());
-    Thread thread = getThread(event);
-
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
+    Conversation conversation = getConversation(event);
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(conversation.getAbout());
     EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
     String entityUrl = buildEntityUrl(entityLink.getEntityType(), entityInterface);
 
-    String headerMessage = "";
-    List<String> attachmentList = new ArrayList<>();
-
-    String assetUrl =
-        getThreadAssetsUrl(thread.getType(), MessageParser.EntityLink.parse(thread.getAbout()));
-    switch (thread.getType()) {
-      case Conversation -> {
-        switch (event.getEventType()) {
-          case THREAD_CREATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s started a conversation for asset %s",
-                    publisherName, thread.getCreatedBy(), assetUrl);
-            attachmentList.add(replaceEntityLinks(thread.getMessage()));
-          }
-          case POST_CREATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s posted a message on asset %s",
-                    publisherName, thread.getCreatedBy(), assetUrl);
-            attachmentList.add(
-                String.format(
-                    "@%s : %s", thread.getCreatedBy(), replaceEntityLinks(thread.getMessage())));
-            thread
-                .getPosts()
-                .forEach(
-                    post ->
-                        attachmentList.add(
-                            String.format(
-                                "@%s : %s",
-                                post.getFrom(), replaceEntityLinks(post.getMessage()))));
-          }
-          case THREAD_UPDATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s posted update on Conversation for asset %s",
-                    publisherName, thread.getUpdatedBy(), assetUrl);
-            attachmentList.add(replaceEntityLinks(thread.getMessage()));
-          }
-        }
-      }
-      case Task -> {
-        switch (event.getEventType()) {
-          case THREAD_CREATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s created a Task for %s %s",
-                    publisherName, thread.getCreatedBy(), entityLink.getEntityType(), assetUrl);
-            attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
-            attachmentList.add(
-                String.format(
-                    "Assignees : %s",
-                    convertInputListToString(
-                        thread.getTask().getAssignees().stream()
-                            .map(assignee -> String.format("@%s", assignee.getName()))
-                            .toList())));
-            attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
-          }
-          case POST_CREATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s posted a message on the Task with Id : %s for Asset %s",
-                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
-            thread
-                .getPosts()
-                .forEach(
-                    post ->
-                        attachmentList.add(
-                            String.format(
-                                "@%s : %s",
-                                post.getFrom(), replaceEntityLinks(post.getMessage()))));
-          }
-          case THREAD_UPDATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s posted update on the Task with Id : %s for Asset %s",
-                    publisherName, thread.getUpdatedBy(), thread.getTask().getId(), assetUrl);
-            attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
-            attachmentList.add(
-                String.format(
-                    "Assignees : %s",
-                    convertInputListToString(
-                        thread.getTask().getAssignees().stream()
-                            .map(assignee -> String.format("@%s", assignee.getName()))
-                            .toList())));
-            attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
-          }
-          case TASK_CLOSED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s closed Task with Id : %s for Asset %s",
-                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
-            attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
-          }
-          case TASK_RESOLVED -> {
-            headerMessage =
-                String.format(
-                    "[%s] @%s resolved Task with Id : %s for Asset %s",
-                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
-            attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
-          }
-        }
-      }
-      case Announcement -> {
-        switch (event.getEventType()) {
-          case THREAD_CREATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] **@%s** posted an **Announcement**",
-                    publisherName, thread.getCreatedBy());
-            attachmentList.add(
-                String.format("Description : %s", thread.getAnnouncement().getDescription()));
-            attachmentList.add(
-                String.format(
-                    "Started At : %s", getDateString(thread.getAnnouncement().getStartTime())));
-            attachmentList.add(
-                String.format(
-                    "Ends At : %s", getDateString(thread.getAnnouncement().getEndTime())));
-          }
-          case POST_CREATED -> {
-            headerMessage =
-                String.format(
-                    "**@%s** posted a message on **Announcement**", thread.getCreatedBy());
-            thread
-                .getPosts()
-                .forEach(
-                    post ->
-                        attachmentList.add(
-                            String.format(
-                                "@%s : %s",
-                                post.getFrom(), replaceEntityLinks(post.getMessage()))));
-          }
-          case THREAD_UPDATED -> {
-            headerMessage =
-                String.format(
-                    "[%s] **@%s** posted an update on  **Announcement**",
-                    publisherName, thread.getUpdatedBy());
-            attachmentList.add(
-                String.format("Description : %s", thread.getAnnouncement().getDescription()));
-            attachmentList.add(
-                String.format(
-                    "Started At : %s", getDateString(thread.getAnnouncement().getStartTime())));
-            attachmentList.add(
-                String.format(
-                    "Ends At : %s", getDateString(thread.getAnnouncement().getEndTime())));
-          }
-          case ENTITY_DELETED -> {
-            headerMessage =
-                String.format(
-                    "[%s] **@%s** posted an update on  **Announcement**",
-                    publisherName, thread.getUpdatedBy());
-            attachmentList.add(
-                String.format(
-                    "Announcement Deleted: %s", thread.getAnnouncement().getDescription()));
-          }
-        }
-      }
-    }
-    if (nullOrEmpty(headerMessage) || attachmentList.isEmpty()) {
-      throw new UnhandledServerException("Unable to build message");
-    }
-    message.setHeader(headerMessage);
-    message.setMessages(attachmentList);
-
+    OutgoingMessage message = new OutgoingMessage();
+    message.setUserName(event.getUserName());
     message.setEntityUrl(entityUrl);
-    return message;
-  }
 
-  default String getThreadAssetsUrl(
-      ThreadType threadType, MessageParser.EntityLink aboutEntityLink) {
-    try {
-      return this.buildThreadUrl(
-          threadType,
-          aboutEntityLink.getEntityType(),
-          Entity.getEntity(aboutEntityLink, "id", Include.ALL));
-    } catch (Exception ex) {
-      return "";
+    List<String> attachments = new ArrayList<>();
+    String actor = event.getUserName();
+    switch (event.getEventType()) {
+      case THREAD_CREATED -> {
+        message.setHeader(
+            String.format(
+                "[%s] @%s started a conversation for asset %s", publisherName, actor, entityUrl));
+        attachments.add(replaceEntityLinks(conversation.getMessage()));
+      }
+      case POST_CREATED, POST_UPDATED -> {
+        message.setHeader(
+            String.format(
+                "[%s] @%s posted a message on asset %s", publisherName, actor, entityUrl));
+        for (ConversationReply reply : listOrEmpty(conversation.getReplies())) {
+          String author = reply.getAuthor() == null ? actor : reply.getAuthor().getName();
+          attachments.add(
+              String.format("@%s : %s", author, replaceEntityLinks(reply.getMessage())));
+        }
+      }
+      case THREAD_UPDATED -> {
+        message.setHeader(
+            String.format(
+                "[%s] @%s updated a conversation for asset %s", publisherName, actor, entityUrl));
+        attachments.add(replaceEntityLinks(conversation.getMessage()));
+      }
+      default -> throw new UnhandledServerException("Unable to build conversation message");
     }
+    if (attachments.isEmpty()) {
+      throw new UnhandledServerException("Unable to build conversation message");
+    }
+    message.setMessages(attachments);
+    return message;
   }
 
   static String getDateString(long epochTimestamp) {

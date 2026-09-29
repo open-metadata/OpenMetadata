@@ -13,17 +13,13 @@
 
 import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { isNumber } from 'lodash';
-import Qs from 'qs';
 import { useCallback, useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { pluralize } from '../../utils/StringUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import PaginationComponent from '../PaginationComponent/PaginationComponent';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = new Set([
@@ -37,7 +33,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   children,
   data,
   isLoading = false,
-  onPaginationChange,
   showResultCount = false,
   totalValue,
   isFilterSelected,
@@ -45,43 +40,53 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   selectedEntityId,
   handleSummaryPanelDisplay,
   filter,
+  showRankingDetails,
 }) => {
-  const {
-    preferences: { globalPageSize },
-  } = useCurrentUserPreferences();
-
   const searchResultCards = useMemo(() => {
-    return data.map(({ _source: table, highlight, _id }) => {
-      const matches = highlight
-        ? Object.entries(highlight)
-            .filter(([key]) => !key.includes('.ngram'))
-            .map(([key, value]) => ({ key, value: value?.length || 1 }))
-            .filter((d) => !ASSETS_NAME.has(d.key))
-        : [];
+    return data.map(
+      ({
+        _source: table,
+        highlight,
+        _id,
+        _score,
+        _explanation,
+        matched_queries,
+      }) => {
+        const matches = highlight
+          ? Object.entries(highlight)
+              .filter(([key]) => !key.includes('.ngram'))
+              .map(([key, value]) => ({ key, value: value?.length || 1 }))
+              .filter((d) => !ASSETS_NAME.has(d.key))
+          : [];
 
-      return (
-        <ExploreSearchCard
-          showEntityIcon
-          className={classNames(
-            table.id === selectedEntityId && isSummaryPanelVisible
-              ? 'highlight-card'
-              : ''
-          )}
-          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-          highlight={highlight}
-          id={`search-card-${_id}`}
-          key={_id}
-          matches={matches}
-          showTags={false}
-          source={table}
-        />
-      );
-    });
+        return (
+          <ExploreSearchCard
+            showEntityIcon
+            className={classNames(
+              table.id === selectedEntityId && isSummaryPanelVisible
+                ? 'highlight-card'
+                : ''
+            )}
+            handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+            highlight={highlight}
+            id={`search-card-${_id}`}
+            key={_id}
+            matchedQueries={showRankingDetails ? matched_queries : undefined}
+            matches={matches}
+            score={showRankingDetails ? _score : undefined}
+            scoreExplanation={showRankingDetails ? _explanation : undefined}
+            showTags={false}
+            source={table}
+          />
+        );
+      }
+    );
   }, [
     data,
     isSummaryPanelVisible,
     handleSummaryPanelDisplay,
     selectedEntityId,
+    showRankingDetails,
   ]);
 
   const ResultCount = useCallback(
@@ -112,16 +117,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     [isFilterSelected, filter, showResultCount]
   );
 
-  const { page = 1, size = globalPageSize } = useMemo(
-    () =>
-      Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substring(1)
-          : location.search
-      ),
-    [location.search]
-  );
-
   return (
     <>
       {isLoading ? (
@@ -132,21 +127,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             <>
               {children}
               <div className="tw:mb-4">{ResultCount(totalValue)}</div>
-              <div data-testid="search-results">
-                {searchResultCards}
-                <PaginationComponent
-                  responsive
-                  className="text-center p-y-sm tw:sticky"
-                  current={isNumber(Number(page)) ? Number(page) : 1}
-                  pageSize={
-                    size && isNumber(Number(size))
-                      ? Number(size)
-                      : globalPageSize
-                  }
-                  total={totalValue}
-                  onChange={onPaginationChange}
-                />
-              </div>
+              <div data-testid="search-results">{searchResultCards}</div>
             </>
           ) : (
             <div className="flex-center h-full">

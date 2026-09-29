@@ -80,13 +80,31 @@ class FlakyServer:
             if behavior == "hang":
                 time.sleep(_HANG_SECONDS)
                 return
-            body = json.dumps({"ok": True}).encode()
-            conn.sendall(
-                b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: application/json\r\n"
-                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
-                b"Connection: close\r\n\r\n" + body
-            )
+            if behavior.isdigit():
+                # dbt-shaped error: "code" nested under "status", which the client
+                # cannot classify, so get() drops it to None.
+                self._send(conn, int(behavior), {"status": {"code": int(behavior)}})
+                return
+            self._send(conn, 200, {"ok": True})
+
+    @staticmethod
+    def _send(conn: socket.socket, status: int, payload: dict) -> None:
+        reason = {
+            200: "OK",
+            401: "Unauthorized",
+            503: "Service Unavailable",
+            504: "Gateway Timeout",
+        }.get(status, "Status")
+        body = json.dumps(payload).encode()
+        conn.sendall(
+            f"HTTP/1.1 {status} {reason}\r\n".encode()
+            + b"Content-Type: application/json\r\n"
+            + b"Content-Length: "
+            + str(len(body)).encode()
+            + b"\r\n"
+            + b"Connection: close\r\n\r\n"
+            + body
+        )
 
 
 def _rest(port: int) -> REST:
@@ -119,4 +137,58 @@ def test_connection_abort_is_retried_and_recovers():
 def test_connection_failure_exhausts_to_transport_error():
     with FlakyServer([], tail="close") as srv, pytest.raises(RestTransportError):
         _rest(srv.port).get("/anything")
+    assert srv.attempts >= 2
+
+
+def test_get_raw_surfaces_a_status_get_swallows():
+    with FlakyServer(["401"]) as srv:
+        assert _rest(srv.port).get("/x") is None
+    with FlakyServer(["401"]) as srv:
+        assert _rest(srv.port).get_raw("/x").status_code == 401
+
+
+def test_get_raw_still_retries_gateway_5xx():
+    with FlakyServer(["504", "ok"]) as srv:
+        resp = _rest(srv.port).get_raw("/x", retry_wait=0)
+    assert resp.status_code == 200
+    assert srv.attempts >= 2
+
+
+def test_get_retries_service_unavailable_503():
+    # 503 Service Unavailable is a transient error (Kubernetes pod transitions,
+    # rolling deploys) that should be retried, not treated as a hard failure.
+    with FlakyServer(["503", "ok"]) as srv:
+        client = REST(
+            ClientConfig(
+                base_url=f"http://127.0.0.1:{srv.port}",
+                timeout=_CLIENT_TIMEOUT,
+                retry_wait=0,
+            )
+        )
+        out = client.get("/x")
+    assert out == {"ok": True}
+    assert srv.attempts >= 2
+
+
+def test_get_raw_retries_service_unavailable_503():
+    with FlakyServer(["503", "ok"]) as srv:
+        resp = _rest(srv.port).get_raw("/x", retry_wait=0)
+    assert resp.status_code == 200
+    assert srv.attempts >= 2
+
+
+def test_put_retries_service_unavailable_503():
+    # The reported failure was a write (bulk table PUT / dataModel PATCH), not a
+    # read. Every verb funnels through _request, so a write hits the same
+    # retry_codes branch and must recover from a transient 503 too.
+    with FlakyServer(["503", "ok"]) as srv:
+        client = REST(
+            ClientConfig(
+                base_url=f"http://127.0.0.1:{srv.port}",
+                timeout=_CLIENT_TIMEOUT,
+                retry_wait=0,
+            )
+        )
+        out = client.put("/x", data="{}")
+    assert out == {"ok": True}
     assert srv.attempts >= 2

@@ -1,0 +1,48 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// The OSS `Reactions` component ships antd buttons (the emoji pills + the
+// add-reaction trigger) with their own heights and `m-r-xss` margins that don't
+// line up with the comment `BadgeWithIcon`. Normalize the geometry here so the
+// reactions, emoji picker and comment pill read as one consistent 22px row.
+// `!important` is needed to beat OSS util classes / `.ant-btn-round.ant-btn-sm`
+// padding, which are themselves `!important`.
+.inbox-feed-actions {
+  [data-testid='feed-reaction-container'] {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ant-btn.ant-btn-reaction,
+  .ant-btn[data-testid='add-reactions'] {
+    height: 22px !important;
+    min-height: 22px;
+    margin: 0 !important;
+    border-radius: 6px !important;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .ant-btn.ant-btn-reaction {
+    padding: 0 8px !important;
+  }
+
+  // Square the circular add-reaction trigger so it matches the pill row.
+  .ant-btn[data-testid='add-reactions'] {
+    width: 22px;
+    min-width: 22px;
+    padding: 3px !important;
+    justify-content: center;
+  }
+}

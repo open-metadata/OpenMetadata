@@ -19,6 +19,7 @@ import { DisplayNameProps } from './DisplayName.interface';
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(({ children, ...props }) => (
+    // eslint-disable-next-line jsx-a11y/anchor-is-valid -- test mock for react-router Link
     <a href="#" {...props}>
       {children}
     </a>

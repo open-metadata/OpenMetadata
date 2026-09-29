@@ -19,11 +19,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -40,6 +42,7 @@ import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.data.Retention;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.TermsOfUse;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSLogicalTypeOptions;
@@ -56,6 +59,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
@@ -1080,8 +1084,9 @@ class ODCSConverterTest {
     assertEquals(ColumnDataType.STRING, contract.getSchema().get(0).getDataType());
     assertEquals(ColumnConstraint.UNIQUE, contract.getSchema().get(0).getConstraint());
     assertEquals(32, contract.getSchema().get(0).getDataLength());
-    assertEquals(0, contract.getSla().getRefreshFrequency().getInterval());
-    assertEquals(RefreshFrequency.Unit.HOUR, contract.getSla().getRefreshFrequency().getUnit());
+    assertNull(
+        contract.getSla().getRefreshFrequency(),
+        "A value that is not a whole number is left out rather than stored as 0");
     assertEquals("09:00", contract.getSla().getAvailabilityTime());
     assertNull(contract.getSla().getTimezone());
   }
@@ -1841,51 +1846,6 @@ class ODCSConverterTest {
   }
 
   @Test
-  void testMapODCSMetricToTestDefinition() {
-    assertEquals(
-        "columnValuesToBeNotNull",
-        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES));
-    assertEquals(
-        "tableRowCountToEqual",
-        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT));
-    assertEquals(
-        "columnValuesToBeUnique",
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.DISTINCT_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.FRESHNESS));
-    assertEquals(
-        "columnValuesMissingCountToBeEqual",
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES));
-    assertNull(
-        ODCSConverter.mapODCSMetricToTestDefinition(
-            ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES));
-  }
-
-  @Test
-  void testMapTestDefinitionToODCSMetric() {
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.NULL_VALUES,
-        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesToBeNotNull"));
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.ROW_COUNT,
-        ODCSConverter.mapTestDefinitionToODCSMetric("tableRowCountToEqual"));
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.ROW_COUNT,
-        ODCSConverter.mapTestDefinitionToODCSMetric("tableRowCountToBeBetween"));
-    assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES,
-        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesToBeUnique"));
-  }
-
-  @Test
   void testSmartMerge_PreservesExtension() {
     DataContract existing = new DataContract();
     existing.setId(UUID.randomUUID());
@@ -2451,6 +2411,201 @@ class ODCSConverterTest {
   }
 
   @Test
+  void testRoundTrip_PreservesVendorEngineQualityRule() {
+    ODCSDataContract source = newODCSContract();
+    ODCSQualityRule sodaRule = new ODCSQualityRule();
+    sodaRule.setName("soda_duplicate_percent");
+    sodaRule.setType(ODCSQualityRule.Type.CUSTOM);
+    sodaRule.setEngine("soda");
+    sodaRule.setImplementation(
+        "type: duplicate_percent\ncolumns:\n  - carrier\n  - shipment_numer\nmust_be_less_than: 1.0\n");
+    source.setQuality(List.of(sodaRule));
+    source.setSchema(List.of(objectWithProperties("shipments", propertyNamed("carrier"))));
+
+    DataContract contract = ODCSConverter.fromODCS(source, tableRef("shipments"));
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    assertNotNull(exported.getQuality());
+    ODCSQualityRule exportedRule = exported.getQuality().getFirst();
+    assertEquals(ODCSQualityRule.Type.CUSTOM, exportedRule.getType());
+    assertEquals("soda", exportedRule.getEngine());
+    assertEquals(sodaRule.getImplementation(), exportedRule.getImplementation());
+  }
+
+  @Test
+  void testRoundTrip_PreservesPropertyAuthoritativeDefinitions() {
+    ODCSAuthoritativeDefinition glossaryLink = new ODCSAuthoritativeDefinition();
+    glossaryLink.setUrl(
+        URI.create("http://localhost:8585/glossary/Finance-Glossary.Ledger.BusinessIdentifier"));
+    glossaryLink.setType("businessDefinition");
+
+    ODCSSchemaElement businessIdentifier = propertyNamed("BusinessIdentifier");
+    businessIdentifier.setAuthoritativeDefinitions(List.of(glossaryLink));
+
+    ODCSDataContract source = newODCSContract();
+    source.setSchema(List.of(objectWithProperties("ledger-topic.v1", businessIdentifier)));
+
+    DataContract contract = ODCSConverter.fromODCS(source, tableRef("ledger-topic.v1"));
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    ODCSSchemaElement exportedProperty = findProperty(exported, "BusinessIdentifier");
+    assertNotNull(exportedProperty);
+    assertFalse(
+        nullOrEmpty(exportedProperty.getAuthoritativeDefinitions()),
+        "Property-level authoritativeDefinitions were dropped on ODCS round-trip");
+    assertTrue(
+        exportedProperty.getAuthoritativeDefinitions().stream()
+            .allMatch(definition -> glossaryLink.getUrl().equals(definition.getUrl())),
+        "Exported authoritativeDefinitions do not match the imported ones");
+  }
+
+  @Test
+  void testRoundTrip_PreservesPropertyTransformSourceObjects() {
+    ODCSSchemaElement businessIdentifier = propertyNamed("BusinessIdentifier");
+    businessIdentifier.setTransformSourceObjects(List.of("[cdc.cds.LEDGER].[$.data.LEDGER]"));
+
+    ODCSDataContract source = newODCSContract();
+    source.setSchema(List.of(objectWithProperties("ledger-topic.v1", businessIdentifier)));
+
+    DataContract contract = ODCSConverter.fromODCS(source, tableRef("ledger-topic.v1"));
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    ODCSSchemaElement exportedProperty = findProperty(exported, "BusinessIdentifier");
+    assertNotNull(exportedProperty);
+    assertFalse(
+        nullOrEmpty(exportedProperty.getTransformSourceObjects()),
+        "Property-level transformSourceObjects were dropped on ODCS round-trip");
+    assertTrue(
+        exportedProperty.getTransformSourceObjects().contains("[cdc.cds.LEDGER].[$.data.LEDGER]"),
+        "Exported transformSourceObjects do not contain the imported source object");
+  }
+
+  @Test
+  void testRoundTrip_PreservesContractAuthoritativeDefinitions() {
+    ODCSAuthoritativeDefinition contractLink = new ODCSAuthoritativeDefinition();
+    contractLink.setUrl(URI.create("http://localhost:8585/glossary/Finance-Glossary.Ledger"));
+    contractLink.setType("businessDefinition");
+
+    ODCSDataContract source = newODCSContract();
+    source.setAuthoritativeDefinitions(List.of(contractLink));
+    source.setSchema(
+        List.of(objectWithProperties("ledger-topic.v1", propertyNamed("BusinessIdentifier"))));
+
+    DataContract contract = ODCSConverter.fromODCS(source, tableRef("ledger-topic.v1"));
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    assertFalse(
+        nullOrEmpty(exported.getAuthoritativeDefinitions()),
+        "Contract-level authoritativeDefinitions were dropped on ODCS round-trip");
+    assertTrue(
+        exported.getAuthoritativeDefinitions().stream()
+            .allMatch(definition -> contractLink.getUrl().equals(definition.getUrl())),
+        "Exported contract authoritativeDefinitions do not match the imported ones");
+  }
+
+  @Test
+  void testRoundTrip_PreservesObjectAuthoritativeDefinitionsWhenObjectIsRenamed() {
+    // toODCS names the exported schema object after the OpenMetadata entity, so an anchor captured
+    // from the imported object name no longer matches. The attributes must still survive, exactly
+    // as an unplaceable quality rule falls back to the contract level.
+    ODCSAuthoritativeDefinition objectLink = new ODCSAuthoritativeDefinition();
+    objectLink.setUrl(URI.create("http://localhost:8585/glossary/Finance-Glossary.Ledger"));
+    objectLink.setType("businessDefinition");
+
+    ODCSSchemaElement ledgerObject =
+        objectWithProperties("ledger-topic.v1", propertyNamed("BusinessIdentifier"));
+    ledgerObject.setAuthoritativeDefinitions(List.of(objectLink));
+
+    ODCSDataContract source = newODCSContract();
+    source.setSchema(List.of(ledgerObject));
+
+    DataContract contract = ODCSConverter.fromODCS(source, tableRef("ledger_table_in_om"));
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    assertTrue(
+        allAuthoritativeDefinitions(exported).stream()
+            .anyMatch(definition -> objectLink.getUrl().equals(definition.getUrl())),
+        "Object-level authoritativeDefinitions were dropped because the exported object was renamed");
+  }
+
+  private static List<ODCSAuthoritativeDefinition> allAuthoritativeDefinitions(
+      ODCSDataContract odcs) {
+    List<ODCSAuthoritativeDefinition> found = new ArrayList<>();
+    if (odcs.getAuthoritativeDefinitions() != null) {
+      found.addAll(odcs.getAuthoritativeDefinitions());
+    }
+    collectAuthoritativeDefinitions(odcs.getSchema(), found);
+    return found;
+  }
+
+  private static void collectAuthoritativeDefinitions(
+      List<ODCSSchemaElement> elements, List<ODCSAuthoritativeDefinition> found) {
+    if (elements == null) {
+      return;
+    }
+    for (ODCSSchemaElement element : elements) {
+      if (element.getAuthoritativeDefinitions() != null) {
+        found.addAll(element.getAuthoritativeDefinitions());
+      }
+      collectAuthoritativeDefinitions(element.getProperties(), found);
+    }
+  }
+
+  private static ODCSDataContract newODCSContract() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName("ledger");
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+    return odcs;
+  }
+
+  private static ODCSSchemaElement propertyNamed(String name) {
+    ODCSSchemaElement property = new ODCSSchemaElement();
+    property.setName(name);
+    property.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    return property;
+  }
+
+  private static ODCSSchemaElement objectWithProperties(
+      String name, ODCSSchemaElement... properties) {
+    ODCSSchemaElement object = new ODCSSchemaElement();
+    object.setName(name);
+    object.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    object.setProperties(List.of(properties));
+    return object;
+  }
+
+  private static EntityReference tableRef(String name) {
+    EntityReference ref = new EntityReference();
+    ref.setId(UUID.randomUUID());
+    ref.setType("table");
+    ref.setName(name);
+    return ref;
+  }
+
+  private static ODCSSchemaElement findProperty(ODCSDataContract odcs, String name) {
+    return odcs.getSchema() == null ? null : findProperty(odcs.getSchema(), name);
+  }
+
+  private static ODCSSchemaElement findProperty(List<ODCSSchemaElement> elements, String name) {
+    ODCSSchemaElement found = null;
+    for (ODCSSchemaElement element : elements) {
+      if (name.equals(element.getName())) {
+        found = element;
+      } else if (element.getProperties() != null) {
+        found = findProperty(element.getProperties(), name);
+      }
+      if (found != null) {
+        break;
+      }
+    }
+    return found;
+  }
+
+  @Test
   void testNormalizeODCSInput_TeamAsObject() {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode root = mapper.createObjectNode();
@@ -2555,9 +2710,134 @@ class ODCSConverterTest {
   }
 
   @Test
-  void testMapTestDefinitionToODCSMetric_MissingValues() {
+  void smartMergeKeepsTheQualityExpectationsOfTheExistingContract() {
+    EntityReference existingTest = testCaseRef("existing_check");
+    DataContract existing =
+        new DataContract().withName("contract").withQualityExpectations(List.of(existingTest));
+
+    DataContract merged = ODCSConverter.smartMerge(existing, new DataContract());
+
+    assertEquals(List.of(existingTest), merged.getQualityExpectations());
+  }
+
+  @Test
+  void smartMergeAddsImportedQualityExpectationsOnce() {
+    EntityReference existingTest = testCaseRef("existing_check");
+    EntityReference importedTest = testCaseRef("odcs_new_check");
+    DataContract existing =
+        new DataContract().withName("contract").withQualityExpectations(List.of(existingTest));
+    DataContract imported =
+        new DataContract().withQualityExpectations(List.of(importedTest, existingTest));
+
+    DataContract merged = ODCSConverter.smartMerge(existing, imported);
+
+    assertEquals(List.of(existingTest, importedTest), merged.getQualityExpectations());
+  }
+
+  @Test
+  void smartMergeKeepsTheSemanticsOfTheExistingContract() {
+    List<SemanticsRule> semantics =
+        List.of(new SemanticsRule().withName("has owner").withRule("{}"));
+    DataContract existing = new DataContract().withName("contract").withSemantics(semantics);
+
+    DataContract merged = ODCSConverter.smartMerge(existing, new DataContract());
+
+    assertEquals(semantics, merged.getSemantics());
+  }
+
+  @Test
+  void fullReplaceLinksOnlyTheImportedQualityExpectations() {
+    EntityReference importedTest = testCaseRef("odcs_new_check");
+    DataContract existing =
+        new DataContract()
+            .withName("contract")
+            .withQualityExpectations(List.of(testCaseRef("existing_check")));
+
+    DataContract replaced =
+        ODCSConverter.fullReplace(
+            existing, new DataContract().withQualityExpectations(List.of(importedTest)));
+
+    assertEquals(List.of(importedTest), replaced.getQualityExpectations());
+  }
+
+  @Test
+  void fullReplaceWithoutImportedQualityExpectationsUnlinksAll() {
+    DataContract existing =
+        new DataContract()
+            .withName("contract")
+            .withQualityExpectations(List.of(testCaseRef("existing_check")));
+
+    DataContract replaced = ODCSConverter.fullReplace(existing, new DataContract());
+
+    assertTrue(replaced.getQualityExpectations().isEmpty());
+  }
+
+  @Test
+  void freshnessSlaElementBecomesTheSlaColumnAndIsExportedBack() {
+    ODCSDataContract odcs = newODCSContract();
+    odcs.setSlaProperties(
+        List.of(
+            new ODCSSlaProperty()
+                .withProperty("freshness")
+                .withValue("1")
+                .withUnit("hour")
+                .withElement("ORDERS.UPDATED_AT")));
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, tableRef("orders"));
+    ODCSSlaProperty exported =
+        ODCSConverter.toODCS(contract).getSlaProperties().stream()
+            .filter(property -> "freshness".equals(property.getProperty()))
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals("UPDATED_AT", contract.getSla().getColumnName());
+    assertEquals("UPDATED_AT", exported.getElement());
+  }
+
+  @Test
+  void slaColumnIsExportedAsTheColumnsOwnName() {
+    DataContract contract =
+        new DataContract()
+            .withName("orders_contract")
+            .withEntity(tableRef("orders"))
+            .withSla(
+                new ContractSLA()
+                    .withRefreshFrequency(
+                        new RefreshFrequency().withInterval(1).withUnit(RefreshFrequency.Unit.DAY))
+                    .withColumnName("mysql.shop.public.orders.updated_at"));
+
+    List<ODCSSlaProperty> exported = ODCSConverter.toODCS(contract).getSlaProperties();
+
+    assertTrue(exported.stream().allMatch(property -> "updated_at".equals(property.getElement())));
+  }
+
+  @Test
+  void additionalQualityRulesAreExportedOnTheirColumn() {
+    DataContract contract =
+        new DataContract()
+            .withName("orders_contract")
+            .withEntity(tableRef("orders"))
+            .withSchema(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    ODCSQualityRule nativeRule =
+        new ODCSQualityRule()
+            .withName("id is set")
+            .withMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES)
+            .withColumn("id")
+            .withMustBe(0.0);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract, List.of(nativeRule));
+
+    ODCSSchemaElement idProperty =
+        odcs.getSchema().getFirst().getProperties().stream()
+            .filter(property -> "id".equals(property.getName()))
+            .findFirst()
+            .orElseThrow();
     assertEquals(
-        ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES,
-        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesMissingCountToBeEqual"));
+        List.of("id is set"),
+        idProperty.getQuality().stream().map(ODCSQualityRule::getName).toList());
+  }
+
+  private static EntityReference testCaseRef(String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType("testCase").withName(name);
   }
 }

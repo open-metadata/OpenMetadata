@@ -11,35 +11,60 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  PageLayout,
+} from '@openmetadata/ui-core-components';
+import { Stars01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { TFunction } from 'i18next';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
 import DocumentPreviewPanel from '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
-import { FolderOption } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
+import {
+  DocumentFolderViewHandle,
+  FolderOption,
+} from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { queryClient } from '../../../queryClient';
 import {
   bulkDeleteDriveFiles,
   bulkMoveFilesToFolder,
   deleteDriveFile,
   downloadDriveFiles,
+  getContextFileById,
   listContextFiles,
+  listFolders,
 } from '../../../rest/assetAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -47,9 +72,23 @@ import {
   downloadBlob,
   handleAssetDownload,
 } from '../../../utils/ContextCenterPureUtils';
+import {
+  CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+
+const FilePreviewModal = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/ContextCenter/DocumentsView/FilePreviewModal/FilePreviewModal'
+      )
+  )
+);
 
 const getSuccessfulIds = (result: BulkOperationResult): Set<string> =>
   new Set(
@@ -58,13 +97,167 @@ const getSuccessfulIds = (result: BulkOperationResult): Set<string> =>
       .filter((request): request is string => typeof request === 'string')
   );
 
+const computeShowDocumentsEmptyState = (
+  isDocumentsLoading: boolean,
+  isFoldersLoading: boolean,
+  documentSearchQuery: string,
+  selectedFolderId: string | undefined,
+  allDocuments: ContextFile[],
+  folders: Folder[]
+): boolean => {
+  const isDocumentsViewIdle =
+    !isDocumentsLoading &&
+    !isFoldersLoading &&
+    !documentSearchQuery &&
+    !selectedFolderId;
+  const hasNoDocumentsOrFolders =
+    allDocuments.length === 0 && folders.length === 0;
+
+  return isDocumentsViewIdle && hasNoDocumentsOrFolders;
+};
+
+const getBulkDeleteLabels = (count: number, t: TFunction) => {
+  const entityLabel = (
+    count === 1 ? t('label.document') : t('label.document-plural')
+  ).toLowerCase();
+
+  return {
+    entityTitle: `${count} ${entityLabel}`,
+    message: t('message.soft-delete-message-for-n-entities', {
+      count,
+      entity: entityLabel,
+    }),
+  };
+};
+
+const getFolderUploadHandler = (
+  hasCreatePermission: boolean,
+  handleUploadToFolder: (folderId: string) => void
+) => (hasCreatePermission ? handleUploadToFolder : undefined);
+
+const getDocumentsViewUploadHandler = (
+  hasCreatePermission: boolean,
+  selectedFolderId: string | undefined,
+  handleUploadToFolder: (folderId: string) => void
+) =>
+  hasCreatePermission
+    ? () => selectedFolderId && handleUploadToFolder(selectedFolderId)
+    : undefined;
+
+interface ContextCenterDocumentsEmptyStateProps {
+  hasCreatePermission: boolean;
+  onUploadFile: () => void;
+}
+
+const ContextCenterDocumentsEmptyState: FC<
+  ContextCenterDocumentsEmptyStateProps
+> = ({ hasCreatePermission, onUploadFile }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
+      <EmptyPlaceholder
+        actions={
+          hasCreatePermission
+            ? [
+                {
+                  color: 'primary',
+                  key: 'upload-file',
+                  label: t('label.upload-file'),
+                  onClick: onUploadFile,
+                },
+              ]
+            : []
+        }
+        description={t('message.context-center-documents-empty-subtitle')}
+        features={[
+          {
+            key: 'upload',
+            icon: <UploadIcon className="tw:text-fg-brand-primary" />,
+            title: t('label.upload-files'),
+            description: t(
+              'message.context-center-documents-empty-feature-upload'
+            ),
+          },
+          {
+            key: 'organize',
+            icon: <FolderIcon className="tw:text-fg-warning-primary" />,
+            title: t('label.organize-with-folders'),
+            description: t(
+              'message.context-center-documents-empty-feature-organize'
+            ),
+          },
+          {
+            key: 'retrieve',
+            icon: <Stars01 className="tw:text-fg-success-primary" />,
+            title: t('label.ai-retrieves-the-rest'),
+            description: t(
+              'message.context-center-documents-empty-feature-retrieve'
+            ),
+          },
+        ]}
+        title={t('label.your-files-ready-for-ai-retrieval')}
+        variant="features"
+      />
+    </div>
+  );
+};
+
+interface ContextCenterDocumentPreviewProps {
+  previewFile?: ContextFile;
+  url: string;
+  onClose: () => void;
+}
+
+const ContextCenterDocumentPreview: FC<ContextCenterDocumentPreviewProps> = ({
+  previewFile,
+  url,
+  onClose,
+}) =>
+  previewFile ? (
+    <DocumentPreviewPanel file={previewFile} url={url} onClose={onClose} />
+  ) : null;
+
+interface ContextCenterDeleteFileModalProps {
+  fileToDelete?: ContextFile;
+  isDeleting: boolean;
+  onCancel: () => void;
+  onDelete: () => void;
+}
+
+const ContextCenterDeleteFileModal: FC<ContextCenterDeleteFileModalProps> = ({
+  fileToDelete,
+  isDeleting,
+  onCancel,
+  onDelete,
+}) => {
+  const { t } = useTranslation();
+
+  return fileToDelete ? (
+    <DeleteModal
+      entityTitle={getEntityName(fileToDelete)}
+      isDeleting={isDeleting}
+      message={t('message.soft-delete-archive-message', {
+        entity: t('label.document').toLowerCase(),
+      })}
+      open={Boolean(fileToDelete)}
+      onCancel={onCancel}
+      onDelete={onDelete}
+    />
+  ) : null;
+};
+
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
+  const pageLayoutClassNames = useContextCenterPageLayout();
   const { getResourcePermission } = usePermissionProvider();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { paging, pageSize, handlePagingChange } = usePaging();
   const [allDocuments, setAllDocuments] = useState<ContextFile[]>([]);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [documentSearchQuery, setDocumentSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<ContextFile>();
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -75,8 +268,74 @@ const ContextCenterDocumentsPage: FC = () => {
   );
   const [selectedFolderId, setSelectedFolderId] = useState<string>();
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [isFoldersLoading, setIsFoldersLoading] = useState(true);
+  const [isLoadingMoreFolders, setIsLoadingMoreFolders] = useState(false);
+  const [foldersAfter, setFoldersAfter] = useState<string>();
+  const [totalFolderCount, setTotalFolderCount] = useState(0);
+  const [totalFileCount, setTotalFileCount] = useState(0);
+  const [globalFileCount, setGlobalFileCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
+  const [filePreviewModalFile, setFilePreviewModalFile] =
+    useState<ContextFile>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const fetchGenerationRef = useRef(0);
+  const folderFetchGenerationRef = useRef(0);
+  const isLoadingMoreRef = useRef(false);
+  const isLoadingMoreFoldersRef = useRef(false);
+  const folderViewRef = useRef<DocumentFolderViewHandle>(null);
+
+  const fetchGlobalFileCount = useCallback(async () => {
+    try {
+      const response = await listContextFiles({ limit: 0 });
+      setGlobalFileCount(response.paging.total ?? 0);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, []);
+
+  const fetchFolders = useCallback(async () => {
+    folderFetchGenerationRef.current += 1;
+    const generation = folderFetchGenerationRef.current;
+    try {
+      const response = await listFolders();
+      if (generation !== folderFetchGenerationRef.current) {
+        return;
+      }
+      setFolders(response.data);
+      setFoldersAfter(response.paging.after);
+      setTotalFolderCount(response.paging.total ?? response.data.length);
+      fetchGlobalFileCount();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [fetchGlobalFileCount]);
+
+  const fetchMoreFolders = useCallback(async () => {
+    if (!foldersAfter || isLoadingMoreFoldersRef.current) {
+      return;
+    }
+    isLoadingMoreFoldersRef.current = true;
+    setIsLoadingMoreFolders(true);
+    const generation = folderFetchGenerationRef.current;
+    try {
+      const response = await listFolders({ after: foldersAfter });
+      if (generation !== folderFetchGenerationRef.current) {
+        return;
+      }
+      setFolders((prev) => [...prev, ...response.data]);
+      setFoldersAfter(response.paging.after);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      isLoadingMoreFoldersRef.current = false;
+      setIsLoadingMoreFolders(false);
+    }
+  }, [foldersAfter]);
+
+  useEffect(() => {
+    setIsFoldersLoading(true);
+    fetchFolders().finally(() => setIsFoldersLoading(false));
+  }, [fetchFolders]);
 
   const previewFileUrl = useMemo(() => {
     if (!previewFile) {
@@ -90,23 +349,39 @@ const ContextCenterDocumentsPage: FC = () => {
     }?${params.toString()}`;
   }, [previewFile, searchParams]);
 
+  // Resource-level permission (usePermissionProvider().getResourcePermission(
+  // KNOWLEDGE_PAGE), itself OperationPermission-shaped) run through
+  // getDerivedPermissionFlags per the Batch 3 DatabaseSchemaTable.tsx / Batch 6
+  // MetricListPage.tsx precedent. `Create`/`Delete` are untouched raw reads (not
+  // flagged by the rule — only EditAll/ViewAll/ViewBasic are). Pure rename: no
+  // field-specific EditX key exists on this resource-level permission object, so
+  // canEditAll matches the old raw `permissions.EditAll` exactly.
+  const canEditAll = useMemo(
+    () => getDerivedPermissionFlags(permissions).canEditAll,
+    [permissions]
+  );
+
   const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
     useMemo(
       () => ({
         hasCreatePermission: permissions.Create,
         hasDeletePermission: permissions.Delete,
-        hasEditPermission: permissions.EditAll,
+        hasEditPermission: canEditAll,
       }),
-      [permissions.Create, permissions.Delete, permissions.EditAll]
+      [permissions.Create, permissions.Delete, canEditAll]
     );
 
-  const selectedFolderFqn = useMemo(
-    () =>
-      selectedFolderId
-        ? folders.find((f) => f.id === selectedFolderId)?.fullyQualifiedName
-        : undefined,
+  const selectedFolder = useMemo(
+    () => folders.find((f) => f.id === selectedFolderId),
     [selectedFolderId, folders]
   );
+
+  const selectedFolderFqn = selectedFolder?.fullyQualifiedName;
+
+  const selectedFolderName =
+    !documentSearchQuery && selectedFolder
+      ? getEntityName(selectedFolder)
+      : undefined;
 
   const folderOptions = useMemo<FolderOption[]>(
     () =>
@@ -117,37 +392,111 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders]
   );
 
-  const documents = useMemo(() => {
-    if (!selectedFolderId) {
-      return allDocuments;
-    }
+  useEffect(() => {
+    const id = setTimeout(
+      () => setDebouncedSearchQuery(documentSearchQuery),
+      300
+    );
 
-    return allDocuments.filter((d) => d.folder?.id === selectedFolderId);
-  }, [allDocuments, selectedFolderId]);
+    return () => clearTimeout(id);
+  }, [documentSearchQuery]);
 
-  const fetchDocuments = useCallback(async () => {
-    setIsDocumentsLoading(true);
-    try {
-      if (documentSearchQuery) {
+  const fetchDocuments = useCallback(
+    async (after?: string) => {
+      if (!after) {
+        fetchGenerationRef.current += 1;
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
+      const generation = fetchGenerationRef.current;
+
+      if (after) {
+        setIsLoadingMore(true);
+      } else {
+        setIsDocumentsLoading(true);
+      }
+
+      const isCurrentGeneration = () =>
+        generation === fetchGenerationRef.current;
+
+      const runSearchFetch = async () => {
         const results = await fetchSearchResults({
-          query: documentSearchQuery,
+          query: debouncedSearchQuery,
           searchIndex: SearchIndex.DRIVE_FILE,
           sortField: 'updatedAt',
           sortOrder: 'desc',
+          ...(selectedFolderId && {
+            queryFilter: {
+              query: {
+                bool: {
+                  filter: { term: { 'folder.id': selectedFolderId } },
+                },
+              },
+            },
+          }),
         });
+        if (!isCurrentGeneration()) {
+          return;
+        }
         setAllDocuments(
           results.hits.hits.map((hit) => hit._source as unknown as ContextFile)
         );
-      } else {
-        const { data: files } = await listContextFiles();
-        setAllDocuments(files);
+      };
+
+      const runPagedFetch = async () => {
+        const response = await listContextFiles({
+          after,
+          limit: pageSize,
+          folderId: selectedFolderId,
+        });
+        if (!isCurrentGeneration()) {
+          return;
+        }
+        if (after) {
+          setAllDocuments((prev) => [...prev, ...response.data]);
+        } else {
+          setAllDocuments(response.data);
+        }
+        handlePagingChange(response.paging);
+        setTotalFileCount(response.paging.total);
+        if (!after && !selectedFolderId) {
+          setGlobalFileCount(response.paging.total);
+        }
+      };
+
+      try {
+        if (debouncedSearchQuery) {
+          await runSearchFetch();
+        } else {
+          await runPagedFetch();
+        }
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        if (isCurrentGeneration()) {
+          if (after) {
+            isLoadingMoreRef.current = false;
+            setIsLoadingMore(false);
+          } else {
+            setIsDocumentsLoading(false);
+          }
+        }
       }
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsDocumentsLoading(false);
+    },
+    [debouncedSearchQuery, pageSize, handlePagingChange, selectedFolderId]
+  );
+
+  const handleLoadMore = useCallback(() => {
+    if (
+      paging.after &&
+      !isDocumentsLoading &&
+      !isLoadingMoreRef.current &&
+      !debouncedSearchQuery
+    ) {
+      isLoadingMoreRef.current = true;
+      fetchDocuments(paging.after);
     }
-  }, [documentSearchQuery]);
+  }, [paging.after, isDocumentsLoading, debouncedSearchQuery, fetchDocuments]);
 
   useEffect(() => {
     fetchDocuments();
@@ -176,26 +525,51 @@ const ContextCenterDocumentsPage: FC = () => {
     const match = allDocuments.find((d) => d.id === documentId);
     if (match) {
       setPreviewFile(match);
-    } else {
-      showErrorToast(
-        `${t('message.no-entity-available-with-name', {
-          entity: t('label.document'),
-        })} "${documentId}"`
-      );
-      setSearchParams((prev) => {
-        prev.delete('document');
 
-        return prev;
-      });
+      return;
     }
-  }, [
-    allDocuments,
-    isDocumentsLoading,
-    previewFile,
-    searchParams,
-    t,
-    setSearchParams,
-  ]);
+
+    let isCancelled = false;
+    getContextFileById(documentId)
+      .then((file) => {
+        if (!isCancelled) {
+          setPreviewFile(file);
+        }
+      })
+      .catch(() => {
+        if (isCancelled) {
+          return;
+        }
+        showErrorToast(
+          `${t('message.no-entity-available-with-name', {
+            entity: t('label.document'),
+          })} "${documentId}"`
+        );
+        setSearchParams((prev) => {
+          prev.delete('document');
+
+          return prev;
+        });
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
+
+  useEffect(() => {
+    const folderId = searchParams.get('folder');
+    if (!folderId || isFoldersLoading || selectedFolderId) {
+      return;
+    }
+    setSelectedFolderId(folderId);
+    setSearchParams((prev) => {
+      prev.delete('folder');
+
+      return prev;
+    });
+  }, [isFoldersLoading, selectedFolderId, searchParams, setSearchParams]);
 
   const handleDeleteFile = useCallback((file: ContextFile) => {
     setFileToDelete(file);
@@ -213,9 +587,22 @@ const ContextCenterDocumentsPage: FC = () => {
     try {
       setIsDeletingFile(true);
       await deleteDriveFile(fileToDelete.id, false);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+      });
       setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );
+      setTotalFileCount((prev) => prev - 1);
+      setGlobalFileCount((prev) => prev - 1);
+      fetchFolders();
+      const affectedFolderId = fileToDelete.folder?.id;
+      if (affectedFolderId) {
+        folderViewRef.current?.refetchFolderFiles([affectedFolderId]);
+      }
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.document'),
@@ -227,26 +614,42 @@ const ContextCenterDocumentsPage: FC = () => {
     } finally {
       setIsDeletingFile(false);
     }
-  }, [fileToDelete, t]);
+  }, [fileToDelete, t, fetchFolders]);
 
   const handleFileMoved = useCallback(
-    (file: ContextFile, targetFolderId: string) => {
-      setAllDocuments((prev) =>
-        prev.map((d) =>
-          d.id === file.id
-            ? {
-                ...d,
-                folder: {
-                  ...d.folder,
-                  id: targetFolderId,
-                  type: d.folder?.type ?? 'folder',
-                },
-              }
-            : d
-        )
+    (file: ContextFile, targetFolderId: string | null) => {
+      if (targetFolderId === null) {
+        setAllDocuments((prev) =>
+          prev.map((d) => (d.id === file.id ? { ...d, folder: undefined } : d))
+        );
+      } else {
+        const targetFolder = folders.find((f) => f.id === targetFolderId);
+        setAllDocuments((prev) =>
+          prev.map((d) =>
+            d.id === file.id
+              ? {
+                  ...d,
+                  folder: {
+                    ...d.folder,
+                    id: targetFolderId,
+                    name: targetFolder?.name ?? targetFolderId,
+                    displayName: targetFolder?.displayName,
+                    type: d.folder?.type ?? 'folder',
+                  },
+                }
+              : d
+          )
+        );
+      }
+      fetchFolders();
+      const affectedFolderIds = [file.folder?.id, targetFolderId].filter(
+        (id): id is string => Boolean(id)
       );
+      if (affectedFolderIds.length > 0) {
+        folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
+      }
     },
-    []
+    [folders, fetchFolders]
   );
 
   const handlePreview = useCallback(
@@ -288,8 +691,32 @@ const ContextCenterDocumentsPage: FC = () => {
       const result = await bulkDeleteDriveFiles(Array.from(selectedIds), false);
       const deletedIds = getSuccessfulIds(result);
       const failedCount = result.numberOfRowsFailed ?? 0;
+      const deletedDocuments = allDocuments.filter((d) => deletedIds.has(d.id));
 
+      if (deletedIds.size > 0) {
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+        });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        });
+      }
       setAllDocuments((prev) => prev.filter((d) => !deletedIds.has(d.id)));
+      setTotalFileCount((prev) => prev - deletedIds.size);
+      setGlobalFileCount((prev) => prev - deletedIds.size);
+      if (deletedDocuments.length > 0) {
+        fetchFolders();
+        const affectedFolderIds = Array.from(
+          new Set(
+            deletedDocuments
+              .map((d) => d.folder?.id)
+              .filter((id): id is string => Boolean(id))
+          )
+        );
+        if (affectedFolderIds.length > 0) {
+          folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
+        }
+      }
       setSelectedIds((prev) => {
         const next = new Set(prev);
         deletedIds.forEach((id) => next.delete(id));
@@ -319,7 +746,7 @@ const ContextCenterDocumentsPage: FC = () => {
     }
 
     setIsBulkDeleting(false);
-  }, [selectedIds, t]);
+  }, [allDocuments, selectedIds, t, fetchFolders]);
 
   const handleBulkDownload = useCallback(async () => {
     try {
@@ -340,6 +767,8 @@ const ContextCenterDocumentsPage: FC = () => {
         );
         const movedIds = getSuccessfulIds(result);
         const failedCount = result.numberOfRowsFailed ?? 0;
+        const targetFolder = folders.find((f) => f.id === targetFolderId);
+        const movedDocuments = allDocuments.filter((d) => movedIds.has(d.id));
 
         setAllDocuments((prev) =>
           prev.map((d) => {
@@ -352,11 +781,23 @@ const ContextCenterDocumentsPage: FC = () => {
               folder: {
                 ...d.folder,
                 id: targetFolderId,
+                name: targetFolder?.name ?? targetFolderId,
+                displayName: targetFolder?.displayName,
                 type: d.folder?.type ?? 'folder',
               },
             };
           })
         );
+        if (movedDocuments.length > 0) {
+          fetchFolders();
+          const sourceFolderIds = movedDocuments
+            .map((d) => d.folder?.id)
+            .filter((id): id is string => Boolean(id));
+          const affectedFolderIds = Array.from(
+            new Set([targetFolderId, ...sourceFolderIds])
+          );
+          folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
+        }
         setSelectedIds((prev) => {
           const next = new Set(prev);
           movedIds.forEach((id) => next.delete(id));
@@ -382,122 +823,191 @@ const ContextCenterDocumentsPage: FC = () => {
         showErrorToast(err as AxiosError);
       }
     },
-    [selectedIds, t]
+    [folders, selectedIds, allDocuments, t, fetchFolders]
   );
+
+  const handleCloseFilePreviewModal = useCallback(() => {
+    setFilePreviewModalFile(undefined);
+  }, []);
+
+  const handleUploadToFolder = useCallback((folderId: string) => {
+    setSelectedFolderId(folderId);
+    setIsUploadModalOpen(true);
+  }, []);
+
+  const handleUploaded = useCallback(
+    (newFiles: ContextFile[]) => {
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
+      setAllDocuments((prev) => [...newFiles, ...prev]);
+      setTotalFileCount((prev) => prev + newFiles.length);
+      setGlobalFileCount((prev) => prev + newFiles.length);
+      fetchFolders();
+      const affectedFolderIds = Array.from(
+        new Set(
+          newFiles
+            .map((f) => f.folder?.id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+      if (affectedFolderIds.length > 0) {
+        folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
+      }
+    },
+    [fetchFolders]
+  );
+
+  const showDocumentsEmptyState = computeShowDocumentsEmptyState(
+    isDocumentsLoading,
+    isFoldersLoading,
+    documentSearchQuery,
+    selectedFolderId,
+    allDocuments,
+    folders
+  );
+
+  const bulkDeleteLabels = getBulkDeleteLabels(selectedIds.size, t);
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page"
       direction="col">
-      <ContextCenterHeader
-        breadcrumbs={[
-          {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            label: t('label.document-plural'),
-          },
-        ]}
-        hasPermission={hasCreatePermission}
-        searchPlaceholder={t('label.search-entity', {
-          entity: t('label.document-plural'),
-        })}
-        searchQuery={documentSearchQuery}
-        subtitle={t('message.context-center-documents-subtitle')}
-        title={t('label.document-plural')}
-        onSearch={setDocumentSearchQuery}
-        onUploadFile={() => setIsUploadModalOpen(true)}
-      />
-
-      <ReflexContainer
-        className="tw:flex-1 tw:overflow-hidden"
-        orientation="vertical">
-        <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
-          <DocumentFolderView
-            canCreate={hasCreatePermission}
-            canDelete={hasDeletePermission}
-            files={allDocuments}
-            selectedFolderId={selectedFolderId}
-            onFoldersLoaded={setFolders}
-            onSelectFolder={setSelectedFolderId}
+      <DocumentTitle title={t('label.document-plural')} />
+      <PageLayout
+        className={pageLayoutClassNames.root}
+        data-testid="context-center-page-layout">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
+          <ContextCenterHeader
+            breadcrumbs={[
+              {
+                label: t('label.document-plural'),
+              },
+            ]}
+            hasPermission={hasCreatePermission}
+            searchPlaceholder={t('label.search-entity', {
+              entity: t('label.document-plural'),
+            })}
+            searchQuery={documentSearchQuery}
+            subtitle={t('message.context-center-documents-subtitle')}
+            title={t('label.document-plural')}
+            onSearch={setDocumentSearchQuery}
+            onUploadFile={() => setIsUploadModalOpen(true)}
           />
-        </ReflexElement>
-
-        <ReflexSplitter
-          className="splitter left-panel-splitter"
-          style={{ zIndex: 0 }}>
-          <div className="panel-grabber-vertical">
-            <div className="handle-icon handle-icon-vertical" />
-          </div>
-        </ReflexSplitter>
-
-        <ReflexElement flex={0.75} minSize={400}>
-          <Box className="tw:h-full tw:overflow-hidden" gap={4}>
-            <DocumentsView
-              canDelete={hasDeletePermission}
-              canEdit={hasEditPermission}
-              data={documents}
-              folders={folderOptions}
-              isLoading={isDocumentsLoading}
-              previewFileId={previewFile?.id}
-              selectedIds={selectedIds}
-              onBulkDelete={handleBulkDelete}
-              onBulkDownload={handleBulkDownload}
-              onBulkMove={handleBulkMove}
-              onDeleteFile={handleDeleteFile}
-              onDownload={handleAssetDownload}
-              onFileMoved={handleFileMoved}
-              onPreview={handlePreview}
-              onSelectFile={handleSelectFile}
+        </PageLayout.Header>
+        <PageLayout.Content
+          className={classNames(
+            'tw:flex tw:flex-col tw:min-h-0',
+            pageLayoutClassNames.content
+          )}>
+          {showDocumentsEmptyState ? (
+            <ContextCenterDocumentsEmptyState
+              hasCreatePermission={hasCreatePermission}
+              onUploadFile={() => setIsUploadModalOpen(true)}
             />
-            {previewFile && (
-              <DocumentPreviewPanel
-                file={previewFile}
-                url={previewFileUrl}
-                onClose={() => handlePreview(undefined)}
-              />
-            )}
-          </Box>
-        </ReflexElement>
-      </ReflexContainer>
+          ) : (
+            <ReflexContainer
+              className="tw:flex-1 tw:overflow-hidden"
+              orientation="vertical">
+              <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
+                <DocumentFolderView
+                  canCreate={hasCreatePermission}
+                  canDelete={hasDeletePermission}
+                  folders={folders}
+                  hasMoreFolders={Boolean(foldersAfter)}
+                  isLoading={isFoldersLoading}
+                  isLoadingMoreFolders={isLoadingMoreFolders}
+                  ref={folderViewRef}
+                  selectedFolderId={selectedFolderId}
+                  totalFileCount={globalFileCount}
+                  totalFolderCount={totalFolderCount}
+                  onFoldersChanged={fetchFolders}
+                  onLoadMoreFolders={fetchMoreFolders}
+                  onSelectFolder={setSelectedFolderId}
+                  onUploadToFolder={getFolderUploadHandler(
+                    hasCreatePermission,
+                    handleUploadToFolder
+                  )}
+                />
+              </ReflexElement>
+
+              <ReflexSplitter
+                className="splitter left-panel-splitter"
+                style={{ zIndex: 0 }}>
+                <div className="panel-grabber-vertical">
+                  <div className="handle-icon handle-icon-vertical" />
+                </div>
+              </ReflexSplitter>
+
+              <ReflexElement flex={0.75} minSize={400}>
+                <Box className="tw:h-full tw:overflow-hidden">
+                  <DocumentsView
+                    canDelete={hasDeletePermission}
+                    canEdit={hasEditPermission}
+                    data={allDocuments}
+                    folders={folderOptions}
+                    hasMoreFolders={Boolean(foldersAfter)}
+                    isLoading={isDocumentsLoading}
+                    isLoadingMore={isLoadingMore}
+                    isLoadingMoreFolders={isLoadingMoreFolders}
+                    previewFileId={previewFile?.id}
+                    selectedFolderName={selectedFolderName}
+                    selectedIds={selectedIds}
+                    totalFileCount={totalFileCount}
+                    onBulkDelete={handleBulkDelete}
+                    onBulkDownload={handleBulkDownload}
+                    onBulkMove={handleBulkMove}
+                    onDeleteFile={handleDeleteFile}
+                    onDownload={handleAssetDownload}
+                    onFileMoved={handleFileMoved}
+                    onLoadMoreFolders={fetchMoreFolders}
+                    onOpenPreview={setFilePreviewModalFile}
+                    onPreview={handlePreview}
+                    onScrollEnd={handleLoadMore}
+                    onSelectFile={handleSelectFile}
+                    onUploadFile={getDocumentsViewUploadHandler(
+                      hasCreatePermission,
+                      selectedFolderId,
+                      handleUploadToFolder
+                    )}
+                  />
+                  <ContextCenterDocumentPreview
+                    previewFile={previewFile}
+                    url={previewFileUrl}
+                    onClose={() => handlePreview(undefined)}
+                  />
+                </Box>
+              </ReflexElement>
+            </ReflexContainer>
+          )}
+        </PageLayout.Content>
+      </PageLayout>
+
+      <FilePreviewModal
+        file={filePreviewModalFile}
+        isOpen={Boolean(filePreviewModalFile)}
+        onClose={handleCloseFilePreviewModal}
+      />
 
       <UploadDocumentModal
         folderFqn={selectedFolderFqn}
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onUploaded={(newFiles) =>
-          setAllDocuments((prev) => [...newFiles, ...prev])
-        }
+        onUploaded={handleUploaded}
       />
 
-      {fileToDelete && (
-        <DeleteModal
-          entityTitle={getEntityName(fileToDelete)}
-          isDeleting={isDeletingFile}
-          message={t('message.soft-delete-archive-message', {
-            entity: t('label.document').toLowerCase(),
-          })}
-          open={Boolean(fileToDelete)}
-          onCancel={handleCancelDelete}
-          onDelete={handleConfirmDelete}
-        />
-      )}
+      <ContextCenterDeleteFileModal
+        fileToDelete={fileToDelete}
+        isDeleting={isDeletingFile}
+        onCancel={handleCancelDelete}
+        onDelete={handleConfirmDelete}
+      />
 
       <DeleteModal
-        entityTitle={`${selectedIds.size} ${(selectedIds.size === 1
-          ? t('label.document')
-          : t('label.document-plural')
-        ).toLowerCase()}`}
+        entityTitle={bulkDeleteLabels.entityTitle}
         isDeleting={isBulkDeleting}
-        message={t('message.soft-delete-message-for-n-entities', {
-          count: selectedIds.size,
-          entity: (selectedIds.size === 1
-            ? t('label.document')
-            : t('label.document-plural')
-          ).toLowerCase(),
-        })}
+        message={bulkDeleteLabels.message}
         open={isBulkDeleteModalOpen}
         onCancel={() => setIsBulkDeleteModalOpen(false)}
         onDelete={handleConfirmBulkDelete}

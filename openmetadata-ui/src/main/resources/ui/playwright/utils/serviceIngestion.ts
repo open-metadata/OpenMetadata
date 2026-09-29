@@ -11,12 +11,23 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, APIResponse, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { getApiContext, toastNotification } from './common';
-import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
+import { EntityClass } from '../support/entity/EntityClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { UserClass } from '../support/user/UserClass';
+import {
+  redirectToHomePage,
+  toastNotification,
+  waitForToastStackToClear,
+} from './common';
+import {
+  addMultiOwner,
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from './entity';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -28,6 +39,9 @@ export enum Services {
   Search = GlobalSettingOptions.SEARCH,
   API = GlobalSettingOptions.APIS,
 }
+
+export const getAgentCard = (page: Page, pipelineName: string) =>
+  page.locator(`[data-testid^="agent-card-"][data-testid*="${pipelineName}"]`);
 
 export const getEntityTypeFromService = (service: Services) => {
   switch (service) {
@@ -83,7 +97,8 @@ export const deleteService = async (
   await page.goto(
     `/service/${getServiceCategoryFromService(typeOfService)}s/${getEncodedFqn(
       serviceName
-    )}?currentPage=1`
+    )}?currentPage=1`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 
@@ -91,14 +106,11 @@ export const deleteService = async (
 
   // Clicking on permanent delete radio button and checking the service name
   await page.click('[data-testid="manage-button"]');
-  await page.locator('[data-menu-id*="delete-button"]').waitFor();
+  await page.getByTestId('delete-button-title').waitFor();
   await page.click('[data-testid="delete-button-title"]');
 
-  // Clicking on permanent delete radio button and checking the service name
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.click(`[data-testid="hard-delete-option"] >> text=${serviceName}`);
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  // Clicking on permanent delete radio button
+  await page.click('[data-testid="hard-delete"]');
 
   const deleteResponse = page.waitForResponse((response) =>
     response
@@ -121,7 +133,7 @@ export const deleteService = async (
     BIG_ENTITY_DELETE_TIMEOUT
   ); // Wait for up to 5 minutes for the toast notification to appear
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const serviceSearchResponse = page.waitForResponse((response) => {
@@ -143,15 +155,63 @@ export const deleteService = async (
 };
 
 export const testConnection = async (page: Page) => {
-  // Test the connection
-  await page.getByTestId('test-connection-btn').waitFor();
+  const testConnectionButton = page.getByTestId('test-connection-btn');
+  const readyToTestCard = page.getByTestId(
+    'test-connection-card-ready-to-test'
+  );
 
-  await page.click('[data-testid="test-connection-btn"]');
+  await expect(readyToTestCard).toBeVisible();
+  await expect(testConnectionButton).toBeEnabled();
+
+  let definitionResponse: Response;
+  try {
+    [definitionResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          response
+            .url()
+            .includes('/api/v1/services/testConnectionDefinitions/name/'),
+        { timeout: 15_000 }
+      ),
+      testConnectionButton.click(),
+    ]);
+  } catch (error) {
+    const validationErrors = (
+      await page
+        .locator(
+          '[slot="errorMessage"]:visible, li[class*="text-error-primary"]:visible'
+        )
+        .allTextContents()
+    )
+      .map((message) => message.trim())
+      .filter(Boolean);
+    const details =
+      validationErrors.length > 0
+        ? ` Visible validation errors: ${validationErrors.join('; ')}`
+        : '';
+    const cause = error instanceof Error ? ` ${error.message}` : '';
+
+    throw new Error(
+      `Test Connection did not request its connection definition.${details}${cause}`
+    );
+  }
+
+  expect(
+    definitionResponse.ok(),
+    `Connection definition request failed with ${definitionResponse.status()} ${definitionResponse.statusText()}`
+  ).toBeTruthy();
+
   const testConnectionDialog = page
     .getByRole('dialog')
     .filter({ hasText: /Connection status|Test Connection/ });
 
   await expect(testConnectionDialog).toBeVisible();
+
+  // The toast stack renders bottom-center, over the dialog's Done/OK button; a
+  // background "…deleted successfully!" toast from a parallel worker's cleanup
+  // can otherwise swallow this click. Wait for the stack to drain first.
+  await waitForToastStackToClear(page, 30_000);
 
   await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
 
@@ -292,6 +352,23 @@ export const selectServiceConnector = async (
   }
 };
 
+/**
+ * The Configure Ingestion step loads its RJSF templates lazily, and the wizard
+ * footer lives outside that Suspense boundary. Clicking Next before the form
+ * mounts submits a null form ref and silently keeps the wizard on step 1, so
+ * every step-1 advance has to wait for the form here first.
+ */
+export const waitForIngestionWorkflowForm = async (page: Page) => {
+  await page.getByTestId('add-ingestion-container').waitFor();
+
+  await page
+    .getByTestId('ingestion-workflow-form-loader')
+    .waitFor({ state: 'detached' })
+    .catch(() => null);
+
+  await expect(page.getByTestId('next-button')).toBeEnabled();
+};
+
 export const waitForServiceConnectionForm = async (page: Page) => {
   await page
     .getByTestId('connection-schema-loader')
@@ -323,33 +400,6 @@ export const advanceToServiceConnectionStep = async (
   }
 };
 
-type RetryRequestData = {
-  page: Page;
-  retries?: number;
-} & (
-  | { url: string; fn?: never }
-  | { fn: () => Promise<APIResponse>; url?: never }
-);
-
-export const makeRetryRequest = async (data: RetryRequestData) => {
-  const { url, page, retries = 3, fn } = data;
-  const { apiContext } = await getApiContext(page);
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await (fn ? fn() : apiContext.get(url));
-
-      return response.json();
-    } catch (error) {
-      if (i === retries - 1) {
-        throw error;
-      }
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- exponential backoff for retry
-      await page.waitForTimeout(1000 * (i + 1));
-    }
-  }
-};
-
 const REMOTE_RUNNER_NAME = 'RemoteRunner';
 
 export const setRemoteRunnerAsDefault = async (
@@ -357,7 +407,7 @@ export const setRemoteRunnerAsDefault = async (
 ): Promise<void> => {
   const runnersRes = await apiContext.get('/api/v1/ingestionRunners?limit=100');
   if (!runnersRes.ok()) {
-    return;
+    throw new Error(`HTTP ${runnersRes.status()} querying ${runnersRes.url()}`);
   }
 
   const runnersBody = await runnersRes.json();
@@ -375,4 +425,101 @@ export const setRemoteRunnerAsDefault = async (
       );
     }
   }
+};
+
+export const assignServiceOwner = async (
+  apiContext: APIRequestContext,
+  service: DatabaseServiceClass,
+  owner: UserClass
+) => {
+  await service.patch(apiContext, [
+    {
+      op: 'add',
+      path: '/owners',
+      value: [{ id: owner.responseData.id, type: 'user' }],
+    },
+  ]);
+};
+
+export const openAgentsTab = async (page: Page, service: EntityClass) => {
+  await redirectToHomePage(page);
+  await service.visitEntityPage(page);
+  await page.getByTestId('data-assets-header').waitFor();
+  await page.getByRole('tab', { name: /^Agents/ }).click();
+
+  const metadataSubTab = page.getByTestId('metadata-sub-tab');
+  if (await metadataSubTab.isVisible()) {
+    await metadataSubTab.click();
+  }
+};
+
+export const openAddAgentForm = async (page: Page, service: EntityClass) => {
+  await openAgentsTab(page, service);
+
+  await page.getByTestId('add-new-ingestion-button').waitFor();
+  await page.click('[data-testid="add-new-ingestion-button"]');
+  await page
+    .locator('.ant-dropdown:visible [data-menu-id*="metadata"]')
+    .waitFor();
+  await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
+
+  await waitForIngestionWorkflowForm(page);
+};
+
+export const openEditAgentForm = async (
+  page: Page,
+  service: EntityClass,
+  pipelineFqn: string
+) => {
+  await openAgentsTab(page, service);
+
+  await getAgentCard(page, pipelineFqn).getByTestId('more-actions').click();
+  await page.getByTestId('edit-button').click();
+
+  await waitForIngestionWorkflowForm(page);
+};
+
+/**
+ * Deselects every owner through the picker. Owners are mandatory, so this is
+ * the only empty state a user can actually produce.
+ */
+export const clearAgentOwners = async (page: Page) => {
+  // Owners are always populated when this runs, so the trigger is the edit
+  // variant; the empty state swaps it for `add-owner`.
+  await page.getByTestId('edit-owner').click();
+
+  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+
+  await page
+    .getByTestId('select-owner-tabs')
+    .getByRole('tab', { name: 'Users' })
+    .click();
+
+  const usersPanel = page.locator('[data-testid="owner-select-users-panel"]');
+
+  // The list loads async; the clear button only renders once it has, so waiting
+  // on it covers the load without reaching for a loader locator.
+  const clearAllButton = usersPanel.getByTestId('clear-all-button');
+  await expect(clearAllButton).toBeVisible();
+  await clearAllButton.click();
+
+  await usersPanel.getByTestId('selectable-list-update-btn').click();
+
+  await expect(page.getByTestId('select-owner-tabs')).not.toBeVisible();
+};
+
+export const selectAgentOwner = async (
+  page: Page,
+  service: EntityClass,
+  owner: UserClass
+) => {
+  await addMultiOwner({
+    page,
+    ownerNames: [owner.getUserDisplayName()],
+    activatorBtnDataTestId: 'add-owner',
+    resultTestId: 'ingestion-owners',
+    endpoint: service.endpoint,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
 };

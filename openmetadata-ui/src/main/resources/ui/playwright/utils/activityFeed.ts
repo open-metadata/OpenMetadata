@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { descriptionBox, removeLandingBanner } from './common';
+import { getDescriptionBox, waitForAntdModalToSettle } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const REACTION_EMOJIS = ['🚀', '😕', '👀', '❤️', '🎉', '😄', '👎', '👍'];
 
@@ -53,7 +54,7 @@ export const checkDescriptionInEditModal = async (
     `Update description for table ${taskValue.term} columns/${taskValue.columnName}`
   );
 
-  await expect(page.locator(descriptionBox)).toContainText(
+  await expect(getDescriptionBox(page)).toContainText(
     taskValue.description ?? ''
   );
 
@@ -64,7 +65,7 @@ export const checkDescriptionInEditModal = async (
 
   await expect(
     taskDescriptionTabs
-      .locator('.ant-tabs-content-holder')
+      .getByRole('tabpanel')
       .getByTestId('markdown-parser')
       .first()
   ).toContainText(taskValue.oldDescription ?? '');
@@ -80,18 +81,63 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await page.locator('[data-testid="delete-message"]').click();
 
   await page.locator('[role="dialog"].ant-modal').waitFor();
+  await waitForAntdModalToSettle(page);
 
-  const deleteResponse = page.waitForResponse('/api/v1/feed/*/posts/*');
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/conversations/*/replies/*'
+  );
 
   await page.getByTestId('save-button').click();
 
   await deleteResponse;
 };
 
-export const reactOnFeed = async (page: Page, feedNumber: number) => {
-  // Ensure at least one message exists; the caller usually checks, but we guard here
-  const message = getNthFeedMessage(page, Math.max(0, feedNumber - 1));
+/**
+ * Reactions are served by two different endpoints depending on what the card is:
+ * conversations use `/api/v1/conversations/{id}`, activity events use
+ * `PUT /api/v1/activity/{id}/reaction/{type}`. Matching only the feed one made
+ * `reactOnFeed` hang for 60s against the landing-page widget, which renders
+ * activity events.
+ */
+export const waitForReactionResponse = (page: Page, reaction: string) =>
+  waitForResponseWithStatus(
+    page,
+    (response) =>
+      ['PUT', 'DELETE'].includes(response.request().method()) &&
+      (response.url().includes('/api/v1/activity') ||
+        response.url().includes('/api/v1/conversations') ||
+        response.url().includes('/api/v1/feed')) &&
+      response.url().includes(`/reaction/${reaction}`),
+    'ok'
+  );
 
+/**
+ * Click a reaction inside the feed-reactions popover.
+ *
+ * rc-motion plays the popover's zoom-big entry over several frames, and
+ * Playwright's two-frame stability check can land inside a lull in that
+ * transform: it then presses coordinates the popover has already moved on
+ * from, the press hits dead space, and no reaction request is ever sent — so
+ * the caller's hoisted waitForResponse waits out the whole test. rc-motion
+ * strips the `-appear`/`-enter` classes on `animationend`, which makes their
+ * absence the deterministic "the popover has settled" signal.
+ */
+export const clickFeedReaction = async (page: Page, reaction: string) => {
+  const popup = page.locator('.ant-popover-feed-reactions:visible');
+  await expect(popup).toBeVisible();
+  await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
+
+  await popup
+    .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+    .click();
+};
+
+/**
+ * Cycles every reaction on a specific card. Callers that react twice (add, then
+ * toggle off) must pass the same `Locator` both times — the list re-renders
+ * between calls, so an index would not resolve to the same card.
+ */
+export const reactOnFeedCard = async (page: Page, message: Locator) => {
   await expect(message).toBeVisible();
 
   for (const reaction of FEED_REACTIONS) {
@@ -103,16 +149,22 @@ export const reactOnFeed = async (page: Page, feedNumber: number) => {
 
     await addReactionButton.click();
 
-    await page
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
+    const popup = page.locator('.ant-popover-feed-reactions:visible');
+    await expect(popup).toBeVisible();
+    await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
 
-    const waitForReactionResponse = page.waitForResponse('/api/v1/feed/*');
-    await page
-      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
-      .click();
-    await waitForReactionResponse;
+    const reactionResponse = waitForReactionResponse(page, reaction);
+    await popup.getByRole('button', { name: reaction, exact: true }).click();
+    await reactionResponse;
+    await expect(popup).toBeHidden();
   }
+};
+
+export const reactOnFeed = async (page: Page, feedNumber: number) => {
+  await reactOnFeedCard(
+    page,
+    getNthFeedMessage(page, Math.max(0, feedNumber - 1))
+  );
 };
 
 export const addMentionCommentInFeed = async (
@@ -121,10 +173,7 @@ export const addMentionCommentInFeed = async (
   isReply = false
 ) => {
   if (!isReply) {
-    const fetchFeedResponse = page.waitForResponse(
-      '/api/v1/feed?type=Conversation*'
-    );
-    await removeLandingBanner(page);
+    const fetchFeedResponse = page.waitForResponse('/api/v1/conversations*');
     await fetchFeedResponse;
   }
 
@@ -167,7 +216,7 @@ export const addMentionCommentInFeed = async (
     .waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
-        /\/api\/v1\/feed\/[^/]+\/posts(?:\?|$)/.test(response.url()),
+        /\/api\/v1\/conversations\/[^/]+\/replies(?:\?|$)/.test(response.url()),
       { timeout: 5000 }
     )
     .catch(() => null);
@@ -208,21 +257,14 @@ export const reactOnActivity = async (
     await expect(addReactionButton).toBeVisible();
     await addReactionButton.click();
 
-    await page
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
-
     // Activity API uses /api/v1/activity/*/reaction/* endpoint
     const waitForReactionResponse = page.waitForResponse(
       (response) =>
-        (response.url().includes('/api/v1/activity') &&
-          response.url().includes('/reaction')) ||
-        response.url().includes('/api/v1/feed')
+        response.url().includes('/api/v1/activity') &&
+        response.url().includes('/reaction')
     );
 
-    await page
-      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
-      .click();
+    await clickFeedReaction(page, reaction);
     await waitForReactionResponse;
   }
 };
@@ -253,7 +295,6 @@ export const waitForActivityFeedLoad = async (page: Page, timeout = 10000) => {
     // Neither appeared within timeout, which may be acceptable
   });
 };
-
 /**
  * Post a comment on an activity event
  */
@@ -270,7 +311,7 @@ export const postActivityComment = async (page: Page, commentText: string) => {
 
   await expect(sendButton).toBeEnabled();
 
-  const postResponse = page.waitForResponse('/api/v1/feed/*/posts');
+  const postResponse = page.waitForResponse('/api/v1/activity/*/replies');
   await sendButton.click();
   await postResponse;
 

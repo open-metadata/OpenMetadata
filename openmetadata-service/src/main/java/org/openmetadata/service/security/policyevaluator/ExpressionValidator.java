@@ -78,6 +78,11 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
  * <p>Defense-in-depth: any new SpEL syntax feature is implicitly rejected by the
  * default-deny policy until explicitly allowlisted, eliminating the bypass surface a
  * regex-based scan carries.
+ *
+ * <p><b>Scope: policy/alert conditions only.</b> These are boolean predicates over approved
+ * {@code @Function} calls, so arithmetic ({@code + - * /}) is deliberately rejected. Data
+ * Insight chart formulas are numeric and must not be routed here — they use {@link
+ * org.openmetadata.service.util.DataInsightFormulaEvaluator} instead.
  */
 @Slf4j
 public final class ExpressionValidator {
@@ -91,6 +96,71 @@ public final class ExpressionValidator {
    * bare and are rejected up front rather than failing later at evaluation time.
    */
   private static final Set<String> ALLOWED_BARE_FUNCTIONS = new HashSet<>();
+
+  /**
+   * Used only when the reflection scan fails. Every {@code @Function} on an evaluator class must
+   * appear here: a name left out is rejected outright on this path, so an existing policy stops
+   * loading exactly when reflection is already broken. {@code ExpressionValidatorTest} asserts this
+   * covers {@link RuleEvaluator} so the two cannot drift.
+   */
+  static final Set<String> FALLBACK_ALLOWED_FUNCTIONS =
+      Set.of(
+          "noOwner",
+          "isOwner",
+          "isReviewer",
+          "isTaskFiler",
+          "isTaskAssignee",
+          "isTaskReviewer",
+          "hasDomain",
+          "noDomain",
+          "matchAllTags",
+          "matchAnyTag",
+          "matchAnyCertification",
+          "matchTeam",
+          "inAnyTeam",
+          "hasAnyRole",
+          "isAdminUser",
+          "isBotUser",
+          "isImpersonated",
+          "impersonatedBy",
+          "matchAnyServiceTag",
+          "matchAnyServiceType",
+          "matchAnyServiceName",
+          "matchAnyServiceEnvironment",
+          "matchAnyEventType",
+          "matchAnyFieldChange",
+          "matchAnySource",
+          "matchUpdatedBy",
+          "matchAnyOwnerName",
+          "matchAnyEntityFqn",
+          "matchAnyEntityId",
+          "matchTestResult",
+          "filterByTableNameTestCaseBelongsTo",
+          "getTestCaseStatusIfInTestSuite",
+          "matchIngestionPipelineState",
+          "matchPipelineState",
+          "matchAnyDomain",
+          "matchConversationUser",
+          "matchDataContractStatus",
+          "filterByEntityNameDataContractBelongsTo",
+          "isBot");
+
+  /** The no-arg boolean subset of {@link #FALLBACK_ALLOWED_FUNCTIONS}. */
+  static final Set<String> FALLBACK_BARE_FUNCTIONS =
+      Set.of(
+          "noOwner",
+          "isOwner",
+          "isReviewer",
+          "isTaskFiler",
+          "isTaskAssignee",
+          "isTaskReviewer",
+          "hasDomain",
+          "noDomain",
+          "matchTeam",
+          "isAdminUser",
+          "isBotUser",
+          "isImpersonated",
+          "isBot");
 
   static {
     initAllowedFunctions(ALLOWED_FUNCTIONS, ALLOWED_BARE_FUNCTIONS);
@@ -217,47 +287,8 @@ public final class ExpressionValidator {
           allowedFunctions);
     } catch (Exception e) {
       LOG.error("Failed to initialize allowed functions", e);
-      // Fallback to hardcoded list if reflection fails
-      allowedFunctions.addAll(
-          Arrays.asList(
-              "noOwner",
-              "isOwner",
-              "hasDomain",
-              "matchAllTags",
-              "matchAnyTag",
-              "matchAnyCertification",
-              "matchTeam",
-              "inAnyTeam",
-              "hasAnyRole",
-              "matchAnyEventType",
-              "matchAnyFieldChange",
-              "matchAnySource",
-              "matchUpdatedBy",
-              "matchAnyOwnerName",
-              "matchAnyEntityFqn",
-              "matchAnyEntityId",
-              "matchTestResult",
-              "filterByTableNameTestCaseBelongsTo",
-              "getTestCaseStatusIfInTestSuite",
-              "matchIngestionPipelineState",
-              "matchPipelineState",
-              "matchAnyDomain",
-              "matchConversationUser",
-              "matchDataContractStatus",
-              "filterByEntityNameDataContractBelongsTo",
-              "isBot"));
-      bareFunctions.addAll(
-          Arrays.asList(
-              "noOwner",
-              "isOwner",
-              "isReviewer",
-              "isTaskFiler",
-              "isTaskAssignee",
-              "isTaskReviewer",
-              "hasDomain",
-              "noDomain",
-              "matchTeam",
-              "isBot"));
+      allowedFunctions.addAll(FALLBACK_ALLOWED_FUNCTIONS);
+      bareFunctions.addAll(FALLBACK_BARE_FUNCTIONS);
       LOG.info("Using fallback list of {} allowed functions", allowedFunctions.size());
     }
   }

@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Lock } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import KnowledgeCard from '../../components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
@@ -23,12 +24,9 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
 import { getKnowledgePageFields } from '../../constants/KnowledgeCenter.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Paging } from '../../generated/type/paging';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useElementInView } from '../../hooks/useElementInView';
@@ -36,6 +34,8 @@ import { KnowledgePage } from '../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -97,8 +97,12 @@ const KnowledgeCenterFilterPage = () => {
     }
   };
 
+  // Resource-level permission (usePermissionProvider().getResourcePermission(KNOWLEDGE_PAGE),
+  // itself OperationPermission-shaped) run through getDerivedPermissionFlags per the Batch 3
+  // DatabaseSchemaTable.tsx / Batch 8 ContextCenter-trio precedent. `hasViewAccess` is a
+  // byte-for-byte match of the old bare `ViewAll || ViewBasic` OR.
   const hasViewPermission = useMemo(
-    () => permissions.ViewAll || permissions.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 
@@ -115,7 +119,7 @@ const KnowledgeCenterFilterPage = () => {
 
     return [
       {
-        name: t('label.knowledge-center'),
+        name: t('label.context-center'),
         url: ROUTES.CONTEXT_CENTER,
       },
       {
@@ -155,7 +159,7 @@ const KnowledgeCenterFilterPage = () => {
 
   if (isLoading) {
     return (
-      <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
+      <PageLayoutV1 pageTitle={t('label.context-center')}>
         <div className="knowledge-center-filter-page">
           <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
             {Array.from({ length: 4 }).map(() => (
@@ -209,18 +213,28 @@ const KnowledgeCenterFilterPage = () => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-center'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
+        <EmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: t('label.view-entity', {
+                  entity: t('label.context-center'),
+                }),
+              }}
+            />
+          }
+          icon={<Lock className="tw:text-secondary" />}
+          title={t('label.access-denied')}
+        />
+      </div>
     );
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
+    <PageLayoutV1 pageTitle={t('label.context-center')}>
       <div className="knowledge-center-filter-page">
         <Row gutter={[0, 24]}>
           {!isEmpty(breadcrumbs) && (

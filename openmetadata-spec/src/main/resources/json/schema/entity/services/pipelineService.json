@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/pipelineService.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Pipeline Service",
   "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
@@ -31,6 +31,7 @@
         "Spline",
         "Spark",
         "OpenLineage",
+        "Prefect",
         "KafkaConnect",
         "DBTCloud",
         "Matillion",
@@ -41,6 +42,7 @@
         "Snowplow",
         "Mulesoft",
         "MicrosoftFabricPipeline",
+        "Data360Pipeline",
         "SapBw4HanaPipeline"
       ],
       "javaEnums": [
@@ -87,6 +89,9 @@
           "name": "OpenLineage"
         },
         {
+          "name": "Prefect"
+        },
+        {
           "name": "KafkaConnect"
         },
         {
@@ -115,6 +120,9 @@
         },
         {
           "name": "MicrosoftFabricPipeline"
+        },
+        {
+          "name": "Data360Pipeline"
         },
         {
           "name": "SapBw4HanaPipeline"
@@ -181,6 +189,9 @@
               "$ref": "./connections/pipeline/openLineageConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/prefectConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
             },
             {
@@ -203,6 +214,9 @@
             },
             {
               "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/data360PipelineConnection.json"
             },
             {
               "$ref": "./connections/pipeline/sapBw4HanaPipelineConnection.json"
@@ -265,6 +279,13 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "serviceAttributes": {
+      "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+      "$ref": "./serviceAttributes.json"
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",

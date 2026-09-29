@@ -7,6 +7,8 @@ OpenMetadata is integrated with flink up to version <a href="https://nightlies.a
 
 The ingestion framework uses flink REST APIs to connect to the instance and perform the API calls
 
+You can find further information on the Flink connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/flink" target="_blank">docs</a>.
+
 ## Connection Details
 $$section
 ### Host and Port $(id="hostPort")

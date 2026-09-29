@@ -92,4 +92,62 @@ describe('ResizableLeftPanels', () => {
 
     expect(container.querySelector('.test-class')).toBeInTheDocument();
   });
+
+  it('should render a medium-weight title without strong emphasis', () => {
+    render(
+      <ResizableLeftPanels
+        firstPanel={{
+          ...firstPanel,
+          title: 'Browse Estate',
+          titleClassName: 'tw:font-medium',
+          titleStrong: false,
+        }}
+        secondPanel={secondPanel}
+      />
+    );
+
+    const title = screen.getByText('Browse Estate');
+
+    expect(title).toHaveClass('tw:font-medium');
+    expect(title).not.toHaveClass('tw:font-normal');
+  });
+
+  it('should render the title strong by default', () => {
+    render(
+      <ResizableLeftPanels
+        firstPanel={{ ...firstPanel, title: 'Glossary' }}
+        secondPanel={secondPanel}
+      />
+    );
+
+    expect(screen.getByText('Glossary')).toHaveClass('tw:font-semibold');
+  });
+
+  it('should render the first panel content inside the core card', () => {
+    render(
+      <ResizableLeftPanels
+        firstPanel={{ ...firstPanel, cardClassName: 'custom-card' }}
+        secondPanel={secondPanel}
+      />
+    );
+
+    const card = screen.getByTestId('resizable-left-panel-card');
+
+    expect(card).toHaveClass('reflex-card', 'custom-card');
+    expect(card).toHaveTextContent('First Panel');
+  });
+
+  it('should not render a card when the first panel is hidden', () => {
+    render(
+      <ResizableLeftPanels
+        hideFirstPanel
+        firstPanel={firstPanel}
+        secondPanel={secondPanel}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('resizable-left-panel-card')
+    ).not.toBeInTheDocument();
+  });
 });

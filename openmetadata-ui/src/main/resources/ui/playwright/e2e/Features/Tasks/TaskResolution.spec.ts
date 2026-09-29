@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -121,7 +121,9 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -166,7 +168,9 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -252,6 +256,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: 'rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );
@@ -348,7 +353,9 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -373,7 +380,9 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -593,34 +602,23 @@ test.describe('Task Resolution - Close by Creator', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: '',
+            comment: 'Rejecting via automated test',
           },
         }
       );
 
-      if (!resolveResponse.ok()) {
-        // Try PATCH as fallback
-        const closeResponse = await apiContext.patch(
-          `/api/v1/tasks/${task.id}`,
-          {
-            data: [
-              {
-                op: 'replace',
-                path: '/status',
-                value: 'Closed',
-              },
-            ],
-            headers: { 'Content-Type': 'application/json-patch+json' },
-          }
-        );
-        expect(closeResponse.ok()).toBe(true);
-      }
+      // Creator closes their own task by rejecting via /resolve — the only
+      // supported path. The previous PATCH fallback to /status was writing an
+      // invalid TaskEntityStatus (Closed, later Cancelled — both blocked by
+      // H4's workflow-decision status guard once the refactor to
+      // JsonUtils.applyPatch made Jackson's enum validation visible). Assert
+      // the primary /resolve call succeeded and drop the dead fallback.
+      expect(resolveResponse.ok()).toBe(true);
 
-      // Verify task is resolved/closed
+      // Verify task landed in the expected resolved state
       const getTaskResponse = await apiContext.get(`/api/v1/tasks/${task.id}`);
       const closedTask = await getTaskResponse.json();
-
-      // Task should be in a closed/completed state
-      expect(['Completed', 'Closed', 'Rejected']).toContain(closedTask.status);
+      expect(['Completed', 'Rejected']).toContain(closedTask.status);
     } finally {
       await afterAction();
     }

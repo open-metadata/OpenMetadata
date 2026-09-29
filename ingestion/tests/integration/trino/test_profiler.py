@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -37,11 +36,15 @@ def run_profiler(
     ingestion_config,
     profiler_config,
     create_test_data,
+    reset_trino_table_statistics,
     request,
 ):
     search_cache.clear()
     profiler_config = deepcopy(profiler_config)
     merge(request.param, profiler_config)
+    source_config = DatabaseServiceProfilerPipeline.model_validate(profiler_config["source"]["sourceConfig"]["config"])
+    if source_config.useStatistics:
+        reset_trino_table_statistics("empty")
     run_workflow(MetadataWorkflow, ingestion_config)
     run_workflow(ProfilerWorkflow, profiler_config)
     return profiler_config
@@ -51,7 +54,7 @@ def run_profiler(
 class ProfilerTestParameters:
     table_fqn: str
     expected_table_profile: TableProfile
-    expected_column_profiles: List[ColumnProfile] = None  # noqa: UP006
+    expected_column_profiles: list[ColumnProfile] = None
     config_predicate: Callable[[DatabaseServiceProfilerPipeline], bool] = lambda x: True
 
 
@@ -167,6 +170,8 @@ def test_profiler(run_profiler, metadata, db_service, parameters: ProfilerTestPa
     table: Table = metadata.get_latest_table_profile(
         parameters.table_fqn.format(database_service=db_service.fullyQualifiedName.root)
     )
+    if parameters.expected_table_profile.rowCount is None:
+        assert table.profile.rowCount is None, "expected row count to remain absent when statistics are unavailable"
     assert_equal_pydantic_objects(
         parameters.expected_table_profile,
         # we dont want to validate the timestamp because it will be different for each run
@@ -180,26 +185,3 @@ def test_profiler(run_profiler, metadata, db_service, parameters: ProfilerTestPa
             profile,
             column.profile.model_copy(update={"timestamp": profile.timestamp}),
         )
-
-
-@pytest.mark.parametrize(
-    "parameters",
-    [
-        ProfilerTestParameters(
-            "{database_service}.minio.my_schema.empty",
-            TableProfile(timestamp=Timestamp(0), rowCount=None),
-            [],
-            lambda x: x.useStatistics == True,  # noqa: E712
-        ),
-    ],
-    ids=lambda x: x.table_fqn.split(".")[-1],
-)
-def test_no_statistics(run_profiler, metadata, db_service, parameters: ProfilerTestParameters):
-    if not parameters.config_predicate(
-        DatabaseServiceProfilerPipeline.model_validate(run_profiler["source"]["sourceConfig"]["config"])
-    ):
-        pytest.skip("Skipping test becuase its not supported for this profiler configuation")
-    table: Table = metadata.get_latest_table_profile(
-        parameters.table_fqn.format(database_service=db_service.fullyQualifiedName.root)
-    )
-    assert table.profile.rowCount is None, "expected empty row count for a table with no collected statistics"

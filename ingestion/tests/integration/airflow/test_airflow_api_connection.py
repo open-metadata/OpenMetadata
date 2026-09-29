@@ -425,7 +425,8 @@ class TestAirflowApiMockedIntegration:
                                 "triggerer_job": None,
                                 "note": "Data loaded to Snowflake successfully",
                             },
-                        ]
+                        ],
+                        "total_entries": 3,
                     }
                 }
             },
@@ -743,6 +744,7 @@ class TestAirflowApiMockedIntegration:
                 mock_tracked_rest_cls,
                 [
                     mock_airflow_responses["version"],  # _detect_api_version
+                    mock_airflow_responses["dags"],  # declare_progress_totals -> get_dags_count
                     mock_airflow_responses["dags"],  # get_all_dags page 1
                     mock_airflow_responses["tasks"]["sample_etl_dag"],  # dag tasks
                     mock_airflow_responses["dag_runs"]["sample_etl_dag"],  # dag runs

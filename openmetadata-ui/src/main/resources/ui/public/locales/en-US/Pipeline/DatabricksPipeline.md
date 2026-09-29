@@ -1,12 +1,12 @@
 # DatabricksPipeline
 
-In this section, we provide guides and references to use the Databricks Pipeline connector. You can view the full documentation for DatabricksPipeline <a href="https://docs.open-metadata.org/connectors/pipeline/databrickspipeline" target="_blank">here</a>.
+In this section, we provide guides and references to use the Databricks Pipeline connector. You can view the full documentation for DatabricksPipeline <a href="https://docs.open-metadata.org/connectors/pipeline/databricks-pipeline" target="_blank">here</a>.
 
 ## Requirements
 
 To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these <a href="https://docs.open-metadata.org/connectors/database/databricks/troubleshooting" target="_blank">docs</a>.
 
-You can find further information on the Databricks Pipeline connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/databrickspipeline" target="_blank">docs</a>.
+You can find further information on the Databricks Pipeline connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/databricks-pipeline" target="_blank">docs</a>.
 
 ## Lineage Requirements
 

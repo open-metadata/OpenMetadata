@@ -44,6 +44,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
+  private static final String ARCHIVED_FILE_NAME_MESSAGE =
+      "A file named '%s' is in the Archive. Restore it, or permanently delete it from the Archive, "
+          + "before adding a file with this name.";
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
   private final CollectionDAO.ContextFileDAO contextFileDAO;
@@ -106,6 +109,14 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       entities.forEach(file -> file.setFolder(folderMap.get(file.getId())));
     }
 
+    if (fields.contains("memoryCount")) {
+      // Batched: the per-entity path in setFields would be one query per file here.
+      Map<UUID, Integer> countsByFileId =
+          MemoryCountFetcher.countByEntityId(
+              daoCollection, entityListToStrings(entities), CONTEXT_FILE_ENTITY);
+      entities.forEach(file -> file.setMemoryCount(countsByFileId.getOrDefault(file.getId(), 0)));
+    }
+
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
@@ -128,6 +139,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       Folder folder = Entity.getEntity(file.getFolder(), "", Include.NON_DELETED);
       file.setFolder(folder.getEntityReference());
     }
+    // Enforce name uniqueness at the create chokepoint so every create path (REST create, upload,
+    // import) gets the actionable error rather than a raw DB unique-constraint 409. Skipped on
+    // update: a same-name PUT resolves to the existing row (restore), and move validates itself.
+    if (!update) {
+      validateNoDuplicateFileName(file.getName(), file.getFolder(), null);
+    }
   }
 
   @Override
@@ -136,6 +153,17 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     file.withFolder(null);
     store(file, update);
     file.withFolder(folder);
+  }
+
+  @Override
+  protected void storeEntityWithVersion(ContextFile file, boolean update, Double expectedVersion) {
+    EntityReference folder = file.getFolder();
+    file.withFolder(null);
+    try {
+      store(file, update, expectedVersion);
+    } finally {
+      file.withFolder(folder);
+    }
   }
 
   @Override
@@ -153,24 +181,18 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
   // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
   // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. The pills track the file's lifecycle: soft-deleted with it,
-  // hard-deleted with it, restored with it. Mirrors KnowledgePageRepository.
+  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
+  // so a deleted file must leave none behind in either form. Mirrors KnowledgePageRepository.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY, false);
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY, true);
-  }
-
-  @Override
-  @Transaction
-  protected void restoreAdditionalChildren(UUID fileId, String updatedBy) {
-    contextMemoryRepository().restoreExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   private ContextMemoryRepository contextMemoryRepository() {
@@ -327,6 +349,15 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
             fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
     if (count > 0) {
       throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+    // A soft-deleted (archived) file keeps its name reserved so it can still be restored, so a
+    // same-name create would otherwise fail the DB unique constraint with a generic "Entity already
+    // exists". Detect it here and tell the user where to resolve it instead.
+    int archivedCount =
+        contextFileDAO.countArchivedByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
+    if (archivedCount > 0) {
+      throw new BadRequestException(String.format(ARCHIVED_FILE_NAME_MESSAGE, fileName.trim()));
     }
   }
 

@@ -14,8 +14,14 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -116,26 +122,38 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
-    );
-    const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
-    });
-    const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
-    });
-    const entityResponse = await apiContext.post('/api/v1/storedProcedures', {
-      data: this.entity,
+    const service = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create service',
+      createPath: '/api/v1/services/databaseServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
     });
 
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const schema = await schemaResponse.json();
-    const entity = await entityResponse.json();
+    const database = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create database',
+      createPath: '/api/v1/databases',
+      fqnSegments: [this.service.name, this.database.name],
+      data: this.database,
+    });
+
+    const schema = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create schema',
+      createPath: '/api/v1/databaseSchemas',
+      fqnSegments: [this.service.name, this.database.name, this.schema.name],
+      data: this.schema,
+    });
+
+    const entity = await createOrFetch(apiContext, {
+      label: 'StoredProcedureClass.create storedProcedure',
+      createPath: '/api/v1/storedProcedures',
+      fqnSegments: [
+        this.service.name,
+        this.database.name,
+        this.schema.name,
+        this.entity.name,
+      ],
+      data: this.entity,
+    });
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -157,17 +175,21 @@ export class StoredProcedureClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/storedProcedures/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/storedProcedures/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
-
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(
+      response,
+      'StoredProcedureClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,
@@ -196,17 +218,16 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`

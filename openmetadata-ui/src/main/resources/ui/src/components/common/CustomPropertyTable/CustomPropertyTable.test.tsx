@@ -50,6 +50,10 @@ jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
+jest.mock('../EmptyPlaceholder/CreatePlaceholder', () => {
+  return jest.fn().mockReturnValue(<div>CreatePlaceholder.component</div>);
+});
+
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
@@ -85,11 +89,6 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
     }),
   }),
 }));
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
-}));
-
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({
@@ -177,7 +176,7 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
     const noDataPlaceHolder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+      'CreatePlaceholder.component'
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();
@@ -205,10 +204,12 @@ describe('Test CustomProperty Table Component', () => {
     render(<CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />);
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
-    await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
+    await waitForElementToBeRemoved(() =>
+      screen.getByTestId('custom-property-table-loader')
+    );
 
     const noDataPlaceHolder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+      'CreatePlaceholder.component'
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();

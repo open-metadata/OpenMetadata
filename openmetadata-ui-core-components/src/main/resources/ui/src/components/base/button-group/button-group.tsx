@@ -1,5 +1,6 @@
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import { borderAfter } from '@/utils/tailwindClasses';
 import {
   type FC,
   type PropsWithChildren,
@@ -20,7 +21,10 @@ import {
 export const styles = sortCx({
   common: {
     root: [
-      'tw:group/button-group tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:bg-primary tw:font-semibold tw:whitespace-nowrap tw:text-secondary tw:shadow-skeuomorphic tw:ring-1 tw:ring-primary tw:outline-brand tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
+      // `tw:relative` anchors the ::after border overlay (the element's own outline is
+      // reserved for the focus ring). No absolutely-positioned children, so it is inert.
+      'tw:group/button-group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:bg-primary tw:font-semibold tw:whitespace-nowrap tw:text-secondary tw:shadow-skeuomorphic tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
+      `${borderAfter} tw:after:outline-primary`,
       // Hover and focus styles
       'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
       // Disabled styles
@@ -28,13 +32,13 @@ export const styles = sortCx({
       // Selected styles
       'tw:selected:bg-active tw:selected:text-secondary_hover tw:selected:disabled:bg-disabled_subtle',
     ].join(' '),
-    icon: 'tw:pointer-events-none tw:text-fg-quaternary tw:transition-[inherit] group-hover/button-group:tw:text-fg-quaternary_hover group-disabled/button-group:tw:text-fg-disabled_subtle',
+    icon: 'tw:pointer-events-none tw:text-fg-quaternary tw:transition-[inherit] tw:group-hover/button-group:text-fg-quaternary_hover tw:group-disabled/button-group:text-fg-disabled_subtle',
   },
 
   sizes: {
     sm: {
       root: 'tw:gap-1.5 tw:px-3.5 tw:py-2 tw:text-sm tw:not-last:pr-[calc(calc(theme(--spacing)*3.5)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3 tw:data-icon-only:p-2',
-      icon: 'tw:size-5',
+      icon: 'tw:size-4',
     },
     md: {
       root: 'tw:gap-1.5 tw:px-4 tw:py-2.5 tw:text-sm tw:not-last:pr-[calc(calc(theme(--spacing)*4)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3.5 tw:data-icon-only:px-3',

@@ -11,82 +11,46 @@
  *  limitations under the License.
  */
 
-import { act, findAllByText, render, screen } from '@testing-library/react';
-import ReactDOM from 'react-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityThreadPanel from './ActivityThreadPanel';
 
-const mockActivityThreadPanelProp = {
-  threadLink: '',
-  onCancel: jest.fn(),
-  open: true,
-  postFeedHandler: jest.fn(),
-  createThread: jest.fn(),
-  deletePostHandler: jest.fn(),
-  updateThreadHandler: jest.fn(),
-  threadType: ThreadType.Conversation,
-};
+jest.mock('./ActivityThreadPanelBody', () =>
+  jest.fn(({ view }) => <p data-testid={`panel-${view}`}>{view}</p>)
+);
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  getAllFeeds: jest.fn().mockImplementation(() => Promise.resolve()),
-}));
-
-jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
-  useActivityFeedProvider: jest.fn().mockReturnValue({
-    tasks: [],
-    selectedTask: undefined,
-    setActiveTask: jest.fn(),
-    getTaskData: jest.fn(),
-    loading: false,
-    entityPaging: {},
-  }),
-}));
-
-jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
-});
-jest.mock('../ActivityFeedPanel/FeedPanelHeader', () => {
-  return jest.fn().mockReturnValue(<p>FeedPanelHeader</p>);
-});
-
-jest.mock('./ActivityThread', () => {
-  return jest.fn().mockReturnValue(<p>ActivityThread</p>);
-});
-jest.mock('./ActivityThreadList', () => {
-  return jest.fn().mockReturnValue(<p>ActivityThreadList</p>);
-});
-
-describe('Test ActivityThreadPanel Component', () => {
-  beforeAll(() => {
-    ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
-      return element;
-    });
-  });
-
-  it('Check if it has all child elements', async () => {
-    const { container } = render(
-      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
-      { wrapper: MemoryRouter }
+describe('ActivityThreadPanel', () => {
+  it('opens on conversations and can switch to dedicated tasks', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityThreadPanel open threadLink="<#E::table::table>" />
+      </MemoryRouter>
     );
 
-    const panelThreadList = await findAllByText(
-      container,
-      /ActivityThreadList/i
-    );
+    expect(
+      await screen.findByTestId('panel-conversations')
+    ).toBeInTheDocument();
 
-    expect(panelThreadList).toHaveLength(1);
+    fireEvent.click(screen.getByText('label.task-plural'));
+
+    expect(await screen.findByTestId('panel-tasks')).toBeInTheDocument();
   });
 
-  it('Should create an observer if IntersectionObserver is available', async () => {
-    await act(async () => {
-      render(<ActivityThreadPanel {...mockActivityThreadPanelProp} />, {
-        wrapper: MemoryRouter,
-      });
-    });
+  it('keeps the conversations panel mounted after switching to tasks', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityThreadPanel open threadLink="<#E::table::table>" />
+      </MemoryRouter>
+    );
 
-    const obServerElement = await screen.findByTestId('observer-element');
+    await screen.findByTestId('panel-conversations');
 
-    expect(obServerElement).toBeInTheDocument();
+    fireEvent.click(screen.getByText('label.task-plural'));
+
+    await screen.findByTestId('panel-tasks');
+
+    expect(
+      screen.getByTestId('panel-conversations').closest('[data-inert]')
+    ).toHaveAttribute('data-inert', 'true');
   });
 });

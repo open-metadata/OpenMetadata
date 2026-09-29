@@ -13,12 +13,10 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from copy import deepcopy  # noqa: I001
-from typing import Optional
+from copy import deepcopy
 
-from sqlalchemy import Column
+from sqlalchemy import Column, text
 from sqlalchemy import Table as SqaTable
-from sqlalchemy import text
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -44,14 +42,14 @@ class BigQuerySampler(SQASampler):
     def __init__(self, *args, **kwargs):
         table_type = kwargs.pop("table_type", None)
         super().__init__(*args, **kwargs)
-        self.raw_dataset_type: Optional[TableType] = table_type or (  # noqa: UP045
+        self.raw_dataset_type: TableType | None = table_type or (
             self.entity.tableType if isinstance(self.entity, Table) else None
         )
 
         connection_config = deepcopy(self.service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:
-            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)
+        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:  # pyright: ignore[reportAttributeAccessIssue]
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)  # pyright: ignore[reportAttributeAccessIssue]
             self.connection = get_ssl_connection(connection_config)
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
@@ -81,7 +79,7 @@ class BigQuerySampler(SQASampler):
         Returns:
         """
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         if column is not None:
             column_parts = column.name.split(".")

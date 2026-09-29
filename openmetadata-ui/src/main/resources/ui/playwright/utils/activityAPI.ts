@@ -13,9 +13,11 @@
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
+import { clickFeedReaction, waitForReactionResponse } from './activityFeed';
 import { createAdminApiContext } from './admin';
 import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const ACTIVITY_EVENT_TIMEOUT = 200_000;
 export const ACTIVITY_TEST_TIMEOUT = ACTIVITY_EVENT_TIMEOUT + 60_000;
@@ -27,6 +29,7 @@ export const THUMBS_UP_EMOJI = '👍';
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
 export type ActivityEventType =
+  | 'EntityCreated'
   | 'DescriptionUpdated'
   | 'OwnerUpdated'
   | 'TagsUpdated';
@@ -41,17 +44,24 @@ export type ActivityApiResponse = {
   data?: ActivityApiEvent[];
 };
 
-type FeedThread = {
+type ConversationResponse = {
   id?: string;
   message?: string;
 };
 
-type FeedResponse = {
-  data?: FeedThread[];
+type ConversationListResponse = {
+  data?: ConversationResponse[];
 };
 
-export const getTableFqn = (table: TableClass) =>
-  table.entityResponseData.fullyQualifiedName ?? '';
+export const getTableFqn = (table: TableClass): string => {
+  const fqn = table.entityResponseData.fullyQualifiedName;
+  if (!fqn) {
+    throw new Error(
+      `Table fixture ${table.entityResponseData.name} has no FQN`
+    );
+  }
+  return fqn;
+};
 
 export const getTableLeafName = (table: TableClass) =>
   getTableFqn(table).split('.').pop() ?? getTableFqn(table);
@@ -76,11 +86,12 @@ export const openActivityFeedAndWaitForApi = async (
   entityFqn: string
 ) => {
   const expectedActivityPath = `/api/v1/activity/entity/table/name/${entityFqn}`;
-  const activityResponsePromise = page.waitForResponse(
+  const activityResponsePromise = waitForResponseWithStatus(
+    page,
     (response) =>
       response.request().method() === 'GET' &&
-      decodeURIComponent(response.url()).includes(expectedActivityPath) &&
-      response.ok(),
+      decodeURIComponent(response.url()).includes(expectedActivityPath),
+    'ok',
     { timeout: ACTIVITY_FEED_RESPONSE_TIMEOUT }
   );
 
@@ -186,19 +197,20 @@ const waitForConversationThread = async ({
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/feed', {
+        const response = await apiContext.get('/api/v1/conversations', {
           params: {
             entityLink,
-            type: 'Conversation',
             limit: '25',
           },
         });
 
         if (!response.ok()) {
-          return false;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
-        const data = (await response.json()) as FeedResponse;
+        const data = (await response.json()) as ConversationListResponse;
 
         return (data.data ?? []).some(
           (thread) => thread.id === threadId || thread.message === message
@@ -219,7 +231,7 @@ export const createConversationThread = async (
   message: string
 ) => {
   const entityLink = getTableEntityLink(table);
-  const response = await apiContext.post('/api/v1/feed', {
+  const response = await apiContext.post('/api/v1/conversations', {
     data: {
       message,
       about: entityLink,
@@ -228,7 +240,7 @@ export const createConversationThread = async (
 
   expect(response.ok()).toBeTruthy();
 
-  const thread = (await response.json()) as FeedThread;
+  const thread = (await response.json()) as ConversationResponse;
 
   await waitForConversationThread({
     apiContext,
@@ -315,10 +327,11 @@ export const insertActivityEventForTest = async (
   const tableData = table.entityResponseData;
 
   const fqn = tableData.fullyQualifiedName ?? '';
+  const activityId = fullUuid();
 
   const response = await apiContext.post('/api/v1/activity/test-insert', {
     data: {
-      id: fullUuid(),
+      id: activityId,
       eventType,
       about: `<#E::table::${fqn}>`,
       entity: {
@@ -341,6 +354,8 @@ export const insertActivityEventForTest = async (
   });
 
   expect(response.ok()).toBeTruthy();
+
+  return activityId;
 };
 
 export const addTagToTable = async (
@@ -378,19 +393,10 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   await expect(addReactionButton).toBeVisible();
   await expect(addReactionButton).toBeEnabled();
   await addReactionButton.click();
-  await expect(page.locator('.ant-popover-feed-reactions')).toBeVisible();
 
-  const reactionResponse = page.waitForResponse(
-    (response) =>
-      (response.url().includes('/api/v1/activity') ||
-        response.url().includes('/api/v1/feed')) &&
-      response.url().includes(`/reaction/${THUMBS_UP_REACTION}`) &&
-      response.ok()
-  );
+  const reactionResponse = waitForReactionResponse(page, THUMBS_UP_REACTION);
 
-  await page
-    .locator(`[data-testid="reaction-button"][title="${THUMBS_UP_REACTION}"]`)
-    .click();
+  await clickFeedReaction(page, THUMBS_UP_REACTION);
 
   const response = await reactionResponse;
 

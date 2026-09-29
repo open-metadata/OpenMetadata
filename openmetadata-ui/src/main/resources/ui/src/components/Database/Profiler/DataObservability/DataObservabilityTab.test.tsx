@@ -20,7 +20,6 @@ import {
   Table,
 } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
-import '../../../../test/unit/mocks/mui.mock';
 import { TableProfilerProps } from '../TableProfiler/TableProfiler.interface';
 import DataObservabilityTab from './DataObservabilityTab';
 
@@ -58,7 +57,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </button>
   );
 
-  return { Tabs };
+  return { Tabs, useTabItemState: () => null };
 });
 
 const mockNavigate = jest.fn();

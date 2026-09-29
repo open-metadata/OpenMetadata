@@ -13,12 +13,11 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE,
 } from '../constants/constants';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
 import {
@@ -32,13 +31,16 @@ import {
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
 import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import { searchQuery } from './searchAPI';
 
 const BASE_URL = '/dataProducts';
+
+const APPLICATION_YAML_CONTENT_TYPE = 'application/yaml';
 
 export const addDataProducts = async (data: CreateDataProduct) => {
   const response = await APIClient.post<
@@ -346,7 +348,7 @@ export const exportDataProductToODPSYaml = async (
   const response = await APIClient.get<string>(
     `${BASE_URL}/${dataProductId}/odps/yaml`,
     {
-      headers: { Accept: 'application/yaml' },
+      headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',
     }
   );
@@ -360,7 +362,7 @@ export const exportDataProductToODPSYamlByFqn = async (
   const response = await APIClient.get<string>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}/odps/yaml`,
     {
-      headers: { Accept: 'application/yaml' },
+      headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',
     }
   );
@@ -378,7 +380,7 @@ export const importDataProductFromODPSYaml = async (
     yamlContent,
     {
       params: { domain: domainFqn, languageCode },
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -396,7 +398,7 @@ export const createOrUpdateDataProductFromODPSYaml = async (
     yamlContent,
     {
       params: { strategy, domain: domainFqn, languageCode },
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 
@@ -410,7 +412,7 @@ export const validateODPSYaml = async (
     `${BASE_URL}/odps/validate/yaml`,
     yamlContent,
     {
-      headers: { 'Content-Type': 'application/yaml' },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
 

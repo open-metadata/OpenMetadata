@@ -20,10 +20,13 @@ import { Operation } from '../../../../generated/entity/policies/accessControl/r
 import { DataType } from '../../../../generated/tests/testDefinition';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
-import '../../../../test/unit/mocks/mui.mock';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
+
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ emptyFill: '#123456' }),
+}));
 
 const MOCK_START_TS = 1703980800000;
 const MOCK_END_TS = 1704067200000;

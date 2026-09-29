@@ -23,9 +23,13 @@ import { DataProduct } from '../../../../../generated/entity/domains/dataProduct
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
+import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
+import { DataProductDescriptionField } from './DataProductDescriptionField';
 import {
+  CARD_NAME_CLIP_CLASS,
+  CLIPPED_NAME_CLASS,
   renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
   renderDomainTypeCell,
@@ -37,44 +41,48 @@ export const useDomainCardTemplates = () => {
   const renderDomainCard = useCallback(
     (entity: Domain): ReactNode => (
       <Box direction="col" gap={4}>
-        <Box align="center" direction="row" gap={3}>
+        <Box
+          align="center"
+          className={CARD_NAME_CLIP_CLASS}
+          direction="row"
+          gap={3}>
           <Avatar size="md" {...getEntityAvatarProps(entity)} />
-          <Typography size="text-sm" weight="medium">
+          <Typography
+            className={CLIPPED_NAME_CLASS}
+            ellipsis={{
+              tooltip: renderBreakableTooltip(getEntityName(entity)),
+            }}
+            size="text-sm"
+            weight="medium">
             {getEntityName(entity)}
           </Typography>
         </Box>
 
-        <Grid gap="4">
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">{t('label.owner')}</Typography>
-              {renderDomainOwnersCell(entity)}
-            </Box>
-          </Grid.Item>
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">{t('label.domain-type')}</Typography>
-              {renderDomainTypeCell(entity)}
-            </Box>
-          </Grid.Item>
-        </Grid>
+        {/* Not the 24-column Grid: its gap repeats across all 23 tracks
+            (368px at gap-4), which overflows narrow cards and gets clipped. */}
+        <Box direction="row" gap={4}>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">{t('label.owner')}</Typography>
+            {renderDomainOwnersCell(entity)}
+          </Box>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">{t('label.domain-type')}</Typography>
+            {renderDomainTypeCell(entity)}
+          </Box>
+        </Box>
 
-        <Grid gap="4">
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">
-                {t('label.glossary-term-plural')}
-              </Typography>
-              {renderDomainGlossaryTagsCell(entity)}
-            </Box>
-          </Grid.Item>
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">{t('label.tag-plural')}</Typography>
-              {renderDomainClassificationTagsCell(entity)}
-            </Box>
-          </Grid.Item>
-        </Grid>
+        <Box direction="row" gap={4}>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">
+              {t('label.glossary-term-plural')}
+            </Typography>
+            {renderDomainGlossaryTagsCell(entity)}
+          </Box>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">{t('label.tag-plural')}</Typography>
+            {renderDomainClassificationTagsCell(entity)}
+          </Box>
+        </Box>
       </Box>
     ),
     [t]
@@ -88,38 +96,41 @@ export const useDomainCardTemplates = () => {
 
       return (
         <Box direction="col" gap={4}>
-          <Box align="center" direction="row" gap={3}>
+          <Box
+            align="center"
+            className={CARD_NAME_CLIP_CLASS}
+            direction="row"
+            gap={3}>
             <Avatar size="md" {...getEntityAvatarProps(entity)} />
-            <Box direction="col">
-              <Typography size="text-sm" weight="medium">
+            <Box className="tw:min-w-0" direction="col">
+              <Typography
+                className={CLIPPED_NAME_CLASS}
+                ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+                size="text-sm"
+                weight="medium">
                 {entityName}
               </Typography>
               {showName && (
-                <Typography size="text-xs">{entity.name}</Typography>
+                <Typography
+                  className={CLIPPED_NAME_CLASS}
+                  ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+                  size="text-xs">
+                  {entity.name}
+                </Typography>
               )}
             </Box>
           </Box>
 
           <Grid gap="4">
-            <Grid.Item span={12}>
+            <Grid.Item span={24}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
-                  {t('label.owner-plural')}
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.description')}
                 </Typography>
-                {renderDomainOwnersCell(entity)}
-              </Box>
-            </Grid.Item>
-            <Grid.Item span={12}>
-              <Box direction="col" gap={1}>
-                <Typography size="text-xs">
-                  {t('label.expert-plural')}
-                </Typography>
-                <OwnerLabel
-                  isCompactView={false}
-                  maxVisibleOwners={4}
-                  owners={entity.experts}
-                  showLabel={false}
-                />
+                <DataProductDescriptionField description={entity.description} />
               </Box>
             </Grid.Item>
           </Grid>
@@ -127,7 +138,39 @@ export const useDomainCardTemplates = () => {
           <Grid gap="4">
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.owner-plural')}
+                </Typography>
+                {renderDomainOwnersCell(entity, {
+                  showDashPlaceholder: true,
+                })}
+              </Box>
+            </Grid.Item>
+            <Grid.Item span={12}>
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.expert-plural')}
+                </Typography>
+                {renderDomainExpertsCell(entity, {
+                  showDashPlaceholder: true,
+                })}
+              </Box>
+            </Grid.Item>
+          </Grid>
+
+          <Grid gap="4">
+            <Grid.Item span={12}>
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
                   {t('label.glossary-term-plural')}
                 </Typography>
                 {renderDomainGlossaryTagsCell(entity)}
@@ -135,7 +178,12 @@ export const useDomainCardTemplates = () => {
             </Grid.Item>
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">{t('label.tag-plural')}</Typography>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.tag-plural')}
+                </Typography>
                 {renderDomainClassificationTagsCell(entity)}
               </Box>
             </Grid.Item>

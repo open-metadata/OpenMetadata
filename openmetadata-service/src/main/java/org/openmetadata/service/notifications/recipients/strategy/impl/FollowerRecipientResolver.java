@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -60,10 +60,9 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
     try {
       String entityType = event.getEntityType();
 
-      // Special handling for Thread entities
-      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
-        Thread thread = AlertsRuleEvaluator.getThread(event);
-        return resolveFollowersFromThread(thread, destination);
+      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
+        Conversation conversation = AlertsRuleEvaluator.getConversation(event);
+        return resolveFollowersFromConversation(conversation, destination);
       }
 
       // Standard handling for other entities
@@ -87,10 +86,9 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionDestination destination) {
 
     try {
-      // Special handling for Thread entities
-      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
-        Thread thread = Entity.getFeedRepository().get(entityId);
-        return resolveFollowersFromThread(thread, destination);
+      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
+        Conversation conversation = Entity.getConversationRepository().getEventPayload(entityId);
+        return resolveFollowersFromConversation(conversation, destination);
       }
 
       // Standard handling for other entities
@@ -104,17 +102,16 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
     }
   }
 
-  private @NotNull Set<Recipient> resolveFollowersFromThread(
-      Thread thread, SubscriptionDestination destination) {
-    if (thread == null || thread.getEntityRef() == null) {
+  private @NotNull Set<Recipient> resolveFollowersFromConversation(
+      Conversation conversation, SubscriptionDestination destination) {
+    if (conversation == null || conversation.getEntityRef() == null) {
       return Collections.emptySet();
     }
 
-    // For threads, resolve followers from the referenced entity
     EntityInterface referencedEntity =
         Entity.getEntity(
-            thread.getEntityRef().getType(),
-            thread.getEntityRef().getId(),
+            conversation.getEntityRef().getType(),
+            conversation.getEntityRef().getId(),
             "followers",
             Include.NON_DELETED);
     return resolveFollowersFromEntity(referencedEntity, destination);

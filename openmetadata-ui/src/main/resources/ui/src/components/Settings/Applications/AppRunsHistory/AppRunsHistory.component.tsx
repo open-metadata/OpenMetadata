@@ -12,7 +12,6 @@
  */
 import validator from '@rjsf/validator-ajv8';
 import { Button, Modal, Space, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -24,7 +23,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import {
   NO_DATA_PLACEHOLDER,
   SOCKET_EVENTS,
@@ -41,8 +39,13 @@ import {
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useLogsModal } from '../../../../hooks/useLogsModal';
 import { getApplicationRuns } from '../../../../rest/applicationAPI';
-import { getStatusTypeForApplication } from '../../../../utils/ApplicationUtils';
+import {
+  getAppRunFailureLogs,
+  getStatusTypeForApplication,
+  hasAppRunStats,
+} from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
   formatDurationToHHMMSS,
@@ -50,14 +53,15 @@ import {
   getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
@@ -66,6 +70,22 @@ import {
   AppRunRecordWithId,
   AppRunsHistoryProps,
 } from './AppRunsHistory.interface';
+
+// Statuses in which an app run has already finished, so it can no longer be stopped.
+const TERMINAL_APP_RUN_STATUSES: Status[] = [
+  Status.Success,
+  Status.Failed,
+  Status.Stopped,
+  Status.Completed,
+  Status.StopInProgress,
+];
+
+const renderAppLogsRow = (record: AppRunRecordWithId, maxRecords?: number) => (
+  <AppLogsViewer
+    data={record}
+    scrollHeight={maxRecords !== 1 ? 200 : undefined}
+  />
+);
 
 const AppRunsHistory = forwardRef(
   (
@@ -79,12 +99,15 @@ const AppRunsHistory = forwardRef(
   ) => {
     const { socket } = useWebSocketConnector();
     const { t } = useTranslation();
+    const { openLogs, logsModal } = useLogsModal();
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [appRunsHistoryData, setAppRunsHistoryData] = useState<
       AppRunRecordWithId[]
     >([]);
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+    const [logsModalRecord, setLogsModalRecord] =
+      useState<AppRunRecordWithId | null>(null);
     const [isStopModalOpen, setIsStopModalOpen] = useState<boolean>(false);
     const [selectedRunId, setSelectedRunId] = useState<string | undefined>(
       undefined
@@ -111,8 +134,6 @@ const AppRunsHistory = forwardRef(
       showPagination: paginationVisible,
     } = usePaging();
 
-    const navigate = useNavigate();
-
     const isExternalApp = useMemo(
       () => appData?.appType === AppType.External,
       [appData]
@@ -138,18 +159,17 @@ const AppRunsHistory = forwardRef(
       (key?: string, record?: AppRunRecordWithId) => {
         if (key) {
           if (isExternalApp && appData) {
-            const basePath = getLogsViewerPath(
-              GlobalSettingOptions.APPLICATIONS,
-              appData.name ?? '',
-              appData.name ?? ''
-            );
             const rawRunId = record?.properties?.pipelineRunId;
             const runId = typeof rawRunId === 'string' ? rawRunId : undefined;
-            const path = runId
-              ? `${basePath}?runId=${encodeURIComponent(runId)}`
-              : basePath;
 
-            return navigate(path);
+            return openLogs({
+              logEntityType: GlobalSettingOptions.APPLICATIONS,
+              fqn: appData.name ?? '',
+              runId,
+            });
+          }
+          if (record && !hasAppRunStats(record)) {
+            return setLogsModalRecord(record);
           }
           if (expandedRowKeys.includes(key)) {
             setExpandedRowKeys((prev) => prev.filter((item) => item !== key));
@@ -158,7 +178,7 @@ const AppRunsHistory = forwardRef(
           }
         }
       },
-      [expandedRowKeys]
+      [expandedRowKeys, isExternalApp, appData, openLogs]
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
@@ -187,6 +207,11 @@ const AppRunsHistory = forwardRef(
 
     const getActionButton = useCallback(
       (record: AppRunRecordWithId) => {
+        const canStopAppRun =
+          !record.isSynthetic &&
+          !TERMINAL_APP_RUN_STATUSES.includes(record.status as Status) &&
+          Boolean(appData?.supportsInterrupt);
+
         return (
           <>
             <Button
@@ -207,28 +232,22 @@ const AppRunsHistory = forwardRef(
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
-            {!record.isSynthetic &&
-              record.status !== Status.Success &&
-              record.status !== Status.Failed &&
-              record.status !== Status.Stopped &&
-              record.status !== Status.Completed &&
-              record.status !== Status.StopInProgress &&
-              Boolean(appData?.supportsInterrupt) && (
-                <Button
-                  className="m-l-xs p-0"
-                  data-testid="stop-button"
-                  size="small"
-                  type="link"
-                  onClick={() => {
-                    const rawRunId = record.properties?.pipelineRunId;
-                    setSelectedRunId(
-                      typeof rawRunId === 'string' ? rawRunId : undefined
-                    );
-                    setIsStopModalOpen(true);
-                  }}>
-                  {t('label.stop')}
-                </Button>
-              )}
+            {canStopAppRun && (
+              <Button
+                className="m-l-xs p-0"
+                data-testid="stop-button"
+                size="small"
+                type="link"
+                onClick={() => {
+                  const rawRunId = record.properties?.pipelineRunId;
+                  setSelectedRunId(
+                    typeof rawRunId === 'string' ? rawRunId : undefined
+                  );
+                  setIsStopModalOpen(true);
+                }}>
+                {t('label.stop')}
+              </Button>
+            )}
           </>
         );
       },
@@ -466,14 +485,10 @@ const AppRunsHistory = forwardRef(
           data-testid="app-run-history-table"
           dataSource={tableData}
           expandable={{
-            expandedRowRender: (record) => (
-              <AppLogsViewer
-                data={record}
-                scrollHeight={maxRecords !== 1 ? 200 : undefined}
-              />
-            ),
+            expandedRowRender: (record) => renderAppLogsRow(record, maxRecords),
             showExpandColumn: false,
-            rowExpandable: (record) => !showLogAction(record),
+            rowExpandable: (record) =>
+              !showLogAction(record) && hasAppRunStats(record),
             expandedRowKeys,
           }}
           loading={isLoading}
@@ -500,6 +515,14 @@ const AppRunsHistory = forwardRef(
             }}
           />
         )}
+
+        <LogViewerModal
+          logs={logsModalRecord ? getAppRunFailureLogs(logsModalRecord) : ''}
+          open={Boolean(logsModalRecord)}
+          title={t('label.log-plural')}
+          onClose={() => setLogsModalRecord(null)}
+        />
+        {logsModal}
         <Modal
           centered
           destroyOnClose

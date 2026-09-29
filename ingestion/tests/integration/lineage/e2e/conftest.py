@@ -4,6 +4,7 @@ from pathlib import Path
 
 import oracledb
 import pytest
+from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -11,6 +12,7 @@ from metadata.workflow.ingestion import IngestionWorkflow, OpenMetadataWorkflowC
 from metadata.workflow.metadata import MetadataWorkflow
 
 ORACLE_LINEAGE_SERVICE_NAME = "oracle-local-lineage-test-service"
+EXPECTED_ORACLE_VIEWS = {"view_1", "view_2", "view_3", "view_4"}
 
 ORACLE_COMMON_CONFIG = {
     "source": {
@@ -119,6 +121,8 @@ def oracle_lineage_ingestion(oracle_lineage_service_name, metadata):
     metadata_workflow.execute()
     print("Metadata ingestion workflow completed.")  # noqa: T201
 
+    _wait_for_oracle_views_to_be_indexed(metadata, oracle_lineage_service_name)
+
     print("\nRunning lineage ingestion workflow for lineage tests...")  # noqa: T201
     lineage_workflow_config = OpenMetadataWorkflowConfig.model_validate(ORACLE_LINEAGE_CONFIG)
     lineage_workflow: IngestionWorkflow = MetadataWorkflow(lineage_workflow_config)
@@ -132,6 +136,18 @@ def oracle_lineage_ingestion(oracle_lineage_service_name, metadata):
     if service_entity:
         metadata.delete(DatabaseService, service_entity.id, recursive=True, hard_delete=True)
         print("Lineage test service cleaned up.")  # noqa: T201
+
+
+@retry(
+    retry=retry_if_exception_type(AssertionError),
+    wait=wait_fixed(1),
+    stop=stop_after_delay(30),
+    reraise=True,
+)
+def _wait_for_oracle_views_to_be_indexed(metadata, service_name: str) -> None:
+    indexed_views = {view.table_name.lower() for view in metadata.yield_es_view_def(service_name=service_name)}
+    missing_views = EXPECTED_ORACLE_VIEWS - indexed_views
+    assert not missing_views, f"Oracle views are not indexed yet: {sorted(missing_views)}"
 
 
 def _grant_query_privileges(container):

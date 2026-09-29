@@ -25,9 +25,11 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
 import { getEntityName } from './EntityNameUtils';
-import { highlightSearchText } from './EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringUtils';
 
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
@@ -35,7 +37,9 @@ export const renderNameField =
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-name">
-        {stringToHTML(highlightSearchText(getEntityName(record), searchText))}
+        {renderHighlightedText(
+          highlightSearchText(getEntityName(record), searchText)
+        )}
       </Typography.Text>
     );
 
@@ -50,7 +54,7 @@ export const renderTypeField =
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-type">
-        {stringToHTML(highlightSearchText(typeText, searchText))}
+        {renderHighlightedText(highlightSearchText(typeText, searchText))}
       </Typography.Text>
     );
   };
@@ -81,22 +85,24 @@ const ScheduleFieldCell = ({
 
   return (
     <Row gutter={[8, 8]} wrap={false}>
-      <Col>
+      <Col flex="none">
         <TimeDateIcon className="m-t-xss" height={20} width={20} />
       </Col>
-      <Col>
+      <Col className="tw:min-w-0" flex="auto">
         <Row className="line-height-16">
           <Col span={24}>
             <Typography.Text
               className="font-medium"
-              data-testid="schedule-primary-details">
+              data-testid="schedule-primary-details"
+              ellipsis={{ tooltip: descriptionFirstPart }}>
               {descriptionFirstPart}
             </Typography.Text>
           </Col>
           <Col span={24}>
             <Typography.Text
               className="text-xs text-grey-muted"
-              data-testid="schedule-secondary-details">
+              data-testid="schedule-secondary-details"
+              ellipsis={{ tooltip: descriptionSecondPart }}>
               {descriptionSecondPart}
             </Typography.Text>
           </Col>

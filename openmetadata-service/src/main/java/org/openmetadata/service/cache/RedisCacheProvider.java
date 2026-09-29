@@ -4,6 +4,7 @@ import io.lettuce.core.LettuceFutures;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.RedisURI;
+import io.lettuce.core.ScriptOutputType;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
@@ -348,6 +349,33 @@ public class RedisCacheProvider implements CacheProvider {
       if (m != null) m.recordError();
       recordFailure(e);
       LOG.error("Error deleting keys", e);
+    } finally {
+      stopWriteTimer(m, sample);
+    }
+  }
+
+  @Override
+  public boolean deleteIfValue(String key, String expectedValue) {
+    if (!available) return false;
+
+    CacheMetrics m = metrics();
+    Timer.Sample sample = startWriteTimer(m);
+    try {
+      Long deleted =
+          syncCommands.eval(
+              "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                  + "return redis.call('del', KEYS[1]) else return 0 end",
+              ScriptOutputType.INTEGER,
+              new String[] {key},
+              expectedValue);
+      if (m != null && deleted != null && deleted > 0) m.recordEviction();
+      recordSuccess();
+      return deleted != null && deleted > 0;
+    } catch (Exception e) {
+      if (m != null) m.recordError();
+      recordFailure(e);
+      LOG.error("Error deleting key with owner check: {}", key, e);
+      return false;
     } finally {
       stopWriteTimer(m, sample);
     }

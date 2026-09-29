@@ -10,12 +10,63 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownloadOutlined, FileOutlined } from '@ant-design/icons';
+import {
+  ButtonUtility,
+  FileIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { NodeViewProps } from '@tiptap/react';
-import { Button } from 'antd';
 import React from 'react';
-import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as DownloadIcon } from '../../../../../assets/svg/action-icons/download.svg';
+import { ReactComponent as TrashIcon } from '../../../../../assets/svg/action-icons/trash.svg';
+import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import { bytesToSize } from '../../../../../utils/StringUtils';
+
+const UploadStatus = ({
+  isUploading,
+  isUploadedAsset,
+  isFileLoading,
+  uploadProgress,
+  onDownloadClick,
+}: {
+  isUploading: boolean;
+  isUploadedAsset: boolean;
+  isFileLoading: boolean;
+  uploadProgress?: number;
+  onDownloadClick: (e: React.MouseEvent) => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (isUploading) {
+    return (
+      <div
+        className="upload-progress"
+        data-testid="upload-progress"
+        style={{ width: `${uploadProgress || 0}%` }}
+      />
+    );
+  }
+
+  if (!isUploadedAsset) {
+    return null;
+  }
+
+  return (
+    <>
+      <span className="separator">|</span>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="download-file-attachment"
+        icon={<DownloadIcon height={18} width={18} />}
+        isDisabled={isFileLoading}
+        size="sm"
+        tooltip={t('label.download')}
+        onClick={onDownloadClick}
+      />
+    </>
+  );
+};
 
 const FileAttachment = ({
   node,
@@ -28,6 +79,7 @@ const FileAttachment = ({
   deleteNode: () => void;
   onFileClick: (e: React.MouseEvent) => void;
 }) => {
+  const { t } = useTranslation();
   const {
     url,
     fileName,
@@ -37,56 +89,60 @@ const FileAttachment = ({
     uploadProgress,
     tempFile,
   } = node.attrs;
+  const isUploadedAsset = url?.includes(UPLOADED_ASSETS_URL);
+  const resolvedFileName = fileName || tempFile?.name;
+  const resolvedFileSize = fileSize || tempFile?.size;
+  const resolvedMimeType = mimeType || tempFile?.type;
 
   return (
-    <div className="file-link-container" onClick={(e) => e.preventDefault()}>
-      <div className="file-content-wrapper">
-        <FileOutlined className="file-icon" />
-        <div className="file-details">
-          <a
+    <div className="file-link-container">
+      <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1 tw:relative tw:w-[90%]">
+        <FileIcon
+          className="tw:w-8 tw:h-8 tw:shrink-0"
+          type={resolvedMimeType || ''}
+        />
+        <div className="tw:flex tw:flex-col tw:min-w-0">
+          <button
             className="file-link"
-            data-filename={fileName || tempFile?.name}
-            data-filesize={(fileSize || tempFile?.size)?.toString()}
-            data-mimetype={mimeType || tempFile?.type}
+            data-filename={resolvedFileName}
+            data-filesize={resolvedFileSize?.toString()}
+            data-mimetype={resolvedMimeType}
             data-type="file-attachment"
             data-url={url}
-            href="#"
+            type="button"
             onClick={onFileClick}>
-            <span className="file-name">{fileName || tempFile?.name}</span>
-          </a>
+            <Typography ellipsis as="p" className="file-name" size="text-sm">
+              {resolvedFileName || url}
+            </Typography>
+          </button>
           <div className="file-meta">
-            <span className="file-size">
-              {bytesToSize(fileSize || tempFile?.size)}
-            </span>
-            {isUploading ? (
-              <div
-                className="upload-progress"
-                data-testid="upload-progress"
-                style={{ width: `${uploadProgress || 0}%` }}
-              />
-            ) : (
-              <>
-                <span className="separator">|</span>
-                <Button
-                  className="file-percentage"
-                  icon={<DownloadOutlined />}
-                  loading={isFileLoading}
-                  size="small"
-                  type="text"
-                  onClick={onFileClick}
-                />
-              </>
-            )}
+            {resolvedFileSize ? (
+              <Typography
+                as="p"
+                className="file-size"
+                color="secondary"
+                size="text-xs">
+                {bytesToSize(resolvedFileSize)}
+              </Typography>
+            ) : null}
+            <UploadStatus
+              isFileLoading={isFileLoading}
+              isUploadedAsset={isUploadedAsset}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              onDownloadClick={onFileClick}
+            />
           </div>
         </div>
       </div>
       {!isUploading && (
-        <Icon
-          className="delete-icon"
-          component={IconDelete}
+        <ButtonUtility
+          color="tertiary"
           data-testid="delete-icon"
-          size={14}
-          onClick={(e) => {
+          icon={<TrashIcon height={18} width={18} />}
+          size="sm"
+          tooltip={t('label.delete')}
+          onClick={(e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
             deleteNode();

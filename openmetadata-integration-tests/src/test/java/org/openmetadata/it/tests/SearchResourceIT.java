@@ -7,21 +7,30 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -41,6 +50,7 @@ import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
 /**
  * Integration tests for Search functionality using fluent API.
@@ -443,12 +453,17 @@ public class SearchResourceIT {
                     .withDataLength(255)));
     String indexedName = table.getName();
 
-    // Wait for the table to appear in the table-only index using a real search call.
-    // Query by the first alphanumeric segment of the indexed name — it's short (3-5 chars,
-    // one alnum sub-token), so it won't itself trigger the clause-explosion path we're
-    // about to stress in the matrix below. We still verify the specific seeded table is the
-    // hit, so accidental matches on other docs with "lhr" in their name don't fool us.
-    String waitQuery = indexedName.split("_+")[0];
+    // Every scenario below is scoped to this method's schema, so a scenario asserts which
+    // queries reach the seeded table rather than where it lands in a window shared with the
+    // whole lane. Several queries here are deliberately generic -- "flights", "schedule_v1",
+    // and the camelCase chunk, which now analyzes into six ordinary words -- so without the
+    // scope they compete against every other document in the run carrying those tokens.
+    String schemaFilter = sharedSchemaFilter();
+
+    // Wait on the alias and the filter the matrix itself uses, so the scenarios below start from
+    // a state they have already observed. Waiting on table_search_index left the gap between the
+    // index and the dataAsset alias becoming visible unguarded. The exact name is the narrowest
+    // query available and is scenario 1 of the matrix, so this warms up exactly what follows.
     // 90s timeout: search indexing is async via change events and can lag noticeably under
     // CI load, especially the first time the index is warmed in a fresh test container.
     Awaitility.await()
@@ -457,7 +472,14 @@ public class SearchResourceIT {
         .until(
             () -> {
               String r =
-                  client.search().query(waitQuery).index("table_search_index").size(25).execute();
+                  client
+                      .search()
+                      .query(indexedName)
+                      .index("dataAsset")
+                      .queryFilter(schemaFilter)
+                      .deleted(false)
+                      .size(25)
+                      .execute();
               JsonNode root = OBJECT_MAPPER.readTree(r);
               for (JsonNode hit : root.path("hits").path("hits")) {
                 if (indexedName.equals(hit.path("_source").path("name").asText())) {
@@ -484,7 +506,9 @@ public class SearchResourceIT {
     String mixedSeparators = indexedName.replace("__", "-").replace("_", ".");
     String withTrailingWhitespace = "  " + indexedName + "  ";
     String withInternalWhitespace = indexedName.replace("__", " ");
-    String camelCaseChunk = "LhrIncomingFlightsArrivalsScheduleV1"; // single alnum sub-token, long
+    // One 36-char alnum sub-token spelling the same segments in camelCase. om_analyzer splits it on
+    // case change, so this now reaches the underscore-separated name it describes.
+    String camelCaseChunk = "LhrIncomingFlightsArrivalsScheduleV1";
     String slashSeparated = indexedName.replace("_", "/");
 
     List<Scenario> scenarios =
@@ -513,13 +537,17 @@ public class SearchResourceIT {
             new Scenario("leading/trailing whitespace", withTrailingWhitespace, true),
             new Scenario("whitespace-separated segments", withInternalWhitespace, true),
             // --- single-alnum-token stress: long camelCase that is one 36-char sub-token ---
-            new Scenario("long camelCase single token", camelCaseChunk, false),
+            // Expected false while om_analyzer lowercased before word_delimiter ran, which left
+            // split_on_case_change nothing to split and made the query one opaque token. That was
+            // the defect, not a property worth keeping: a user typing a snake_case table's name in
+            // camelCase means the same table.
+            new Scenario("long camelCase single token", camelCaseChunk, true),
             // --- edge-case query shape that must never throw or blow shards ---
             new Scenario("only separators", "___", false));
 
     List<String> failures = new ArrayList<>();
     for (Scenario s : scenarios) {
-      evaluateScenario(client, s, indexedName, failures);
+      evaluateScenario(client, s, indexedName, schemaFilter, failures);
     }
 
     assertTrue(
@@ -529,11 +557,22 @@ public class SearchResourceIT {
   private record Scenario(String description, String query, boolean shouldFind) {}
 
   private void evaluateScenario(
-      OpenMetadataClient client, Scenario s, String seededName, List<String> failures) {
+      OpenMetadataClient client,
+      Scenario s,
+      String seededName,
+      String schemaFilter,
+      List<String> failures) {
     JsonNode root;
     try {
       String response =
-          client.search().query(s.query()).index("dataAsset").deleted(false).size(50).execute();
+          client
+              .search()
+              .query(s.query())
+              .index("dataAsset")
+              .queryFilter(schemaFilter)
+              .deleted(false)
+              .size(50)
+              .execute();
       root = OBJECT_MAPPER.readTree(response);
     } catch (Exception e) {
       // A thrown exception means the whole search was rejected (e.g. ES 9 "too many clauses"
@@ -592,51 +631,59 @@ public class SearchResourceIT {
 
     Table table = createTestTable(ns, "customer_analytics");
     String indexedName = table.getName();
-    String firstSeg = indexedName.split("_+")[0];
-
-    Awaitility.await()
-        .atMost(90, TimeUnit.SECONDS)
-        .pollInterval(500, TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              String r =
-                  client.search().query(firstSeg).index("table_search_index").size(25).execute();
-              JsonNode root = OBJECT_MAPPER.readTree(r);
-              for (JsonNode hit : root.path("hits").path("hits")) {
-                if (indexedName.equals(hit.path("_source").path("name").asText())) {
-                  return true;
-                }
-              }
-              return false;
-            });
 
     // "custmer" is a 1-char typo of "customer", 1 alnum sub-token → fuzziness path is active.
     String typoQuery = "custmer";
-    String response =
-        client.search().query(typoQuery).index("dataAsset").deleted(false).size(25).execute();
-    JsonNode root = OBJECT_MAPPER.readTree(response);
+    // Without the scope the assertion read "inside the first 25 hits of the whole dataAsset
+    // alias", which is a ranking claim: every other table in the run whose name contains
+    // "customer" competes for that window, and this is a long name -- ns.prefix appends the run
+    // id, the class and the method -- so BM25's length normalisation legitimately ranks it below
+    // shorter ones.
+    String schemaFilter = sharedSchemaFilter();
 
-    assertEquals(
-        0,
-        root.path("_shards").path("failed").asInt(-1),
-        "single-word fuzzy query must not cause shard failures: "
-            + root.path("_shards").path("failures").toString());
+    // Poll the query under test rather than a warm-up query on table_search_index. The assertion
+    // is about the dataAsset alias, so waiting on a different index left the gap between the two
+    // becoming visible unguarded -- a create that had reached table_search_index could still miss
+    // the alias on the single unretried attempt that followed.
+    Awaitility.await()
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query(typoQuery)
+                      .index("dataAsset")
+                      .queryFilter(schemaFilter)
+                      .deleted(false)
+                      .size(25)
+                      .execute();
+              JsonNode root = OBJECT_MAPPER.readTree(response);
 
-    boolean found = false;
-    for (JsonNode hit : root.path("hits").path("hits")) {
-      if (indexedName.equals(hit.path("_source").path("name").asText())) {
-        found = true;
-        break;
-      }
-    }
-    assertTrue(
-        found,
-        "Single-word typo query \""
-            + typoQuery
-            + "\" must still match seeded table \""
-            + indexedName
-            + "\" via fuzzy path; regression would indicate the clause-explosion fix "
-            + "over-corrected and killed normal typo tolerance.");
+              assertEquals(
+                  0,
+                  root.path("_shards").path("failed").asInt(-1),
+                  "single-word fuzzy query must not cause shard failures: "
+                      + root.path("_shards").path("failures").toString());
+
+              boolean found = false;
+              for (JsonNode hit : root.path("hits").path("hits")) {
+                if (indexedName.equals(hit.path("_source").path("name").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  found,
+                  "Single-word typo query \""
+                      + typoQuery
+                      + "\" must still match seeded table \""
+                      + indexedName
+                      + "\" via fuzzy path; regression would indicate the clause-explosion fix "
+                      + "over-corrected and killed normal typo tolerance. Schema-filtered hits: "
+                      + root.path("hits").path("total").path("value").asInt(-1));
+            });
   }
 
   /**
@@ -886,6 +933,22 @@ public class SearchResourceIT {
     tableRequest.setColumns(columns);
 
     return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  /**
+   * Query filter scoping a search to the calling method's schema.
+   *
+   * <p>{@code initializeSharedDbEntities} runs per test instance and {@code shortPrefix()} ends in
+   * a random fragment, so the schema holds only the tables that method seeded. A filter clause does
+   * not score, so what a test asserts -- which queries reach its own table -- is unchanged; the
+   * scope only stops the assertion from doubling as a claim about a result window shared with
+   * everything else the lane indexed. Filters can only remove documents, so a scenario expecting
+   * *not* to find its table keeps that meaning too.
+   */
+  private String sharedSchemaFilter() {
+    return "{\"query\":{\"term\":{\"databaseSchema.fullyQualifiedName.keyword\":\""
+        + sharedSchema.getFullyQualifiedName().toLowerCase(Locale.ROOT)
+        + "\"}}}";
   }
 
   private Topic createTestTopic(TestNamespace ns, String baseName) {
@@ -1712,23 +1775,29 @@ public class SearchResourceIT {
   // SEARCH EDGE CASES AND ERROR HANDLING
   // ===================================================================
 
+  /**
+   * A malformed {@code queryFilter} used to be logged and dropped, so the search came back 200 with
+   * every row the filter was meant to exclude. Silently widening the result set is worse than
+   * failing, so it is now rejected — see #27990.
+   */
   @Test
-  void testSearchWithMalformedQueryFilter(TestNamespace ns) throws Exception {
+  void testSearchWithMalformedQueryFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String malformedFilter = "{\"query\": {\"invalid_syntax";
 
-    assertDoesNotThrow(
-        () -> {
-          String response =
-              client
-                  .search()
-                  .query("*")
-                  .index("table_search_index")
-                  .queryFilter(malformedFilter)
-                  .execute();
-          assertNotNull(response);
-        });
+    InvalidRequestException thrown =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .search()
+                    .query("*")
+                    .index("table_search_index")
+                    .queryFilter(malformedFilter)
+                    .execute());
+
+    assertTrue(thrown.getMessage().contains("queryFilter"), thrown.getMessage());
   }
 
   @Test
@@ -1747,9 +1816,11 @@ public class SearchResourceIT {
   void testSearchWithNegativeOffset(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Negative offset is invalid - Elasticsearch rejects it
+    // Negative offset is invalid - the search engine rejects it. That rejection is the caller's
+    // error, so it now arrives as a 400 rather than the 500 the engine's status used to be
+    // flattened into (#27990).
     assertThrows(
-        org.openmetadata.sdk.exceptions.ApiException.class,
+        InvalidRequestException.class,
         () -> client.search().query("*").index("table_search_index").from(-1).size(10).execute());
   }
 
@@ -1930,5 +2001,147 @@ public class SearchResourceIT {
     assertEquals(200, response.statusCode());
     String[] lines = response.body().split("\n");
     assertEquals(1, lines.length, "Export beyond results should only contain header");
+  }
+
+  // ===================================================================
+  // INDEXED ENTITY TYPES (backs the reindex entity picker)
+  // ===================================================================
+
+  @Test
+  void testEntityTypesComesFromTheIndexRegistry(TestNamespace ns) throws Exception {
+    HttpResponse<String> response = httpGetJson("/v1/search/entityTypes");
+
+    assertEquals(200, response.statusCode());
+
+    List<String> entityTypes =
+        OBJECT_MAPPER.readValue(response.body(), new TypeReference<List<String>>() {});
+
+    assertFalse(entityTypes.isEmpty(), "Entity types should not be empty");
+    assertTrue(entityTypes.contains("table"), "Entity types should contain table");
+    // tableColumn has an index mapping but was absent from the enum the UI used to hardcode.
+    // Its presence is what proves the list is read from the registry rather than copied.
+    assertTrue(entityTypes.contains("tableColumn"), "Entity types should contain tableColumn");
+    assertEquals(
+        entityTypes.stream().sorted().toList(), entityTypes, "Entity types should be sorted");
+  }
+
+  /**
+   * A dataConsumer JWT hits SubjectCache.getUserContext during authorization; if that user has not
+   * been created in this JVM session the lookup throws EntityNotFoundException (→404) and
+   * short-circuits the authorizer before it can reach the permission check. Pin the user up front so
+   * the result is deterministic regardless of suite ordering.
+   */
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
+
+  @Test
+  void testEntityTypesIsReadableByApplicationViewer(TestNamespace ns) throws Exception {
+    String consumerToken =
+        JwtAuthProvider.tokenFor(
+            "data-consumer@open-metadata.org",
+            "data-consumer@open-metadata.org",
+            new String[] {"DataConsumer"},
+            3600);
+
+    HttpResponse<String> response = httpGetJson("/v1/search/entityTypes", consumerToken);
+
+    // The app details page renders for anyone with Application view permission and fetches the
+    // config schema on mount, so a non-admin viewer must not get a 403 here.
+    assertEquals(
+        200, response.statusCode(), "Application viewer should be able to list entity types");
+    assertFalse(
+        OBJECT_MAPPER.readValue(response.body(), new TypeReference<List<String>>() {}).isEmpty(),
+        "Entity types should not be empty for an Application viewer");
+  }
+
+  private HttpResponse<String> httpGetJson(String path) throws Exception {
+    return httpGetJson(path, SdkClients.getAdminToken());
+  }
+
+  private HttpResponse<String> httpGetJson(String path, String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + token)
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  // ===================================================================
+  // MALFORMED INPUT IS THE CALLER'S ERROR, NOT A SERVER FAULT (#27990)
+  // ===================================================================
+
+  private HttpResponse<String> httpGetSearch(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  /**
+   * Explore replays whatever {@code q} sits in the URL. A half-typed phrase carries Lucene syntax
+   * but cannot be parsed, and used to fail the whole search with {@code all shards failed}.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "revenue%20(draft",
+        "%22quoted%20phrase",
+        "%3Afoo*",
+        "name%3A(foo",
+        "foo%20AND",
+        "foo%5E"
+      })
+  void testUnparseableQueryStillReturnsResults(String encodedQuery) throws Exception {
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=" + encodedQuery + "&index=table_search_index");
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        "unparseable q must be searched as text, got: " + response.body());
+  }
+
+  /**
+   * A {@code queryFilter} that is valid JSON but not query DSL is the caller's mistake. It used to
+   * reach the engine and come back as a 500; silently dropping it instead would widen the result
+   * set past what the caller asked for, so it is rejected.
+   */
+  @Test
+  void testMalformedQueryFilterIsRejectedAsBadRequest() throws Exception {
+    String malformedFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[[{\"term\":{\"entityType\":\"table\"}}]]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch(
+            "/v1/search/query?q=*&index=table_search_index&query_filter=" + malformedFilter);
+
+    assertEquals(400, response.statusCode(), "expected a client error, got: " + response.body());
+  }
+
+  @Test
+  void testValidQueryFilterStillApplies() throws Exception {
+    String validFilter =
+        URLEncoder.encode(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}}",
+            StandardCharsets.UTF_8);
+
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/query?q=*&index=table_search_index&query_filter=" + validFilter);
+
+    assertEquals(200, response.statusCode(), response.body());
   }
 }

@@ -19,7 +19,6 @@ import static org.openmetadata.service.Entity.DATA_CONTRACT_RESULT;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
-import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldNameChange;
 
@@ -37,7 +36,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -63,7 +63,7 @@ import org.openmetadata.service.util.RestUtil;
 public class FormatterUtil {
 
   public static MessageParser.EntityLink getEntityLinkForFieldName(
-      String fieldName, Thread thread) {
+      String fieldName, FormattedMessage thread) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
     String entityType = thread.getEntityRef().getType();
     String entityFQN = entityLink.getEntityFQN();
@@ -121,7 +121,7 @@ public class FormatterUtil {
 
   public static String transformMessage(
       MessageDecorator<?> messageFormatter,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       CHANGE_TYPE changeType) {
     MessageParser.EntityLink link = getEntityLinkForFieldName(fieldChange.getName(), thread);
@@ -144,11 +144,13 @@ public class FormatterUtil {
     DELETE
   }
 
-  public static List<Thread> getFormattedMessages(
-      MessageDecorator<?> messageFormatter, Thread thread, ChangeDescription changeDescription) {
+  public static List<FormattedMessage> getFormattedMessages(
+      MessageDecorator<?> messageFormatter,
+      FormattedMessage thread,
+      ChangeDescription changeDescription) {
     // Store a map of entityLink -> message
     List<FieldChange> fieldsUpdated = changeDescription.getFieldsUpdated();
-    List<Thread> messages =
+    List<FormattedMessage> messages =
         getFormattedMessagesForAllFieldChange(
             messageFormatter, thread, fieldsUpdated, CHANGE_TYPE.UPDATE);
 
@@ -175,19 +177,19 @@ public class FormatterUtil {
         String fieldName = field.getName();
         MessageParser.EntityLink link = FormatterUtil.getEntityLinkForFieldName(fieldName, thread);
         // convert the added field and deleted field into one update message
-        Thread tempThread = JsonUtils.deepCopy(thread, Thread.class);
+        FormattedMessage tempMessage = JsonUtils.deepCopy(thread, FormattedMessage.class);
         String message =
             ParserFactory.getEntityParser(link.getEntityType())
                 .format(
                     messageFormatter,
-                    tempThread,
+                    tempMessage,
                     new FieldChange()
                         .withName(fieldName)
                         .withOldValue(field.getOldValue())
                         .withNewValue(addedField.get().getNewValue()),
                     CHANGE_TYPE.UPDATE);
-        tempThread.withMessage(message);
-        messages.add(tempThread);
+        tempMessage.withMessage(message);
+        messages.add(tempMessage);
         // Remove the field from addedFields list to avoid double processing
         fieldsAdded = fieldsAdded.stream().filter(f -> !f.equals(addedField.get())).toList();
       } else {
@@ -206,22 +208,23 @@ public class FormatterUtil {
     return messages;
   }
 
-  public static List<Thread> getFormattedMessagesForAllFieldChange(
+  public static List<FormattedMessage> getFormattedMessagesForAllFieldChange(
       MessageDecorator<?> messageFormatter,
-      Thread thread,
+      FormattedMessage thread,
       List<FieldChange> fields,
       CHANGE_TYPE changeType) {
-    List<Thread> threads = new ArrayList<>();
+    List<FormattedMessage> messages = new ArrayList<>();
     for (FieldChange field : fields) {
-      Thread tempEntity = JsonUtils.deepCopy(thread, Thread.class).withId(UUID.randomUUID());
+      FormattedMessage formattedMessage =
+          JsonUtils.deepCopy(thread, FormattedMessage.class).withId(UUID.randomUUID());
       // We are creating multiple thread on the same entity based on different messages
       String message =
           ParserFactory.getEntityParser(thread.getEntityRef().getType())
-              .format(messageFormatter, tempEntity, field, changeType);
-      tempEntity.withMessage(message);
-      threads.add(tempEntity);
+              .format(messageFormatter, formattedMessage, field, changeType);
+      formattedMessage.withMessage(message);
+      messages.add(formattedMessage);
     }
-    return threads;
+    return messages;
   }
 
   public static Optional<ChangeEvent> getChangeEventFromResponseContext(
@@ -247,9 +250,12 @@ public class FormatterUtil {
       return createChangeEventForEntity(updateBy, eventType, entityInterface);
     }
 
-    // If the response entity is a Thread, then create a ChangeEvent from it
-    if (responseContext.getEntity() instanceof Thread thread) {
-      return createChangeEventForThread(updateBy, eventType, thread);
+    if (responseContext.getEntity() instanceof Conversation conversation) {
+      return Entity.getConversationRepository().buildChangeEvent(updateBy, eventType, conversation);
+    }
+
+    if (responseContext.getEntity() instanceof ConversationReply reply) {
+      return Entity.getConversationRepository().buildChangeEvent(updateBy, eventType, reply);
     }
 
     // if the response entity is an EntityTimeseriesInterface, then create a ChangeEvent from it
@@ -277,12 +283,6 @@ public class FormatterUtil {
       String updateBy, EventType eventType, EntityTimeSeriesInterface entityTimeSeries) {
     return getChangeEventForEntityTimeSeries(
         updateBy, eventType, entityTimeSeries.getEntityReference().getType(), entityTimeSeries);
-  }
-
-  private static ChangeEvent createChangeEventForThread(
-      String updateBy, EventType eventType, Thread threadEntity) {
-    return getChangeEventForThread(updateBy, eventType, THREAD, threadEntity)
-        .withEntity(threadEntity);
   }
 
   private static Optional<EventType> getEventTypeFromResponse(
@@ -393,26 +393,5 @@ public class FormatterUtil {
                     List.of(new FieldChange().withName(DATA_CONTRACT_RESULT).withNewValue(result))))
         .withEntity(contract)
         .withEntityFullyQualifiedName(contract.getFullyQualifiedName());
-  }
-
-  private static ChangeEvent getChangeEventForThread(
-      String updateBy, EventType eventType, String entityType, Thread thread) {
-    ChangeEvent changeEvent =
-        new ChangeEvent()
-            .withId(UUID.randomUUID())
-            .withEventType(eventType)
-            .withEntityId(thread.getId())
-            .withDomains(thread.getDomains())
-            .withEntityType(entityType)
-            .withUserName(updateBy)
-            .withImpersonatedBy(thread.getImpersonatedBy())
-            .withTimestamp(thread.getUpdatedAt());
-
-    // Include changeDescription if present
-    if (thread.getChangeDescription() != null) {
-      changeEvent.withChangeDescription(thread.getChangeDescription());
-    }
-
-    return changeEvent;
   }
 }

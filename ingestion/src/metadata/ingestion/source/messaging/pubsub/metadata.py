@@ -13,7 +13,7 @@ Google Cloud Pub/Sub source ingestion
 """
 
 import traceback
-from typing import Iterable, List, Optional, Union  # noqa: UP035
+from collections.abc import Iterable
 
 from google.api_core.exceptions import GoogleAPIError
 from google.protobuf.duration_pb2 import Duration
@@ -82,7 +82,7 @@ class PubsubSource(MessagingServiceSource):
         self.project_id = self.pubsub.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PubSubConnection = config.serviceConnection.root.config
         if not isinstance(connection, PubSubConnection):
@@ -168,7 +168,7 @@ class PubsubSource(MessagingServiceSource):
             kms_key_name=topic.kms_key_name if topic.kms_key_name else None,
         )
 
-    def _get_topic_subscriptions(self, topic_name: str) -> List[PubSubSubscription]:  # noqa: UP006
+    def _get_topic_subscriptions(self, topic_name: str) -> list[PubSubSubscription]:
         """
         Get all subscriptions for a topic
         """
@@ -210,7 +210,7 @@ class PubsubSource(MessagingServiceSource):
             logger.error(f"Failed to list subscriptions for {topic_name}: {err}")
         return subscriptions
 
-    def _get_schema_info(self, schema_name: str) -> Optional[PubSubSchemaInfo]:  # noqa: UP045
+    def _get_schema_info(self, schema_name: str) -> PubSubSchemaInfo | None:
         """
         Get schema information from Pub/Sub Schema Registry
         """
@@ -289,7 +289,7 @@ class PubsubSource(MessagingServiceSource):
                 )
             )
 
-    def _parse_retention(self, duration: Optional[Union[Duration, str]]) -> float:  # noqa: UP007, UP045
+    def _parse_retention(self, duration: Duration | str | None) -> float:
         """
         Parse retention duration to milliseconds.
 
@@ -327,7 +327,7 @@ class PubsubSource(MessagingServiceSource):
         }
         return mapping.get(pubsub_type, SchemaType.Other)
 
-    def _parse_schema(self, topic_name: str, schema_text: str, schema_type: SchemaType) -> Optional[List]:  # noqa: UP006, UP045
+    def _parse_schema(self, topic_name: str, schema_text: str, schema_type: SchemaType) -> list | None:
         """
         Parse schema text using the schema parser registry.
 

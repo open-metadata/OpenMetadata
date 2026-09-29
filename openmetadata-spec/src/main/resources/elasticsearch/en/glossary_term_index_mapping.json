@@ -20,7 +20,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -28,23 +29,27 @@
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "word_delimiter_filter",
-            "om_stemmer"
+            "lowercase",
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -69,12 +74,62 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       }
     }
   },
   "mappings": {
     "properties": {
+      "extension": {
+        "type": "object",
+        "enabled": false
+      },
+      "customPropertiesTyped": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "propertyType": {
+            "type": "keyword"
+          },
+          "stringValue": {
+            "type": "keyword"
+          },
+          "textValue": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "longValue": {
+            "type": "long"
+          },
+          "doubleValue": {
+            "type": "double"
+          },
+          "start": {
+            "type": "long"
+          },
+          "end": {
+            "type": "long"
+          },
+          "refId": {
+            "type": "keyword"
+          },
+          "refType": {
+            "type": "keyword"
+          },
+          "refName": {
+            "type": "keyword"
+          },
+          "refFqn": {
+            "type": "keyword"
+          }
+        }
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -189,7 +244,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "docs",
+        "index_options": "positions",
         "term_vector": "with_positions_offsets"
       },
       "owners": {
@@ -544,6 +599,49 @@
       },
       "mutuallyExclusive": {
         "type": "boolean"
+      },
+      "realizedIn": {
+        "type": "nested",
+        "dynamic": false,
+        "properties": {
+          "id": { "type": "keyword" },
+          "asset": {
+            "properties": {
+              "id": { "type": "keyword" },
+              "type": { "type": "keyword" },
+              "name": {
+                "type": "text",
+                "fields": { "keyword": { "type": "keyword" } }
+              },
+              "fullyQualifiedName": { "type": "keyword" },
+              "displayName": {
+                "type": "text",
+                "fields": { "keyword": { "type": "keyword" } }
+              }
+            }
+          },
+          "role": { "type": "keyword" },
+          "description": { "type": "text" },
+          "provenance": { "type": "keyword" }
+        }
+      },
+      "attributes": {
+        "type": "nested",
+        "dynamic": false,
+        "properties": {
+          "id": { "type": "keyword" },
+          "name": {
+            "type": "text",
+            "fields": { "keyword": { "type": "keyword" } }
+          },
+          "iri": { "type": "keyword" },
+          "description": { "type": "text" },
+          "dataType": { "type": "keyword" },
+          "datatypeIri": { "type": "keyword" },
+          "unit": { "type": "keyword" },
+          "enumValues": { "type": "keyword" },
+          "isIdentifier": { "type": "boolean" }
+        }
       },
       "fingerprint": {
         "type": "keyword"

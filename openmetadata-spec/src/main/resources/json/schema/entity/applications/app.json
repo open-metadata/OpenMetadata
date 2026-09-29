@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/app.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "App",
   "javaType": "org.openmetadata.schema.entity.app.App",
   "javaInterfaces": [
@@ -96,21 +96,9 @@
       "description": "This schema defines the type of application.",
       "type": "string",
       "enum": [
-        "CollateAI",
-        "CollateAITierAgent",
-        "CollateAIQualityAgent",
         "Metadata"
       ],
       "javaEnums": [
-        {
-          "name": "CollateAI"
-        },
-        {
-          "name": "CollateAITierAgent"
-        },
-        {
-          "name": "CollateAIQualityAgent"
-        },
         {
           "name": "Metadata"
         }

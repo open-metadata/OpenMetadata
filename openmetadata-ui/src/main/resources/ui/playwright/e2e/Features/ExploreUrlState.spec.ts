@@ -23,6 +23,7 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -54,11 +55,6 @@ const ownerPatch = (): Operation => ({
   },
 });
 
-/**
- * Facet options are aggregated once when the dropdown opens, so a freshly
- * indexed fixture can miss the first fetch. Retry by closing and reopening
- * the dropdown (each open re-fetches the facet aggregation).
- */
 const ensureFilterOptionVisible = async (
   page: Page,
   label: string,
@@ -66,24 +62,12 @@ const ensureFilterOptionVisible = async (
   searchText?: string
 ) => {
   const menu = page.getByTestId('drop-down-menu');
-  const option = menu.getByTestId(optionKey);
-
-  await expect(async () => {
-    const isMenuOpen = await menu.isVisible().catch(() => false);
-    if (!isMenuOpen) {
-      await page.getByTestId(`search-dropdown-${label}`).click();
-      await menu.waitFor({ state: 'visible' });
-    }
-    if (searchText) {
-      await menu.getByTestId('search-input').fill(searchText);
-    }
-    try {
-      await option.waitFor({ state: 'visible', timeout: 5_000 });
-    } catch (error) {
-      await page.keyboard.press('Escape');
-      throw error;
-    }
-  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
+  if (!(await menu.isVisible())) {
+    await page.getByTestId(`search-dropdown-${label}`).click();
+  }
+  await expect(menu).toBeVisible();
+  if (searchText) await menu.getByTestId('search-input').fill(searchText);
+  await expect(menu.getByTestId(optionKey)).toBeVisible();
 };
 
 const selectOptionAndWaitForQuery = async (
@@ -94,15 +78,15 @@ const selectOptionAndWaitForQuery = async (
 ) => {
   await ensureFilterOptionVisible(page, label, optionKey, searchText);
   const option = page.getByTestId('drop-down-menu').getByTestId(optionKey);
+  const queryValue = searchText ?? optionKey;
 
   const queryRes = page.waitForResponse((response) => {
     let isMatch = false;
     if (response.url().includes('/api/v1/search/query')) {
       const queryFilter =
         new URL(response.url()).searchParams.get('query_filter') ?? '';
-      // Match the quoted term value ("table") so short keys can't
-      // incidentally hit field names like "table.name" in the filter.
-      isMatch = queryFilter.includes(`"${optionKey}"`);
+      // Match the quoted query value for the actual filter term, e.g. "table".
+      isMatch = queryFilter.includes(`"${queryValue}"`);
     }
 
     return isMatch;
@@ -167,6 +151,16 @@ test.beforeAll('Setup url-state fixtures', async ({ browser }) => {
     patchData: [classificationTagPatch('Tier.Tier2')],
   });
 
+  await Promise.all(
+    [tier1Table, tier2Dashboard].map((entity) =>
+      waitForSearchIndexed(
+        apiContext,
+        entity.entityResponseData.fullyQualifiedName,
+        'dataAsset',
+        { minVersion: entity.entityResponseData.version }
+      )
+    )
+  );
   await afterAction();
 });
 
@@ -203,7 +197,7 @@ test('a deep-linked filter URL restores chips and filtered results', async ({
 
   await test.step('Open the URL in a fresh navigation — state is restored', async () => {
     await redirectToHomePage(page);
-    await page.goto(capturedUrl);
+    await page.goto(capturedUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -220,7 +214,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
 
   await selectOptionAndWaitForQuery(page, 'Tier', TIER1_KEY);
   await page.keyboard.press('Escape');
-  await selectOptionAndWaitForQuery(page, 'Data Assets', 'table');
+  await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
   await page.keyboard.press('Escape');
 
   await expect(
@@ -230,7 +224,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
     page.getByTestId('query-chip-entityType.keyword-table')
   ).toBeVisible();
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -265,7 +259,7 @@ test('a browse-location deep link highlights the tree and clears on chip removal
 
   await test.step('Reopening the browse URL re-highlights the node', async () => {
     await redirectToHomePage(page);
-    await page.goto(browseUrl);
+    await page.goto(browseUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
@@ -305,7 +299,12 @@ test('selecting an asset type grays out and collapses incompatible categories', 
   });
 
   await test.step('Selecting Dashboard grays out and collapses Databases', async () => {
-    await selectOptionAndWaitForQuery(page, 'Data Assets', 'dashboard');
+    await selectOptionAndWaitForQuery(
+      page,
+      'Data Assets',
+      'dashboard',
+      'dashboard'
+    );
     await page.keyboard.press('Escape');
 
     await expect(treeNode(page, 'Dashboards')).not.toHaveClass(
@@ -340,7 +339,7 @@ test('an impossible filter combination shows the no-results placeholder and reco
     const ownerMust = readQuickFilterMust(page);
 
     await openExplore(page);
-    await selectOptionAndWaitForQuery(page, 'Data Assets', 'topic');
+    await selectOptionAndWaitForQuery(page, 'Data Assets', 'topic', 'topic');
     await page.keyboard.press('Escape');
     const topicMust = readQuickFilterMust(page);
 
@@ -350,7 +349,9 @@ test('an impossible filter combination shows the no-results placeholder and reco
         query: { bool: { must: [...ownerMust, ...topicMust] } },
       })
     );
-    await page.goto(impossibleUrl.pathname + impossibleUrl.search);
+    await page.goto(impossibleUrl.pathname + impossibleUrl.search, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('no-search-results')).toBeVisible();
@@ -361,22 +362,27 @@ test('an impossible filter combination shows the no-results placeholder and reco
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('no-search-results')).not.toBeVisible();
+    await expect(page.getByTestId('explore-query-filter-chips')).toBeVisible();
     await expect(page.getByTestId('query-bar-empty-text')).toBeVisible();
+    expect(page.url()).toContain('currentPage=1');
   });
 });
 
-test('applying a filter from a deep page resets pagination to page 1', async ({
+test('applying a filter from a deep page preserves pagination params', async ({
   page,
 }) => {
   test.slow();
 
   await test.step('Navigate to an explore page beyond the first', async () => {
-    await page.goto('/explore/tables?page=2');
+    await page.goto('/explore/tables?currentPage=2&pageSize=25', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
-    expect(page.url()).toContain('page=2');
+    expect(page.url()).toContain('currentPage=2');
+    expect(page.url()).toContain('pageSize=25');
   });
 
-  await test.step('Selecting a tree category resets to page 1', async () => {
+  await test.step('Selecting a tree category keeps current paging params', async () => {
     const browseRes = page.waitForResponse(
       '/api/v1/search/query?*index=dataAsset*'
     );
@@ -384,8 +390,8 @@ test('applying a filter from a deep page resets pagination to page 1', async ({
     await browseRes;
     await waitForAllLoadersToDisappear(page);
 
-    expect(page.url()).toContain('page=1');
-    expect(page.url()).not.toContain('page=2');
+    expect(page.url()).toContain('currentPage=2');
+    expect(page.url()).toContain('pageSize=25');
   });
 });
 
@@ -410,7 +416,7 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     // The previous step left the owned table's name in the search box, which
     // scopes the Data Assets facet to nothing — clear it before opening it.
     await clearGlobalSearch(page);
-    await selectOptionAndWaitForQuery(page, 'Data Assets', 'table');
+    await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
     await page.keyboard.press('Escape');
 
     await expect(

@@ -18,6 +18,7 @@ public class StageCounter {
 
   @Getter private final AtomicLong cumulativeSuccess = new AtomicLong(0);
   @Getter private final AtomicLong cumulativeFailed = new AtomicLong(0);
+  @Getter private final AtomicLong cumulativeWarnings = new AtomicLong(0);
 
   public void record(StatsResult result) {
     switch (result) {
@@ -29,7 +30,10 @@ public class StageCounter {
         failed.incrementAndGet();
         cumulativeFailed.incrementAndGet();
       }
-      case WARNING -> warnings.incrementAndGet();
+      case WARNING -> {
+        warnings.incrementAndGet();
+        cumulativeWarnings.incrementAndGet();
+      }
     }
   }
 
@@ -48,6 +52,7 @@ public class StageCounter {
     warnings.addAndGet(warningCount);
     cumulativeSuccess.addAndGet(successCount);
     cumulativeFailed.addAndGet(failedCount);
+    cumulativeWarnings.addAndGet(warningCount);
     if (durationNanos > 0) {
       totalTimeNanos.addAndGet(durationNanos);
     }

@@ -11,39 +11,38 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
@@ -52,22 +51,19 @@ import {
   getDatabaseSchemaVersions,
 } from '../../rest/databaseAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { version, tab } = useRequiredParams<{
     version: string;
     tab: EntityTabs;
@@ -86,9 +82,8 @@ function DatabaseSchemaVersionPage() {
   } = pagingInfo;
 
   const [tableData, setTableData] = useState<Array<Table>>([]);
-  const [servicePermissions, setServicePermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isVersionsListLoading, setIsVersionsListLoading] =
+    useState<boolean>(true);
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
   const [isTableDataLoading, setIsTableDataLoading] = useState<boolean>(true);
@@ -100,19 +95,34 @@ function DatabaseSchemaVersionPage() {
     {} as EntityHistory
   );
 
-  const viewVersionPermission = useMemo(
-    () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
-    [servicePermissions]
-  );
+  // Fetch-owner, by fqn — reads-only conversion, mechanism preserved
+  // (APICollectionVersionPage.tsx / ServiceVersionPage.tsx precedent). `hasViewAccess` is a
+  // byte-for-byte match of the old bare `servicePermissions.ViewAll || servicePermissions
+  // .ViewBasic` OR; `canViewCustomFields` already carries the same field-then-ViewAll
+  // prioritization the old `getPrioritizedViewPermission` call had.
+  const {
+    permissions: servicePermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewVersionPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(ResourceEntity.DATABASE, decodedEntityFQN, {
+    enabled: Boolean(decodedEntityFQN),
+  });
 
-  const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        servicePermissions,
-        Operation.ViewCustomFields
-      ),
-    [servicePermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Combined loading flag: the old `isLoading` state doubled as both the permission-fetch
+  // loading flag AND the version-list-fetch loading flag (fetchVersionsList only ever runs
+  // when view access is granted, per the effect below) — same shape as ServiceVersionPage.tsx's
+  // fix (Task 8 Batch 10). Gated on `viewVersionPermission` so `isVersionsListLoading`'s
+  // initial `true` isn't counted while denied.
+  const isLoading =
+    isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
   const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
@@ -124,35 +134,26 @@ function DatabaseSchemaVersionPage() {
       [currentVersionData]
     );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData.changeDescription, owners, tier, domains]
-    );
-
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.DATABASE,
-        decodedEntityFQN
-      );
-
-      setServicePermissions(permission);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [decodedEntityFQN, getEntityPermissionByFqn, setServicePermissions]);
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [currentVersionData.changeDescription, owners, tier, domains]
+  );
 
   const fetchVersionsList = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setIsVersionsListLoading(true);
 
       const { id } = await getDatabaseSchemaDetailsByFQN(decodedEntityFQN, {
         include: Include.All,
@@ -163,7 +164,7 @@ function DatabaseSchemaVersionPage() {
 
       setVersionList(versions);
     } finally {
-      setIsLoading(false);
+      setIsVersionsListLoading(false);
     }
   }, [viewVersionPermission, decodedEntityFQN]);
 
@@ -233,15 +234,11 @@ function DatabaseSchemaVersionPage() {
       },
       backHandler: () => {
         navigate(
-          getEntityDetailsPath(
-            EntityType.DATABASE_SCHEMA,
-            decodedEntityFQN,
-            tab
-          )
+          getEntityDetailsPath(EntityType.DATABASE_SCHEMA, decodedEntityFQN)
         );
       },
     }),
-    [decodedEntityFQN, decodedEntityFQN, tab]
+    [decodedEntityFQN]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -255,7 +252,7 @@ function DatabaseSchemaVersionPage() {
     );
   };
 
-  const tabs: TabsProps['items'] = useMemo(
+  const tabs: TabProps[] = useMemo(
     () => [
       {
         label: (
@@ -263,27 +260,26 @@ function DatabaseSchemaVersionPage() {
         ),
         key: EntityTabs.TABLE,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
-                  <DescriptionV1
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div data-testid="description-container">
+                  <Description
                     description={description}
                     entityType={EntityType.DATABASE_SCHEMA}
                     isDescriptionExpanded={isEmpty(tableData)}
                     showActions={false}
                   />
-                </Col>
-                <Col className="p-t-sm" flex="auto">
+                </div>
+                <div className="p-t-sm tw:min-w-0 tw:flex-auto">
                   <SchemaTablesTab isVersionView />
-                </Col>
-              </Row>
-            </Col>
+                </div>
+              </Box>
+            </div>
 
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -304,8 +300,8 @@ function DatabaseSchemaVersionPage() {
                   />
                 ))}
               </Space>
-            </Col>
-          </Row>
+            </div>
+          </Box>
         ),
       },
 
@@ -361,14 +357,15 @@ function DatabaseSchemaVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={EntityType.DATABASE}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -376,7 +373,7 @@ function DatabaseSchemaVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -384,17 +381,28 @@ function DatabaseSchemaVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
-                    className="tabs-new"
+                    className="tw:gap-3"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
-                </Col>
+                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Tabs.List size="sm" type="underline" variant="card">
+                      {tabs.map(({ key, label }) => (
+                        <Tabs.Item id={key} key={key}>
+                          {label}
+                        </Tabs.Item>
+                      ))}
+                    </Tabs.List>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 
@@ -425,12 +433,6 @@ function DatabaseSchemaVersionPage() {
     versionList,
     domainDisplayName,
   ]);
-
-  useEffect(() => {
-    if (!isEmpty(decodedEntityFQN)) {
-      fetchResourcePermission();
-    }
-  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {

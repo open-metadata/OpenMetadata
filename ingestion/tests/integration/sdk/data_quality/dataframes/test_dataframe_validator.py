@@ -1,4 +1,5 @@
-from typing import Any, Generator, Mapping  # noqa: UP035
+from collections.abc import Generator, Mapping
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pandas  # noqa: ICN001

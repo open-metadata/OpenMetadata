@@ -30,8 +30,17 @@
   }
 }
 
-// resizable panel with full height
+// resizable panel with full height. Height = --om-page-height (viewport
+//   minus the shell chrome)
+//   minus the in-page chrome around the panel (--content-panel-offset,
+//     20px default; a page with extra chrome sets the variable)
+//   minus the sticky page alert (--page-alert-offset, set globally in
+//     page-layout.less when #page-alert is present).
+// Pages override the offset variables — never redeclare `height`.
 .content-height-with-resizable-panel {
-  height: @page-height;
+  height: calc(
+    var(--om-page-height) - var(--content-panel-offset, @padding-mlg) -
+      var(--page-alert-offset, 0px)
+  );
   overflow-y: hidden;
 }

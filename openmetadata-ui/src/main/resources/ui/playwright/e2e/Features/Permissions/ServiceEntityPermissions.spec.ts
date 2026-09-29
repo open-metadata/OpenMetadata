@@ -76,7 +76,9 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
 
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
-        const { page, afterAction } = await performAdminLogin(browser);
+        const { page, afterAction } = await performAdminLogin(browser, {
+          navigate: true,
+        });
         await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await afterAction();
@@ -120,7 +122,9 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
       test.beforeAll(
         'Initialize Allow Trigger permissions',
         async ({ browser }) => {
-          const { page, afterAction } = await performAdminLogin(browser);
+          const { page, afterAction } = await performAdminLogin(browser, {
+            navigate: true,
+          });
           await initializePermissions(page, 'allow', ['Trigger'], ['app']);
           await assignRoleToUser(page, testUser);
           await afterAction();
@@ -147,7 +151,9 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
       test.beforeAll(
         'Initialize view-only permissions',
         async ({ browser }) => {
-          const { page, afterAction } = await performAdminLogin(browser);
+          const { page, afterAction } = await performAdminLogin(browser, {
+            navigate: true,
+          });
           await initializePermissions(page, 'allow', ['ViewAll'], ['app']);
           await assignRoleToUser(page, testUser);
           await afterAction();
@@ -174,7 +180,9 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
       test.beforeAll(
         'Initialize Deny Trigger permissions',
         async ({ browser }) => {
-          const { page, afterAction } = await performAdminLogin(browser);
+          const { page, afterAction } = await performAdminLogin(browser, {
+            navigate: true,
+          });
           await initializePermissions(page, 'deny', ['Trigger'], ['app']);
           await assignRoleToUser(page, testUser);
           await afterAction();
@@ -199,7 +207,9 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
 
     test.describe('Deny permissions', () => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
-        const { page, afterAction } = await performAdminLogin(browser);
+        const { page, afterAction } = await performAdminLogin(browser, {
+          navigate: true,
+        });
         await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await afterAction();

@@ -13,8 +13,6 @@
 Domo Database Source Model module
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -34,11 +32,11 @@ class User(DomoDatabaseBaseModel):
 class SchemaColumn(BaseModel):
     type: str
     name: str
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
 
 
 class Schema(BaseModel):
-    columns: List[SchemaColumn]  # noqa: UP006
+    columns: list[SchemaColumn]
 
 
 class Owner(DomoDatabaseBaseModel):
@@ -49,6 +47,6 @@ class Owner(DomoDatabaseBaseModel):
 class OutputDataset(DomoDatabaseBaseModel):
     rows: int
     columns: int
-    schemas: Optional[Schema] = Field(None, alias="schema")  # noqa: UP045
+    schemas: Schema | None = Field(None, alias="schema")
     owner: Owner
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None

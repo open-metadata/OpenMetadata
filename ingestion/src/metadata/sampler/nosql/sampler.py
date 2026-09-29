@@ -10,8 +10,6 @@
 #  limitations under the License.
 """NoSQL Sampler"""
 
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
-
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.adaptors.factory import factory
@@ -45,12 +43,12 @@ class NoSQLSampler(SamplerInterface):
             client=self.connection,
         )
 
-    def _rdn_sample_from_user_query(self) -> List[Dict[str, any]]:  # noqa: UP006
+    def _rdn_sample_from_user_query(self) -> list[dict[str, any]]:
         """
         Get random sample from user query
         """
         limit = self._get_limit()
-        return self.client.query(self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit)
+        return self.client.query(self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit)  # pyright: ignore[reportAttributeAccessIssue]
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """
@@ -58,7 +56,7 @@ class NoSQLSampler(SamplerInterface):
         If the engine does not support a custom query, an error will be raised.
         """
         records = self._rdn_sample_from_user_query()
-        columns = [SQALikeColumn(name=column.name.root, type=column.dataType) for column in self.raw_dataset.columns]
+        columns = [SQALikeColumn(name=column.name.root, type=column.dataType) for column in self.raw_dataset.columns]  # pyright: ignore[reportAttributeAccessIssue]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
@@ -68,24 +66,24 @@ class NoSQLSampler(SamplerInterface):
     def get_dataset(self, **__):
         """No randomization for NoSQL"""
 
-    def fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:  # noqa: UP006
+    def fetch_sample_data(self, columns: list[SQALikeColumn]) -> TableData:
         if self.sample_query:
             return self._fetch_sample_data_from_user_query()
         return self._fetch_sample_data(columns)
 
-    def _fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:  # noqa: UP006
+    def _fetch_sample_data(self, columns: list[SQALikeColumn]) -> TableData:
         """
         returns sampled ometa dataframes
         """
         limit = self._get_limit()
-        records = self.client.scan(self.raw_dataset, self.raw_dataset.columns, int(limit))
+        records = self.client.scan(self.raw_dataset, self.raw_dataset.columns, int(limit))  # pyright: ignore[reportAttributeAccessIssue]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
             columns=[col.name for col in cols],
         )
 
-    def _get_limit(self) -> Optional[int]:  # noqa: UP045
+    def _get_limit(self) -> int | None:
         num_rows = self._row_count if self._row_count is not None else self._get_asset_row_count()
         static = self._resolve_sample_config
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
@@ -111,8 +109,8 @@ class NoSQLSampler(SamplerInterface):
     @staticmethod
     def transpose_records(
         records: list[dict[str, any]],
-        columns: List[SQALikeColumn],  # noqa: UP006
-    ) -> Tuple[List[List[any]], List[SQALikeColumn]]:  # noqa: UP006
+        columns: list[SQALikeColumn],
+    ) -> tuple[list[list[any]], list[SQALikeColumn]]:
         rows = []
         for record in records:
             row = []
@@ -121,5 +119,5 @@ class NoSQLSampler(SamplerInterface):
             rows.append(row)
         return rows, columns
 
-    def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
-        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]
+    def get_columns(self) -> list[SQALikeColumn | None]:
+        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]  # pyright: ignore[reportAttributeAccessIssue]

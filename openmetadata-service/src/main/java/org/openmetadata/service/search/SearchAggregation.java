@@ -1,9 +1,13 @@
 package org.openmetadata.service.search;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
 
@@ -46,6 +50,22 @@ public class SearchAggregation {
     return new SearchAggregationNode("terms", name, value);
   }
 
+  public static SearchAggregationNode terms(
+      String name, String field, int size, List<String> includedValues) {
+    SearchAggregationNode node = terms(name, field, size);
+    node.getValue().put("include_values", encodeValues(includedValues));
+    return node;
+  }
+
+  public static List<String> includedValues(Map<String, String> parameters) {
+    String encodedValues = parameters.get("include_values");
+    if (encodedValues != null) {
+      return decodeValues(encodedValues);
+    }
+    String legacyValues = parameters.get("include");
+    return legacyValues == null ? List.of() : List.of(legacyValues.split(","));
+  }
+
   /**
    * Static builder method for top_hits aggregation.
    */
@@ -56,6 +76,27 @@ public class SearchAggregation {
     value.put("sort_field", sortField);
     value.put("sort_order", sortOrder);
     return new SearchAggregationNode("top_hits", name, value);
+  }
+
+  public static SearchAggregationNode topHits(
+      String name, int size, String sortField, String sortOrder, List<String> sourceFields) {
+    SearchAggregationNode node = topHits(name, size, sortField, sortOrder);
+    node.getValue().put("source_fields", String.join(",", sourceFields));
+    return node;
+  }
+
+  private static String encodeValues(List<String> values) {
+    Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+    return values.stream()
+        .map(value -> encoder.encodeToString(value.getBytes(StandardCharsets.UTF_8)))
+        .collect(Collectors.joining(","));
+  }
+
+  private static List<String> decodeValues(String encodedValues) {
+    Base64.Decoder decoder = Base64.getUrlDecoder();
+    return Arrays.stream(encodedValues.split(","))
+        .map(value -> new String(decoder.decode(value), StandardCharsets.UTF_8))
+        .toList();
   }
 
   /**

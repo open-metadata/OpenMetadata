@@ -25,12 +25,12 @@ import {
 
 interface UseDomainTableColumnsOptions {
   nameLabelKey?: string;
-  tagSize?: 'sm' | 'lg';
+  onEntityClick?: (entity: Domain) => void;
 }
 
 export const useDomainTableColumns = ({
   nameLabelKey = 'label.domain',
-  tagSize = 'sm',
+  onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
 
@@ -49,20 +49,25 @@ export const useDomainTableColumns = ({
     (entity: Domain, columnId: string): ReactNode => {
       switch (columnId) {
         case 'name':
-          return renderDomainNameCell(entity);
+          return renderDomainNameCell(
+            entity,
+            onEntityClick ? () => onEntityClick(entity) : undefined
+          );
         case 'domainType':
           return renderDomainTypeCell(entity);
         case 'owners':
-          return renderDomainOwnersCell(entity);
+          return renderDomainOwnersCell(entity, {
+            showDashPlaceholder: true,
+          });
         case 'glossaryTerms':
-          return renderDomainGlossaryTagsCell(entity, { size: tagSize });
+          return renderDomainGlossaryTagsCell(entity);
         case 'tags':
-          return renderDomainClassificationTagsCell(entity, { size: tagSize });
+          return renderDomainClassificationTagsCell(entity);
         default:
           return null;
       }
     },
-    [tagSize]
+    [onEntityClick]
   );
 
   return { columns, renderCell };

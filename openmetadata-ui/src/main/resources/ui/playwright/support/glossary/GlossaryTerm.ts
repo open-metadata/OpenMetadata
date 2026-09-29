@@ -12,7 +12,13 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Glossary } from './Glossary';
@@ -67,17 +73,29 @@ export class GlossaryTerm extends EntityClass {
     const glossaryDisplayName =
       this.responseData.glossary?.displayName ?? this.glossary.data.displayName;
     await visitGlossaryPage(page, glossaryDisplayName);
-    const expandCollapseButtonText = await page
-      .locator('[data-testid="expand-collapse-all-button"]')
-      .textContent();
-    const isExpanded = expandCollapseButtonText?.includes('Expand All');
-    if (isExpanded) {
+    const glossaryTerm = page.getByTestId(this.data.displayName);
+    const expandCollapseButton = page.getByTestId('expand-collapse-all-button');
+    await expect
+      .poll(async () => {
+        if (await glossaryTerm.isVisible()) {
+          return 'term-visible';
+        }
+
+        return (await expandCollapseButton.textContent())?.trim();
+      })
+      .toMatch(/^(term-visible|.*Expand All.*)$/);
+    if (!(await glossaryTerm.isVisible())) {
       const glossaryId =
         this.responseData.glossary?.id ?? this.glossary.responseData.id;
-      const glossaryTermListResponse = page.waitForResponse(
-        `/api/v1/glossaryTerms?*glossary=${glossaryId}*`
+      const glossaryTermListResponse = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/glossaryTerms?') &&
+          response.url().includes(`glossary=${glossaryId}`),
+        200
       );
-      await page.click('[data-testid="expand-collapse-all-button"]');
+      await expandCollapseButton.click();
       await glossaryTermListResponse;
     }
     const glossaryTermResponse = page.waitForResponse(
@@ -85,7 +103,7 @@ export class GlossaryTerm extends EntityClass {
         this.responseData.fullyQualifiedName
       )}?*`
     );
-    await page.getByTestId(this.data.displayName).click();
+    await glossaryTerm.click();
     await glossaryTermResponse;
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(
@@ -107,20 +125,19 @@ export class GlossaryTerm extends EntityClass {
       data: apiData,
     });
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'GlossaryTerm.create');
 
     return this.responseData;
   }
 
   async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/glossaryTerms/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/glossaryTerms/${this.responseData.id}`, {
         data,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
     if (!response.ok()) {
@@ -142,7 +159,8 @@ export class GlossaryTerm extends EntityClass {
   async delete(apiContext: APIRequestContext) {
     const fqn =
       this.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName;
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/glossaryTerms/name/${encodeURIComponent(
         fqn
       )}?recursive=true&hardDelete=true`

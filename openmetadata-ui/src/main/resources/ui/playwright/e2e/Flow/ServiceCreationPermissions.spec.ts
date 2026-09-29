@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
 } from '../../constant/permission';
+import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -30,8 +32,10 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 import {
   advanceToServiceConnectionStep,
+  getAgentCard,
   mockSuccessfulTestConnection,
   selectServiceConnector,
   testConnectionIfRequired,
@@ -90,7 +94,7 @@ const test = base.extend<{
   },
 });
 
-const openPipelineActions = async (page: Page) => {
+const visitAgentCard = async (page: Page) => {
   await redirectToHomePage(page);
   await adminOwnedService.visitEntityPage(page);
 
@@ -101,22 +105,27 @@ const openPipelineActions = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  const actionButton = page
-    .locator(`[data-row-key*="${ingestionPipelineName}"]`)
-    .getByTestId('more-actions');
+  const agentCard = getAgentCard(page, ingestionPipelineName);
 
+  await agentCard.waitFor();
+
+  return agentCard;
+};
+
+const openPipelineActions = async (page: Page) => {
+  const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
   await actionButton.waitFor();
-  await actionButton.click();
 
-  await page.getByTestId('actions-dropdown').waitFor();
+  const actionsDropdown = page.getByTestId('actions-dropdown');
+
+  await actionButton.click();
+  await expect(actionsDropdown.getByTestId('re-deploy-button')).toBeVisible();
 };
 
 test.describe(
   'Service Creation with isOwner() Permissions',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   () => {
-    test.slow();
-
     test.beforeAll('Setup prerequisites', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -322,6 +331,7 @@ test.describe(
       await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
+      await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
@@ -335,7 +345,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
       await page.getByTestId('confirm-button').click();
 
       await toastNotification(
@@ -519,7 +528,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteResponse = page.waitForResponse(
         (response) =>
@@ -584,11 +592,28 @@ test.describe(
     test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
       pipelineTriggerPage: page,
     }) => {
-      await openPipelineActions(page);
+      let agentCard = await visitAgentCard(page);
 
-      await expect(page.getByTestId('run-button')).toBeVisible();
-      await expect(page.getByTestId('edit-button')).toBeHidden();
-      await expect(page.getByTestId('kill-button')).toBeHidden();
+      await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
+
+      // Both users own the service, so isOwner() still grants Delete on the
+      // pipeline and the menu renders with that single item — only the
+      // EditAll-gated actions must be absent for a trigger-only user.
+      await agentCard.getByTestId('more-actions').click();
+
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('delete-button')).toBeVisible();
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeHidden();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeHidden();
+      await expect(actionsDropdown.getByTestId('pause-button')).toBeHidden();
+      await expect(actionsDropdown.getByTestId('resume-button')).toBeHidden();
+
+      await page.keyboard.press('Escape');
+
+      await expect(actionsDropdown).toBeHidden();
 
       const triggerResponse = page.waitForResponse(
         (response) =>
@@ -597,12 +622,11 @@ test.describe(
             .includes('/api/v1/services/ingestionPipelines/trigger/') &&
           response.request().method() === 'POST'
       );
-
-      await page.getByTestId('run-button').click();
-
+      await agentCard.getByTestId('run-agent-button').click();
       const response = await triggerResponse;
-
-      expect(response.status()).toBe(200);
+      expect(response.status(), 'The first pipeline trigger must succeed').toBe(
+        200
+      );
     });
 
     test('User with EditAll but not Trigger cannot run a pipeline', async ({
@@ -610,10 +634,17 @@ test.describe(
     }) => {
       await openPipelineActions(page);
 
-      await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('kill-button')).toBeVisible();
-      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
-      await expect(page.getByTestId('run-button')).toBeHidden();
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeVisible();
+      await expect(
+        getAgentCard(page, ingestionPipelineName).getByTestId(
+          'run-agent-button'
+        )
+      ).toBeHidden();
     });
   }
 );

@@ -14,6 +14,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forwardRef } from 'react';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
+import { transitionIncident } from '../../../rest/incidentManagerAPI';
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
@@ -36,6 +37,18 @@ jest.mock('../../../generated/tests/testCase', () => ({
   },
 }));
 
+const mockLatestIncident = {
+  id: 'latest-incident-id',
+  testCaseResolutionStatusType: 'New',
+};
+
+jest.mock('../../../rest/incidentManagerAPI', () => ({
+  transitionIncident: jest.fn().mockResolvedValue({}),
+  getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({
+    data: [{ id: 'latest-incident-id', testCaseResolutionStatusType: 'New' }],
+  }),
+}));
+
 describe('TestCaseStatusModal component', () => {
   it('component should render', async () => {
     render(<TestCaseStatusModal {...mockProps} />);
@@ -46,7 +59,7 @@ describe('TestCaseStatusModal component', () => {
     expect(await screen.findByText('label.save')).toBeInTheDocument();
   });
 
-  it.skip('should render test case reason and comment field, if status is resolved', async () => {
+  it('should render test case reason and comment field, if status is resolved', async () => {
     render(
       <TestCaseStatusModal
         {...mockProps}
@@ -78,8 +91,10 @@ describe('TestCaseStatusModal component', () => {
     expect(mockProps.onCancel).toHaveBeenCalled();
   });
 
-  it.skip('should call onSubmit function, on click of save button', async () => {
-    render(<TestCaseStatusModal {...mockProps} />);
+  it('should call onSubmit function, on click of save button', async () => {
+    render(
+      <TestCaseStatusModal {...mockProps} data={{ stateId: 'test-state-id' }} />
+    );
     const submitBtn = await screen.findByText('label.save');
     const status = await screen.findByLabelText('label.status');
 
@@ -87,16 +102,19 @@ describe('TestCaseStatusModal component', () => {
       userEvent.click(status);
     });
 
-    const statusOption = await screen.findAllByText('New');
+    const statusOption = await screen.findAllByText('label.new');
 
     await act(async () => {
-      fireEvent.click(statusOption[1]);
+      fireEvent.click(statusOption[statusOption.length - 1]);
     });
 
     await act(async () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockProps.onSubmit).toHaveBeenCalled();
+    expect(transitionIncident).toHaveBeenCalledWith('test-state-id', {
+      transitionId: 'new',
+    });
+    expect(mockProps.onSubmit).toHaveBeenCalledWith(mockLatestIncident);
   });
 });

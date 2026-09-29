@@ -12,10 +12,10 @@
  */
 @import (reference) '../../../styles/variables.less';
 .section-with-edit {
-  padding-left: 14px;
-  padding-right: 14px;
+  padding-left: var(--om-space-14);
+  padding-right: var(--om-space-14);
   border-bottom: 0.6px solid @grey-15;
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
   &:last-child {
     margin-bottom: 0;
   }
@@ -23,12 +23,12 @@
   .section-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: var(--om-space-12);
 
     .section-title {
-      font-size: 13px;
+      font-size: var(--om-font-size-13);
       line-height: 20px;
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-900;
       margin: 0;
     }
@@ -36,29 +36,29 @@
     .section-edit-button {
       border: none;
       background: transparent;
-      color: #595959;
-      padding: 4px;
+      color: var(--om-legacy-color-595959);
+      padding: var(--om-space-4);
       width: 24px;
       height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
-      transition: all 0.2s ease;
+      border-radius: var(--om-radius-sm);
+      transition: all var(--om-duration-200) ease;
 
       &:hover {
-        background: #f5f5f5;
-        color: #1890ff;
+        background: var(--om-color-gray-100);
+        color: var(--om-legacy-color-1890ff);
       }
 
       .anticon {
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
       }
     }
   }
 
   .section-content {
-    color: #595959;
+    color: var(--om-legacy-color-595959);
     line-height: 1.5;
   }
 }

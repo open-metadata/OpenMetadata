@@ -12,8 +12,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -31,23 +29,19 @@ from metadata.utils.constants import THREE_MIN
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
-def get_connection(connection: SsrsConnectionConfig) -> SsrsClient:
-    verify_ssl = None
-    if connection.verifySSL:
-        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
-        verify_ssl = verify_ssl_fn(connection.sslConfig)
-    return SsrsClient(connection, verify_ssl=verify_ssl)
-
-
 class SsrsConnection(BaseConnection[SsrsConnectionConfig, SsrsClient]):
     def _get_client(self) -> SsrsClient:
-        return get_connection(self.service_connection)
+        verify_ssl = None
+        if self.service_connection.verifySSL:
+            verify_ssl_fn = get_verify_ssl_fn(self.service_connection.verifySSL)
+            verify_ssl = verify_ssl_fn(self.service_connection.sslConfig)
+        return SsrsClient(self.service_connection, verify_ssl=verify_ssl)
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         client = self.client
         service_connection = self.service_connection

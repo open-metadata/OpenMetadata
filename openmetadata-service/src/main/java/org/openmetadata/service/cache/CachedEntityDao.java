@@ -1,88 +1,50 @@
 package org.openmetadata.service.cache;
 
+import com.google.common.collect.Lists;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 
 @Slf4j
 @RequiredArgsConstructor
 public class CachedEntityDao {
-  private final CollectionDAO dao;
+  /** Caps a single DEL so evicting a very large cascade never blocks Redis on one command. */
+  static final int MAX_KEYS_PER_DELETE = 1_000;
+
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final CacheConfig config;
 
-  public String getBase(UUID entityId, String entityType) {
-    // Reindex worker threads opt out of the cache via EntityCacheBypass so a 580k-entity reindex
-    // doesn't generate millions of pointless Redis writes (cache hit rate during reindex ≈ 0)
-    // and isn't held hostage to Redis health (300ms timeouts add up fast at this volume). Go
-    // straight to DB; skip the write-through.
+  /** One entity's cached variants: the id hash (base and reference) and the by-name aliases. */
+  public record EntityKey(String entityType, UUID id, String fqn) {}
+
+  public Optional<String> getBase(UUID entityId, String entityType) {
     if (EntityCacheBypass.isSkipped()) {
-      String entityJson = fetchEntityFromDatabase(entityId, entityType);
-      return entityJson != null ? entityJson : "{}";
+      return Optional.empty();
     }
 
     String cacheKey = keys.entity(entityType, entityId);
-
-    // Try to get from cache first
     Optional<String> cached = cache.hget(cacheKey, "base");
     CacheMetrics m = CacheMetrics.getInstance();
     if (cached.isPresent()) {
       LOG.debug("Cache hit for entity: {} -> {}", entityType, entityId);
       if (m != null) m.recordLayerHit(entityType);
-      return cached.get();
+      return cached;
     }
 
     LOG.debug("Cache miss for entity: {} -> {}", entityType, entityId);
     if (m != null) m.recordLayerMiss(entityType);
-
-    // Fetch from database
-    String entityJson = fetchEntityFromDatabase(entityId, entityType);
-
-    // Write to cache (write-through caching)
-    if (entityJson != null && !entityJson.equals("{}")) {
-      try {
-        cache.hset(
-            cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds));
-        if (m != null) m.recordLayerWrite(entityType);
-        LOG.debug("Cached entity: {} -> {}", entityType, entityId);
-      } catch (Exception e) {
-        LOG.warn("Failed to cache entity: {} -> {}", entityType, entityId, e);
-      }
-    }
-
-    return entityJson != null ? entityJson : "{}";
-  }
-
-  private String fetchEntityFromDatabase(UUID entityId, String entityType) {
-    try {
-      // Directly fetch the raw JSON from database - this will have null relationship fields
-      // just like how it's stored in the database
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      if (repository != null && repository.getDao() != null) {
-        EntityDAO<?> entityDao = repository.getDao();
-        String tableName = entityDao.getTableName();
-        String entityJson = entityDao.findById(tableName, entityId, "");
-        if (entityJson != null && !entityJson.isEmpty()) {
-          LOG.debug("Fetched raw entity JSON from database: {} -> {}", entityType, entityId);
-          return entityJson;
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("Failed to fetch entity from database: {} -> {}", entityType, entityId, e);
-    }
-    return null;
+    return Optional.empty();
   }
 
   /**
-   * Write-through cache: Store entity in cache (called after DB write)
+   * Store an entity's JSON. Only readers call this, with the row they loaded from the database;
+   * writers evict instead.
    */
   public void putBase(String entityType, UUID entityId, String entityJson) {
     if (EntityCacheBypass.isSkipped()) {
@@ -110,7 +72,8 @@ public class CachedEntityDao {
   }
 
   /**
-   * Write-through cache: Store entity by name for fast name-based lookups
+   * Store an entity's JSON under its FQN for name-based lookups. Only readers call this, with the
+   * row they loaded from the database; writers evict instead.
    */
   public void putByName(String entityType, String fqn, String entityJson) {
     if (EntityCacheBypass.isSkipped()) {
@@ -245,9 +208,35 @@ public class CachedEntityDao {
     }
     String cacheKeyEntity = keys.entityByName(entityType, fqn);
     String cacheKeyRef = keys.refByName(entityType, fqn);
-    cache.del(cacheKeyEntity);
-    cache.del(cacheKeyRef);
+    // One DEL, not two: between two round trips a reader can see the entity alias evicted and the
+    // reference alias still live (or the reverse) and cache a half-stale view of the same entity.
+    cache.del(cacheKeyEntity, cacheKeyRef);
     LOG.debug("Invalidated cache for entity by name: {} -> {}", entityType, fqn);
+  }
+
+  /**
+   * Evicts every cached variant of a batch of entities in one DEL (split only past {@link
+   * #MAX_KEYS_PER_DELETE} keys). A committed batch has to turn over at once: evicted entity by
+   * entity, a reader finds one entity fresh while a sibling still serves its pre-write copy.
+   */
+  public void invalidateEntities(List<EntityKey> entities) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
+    List<String> cacheKeys = entities.stream().flatMap(this::cacheKeysOf).toList();
+    for (List<String> chunk : Lists.partition(cacheKeys, MAX_KEYS_PER_DELETE)) {
+      cache.del(chunk.toArray(String[]::new));
+    }
+  }
+
+  private Stream<String> cacheKeysOf(EntityKey entity) {
+    Stream<String> nameKeys =
+        entity.fqn() == null
+            ? Stream.empty()
+            : Stream.of(
+                keys.entityByName(entity.entityType(), entity.fqn()),
+                keys.refByName(entity.entityType(), entity.fqn()));
+    return Stream.concat(Stream.of(keys.entity(entity.entityType(), entity.id())), nameKeys);
   }
 
   // Additional invalidation methods for delete operations
@@ -286,8 +275,7 @@ public class CachedEntityDao {
     }
     String entityCacheKey = keys.entityByName(entityType, fqn);
     String refCacheKey = keys.refByName(entityType, fqn);
-    cache.del(entityCacheKey);
-    cache.del(refCacheKey);
+    cache.del(entityCacheKey, refCacheKey);
     LOG.debug("Deleted corrupted cache entries for entity by name: {} -> {}", entityType, fqn);
   }
 

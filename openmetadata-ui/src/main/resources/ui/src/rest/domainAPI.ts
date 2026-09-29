@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE_MEDIUM,
@@ -27,8 +26,9 @@ import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/domains';
 
@@ -130,11 +130,15 @@ export const removeAssetsFromDomain = async (
   return response.data;
 };
 
-export const listDomainHierarchy = async (params?: ListParams) => {
+export const listDomainHierarchy = async (
+  params?: ListParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<Domain[]>>(
     `${BASE_URL}/hierarchy`,
     {
       params,
+      signal,
     }
   );
 
@@ -144,7 +148,8 @@ export const listDomainHierarchy = async (params?: ListParams) => {
 export const getDomainChildrenPaginated = async (
   parentFQN?: string,
   pageSize = 15,
-  offset = 0
+  offset = 0,
+  signal?: AbortSignal
 ) => {
   const apiUrl = `${BASE_URL}/hierarchy`;
   const requestParams: Record<string, string | number | string[]> = {
@@ -159,6 +164,7 @@ export const getDomainChildrenPaginated = async (
 
   const { data } = await APIClient.get<PagingResponse<Domain[]>>(apiUrl, {
     params: requestParams,
+    signal,
   });
 
   return data;
@@ -167,7 +173,8 @@ export const getDomainChildrenPaginated = async (
 export const searchDomains = async (
   search: string,
   page = 1,
-  queryFilter?: Record<string, unknown>
+  queryFilter?: Record<string, unknown>,
+  signal?: AbortSignal
 ) => {
   const apiUrl = `/search/query?q=*${search ?? ''}*`;
 
@@ -186,6 +193,7 @@ export const searchDomains = async (
 
   const { data } = await APIClient.get(apiUrl, {
     params,
+    signal,
   });
 
   return data;

@@ -24,9 +24,19 @@ import {
 } from '../../../../utils/Persona/PersonaUtils';
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
-const categories = getCustomizePageCategories();
-
 export const CustomizeUI = () => {
+  // AI is always available in OSS — the shell ships in-tree, no
+  // install-gate.
+  const hasNonDefaultMode = true;
+  const categories = useMemo(
+    () =>
+      getCustomizePageCategories().filter(
+        (category) =>
+          !['app-mode', 'askCollateSidebar'].includes(category.key) ||
+          hasNonDefaultMode
+      ),
+    [hasNonDefaultMode]
+  );
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();
@@ -63,7 +73,7 @@ export const CustomizeUI = () => {
 
     const nestedItems = getCustomizePageOptions(activeCat);
     setItems(nestedItems);
-  }, [activeCat]);
+  }, [activeCat, categories]);
 
   return (
     <Row className="bg-grey" gutter={[16, 16]}>

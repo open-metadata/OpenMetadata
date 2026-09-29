@@ -13,11 +13,21 @@
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
 import { ColumnProfile } from '../../../generated/entity/data/table';
-import '../../../test/unit/mocks/mui.mock';
 import '../../../test/unit/mocks/recharts.mock';
 import CardinalityDistributionChart, {
   CardinalityDistributionChartProps,
 } from './CardinalityDistributionChart.component';
+
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    axis: '#123456',
+    cursorFill: '#234567',
+    emptyFill: '#345678',
+    grid: '#456789',
+    inactive: '#56789a',
+    primary: '#6789ab',
+  }),
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: ({

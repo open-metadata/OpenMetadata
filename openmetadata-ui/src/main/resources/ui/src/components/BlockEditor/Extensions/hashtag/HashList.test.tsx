@@ -248,5 +248,21 @@ describe('HashList', () => {
 
       expect(result).toBe(false);
     });
+
+    it('should open the breadcrumb tooltip with the full breadcrumb text on focus', () => {
+      render(<HashList {...mockProps} />);
+
+      const trigger = screen
+        .getAllByText('Database/Schema')[0]
+        .closest('button') as HTMLElement;
+
+      act(() => {
+        trigger.focus();
+      });
+
+      const tooltip = screen.getByRole('tooltip');
+
+      expect(tooltip).toHaveTextContent('Database/Schema');
+    });
   });
 });

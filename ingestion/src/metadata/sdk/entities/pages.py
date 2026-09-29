@@ -1,7 +1,5 @@
 """Pages entity SDK with fluent API for Context Center (articles and quick links)."""
 
-from typing import Type  # noqa: UP035
-
 from metadata.generated.schema.api.data.createPage import CreatePage
 from metadata.generated.schema.entity.data.page import Page
 from metadata.sdk.entities.base import BaseEntity
@@ -17,6 +15,6 @@ class Pages(BaseEntity[Page, CreatePage]):
     """
 
     @classmethod
-    def entity_type(cls) -> Type[Page]:  # noqa: UP006
+    def entity_type(cls) -> type[Page]:
         """Return the Page entity type."""
         return Page

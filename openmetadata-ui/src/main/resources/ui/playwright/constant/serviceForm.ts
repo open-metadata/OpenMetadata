@@ -12,6 +12,8 @@
  */
 import { SupersetFormType } from '../support/interfaces/ServiceForm.interface';
 
+export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
+
 export const supersetFormDetails1: SupersetFormType = {
   hostPort: 'http://localhost:8088',
   connectionType: 'SupersetApiConnection',

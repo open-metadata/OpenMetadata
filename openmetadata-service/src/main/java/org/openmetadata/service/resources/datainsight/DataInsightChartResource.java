@@ -54,6 +54,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/analytics/dataInsights/charts")
@@ -85,9 +86,12 @@ public class DataInsightChartResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts =
-        repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/dataInsight/(?!custom/).*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
       repository.initializeEntity(dataInsightChart);
     }

@@ -22,10 +22,14 @@ class ValidatorUtilTest {
 
     // Invalid name
     glossary.withName("invalid::Name").withDescription("description");
-    assertEquals("[name must match \"^((?!::).)*$\"]", ValidatorUtil.validate(glossary));
+    assertEquals(
+        "[name must match \"^((?!::)[^>\"\\x00-\\x1f])*$\"]", ValidatorUtil.validate(glossary));
 
     // No error
     glossary.withName("validName").withId(UUID.randomUUID()).withDescription("description");
+    assertNull(ValidatorUtil.validate(glossary));
+
+    glossary.withName("valid<Name|");
     assertNull(ValidatorUtil.validate(glossary));
   }
 }

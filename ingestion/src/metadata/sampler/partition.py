@@ -11,8 +11,6 @@
 
 """Partition utility"""
 
-from typing import List, Optional  # noqa: UP035
-
 from metadata.generated.schema.entity.data.table import (
     PartitionColumnDetails,
     PartitionIntervalTypes,
@@ -33,8 +31,8 @@ logger = sampler_logger()
 
 def validate_athena_injected_partitioning(
     table_partitions: TablePartition,
-    table_profiler_config: Optional[TableProfilerConfig],  # noqa: UP045
-    profiler_partitioning_config: Optional[PartitionProfilerConfig],  # noqa: UP045
+    table_profiler_config: TableProfilerConfig | None,
+    profiler_partitioning_config: PartitionProfilerConfig | None,
 ) -> None:
     """Validate Athena partitioning. Injected partition need to be defined
     in the table profiler c onfig for the profiler to work correctly. We'll throw an
@@ -50,7 +48,7 @@ def validate_athena_injected_partitioning(
         "https://docs.open-metadata.org/v1.3.x/connectors/ingestion/workflows/profiler#profiler-options "
     )
 
-    column_partitions: Optional[List[PartitionColumnDetails]] = table_partitions.columns  # noqa: UP006, UP045
+    column_partitions: list[PartitionColumnDetails] | None = table_partitions.columns
     if not column_partitions:
         raise RuntimeError("Table partition is set but no columns are defined.")
 
@@ -65,8 +63,8 @@ def validate_athena_injected_partitioning(
 
 def get_partition_details(
     entity: Table,
-    entity_config: Optional[TableConfig] = None,  # noqa: UP045
-) -> Optional[PartitionProfilerConfig]:  # noqa: UP045
+    entity_config: TableConfig | None = None,
+) -> PartitionProfilerConfig | None:
     """Build PartitionProfilerConfig object from entity
 
     Args:
@@ -84,8 +82,8 @@ def get_partition_details(
     table_partition = getattr(entity, "tablePartition", None)
 
     # Profiler config
-    profiler_partitioning_config: Optional[PartitionProfilerConfig] = None  # noqa: UP045
-    profiler_config: Optional[TableProfilerConfig] = getattr(entity, "tableProfilerConfig", None)  # noqa: UP045
+    profiler_partitioning_config: PartitionProfilerConfig | None = None
+    profiler_config: TableProfilerConfig | None = getattr(entity, "tableProfilerConfig", None)
     if profiler_config:
         profiler_partitioning_config = getattr(profiler_config, "partitioning", None)
 
@@ -104,32 +102,54 @@ def get_partition_details(
     return None
 
 
-def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -> Optional[PartitionProfilerConfig]:  # noqa: UP045
+_BIGQUERY_GRANULARITY_WINDOW: dict[str, tuple[PartitionIntervalUnit, int]] = {
+    # (unit, interval) pairs sized so even lagging tables yield non-empty samples.
+    # HOUR: 24 h covers any table updated less frequently than once per hour.
+    # DAY:  3 days covers common ~2-day ingestion delays (e.g. GA4 exports).
+    # MONTH/YEAR: sized to exceed one full period so monthly/yearly tables are not
+    #             silently empty when the most-recent partition is > 3 days old.
+    "HOUR": (PartitionIntervalUnit.HOUR, 24),
+    "DAY": (PartitionIntervalUnit.DAY, 3),
+    "MONTH": (PartitionIntervalUnit.DAY, 35),
+    "YEAR": (PartitionIntervalUnit.DAY, 370),
+}
+
+
+def _bigquery_window_for_granularity(
+    interval: str | None,
+) -> tuple[PartitionIntervalUnit, int]:
+    """Return (unit, count) for the default profiler window matching *interval*."""
+    return _BIGQUERY_GRANULARITY_WINDOW.get(interval or "", (PartitionIntervalUnit.DAY, 3))
+
+
+def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -> PartitionProfilerConfig | None:
     """Bigquery specific logic for partitions"""
     if table_partition:
-        column_partitions: Optional[List[PartitionColumnDetails]] = entity.tablePartition.columns  # noqa: UP006, UP045
+        column_partitions: list[PartitionColumnDetails] | None = entity.tablePartition.columns
         if not column_partitions:
             raise TypeError("table partition missing. Skipping table")
 
         partition = column_partitions[0]
 
         if partition.intervalType == PartitionIntervalTypes.TIME_UNIT:
+            interval_unit, interval_days = _bigquery_window_for_granularity(partition.interval)
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName=partition.columnName,
-                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
-                partitionInterval=1,
+                partitionIntervalUnit=interval_unit,
+                partitionInterval=interval_days,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
                 partitionIntegerRangeStart=None,
                 partitionIntegerRangeEnd=None,
             )
         if partition.intervalType == PartitionIntervalTypes.INGESTION_TIME:
+            interval_unit, interval_days = _bigquery_window_for_granularity(partition.interval)
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName="_PARTITIONDATE" if partition.interval == "DAY" else "_PARTITIONTIME",
-                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
-                partitionInterval=1,
+                partitionIntervalUnit=interval_unit,
+                partitionInterval=interval_days,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
                 partitionIntegerRangeStart=None,

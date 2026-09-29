@@ -22,6 +22,7 @@ query Query($jobId: BigInt!, $runId: BigInt) {
       schema
       dependsOn
       runGeneratedAt
+      compiledCode
     }
     seeds {
       uniqueId

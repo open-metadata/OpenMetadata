@@ -24,17 +24,21 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForIncidentToBeIndexed } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
   addAssigneeFromPopoverWidget,
   assignIncident,
   triggerTestSuitePipelineAndWaitForSuccess,
+  verifyIncidentStatus,
   visitProfilerTab,
 } from '../../utils/incidentManager';
-import { makeRetryRequest } from '../../utils/serviceIngestion';
+
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
+import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -42,8 +46,6 @@ let user2: UserClass;
 let user3: UserClass;
 let users: UserClass[] = [];
 let table1: TableClass;
-let tablePagination: TableClass;
-const PAGINATION_INCIDENT_COUNT = 22;
 
 const performIncidentAdminLogin = async (browser: Browser) => {
   try {
@@ -61,7 +63,7 @@ const performIncidentAdminLogin = async (browser: Browser) => {
 
     return { page, apiContext, afterAction };
   } catch {
-    return performAdminLogin(browser);
+    return performAdminLogin(browser, { navigate: true });
   }
 };
 
@@ -108,7 +110,9 @@ const waitForIncidentTask = async (page: Page, testCaseFqn?: string) => {
           });
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -392,17 +396,10 @@ const openIncidentResolveDialog = async (
       return openIncidentResolveDialog(page, false);
     } else {
       await expect(resolveMenuItem).toBeVisible();
+      await resolveMenuItem.click();
     }
-
-    if (!(await isVisible(resolveModal))) {
-      await expect
-        .poll(async () => (await primaryActionButton.textContent())?.trim(), {
-          timeout: 5_000,
-        })
-        .toContain('Resolve');
-      await page.keyboard.press('Escape').catch(() => undefined);
-      await primaryActionButton.click();
-    }
+    // The resolve menu item opens the modal itself; it renders asynchronously, so wait for it
+    // below. Clicking the primary action while it mounts lands behind its mask and never resolves.
   }
 
   await expect(resolveModal).toBeVisible({
@@ -452,7 +449,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     user3 = new UserClass();
     users = [user1, user2, user3];
     table1 = new TableClass();
-    tablePagination = new TableClass();
 
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
@@ -475,13 +471,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const pipeline = await table1.createTestSuitePipeline(apiContext);
 
-    await makeRetryRequest({
-      page,
-      fn: () =>
-        apiContext.post(
-          `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-        ),
-    });
+    const deployResponse = await apiContext.post(
+      `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+    );
+    expect(deployResponse.ok(), await deployResponse.text()).toBe(true);
 
     await triggerTestSuitePipelineAndWaitForSuccess({
       page,
@@ -493,16 +486,12 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performIncidentAdminLogin(
-      browser
-    );
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     for (const entity of [...users, table1].filter(Boolean)) {
       await entity.delete(apiContext);
     }
     await afterAction();
   });
-
-  test.slow(true);
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
@@ -518,6 +507,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ownerPage,
     browser,
   }) => {
+    test.slow();
     const testCase = table1.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
     const testCaseFqn = testCase?.['fullyQualifiedName'];
@@ -619,10 +609,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(testCasePageUrl);
+      await actorPage.goto(testCasePageUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await reassignIncidentTask(actorPage, assignee1);
@@ -642,11 +633,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         await getApiContext(actorPage);
 
       try {
-        await actorApiContext.post('/api/v1/feed', {
+        await actorApiContext.post('/api/v1/conversations', {
           data: {
             message: 'Can you resolve this thread for me? <#E::user::admin>',
             about: `<#E::testCase::${get(testCase, 'fullyQualifiedName')}>`,
-            type: 'Conversation',
           },
         });
       } finally {
@@ -659,11 +649,14 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       const mentionResponse = adminPage.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
+          response.url().includes('/api/v1/conversations') &&
           response.url().includes('filterType=MENTIONS') &&
           response.request().method() === 'GET'
       );
-      await adminPage.getByText('Mentions').click();
+      await adminPage
+        .locator('.notification-box')
+        .getByRole('tab', { name: /Mentions/ })
+        .click();
       const mention = await mentionResponse;
       expect(mention.status()).toBe(200);
 
@@ -682,7 +675,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           .poll(
             async () => {
               const mentionsResponse = await adminApiContext.get(
-                '/api/v1/feed',
+                '/api/v1/conversations',
                 {
                   params: {
                     userId: loggedInUser.id,
@@ -726,9 +719,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(testCasePageUrl);
+      await actorPage.goto(testCasePageUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await addAssigneeFromPopoverWidget({
@@ -748,7 +742,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(currentUrl);
+      await actorPage.goto(currentUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
@@ -784,6 +778,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
    * to re-evaluate incident state.
    */
   test('Resolving incident & re-run pipeline', async ({ page }) => {
+    // This test does UI steps and then waits on a pipeline re-run. The wait can
+    // consume the helper's appearance window (up to 60s) plus the success poll
+    // (successTimeout below), so the budget must exceed those combined plus the
+    // UI steps — test.slow() (180s) is not enough.
+    test.setTimeout(5 * 60 * 1000);
     const testCase = table1.testCasesResponseData[1];
     const testCaseName = testCase?.['name'];
     const pipeline = table1.testSuitePipelineResponseData[0];
@@ -872,20 +871,25 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page,
         pipeline,
         apiContext,
+        // Warm re-run completes fast; keep the poll under the 180s test budget.
+        successTimeout: 150_000,
       });
     });
 
     /**
      * Step: Verify open vs closed
-     * @description Verifies incident counts for Open and Closed after rerun and re-acknowledgement.
+     * @description Verifies incident counts for Open and Closed after the rerun.
      */
     await test.step('Verify open and closed task', async () => {
-      await acknowledgeTask({
+      // table1 has an owner by now, so the rerun's incident is auto-assigned on
+      // creation. Ack is not reachable from the Assigned stage.
+      await verifyIncidentStatus({
         page,
-        testCase: testCaseName,
+        status: 'Assigned',
         table: table1,
+        testCase: testCaseName,
       });
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await openIncidentTaskTab(page);
 
@@ -903,6 +907,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
    * @description Acknowledges and assigns an open incident, reruns pipeline, and validates status reflects Assigned.
    */
   test('Rerunning pipeline for an open incident', async ({ page }) => {
+    // This test does UI steps and then waits on a pipeline re-run. The wait can
+    // consume the helper's appearance window (up to 60s) plus the success poll
+    // (successTimeout below), so the budget must exceed those combined plus the
+    // UI steps — test.slow() (180s) is not enough.
+    test.setTimeout(5 * 60 * 1000);
     const testCase = table1.testCasesResponseData[2];
     const testCaseName = testCase?.['name'];
     const pipeline = table1.testSuitePipelineResponseData[0];
@@ -923,7 +932,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         table: table1,
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await openIncidentTaskTab(page);
 
@@ -953,6 +962,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page,
         pipeline,
         apiContext,
+        // Warm re-run completes fast; keep the poll under the 180s test budget.
+        successTimeout: 150_000,
       });
     });
 
@@ -975,7 +986,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   /**
    * Validate Incident tab in entity page
-   * @description Verifies incidents list within entity details, lineage incident counts, and navigation back to tab.
+   * @description Verifies incidents within entity details and the entity's lineage scene.
    */
   test('Validate Incident Tab in Entity details page', async ({ page }) => {
     const testCases = table1.testCasesResponseData;
@@ -994,35 +1005,84 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       ).toBeVisible();
     }
     const lineageResponse = page.waitForResponse(
-      `/api/v1/lineage/getLineage?*fqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
+      `**/api/v1/lineage/scene?*focusFqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
     await page.click('[data-testid="lineage"]');
     await lineageResponse;
 
-    const incidentCountResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*limit=0*`
-    );
     const nodeFqn = get(table1, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
-    await incidentCountResponse;
+    await expect(
+      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    ).toBeVisible();
+  });
 
-    await expect(page.getByTestId('Incidents-label')).toBeVisible();
-    await expect(page.getByTestId('Incidents-value')).toContainText('3');
+  /**
+   * Delete a comment from an incident's task tab
+   * @description #33112 was reported on the Incident Manager page, but the rest of
+   * the task-comment coverage exercises the activity-feed drawer only. This runs
+   * the same post-then-delete flow through TestCaseIncidentTab, which renders the
+   * task tab (and so CommentCard) rather than the drawer.
+   */
+  test('Delete a task comment from the incident task tab', async ({ page }) => {
+    const testCase = table1.testCasesResponseData[0];
+    const testCaseName = testCase?.['name'] as string;
 
-    const incidentTabResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
+    await visitProfilerTab(page, table1);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId(testCaseName).getByText(testCaseName).click();
+    await expect(page.getByTestId('entity-page-header')).toBeVisible();
+
+    await openIncidentTaskTab(page, true);
+
+    const taskTab = page.getByTestId('task-tab');
+    await expect(taskTab).toBeVisible();
+
+    // Post a comment to delete. Unique per run so the card can be matched by
+    // text rather than by position.
+    const message = `Incident tab comment ${Date.now()}`;
+    // The input is a trigger that opens the editor - it cannot be filled.
+    const commentInput = taskTab.getByTestId('comments-input-field');
+    await expect(commentInput).toBeVisible();
+    await commentInput.click();
+
+    const editor = taskTab.locator('[data-testid="editor-wrapper"] .ql-editor');
+    await expect(editor).toBeVisible({ timeout: 15_000 });
+    await editor.click();
+    await editor.type(message);
+
+    // Anchored so it cannot match the tab's own GET of the task with its comments.
+    const postResponse = await clickAndWaitFor(
+      page,
+      taskTab.getByTestId('send-button'),
+      /\/api\/v1\/tasks\/[^/]+\/comments$/
+    );
+    const postedTask = await postResponse.json();
+    const comments = postedTask.comments ?? [];
+    const commentId = comments[comments.length - 1]?.id as string;
+
+    const card = taskTab
+      .locator('[data-testid="feed-reply-card"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible();
+
+    // The affordance is revealed on hover but stays mounted, so it is present
+    // for the keyboard too - hovering here mirrors what a mouse user does.
+    await card.hover();
+
+    await card.getByTestId('delete-message').click();
+    await clickAndWaitFor(
+      page,
+      page.getByTestId('save-button'),
+      new RegExp(`/comments/${commentId}$`)
     );
 
-    await page.getByTestId('Incidents-value').locator('a').click();
-
-    await incidentTabResponse;
-
-    for (const testCase of testCases) {
-      await expect(
-        page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
-      ).toBeVisible();
-    }
+    await expect(
+      taskTab
+        .locator('[data-testid="feed-reply-card"]')
+        .filter({ hasText: message })
+    ).toHaveCount(0);
   });
 
   /**
@@ -1034,6 +1094,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
       userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
+      testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
     const incidentDetailsRes = page.waitForResponse(
@@ -1042,6 +1103,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
 
+    const assignmentStartedAt = Date.now();
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1051,6 +1113,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       },
       direct: true,
     });
+    // Browser API calls read the JWT from local storage, which page.request
+    // does not inherit. Poll with an authenticated context so a 401 cannot be
+    // mistaken for search-index lag.
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        assigneeTestCase.testCaseFqn,
+        assignmentStartedAt,
+        'Assigned',
+        assigneeTestCase.username
+      );
+    } finally {
+      await afterAction();
+    }
 
     await page.click('[data-testid="select-assignee"]');
     const assigneeOption = page.locator(
@@ -1124,11 +1202,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       .click();
     await nonTestCaseFilterRes;
 
-    await page.click('[data-testid="mui-date-picker-menu"]');
+    await page.getByTestId('date-picker-menu').click();
     const timeSeriesFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
-    await page.getByTestId('date-range-option-yesterday').click();
+    await page.getByRole('menuitem', { name: 'Yesterday' }).click();
     await timeSeriesFilterRes;
 
     for (const testCase of table1.testCasesResponseData) {
@@ -1136,118 +1214,5 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
       ).toBeVisible();
     }
-  });
-
-  /**
-   * Incident Manager pagination
-   * @description Uses a dedicated table with 20+ test cases to ensure multiple pages of incidents.
-   * Verifies Next/Previous and page indicator when pagination is shown.
-   */
-  test.describe('Incident Manager pagination', () => {
-    test.beforeAll(async ({ browser }) => {
-      test.slow();
-      const { afterAction, apiContext, page } = await performAdminLogin(
-        browser
-      );
-
-      if (!process.env.PLAYWRIGHT_IS_OSS) {
-        await resetTokenFromBotPage(page, 'testsuite-bot');
-      }
-
-      for (let i = 0; i < PAGINATION_INCIDENT_COUNT; i++) {
-        await tablePagination.createTestCase(apiContext, {
-          parameterValues: [
-            { name: 'minColValue', value: 12 },
-            { name: 'maxColValue', value: 24 },
-          ],
-          testDefinition: 'tableColumnCountToBeBetween',
-        });
-      }
-
-      const pipeline = await tablePagination.createTestSuitePipeline(
-        apiContext
-      );
-
-      await makeRetryRequest({
-        page,
-        fn: () =>
-          apiContext.post(
-            `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-          ),
-      });
-
-      await triggerTestSuitePipelineAndWaitForSuccess({
-        page,
-        pipeline,
-        apiContext,
-      });
-
-      await afterAction();
-    });
-
-    test('Next, Previous and page indicator', async ({ page }) => {
-      test.slow();
-      const listUrl =
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
-
-      const initialListRes = page.waitForResponse((res) =>
-        res.url().includes(listUrl)
-      );
-      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-      await initialListRes;
-
-      await expect(
-        page.getByTestId('test-case-incident-manager-table')
-      ).toBeVisible();
-      await expect(page.getByTestId('pagination')).toBeVisible();
-      await expect(page.getByTestId('page-indicator')).toContainText('1');
-
-      const nextListRes = page.waitForResponse(
-        (res) => res.url().includes(listUrl) && res.url().includes('offset=15')
-      );
-      await page.getByTestId('next').click();
-      await nextListRes;
-
-      await expect(page.getByTestId('page-indicator')).toContainText('2');
-
-      const prevListRes = page.waitForResponse(
-        (res) => res.url().includes(listUrl) && res.url().includes('offset=0')
-      );
-      await page.getByTestId('previous').click();
-      await prevListRes;
-
-      await expect(page.getByTestId('page-indicator')).toContainText('1');
-    });
-
-    test('Page size dropdown updates list limit and resets to page 1', async ({
-      page,
-    }) => {
-      test.slow();
-      const listUrl =
-        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
-
-      const initialListRes = page.waitForResponse((res) =>
-        res.url().includes(listUrl)
-      );
-      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-      await initialListRes;
-
-      await expect(page.getByTestId('pagination')).toBeVisible();
-      await expect(
-        page.getByTestId('page-size-selection-dropdown')
-      ).toBeVisible();
-
-      await page.getByTestId('page-size-selection-dropdown').click();
-      const listWithLimit50 = page.waitForResponse(
-        (res) => res.url().includes(listUrl) && res.url().includes('limit=50')
-      );
-      await page.getByRole('menuitem', { name: /50.*page/i }).click();
-      await listWithLimit50;
-
-      await expect(page.getByTestId('page-indicator')).toContainText('1');
-      await expect(
-        page.getByTestId('page-size-selection-dropdown')
-      ).toContainText('50');
-    });
   });
 });

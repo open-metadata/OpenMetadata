@@ -23,6 +23,7 @@ export interface TestConnectionProps {
   serviceName?: string;
   shouldValidateForm?: boolean;
   missingRequiredFieldsCount?: number;
+  isFormValidationPending?: boolean;
   onValidateFormRequiredFields?: () => boolean;
   onTestConnectionStatusChange?: (isSuccessful: boolean) => void;
   hostIp?: string;

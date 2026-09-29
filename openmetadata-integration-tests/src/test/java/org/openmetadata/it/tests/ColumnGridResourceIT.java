@@ -6,13 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -52,17 +52,10 @@ import org.openmetadata.sdk.fluent.Domains;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
 
-// TEMPORARILY DISABLED — the metadataStatus aggregation on this endpoint reproducibly fails
-// with [search_phase_execution_exception] all shards failed on both postgres+ES+redis (single
-// failure on test_getColumnGrid_withMetadataStatusIncomplete) AND postgres+OpenSearch (the same
-// query crashes the OS container, then 15 follow-up tests in the class fail with Connection
-// refused). Same behavior on PR #28100 with and without the cache changes, so it is a
-// pre-existing aggregator bug, not a cache regression. The ES Java client swallows the
-// underlying `caused_by`, so root-causing the actual ES-side error requires response-body
-// logging that is not wired up yet. Re-enable once the underlying aggregator/index-mapping
-// issue is fixed in a follow-up. See PR #28100 history and CI run 25940411417 for context.
-@Disabled(
-    "ColumnGrid metadataStatus aggregation crashes ES/OS — pre-existing flake, follow-up needed")
+// Re-enabled with #26824: the metadataStatus crash came from the per-document filter query
+// (wildcard/exists on flat-object columns.description/columns.tags), which ES 7.17 and OpenSearch
+// rejected with `search_phase_execution_exception ... all shards failed`. That push-down is gone —
+// status is now filtered on the aggregate grouped item — so the crashing query no longer runs.
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ColumnGridResourceIT {
@@ -115,7 +108,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     // Poll until both entities are indexed and the column grid shows 2 occurrences
     await("Wait for column grid to show both occurrences")
@@ -172,7 +165,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(client, "size=100&entityTypes=table&serviceName=" + service.getName());
@@ -206,7 +199,7 @@ public class ColumnGridResourceIT {
           .execute();
     }
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse page1 =
         getColumnGrid(client, "size=2&entityTypes=table&serviceName=" + service.getName());
@@ -231,7 +224,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(client, "entityTypes=table&serviceName=" + service.getName());
@@ -251,7 +244,7 @@ public class ColumnGridResourceIT {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
     Table table = createTableWithColumns(ns, schema, "service_filter_test");
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(client, "entityTypes=table&serviceName=" + service.getName());
@@ -285,7 +278,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(matchingCol, nonMatchingCol))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -305,7 +298,7 @@ public class ColumnGridResourceIT {
   void test_getColumnGrid_withMetadataStatusMissing(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = createTableWithoutMetadata(ns);
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -313,13 +306,18 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertAllRowsHaveStatus(response, MetadataStatus.MISSING);
+    assertEquals(
+        response.getColumns().size(),
+        response.getTotalUniqueColumns(),
+        "totalUniqueColumns must reflect the filtered set, not the unfiltered total");
   }
 
   @Test
   void test_getColumnGrid_withMetadataStatusComplete(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = createTableWithFullMetadata(ns);
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -327,13 +325,16 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertFalse(response.getColumns().isEmpty(), "the COMPLETE column should be returned");
+    // The reported bug (#26824): COMPLETE must not surface MISSING/INCOMPLETE/INCONSISTENT rows.
+    assertAllRowsHaveStatus(response, MetadataStatus.COMPLETE);
   }
 
   @Test
   void test_getColumnGrid_withMetadataStatusIncomplete(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = createTableWithPartialMetadata(ns);
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -341,6 +342,8 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertFalse(response.getColumns().isEmpty(), "the INCOMPLETE column should be returned");
+    assertAllRowsHaveStatus(response, MetadataStatus.INCOMPLETE);
   }
 
   @Test
@@ -364,7 +367,7 @@ public class ColumnGridResourceIT {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
     createTableWithColumns(ns, schema, "combined_filters_test");
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -412,7 +415,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col2))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -421,6 +424,125 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertFalse(response.getColumns().isEmpty(), "the INCONSISTENT column should be returned");
+    assertAllRowsHaveStatus(response, MetadataStatus.INCONSISTENT);
+    assertTrue(
+        response.getColumns().stream().allMatch(ColumnGridItem::getHasVariations),
+        "INCONSISTENT rows have metadata variations across occurrences");
+  }
+
+  @Test
+  void test_getColumnGrid_metadataStatusPaginationCountsAreConsistent(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Three COMPLETE columns and one MISSING column in the same service.
+    for (int i = 0; i < 3; i++) {
+      Column complete =
+          Columns.build(ns.prefix("paged_complete_" + i))
+              .withType(ColumnDataType.BIGINT)
+              .withDescription("has description")
+              .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+              .create();
+      Tables.create()
+          .name(ns.prefix("paged_table_" + i))
+          .inSchema(schema.getFullyQualifiedName())
+          .withColumns(List.of(complete))
+          .execute();
+    }
+    Column missing =
+        Columns.build(ns.prefix("paged_missing")).withType(ColumnDataType.BIGINT).create();
+    Tables.create()
+        .name(ns.prefix("paged_table_missing"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(missing))
+        .execute();
+
+    waitForSearchIndexRefresh(ns);
+
+    ColumnGridResponse page1 =
+        getColumnGrid(
+            client,
+            "size=2&entityTypes=table&metadataStatus=COMPLETE&serviceName=" + service.getName());
+
+    // totalUniqueColumns must count only the 3 COMPLETE columns (not 4), and the page must respect
+    // the requested size — the pagination half of #26824.
+    assertEquals(3, page1.getTotalUniqueColumns());
+    assertEquals(2, page1.getColumns().size());
+    assertAllRowsHaveStatus(page1, MetadataStatus.COMPLETE);
+    assertNotNull(page1.getCursor(), "a second page of COMPLETE columns remains");
+
+    ColumnGridResponse page2 =
+        getColumnGrid(
+            client,
+            "size=2&entityTypes=table&metadataStatus=COMPLETE&serviceName="
+                + service.getName()
+                + "&cursor="
+                + URLEncoder.encode(page1.getCursor(), StandardCharsets.UTF_8));
+
+    assertEquals(3, page2.getTotalUniqueColumns());
+    assertEquals(1, page2.getColumns().size(), "the last page holds the remaining COMPLETE column");
+    assertAllRowsHaveStatus(page2, MetadataStatus.COMPLETE);
+  }
+
+  @Test
+  void test_getColumnGrid_metadataStatusWithColumnNamePattern(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Two COMPLETE columns; only one name contains "alpha".
+    String matchName = ns.prefix("alpha_amount");
+    String otherName = ns.prefix("zzz_other");
+    for (String colName : List.of(matchName, otherName)) {
+      Column col =
+          Columns.build(colName)
+              .withType(ColumnDataType.BIGINT)
+              .withDescription("has description")
+              .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+              .create();
+      Tables.create()
+          .name(ns.prefix("pat_" + colName))
+          .inSchema(schema.getFullyQualifiedName())
+          .withColumns(List.of(col))
+          .execute();
+    }
+    waitForSearchIndexRefresh(ns);
+
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&metadataStatus=COMPLETE&columnNamePattern=alpha&serviceName="
+                + service.getName());
+
+    // Combining columnNamePattern with a status filter must honor the pattern per column:
+    // the non-matching "zzz_other" column must not leak in (regression for the _source-scan path).
+    assertNotNull(response);
+    assertFalse(response.getColumns().isEmpty(), "the matching COMPLETE column should be returned");
+    assertAllRowsHaveStatus(response, MetadataStatus.COMPLETE);
+    assertTrue(
+        response.getColumns().stream()
+            .allMatch(c -> c.getColumnName().toLowerCase().contains("alpha")),
+        "only columns whose name matches the pattern should be returned");
+    assertEquals(
+        response.getColumns().size(),
+        response.getTotalUniqueColumns(),
+        "totalUniqueColumns must not include pattern-mismatched columns");
+  }
+
+  /**
+   * Every returned row must carry the requested aggregate status — the core guarantee of #26824
+   * (before the fix a COMPLETE/INCOMPLETE filter leaked rows of other statuses).
+   */
+  private void assertAllRowsHaveStatus(ColumnGridResponse response, MetadataStatus expected) {
+    for (ColumnGridItem item : response.getColumns()) {
+      assertEquals(
+          expected,
+          item.getMetadataStatus(),
+          "column '" + item.getColumnName() + "' should have status " + expected);
+    }
   }
 
   @Test
@@ -442,7 +564,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(colWithDesc))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -477,7 +599,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(colNoMeta))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -513,7 +635,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(colDescOnly))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -562,7 +684,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col2))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -586,7 +708,7 @@ public class ColumnGridResourceIT {
   void test_getColumnGrid_completeStatusWithDescriptionAndTags(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     createTableWithCompleteMetadata(ns);
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(client, "entityTypes=table&metadataStatus=COMPLETE");
@@ -633,7 +755,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -700,7 +822,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -752,7 +874,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -804,7 +926,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse tableOnlyResponse =
         getColumnGrid(client, "entityTypes=table&columnNamePattern=" + sharedColumnName);
@@ -854,7 +976,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -913,7 +1035,7 @@ public class ColumnGridResourceIT {
 
     String queryWithDomain = "entityTypes=table&domainId=" + domain.getId().toString();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     // Verify domain filter returns valid response (may be empty if ES hasn't indexed yet)
     ColumnGridResponse response = getColumnGrid(client, queryWithDomain);
@@ -966,7 +1088,7 @@ public class ColumnGridResourceIT {
 
     String queryWithTags = "entityTypes=table&tags=PII.Sensitive&serviceName=" + service.getName();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response = getColumnGrid(client, queryWithTags);
     assertNotNull(response, "Response should not be null");
@@ -1035,7 +1157,7 @@ public class ColumnGridResourceIT {
             + "&serviceName="
             + service.getName();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response = getColumnGrid(client, queryWithGlossary);
     assertNotNull(response, "Response should not be null");
@@ -1110,7 +1232,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(untaggedCol))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     ColumnGridResponse response =
         getColumnGrid(
@@ -1190,7 +1312,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(taggedCol, untaggedCol1, untaggedCol2))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     // Query without tag filter - should return all 3 columns
     ColumnGridResponse noFilterResponse =
@@ -1286,7 +1408,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     // Query with tag filter - use column name pattern to scope to our test column
     ColumnGridResponse response =
@@ -1423,6 +1545,7 @@ public class ColumnGridResourceIT {
         Columns.build("full_metadata_id")
             .withType(ColumnDataType.BIGINT)
             .withDescription("Primary key with description")
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
             .create();
 
     Tables.create()
@@ -1485,14 +1608,36 @@ public class ColumnGridResourceIT {
     return OBJECT_MAPPER.readValue(response, ColumnGridResponse.class);
   }
 
-  private void waitForSearchIndexRefresh() {
-    // Minimum delay for ES async indexing. Callers that need stronger guarantees
-    // should follow this with an Awaitility assertion (see test_getColumnGrid_aggregates*).
-    await("Wait for search index refresh")
-        .pollDelay(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(10))
-        .pollInterval(Duration.ofSeconds(1))
-        .until(() -> true);
+  private void waitForSearchIndexRefresh(TestNamespace ns) {
+    String namespaceMarker = ns.prefix("");
+    await("Wait for a namespace entity to appear in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  SdkClients.adminClient()
+                      .search()
+                      .query(namespaceMarker)
+                      .index("dataAsset")
+                      .size(100)
+                      .execute();
+              JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
+              boolean namespaceEntityFound = false;
+              for (JsonNode hit : hits) {
+                if (hit.path("_source")
+                    .path("fullyQualifiedName")
+                    .asText()
+                    .contains(namespaceMarker)) {
+                  namespaceEntityFound = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  namespaceEntityFound,
+                  "Search did not return an entity from namespace " + namespaceMarker);
+            });
   }
 
   @Test
@@ -1509,7 +1654,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     await("Wait for lowercase pattern search to find mixed-case column")
         .atMost(Duration.ofSeconds(30))
@@ -1565,7 +1710,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col1, col2))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     await("Wait for pattern search to exclude non-matching columns")
         .atMost(Duration.ofSeconds(30))
@@ -1606,7 +1751,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col1, col2))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     // Search for "col.with" — dot should be literal, not wildcard
     await("Wait for pattern search with special chars")
@@ -1675,7 +1820,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col3))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     await("Wait for pattern + tag filter result")
         .atMost(Duration.ofSeconds(30))
@@ -1755,7 +1900,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(col1, col2))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     await("Wait for pattern + glossary filter result")
         .atMost(Duration.ofSeconds(30))
@@ -1809,7 +1954,7 @@ public class ColumnGridResourceIT {
           .execute();
     }
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     // Page through with size=2 — should get 2, 2, 1
     // Use serviceName to scope to this test's data, raw pattern prefix to match column names
@@ -1904,7 +2049,7 @@ public class ColumnGridResourceIT {
         .withColumns(List.of(withoutGlossary))
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     await("Wait for glossary-filtered column to return the tagged occurrence only")
         .atMost(Duration.ofSeconds(30))
@@ -1966,7 +2111,7 @@ public class ColumnGridResourceIT {
         .withDataModelType(DataModelType.MetabaseDataModel)
         .execute();
 
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
 
     await("Wait for both entities to be indexed and dedupe correctly")
         .atMost(Duration.ofSeconds(30))
@@ -2036,7 +2181,7 @@ public class ColumnGridResourceIT {
             .execute();
 
     try {
-      waitForSearchIndexRefresh();
+      waitForSearchIndexRefresh(ns);
 
       await("Wait for first-page search to surface alphabetically-late match (size=25)")
           .atMost(Duration.ofSeconds(45))
@@ -2109,7 +2254,7 @@ public class ColumnGridResourceIT {
 
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
     createTableWithColumns(ns, schema, "svc_displayname_filter_test");
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
     waitForColumnToBeIndexed(client, "id", service.getName());
 
     ColumnGridResponse byName =
@@ -2158,7 +2303,7 @@ public class ColumnGridResourceIT {
             .in(database.getFullyQualifiedName())
             .execute();
     createTableWithColumns(ns, schema, "db_displayname_filter_test");
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
     waitForColumnToBeIndexed(client, "id", service.getName());
 
     ColumnGridResponse byName =
@@ -2209,7 +2354,7 @@ public class ColumnGridResourceIT {
             .in(database.getFullyQualifiedName())
             .execute();
     createTableWithColumns(ns, schema, "schema_displayname_filter_test");
-    waitForSearchIndexRefresh();
+    waitForSearchIndexRefresh(ns);
     waitForColumnToBeIndexed(client, "id", service.getName());
 
     ColumnGridResponse byName =

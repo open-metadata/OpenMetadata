@@ -21,6 +21,8 @@ import { RolesClass } from '../support/access-control/RolesClass';
 import { UserClass } from '../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { dismissLineageMapOnboarding } from './lineage';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 let policy: PolicyClass;
 let role: RolesClass;
@@ -137,9 +139,12 @@ export const validateViewPermissions = async (
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
   if (permission?.editDisplayName) {
-    expect(
-      await page.locator('[data-testid="edit-displayName-button"]').count()
-    ).toBeGreaterThan(0);
+    const editDisplayNameButton = page.locator(
+      '[data-testid="edit-displayName-button"]'
+    );
+    await expect(editDisplayNameButton.first()).toBeVisible({
+      timeout: 30_000,
+    });
   } else {
     await expect(
       page.locator('[data-testid="edit-displayName-button"]')
@@ -177,9 +182,12 @@ export const validateViewPermissions = async (
     await page.click('[data-testid="manage-button"]');
     await page.click('[data-testid="rename-button"]');
     await page.fill('#displayName', 'updated-table-name');
-    const updateDisplayNameResponse = page.waitForResponse(
+    const updateDisplayNameResponse = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('api/v1/tables/') && response.status() === 200
+        response.request().method() === 'PATCH' &&
+        response.url().includes('api/v1/tables/'),
+      200
     );
     await page.click('[data-testid="save-button"]');
 
@@ -212,6 +220,7 @@ export const validateViewPermissions = async (
   );
   await page.click('[data-testid="lineage"]');
   await waitForAllLoadersToDisappear(page);
+  await dismissLineageMapOnboarding(page);
 
   await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 

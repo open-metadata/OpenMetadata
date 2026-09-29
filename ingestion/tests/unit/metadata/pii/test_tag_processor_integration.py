@@ -13,7 +13,8 @@ Integration tests for TagProcessor with multi-classification support.
 Tests scenarios from AUTO_CLASSIFICATION_REFACTOR_SOLUTION.md
 """
 
-from typing import Any, List, Sequence  # noqa: UP035
+from collections.abc import Sequence
+from typing import Any
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -59,10 +60,10 @@ from metadata.pii.tag_processor import TagProcessor
 
 
 class FakeScoreTagsForColumn:
-    def __init__(self, scored_tags: List[ScoredTag]) -> None:  # noqa: UP006
+    def __init__(self, scored_tags: list[ScoredTag]) -> None:
         self.scored_tags = scored_tags
 
-    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]) -> List[ScoredTag]:  # noqa: UP006
+    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: list[Tag]) -> list[ScoredTag]:
         return self.scored_tags
 
 
@@ -534,21 +535,21 @@ class TestTagProcessorMultiClassification:
             ],
         )
 
-        # Create TagProcessor
+        score_tags_for_column = Mock()
         processor = TagProcessor(
             config=workflow_config,
             metadata=metadata,
             classification_manager=classification_manager,
+            score_tags_for_column=score_tags_for_column,
             max_tags_per_column=10,
         )
 
-        # Process column
         tag_labels = processor.create_column_tag_labels(column=column_with_tag, sample_data=sample_email_password_data)
 
-        # Should return empty list (tag already applied)
         assert len(tag_labels) == 0, (
             f"Should not re-suggest existing tags, got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"  # noqa: E741
         )
+        score_tags_for_column.assert_not_called()
 
     def test_idempotent_mutually_exclusive_tags(
         self,

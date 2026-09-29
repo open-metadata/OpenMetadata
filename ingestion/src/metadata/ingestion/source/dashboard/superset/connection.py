@@ -14,9 +14,7 @@ Source connection handler
 """
 
 from functools import partial
-from typing import Any, Optional, Union
-
-from sqlalchemy.engine import Engine
+from typing import Any
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -53,30 +51,25 @@ from metadata.ingestion.source.database.postgres.connection import PostgresConne
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(
-    connection: SupersetConnectionConfig,
-) -> Union[SupersetAPIClient, Engine, None]:  # noqa: UP007
-    """
-    Create connection
-    """
-    if isinstance(connection.connection, SupersetApiConnection):
-        return SupersetAPIClient(connection)
-    if isinstance(connection.connection, PostgresConnectionConfig):
-        return PostgresConnection(connection.connection).client
-    if isinstance(connection.connection, MysqlConnectionConfig):
-        return MySQLConnection(connection.connection).client
-    return None
-
-
 class SupersetConnection(BaseConnection[SupersetConnectionConfig, Any]):
     def _get_client(self) -> Any:
-        return get_connection(self.service_connection)
+        """
+        Create connection
+        """
+        connection = self.service_connection
+        if isinstance(connection.connection, SupersetApiConnection):
+            return SupersetAPIClient(connection)
+        if isinstance(connection.connection, PostgresConnectionConfig):
+            return PostgresConnection(connection.connection).client
+        if isinstance(connection.connection, MysqlConnectionConfig):
+            return MySQLConnection(connection.connection).client
+        return None
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

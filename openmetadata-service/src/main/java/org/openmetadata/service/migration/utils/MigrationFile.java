@@ -67,19 +67,10 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public void parseSQLFiles() {
     schemaChanges.clear();
     postDDLScripts.clear();
-    final ParsingContext parsingContext = new ParsingContext();
-    Configuration configuration = new ClassicConfiguration();
-    Parser parser = new PostgreSQLParser(configuration, parsingContext);
-    if (connectionType == ConnectionType.MYSQL) {
-      parser = new MySQLParser(configuration, parsingContext);
-    }
 
     if (new File(getSchemaChangesFile()).isFile()) {
-      try (SqlStatementIterator schemaChangesIterator =
-          parser.parse(
-              new FileSystemResource(null, getSchemaChangesFile(), StandardCharsets.UTF_8, true))) {
-        while (schemaChangesIterator.hasNext()) {
-          String sqlStatement = schemaChangesIterator.next().getSql();
+      try {
+        for (String sqlStatement : parseSQLFile(new File(getSchemaChangesFile()), connectionType)) {
           if (!checkIfQueryPreviouslyRan(sqlStatement)) {
             schemaChanges.add(sqlStatement);
           }
@@ -90,11 +81,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
       }
     }
     if (new File(getPostDDLScriptFile()).isFile()) {
-      try (SqlStatementIterator postDDLIterator =
-          parser.parse(
-              new FileSystemResource(null, getPostDDLScriptFile(), StandardCharsets.UTF_8, true))) {
-        while (postDDLIterator.hasNext()) {
-          String sqlStatement = postDDLIterator.next().getSql();
+      try {
+        for (String sqlStatement : parseSQLFile(new File(getPostDDLScriptFile()), connectionType)) {
           if (!checkIfQueryPreviouslyRan(sqlStatement)) {
             postDDLScripts.add(sqlStatement);
           }
@@ -104,6 +92,28 @@ public class MigrationFile implements Comparable<MigrationFile> {
             "Failed to parse post DDL script file: " + getPostDDLScriptFile(), e);
       }
     }
+  }
+
+  public static List<String> parseSQLFile(File sqlFile, ConnectionType connectionType) {
+    List<String> statements = new ArrayList<>();
+    ParsingContext parsingContext = new ParsingContext();
+    Configuration configuration = new ClassicConfiguration();
+    Parser parser = new PostgreSQLParser(configuration, parsingContext);
+    if (connectionType == ConnectionType.MYSQL) {
+      parser = new MySQLParser(configuration, parsingContext);
+    }
+
+    try (SqlStatementIterator iterator =
+        parser.parse(
+            new FileSystemResource(
+                null, sqlFile.getAbsolutePath(), StandardCharsets.UTF_8, true))) {
+      while (iterator.hasNext()) {
+        statements.add(iterator.next().getSql());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse SQL file: " + sqlFile.getPath(), e);
+    }
+    return statements;
   }
 
   public String getMigrationProcessClassName() {

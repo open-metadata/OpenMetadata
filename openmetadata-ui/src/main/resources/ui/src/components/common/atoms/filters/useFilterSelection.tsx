@@ -123,7 +123,7 @@ export const useFilterSelection = (config: FilterSelectionConfig) => {
 
             return (
               <Badge
-                className="tw:ring-0 tw:gap-1"
+                className="tw:outline-0 tw:gap-1"
                 color="brand"
                 key={filter.key}
                 size="lg"

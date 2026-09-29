@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Tabs, Typography } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
+import { Switch, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -22,6 +23,7 @@ import {
   SecurityConfiguration,
 } from '../../rest/securityConfigAPI';
 import '../../styles/variables.less';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
@@ -216,6 +218,16 @@ const SettingsSso = () => {
       setCurrentProvider('');
     }
 
+    const applyNoConfigState = () => {
+      setHasExistingConfig(false);
+      setActiveTab('configure');
+      // Only show provider selector if no specific provider in URL
+      if (!providerParam) {
+        setShowProviderSelector(true);
+        setCurrentProvider('');
+      }
+    };
+
     // Check for existing SSO configuration
     const checkExistingConfig = async () => {
       // Prevent duplicate API calls
@@ -260,32 +272,14 @@ const SettingsSso = () => {
             }
             setShowProviderSelector(false);
           } else {
-            setHasExistingConfig(false);
-            setActiveTab('configure');
-            // Only show provider selector if no specific provider in URL
-            if (!providerParam) {
-              setShowProviderSelector(true);
-              setCurrentProvider('');
-            }
+            applyNoConfigState();
           }
         } else {
-          setHasExistingConfig(false);
-          setActiveTab('configure');
-          // Only show provider selector if no specific provider in URL
-          if (!providerParam) {
-            setShowProviderSelector(true);
-            setCurrentProvider('');
-          }
+          applyNoConfigState();
         }
       } catch (error) {
         configFetched.current = false; // Reset on error to allow retry
-        setHasExistingConfig(false);
-        setActiveTab('configure');
-        // Only show provider selector if no specific provider in URL
-        if (!providerParam) {
-          setShowProviderSelector(true);
-          setCurrentProvider('');
-        }
+        applyNoConfigState();
       } finally {
         setIsLoading(false);
       }
@@ -396,10 +390,22 @@ const SettingsSso = () => {
         )}
 
         <Tabs
-          activeKey={activeTab}
-          items={tabItems}
-          onChange={handleTabChange}
-        />
+          className="tw:gap-4"
+          selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline">
+            {tabItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabItems.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
       </div>
     </PageLayoutV1>
   );

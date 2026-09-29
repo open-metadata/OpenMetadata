@@ -14,6 +14,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import {
+  ColumnLevelLineageNode,
+  LineageNode,
+} from '../Lineage/Lineage.interface';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
 
@@ -48,7 +52,7 @@ describe('useLineageTableState Hook', () => {
     ];
 
     act(() => {
-      result.current.setFilterNodes(mockNodes as any);
+      result.current.setFilterNodes(mockNodes as unknown as LineageNode[]);
     });
 
     expect(result.current.filterNodes).toEqual(mockNodes);
@@ -131,13 +135,17 @@ describe('useLineageTableState Hook', () => {
     const downstreamNodes = [{ id: 'downstream1' }];
 
     act(() => {
-      result.current.setUpstreamColumnLineageNodes(upstreamNodes as any);
+      result.current.setUpstreamColumnLineageNodes(
+        upstreamNodes as unknown as ColumnLevelLineageNode[]
+      );
     });
 
     expect(result.current.upstreamColumnLineageNodes).toEqual(upstreamNodes);
 
     act(() => {
-      result.current.setDownstreamColumnLineageNodes(downstreamNodes as any);
+      result.current.setDownstreamColumnLineageNodes(
+        downstreamNodes as unknown as ColumnLevelLineageNode[]
+      );
     });
 
     expect(result.current.downstreamColumnLineageNodes).toEqual(
@@ -153,8 +161,8 @@ describe('useLineageTableState Hook', () => {
 
     act(() => {
       result.current.setColumnLineageNodes(
-        upstreamNodes as any,
-        downstreamNodes as any
+        upstreamNodes as unknown as ColumnLevelLineageNode[],
+        downstreamNodes as unknown as ColumnLevelLineageNode[]
       );
     });
 
@@ -209,7 +217,9 @@ describe('useLineageTableState Hook', () => {
     // Set some values first
     act(() => {
       result.current.setSearchValue('test');
-      result.current.setFilterNodes([{ id: 'test' }] as any);
+      result.current.setFilterNodes([
+        { id: 'test' },
+      ] as unknown as LineageNode[]);
       result.current.setFilterSelectionActive(true);
     });
 

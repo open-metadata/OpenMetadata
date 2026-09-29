@@ -4,7 +4,6 @@ import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.OI
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
-import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
@@ -217,13 +216,23 @@ public class McpCallbackServlet extends HttpServlet {
 
     String expectedIssuer;
     try {
+      // pac4j 6 removed getProviderMetadata(); metadata now loads lazily via the resolver, which
+      // must be initialized first because OM builds the OidcClient without calling client.init().
+      ssoHandler.getClient().getConfiguration().ensuresMetadataResolverInitialized();
       expectedIssuer =
-          ssoHandler.getClient().getConfiguration().getProviderMetadata().getIssuer().getValue();
+          ssoHandler
+              .getClient()
+              .getConfiguration()
+              .getOpMetadataResolver()
+              .load()
+              .getIssuer()
+              .getValue();
     } catch (Exception e) {
-      LOG.warn(
-          "Could not extract issuer from OIDC provider metadata, will use default: {}",
-          e.getMessage());
       expectedIssuer = authConfig.getAuthority();
+      LOG.warn(
+          "Could not extract issuer from OIDC provider metadata, using default: {}",
+          expectedIssuer,
+          e);
     }
 
     String expectedAudience = null;
@@ -412,6 +421,31 @@ public class McpCallbackServlet extends HttpServlet {
 
       LOG.debug("Found pending auth request: {}", pendingRequest.authRequestId());
 
+      // If the IdP returned an OAuth error callback (e.g. login_required, access_denied,
+      // server_error), relay it back to the MCP client's redirect_uri with
+      // error/error_description/state=<mcp_state> (per RFC 6749 §4.1.2.1 and the MCP spec)
+      // instead of invoking the web-SSO handleCallback path. handleCallback is written for the
+      // browser web-SSO flow and only buffers (and silently drops, on this forwarded MCP path)
+      // the IdP error response — which previously left the MCP client with no error and the
+      // user staring at an opaque 500 "Authentication Failed" page. Short-circuiting here
+      // avoids the buffered-response ambiguity entirely.
+      String idpError = request.getParameter("error");
+      if (idpError != null && !idpError.isEmpty()) {
+        String errorDescription = request.getParameter("error_description");
+        LOG.warn(
+            "IdP returned OAuth error for MCP callback (pac4j state hash={}, error={}); "
+                + "relaying to MCP client redirect_uri",
+            Integer.toHexString(pac4jState.hashCode()),
+            idpError);
+        processBufferedCallbackResponse(
+            response,
+            wrappedResponse ->
+                userSSOProvider.handleSSOErrorCallback(
+                    wrappedResponse, pendingRequest.authRequestId(), idpError, errorDescription));
+        LOG.info("Relayed IdP OAuth error to MCP client");
+        return;
+      }
+
       HttpSession session = request.getSession(true);
       String clientName = ssoHandler.getClient().getName();
       LOG.debug("Restoring pac4j session attributes for client: {}", clientName);
@@ -462,11 +496,12 @@ public class McpCallbackServlet extends HttpServlet {
         throw new IllegalStateException("No OIDC credentials found in session after SSO callback");
       }
 
-      JWT idToken = credentials.getIdToken();
+      // pac4j 6 stores the id token as a serialized String; use it directly for validation.
+      String idTokenString = credentials.getIdToken();
 
       JWTClaimsSet claimsSet;
       try {
-        claimsSet = getIdTokenValidator(ssoHandler).validateAndDecode(idToken.serialize());
+        claimsSet = getIdTokenValidator(ssoHandler).validateAndDecode(idTokenString);
         LOG.debug("ID token signature validated successfully in standard SSO flow");
       } catch (IdTokenValidator.IdTokenValidationException e) {
         LOG.error(
@@ -540,7 +575,7 @@ public class McpCallbackServlet extends HttpServlet {
       throw new IllegalStateException("No session found for direct ID token flow");
     }
 
-    String authRequestId = (String) session.getAttribute("mcp.auth.request.id");
+    String authRequestId = (String) session.getAttribute(UserSSOOAuthProvider.MCP_AUTH_REQUEST_ID);
     if (authRequestId == null) {
       throw new IllegalStateException("No auth request ID found in session");
     }
@@ -589,7 +624,7 @@ public class McpCallbackServlet extends HttpServlet {
 
     LOG.debug("Extracted user identity from direct ID token flow");
 
-    session.removeAttribute("mcp.auth.request.id");
+    session.removeAttribute(UserSSOOAuthProvider.MCP_AUTH_REQUEST_ID);
 
     processBufferedCallbackResponse(
         response,
@@ -723,6 +758,10 @@ public class McpCallbackServlet extends HttpServlet {
     @Override
     public void sendRedirect(String location) {
       redirectLocation = location;
+      // The servlet spec's sendRedirect implicitly sets a 302 (SC_FOUND) status; record it so
+      // status-aware consumers (e.g. the >=400 guard in McpCallbackServlet.doGet and any
+      // future caller inspecting statusCode) see the redirect instead of a misleading 200.
+      statusCode = HttpServletResponse.SC_FOUND;
       committed = true;
     }
 

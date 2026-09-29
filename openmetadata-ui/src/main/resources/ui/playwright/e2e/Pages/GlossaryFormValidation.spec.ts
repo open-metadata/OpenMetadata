@@ -14,7 +14,8 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import {
-  descriptionBox,
+  dismissToasts,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
@@ -40,9 +41,12 @@ test.describe('Glossary Form Validation', () => {
     await page.getByTestId('form-heading').waitFor();
 
     // Fill description but leave name empty
-    await page.locator(descriptionBox).fill('Test description');
+    await fillDescriptionBox(page, 'Test description');
 
     // Try to save
+    // Save sits under the fixed bottom-center toast region; an error toast left
+    // over from the Glossary landing page never drains on its own.
+    await dismissToasts(page);
     await page.click('[data-testid="save-glossary"]');
 
     // Verify error message appears
@@ -61,6 +65,9 @@ test.describe('Glossary Form Validation', () => {
     await page.fill('[data-testid="name"]', 'TestGlossary');
 
     // Try to save
+    // Save sits under the fixed bottom-center toast region; an error toast left
+    // over from the Glossary landing page never drains on its own.
+    await dismissToasts(page);
     await page.click('[data-testid="save-glossary"]');
 
     // Verify error message appears for description
@@ -85,9 +92,12 @@ test.describe('Glossary Form Validation', () => {
 
       // Use the same name as existing glossary
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill('Test description');
+      await fillDescriptionBox(page, 'Test description');
 
       // Try to save
+      // Save sits under the fixed bottom-center toast region; an error toast left
+      // over from the Glossary landing page never drains on its own.
+      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
 
       // Verify error toast or inline error appears
@@ -113,7 +123,7 @@ test.describe('Glossary Form Validation', () => {
       await openAddGlossaryTermModal(page);
 
       // Fill description but leave name empty
-      await page.locator(descriptionBox).fill('Test term description');
+      await fillDescriptionBox(page, 'Test term description');
 
       // Try to save
       await page.click('[data-testid="save-glossary-term"]');

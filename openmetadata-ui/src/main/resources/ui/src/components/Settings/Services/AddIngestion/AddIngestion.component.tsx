@@ -12,10 +12,11 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Form, Input } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import {
   forwardRef,
+  useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -23,32 +24,30 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
-import {
-  DEFAULT_SCHEDULE_CRON_DAILY,
-  SCHEDULAR_OPTIONS,
-} from '../../../../constants/Schedular.constants';
+import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   CreateIngestionPipeline,
   LogLevels,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormHandle,
 } from '../../../../interface/service.interface';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
-import { generateFormFields } from '../../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getDefaultFilterPropertyValues } from '../../../../utils/IngestionConfigUtils';
 import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
-import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServicePureUtils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -56,16 +55,17 @@ import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderMod
 import ServiceFlowStepper from '../AddService/ServiceFlowStepper/ServiceFlowStepper';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
 import IngestionNameCard from './IngestionNameCard/IngestionNameCard';
+import IngestionOwnersField from './IngestionOwnersField/IngestionOwnersField';
 import {
   AddIngestionHandle,
   AddIngestionProps,
 } from './IngestionWorkflow.interface';
-import ScheduleInterval from './Steps/ScheduleInterval';
 import {
   IngestionExtraConfig,
   ScheduleIntervalHandle,
   WorkflowExtraConfig,
-} from './Steps/ScheduleInterval.interface';
+} from './Steps/ScheduleInterval.types';
+import ScheduleIntervalStep from './Steps/ScheduleIntervalStep';
 
 const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
   function AddIngestion(
@@ -92,6 +92,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       showSuccessScreen = true,
       status,
       onFocus,
+      onStepReadyChange,
     }: Readonly<AddIngestionProps>,
     ref
   ) {
@@ -103,6 +104,12 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     const { config: limitConfig } = useLimitStore();
 
     const isEditMode = !isEmpty(ingestionFQN);
+
+    const { canEditOwners } = useEntityPermissions(
+      ResourceEntity.INGESTION_PIPELINE,
+      ingestionFQN,
+      { enabled: isEditMode }
+    );
 
     const { pipelineSchedules } =
       limitConfig?.limits?.config.featureLimits.find(
@@ -148,6 +155,37 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       })
     );
 
+    // Owners is a pipeline-entity field, not a sourceConfig one, so it is held
+    // outside `workflowData` — everything left in there is funnelled into
+    // `sourceConfig.config` by `cleanWorkFlowData`.
+    // Safe to seed lazily: both pages gate rendering on their own `isLoading`,
+    // so this never mounts before `data`/`serviceData` have resolved.
+    const [owners, setOwners] = useState<EntityReference[]>(() => {
+      // Prefer what is saved, then the service's owners, then the current user.
+      // Edit has to fall back too, not just create: pipelines created through
+      // the API carry no owners, and a mandatory field starting empty would
+      // make those impossible to save at all.
+      const savedOwners = data?.owners ?? [];
+
+      if (!isEmpty(savedOwners)) {
+        return savedOwners;
+      }
+
+      const serviceOwners = serviceData?.owners ?? [];
+
+      if (!isEmpty(serviceOwners)) {
+        return serviceOwners;
+      }
+
+      return currentUser ? [{ id: currentUser.id, type: 'user' }] : [];
+    });
+    const [isOwnersInvalid, setIsOwnersInvalid] = useState(false);
+
+    const handleOwnersChange = useCallback((updated?: EntityReference[]) => {
+      setOwners(updated ?? []);
+      setIsOwnersInvalid(false);
+    }, []);
+
     const { ingestionName, retries } = useMemo(
       () => ({
         ingestionName:
@@ -165,6 +203,29 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       [pipelineType]
     );
 
+    const { canEditPipelineOwners, effectiveOwners, isOwnersRequired } =
+      useMemo(() => {
+        // Only the edit flow needs EditOwners: it saves through a JSON patch and
+        // the server authorizes an `/owners` op as EditOwners. Create carries
+        // owners in the POST body, which the Create permission already covers.
+        const canEdit = !isEditMode || canEditOwners;
+
+        return {
+          canEditPipelineOwners: canEdit,
+          // Without EditOwners the field is read-only, so it shows what is
+          // saved — the seeded service/current-user fallback would otherwise
+          // misreport an ownerless pipeline as owned by someone the user never
+          // chose.
+          effectiveOwners: canEdit ? owners : data?.owners ?? [],
+          // Settings pipelines (Data Insight / Search Index) have no parent
+          // service to inherit owners from, so requiring owners there would
+          // block those flows. A user who cannot edit owners cannot satisfy the
+          // gate either, so it is lifted for them rather than making the agent
+          // impossible to save.
+          isOwnersRequired: !isSettingsPipeline && canEdit,
+        };
+      }, [isEditMode, canEditOwners, isSettingsPipeline, owners, data]);
+
     const viewServiceText = useMemo(
       () =>
         isSettingsPipeline
@@ -180,6 +241,20 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       LOADING_STATE.INITIAL
     );
     const [showDeployModal, setShowDeployModal] = useState(false);
+    const [isWorkflowFormReady, setIsWorkflowFormReady] = useState(false);
+
+    const handleWorkflowFormReady = useCallback(
+      () => setIsWorkflowFormReady(true),
+      []
+    );
+
+    // Step 1's RJSF form loads its templates lazily, so its imperative submit()
+    // is a no-op until it mounts. Only step 1 has to wait for that signal.
+    useEffect(() => {
+      onStepReadyChange?.(
+        activeIngestionStep === 1 ? isWorkflowFormReady : true
+      );
+    }, [activeIngestionStep, isWorkflowFormReady, onStepReadyChange]);
 
     const handleDataChange = (data: IngestionWorkflowData) =>
       setWorkflowData(data);
@@ -193,7 +268,15 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     };
 
     const handleSubmit = (data: IngestionWorkflowData) => {
-      setWorkflowData({ ...data, displayName: workflowData?.displayName });
+      // The RJSF form validates only its own schema, and the name card sits
+      // outside it, so the owners gate has to run here.
+      if (isOwnersRequired && isEmpty(effectiveOwners)) {
+        setIsOwnersInvalid(true);
+
+        return;
+      }
+
+      setWorkflowData((prev) => ({ ...data, displayName: prev?.displayName }));
       handleNext(2);
     };
 
@@ -226,12 +309,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         name: ingestionName,
         displayName: displayName,
-        owners: [
-          {
-            id: currentUser?.id ?? '',
-            type: 'user',
-          },
-        ],
+        owners: effectiveOwners,
         pipelineType: pipelineType,
         service: {
           id: serviceData.id as string,
@@ -277,6 +355,10 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           },
           raiseOnError: extraData.raiseOnError ?? true,
           displayName: workflowData?.displayName,
+          // Omitted rather than echoed back when the user cannot edit owners:
+          // `compare` against the saved pipeline must not emit an `/owners` op
+          // at all, since the server authorizes one as EditOwners and 403s.
+          ...(canEditPipelineOwners ? { owners } : {}),
           loggerLevel: workflowData?.enableDebugLog
             ? LogLevels.Debug
             : LogLevels.Info,
@@ -349,21 +431,6 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       [activeIngestionStep]
     );
 
-    const raiseOnErrorFormField = useMemo(
-      () => getRaiseOnErrorFormField(onFocus),
-      [onFocus]
-    );
-
-    const schedularOptionsTranslated = useMemo(
-      () =>
-        SCHEDULAR_OPTIONS.map((option) => ({
-          ...option,
-          title: t(option.title),
-          description: t(option.description),
-        })),
-      [t]
-    );
-
     return (
       <div data-testid="add-ingestion-container">
         <Typography className="tw:m-0" size="text-xl" weight="semibold">
@@ -384,12 +451,18 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
                 onDisplayNameChange={(value) =>
                   handleDataChange({ ...workflowData, displayName: value })
                 }
-                onFocus={onFocus}
-              />
+                onFocus={onFocus}>
+                <IngestionOwnersField
+                  canEdit={canEditPipelineOwners}
+                  isInvalid={isOwnersInvalid}
+                  isRequired={isOwnersRequired}
+                  owners={effectiveOwners}
+                  onChange={handleOwnersChange}
+                />
+              </IngestionNameCard>
               <IngestionWorkflowForm
                 hideFooter={hideFooter}
                 okText={t('label.next')}
-                operationType={status}
                 pipeLineType={pipelineType}
                 ref={workflowFormRef}
                 serviceCategory={serviceCategory}
@@ -398,13 +471,14 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
                 onCancel={handleCancelClick}
                 onChange={handleDataChange}
                 onFocus={onFocus}
+                onReady={handleWorkflowFormReady}
                 onSubmit={handleSubmit}
               />
             </div>
           )}
 
           {activeIngestionStep === 2 && (
-            <ScheduleInterval<IngestionExtraConfig>
+            <ScheduleIntervalStep
               buttonProps={{
                 okText: isUndefined(data)
                   ? t('label.add-deploy')
@@ -416,29 +490,16 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
               initialData={{
                 cron: data?.airflowConfig.scheduleInterval,
                 raiseOnError: data?.raiseOnError ?? true,
+                retries,
               }}
               isEditMode={isEditMode}
               ref={scheduleIntervalRef}
-              schedularOptions={schedularOptionsTranslated}
               showActionButtons={!hideFooter}
               status={saveState}
               onBack={() => handlePrev(1)}
-              onDeploy={handleScheduleIntervalDeployClick}>
-              <Col span={24}>
-                <Form.Item
-                  colon={false}
-                  initialValue={retries}
-                  label={t('label.number-of-retries')}
-                  name="retries">
-                  <Input
-                    min={0}
-                    type="number"
-                    onFocus={() => onFocus('root/retries')}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
-            </ScheduleInterval>
+              onDeploy={handleScheduleIntervalDeployClick}
+              onFocus={onFocus}
+            />
           )}
 
           {activeIngestionStep > 2 && handleViewServiceClick && (

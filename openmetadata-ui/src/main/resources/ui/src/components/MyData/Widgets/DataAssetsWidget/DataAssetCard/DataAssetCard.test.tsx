@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Bucket } from 'Models';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
+import { getServiceIcon } from '../../../../../utils/ServiceIconUtils';
 import DataAssetCard from './DataAssetCard.component';
 
 const mockLinkButton = jest.fn();
@@ -38,13 +39,26 @@ jest.mock('../../../../../utils/ServiceUtilClassBase', () => ({
   getServiceName: jest.fn().mockReturnValue('Mysql'),
 }));
 
+jest.mock('../../../../../utils/ServiceIconUtils', () => ({
+  getServiceIcon: jest.fn((iconKey: string) => `icon-${iconKey}`),
+}));
+
 jest.mock('../../../../common/Badge/Badge.component', () => {
   return jest.fn().mockReturnValue(<p>AppBadge</p>);
 });
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, ...rest }) => (
-    <a {...rest} onClick={mockLinkButton}>
+    <a
+      {...rest}
+      role="button"
+      tabIndex={0}
+      onClick={mockLinkButton}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          mockLinkButton(e);
+        }
+      }}>
       {children}
     </a>
   )),
@@ -86,5 +100,23 @@ describe('DataAssetCard', () => {
     );
 
     expect(mockLinkButton).toHaveBeenCalled();
+  });
+
+  it('should use the Scikit icon for the Sklearn service alias', () => {
+    render(<DataAssetCard service={{ doc_count: 1, key: 'Sklearn' }} />);
+
+    expect(getServiceIcon).toHaveBeenCalledWith('scikit');
+    expect(
+      screen.getByTestId('service-icon').querySelector('img')
+    ).toHaveAttribute('src', 'icon-scikit');
+  });
+
+  it('should use the DB2 icon for the IBMDB2 service alias', () => {
+    render(<DataAssetCard service={{ doc_count: 1, key: 'IBMDB2' }} />);
+
+    expect(getServiceIcon).toHaveBeenCalledWith('db2');
+    expect(
+      screen.getByTestId('service-icon').querySelector('img')
+    ).toHaveAttribute('src', 'icon-db2');
   });
 });

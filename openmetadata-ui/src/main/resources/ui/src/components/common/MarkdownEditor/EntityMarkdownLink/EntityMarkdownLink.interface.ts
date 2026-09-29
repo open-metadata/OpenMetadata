@@ -16,6 +16,8 @@ import { EntityType } from '../../../../enums/entity.enum';
 export interface EntityLinkInfo {
   entityType: EntityType;
   fullyQualifiedName: string;
+  serviceCategory?: string;
+  serviceFqn?: string;
 }
 
 export interface EntityMarkdownLinkProps {

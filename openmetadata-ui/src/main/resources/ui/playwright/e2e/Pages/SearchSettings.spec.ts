@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -25,6 +26,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   mockEntitySearchSettings,
+  openMatchingFieldsPanel,
   restoreDefaultSearchSettings,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
@@ -42,6 +44,75 @@ const test = base.extend<{ page: Page }>({
     await adminPage.close();
   },
 });
+
+// A minimal, valid /search/preview response with a single marker hit, used to
+// make preview responses deterministic and distinguishable in the ordering test.
+const buildDatabasePreviewResponse = (marker: 'fresh' | 'stale') => {
+  const name = `${marker}_result`;
+  const fullyQualifiedName = `pw_race_service.${name}`;
+
+  return {
+    took: 1,
+    timed_out: false,
+    _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+    hits: {
+      total: { relation: 'eq', value: 1 },
+      max_score: 1,
+      hits: [
+        {
+          _id: `pw-race-${marker}`,
+          _index: 'database_search_index',
+          _score: 1,
+          sort: [1, name],
+          _source: {
+            id: `00000000-0000-0000-0000-0000000000${
+              marker === 'fresh' ? '01' : '02'
+            }`,
+            name,
+            fullyQualifiedName,
+            displayName: `${marker.toUpperCase()}-RESULT`,
+            description: `${marker} marker`,
+            entityType: 'database',
+            serviceType: 'Mysql',
+            deleted: false,
+            service: {
+              id: '00000000-0000-0000-0000-0000000000aa',
+              type: 'databaseService',
+              name: 'pw_race_service',
+              fullyQualifiedName: 'pw_race_service',
+              displayName: 'pw_race_service',
+              deleted: false,
+            },
+            fqnParts: [fullyQualifiedName, 'pw_race_service'],
+            owners: [],
+            domains: [],
+            followers: [],
+            tags: [],
+            entityStatus: 'Unprocessed',
+          },
+        },
+      ],
+    },
+    aggregations: {},
+  };
+};
+
+const getDatabaseNgramBoost = (request: { postDataJSON: () => unknown }) => {
+  const body = request.postDataJSON() as {
+    searchSettings?: {
+      assetTypeConfigurations?: {
+        assetType: string;
+        searchFields?: { field: string; boost: number }[];
+      }[];
+    };
+  };
+
+  return (
+    body?.searchSettings?.assetTypeConfigurations
+      ?.find((config) => config.assetType === 'database')
+      ?.searchFields?.find((field) => field.field === 'name.ngram')?.boost ?? 0
+  );
+};
 
 test.describe('Search Settings', () => {
   test.beforeAll(async ({ browser }) => {
@@ -141,6 +212,8 @@ test.describe('Search Settings', () => {
         page.getByTestId('entity-search-settings-header')
       ).toBeVisible();
 
+      await openMatchingFieldsPanel(page);
+
       const fieldContainers = page.getByTestId('field-container-header');
       const firstFieldContainer = fieldContainers.first();
       await firstFieldContainer.click();
@@ -150,7 +223,14 @@ test.describe('Search Settings', () => {
       await highlightFieldToggle.click();
 
       // Field Weight
-      await setSliderValue(page, 'field-weight-slider', 8);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        8,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
@@ -185,6 +265,66 @@ test.describe('Search Settings', () => {
       await expect(boostModeSelect).toHaveText('Replace');
     });
 
+    test('Highlight toggle is offered for analyzed fields', async ({
+      page,
+    }) => {
+      // The highlight toggle is driven by allowedFields[].highlight, which the server derives from
+      // the index mapping. Nothing in the shipped settings is unhighlightable, so every toggle here
+      // must be enabled. A backend that stops annotating the flag serves the schema default (false)
+      // for every field and silently disables all of them — the Jest test cannot catch that,
+      // because it supplies entityFields as props.
+      const settingsResponse = page.waitForResponse(
+        '/api/v1/system/settings/searchSettings'
+      );
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+      await tableCard.click();
+
+      expect((await settingsResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('entity-search-settings-header')
+      ).toBeVisible();
+
+      await openMatchingFieldsPanel(page);
+      // Named field rather than whichever row happens to render first: the assertion below is
+      // that the server annotates `highlight`, which only means something on a field the index
+      // mapping can actually highlight -- an analyzed text field such as `description`.
+      await page.getByTestId('field-configuration-panel-description').click();
+
+      const highlightFieldToggle = page.getByTestId('highlight-field-switch');
+
+      await expect(highlightFieldToggle).toBeVisible();
+      await expect(highlightFieldToggle).toBeEnabled();
+
+      // Saving must not disable it. The page takes the PUT response straight into app state, so an
+      // endpoint that serves searchSettings without deriving `highlight` greys out every toggle the
+      // moment you hit Save, while the server goes on highlighting the field. Checking after a
+      // reload would miss it entirely — a reload re-reads the GET, which was always annotated.
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        7,
+        0,
+        100,
+        'field-weight-value'
+      );
+
+      const saveSettings = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/system/settings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-btn').click();
+      await saveSettings;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(highlightFieldToggle).toBeEnabled();
+    });
+
     test('Restore default search settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
@@ -202,6 +342,56 @@ test.describe('Search Settings', () => {
       await restoreDefaultSearchSettings(page);
 
       await toastNotification(page, /Search Settings restored successfully/);
+    });
+
+    test('Reset global search settings to default via confirmation modal', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      await page
+        .getByTestId('global-setting-edit-icon-Max Aggregate Size')
+        .click();
+      await page.getByTestId('value-input').fill('2000');
+      await page.getByTestId('inline-save-btn').click();
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Cancelling the confirmation must leave the customized value intact.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('save-button')).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('body-text')).not.toBeAttached();
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Confirming the reset must restore the default value.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('save-button')).toBeVisible();
+
+      const resetResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/system/settings/reset/searchSettings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-button').click();
+      await resetResponse;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('10000');
     });
   });
 
@@ -241,11 +431,20 @@ test.describe('Search Settings', () => {
 
       await waitForAllLoadersToDisappear(page);
 
+      await openMatchingFieldsPanel(page);
+
       const descriptionField = page.getByTestId(
         `field-configuration-panel-description`
       );
       await descriptionField.click();
-      await setSliderValue(page, 'field-weight-slider', 68);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        68,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
       await page.getByTestId('highlight-field-switch').click();
@@ -257,8 +456,14 @@ test.describe('Search Settings', () => {
       );
 
       const searchInput = page.getByTestId('searchbar');
+      const searchPreviewResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/v1/search/preview') &&
+          response.request().method() === 'POST' &&
+          response.request().postDataJSON()?.query === table1.entity.name
+      );
       await searchInput.fill(table1.entity.name);
-      await previewResponse;
+      expect((await searchPreviewResponse).status()).toBe(200);
 
       await waitForAllLoadersToDisappear(page);
 
@@ -343,6 +548,8 @@ test.describe('Search Settings', () => {
               (f: { field: string }) => f.field === 'name.ngram'
             )?.boost ?? 0;
 
+        await openMatchingFieldsPanel(page);
+
         // Expand the name.ngram field configuration panel.
         const ngramPanel = page.getByTestId(
           'field-configuration-panel-name.ngram'
@@ -350,7 +557,16 @@ test.describe('Search Settings', () => {
         await ngramPanel.click();
 
         // Change n-gram weight to 5 and save.
-        await setSliderValue(page, 'field-weight-slider', 5);
+        await setSliderValue(
+          page,
+          'field-weight-slider',
+          5,
+          0,
+          100,
+          'field-weight-value'
+        );
+
+        await expect(page.getByTestId('save-btn')).toBeEnabled();
 
         const saveResponse = page.waitForResponse(
           (r) =>
@@ -358,7 +574,7 @@ test.describe('Search Settings', () => {
             r.request().method() === 'PUT'
         );
         await page.getByTestId('save-btn').click();
-        await saveResponse;
+        expect((await saveResponse).status()).toBe(200);
         await toastNotification(page, /Search Settings updated successfully/);
 
         // Scope the predicate to the reverted boost value so a stale post-save
@@ -380,7 +596,14 @@ test.describe('Search Settings', () => {
           return boost === initialNgramBoost;
         });
 
-        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+        await setSliderValue(
+          page,
+          'field-weight-slider',
+          initialNgramBoost,
+          0,
+          100,
+          'field-weight-value'
+        );
 
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);
@@ -403,7 +626,7 @@ test.describe('Search Settings', () => {
 
         // Reload so the page re-fetches the restored config and triggers preview.
         const previewPromise = page.waitForResponse('/api/v1/search/preview');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         const previewResponse = await previewPromise;
         await waitForAllLoadersToDisappear(page);
 
@@ -412,6 +635,109 @@ test.describe('Search Settings', () => {
         // After restore the preview API must be called — body must be present.
         expect(body).not.toBeNull();
         expect(body?.searchSettings?.assetTypeConfigurations).toBeDefined();
+      });
+    }
+  );
+
+  test.describe(
+    'Search Preview Ordering',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    () => {
+      test.beforeEach(async ({ page }) => {
+        await redirectToHomePage(page);
+      });
+
+      // A slow, superseded preview request (high n-gram) must NOT overwrite the
+      // latest one (n-gram reverted to 0). Without a latest-wins guard in
+      // SearchPreview.fetchAssets the last-resolved response wins instead of the
+      // last-issued one, and the preview shows a stale ranking while the slider
+      // reads a different weight.
+      test('Latest preview config wins when a superseded request resolves late', async ({
+        page,
+      }) => {
+        const STALE_BOOST_THRESHOLD = 50;
+        const STALE_DELAY_MS = 2000;
+
+        // The high-n-gram request is delayed so it resolves after the reverted
+        // one. Every non-stale request is served immediately. Bodies are marked so
+        // the test can assert exactly which response the preview rendered.
+        await page.route('**/api/v1/search/preview', async (route) => {
+          const isStale =
+            getDatabaseNgramBoost(route.request()) >= STALE_BOOST_THRESHOLD;
+
+          if (isStale) {
+            await new Promise((resolve) => setTimeout(resolve, STALE_DELAY_MS));
+          }
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(
+              buildDatabasePreviewResponse(isStale ? 'stale' : 'fresh')
+            ),
+          });
+        });
+
+        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await page.getByTestId('preferences.search-settings.databases').click();
+
+        await expect(page).toHaveURL(
+          /settings\/preferences\/search-settings\/databases$/
+        );
+        await waitForAllLoadersToDisappear(page);
+
+        await page.getByTestId('searchbar').fill('test');
+
+        const freshCard = page.getByTestId(
+          'table-data-card_pw_race_service.fresh_result'
+        );
+        const staleCard = page.getByTestId(
+          'table-data-card_pw_race_service.stale_result'
+        );
+
+        // Baseline: the fresh (current-config) response is what the preview shows.
+        await expect(freshCard).toBeVisible();
+
+        await openMatchingFieldsPanel(page);
+        await page.getByTestId('field-configuration-panel-name.ngram').click();
+
+        const ngramSliderHandle = page
+          .getByTestId('field-configuration-panel-name.ngram')
+          .getByTestId('field-weight-slider')
+          .locator('.ant-slider-handle');
+
+        // Register before triggering so the delayed stale request and response
+        // are both observed.
+        const stalePreviewRequest = page.waitForRequest(
+          (request) =>
+            request.url().includes('/api/v1/search/preview') &&
+            getDatabaseNgramBoost(request) >= STALE_BOOST_THRESHOLD
+        );
+        const stalePreviewResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/preview') &&
+            getDatabaseNgramBoost(response.request()) >= STALE_BOOST_THRESHOLD
+        );
+
+        // End -> max weight fires the slow "stale" request (delayed by the route);
+        // Home -> 0 weight fires the fast "fresh" request, issued last.
+        await ngramSliderHandle.focus();
+        await page.keyboard.press('End');
+        await stalePreviewRequest;
+        await page.keyboard.press('Home');
+
+        // Wait until the delayed stale response has been delivered, then give the
+        // app a bounded moment to commit it. Without the fix the stale results
+        // would have replaced the fresh ones by now; with the fix the response is
+        // dropped and produces no observable change, so there is no positive
+        // signal to await instead — a short, bounded settle is required here.
+        await stalePreviewResponse;
+        // eslint-disable-next-line playwright/no-wait-for-timeout
+        await page.waitForTimeout(1000);
+
+        // The latest (reverted) config must win: fresh stays, stale never renders.
+        await expect(freshCard).toBeVisible();
+        await expect(staleCard).toHaveCount(0);
       });
     }
   );
@@ -431,6 +757,8 @@ test.describe('Search Settings', () => {
         /settings\/preferences\/search-settings\/column$/
       );
 
+      await openMatchingFieldsPanel(page);
+
       const fieldContainers = page.getByTestId('field-container-header');
       const firstFieldContainer = fieldContainers.first();
       await firstFieldContainer.click();
@@ -440,7 +768,14 @@ test.describe('Search Settings', () => {
         (await highlightToggle.getAttribute('aria-checked')) === 'true';
       await highlightToggle.click();
 
-      await setSliderValue(page, 'field-weight-slider', 15);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        15,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       const matchTypeSelect = page.getByTestId('match-type-select');
       await matchTypeSelect.click();
@@ -459,9 +794,12 @@ test.describe('Search Settings', () => {
       await saveSettings;
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
+      await openMatchingFieldsPanel(page);
+
+      await openMatchingFieldsPanel(page);
 
       await firstFieldContainer.click();
       await expect(highlightToggle).toHaveAttribute(
@@ -492,10 +830,14 @@ test.describe('Search Settings', () => {
         await columnCard.click();
 
         const searchInput = page.getByTestId('searchbar');
+        const previewResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/search/preview') &&
+            response.request().method() === 'POST' &&
+            response.request().postDataJSON()?.query === uniqueColumnName
+        );
         await searchInput.fill(uniqueColumnName);
-
-        const previewResponse = page.waitForResponse('/api/v1/search/preview');
-        await previewResponse;
+        expect((await previewResponse).status()).toBe(200);
 
         const searchResultsContainer = page.locator(
           '.search-results-container'

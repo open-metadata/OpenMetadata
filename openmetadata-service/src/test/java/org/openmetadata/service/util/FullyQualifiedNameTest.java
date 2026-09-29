@@ -68,6 +68,24 @@ class FullyQualifiedNameTest {
   }
 
   @Test
+  void test_escapeForUnquote() {
+    // Values unquoteName leaves alone are passed through untouched
+    assertEquals("a", FullyQualifiedName.escapeForUnquote("a"));
+    assertEquals("a.b", FullyQualifiedName.escapeForUnquote("a.b"));
+    assertEquals("a\"b", FullyQualifiedName.escapeForUnquote("a\"b"));
+    // A value unquoteName would strip is re-encoded so the strip gives it back
+    assertEquals("\"\"\"quoted\"\"\"", FullyQualifiedName.escapeForUnquote("\"quoted\""));
+
+    for (String value :
+        List.of("a", "a.b", "a\"b", "\"quoted\"", "\"a.b\"", "\"a\"\"b\"", "\"\"", "x\"")) {
+      assertEquals(
+          value,
+          FullyQualifiedName.unquoteName(FullyQualifiedName.escapeForUnquote(value)),
+          "escapeForUnquote must round-trip " + value);
+    }
+  }
+
+  @Test
   void test_quotedName_roundTrip() {
     // A name containing '"' must survive build -> split -> buildHash without bailing the parser.
     String taskName = "si_l'agent_existe_dans_la_base_\"agents\"_alors";
@@ -283,10 +301,33 @@ class FullyQualifiedNameTest {
         "service.model.dataModel",
         FullyQualifiedName.getParentEntityFQN(
             "service.model.dataModel.col1.child1", "dashboardDataModel"));
+    // Metric dimension case
+    assertEquals(
+        "revenue", FullyQualifiedName.getParentEntityFQN("revenue.dimension.region", "metric"));
+    // Metric measure case
+    assertEquals(
+        "revenue", FullyQualifiedName.getParentEntityFQN("revenue.measure.total_amount", "metric"));
     // Error: unsupported entity type
     assertThrows(
         IllegalArgumentException.class,
         () -> FullyQualifiedName.getParentEntityFQN("service.model.dataModel.col1", "mlmodel"));
+  }
+
+  @Test
+  void test_getMetricFQN() {
+    // Standard dimension FQN
+    assertEquals("revenue", FullyQualifiedName.getMetricFQN("revenue.dimension.region"));
+    // Standard measure FQN
+    assertEquals("revenue", FullyQualifiedName.getMetricFQN("revenue.measure.total_amount"));
+    // Quoted metric name
+    assertEquals(
+        "\"my.metric\"", FullyQualifiedName.getMetricFQN("\"my.metric\".dimension.region"));
+    // Multi-part metric FQN (e.g. service-prefixed) keeps everything but the last two segments
+    assertEquals(
+        "service.revenue", FullyQualifiedName.getMetricFQN("service.revenue.measure.total_amount"));
+    // Error: too few segments
+    assertThrows(
+        IllegalArgumentException.class, () -> FullyQualifiedName.getMetricFQN("metric.dimension"));
   }
 
   @Test

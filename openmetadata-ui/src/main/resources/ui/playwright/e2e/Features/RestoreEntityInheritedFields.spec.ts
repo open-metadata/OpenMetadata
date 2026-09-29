@@ -31,11 +31,14 @@ import {
   assignSingleSelectDomain,
   getApiContext,
   redirectToHomePage,
+  searchDataProductOptions,
 } from '../../utils/common';
 import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 // Service management pages render KnowledgePanel.DataProducts only inside the
@@ -89,7 +92,9 @@ const waitForInheritedDomainOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -114,7 +119,7 @@ const waitForInheritedDomainOnEntityApi = async (
 
 const selectDataProductsFromKnowledgePanel = async (
   page: Page,
-  domain: {
+  _domain: {
     name: string;
     displayName: string;
   },
@@ -131,23 +136,7 @@ const selectDataProductsFromKnowledgePanel = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
-
-    await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
-      );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
-      await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+    const tagLocator = await searchDataProductOptions(page, dataProduct);
 
     await tagLocator.click();
   }
@@ -198,7 +187,9 @@ const waitForDataProductsOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -288,13 +279,13 @@ const waitForInheritedDomainOnEntityPage = async (
     await entity.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
-    const domainCountButton = page.getByTestId('domain-count-button');
-    const hasMultipleDomains = await domainCountButton
+    const showAllDomainsButton = page.getByTestId('show-all-domains');
+    const hasMultipleDomains = await showAllDomainsButton
       .isVisible()
       .catch(() => false);
 
     if (hasMultipleDomains) {
-      await expect(domainCountButton).toBeVisible({
+      await expect(showAllDomainsButton).toBeVisible({
         timeout: 2_000,
       });
     } else {
@@ -352,39 +343,38 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(page);
 
-      // Table and StoredProcedure have 3 breadcrumbs; clicking index 1 lands
-      // on the Database entity page which already exposes KnowledgePanel.DataProducts.
-      // All other entities have 1 breadcrumb (service) or their intermediate
-      // breadcrumb resolves to the service management page.
-      const isDbEntity = ['Table', 'Store Procedure'].includes(
-        entity.getType()
-      );
-      const is3Breadcrumb = [
-        'Table',
-        'ApiEndpoint',
-        'Store Procedure',
-      ].includes(entity.getType());
+      // Navigate to the parent entity page (which already exposes
+      // KnowledgePanel.DataProducts) and assign a domain there. For
+      // Table/StoredProcedure that parent is the database, for ApiEndpoint the
+      // API collection; every other entity uses the service crumb (the first
+      // crumb, which always stays inline). The DataAssetsHeader breadcrumb
+      // auto-collapses on narrow viewports, so intermediate crumbs are reached
+      // via the overflow-aware helper rather than by inline-link position.
+      let parentCrumbName: string | undefined;
+      if (
+        entity instanceof TableClass ||
+        entity instanceof StoredProcedureClass
+      ) {
+        parentCrumbName = entity.database.name;
+      } else if (entity instanceof ApiEndpointClass) {
+        parentCrumbName = entity.apiCollection.name;
+      }
 
-      // The core Breadcrumbs renders the current entity as a non-link
-      // aria-current span, so the navigable crumb count is (total - 1).
-      await expect(
-        page.getByTestId('breadcrumb').getByRole('link')
-      ).toHaveCount(is3Breadcrumb ? 3 : 1);
-
-      // Navigate to the parent and assign domain.
-      await page
-        .getByTestId('breadcrumb')
-        .getByRole('link')
-        .nth(is3Breadcrumb ? 1 : 0)
-        .click();
+      if (parentCrumbName) {
+        await clickBreadcrumbAncestor(page, parentCrumbName);
+      } else {
+        await page.getByTestId('breadcrumb').getByRole('link').first().click();
+      }
 
       await assignSingleSelectDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      // For service management pages KnowledgePanel.DataProducts is rendered
-      // inside ServiceMainTabContent, which lives in the entity-count tab
-      // (e.g. "ML Models", "Dashboards"). Click it so the panel becomes visible.
-      if (!isDbEntity && entity.serviceType) {
+      // Entities that navigate to a parent entity page (Table/StoredProcedure →
+      // database, ApiEndpoint → API collection) expose KnowledgePanel.DataProducts
+      // directly, so they skip this step. The rest land on the service crumb's
+      // management page, where the panel lives inside ServiceMainTabContent —
+      // reached via the entity-count tab (e.g. "Collections", "Dashboards").
+      if (!parentCrumbName && entity.serviceType) {
         const tabLabel = SERVICE_ENTITY_TAB[entity.serviceType];
 
         if (tabLabel) {
@@ -408,12 +398,14 @@ entities.forEach((EntityClass) => {
       await expect
         .poll(
           async () => {
-            const entityResponse = page.waitForResponse(
+            const entityResponse = waitForResponseWithStatus(
+              page,
               (r) =>
-                r.url().includes(`/api/v1/${entity.endpoint}/`) &&
-                r.status() === 200
+                r.request().method() === 'GET' &&
+                r.url().includes(`/api/v1/${entity.endpoint}/`),
+              200
             );
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await entityResponse;
             await waitForAllLoadersToDisappear(page);
 

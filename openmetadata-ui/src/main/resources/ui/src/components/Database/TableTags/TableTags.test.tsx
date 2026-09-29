@@ -11,25 +11,12 @@
  *  limitations under the License.
  */
 
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { LabelType, State, TagSource } from '../../../generated/type/schema';
 import TableTags from './TableTags.component';
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: {
-      brand: {
-        50: '#EFF8FF',
-        100: '#D1E9FF',
-        900: '#194185',
-      },
-    },
-  },
-});
 
 jest.mock('../../../utils/FeedElementUtils', () => ({
   getFieldThreadElement: jest
@@ -114,9 +101,7 @@ const mockProp = {
 };
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>
-    <MemoryRouter>{children}</MemoryRouter>
-  </ThemeProvider>
+  <MemoryRouter>{children}</MemoryRouter>
 );
 
 describe('Test EntityTableTags Component', () => {

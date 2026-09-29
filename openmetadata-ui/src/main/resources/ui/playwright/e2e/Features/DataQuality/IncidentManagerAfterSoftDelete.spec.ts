@@ -28,7 +28,11 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import {
+  createNewPage,
+  expectNoErrorToast,
+  redirectToHomePage,
+} from '../../../utils/common';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -105,12 +109,10 @@ test('Incident Manager renders without Jackson error after a test case is soft-d
     expect(response.status()).toBe(200);
 
     // And the toast bar must not surface a Jackson "Unrecognized field"/"deleted" error.
-    // Scope to the toast container so we don't false-positive on legitimate page text
-    // (e.g. a table cell that happens to contain the word "deleted").
-    const errorToast = page
-      .locator('[data-testid="alert-bar"]')
-      .filter({ hasText: /Unrecognized field|deleted/i });
-    await expect(errorToast).toHaveCount(0);
+    // Scoped to error-variant toasts so we don't false-positive on legitimate page text
+    // (e.g. a table cell containing "deleted") nor on the background
+    // '"<entity>" deleted successfully!' notification a parallel worker can trigger.
+    await expectNoErrorToast(page, /Unrecognized field|deleted/i);
   } finally {
     await table.delete(apiContext);
     await afterAction();

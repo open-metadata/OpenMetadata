@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import '../../../../../test/unit/mocks/mui.mock';
 import NoProfilerBanner from './NoProfilerBanner.component';
 
 jest.mock('react-router-dom', () => ({

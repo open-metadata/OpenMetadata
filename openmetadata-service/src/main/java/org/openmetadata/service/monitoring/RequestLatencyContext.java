@@ -2,7 +2,6 @@ package org.openmetadata.service.monitoring;
 
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
-import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +42,11 @@ public class RequestLatencyContext {
   private static final Timer DUMMY_TIMER =
       Timer.builder("internal.sample.stop").register(NOOP_REGISTRY);
   private static final long slowRequestThresholdNanos = resolveSlowRequestThresholdNanos();
+  private static volatile boolean requestLatencyPercentileHistogram;
+
+  public static void configure(boolean percentileHistogramEnabled) {
+    requestLatencyPercentileHistogram = percentileHistogramEnabled;
+  }
 
   private static long resolveSlowRequestThresholdNanos() {
     String configuredThreshold = System.getProperty(SLOW_REQUEST_THRESHOLD_PROPERTY);
@@ -83,12 +87,8 @@ public class RequestLatencyContext {
                 .tag(ENDPOINT, endpoint)
                 .tag(METHOD, normalizedMethod)
                 .description("Total request latency")
-                .serviceLevelObjectives(
-                    Duration.ofMillis(100),
-                    Duration.ofMillis(500),
-                    Duration.ofSeconds(1),
-                    Duration.ofSeconds(5),
-                    Duration.ofSeconds(10))
+                .serviceLevelObjectives(MetricUtils.LATENCY_SLA_BUCKETS)
+                .publishPercentileHistogram(requestLatencyPercentileHistogram)
                 .register(Metrics.globalRegistry));
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
     context.internalTimerStartNanos.set(System.nanoTime());
@@ -474,6 +474,7 @@ public class RequestLatencyContext {
     authTimers.clear();
     rdfTimers.clear();
     serverTimers.clear();
+    requestLatencyPercentileHistogram = false;
   }
 
   @Getter

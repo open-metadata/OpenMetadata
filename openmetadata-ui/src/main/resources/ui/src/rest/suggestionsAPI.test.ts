@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SuggestionAction } from '../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
+import { SuggestionAction } from '../enums/Suggestion.enum';
 import { SuggestionType } from '../types/taskSuggestion';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   approveRejectAllSuggestions,
   getSuggestionsByUserId,
@@ -20,7 +20,7 @@ import {
 } from './suggestionsAPI';
 import { resolveTask, TaskEntityStatus, TaskResolutionType } from './tasksAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));
@@ -110,6 +110,34 @@ describe('suggestionsAPI', () => {
       expect(result.data[0].entityLink).toBe(
         '<#E::table::db.schema.my_table::columns::col_name>'
       );
+    });
+
+    it('uses createdById when expanded createdBy reference is missing', async () => {
+      const task = makeTask('task-1', 'description');
+
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: {
+          data: [
+            {
+              id: task.id,
+              about: task.about,
+              payload: task.payload,
+              status: task.status,
+              createdById: '01146525-1f0b-4318-95e0-e7ab3b83fef4',
+              updatedBy: 'ingestion-bot',
+            },
+          ],
+          paging: {},
+        },
+      });
+
+      const result = await getSuggestionsList();
+
+      expect(result.data[0].createdBy).toEqual({
+        id: '01146525-1f0b-4318-95e0-e7ab3b83fef4',
+        name: 'ingestion-bot',
+        type: 'user',
+      });
     });
   });
 

@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -31,22 +29,17 @@ from metadata.ingestion.source.dashboard.microstrategy.client import MicroStrate
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: MicroStrategyConnectionConfig) -> MicroStrategyClient:
-    """
-    Create connection
-    """
-    return MicroStrategyClient(connection)
-
-
 class MicroStrategyConnection(BaseConnection[MicroStrategyConnectionConfig, MicroStrategyClient]):
     def _get_client(self) -> MicroStrategyClient:
-        return get_connection(self.service_connection)
+        client = MicroStrategyClient(self.service_connection)
+        self._on_close(client.close_api_session)
+        return client
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

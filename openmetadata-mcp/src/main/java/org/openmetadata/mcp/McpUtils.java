@@ -83,23 +83,53 @@ public class McpUtils {
         throw new RuntimeException("Failed to load tool definitions");
       }
       LOG.debug("Successfully loaded {} tool definitions", cachedTools.size());
-      for (int i = 0; i < cachedTools.size(); i++) {
-        Map<String, Object> toolDef = cachedTools.get(i);
-        String name = (String) toolDef.get("name");
-        String description = (String) toolDef.get("description");
-        Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
-        result.add(
-            McpSchema.Tool.builder()
-                .name(name)
-                .description(description)
-                .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema))
-                .build());
+      for (Map<String, Object> toolDef : cachedTools) {
+        result.add(buildTool(toolDef));
       }
       return result;
     } catch (Exception e) {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
     }
+  }
+
+  private static McpSchema.Tool buildTool(Map<String, Object> toolDef) {
+    String name = (String) toolDef.get("name");
+    String title = (String) toolDef.get("title");
+    String description = (String) toolDef.get("description");
+    Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
+    McpSchema.Tool.Builder builder =
+        McpSchema.Tool.builder()
+            .name(name)
+            .title(title)
+            .description(description)
+            .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema));
+    McpSchema.ToolAnnotations annotations = buildToolAnnotations(toolDef, title);
+    if (annotations != null) {
+      builder.annotations(annotations);
+    }
+    return builder.build();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static McpSchema.ToolAnnotations buildToolAnnotations(
+      Map<String, Object> toolDef, String title) {
+    // openWorldHint defaults to true per the MCP spec when omitted, which would mislabel every
+    // tool here as reaching external/public systems. All tools only read/write our own
+    // OpenMetadata catalog, so tools.json sets it to false explicitly for each tool.
+    McpSchema.ToolAnnotations result = null;
+    Map<String, Object> annotations = (Map<String, Object>) toolDef.get("annotations");
+    if (annotations != null) {
+      result =
+          new McpSchema.ToolAnnotations(
+              title,
+              (Boolean) annotations.get("readOnlyHint"),
+              (Boolean) annotations.get("destructiveHint"),
+              (Boolean) annotations.get("idempotentHint"),
+              (Boolean) annotations.get("openWorldHint"),
+              (Boolean) annotations.get("returnDirect"));
+    }
+    return result;
   }
 
   public static List<McpSchema.Prompt> getPrompts(String jsonFilePath) {

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { clickOutside, descriptionBox } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  fillDescriptionBox,
+  getDescriptionBox,
+} from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import {
@@ -80,7 +85,7 @@ const selectTagSuggestion = async ({
 
   logTaskDebug('selectTagSuggestion:start', searchText, tagTestId);
   if (!(await tagsInput.isVisible().catch(() => false))) {
-    await tagSelector.click({ force: true }).catch(() => undefined);
+    await tagSelector.click().catch(() => undefined);
   }
 
   await expect(tagsInput).toBeVisible({ timeout: 5000 });
@@ -142,12 +147,12 @@ const clickDropdownMenuItem = async ({
 
   if (await isMenuItemVisible()) {
     if (await roleMenuItem.isVisible().catch(() => false)) {
-      await roleMenuItem.click({ force: true });
+      await roleMenuItem.click();
 
       return;
     }
 
-    await cssMenuItem.click({ force: true });
+    await cssMenuItem.click();
 
     return;
   }
@@ -172,7 +177,7 @@ const clickDropdownMenuItem = async ({
 
   for (let attempt = 0; attempt < 3; attempt++) {
     logTaskDebug('clickDropdownMenuItem:openAttempt', attempt + 1);
-    await resolvedTrigger.click({ force: true }).catch(() => undefined);
+    await resolvedTrigger.click().catch(() => undefined);
 
     if (await waitForMenuItem()) {
       break;
@@ -191,7 +196,7 @@ const clickDropdownMenuItem = async ({
       break;
     }
 
-    await fallbackTrigger.click({ force: true }).catch(() => undefined);
+    await fallbackTrigger.click().catch(() => undefined);
 
     if (await waitForMenuItem()) {
       break;
@@ -199,13 +204,13 @@ const clickDropdownMenuItem = async ({
   }
 
   if (await roleMenuItem.isVisible().catch(() => false)) {
-    await roleMenuItem.click({ force: true });
+    await roleMenuItem.click();
 
     return;
   }
 
   await expect(cssMenuItem).toBeVisible();
-  await cssMenuItem.click({ force: true });
+  await cssMenuItem.click();
 };
 
 export const formatTaskFieldValue = (value: string) => {
@@ -294,8 +299,8 @@ export const createDescriptionTaskFromForm = async ({
   await selectAssignee(page, assigneeName);
 
   if (description) {
-    await page.locator(descriptionBox).clear();
-    await page.locator(descriptionBox).fill(description);
+    await getDescriptionBox(page).clear();
+    await fillDescriptionBox(page, description);
   }
 
   const taskCreateResponse = waitForTaskCreateResponse(page);
@@ -361,7 +366,9 @@ export const openEntityTasksTab = async (page: Page) => {
   await activityFeedTab.click();
   await waitForPageLoaded(page);
 
-  const menuItemTaskTab = page.getByRole('menuitem', { name: /tasks/i });
+  const menuItemTaskTab = page
+    .getByTestId('global-setting-left-panel')
+    .getByRole('button', { name: /tasks/i });
   await menuItemTaskTab.waitFor({ state: 'visible' });
 
   const taskListResponse = waitForTaskListResponse(page);
@@ -384,7 +391,11 @@ export const getTaskCard = (page: Page, task: CreatedTask) => {
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
   const taskCard = getTaskCard(page, task);
   logTaskDebug('openTaskDetails:waitingForCard', task.taskId);
-  await expect(taskCard).toBeVisible({ timeout: 15000 });
+  // The activity-feed UI re-fetches its list after the task is created via
+  // API; under Basic-project parallelism the refresh can lag past 15s and
+  // the card never appears within the default timeout. 45s gives the feed
+  // enough time to propagate without slowing healthy runs.
+  await expect(taskCard).toBeVisible({ timeout: 45000 });
   logTaskDebug('openTaskDetails:click', task.taskId);
   await taskCard.click();
   await expect(page.locator(TASK_TAB_SELECTOR)).toBeVisible();
@@ -609,7 +620,7 @@ export const addCommentToTask = async (page: Page, comment: string) => {
     await expect(commentInput).toBeVisible({ timeout: 5000 });
     await commentInput.scrollIntoViewIfNeeded().catch(() => undefined);
     logTaskDebug('addCommentToTask:openingEditor');
-    await commentInput.click({ force: true }).catch(() => undefined);
+    await commentInput.click().catch(() => undefined);
 
     const editorAppearedAfterClick = await editor
       .waitFor({ state: 'visible', timeout: 10000 })
@@ -623,7 +634,7 @@ export const addCommentToTask = async (page: Page, comment: string) => {
 
   await expect(editor).toBeVisible({ timeout: 15000 });
   logTaskDebug('addCommentToTask:editorVisible');
-  await editor.click({ force: true });
+  await editor.click();
   await editor.type(comment);
   logTaskDebug('addCommentToTask:commentEntered');
 
@@ -681,7 +692,7 @@ export const closeTaskFromDetails = async (page: Page) => {
 
     if (primaryLabel?.match(/reject|decline|close/i)) {
       const taskActionResponse = waitForTaskActionResponse(page);
-      await workflowPrimaryButton.click({ force: true });
+      await workflowPrimaryButton.click();
       await taskActionResponse;
       await waitForPageLoaded(page);
       logTaskDebug('closeTaskFromDetails:workflowPrimaryDone');
@@ -695,15 +706,19 @@ export const closeTaskFromDetails = async (page: Page) => {
       '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
     )
     .first();
-  const trigger = getDropdownTrigger(dropdown);
-
-  await expect(trigger).toBeVisible();
   logTaskDebug('closeTaskFromDetails:dropdown');
-  await trigger.click();
   const taskActionResponse = waitForTaskActionResponse(page);
-  await page.getByRole('menuitem', { name: /reject|decline|close/i }).click();
+  await clickDropdownMenuItem({
+    dropdown,
+    page,
+    menuPattern: /reject|decline|close/i,
+  });
 
   const visibleModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
+  await visibleModal
+    .waitFor({ state: 'visible', timeout: 3000 })
+    .catch(() => undefined);
+
   if (await visibleModal.isVisible().catch(() => false)) {
     const commentInput = visibleModal.locator('textarea').last();
     if (await commentInput.isVisible().catch(() => false)) {
@@ -747,7 +762,7 @@ export const approveTaskFromDetails = async (page: Page) => {
   const clickAndWait = async (button: Locator) => {
     const taskActionResponse = waitForTaskActionResponse(page);
     await button.scrollIntoViewIfNeeded().catch(() => undefined);
-    await button.click({ force: true });
+    await button.click();
 
     await visibleTaskModal
       .waitFor({ state: 'visible', timeout: 3000 })

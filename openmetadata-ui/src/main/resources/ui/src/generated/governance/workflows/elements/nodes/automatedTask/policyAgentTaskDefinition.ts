@@ -15,6 +15,12 @@
  * manual grant step.
  */
 export interface PolicyAgentTaskDefinition {
+    /**
+     * Outgoing branches this node's delegate can emit. Grant path uses ['granted', 'manual',
+     * 'denied']; revoke path (accessType override = Revoke) uses ['revoked', 'manual']. Node
+     * authors declare only the branches their delegate actually emits, and each declared branch
+     * must have a matching outgoing edge in the workflow.
+     */
     branches?: string[];
     config?:   Config;
     /**
@@ -38,6 +44,16 @@ export interface PolicyAgentTaskDefinition {
 
 export interface Config {
     /**
+     * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+     * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+     * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+     * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+     * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+     * to decide what to tear down. When unset, the agent uses the accessType from the request
+     * payload.
+     */
+    accessType?: AccessType;
+    /**
      * Maximum seconds to wait for the Policy Agent pipeline to complete.
      */
     timeoutSeconds: number;
@@ -45,6 +61,28 @@ export interface Config {
      * If true, waits for the Policy Agent ingestion pipeline to finish before continuing.
      */
     waitForCompletion: boolean;
+}
+
+/**
+ * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+ * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+ * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+ * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+ * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+ * to decide what to tear down. When unset, the agent uses the accessType from the request
+ * payload.
+ *
+ * Access operation the Policy Agent should perform. Grant variants — FullAccess (all
+ * columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked
+ * (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down
+ * whatever the principal currently holds at the scope (a revoke takes back everything, not
+ * a specific level).
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+    Revoke = "Revoke",
 }
 
 export interface InputNamespaceMap {

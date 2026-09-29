@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { ChevronRight, RefreshCw01 } from '@untitledui/icons';
 import type {
@@ -140,12 +141,15 @@ const TreeItemComponent = <T extends object>({
       {...props}
       className={(state) =>
         cx(
-          'tw:group/tree-item tw:outline-hidden tw:rounded-md',
+          // `outline-hidden` removed: the outline now draws the focus/drag indicators
+          // (they replaced rings, which WebKit does not pixel-snap).
+          'tw:group/tree-item tw:rounded-md',
           'tw:cursor-pointer tw:select-none',
           state.isDisabled && 'tw:opacity-50 tw:cursor-not-allowed',
-          state.isFocusVisible && 'tw:ring-2 tw:ring-inset tw:ring-brand-300',
-          'data-[dragging]:tw:opacity-50 data-[dragging]:tw:ring-2 data-[dragging]:tw:ring-inset data-[dragging]:tw:ring-brand-300',
-          'data-[drop-target]:tw:bg-brand-primary_alt data-[drop-target]:tw:ring-2 data-[drop-target]:tw:ring-inset data-[drop-target]:tw:ring-brand-300',
+          state.isFocusVisible &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
+          'tw:data-[dragging]:opacity-50 tw:data-[dragging]:outline-2 tw:data-[dragging]:-outline-offset-2 tw:data-[dragging]:outline-brand-300',
+          'tw:data-[drop-target]:bg-brand-primary tw:data-[drop-target]:outline-2 tw:data-[drop-target]:-outline-offset-2 tw:data-[drop-target]:outline-brand-300',
           typeof className === 'function' ? className(state) : className
         )
       }>
@@ -173,12 +177,14 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
       className={(state) =>
         cx(
           'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
-          'tw:rounded tw:outline-hidden tw:text-fg-quaternary',
+          // `outline-hidden` removed: the outline now draws the focus indicator.
+          'tw:rounded tw:text-fg-quaternary',
           'tw:transition-transform tw:duration-200 tw:ease-in-out tw:cursor-pointer',
-          state.isFocusVisible && 'tw:ring-2 tw:ring-brand-300',
+          state.isFocusVisible && 'tw:outline-2 tw:outline-brand-300',
           className
         )
       }
+      data-testid="tree-expand-btn"
       slot="chevron">
       <ChevronRight
         aria-hidden="true"
@@ -226,6 +232,17 @@ export interface TreeItemContentProps {
    * Defaults to `false`.
    */
   showGuideLines?: boolean;
+  /**
+   * Pixels of indentation added per tree level. Defaults to `22`.
+   * Increase to align nested expand icons with parent checkboxes.
+   */
+  indentPerLevel?: number;
+  /**
+   * Caps the visual indent at this tree level. Items deeper than
+   * `maxIndentLevel` render at the same indentation as that level.
+   * Useful for flat glossary views where all terms share one indent.
+   */
+  maxIndentLevel?: number;
 }
 
 const TreeItemContentComponent = ({
@@ -236,6 +253,8 @@ const TreeItemContentComponent = ({
   showExpandIcon = true,
   showGuideLines = false,
   hasChildItems: hasChildItemsProp,
+  indentPerLevel = 22,
+  maxIndentLevel,
 }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent>
@@ -249,15 +268,21 @@ const TreeItemContentComponent = ({
               'tw:relative tw:flex tw:items-center tw:gap-3 tw:py-1.5 tw:pr-1.5',
               'tw:rounded-md tw:text-sm tw:font-medium tw:text-secondary',
               'tw:hover:bg-primary_hover',
-              'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
+              'tw:group-selected/tree-item:bg-brand-primary tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
-            style={{ marginLeft: `${(level - 1) * 16 + 2}px` }}>
+            style={{
+              marginLeft: `${
+                (Math.min(level, maxIndentLevel ?? level) - 1) *
+                  indentPerLevel +
+                2
+              }px`,
+            }}>
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"
-                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:pointer-events-none"
-                style={{ left: '-10px' }}
+                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:dark:bg-gray-blue-800 tw:pointer-events-none"
+                style={{ left: `${-Math.round(indentPerLevel / 2)}px` }}
               />
             )}
             {showExpandIcon && (
@@ -302,6 +327,8 @@ const TreeLoadMoreItemComponent = ({
   className,
   ...props
 }: TreeLoadMoreItemProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <AriaTreeLoadMoreItem
       {...props}
@@ -316,7 +343,7 @@ const TreeLoadMoreItemComponent = ({
             aria-hidden="true"
             className="tw:h-4 tw:w-4 tw:animate-spin"
           />
-          {children ?? 'Loading…'}
+          {children ?? t('label.loading', 'Loading…')}
         </span>
       ) : (
         children ?? 'Load more'

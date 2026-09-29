@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.jdbi3.SystemRepository.ReindexStatus;
 import org.openmetadata.service.jdbi3.SystemRepository.SearchReindexStatus;
@@ -79,7 +80,8 @@ class SystemRepositoryReindexStatusTest {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
     String message = SystemRepository.buildReindexStatusMessage(status);
-    assertTrue(message.contains("All deployed indexes were built from the current code mappings."));
+    assertTrue(
+        message.contains("All deployed indexes were built from the current index mappings."));
     assertTrue(message.toLowerCase().contains("no orphan indexes"));
     assertTrue(message.toLowerCase().contains("cluster healthy"));
   }
@@ -108,13 +110,44 @@ class SystemRepositoryReindexStatusTest {
   }
 
   @Test
+  void degradedClusterFailsStepEvenWhenNoReindexNeeded() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), false, true);
+    StepValidation step = SystemRepository.buildReindexStepValidation(status);
+    assertFalse(step.getPassed());
+    assertTrue(step.getMessage().toLowerCase().contains("degraded"));
+  }
+
+  @Test
+  void cleanUpToDateHealthyClusterPassesStep() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
+    StepValidation step = SystemRepository.buildReindexStepValidation(status);
+    assertTrue(step.getPassed());
+  }
+
+  @Test
+  void reindexNeededFailsStepEvenWhenClusterHealthy() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of("dashboard"), 0, List.of(), List.of(), true, true);
+    assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
+  }
+
+  @Test
+  void driftComputeFailureFailsStepEvenWhenClusterHealthy() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
+    assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
+  }
+
+  @Test
   void driftComputeFailureIsNotReportedAsUpToDate() {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.toLowerCase().contains("could not determine reindex status"));
     assertFalse(
-        message.contains("All deployed indexes were built from the current code mappings."));
+        message.contains("All deployed indexes were built from the current index mappings."));
   }
 
   @Test

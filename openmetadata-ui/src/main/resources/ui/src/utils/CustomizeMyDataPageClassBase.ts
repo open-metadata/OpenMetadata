@@ -36,6 +36,21 @@ import { getMyDataWidgetImageFromKey } from './CustomizeMyDataPageImageUtils';
 import { getMyDataWidgetFromKey } from './CustomizeMyDataPageWidgetUtils';
 import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
 
+const WIDGET_HEIGHT_KEY_MAP: Record<string, string> = {
+  ActivityFeed: 'activityFeed',
+  DataAssets: 'DataAssets',
+  DataProducts: 'DataProducts',
+  Announcements: 'announcements',
+  Following: 'following',
+  MyData: 'myData',
+  KPI: 'kpi',
+  TotalAssets: 'totalAssets',
+  CuratedAssets: 'curatedAssets',
+  MyTask: 'myTask',
+  Domains: 'domains',
+  KnowledgeCenter: 'knowledgeCenter',
+};
+
 class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = LANDING_PAGE_DEFAULT_WIDGET_HEIGHT;
   landingPageWidgetMargin = LANDING_PAGE_WIDGET_MARGIN;
@@ -97,57 +112,26 @@ class CustomizeMyDataPageClassBase {
     return undefined;
   }
 
+  public getExcludedWidgetFqns(): string[] {
+    return [];
+  }
+
   public getWidgetsFromKey(
     widgetKey: string
   ): ComponentType<WidgetCommonProps> {
     return getMyDataWidgetFromKey(widgetKey);
   }
 
-  public getWidgetImageFromKey(widgetKey: string, size?: number): string {
-    return getMyDataWidgetImageFromKey(widgetKey, size);
+  public getWidgetImageFromKey(widgetKey: string): string {
+    return getMyDataWidgetImageFromKey(widgetKey);
   }
 
   public getWidgetHeight(widgetName: string) {
-    switch (widgetName) {
-      case 'ActivityFeed':
-        return this.landingPageWidgetDefaultHeights.activityFeed;
+    const heightKey = WIDGET_HEIGHT_KEY_MAP[widgetName];
 
-      case 'DataAssets':
-        return this.landingPageWidgetDefaultHeights.DataAssets;
-
-      case 'DataProducts':
-        return this.landingPageWidgetDefaultHeights.DataProducts;
-
-      case 'Announcements':
-        return this.landingPageWidgetDefaultHeights.announcements;
-
-      case 'Following':
-        return this.landingPageWidgetDefaultHeights.following;
-
-      case 'MyData':
-        return this.landingPageWidgetDefaultHeights.myData;
-
-      case 'KPI':
-        return this.landingPageWidgetDefaultHeights.kpi;
-
-      case 'TotalAssets':
-        return this.landingPageWidgetDefaultHeights.totalAssets;
-
-      case 'CuratedAssets':
-        return this.landingPageWidgetDefaultHeights.curatedAssets;
-
-      case 'MyTask':
-        return this.landingPageWidgetDefaultHeights.myTask;
-
-      case 'Domains':
-        return this.landingPageWidgetDefaultHeights.domains;
-
-      case 'KnowledgeCenter':
-        return this.landingPageWidgetDefaultHeights.knowledgeCenter;
-
-      default:
-        return this.defaultWidgetHeight;
-    }
+    return heightKey
+      ? this.landingPageWidgetDefaultHeights[heightKey]
+      : this.defaultWidgetHeight;
   }
 }
 

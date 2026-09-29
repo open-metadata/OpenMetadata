@@ -11,9 +11,7 @@
 
 """SQLAlchemy validator for table rule library SQL expression tests"""
 
-from typing import Dict, Tuple  # noqa: UP035
-
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import text
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
@@ -31,7 +29,7 @@ logger = test_suite_logger()
 class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Table Rule Library SQL Expression validator."""
 
-    def compile_sql_expression(self, table_name: str) -> Tuple[str, Dict[str, str]]:  # noqa: UP006
+    def compile_sql_expression(self, table_name: str) -> tuple[str, dict[str, str]]:
         """Compile SQL expression with SQLAlchemy bind parameters."""
         sql_template = self.runtime_params.test_definition.sqlExpression
         if not sql_template:
@@ -43,12 +41,13 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         for param_name in user_params:
             bind_params_template[param_name] = f":{param_name}"
 
-        template = Template(sql_template.root)
+        # User-authored template: sandboxed so it cannot reach Python internals.
+        template = SandboxedEnvironment().from_string(sql_template.root)
         compiled_sql = template.render(**bind_params_template)
 
         return compiled_sql, user_params
 
-    def _run_results(self, sql_expression: Tuple[str, Dict[str, str]]) -> int:  # noqa: UP006
+    def _run_results(self, sql_expression: tuple[str, dict[str, str]]) -> int:
         """Execute the compiled SQL and return the row count."""
         compiled_sql, bind_params = sql_expression
 

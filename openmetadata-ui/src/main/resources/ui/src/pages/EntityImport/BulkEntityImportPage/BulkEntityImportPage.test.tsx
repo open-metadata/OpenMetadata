@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Include } from '../../../generated/type/include';
@@ -333,7 +334,16 @@ describe('BulkEntityImportPage', () => {
 
     jest.clearAllMocks();
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
-    mockValidateCsvString.mockResolvedValue(undefined);
+    mockValidateCsvString.mockResolvedValue({
+      jobId: 'test-job-id',
+      message: 'Import is in progress.',
+    });
+    mockGetImportValidateAPIEntityType.mockReturnValue(
+      jest.fn().mockResolvedValue({
+        jobId: 'test-job-id',
+        message: 'Import is in progress.',
+      })
+    );
     mockGetImportedEntityType.mockImplementation(
       (entityType: EntityType) => entityType
     );
@@ -461,6 +471,26 @@ describe('BulkEntityImportPage', () => {
       ]);
     });
 
+    it('dispatches the CSV jobs refresh event to activate the tray when a preview starts', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockLocation.pathname = '/metric/*/import';
+      const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
+
+      renderComponent('/metric/*/import');
+
+      await uploadCsv();
+      await startPreview();
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: CSV_JOBS_REFRESH_EVENT })
+      );
+
+      dispatchEventSpy.mockRestore();
+    });
+
     it('should render uploaded metric CSV preview with the shared bulk edit view', async () => {
       const { useFqn } = require('../../../hooks/useFqn');
       const { useRequiredParams } = require('../../../utils/useRequiredParams');
@@ -509,7 +539,8 @@ describe('BulkEntityImportPage', () => {
         { user: true, team: true },
         true,
         false,
-        true
+        true,
+        expect.any(Function)
       );
 
       const bulkEditEntityMock = BulkEditEntity as jest.Mock;
@@ -1006,7 +1037,7 @@ describe('BulkEntityImportPage', () => {
       expect(mockReadString).not.toHaveBeenCalled();
     });
 
-    it('should ignore websocket messages for different jobs', async () => {
+    it('should correlate websocket messages with the requested job', async () => {
       renderComponent();
 
       await uploadCsv();
@@ -1052,6 +1083,16 @@ describe('BulkEntityImportPage', () => {
 
       // Should not process the message
       expect(mockReadString).not.toHaveBeenCalled();
+
+      await act(async () => {
+        const socketCallback = mockSocket.on.mock.calls.find(
+          (call) => call[0] === 'csvImportChannel'
+        )?.[1];
+
+        socketCallback?.(JSON.stringify(mockWebSocketResponse));
+      });
+
+      expect(mockReadString).toHaveBeenCalled();
     });
   });
 

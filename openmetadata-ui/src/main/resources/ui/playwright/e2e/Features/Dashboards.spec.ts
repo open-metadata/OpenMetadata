@@ -35,8 +35,6 @@ const dashboardEntity = new DashboardServiceClass();
 const dashboard = new DashboardClass();
 
 test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -99,8 +97,6 @@ test.describe(
   'Dashboard and Charts deleted toggle',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -130,11 +126,10 @@ test.describe(
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="delete-button"]');
 
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      await page.getByTestId('delete-modal').waitFor();
 
-      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteResponse = page.waitForResponse(
         `/api/v1/${EntityTypeEndpoint.Dashboard}/async/*?hardDelete=false&recursive=true`
       );
@@ -148,7 +143,7 @@ test.describe(
         BIG_ENTITY_DELETE_TIMEOUT
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       // Retry mechanism for checking deleted badge
       let deletedBadge = page.locator('[data-testid="deleted-badge"]');
@@ -163,7 +158,7 @@ test.describe(
 
         attempts++;
         if (attempts < maxAttempts) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           deletedBadge = page.locator('[data-testid="deleted-badge"]');
         }
@@ -181,7 +176,7 @@ test.describe(
       ).not.toBeVisible();
 
       await restoreEntity(page);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -202,7 +197,8 @@ test.describe('Data Model', () => {
     page,
   }) => {
     await page.goto(
-      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
+      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -316,7 +312,8 @@ test.describe(
       await page.goto(
         `/service/dashboardServices/${encodeURIComponent(
           serviceNameWithDot
-        )}/data-model`
+        )}/data-model`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await waitForAllLoadersToDisappear(page);

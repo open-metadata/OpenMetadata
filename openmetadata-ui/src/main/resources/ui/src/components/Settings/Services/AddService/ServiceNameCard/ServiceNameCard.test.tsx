@@ -28,6 +28,7 @@ jest.mock('../../../../common/RichTextEditor/RichTextEditor', () =>
     .fn()
     .mockImplementation(({ initialValue, onFocus, onTextChange }) => (
       <textarea
+        aria-label="Description"
         data-testid="service-description"
         value={initialValue ?? ''}
         onChange={(e) => onTextChange?.(e.target.value)}
@@ -49,7 +50,7 @@ describe('ServiceNameCard', () => {
     render(
       <>
         <ServiceNameCard {...defaultProps} />
-        <input data-testid="next-required-field" />
+        <input aria-label="Next field" data-testid="next-required-field" />
       </>
     );
 

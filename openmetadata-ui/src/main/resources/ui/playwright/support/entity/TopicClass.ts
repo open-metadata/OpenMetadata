@@ -19,8 +19,13 @@ import {
 } from '../../../src/generated/entity/data/topic';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -144,26 +149,26 @@ export class TopicClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/messagingServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/topics', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'TopicClass.create',
+      createPath: '/api/v1/services/messagingServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'TopicClass.create',
+      createPath: '/api/v1/topics',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
-
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
 
     this.childrenSelectorId =
       this.entityResponseData.messageSchema?.schemaFields?.[0]
         .fullyQualifiedName ?? '';
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
@@ -184,7 +189,7 @@ export class TopicClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'TopicClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -204,17 +209,16 @@ export class TopicClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/messagingServices/name/${encodeURIComponent(
         this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`

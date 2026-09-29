@@ -13,7 +13,7 @@ Test the connection against a source system
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response, request
 from markupsafe import escape
@@ -24,6 +24,7 @@ from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
+from openmetadata_managed_apis.utils.parser import parse_validation_err
 
 logger = routes_logger()
 
@@ -37,18 +38,18 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions  # noqa: PLC0415
+    from airflow.security import permissions
 
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
-    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+    from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
     )
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf  # noqa: PLC0415
+        from airflow.www.app import csrf
     else:
-        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/run_automation", methods=["POST"])
     @csrf.exempt
@@ -83,7 +84,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             logger.error(msg)
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=msg,
+                error=parse_validation_err(err),
             )
 
         except Exception as exc:

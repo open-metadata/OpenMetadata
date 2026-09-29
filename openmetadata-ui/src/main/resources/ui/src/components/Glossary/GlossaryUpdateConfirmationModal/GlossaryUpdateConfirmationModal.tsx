@@ -28,11 +28,83 @@ import {
 import { validateTagAddtionToGlossary } from '../../../rest/glossaryAPI';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import {
   GlossaryUpdateConfirmationModalProps,
   UpdateState,
 } from './GlossaryUpdateConfirmationModal.interface';
+
+const renderFooter = (
+  failedStatus: BulkOperationResult | undefined,
+  onCancel: () => void,
+  t: (key: string) => string
+) => (
+  <div className="d-flex justify-between">
+    <Typography.Text type="secondary">
+      {failedStatus?.numberOfRowsFailed &&
+        `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
+    </Typography.Text>
+    <Button onClick={onCancel}>{t('label.cancel')}</Button>
+  </div>
+);
+
+const renderFailedContent = (
+  failedStatus: BulkOperationResult | undefined,
+  tagError: { code: number; message: string } | undefined,
+  t: (key: string) => string
+) => {
+  const columns = [
+    {
+      title: t('label.asset-plural'),
+      dataIndex: 'request',
+      key: 'request',
+      render: (record: EntityReference) => (
+        <Link
+          target="_blank"
+          to={getEntityLinkFromType(
+            record.fullyQualifiedName ?? '',
+            record.type as EntityType
+          )}>
+          {record.fullyQualifiedName}
+        </Link>
+      ),
+    },
+    {
+      title: t('label.failure-reason'),
+      dataIndex: 'message',
+      key: 'message',
+      render: (error: string) => (
+        <Typography.Paragraph>{error}</Typography.Paragraph>
+      ),
+    },
+  ];
+
+  return (
+    <div className="d-flex flex-column gap-2">
+      {failedStatus && (
+        <>
+          <Table
+            columns={columns}
+            dataSource={failedStatus?.failedRequest ?? []}
+            pagination={{
+              pageSize: 5,
+              showSizeChanger: true,
+            }}
+            rowKey={(record) => record.request?.id}
+          />
+          <Alert
+            className="m-t-sm"
+            message={t('message.glossary-tag-assignment-help-message')}
+            type="warning"
+          />
+        </>
+      )}
+      {tagError?.code === ClientErrors.BAD_REQUEST && (
+        <Alert message={tagError.message} type="warning" />
+      )}
+    </div>
+  );
+};
 
 export const GlossaryUpdateConfirmationModal = ({
   glossaryTerm,
@@ -78,51 +150,15 @@ export const GlossaryUpdateConfirmationModal = ({
     }
   };
 
-  const tagsColumn = useMemo(() => {
-    return [
-      {
-        title: t('label.asset-plural'),
-        dataIndex: 'request',
-        key: 'request',
-        render: (record: EntityReference) => (
-          <Link
-            target="_blank"
-            to={getEntityLinkFromType(
-              record.fullyQualifiedName ?? '',
-              record.type as EntityType
-            )}>
-            {record.fullyQualifiedName}
-          </Link>
-        ),
-      },
-      {
-        title: t('label.failure-reason'),
-        dataIndex: 'message',
-        key: 'message',
-        render: (error: string) => (
-          <Typography.Paragraph>{error}</Typography.Paragraph>
-        ),
-      },
-    ];
-  }, []);
-
-  const progress =
-    updateState === UpdateState.VALIDATING
-      ? 10
-      : updateState === UpdateState.UPDATING
-      ? 60
-      : 100;
+  let progress = 100;
+  if (updateState === UpdateState.VALIDATING) {
+    progress = 10;
+  } else if (updateState === UpdateState.UPDATING) {
+    progress = 60;
+  }
 
   const data = useMemo(() => {
-    const footer = (
-      <div className="d-flex justify-between">
-        <Typography.Text type="secondary">
-          {failedStatus?.numberOfRowsFailed &&
-            `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
-        </Typography.Text>
-        <Button onClick={onCancel}>{t('label.cancel')}</Button>
-      </div>
-    );
+    const footer = renderFooter(failedStatus, onCancel, t);
 
     const progressBar = (
       <div className="text-center">
@@ -170,46 +206,10 @@ export const GlossaryUpdateConfirmationModal = ({
         };
       case UpdateState.FAILED:
         return {
-          content: (
-            <div className="d-flex flex-column gap-2">
-              {failedStatus && (
-                <>
-                  <Table
-                    columns={tagsColumn}
-                    dataSource={failedStatus?.failedRequest ?? []}
-                    pagination={{
-                      pageSize: 5,
-                      showSizeChanger: true,
-                    }}
-                    rowKey={(record) => record.request?.id}
-                  />
-                  <Alert
-                    className="m-t-sm"
-                    message={t('message.glossary-tag-assignment-help-message')}
-                    type="warning"
-                  />
-                </>
-              )}
-              {tagError?.code === ClientErrors.BAD_REQUEST && (
-                <Alert message={tagError.message} type="warning" />
-              )}
-            </div>
-          ),
-          footer: (
-            <div className="d-flex justify-between">
-              <Typography.Text type="secondary">
-                {failedStatus?.numberOfRowsFailed &&
-                  `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
-              </Typography.Text>
-              <Button onClick={onCancel}>{t('label.cancel')}</Button>
-            </div>
-          ),
+          content: renderFailedContent(failedStatus, tagError, t),
+          footer: renderFooter(failedStatus, onCancel, t),
         };
       case UpdateState.UPDATING:
-        return {
-          content: progressBar,
-          footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
-        };
       case UpdateState.SUCCESS:
         return {
           content: progressBar,

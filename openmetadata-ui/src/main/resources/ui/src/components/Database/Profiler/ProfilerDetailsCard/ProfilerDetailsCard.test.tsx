@@ -12,10 +12,13 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import '../../../../test/unit/mocks/mui.mock';
 import '../../../../test/unit/mocks/recharts.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
+
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
+}));
 
 // Mock utility functions
 jest.mock('../../../../utils/ChartUtils', () => ({

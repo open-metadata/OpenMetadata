@@ -11,6 +11,23 @@
  *  limitations under the License.
  */
 
-export interface AlertDetailsPageProps {
-  isNotificationAlert: boolean;
+import type { ReactNode } from 'react';
+import type {
+  UseAlertDetailsDataOptions,
+  UseAlertDetailsDataReturn,
+} from '../../hooks/observability/alerts/useAlertDetailsData';
+import type { DetailsTabItem } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+
+export type AlertDetailsPageProps = UseAlertDetailsDataOptions;
+
+export interface UseAlertDetailsPageReturn
+  extends Omit<
+    UseAlertDetailsDataReturn,
+    'alertEventCounts' | 'alertEventCountsLoading'
+  > {
+  alertIcon: ReactNode;
+  extraInfo: ReactNode;
+  tabItems: DetailsTabItem[];
 }
+
+export type AlertDetailsContentProps = UseAlertDetailsPageReturn;

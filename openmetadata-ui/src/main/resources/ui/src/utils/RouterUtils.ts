@@ -16,8 +16,6 @@ import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
-  LOG_ENTITY_NAME,
-  LOG_ENTITY_TYPE,
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ROUTE_DIMENSION_KEY,
@@ -51,8 +49,26 @@ import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
+import { getSettingPath } from './RouterPaths';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
+
+// Moved to RouterPaths so callers needing only a profile URL (the app
+// entry registers one) do not pull this module's graph into their chunk.
+export {
+  getSettingPath,
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from './RouterPaths';
+
+/**
+ * The landing page is reachable at two paths: `/` (rendered in place, where
+ * post-login lands) and the explicit `/my-data` link. Anything that keys off
+ * "am I on the landing page" must accept both, or it silently changes behavior
+ * depending on how the user got there.
+ */
+export const isLandingPagePath = (pathname: string): boolean =>
+  pathname === ROUTES.HOME || pathname === ROUTES.MY_DATA;
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
@@ -219,36 +235,6 @@ export const getAppInstallPath = (fqn: string) => {
     PLACEHOLDER_ROUTE_FQN,
     getEncodedFqn(fqn)
   );
-};
-
-export const getSettingPath = (
-  category?: string,
-  tab?: string,
-  withFqn = false,
-  withAction = false
-) => {
-  let path = ROUTES.SETTINGS;
-
-  if (tab && category) {
-    if (withFqn) {
-      path = withAction
-        ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
-        : ROUTES.SETTINGS_WITH_TAB_FQN;
-    } else {
-      path = ROUTES.SETTINGS_WITH_TAB;
-    }
-
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
-  } else if (category) {
-    path = withFqn
-      ? ROUTES.SETTINGS_WITH_CATEGORY_FQN
-      : ROUTES.SETTINGS_WITH_CATEGORY;
-
-    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
-  }
-
-  return path;
 };
 
 export const getSettingPathRelative = (
@@ -433,28 +419,6 @@ export const getTestSuiteIngestionPath = (
       getEncodedFqn(ingestionFqn)
     );
   }
-
-  return path;
-};
-
-/**
- * It takes in a log entity type, log entity name, and ingestion name, and returns a path to the logs
- * viewer
- * @param {string} logEntityType - The type of entity that the logs are associated with.
- * @param {string} logEntityName - The name of the log entity.
- * @param {string} ingestionName - The name of the ingestion.
- * @returns A string
- */
-export const getLogsViewerPath = (
-  logEntityType: string,
-  logEntityName: string,
-  ingestionName: string
-) => {
-  let path = ROUTES.LOGS;
-
-  path = path.replace(LOG_ENTITY_TYPE, logEntityType);
-  path = path.replace(LOG_ENTITY_NAME, logEntityName);
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(ingestionName));
 
   return path;
 };
@@ -749,16 +713,19 @@ export const getServiceDetailsPath = (
   return path;
 };
 
+// Built from the ROUTES constant rather than the router's current location —
+// callers merging this into a `search`-only update need a pathname that
+// can't be affected by the router's location-context resolution.
+export const getExploreTabPath = (tab?: string): string =>
+  ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab ?? '');
+
 export const getExplorePath: (args: {
   tab?: string;
   search?: string;
   extraParameters?: Record<string, unknown>;
   isPersistFilters?: boolean;
 }) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
-  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
-    PLACEHOLDER_ROUTE_TAB,
-    tab ?? ''
-  );
+  const pathname = getExploreTabPath(tab);
   let paramsObject: Record<string, unknown> = QueryString.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)
@@ -845,42 +812,9 @@ export const getGlossaryTermDetailsPath = (
   return path;
 };
 
-export const getTeamAndUserDetailsPath = (name?: string) => {
-  let path = getSettingPath(
-    GlobalSettingsMenuCategory.MEMBERS,
-    GlobalSettingOptions.TEAMS
-  );
-  if (name) {
-    path = getSettingPath(
-      GlobalSettingsMenuCategory.MEMBERS,
-      GlobalSettingOptions.TEAMS,
-      true
-    );
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
-  }
-
-  return path;
-};
-
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
   path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
-
-  return path;
-};
-
-export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
-  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
-
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.USER_PROFILE_WITH_SUB_TAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
-  }
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(username));
 
   return path;
 };

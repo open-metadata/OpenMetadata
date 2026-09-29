@@ -34,6 +34,14 @@ jest.mock('../../../utils/OktaCustomStorage', () => ({
   })),
 }));
 
+const registerRenewer = jest.fn();
+
+jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
+  authCoordinator: {
+    registerRenewer: (renewer: unknown) => registerRenewer(renewer),
+  },
+}));
+
 const mockHandleSuccessfulLogout = jest.fn();
 
 jest.mock('../AuthProviders/AuthProvider', () => ({
@@ -277,6 +285,59 @@ describe('OktaAuthenticator', () => {
 
       expect(setOidcToken).toHaveBeenCalledWith('');
       expect(result).toBe('');
+    });
+  });
+
+  describe('getRenewer', () => {
+    it('should return a fresh idToken and expiresAt (ms) on success', async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 300;
+      const renewedTokens = {
+        idToken: { idToken: 'okta-fresh-token', expiresAt },
+        accessToken: { accessToken: 'okta-access-token' },
+      };
+      mockOktaAuth.token.renewTokens.mockResolvedValueOnce(renewedTokens);
+
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      expect(renewer).toBeDefined();
+
+      const result = await renewer?.();
+
+      expect(mockOktaAuth.token.renewTokens).toHaveBeenCalledTimes(1);
+      expect(mockOktaAuth.tokenManager.setTokens).toHaveBeenCalledWith(
+        renewedTokens
+      );
+      expect(result).toEqual({
+        idToken: 'okta-fresh-token',
+        expiresAt: expiresAt * 1000,
+      });
+    });
+
+    it('should throw when renewTokens returns no idToken', async () => {
+      mockOktaAuth.token.renewTokens.mockResolvedValueOnce({
+        idToken: undefined,
+        accessToken: { accessToken: 'okta-access-token' },
+      });
+
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toThrow(
+        'Okta renewal returned no idToken'
+      );
     });
   });
 });

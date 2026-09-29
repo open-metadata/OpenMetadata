@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, Page, test as base } from '@playwright/test';
+import { Browser, Page } from '@playwright/test';
+import { disableEtagConditionalReads } from '../../utils/common';
+import { test as base } from './base';
+import { installServerLoadReducers } from './serverLoad';
 
 // Declare the types of your fixtures
 type UserPages = {
@@ -29,7 +32,9 @@ export const test = base.extend<UserPages>({
     const context = await browser.newContext({
       storageState: 'playwright/.auth/admin.json',
     });
+    await installServerLoadReducers(context);
     const page = await context.newPage();
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -37,7 +42,9 @@ export const test = base.extend<UserPages>({
     const context = await browser.newContext({
       storageState: 'playwright/.auth/dataConsumer.json',
     });
+    await installServerLoadReducers(context);
     const page = await context.newPage();
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -45,7 +52,9 @@ export const test = base.extend<UserPages>({
     const context = await browser.newContext({
       storageState: 'playwright/.auth/dataSteward.json',
     });
+    await installServerLoadReducers(context);
     const page = await context.newPage();
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -53,7 +62,9 @@ export const test = base.extend<UserPages>({
     const context = await browser.newContext({
       storageState: 'playwright/.auth/owner.json',
     });
+    await installServerLoadReducers(context);
     const page = await context.newPage();
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -61,7 +72,9 @@ export const test = base.extend<UserPages>({
     const context = await browser.newContext({
       storageState: 'playwright/.auth/editDescription.json',
     });
+    await installServerLoadReducers(context);
     const page = await context.newPage();
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -69,7 +82,9 @@ export const test = base.extend<UserPages>({
     const context = await browser.newContext({
       storageState: 'playwright/.auth/editTags.json',
     });
+    await installServerLoadReducers(context);
     const page = await context.newPage();
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -77,7 +92,9 @@ export const test = base.extend<UserPages>({
     const context = await browser.newContext({
       storageState: 'playwright/.auth/editGlossaryTerm.json',
     });
+    await installServerLoadReducers(context);
     const page = await context.newPage();
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },

@@ -93,7 +93,6 @@ Now review the implementation quality.
 
 **TypeScript/React:**
 - [ ] No `any` types — use proper types or `unknown` with type guards
-- [ ] No MUI imports — use `openmetadata-ui-core-components`
 - [ ] Tailwind classes use `tw:` prefix
 - [ ] Strings use i18n (`t('label.xxx')`) not string literals
 - [ ] CSS custom properties for colors/spacing, no hardcoded values

@@ -11,112 +11,118 @@
  *  limitations under the License.
  */
 
+import {
+  WorkflowCheckConditions,
+  WorkflowDataCompleteness,
+  WorkflowDetectFieldChange,
+  WorkflowEnd,
+  WorkflowGitSync,
+  WorkflowPolicyEnforcement,
+  WorkflowRequestApproval,
+  WorkflowRevertChanges,
+  WorkflowSetAction,
+  WorkflowStart,
+} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import React from 'react';
 
-import { ReactComponent as CanvasCheckChangeDescriptionIcon } from '../assets/svg/ic_canvas-check-description.svg';
-import { ReactComponent as CanvasEndIcon } from '../assets/svg/ic_canvas-end.svg';
-import { ReactComponent as CanvasStartIcon } from '../assets/svg/ic_canvas-start.svg';
-import { ReactComponent as CanvasCheckIcon } from '../assets/svg/ic_check-condition-node.svg';
-import { ReactComponent as CheckChangeDescriptionIcon } from '../assets/svg/ic_check-description-node.svg';
-import { ReactComponent as CanvasCompletenessIcon } from '../assets/svg/ic_data_completeness-node.svg';
-import { ReactComponent as CanvasGitSyncIcon } from '../assets/svg/ic_git-sync-node.svg';
-import { ReactComponent as GitSyncIcon } from '../assets/svg/ic_git-sync.svg';
-import { ReactComponent as CanvasRevertIcon } from '../assets/svg/ic_revert_changes-node.svg';
-import { ReactComponent as CanvasActionIcon } from '../assets/svg/ic_set-action-node.svg';
-import { ReactComponent as CanvasUserIcon } from '../assets/svg/ic_user_approval-node.svg';
-
-import { ReactComponent as CheckIcon } from '../assets/svg/ic_check-condition.svg';
-import { ReactComponent as CompletenessIcon } from '../assets/svg/ic_data-completeness.svg';
-import { ReactComponent as EndIcon } from '../assets/svg/ic_end-node.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/ic_request-approval.svg';
-import { ReactComponent as RevertIcon } from '../assets/svg/ic_revert-changes.svg';
-import { ReactComponent as ActionIcon } from '../assets/svg/ic_set-action.svg';
 import { ReactComponent as StarIcon } from '../assets/svg/ic_star.svg';
-import { ReactComponent as StartIcon } from '../assets/svg/ic_start-node.svg';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
+
+type SvgIcon = React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
+
+const CANVAS_NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
+  [NodeSubType.StartEvent]: WorkflowStart,
+  [NodeSubType.EndEvent]: WorkflowEnd,
+  [NodeSubType.SetEntityAttributeTask]: WorkflowSetAction,
+  [NodeSubType.CheckEntityAttributesTask]: WorkflowCheckConditions,
+  [NodeSubType.CheckChangeDescriptionTask]: WorkflowDetectFieldChange,
+  [NodeSubType.UserApprovalTask]: WorkflowRequestApproval,
+  [NodeSubType.DataCompletenessTask]: WorkflowDataCompleteness,
+  [NodeSubType.RollbackEntityTask]: WorkflowRevertChanges,
+  [NodeSubType.PolicyAgentTask]: WorkflowPolicyEnforcement,
+  [NodeSubType.SinkTask]: WorkflowGitSync,
+};
+
+const NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
+  [NodeSubType.StartEvent]: WorkflowStart,
+  [NodeSubType.EndEvent]: WorkflowEnd,
+  [NodeSubType.SetEntityAttributeTask]: WorkflowSetAction,
+  [NodeSubType.SetEntityCertificationTask]: WorkflowSetAction,
+  [NodeSubType.CheckEntityAttributesTask]: WorkflowCheckConditions,
+  [NodeSubType.CheckChangeDescriptionTask]: WorkflowDetectFieldChange,
+  [NodeSubType.UserApprovalTask]: WorkflowRequestApproval,
+  [NodeSubType.DataCompletenessTask]: WorkflowDataCompleteness,
+  [NodeSubType.RollbackEntityTask]: WorkflowRevertChanges,
+  [NodeSubType.PolicyAgentTask]: WorkflowPolicyEnforcement,
+  [NodeSubType.SinkTask]: WorkflowGitSync,
+};
+
+const ICON_COLOR = {
+  brand: 'tw:text-utility-brand-500',
+  success: 'tw:text-utility-success-700',
+  error: 'tw:text-utility-error-700',
+  warning: 'tw:text-utility-warning-700',
+  info: 'tw:text-utility-blue-light-600',
+  approval: 'tw:text-utility-pink-600',
+  sink: 'tw:text-utility-purple-600',
+  fallback: 'tw:text-quaternary',
+} as const;
+
+const NODE_ICON_COLOR_MAP: Partial<Record<NodeSubType, string>> = {
+  [NodeSubType.StartEvent]: ICON_COLOR.success,
+  [NodeSubType.EndEvent]: ICON_COLOR.error,
+  [NodeSubType.SetEntityAttributeTask]: ICON_COLOR.brand,
+  [NodeSubType.SetEntityCertificationTask]: ICON_COLOR.brand,
+  [NodeSubType.CheckEntityAttributesTask]: ICON_COLOR.warning,
+  [NodeSubType.CheckChangeDescriptionTask]: ICON_COLOR.info,
+  [NodeSubType.UserApprovalTask]: ICON_COLOR.approval,
+  [NodeSubType.DataCompletenessTask]: ICON_COLOR.success,
+  [NodeSubType.RollbackEntityTask]: ICON_COLOR.error,
+  [NodeSubType.PolicyAgentTask]: ICON_COLOR.brand,
+  [NodeSubType.SinkTask]: ICON_COLOR.sink,
+};
+
+const ICON_SIZE_CLASS = {
+  sm: 'tw:size-4',
+  md: 'tw:size-8',
+} as const;
+
+interface NodeIconOptions {
+  className?: string;
+  size?: keyof typeof ICON_SIZE_CLASS;
+}
+
+const renderNodeIcon = (
+  Icon: SvgIcon,
+  subType: NodeSubType | undefined,
+  { className, size = 'md' }: NodeIconOptions = {}
+): React.ReactElement => (
+  <Icon
+    className={classNames(
+      ICON_SIZE_CLASS[size],
+      (subType && NODE_ICON_COLOR_MAP[subType]) ?? ICON_COLOR.fallback,
+      className
+    )}
+  />
+);
 
 export const getCanvasNodeIcon = (
   subType: NodeSubType | undefined,
-  props?: React.SVGProps<SVGSVGElement>
-): React.ReactElement => {
-  const defaultProps = { style: { width: '32px', height: '32px' }, ...props };
-
-  switch (subType) {
-    case NodeSubType.StartEvent:
-      return <CanvasStartIcon {...defaultProps} />;
-
-    case NodeSubType.EndEvent:
-      return <CanvasEndIcon {...defaultProps} />;
-
-    case NodeSubType.SetEntityAttributeTask:
-      return <CanvasActionIcon {...defaultProps} />;
-
-    case NodeSubType.CheckEntityAttributesTask:
-      return <CanvasCheckIcon {...defaultProps} />;
-
-    case NodeSubType.CheckChangeDescriptionTask:
-      return <CanvasCheckChangeDescriptionIcon {...defaultProps} />;
-
-    case NodeSubType.UserApprovalTask:
-      return <CanvasUserIcon {...defaultProps} />;
-
-    case NodeSubType.DataCompletenessTask:
-      return <CanvasCompletenessIcon {...defaultProps} />;
-
-    case NodeSubType.RollbackEntityTask:
-      return <CanvasRevertIcon {...defaultProps} />;
-
-    case NodeSubType.PolicyAgentTask:
-      return <CanvasActionIcon {...defaultProps} />;
-
-    case NodeSubType.SinkTask:
-      return <CanvasGitSyncIcon {...defaultProps} />;
-
-    default:
-      // Fallback to legacy icon if canvas icon doesn't exist
-      return <StarIcon {...defaultProps} />;
-  }
-};
+  options?: NodeIconOptions
+): React.ReactElement =>
+  renderNodeIcon(
+    (subType && CANVAS_NODE_ICON_MAP[subType]) ?? StarIcon,
+    subType,
+    options
+  );
 
 export const getNodeIcon = (
   subType: NodeSubType | undefined,
-  props?: React.SVGProps<SVGSVGElement>
-): React.ReactElement => {
-  const defaultProps = { style: { width: '32px', height: '32px' }, ...props };
-
-  switch (subType) {
-    case NodeSubType.StartEvent:
-      return <StartIcon {...defaultProps} />;
-
-    case NodeSubType.EndEvent:
-      return <EndIcon {...defaultProps} />;
-
-    case NodeSubType.SetEntityAttributeTask:
-    case NodeSubType.SetEntityCertificationTask:
-      return <ActionIcon {...defaultProps} />;
-
-    case NodeSubType.CheckEntityAttributesTask:
-      return <CheckIcon {...defaultProps} />;
-
-    case NodeSubType.CheckChangeDescriptionTask:
-      return <CheckChangeDescriptionIcon {...defaultProps} />;
-
-    case NodeSubType.UserApprovalTask:
-      return <UserIcon {...defaultProps} />;
-
-    case NodeSubType.DataCompletenessTask:
-      return <CompletenessIcon {...defaultProps} />;
-
-    case NodeSubType.RollbackEntityTask:
-      return <RevertIcon {...defaultProps} />;
-
-    case NodeSubType.PolicyAgentTask:
-      return <ActionIcon {...defaultProps} />;
-
-    case NodeSubType.SinkTask:
-      return <GitSyncIcon {...defaultProps} />;
-
-    default:
-      return <StarIcon {...defaultProps} />;
-  }
-};
+  options?: NodeIconOptions
+): React.ReactElement =>
+  renderNodeIcon(
+    (subType && NODE_ICON_MAP[subType]) ?? StarIcon,
+    subType,
+    options
+  );

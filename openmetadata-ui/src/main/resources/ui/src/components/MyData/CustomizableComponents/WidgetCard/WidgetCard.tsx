@@ -47,8 +47,7 @@ const WidgetCard = ({
         );
       case PageType.LandingPage:
         return customizePageClassBase.getWidgetImageFromKey(
-          widget.fullyQualifiedName,
-          1
+          widget.fullyQualifiedName
         );
       default:
         return customizeDetailPageClassBase.getDetailPageWidgetImageFromKey(

@@ -145,6 +145,90 @@ class SetApprovalAssigneesImplTest {
     assertTrue(assigneesJson.contains("john"), "Other reviewer should remain as assignee");
   }
 
+  /**
+   * Regression test for the task-managed workflow (DAR) self-approval leak. {@code
+   * TaskWorkflowLifecycleResolver.WorkflowStartVariables} publishes the requester as {@code
+   * taskUpdatedBy}, not {@code global_updatedBy}. Reading only the global variant left every Data
+   * Access Request assigning the requester to their own approval task (verified against
+   * sandbox-beta task {@code 0e013ae4-e4b6-4f3c-bc7c-3f66c120693e}).
+   */
+  @Test
+  void testSelfApprovalPrevention_taskManagedWorkflow_readsTaskUpdatedBy() {
+    EntityReference requesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
+    EntityReference otherReviewerRef =
+        new EntityReference().withType("user").withFullyQualifiedName("john");
+
+    when(mockEntity.getReviewers()).thenReturn(List.of(requesterRef, otherReviewerRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn(null);
+    when(execution.getVariable("taskUpdatedBy")).thenReturn("ram.balaji");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertFalse(
+        assigneesJson.contains("ram.balaji"),
+        "DAR requester (task-managed workflow) must be removed via taskUpdatedBy");
+    assertTrue(assigneesJson.contains("john"), "Other reviewer should remain as assignee");
+  }
+
+  /**
+   * Both variables are checked every invocation — no fallback. If task-managed and entity workflow
+   * variables ever end up populated in the same execution with different usernames, both users are
+   * treated as requester candidates and removed from the assignees list.
+   */
+  @Test
+  void testSelfApprovalPrevention_bothUpdatedByVariablesRemoveRequester() {
+    EntityReference taskRequesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
+    EntityReference globalRequesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    EntityReference otherReviewerRef =
+        new EntityReference().withType("user").withFullyQualifiedName("john");
+
+    when(mockEntity.getReviewers())
+        .thenReturn(List.of(taskRequesterRef, globalRequesterRef, otherReviewerRef));
+    when(execution.getVariable("taskUpdatedBy")).thenReturn("ram.balaji");
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertFalse(assigneesJson.contains("ram.balaji"), "taskUpdatedBy user must be removed");
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"), "global_updatedBy user must be removed");
+    assertTrue(assigneesJson.contains("john"), "Other reviewer should remain as assignee");
+  }
+
+  @Test
+  void testSelfApprovalPrevention_globalUpdatedByOnly_stillRemoved() {
+    EntityReference requesterRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    EntityReference otherReviewerRef =
+        new EntityReference().withType("user").withFullyQualifiedName("bob");
+
+    when(mockEntity.getReviewers()).thenReturn(List.of(requesterRef, otherReviewerRef));
+    when(execution.getVariable("taskUpdatedBy")).thenReturn(null);
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertFalse(
+        assigneesJson.contains("<#E::user::alice>"),
+        "Entity workflow requester (global_updatedBy only) must be removed");
+    assertTrue(assigneesJson.contains("bob"), "Other reviewer should remain as assignee");
+  }
+
   @Test
   void testSelfApprovalPrevention_simpleUsername_removedFromAssignees() {
     EntityReference simpleUserRef =
@@ -290,6 +374,58 @@ class SetApprovalAssigneesImplTest {
     assertTrue(
         assigneesJson.contains("reviewer1"),
         "Glossary reviewers should be used when glossary terms inherit reviewers");
+  }
+
+  /**
+   * The reason the repository-level reviewer→task-assignee sync was removed (#31692): an approval
+   * task's assignees are chosen by the userApprovalTask rule, not by the entity's reviewers. When
+   * the rule is owners-only, the entity's reviewers must NOT leak into the task's assignees — the
+   * exact case the removed sync would have corrupted.
+   */
+  @Test
+  void testOwnersOnlyRule_ignoresReviewers() {
+    when(mockEntity.getOwners())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("ownerUser")));
+    when(mockEntity.getReviewers())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("reviewerUser")));
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":false,\"addOwners\":true,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(
+        assigneesJson.contains("ownerUser"),
+        "Owner must be assigned when the userApprovalTask rule adds owners");
+    assertFalse(
+        assigneesJson.contains("reviewerUser"),
+        "Reviewers must not be assigned to an owners-only approval task");
+  }
+
+  /**
+   * A userApprovalTask configured with an explicit user list assigns exactly those users; the
+   * entity's reviewers have no bearing on the task's assignees.
+   */
+  @Test
+  void testExplicitUsersRule_ignoresReviewers() {
+    when(mockEntity.getReviewers())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("reviewerUser")));
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":false,\"addOwners\":false,\"users\":[\"fixedUser\"],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(assigneesJson.contains("fixedUser"), "Explicit user must be assigned");
+    assertFalse(
+        assigneesJson.contains("reviewerUser"),
+        "Reviewers must not leak into a task with an explicit user list");
   }
 
   @Test

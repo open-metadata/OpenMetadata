@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/policyagentconfig/databasePolicyConfig.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DatabasePolicyConfig",
   "description": "Policy config for database service connectors (snowflake, postgres, etc.).",
   "type": "object",
@@ -14,10 +14,10 @@
       "default": "USER"
     },
     "accessType": {
-      "description": "Pattern of access being requested.",
+      "description": "Access operation the Policy Agent should perform. Grant variants — FullAccess (all columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down whatever the principal currently holds at the scope (a revoke takes back everything, not a specific level).",
       "type": "string",
       "javaType": "org.openmetadata.schema.metadataIngestion.policyagentconfig.DatabaseAccessType",
-      "enum": ["FullAccess", "ColumnLevel", "Masked"]
+      "enum": ["FullAccess", "ColumnLevel", "Masked", "Revoke"]
     },
     "requestedAccess": {
       "description": "Permission level being requested.",

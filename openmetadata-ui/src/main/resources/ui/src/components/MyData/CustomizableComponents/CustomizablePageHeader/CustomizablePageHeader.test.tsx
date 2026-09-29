@@ -21,10 +21,15 @@ import { useTranslation } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomizablePageHeader } from './CustomizablePageHeader';
 
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'test-persona' }),
+}));
+
+jest.mock('../../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../pages/CustomizablePage/CustomizeStore');
@@ -40,6 +45,7 @@ describe('CustomizablePageHeader', () => {
     (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
       currentPageType: PageType.LandingPage,
     });
+    (useRequiredParams as jest.Mock).mockReturnValue({});
   });
 
   afterEach(() => {
@@ -230,5 +236,93 @@ describe('CustomizablePageHeader', () => {
       'href',
       '/settings/persona/test-persona'
     );
+  });
+
+  describe('subTitle i18n key selection', () => {
+    it('uses navigation subheader key when pageFqn is "navigation"', () => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        pageFqn: 'navigation',
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId('message.customize-your-navigation-subheader')
+      ).toBeInTheDocument();
+    });
+
+    it('uses app-mode subheader key when pageFqn is "app-mode"', () => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        pageFqn: 'app-mode',
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId('message.customize-your-app-mode-subheader')
+      ).toBeInTheDocument();
+    });
+
+    it('uses home-page subheader key for PageType.LandingPage', () => {
+      (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
+        currentPageType: PageType.LandingPage,
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId(
+          'message.customize-home-page-page-header-for-persona'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('uses home-page subheader key for currentPageType "homepage"', () => {
+      (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
+        currentPageType: 'homepage',
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId(
+          'message.customize-home-page-page-header-for-persona'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('uses entity landing subheader key for non-landing entity page types', () => {
+      (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
+        currentPageType: PageType.Table,
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId(
+          'message.customize-entity-landing-page-header-for-persona'
+        )
+      ).toBeInTheDocument();
+    });
   });
 });

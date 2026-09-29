@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row } from 'antd';
+import { AvatarStack } from '@openmetadata/ui-core-components';
+import { Button, Col, Row } from 'antd';
 import classNames from 'classnames';
-import { min, noop, sortBy } from 'lodash';
+import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
@@ -24,82 +25,85 @@ import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeed
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
+const MAX_VISIBLE_AVATARS = 3;
+const AVATAR_SIZE = 20;
+
 function FeedCardFooterNew({
-  feed,
-  post,
-  isPost = false,
+  conversation,
+  conversationId,
+  reply,
+  isReply = false,
   isForFeedTab = false,
 }: Readonly<FeedCardFooterProps>) {
-  const { showDrawer, updateReactions, fetchUpdatedThread } =
-    useActivityFeedProvider();
+  const { showDrawer, updateReactions } = useActivityFeedProvider();
 
-  // The number of posts in the thread
-  const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
+  const postLength = useMemo(
+    () => conversation?.replyCount ?? 0,
+    [conversation?.replyCount]
+  );
 
-  // The latest reply timestamp and the list of unique users who replied
-  const { repliedUniqueUsersList } = useMemo(() => {
-    const posts = sortBy(feed?.posts, 'postTs').reverse();
-    const latestReplyTimeStamp = posts[0]?.postTs;
-
-    const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
-
-    const repliedUniqueUsersList = repliedUsers.slice(
-      0,
-      min([3, repliedUsers.length])
-    );
-
-    return { latestReplyTimeStamp, repliedUniqueUsersList };
-  }, [feed?.posts]);
+  const repliedUsers = useMemo(() => {
+    return [
+      ...new Set(
+        (conversation?.replies ?? [])
+          .map((item) => item.author.name ?? item.author.fullyQualifiedName)
+          .filter((name): name is string => Boolean(name))
+      ),
+    ];
+  }, [conversation?.replies]);
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
-      if (!post) {
+      const target = reply ?? conversation;
+
+      if (!target) {
         return;
       }
-      await updateReactions(post, feed.id, !isPost, reaction, operation);
-      await fetchUpdatedThread(feed.id);
+      await updateReactions(
+        target,
+        conversationId,
+        !isReply,
+        reaction,
+        operation
+      );
     },
-    [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
+    [updateReactions, reply, conversation, conversationId, isReply]
   );
+
   const showReplies = useCallback(() => {
-    showDrawer?.(feed);
-  }, [showDrawer, feed]);
+    if (conversation) {
+      showDrawer(conversation);
+    }
+  }, [showDrawer, conversation]);
 
   return (
-    <Row align="top" className={classNames({ 'm-y-md': isPost })}>
-      <Col className="footer-container" span={24}>
+    <Row align="top" className={classNames({ 'm-y-md': isReply })}>
+      <Col
+        className="footer-container"
+        data-testid="feed-card-footer"
+        span={24}>
         <div>
           <div className="flex items-center gap-2 w-full rounded-8">
-            {postLength > 0 && !isPost && (
-              <Avatar.Group
-                className="feed-avatar-group"
-                maxCount={3}
-                maxPopoverPlacement="top"
-                maxStyle={{
-                  color: '#f56a00',
-                  backgroundColor: '#fde3cf',
-                }}>
-                {repliedUniqueUsersList.map((user, index) => (
+            {postLength > 0 && !isReply && (
+              <AvatarStack
+                avatarSize={AVATAR_SIZE}
+                items={repliedUsers.map((user) => (
                   <Button
                     className="p-0"
                     key={user}
-                    style={{
-                      marginLeft: index === 0 ? '0px' : '-8px',
-                      zIndex: repliedUniqueUsersList.length - index,
-                    }}
                     type="text"
                     onClick={isForFeedTab ? showReplies : undefined}>
                     <UserPopOverCard userName={user}>
-                      <div className="d-flex items-center">
-                        <ProfilePicture name={user} width="20" />
-                      </div>
+                      <ProfilePicture name={user} width="20" />
                     </UserPopOverCard>
                   </Button>
                 ))}
-              </Avatar.Group>
+                maxCount={MAX_VISIBLE_AVATARS}
+                onOverflowClick={isForFeedTab ? showReplies : undefined}
+              />
             )}
 
-            {!isPost && (
+            {!isReply && (
               <Button
                 className="p-0 flex-center"
                 data-testid="reply-button"
@@ -109,7 +113,7 @@ function FeedCardFooterNew({
               </Button>
             )}
             <Reactions
-              reactions={post?.reactions ?? []}
+              reactions={(reply ?? conversation)?.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </div>

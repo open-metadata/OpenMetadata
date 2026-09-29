@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/configuration/elasticSearchConfiguration.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ElasticSearchConfiguration",
   "description": "This schema defines the Elastic Search Configuration.",
   "type": "object",
@@ -53,10 +53,21 @@
       "type": "integer",
       "default": 5
     },
+    "connectionRequestTimeoutSecs": {
+      "description": "Maximum time in seconds to wait for a connection from the HTTP connection pool",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
     "socketTimeoutSecs": {
       "description": "Socket Timeout in Seconds",
       "type": "integer",
       "default": 60
+    },
+    "requestCompressionEnabled": {
+      "description": "Enable gzip compression for HTTP request bodies sent to Elasticsearch.",
+      "type": "boolean",
+      "default": true
     },
     "keepAliveTimeoutSecs": {
       "description": "Keep Alive Timeout in Seconds",
@@ -68,7 +79,7 @@
       "default": 30
     },
     "maxConnPerRoute": {
-      "description": "Maximum connections per host/route in the connection pool",
+      "description": "Maximum connections per host/route in the connection pool. Keep this below maxConnTotal for multi-host clusters so one slow host cannot consume the entire pool; single-host deployments can raise it up to maxConnTotal.",
       "type": "integer",
       "default": 10
     },
@@ -102,6 +113,49 @@
     "searchIndexFactoryClassName": {
       "description": "Index factory name",
       "type": "string"
+    },
+    "searchIndexingLimits": {
+      "description": "Limits applied while building search documents so that field values can never be rejected by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override to tune without changing infrastructure settings.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.SearchIndexingLimits",
+      "properties": {
+        "enableMappingHardening": {
+          "description": "Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails into index mappings at creation time so documents cannot be rejected. When false, mappings are created as-is.",
+          "type": "boolean",
+          "default": true
+        },
+        "keywordMaxBytes": {
+          "description": "Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe character count derived from this (value/4). The hard Lucene limit is 32766 bytes.",
+          "type": "integer",
+          "minimum": 4,
+          "default": 32766
+        },
+        "mappingDepthLimit": {
+          "description": "Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 20
+        },
+        "nestedObjectsLimit": {
+          "description": "Maximum number of nested-type objects allowed in a single document before Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors index.mapping.nested_objects.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 10000
+        },
+        "totalFieldsLimit": {
+          "description": "Maximum total fields per index. Mirrors index.mapping.total_fields.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000
+        },
+        "maxColumns": {
+          "description": "Maximum number of flattened columns or schema fields indexed for a single data asset. Items beyond this are dropped from the search document.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 10000
+        }
+      },
+      "additionalProperties": false
     },
     "aws": {
       "description": "AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled. When enabled, uses standard AWS environment variables or configured credentials.",
@@ -141,12 +195,18 @@
         "keywordWeight": {
           "description": "Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.4
+          "default": 0.6
         },
         "semanticWeight": {
           "description": "Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.6
+          "default": 0.4
+        },
+        "knnNumCandidatesMultiplier": {
+          "description": "Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the cost of latency. Defaults to 2.",
+          "type": "integer",
+          "default": 2,
+          "minimum": 1
         },
         "providerClass": {
           "description": "Fully qualified class name of the NLQService implementation to use",
@@ -244,6 +304,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "required": ["scheme", "connectionTimeoutSecs", "connectionRequestTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }

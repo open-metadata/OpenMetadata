@@ -10,19 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import { createAdminApiContext } from '../../utils/admin';
 import {
-  authenticateAdminPage,
-  createAdminApiContext,
-} from '../../utils/admin';
-import { descriptionBox } from '../../utils/common';
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
+} from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
-import { waitForTaskCreateResponse } from '../../utils/task';
+import {
+  waitForTaskCreateResponse,
+  waitForTaskListResponse,
+} from '../../utils/task';
 import {
   addTagSuggestion,
   approveTaskFromDetails,
@@ -34,38 +39,12 @@ import {
 const adminFile = 'playwright/.auth/admin.json';
 test.use({ storageState: adminFile });
 
-interface EntityConfig {
-  name: string;
-  entityTypeName: string;
-  createEntity: () => TableClass | DashboardClass | TopicClass | PipelineClass;
-}
+const entityClasses = [TableClass, DashboardClass, TopicClass, PipelineClass];
 
-const ENTITY_CONFIGS: EntityConfig[] = [
-  {
-    name: 'Table',
-    entityTypeName: 'table',
-    createEntity: () => new TableClass(),
-  },
-  {
-    name: 'Dashboard',
-    entityTypeName: 'dashboard',
-    createEntity: () => new DashboardClass(),
-  },
-  {
-    name: 'Topic',
-    entityTypeName: 'topic',
-    createEntity: () => new TopicClass(),
-  },
-  {
-    name: 'Pipeline',
-    entityTypeName: 'pipeline',
-    createEntity: () => new PipelineClass(),
-  },
-];
+let entities: InstanceType<(typeof entityClasses)[number]>[] = [];
 
 const createDescriptionTaskViaUI = async (
   page: Page,
-  entityName: string,
   entityType: string,
   assigneeName: string,
   description: string
@@ -80,8 +59,8 @@ const createDescriptionTaskViaUI = async (
 
   await selectAssignee(page, assigneeName);
 
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(description);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, description);
 
   const taskResponse = waitForTaskCreateResponse(page);
   await page.click('button[type="submit"]');
@@ -93,7 +72,6 @@ const createDescriptionTaskViaUI = async (
 
 const createTagTaskViaUI = async (
   page: Page,
-  entityName: string,
   entityType: string,
   assigneeName: string,
   tagFQN: string
@@ -121,24 +99,31 @@ const createTagTaskViaUI = async (
   await waitForPageLoaded(page);
 };
 
-const resolveTaskWithApproval = async (page: Page) => {
-  // Click on the first task card to open it
+// isVisible() resolves immediately instead of retrying, so called right after
+// task creation navigates it returned false before the card had painted. The
+// click was then skipped and the resolve step ran against whatever panel was
+// open — the source of this spec's intermittent failures. Wait for the card.
+//
+const openFirstTaskCard = async (page: Page) => {
   const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-  if (await taskCard.isVisible()) {
-    await taskCard.click();
-    await waitForPageLoaded(page);
-  }
+  const taskDetailTab = page.locator('[data-testid="task-tab"]');
+
+  await expect(taskCard).toBeVisible({ timeout: 30_000 });
+
+  await taskCard.click();
+  await expect(taskDetailTab).toBeVisible();
+
+  await waitForPageLoaded(page);
+};
+
+const resolveTaskWithApproval = async (page: Page) => {
+  await openFirstTaskCard(page);
 
   await approveTaskFromDetails(page);
 };
 
-const resolveTaskWithRejection = async (page: Page, comment: string) => {
-  // Click on the first task card to open it
-  const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-  if (await taskCard.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await taskCard.click();
-    await waitForPageLoaded(page);
-  }
+const resolveTaskWithRejection = async (page: Page) => {
+  await openFirstTaskCard(page);
 
   await closeTaskFromDetails(page);
 };
@@ -147,22 +132,37 @@ const navigateToActivityFeedTasks = async (page: Page) => {
   await openEntityTasksTab(page);
 };
 
+// Closed tasks live behind the task filter dropdown, not a tab. The previous
+// getByRole('tab', { name: /Closed/i }) matched nothing anywhere in the app —
+// the isVisible() guard around it meant the whole assertion never ran.
+const switchToClosedTaskFilter = async (page: Page) => {
+  await page.getByTestId('user-profile-page-task-filter-icon').click();
+
+  const closedOption = page.getByTestId('closed-tasks');
+
+  await expect(closedOption).toBeVisible();
+
+  const tasksListResponse = waitForTaskListResponse(page);
+  await closedOption.click();
+  await tasksListResponse;
+};
+
 test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   const user = new UserClass();
-  const entities: Array<
-    TableClass | DashboardClass | TopicClass | PipelineClass
-  > = [];
 
   test.beforeAll(async () => {
+    // Fully parallel groups can run this hook again in the same worker. Old
+    // entries refer to entities deleted by that group's afterAll hook.
+    entities.length = 0;
     const { apiContext, afterAction } = await createAdminApiContext();
 
     try {
       await user.create(apiContext);
 
-      for (const config of ENTITY_CONFIGS) {
-        const entity = config.createEntity();
+      entities = entityClasses.map((EntityClass) => new EntityClass());
+
+      for (const entity of entities) {
         await entity.create(apiContext);
-        entities.push(entity);
       }
     } finally {
       await afterAction();
@@ -183,18 +183,20 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
-  for (let i = 0; i < ENTITY_CONFIGS.length; i++) {
-    const config = ENTITY_CONFIGS[i];
+  entityClasses.forEach((EntityClass) => {
+    const entityName = new EntityClass().getType();
 
-    test(`Create and resolve description task for ${config.name} via UI`, async ({
+    test(`Create and resolve description task for ${entityName} via UI`, async ({
       page,
     }) => {
-      const entity = entities[i];
+      const entity = entities.find(
+        (e) => e instanceof EntityClass
+      ) as InstanceType<typeof EntityClass>;
       const userName = user.responseData?.name ?? '';
-      const description = `Test description for ${config.name} task`;
+      const description = `Test description for ${entityName} task`;
 
       await test.step('Navigate to entity page', async () => {
         await entity.visitEntityPage(page);
@@ -204,8 +206,7 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       await test.step('Create description task via UI', async () => {
         await createDescriptionTaskViaUI(
           page,
-          entity.entityResponseData?.['name'],
-          config.entityTypeName,
+          entityName.toLowerCase(),
           userName,
           description
         );
@@ -226,10 +227,12 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       });
     });
 
-    test(`Create and reject tag task for ${config.name} via UI`, async ({
+    test(`Create and reject tag task for ${entityName} via UI`, async ({
       page,
     }) => {
-      const entity = entities[i];
+      const entity = entities.find(
+        (e) => e instanceof EntityClass
+      ) as InstanceType<typeof EntityClass>;
       const userName = user.responseData?.name ?? '';
       const tagFQN = 'PII.None';
 
@@ -241,8 +244,7 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       await test.step('Create tag task via UI', async () => {
         await createTagTaskViaUI(
           page,
-          entity.entityResponseData?.['name'],
-          config.entityTypeName,
+          entityName.toLowerCase(),
           userName,
           tagFQN
         );
@@ -259,13 +261,10 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       });
 
       await test.step('Reject task with comment', async () => {
-        await resolveTaskWithRejection(
-          page,
-          'Tag not appropriate for this entity'
-        );
+        await resolveTaskWithRejection(page);
       });
     });
-  }
+  });
 });
 
 test.describe('Task Workflow - Table Column Tasks', () => {
@@ -296,7 +295,7 @@ test.describe('Task Workflow - Table Column Tasks', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
   test('Create description task for table column via UI', async ({ page }) => {
@@ -327,8 +326,8 @@ test.describe('Task Workflow - Table Column Tasks', () => {
 
       await selectAssignee(page, userName);
 
-      await page.locator(descriptionBox).clear();
-      await page.locator(descriptionBox).fill('Column description test');
+      await getDescriptionBox(page).clear();
+      await fillDescriptionBox(page, 'Column description test');
 
       const taskResponse = page.waitForResponse('/api/v1/tasks');
       await page.click('button[type="submit"]');
@@ -426,7 +425,7 @@ test.describe('Task Activity Feed Integration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
   test('Verify task lifecycle in activity feed', async ({ page }) => {
@@ -438,7 +437,6 @@ test.describe('Task Activity Feed Integration', () => {
 
       await createDescriptionTaskViaUI(
         page,
-        table.entityResponseData?.['name'],
         'table',
         userName,
         'Activity feed test description'
@@ -458,19 +456,17 @@ test.describe('Task Activity Feed Integration', () => {
     await test.step('Resolve task and verify it moves to Closed', async () => {
       await resolveTaskWithApproval(page);
 
-      await page.waitForTimeout(1000);
-      await page.reload();
-      await waitForPageLoaded(page);
+      // Already on the tasks panel here, so switch the filter directly.
+      // Reloading and re-entering the panel hung openEntityTasksTab's loader
+      // wait indefinitely — the panel was already settled and the second
+      // navigation never produced the state that wait expects.
+      await switchToClosedTaskFilter(page);
 
-      const closedTab = page.getByRole('tab', { name: /Closed/i });
-      if (await closedTab.isVisible()) {
-        await closedTab.click();
+      const closedTaskCard = page
+        .locator('[data-testid="task-feed-card"]')
+        .first();
 
-        const closedTaskCard = page
-          .locator('[data-testid="task-feed-card"]')
-          .first();
-        await expect(closedTaskCard).toBeVisible();
-      }
+      await expect(closedTaskCard).toBeVisible({ timeout: 30_000 });
     });
   });
 
@@ -484,7 +480,6 @@ test.describe('Task Activity Feed Integration', () => {
 
       await createDescriptionTaskViaUI(
         page,
-        table.entityResponseData?.['name'],
         'table',
         userName,
         taskDescription

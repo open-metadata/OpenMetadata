@@ -14,16 +14,19 @@
 import type { ServiceTypes } from 'Models';
 import { PLACEHOLDER_SETTING_CATEGORY, ROUTES } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { ServiceCategory } from '../enums/service.enum';
 import {
   getAddServicePath,
   getEditConnectionPath,
   getEditIngestionPath,
-  getLogsViewerPath,
   getPathByServiceFQN,
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import {
+  getCountLabel,
+  getServiceRouteFromServiceType,
+} from './ServicePureUtils';
 
 class ConnectionsRouterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
@@ -31,6 +34,18 @@ class ConnectionsRouterClassBase {
   }
 
   public isEmbeddedMode(): boolean {
+    return false;
+  }
+
+  /**
+   * True only when another surface *permanently* owns the service listing, so the settings route
+   * is dead weight rather than a second way in.
+   *
+   * Deliberately not `isEmbeddedMode()`: that is also true while Classic is merely showing an
+   * embedded experience, and Classic's own Settings > Services must keep working throughout.
+   * Overridden where an app mode replaces the listing outright.
+   */
+  public isServicesSettingsRouteDisabled(): boolean {
     return false;
   }
 
@@ -54,6 +69,31 @@ class ConnectionsRouterClassBase {
     tab?: string
   ): string {
     return getServiceDetailsPath(fqn, serviceCategory, tab);
+  }
+
+  /**
+   * Where an entity page returns after its entity is hard-deleted: the parent
+   * service's asset-listing tab (the tab key is the lowercased count label,
+   * e.g. `databases` — see ServiceDetailsPage's tabs). Metadata and security
+   * services have no asset-listing tab, so they land on the service page's
+   * default tab instead.
+   */
+  public getServiceDataAssetsTabPath(
+    serviceCategory: string,
+    fqn: string
+  ): string {
+    const hasAssetTab = ![
+      ServiceCategory.METADATA_SERVICES,
+      ServiceCategory.SECURITY_SERVICES,
+    ].includes(serviceCategory as ServiceCategory);
+
+    return getServiceDetailsPath(
+      fqn,
+      serviceCategory,
+      hasAssetTab
+        ? getCountLabel(serviceCategory as ServiceTypes).toLowerCase()
+        : undefined
+    );
   }
 
   public getEditConnectionPath(serviceCategory: string, fqn: string): string {
@@ -80,14 +120,6 @@ class ConnectionsRouterClassBase {
       ingestionFqn,
       ingestionType
     );
-  }
-
-  public getLogsViewerPath(
-    logEntityType: string,
-    logEntityName: string,
-    ingestionName: string
-  ): string {
-    return getLogsViewerPath(logEntityType, logEntityName, ingestionName);
   }
 }
 

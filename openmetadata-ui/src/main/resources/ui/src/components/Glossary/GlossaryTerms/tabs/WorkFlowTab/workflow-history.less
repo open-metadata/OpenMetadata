@@ -13,23 +13,11 @@
 @import '../../../../../styles/variables.less';
 
 .workflow-history-widget {
-  border-radius: @size-xs;
   .workflow-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: @size-md;
-
-    .workflow-title {
-      font-weight: @font-medium;
-      color: @grey-800;
-      margin: 0;
-    }
-
-    .workflow-counter {
-      color: @grey-600;
-      font-size: @size-sm;
-    }
   }
 
   .workflow-progress {
@@ -44,7 +32,7 @@
         height: @size-xs;
         flex: 1;
         border-radius: @size-xxs;
-        transition: background-color 0.2s ease;
+        transition: background-color var(--om-duration-200) ease;
         min-width: @size-xs;
 
         &.completed {
@@ -93,12 +81,8 @@
       }
       .stage-time {
         color: @grey-400;
-        font-size: 10px;
+        font-size: var(--om-font-size-10);
       }
     }
   }
-}
-.workflow-history-widget-rightPanel {
-  background-color: var(--tw-color-bg-primary);
-  padding: 18px 20px 12px 20px;
 }

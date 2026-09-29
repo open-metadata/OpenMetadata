@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/tasks/task.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Task",
   "description": "A Task represents an actionable work item for data governance workflows such as data access requests, glossary approvals, metadata updates, and custom workflows. Tasks have their own lifecycle, assignments, and tracking capabilities.",
   "javaInterfaces": ["org.openmetadata.schema.NamedEntityInterface"],
@@ -77,11 +77,13 @@
         "Pending",
         "Approved",
         "Granted",
+        "ManualRevoke",
         "Rejected",
         "Completed",
         "Cancelled",
         "Failed",
-        "Revoked"
+        "Revoked",
+        "Expired"
       ],
       "javaEnums": [
         {"name": "Open"},
@@ -89,11 +91,13 @@
         {"name": "Pending"},
         {"name": "Approved"},
         {"name": "Granted"},
+        {"name": "ManualRevoke"},
         {"name": "Rejected"},
         {"name": "Completed"},
         {"name": "Cancelled"},
         {"name": "Failed"},
-        {"name": "Revoked"}
+        {"name": "Revoked"},
+        {"name": "Expired"}
       ],
       "default": "Open"
     },
@@ -122,7 +126,8 @@
         "TimedOut",
         "AutoApproved",
         "AutoRejected",
-        "Revoked"
+        "Revoked",
+        "Expired"
       ],
       "javaEnums": [
         {"name": "Approved"},
@@ -132,7 +137,8 @@
         {"name": "TimedOut"},
         {"name": "AutoApproved"},
         {"name": "AutoRejected"},
-        {"name": "Revoked"}
+        {"name": "Revoked"},
+        {"name": "Expired"}
       ]
     },
     "taskResolution": {

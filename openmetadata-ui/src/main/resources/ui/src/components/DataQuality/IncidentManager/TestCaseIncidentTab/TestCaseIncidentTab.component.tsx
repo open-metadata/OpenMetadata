@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import {
   lazy,
   RefObject,
@@ -29,7 +30,11 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { getTaskCounts, Task } from '../../../../rest/tasksAPI';
+import {
+  getTaskCounts,
+  Task,
+  TaskStatusGroup,
+} from '../../../../rest/tasksAPI';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
@@ -70,7 +75,8 @@ const TestCaseIncidentTab = () => {
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [closedTasksCount, setClosedTasksCount] = useState(0);
 
-  const statusGroup = taskFilter === 'open' ? 'open' : 'closed';
+  const statusGroup =
+    taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
 
   const fetchCounts = useCallback(async () => {
     if (!decodedFqn) {
@@ -109,7 +115,13 @@ const TestCaseIncidentTab = () => {
     if (decodedFqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
-  }, [entityPaging, loading, isInView, decodedFqn]);
+  }, [
+    entityPaging,
+    loading,
+    isInView,
+    decodedFqn,
+    handleFeedFetchFromFeedList,
+  ]);
 
   const handleTaskClick = useCallback(
     (task: Task) => {
@@ -175,12 +187,12 @@ const TestCaseIncidentTab = () => {
         <TaskListV1
           activeFeedId={selectedTask?.id}
           emptyPlaceholderText={t('message.no-tasks-assigned')}
-          isLoading={false}
+          isLoading={loading && isEmpty(tasks)}
           selectedTask={selectedTask}
           taskList={tasks}
           onTaskClick={handleTaskClick}
         />
-        {loader}
+        {!isEmpty(tasks) && loader}
         <div
           className="w-full"
           data-testid="observer-element"

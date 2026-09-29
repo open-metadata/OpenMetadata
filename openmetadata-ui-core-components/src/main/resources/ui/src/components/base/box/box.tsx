@@ -16,6 +16,7 @@ import {
   rowGapClassMapping,
 } from '@/constants/tailwindClasses.constants';
 import { cx } from '@/utils/cx';
+import { forwardRef } from 'react';
 import type { HTMLAttributes, ReactNode } from 'react';
 
 export type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
@@ -97,19 +98,22 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
-export const Box = ({
-  direction,
-  align,
-  justify,
-  wrap,
-  gap,
-  rowGap,
-  colGap,
-  inline,
-  className,
-  children,
-  ...props
-}: BoxProps) => {
+export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
+  {
+    direction,
+    align,
+    justify,
+    wrap,
+    gap,
+    rowGap,
+    colGap,
+    inline,
+    className,
+    children,
+    ...props
+  },
+  ref
+) {
   const gapClassName = gap === undefined ? undefined : gapClassMapping[gap];
   const rowGapClassName =
     rowGap === undefined ? undefined : rowGapClassMapping[rowGap];
@@ -118,6 +122,7 @@ export const Box = ({
 
   return (
     <div
+      ref={ref}
       {...props}
       className={cx(
         inline ? 'tw:inline-flex' : 'tw:flex',
@@ -133,6 +138,6 @@ export const Box = ({
       {children}
     </div>
   );
-};
+});
 
 Box.displayName = 'Box';

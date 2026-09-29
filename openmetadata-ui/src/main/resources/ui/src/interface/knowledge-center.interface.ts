@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import React, { ReactNode } from 'react';
-import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { PageProcessingStatus } from '../generated/entity/data/page';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { Votes } from '../generated/type/votes';
+import { VotingDataProps } from './entity/vote.interface';
 
 export enum PageType {
   ARTICLE = 'Article',
@@ -133,7 +133,6 @@ export interface ArticleTab {
 export interface KnowledgeCenterPageProps {
   title: string;
   rightPanel: React.ReactNode;
-  header: React.ReactNode;
   data?: KnowledgePage;
   activeTab?: string;
   feedCount?: number;

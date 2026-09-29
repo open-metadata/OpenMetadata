@@ -10,20 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type {
-  PopoverProps,
-  SelectItemType,
-} from '@openmetadata/ui-core-components';
-import { CSSProperties } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 
-export interface DataAssetOption extends SelectItemType {
+export interface DataAssetOption {
+  id?: string;
+  label?: string;
+  value?: string;
+  name?: string;
   reference: EntityReference;
   displayName: string;
-  name?: string;
-  value: string;
 }
 
 export interface FetchOptionsResponse {
@@ -35,18 +32,13 @@ export interface DataAssetAsyncSelectListProps {
   multiple?: boolean;
   autoFocus?: boolean;
   id?: string;
-  className?: string;
   placeholder?: string;
-  popoverClassName?: string;
-  popoverProps?: Partial<PopoverProps>;
   value?: DataAssetOption | DataAssetOption[] | string | string[];
   debounceTimeout?: number;
   initialOptions?: DataAssetOption[];
   searchIndex?: SearchIndex;
-  onChange?: (option: DataAssetOption | DataAssetOption[] | null) => void;
+  onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
   filterFqns?: string[];
   queryFilter?: Record<string, unknown>;
-  popupClassName?: string;
-  dropdownStyle?: CSSProperties;
-  getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
+  popoverClassName?: string;
 }

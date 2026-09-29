@@ -109,6 +109,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       className?: string;
     }) => (
       <input
+        aria-label={testId}
         data-testid={testId}
         type={type}
         value={value}

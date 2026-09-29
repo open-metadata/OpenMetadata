@@ -32,7 +32,8 @@ public abstract sealed class Recipient permits EmailRecipient, WebhookRecipient 
    *
    * @param user the user to create a recipient from
    * @param notificationType the notification type
-   * @return an EmailRecipient or WebhookRecipient instance
+   * @return an EmailRecipient or WebhookRecipient instance, or null if the user has no contact
+   *     information for the notification type
    */
   public static Recipient fromUser(
       User user, SubscriptionDestination.SubscriptionType notificationType) {
@@ -47,7 +48,8 @@ public abstract sealed class Recipient permits EmailRecipient, WebhookRecipient 
    *
    * @param team the team to create a recipient from
    * @param notificationType the notification type
-   * @return an EmailRecipient or WebhookRecipient instance
+   * @return an EmailRecipient or WebhookRecipient instance, or null if the team has no contact
+   *     information for the notification type
    */
   public static Recipient fromTeam(
       Team team, SubscriptionDestination.SubscriptionType notificationType) {

@@ -4,15 +4,15 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 
 import org.openmetadata.schema.entity.feed.DescriptionFeedInfo;
 import org.openmetadata.schema.entity.feed.FeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 public class DescriptionFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s the description for %s %s";
 
   public DescriptionFormatter(
-      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
     super(messageDecorator, thread, fieldChange);
   }
 
@@ -20,7 +20,7 @@ public class DescriptionFormatter extends DefaultFieldFormatter {
   public String formatAddedField() {
     String message = super.formatAddedField();
     // Update the thread with the required information
-    populateDescriptionFeedInfo(Thread.FieldOperation.ADDED, message, message);
+    populateDescriptionFeedInfo(FormattedMessage.FieldOperation.ADDED, message, message);
     return message;
   }
 
@@ -28,7 +28,7 @@ public class DescriptionFormatter extends DefaultFieldFormatter {
   public String formatUpdatedField() {
     String message = super.formatUpdatedField();
     // Update the thread with the required information
-    populateDescriptionFeedInfo(Thread.FieldOperation.UPDATED, message, message);
+    populateDescriptionFeedInfo(FormattedMessage.FieldOperation.UPDATED, message, message);
     return message;
   }
 
@@ -36,12 +36,12 @@ public class DescriptionFormatter extends DefaultFieldFormatter {
   public String formatDeletedField() {
     String message = super.formatDeletedField();
     // Update the thread with the required information
-    populateDescriptionFeedInfo(Thread.FieldOperation.DELETED, message, message);
+    populateDescriptionFeedInfo(FormattedMessage.FieldOperation.DELETED, message, message);
     return message;
   }
 
   private void populateDescriptionFeedInfo(
-      Thread.FieldOperation operation, String threadMessage, String diffMessage) {
+      FormattedMessage.FieldOperation operation, String threadMessage, String diffMessage) {
     DescriptionFeedInfo descriptionFeedInfo =
         new DescriptionFeedInfo()
             .withPreviousDescription(fieldOldValue)
@@ -53,7 +53,7 @@ public class DescriptionFormatter extends DefaultFieldFormatter {
             .withFieldName(FIELD_DESCRIPTION)
             .withEntitySpecificInfo(descriptionFeedInfo);
     populateThreadFeedInfo(
-        thread, threadMessage, Thread.CardStyle.DESCRIPTION, operation, feedInfo);
+        thread, threadMessage, FormattedMessage.CardStyle.DESCRIPTION, operation, feedInfo);
   }
 
   private String getHeaderForDescriptionUpdate(String eventTypeMessage) {

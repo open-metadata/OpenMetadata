@@ -36,7 +36,11 @@ export const NavigationGuardModal = ({
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onStay()}>
       <Modal>
-        <Dialog showCloseButton width={480}>
+        <Dialog
+          showCloseButton
+          data-testid="navigation-guard-modal"
+          width={480}
+          onClose={onStay}>
           <Dialog.Header>
             <div className="tw:relative tw:w-max">
               <FeaturedIcon
@@ -55,14 +59,18 @@ export const NavigationGuardModal = ({
               </p>
             </div>
           </Dialog.Header>
-          <div className="tw:z-10 tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:p-4 tw:pt-6 tw:*:grow tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6">
-            <Button color="secondary" size="lg" onPress={onLeave}>
+          <Dialog.Footer className="tw:border-none tw:sm:mt-3">
+            <Button
+              color="secondary"
+              data-testid="navigation-guard-discard"
+              size="lg"
+              onPress={onLeave}>
               {t('label.discard')}
             </Button>
             <Button color="primary" size="lg" onPress={onStay}>
               {t('label.continue-editing')}
             </Button>
-          </div>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>

@@ -16,11 +16,14 @@ package org.openmetadata.service.logstorage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 /**
  * Default implementation of LogStorageInterface that delegates to the existing
@@ -28,6 +31,9 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
  */
 @Slf4j
 public class DefaultLogStorage implements LogStorageInterface {
+
+  private static final Set<String> PAGING_KEYS =
+      Set.of("total", "after", PipelineServiceClientInterface.LOGS_ERROR_KEY);
 
   private PipelineServiceClientInterface pipelineServiceClient;
 
@@ -49,10 +55,14 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public InputStream getLogInputStream(String pipelineFQN, UUID runId) {
+  public InputStream getLogInputStream(String pipelineFQN, UUID runId) throws IOException {
     // For default implementation, we delegate to the pipeline service client
     // The runId is not used here as the pipeline service client only supports getting latest logs
     Map<String, Object> logs = getLogs(pipelineFQN, runId, null, Integer.MAX_VALUE);
+    String error = (String) logs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+    if (error != null) {
+      throw new IOException(error);
+    }
     String logContent = (String) logs.get("logs");
     return new ByteArrayInputStream(logContent.getBytes(StandardCharsets.UTF_8));
   }
@@ -60,17 +70,14 @@ public class DefaultLogStorage implements LogStorageInterface {
   @Override
   public Map<String, Object> getLogs(
       String pipelineFQN, UUID runId, String afterCursor, int limit) {
+    // Load the real pipeline with its service: a runner may locate the run by service, not by
+    // pipeline name alone, so a name-only stub finds nothing.
+    IngestionPipeline pipeline =
+        Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
     try {
       // Note: The default implementation through pipeline service client (Airflow/Argo)
       // doesn't support fetching logs by specific runId - it always returns the latest logs
       // The runId parameter is ignored here for backward compatibility
-
-      // Create a minimal IngestionPipeline object with just the FQN
-      IngestionPipeline pipeline = new IngestionPipeline();
-      pipeline.setFullyQualifiedName(pipelineFQN);
-      pipeline.setName(extractPipelineName(pipelineFQN));
-      // Set a default pipeline type to avoid NPE in AirflowRESTClient
-      pipeline.setPipelineType(PipelineType.METADATA);
 
       // Delegate to pipeline service client (Airflow/Argo)
       Map<String, String> clientLogs =
@@ -78,35 +85,49 @@ public class DefaultLogStorage implements LogStorageInterface {
 
       // Convert the response to match our interface
       Map<String, Object> result = new HashMap<>();
-      result.put("logs", clientLogs.getOrDefault("logs", ""));
+      String error = clientLogs.get(PipelineServiceClientInterface.LOGS_ERROR_KEY);
+      if (error != null) {
+        result.put(PipelineServiceClientInterface.LOGS_ERROR_KEY, error);
+        return result;
+      }
+      result.put("logs", extractLogContent(clientLogs));
       result.put("after", clientLogs.get("after"));
       result.put("total", clientLogs.getOrDefault("total", "0"));
 
       return result;
     } catch (Exception e) {
-      // If pipeline service client is not available (e.g., in tests or when Airflow is down),
-      // return empty logs instead of failing
-      LOG.warn(
-          "Failed to get logs from pipeline service client for pipeline: {}, runId: {}. Returning empty logs.",
-          pipelineFQN,
-          runId,
-          e);
-
-      Map<String, Object> result = new HashMap<>();
-      result.put("logs", "");
-      result.put("after", null);
-      result.put("total", 0L);
-      return result;
+      // Let the failure surface. Returning empty logs here made an unreachable pipeline service
+      // look like a run that simply produced none.
+      LOG.error("Failed to get logs for pipeline: {}, runId: {}", pipelineFQN, runId, e);
+      throw new UnhandledServerException(
+          String.format("Failed to get logs for pipeline %s", pipelineFQN), e);
     }
+  }
+
+  /**
+   * Pulls the log text out of a client response. Runners key it by task name (see {@code
+   * PipelineServiceClientInterface.TYPE_TO_TASK}), e.g. {@code lineage_task}, so only the paging
+   * keys are fixed. Take the remaining entries instead of guessing the task name. Today a response
+   * carries exactly one task, but iterate in key order so more than one stays deterministic.
+   */
+  public static String extractLogContent(Map<String, String> clientLogs) {
+    if (clientLogs == null) {
+      return "";
+    }
+    return clientLogs.entrySet().stream()
+        .filter(e -> !PAGING_KEYS.contains(e.getKey()) && e.getValue() != null)
+        .sorted(Map.Entry.comparingByKey())
+        .map(Map.Entry::getValue)
+        .collect(Collectors.joining("\n"));
   }
 
   @Override
   public UUID getLatestRunId(String pipelineFQN) {
     // Try to get the latest run ID from pipeline status
     try {
-      IngestionPipeline pipeline = new IngestionPipeline();
-      pipeline.setFullyQualifiedName(pipelineFQN);
-      pipeline.setName(extractPipelineName(pipelineFQN));
+      // Same reason as getLogs above: the runner needs the pipeline's service to find its runs.
+      IngestionPipeline pipeline =
+          Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
 
       List<PipelineStatus> statuses = pipelineServiceClient.getQueuedPipelineStatus(pipeline);
       if (!statuses.isEmpty()) {
@@ -117,7 +138,7 @@ public class DefaultLogStorage implements LogStorageInterface {
         }
       }
     } catch (Exception e) {
-      LOG.warn("Failed to get latest run ID from pipeline status", e);
+      LOG.warn("Failed to get latest run ID for pipeline: {}", pipelineFQN, e);
     }
 
     // If no run ID found, generate a new one
@@ -174,11 +195,5 @@ public class DefaultLogStorage implements LogStorageInterface {
   @Override
   public void close() {
     // Nothing to close for default implementation
-  }
-
-  private String extractPipelineName(String pipelineFQN) {
-    // Extract pipeline name from FQN (last part after the last dot)
-    int lastDotIndex = pipelineFQN.lastIndexOf('.');
-    return lastDotIndex >= 0 ? pipelineFQN.substring(lastDotIndex + 1) : pipelineFQN;
   }
 }

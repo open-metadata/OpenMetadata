@@ -53,6 +53,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: mockTestCasePermission,
+      testSuite: { Create: true },
     },
   })),
 }));
@@ -120,6 +121,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => ({
   default: jest.fn().mockImplementation(({ onSearch, searchValue }) => (
     <div data-testid="searchbar-component">
       <input
+        aria-label="Search"
         data-testid="search-input"
         value={searchValue}
         onChange={(e) => onSearch(e.target.value)}
@@ -133,13 +135,29 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
   default: jest
     .fn()
     .mockImplementation(
-      ({ testCases, isLoading, onTestUpdate, tableHeader }) => (
+      ({
+        testCases,
+        isLoading,
+        onTestUpdate,
+        tableHeader,
+        emptyStateAction,
+        enableBulkActions,
+        hasActiveFilters,
+        deletionMode,
+      }) => (
         <div data-testid="data-quality-tab">
           {tableHeader}
           <span data-testid="test-case-count">{testCases?.length ?? 0}</span>
           <span data-testid="loading-state">
             {isLoading ? 'loading' : 'loaded'}
           </span>
+          <span data-testid="bulk-actions-state">
+            {String(enableBulkActions)}
+          </span>
+          <span data-testid="active-filters-state">
+            {String(hasActiveFilters)}
+          </span>
+          <span data-testid="deletion-mode">{deletionMode}</span>
           <button
             data-testid="trigger-update"
             onClick={() =>
@@ -151,6 +169,13 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
             }>
             Update Test
           </button>
+          {emptyStateAction && (
+            <button
+              data-testid={`empty-state-action-${emptyStateAction.key}`}
+              onClick={emptyStateAction.onPress}>
+              {emptyStateAction.label}
+            </button>
+          )}
         </div>
       )
     ),
@@ -167,6 +192,8 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
     )),
 }));
 
+const mockOnAddTestCase = jest.fn();
+
 const mockDataQualityContext = {
   isTestCaseSummaryLoading: false,
   testCaseSummary: {
@@ -176,6 +203,10 @@ const mockDataQualityContext = {
     aborted: 2,
   },
   activeTab: DataQualityPageTabs.TEST_CASES,
+  createActions: {
+    canCreateTestCase: true,
+    onAddTestCase: mockOnAddTestCase,
+  },
 };
 
 jest.mock('../../../pages/DataQuality/DataQualityProvider', () => {
@@ -257,6 +288,7 @@ describe('TestCases component', () => {
     usePermissionProvider.mockReturnValue({
       permissions: {
         testCase: mockTestCasePermission,
+        testSuite: { Create: true },
       },
     });
   });
@@ -290,6 +322,33 @@ describe('TestCases component', () => {
       expect(await screen.findByTestId('page-header')).toBeInTheDocument();
     });
 
+    it('should treat deleted visibility as a filter and disable bulk actions', async () => {
+      render(<TestCases />);
+
+      expect(await screen.findByTestId('bulk-actions-state')).toHaveTextContent(
+        'true'
+      );
+      expect(screen.getByTestId('active-filters-state')).toHaveTextContent(
+        'false'
+      );
+      expect(screen.getByTestId('deletion-mode')).toHaveTextContent('soft');
+
+      fireEvent.click(screen.getByTestId('show-deleted'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('bulk-actions-state')).toHaveTextContent(
+          'false'
+        )
+      );
+
+      expect(screen.getByTestId('active-filters-state')).toHaveTextContent(
+        'true'
+      );
+      expect(
+        screen.queryByTestId('empty-state-action-new-test-case')
+      ).not.toBeInTheDocument();
+    });
+
     it('should render table filter when selected', async () => {
       render(<TestCases />);
 
@@ -304,6 +363,14 @@ describe('TestCases component', () => {
       expect(
         await screen.findByTestId('tags-select-filter')
       ).toBeInTheDocument();
+    });
+
+    it('should keep the status filter on the Ant Design multi-select', async () => {
+      render(<TestCases />);
+
+      expect(await screen.findByTestId('status-select-filter')).toHaveClass(
+        'ant-select-multiple'
+      );
     });
   });
 
@@ -360,7 +427,12 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
           expect.objectContaining({
-            fields: ['testCaseResult', 'testSuite', 'incidentId'],
+            fields: [
+              'testCaseResult',
+              'testSuite',
+              'incidentId',
+              'incidentStatus',
+            ],
             includeAllTests: true,
             limit: 15,
             offset: 0,
@@ -378,7 +450,7 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*sale*',
+            q: 'sale',
           })
         );
       });
@@ -397,6 +469,26 @@ describe('TestCases component', () => {
           })
         );
       });
+    });
+
+    it('should display and request every test case status from a multi-value URL', async () => {
+      mockLocation.search =
+        '?testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued';
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            testCaseStatus: ['Success', 'Queued'],
+          })
+        );
+      });
+
+      const statusFilter = await screen.findByTestId('status-select-filter');
+
+      expect(statusFilter).toHaveTextContent('label.success');
+      expect(statusFilter).toHaveTextContent('label.queued');
     });
   });
 
@@ -422,6 +514,33 @@ describe('TestCases component', () => {
 
       expect(statusSelect).toBeInTheDocument();
     });
+
+    it('should add statuses without replacing the existing selection', async () => {
+      const { rerender } = render(<TestCases />);
+      const statusFilter = await screen.findByTestId('status-select-filter');
+      const selector = statusFilter.querySelector('.ant-select-selector');
+
+      fireEvent.mouseDown(selector as Element);
+      fireEvent.click(await screen.findByTitle('label.success'));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenLastCalledWith({
+          search: 'testCaseStatus%5B%5D=Success&currentPage=1',
+        });
+      });
+
+      mockLocation.search = '?testCaseStatus%5B%5D=Success';
+      rerender(<TestCases />);
+      fireEvent.mouseDown(selector as Element);
+      fireEvent.click(await screen.findByTitle('label.queued'));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenLastCalledWith({
+          search:
+            'testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued&currentPage=1',
+        });
+      });
+    });
   });
 
   describe('URL Parameter Handling', () => {
@@ -446,11 +565,46 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*test*',
+            q: 'test',
             testCaseStatus: 'Failed',
           })
         );
       });
+    });
+
+    it('should pass every URL filter, including redirected dates, to the list API', async () => {
+      mockLocation.search =
+        '?tableFqn=sample_service.db.schema.table' +
+        '&testPlatforms%5B%5D=dbt&testPlatforms%5B%5D=Deequ' +
+        '&testCaseType=column&testCaseStatus=Success' +
+        '&lastRunRange%5BstartTs%5D=100&lastRunRange%5BendTs%5D=200' +
+        '&lastRunRange%5Bkey%5D=customRange' +
+        '&lastRunRange%5Btitle%5D=Jul%2014%2C%202026%20-%3E%20Aug%2013%2C%202026' +
+        '&tier=Tier.Tier1&tags%5B%5D=PII.Sensitive' +
+        '&serviceName=sample_service&dataQualityDimension=NoDimension' +
+        '&dataProductFqn=Marketing';
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityLink: '<#E::table::sample_service.db.schema.table>',
+            testPlatforms: ['dbt', 'Deequ'],
+            testCaseType: 'column',
+            testCaseStatus: 'Success',
+            startTimestamp: '100',
+            endTimestamp: '200',
+            tier: 'Tier.Tier1',
+            tags: ['PII.Sensitive'],
+            serviceName: 'sample_service',
+            dataQualityDimension: 'NoDimension',
+            dataProductFqn: 'Marketing',
+          })
+        );
+      });
+
+      expect(await screen.findByTestId('date-picker-menu')).toBeInTheDocument();
     });
 
     it('should handle empty URL params', async () => {
@@ -467,6 +621,42 @@ describe('TestCases component', () => {
           })
         );
       });
+    });
+
+    it('should land on the page from a shared URL without rewriting it', async () => {
+      mockLocation.search = '?currentPage=2&pageSize=15';
+      const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(mockGetListTestCase).toHaveBeenCalledWith(
+          expect.objectContaining({ limit: 15, offset: 15 })
+        );
+      });
+
+      expect(mockGetListTestCase).not.toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 0 })
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should keep the shared page when the shared URL also carries a search', async () => {
+      mockLocation.search = '?searchValue=orders&currentPage=2&pageSize=15';
+      const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(mockGetListTestCase).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'orders', limit: 15, offset: 15 })
+        );
+      });
+
+      expect(mockGetListTestCase).not.toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 0 })
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 
@@ -694,6 +884,20 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('test-case-count')).toHaveTextContent('3');
       });
+    });
+
+    it('should wire the New Test Case empty-state action from DataQualityContext to DataQualityTab', async () => {
+      render(<TestCases />);
+
+      const actionButton = await screen.findByTestId(
+        'empty-state-action-new-test-case'
+      );
+
+      expect(actionButton).toHaveTextContent('label.new-entity');
+
+      fireEvent.click(actionButton);
+
+      expect(mockOnAddTestCase).toHaveBeenCalledTimes(1);
     });
   });
 

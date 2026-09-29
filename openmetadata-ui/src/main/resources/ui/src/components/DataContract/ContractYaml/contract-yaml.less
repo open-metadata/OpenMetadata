@@ -16,12 +16,12 @@
   width: 100%;
 
   .contract-yaml-schema-editor {
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
     border: 1px solid @grey-200;
     overflow: hidden;
   }
 
-  .contract-schema-editor > .CodeMirror {
+  .contract-schema-editor .cm-editor {
     height: calc(
       100vh - @data-asset-header-height - @tab-height - @om-navbar-height -
         @size-xs - 120px

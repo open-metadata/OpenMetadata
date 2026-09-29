@@ -80,7 +80,7 @@ class FirstQuartile(StaticMetric, PercentilMixin):
         if dfs is None:
             return None
         # pylint: disable=import-outside-toplevel
-        import pandas as pd  # noqa: PLC0415
+        import pandas as pd
 
         if is_quantifiable(self.col.type):
             # we can't compute the first quartile unless we have

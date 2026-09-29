@@ -22,6 +22,59 @@ import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
+// Terminal states as the backend defines them. `Queued` is intentionally NOT
+// included — a queued run has not started, so a caller waiting for terminal
+// must not exit on it. This is the one pre-existing bug carried over from the
+// old `/(Aborted|Success|Failed|PartialSuccess|Queued)/` pattern.
+const TERMINAL_CONTRACT_STATUSES = new Set([
+  'Success',
+  'Aborted',
+  'Failed',
+  'PartialSuccess',
+]);
+
+/**
+ * Wait for a data-contract validation to reach any terminal state.
+ *
+ * Permissive by design: this helper is shared between positive-path callers
+ * (`saveAndTriggerDataContractValidation`, which expects `Success`) and
+ * negative-path callers (`triggerContractValidation`, which is used by
+ * `DataContractsSemanticRules` tests that deliberately set up rules that
+ * SHOULD fail — the test then asserts on the UI's `Failed` badge). Baking
+ * "must be Success" into the poll would break the negative-path tests.
+ *
+ * Callers that expect success should assert on the UI status after this
+ * returns; the poll just guarantees the backend has settled so the UI
+ * assertion isn't racing an in-flight validation.
+ */
+const pollContractStatus = async (
+  page: Page,
+  contractId: string,
+  timeoutMs = 180_000
+): Promise<void> => {
+  const { apiContext } = await getApiContext(page);
+
+  await expect
+    .poll(
+      async () => {
+        const contract = await apiContext
+          .get(`/api/v1/dataContracts/${contractId}`)
+          .then((r) => (r.ok() ? r.json() : null))
+          .catch(() => null);
+
+        const status = contract?.latestResult?.status;
+
+        return status && TERMINAL_CONTRACT_STATUSES.has(status);
+      },
+      {
+        message: `Wait for contract ${contractId} validation to reach a terminal state`,
+        timeout: timeoutMs,
+        intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
+      }
+    )
+    .toBe(true);
+};
+
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
@@ -29,6 +82,10 @@ export const saveAndTriggerDataContractValidation = async (
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
+  expect(
+    response.ok(),
+    `Data contract save failed with status ${response.status()}`
+  ).toBe(true);
   const responseData = await response.json();
 
   if (isContractStatusNotVisible) {
@@ -51,6 +108,17 @@ export const saveAndTriggerDataContractValidation = async (
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
 
+  // Poll the API until the validation result reaches a terminal state before
+  // reloading the page. Without this, the UI status check immediately after
+  // the reload is racy: the backend may still be processing the result.
+  if (responseData?.id) {
+    await waitForContractExecutionWithFallback(
+      page,
+      responseData.id,
+      responseData.name
+    );
+  }
+
   await page.reload();
 
   await waitForAllLoadersToDisappear(page);
@@ -59,7 +127,8 @@ export const saveAndTriggerDataContractValidation = async (
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
-  page: Page
+  page: Page,
+  contractName?: string
 ) => {
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
@@ -81,8 +150,32 @@ export const validateDataContractInsideBundleTestSuites = async (
   await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
+
+  // Search by the contract name so the suite row is guaranteed on the first
+  // page regardless of how many bundle suites exist (avoids pagination misses).
+  if (contractName) {
+    const suiteSearchResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites/search/list?*'
+    );
+    await page
+      .getByTestId('searchbar-component')
+      .locator('input')
+      .fill(contractName);
+    await suiteSearchResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId('test-suite-table')
+        .getByRole('rowheader', { name: `Data Contract - ${contractName}` })
+    ).toBeVisible();
+  }
 };
 
+// Permissive terminal wait — see `pollContractStatus` for the rationale.
+// Same use-site profile: callers that expect success must assert on the UI
+// after this returns; callers that expect failure use this to wait then
+// verify the `Failed` badge themselves.
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
@@ -90,8 +183,6 @@ export const waitForDataContractExecution = async (
 ) => {
   const { apiContext } = await getApiContext(page);
   let consecutiveErrors = 0;
-  const terminalStatusPattern =
-    /(Aborted|Success|Failed|PartialSuccess|Queued)/;
 
   await expect
     .poll(
@@ -108,7 +199,7 @@ export const waitForDataContractExecution = async (
 
           const status = contractResponse?.latestResult?.status;
 
-          return status ?? 'Running';
+          return status && TERMINAL_CONTRACT_STATUSES.has(status);
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -121,12 +212,12 @@ export const waitForDataContractExecution = async (
         }
       },
       {
-        message: 'Wait for data contract execution to complete',
+        message: `Wait for data contract ${contractId} execution to reach a terminal state`,
         timeout: 600_000,
         intervals: [30_000, 20_000, 10_000],
       }
     )
-    .toEqual(expect.stringMatching(terminalStatusPattern));
+    .toBe(true);
 };
 
 /**
@@ -149,12 +240,13 @@ export const waitForContractExecutionWithFallback = async (
   } catch {
     // The test suite has results but the contract's latestResult was not updated in time.
     // Verify execution status directly from the DataQuality Bundle Suites page.
-    await validateDataContractInsideBundleTestSuites(page);
+    await validateDataContractInsideBundleTestSuites(page, contractName);
 
     const suiteNameCell = page
       .getByTestId('test-suite-table')
-      .locator('[role="gridcell"]')
-      .filter({ hasText: `Data Contract - ${contractName}` });
+      .getByRole('rowheader', {
+        name: `Data Contract - ${contractName}`,
+      });
 
     await expect(suiteNameCell).toBeVisible();
 
@@ -190,10 +282,14 @@ export const waitForContractExecutionWithFallback = async (
       suiteStatus = 'Success';
     }
 
-    const terminalStatusPattern =
-      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
-
-    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
+    // Permissive terminal-state match here too: the fallback is shared
+    // between positive- and negative-path tests, so callers are responsible
+    // for asserting on `Success` themselves after this returns.
+    // Anchored to the exact values the compute above can produce — the prior
+    // regex also listed `Queued` (not terminal, see the top-level comment)
+    // and `PartialSuccess` (this branch never sets it), which contradicted
+    // the terminal-state definition without changing behaviour.
+    expect(suiteStatus).toMatch(/^(Aborted|Success|Failed)$/);
 
     return false;
   }
@@ -515,7 +611,10 @@ export const saveContractAndWait = async (page: Page): Promise<void> => {
   await waitForAllLoadersToDisappear(page);
 };
 
-export const triggerContractValidation = async (page: Page): Promise<void> => {
+export const triggerContractValidation = async (
+  page: Page,
+  contractId?: string
+): Promise<void> => {
   const runNowResponse = page.waitForResponse(
     '/api/v1/dataContracts/*/validate'
   );
@@ -523,6 +622,12 @@ export const triggerContractValidation = async (page: Page): Promise<void> => {
   await openContractActionsDropdown(page);
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
+
+  // If a contractId is supplied, poll until the validation reaches a terminal
+  // state so callers can safely assert on the UI status after a reload.
+  if (contractId) {
+    await pollContractStatus(page, contractId);
+  }
 };
 
 export const exportContractYaml = async (

@@ -12,6 +12,9 @@
 Constants for Kafka Connect connector configuration keys and mappings
 """
 
+# Re-exported so existing kafkaconnect imports keep working
+from metadata.ingestion.lineage.topic_lineage import CDC_ENVELOPE_FIELDS  # noqa: F401
+
 
 class ConnectorConfigKeys:
     """Configuration keys for various Kafka Connect connectors"""
@@ -35,13 +38,25 @@ class ConnectorConfigKeys:
         "snowflake.topic2table.map",  # Snowflake Sink: Critical mapping (e.g., "topicA:tableA, topicB:tableB")
     ]
 
+    # Both key forms the Snowflake sink accepts, most specific first. Spliced into the
+    # generic lists below and read by SnowflakeSinkResolver, so the dedicated resolver
+    # cannot recognise fewer keys than the generic key-list search it replaces.
+    SNOWFLAKE_DATABASE_KEYS = [  # noqa: RUF012
+        "snowflake.database.name",  # Snowflake: The target database
+        "snowflake.database",  # Snowflake: Variation
+    ]
+
+    SNOWFLAKE_SCHEMA_KEYS = [  # noqa: RUF012
+        "snowflake.schema.name",  # Snowflake: The Schema (e.g. "PUBLIC")
+        "snowflake.schema",  # Snowflake variation
+    ]
+
     DATABASE_KEYS = [  # noqa: RUF012
         "database",  # Generic: Common in simple JDBC configs
         "db.name",  # Generic: Common variation
         "database.dbname",  # PostgreSQL/JDBC: The physical database name
         "topic.prefix",  # Debezium: The "Logical Server Name".
-        "snowflake.database.name",  # Snowflake: The target database
-        "snowflake.database",  # Snowflake: Variation
+        *SNOWFLAKE_DATABASE_KEYS,
         "defaultDataset",  # BigQuery: The Dataset (Equivalent to a Database/Schema)
         "mongodb.database",  # MongoDB: The specific database to watch/write to
         "cassandra.keyspace",  # Cassandra: Keyspace is the Cassandra equivalent of a Database
@@ -55,8 +70,7 @@ class ConnectorConfigKeys:
     ]
 
     SCHEMA_KEYS = [  # noqa: RUF012
-        "snowflake.schema.name",  # Snowflake: The Schema (e.g. "PUBLIC")
-        "snowflake.schema",  # Snowflake variation
+        *SNOWFLAKE_SCHEMA_KEYS,
         "schema.name",  # Generic JDBC: Schema namespace
     ]
 
@@ -147,6 +161,3 @@ STORAGE_ENDPOINT_KEYS = {
     "gcs": ["gcs.credentials.path"],
     "azure": ["azure.storage.account.name", "azblob.account.name"],
 }
-
-# CDC envelope field names used for Debezium detection and parsing
-CDC_ENVELOPE_FIELDS = {"after", "before", "op"}

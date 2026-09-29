@@ -27,6 +27,7 @@ jest.mock('../../../constants/constants', () => ({
 
 let capturedItems: BreadcrumbItemType[] = [];
 let capturedOnAction: ((id: string) => void) | undefined;
+let capturedAutoCollapse: boolean | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Breadcrumbs: jest.fn(
@@ -34,13 +35,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       items,
       onAction,
       className,
+      autoCollapse,
     }: {
       items: BreadcrumbItemType[];
       onAction?: (id: string) => void;
       className?: string;
+      autoCollapse?: boolean;
     }) => {
       capturedItems = items;
       capturedOnAction = onAction;
+      capturedAutoCollapse = autoCollapse;
 
       return (
         <nav className={className} data-testid="breadcrumbs">
@@ -59,6 +63,7 @@ describe('Breadcrumb', () => {
   beforeEach(() => {
     capturedItems = [];
     capturedOnAction = undefined;
+    capturedAutoCollapse = undefined;
     mockNavigate.mockClear();
   });
 
@@ -159,5 +164,17 @@ describe('Breadcrumb', () => {
     render(<Breadcrumb className="my-class" items={[]} />);
 
     expect(screen.getByTestId('breadcrumbs')).toHaveClass('my-class');
+  });
+
+  it('passes autoCollapse to the underlying Breadcrumbs when enabled', () => {
+    render(<Breadcrumb autoCollapse items={[]} />);
+
+    expect(capturedAutoCollapse).toBe(true);
+  });
+
+  it('does not enable autoCollapse by default', () => {
+    render(<Breadcrumb items={[]} />);
+
+    expect(capturedAutoCollapse).toBeFalsy();
   });
 });

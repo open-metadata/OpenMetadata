@@ -13,7 +13,8 @@ Salesforce source ingestion
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -47,12 +48,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
+from metadata.ingestion.connections.connection import BaseConnection  # noqa: TC001
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
@@ -81,12 +83,15 @@ class SalesforceSource(DatabaseServiceSource):
         self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
+        with close_on_failure(self._connection):
+            self.test_connection()
         self.table_constraints = None
         self.database_source_state = set()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SalesforceConnection = config.serviceConnection.root.config
         if not isinstance(connection, SalesforceConnection):
@@ -142,7 +147,7 @@ class SalesforceSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Handle table and views.
 
@@ -196,7 +201,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_table_description(self, table_name: str) -> Optional[str]:  # noqa: UP045
+    def get_table_description(self, table_name: str) -> str | None:
         """
         Method to get the table description for salesforce with Tooling API
         """
@@ -215,7 +220,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(f"Unable to get description with Tooling API for table [{table_name}]: {exc}")
         return table_description
 
-    def get_table_column_description(self, table_name: str) -> Optional[List]:  # noqa: UP006, UP045
+    def get_table_column_description(self, table_name: str) -> list | None:
         """
         Method to get the all columns' (field) description for Salesforce with the Tooling API.
         """
@@ -233,7 +238,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(f"Unable to get column description with Tooling API for table [{table_name}]: {exc}")
         return all_column_description
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -277,7 +282,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, table_name: str, salesforce_fields: List):  # noqa: UP006
+    def get_columns(self, table_name: str, salesforce_fields: list):
         """
         Method to handle column details
         """
@@ -356,8 +361,8 @@ class SalesforceSource(DatabaseServiceSource):
 
     def get_source_url(
         self,
-        table_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        table_name: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for salesforce
         """
@@ -369,11 +374,3 @@ class SalesforceSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url for {table_name}: {exc}")
         return None
-
-    def close(self):
-        """Nothing to close"""
-
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(self.client, self.service_connection)
-        raise_test_connection_exception(result)

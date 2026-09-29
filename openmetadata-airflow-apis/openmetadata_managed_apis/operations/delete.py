@@ -16,14 +16,22 @@ import os
 from pathlib import Path
 
 from airflow import settings
-from airflow.models import DagModel, DagRun
+from airflow.exceptions import DagNotFound
 from flask import Response
+
+try:
+    from airflow.api.common.delete_dag import delete_dag as airflow_delete_dag
+except ImportError:
+    from airflow.api.common.experimental.delete_dag import delete_dag as airflow_delete_dag
 
 from openmetadata_managed_apis.api.config import (
     AIRFLOW_DAGS_FOLDER,
     DAG_GENERATED_CONFIGS,
 )
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import operations_logger
+
+logger = operations_logger()
 
 
 def delete_dag_id(dag_id: str) -> Response:
@@ -32,13 +40,27 @@ def delete_dag_id(dag_id: str) -> Response:
     We clean:
     - py file in AIRFLOW_DAGS_FOLDER
     - config file in DAG_GENERATED_CONFIGS
-    - DagModel and DagRun entries in airflow db
+    - DAG metadata, versions, runs and task history in airflow db
+
+    Order matters: run Airflow's own delete FIRST so that its FK ordering
+    (a task instance pins the DAG version it ran, so deleting the DAG first
+    is refused when a task is still running) is enforced BEFORE the files
+    are removed. When Airflow refuses (raises AirflowException / RuntimeError
+    on running task instances), the files stay on disk and Airflow's next
+    parse can restore the DAG rather than leaving an orphan.
     :param dag_id: DAG to delete
     :return: API Response
     """
 
     dag_py_file = Path(AIRFLOW_DAGS_FOLDER) / f"{dag_id}.py"
     config_file = Path(DAG_GENERATED_CONFIGS) / f"{dag_id}.json"
+
+    with settings.Session() as session:
+        try:
+            deleted_dags = airflow_delete_dag(dag_id, session=session)
+        except DagNotFound:
+            deleted_dags = 0
+        session.commit()
 
     deleted_file = False
     if dag_py_file.is_file():
@@ -50,16 +72,14 @@ def delete_dag_id(dag_id: str) -> Response:
         deleted_config = True
         os.remove(config_file.absolute())  # noqa: PTH107
 
-    with settings.Session() as session:
-        deleted_dags = session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
-        session.query(DagRun).filter(DagRun.dag_id == dag_id).delete()
-        session.commit()
-
     if deleted_dags > 0 and deleted_file and deleted_config:
         return ApiResponse.success({"message": f"DAG [{dag_id}] has been deleted"})
 
-    return ApiResponse.error(
-        status=ApiResponse.STATUS_SERVER_ERROR,
-        error=f"Could not find and delete {dag_id}. Deleted dags: {deleted_dags}; "
-        + f"deleted {dag_py_file}: {deleted_file}",
+    logger.error(
+        "Could not fully delete DAG %s. Deleted database records: %s; DAG file: %s; config file: %s",
+        dag_id,
+        deleted_dags,
+        deleted_file,
+        deleted_config,
     )
+    return ApiResponse.server_error()

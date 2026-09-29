@@ -1,15 +1,27 @@
 package org.openmetadata.service.resources.system;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.Field;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.search.StopWordsByLanguage;
 import org.openmetadata.service.exception.SystemSettingsException;
+import org.openmetadata.service.search.HighlightFieldClassifier;
+import org.openmetadata.service.search.HighlightFieldClassifier.HighlightSupport;
 
+@Slf4j
 public class SearchSettingsHandler {
   private static final int MIN_AGGREGATE_SIZE = 100;
   private static final int MAX_AGGREGATE_SIZE = 10000;
@@ -21,6 +33,10 @@ public class SearchSettingsHandler {
   public void validateSearchSettings(SearchSettings searchSettings) {
     // Validate global settings
     validateGlobalSettings(searchSettings.getGlobalSettings());
+
+    if (searchSettings.getDefaultConfiguration() != null) {
+      validateAssetTypeConfiguration(searchSettings.getDefaultConfiguration());
+    }
 
     // Validate asset type configurations for duplicate fields
     if (searchSettings.getAssetTypeConfigurations() != null) {
@@ -46,6 +62,71 @@ public class SearchSettingsHandler {
         validateExtensionField(fieldName, assetConfig.getAssetType());
       }
     }
+    validateRanking(assetConfig.getRanking(), assetConfig.getAssetType());
+  }
+
+  private void validateRanking(RankingConfiguration ranking, String assetType) {
+    if (ranking == null || Boolean.FALSE.equals(ranking.getEnabled())) {
+      return;
+    }
+    if (ranking.getStages() == null || ranking.getStages().isEmpty()) {
+      throw new SystemSettingsException(
+          String.format("Ranking stages cannot be empty for asset type: %s", assetType));
+    }
+
+    Set<String> stageNames = new HashSet<>();
+    for (RankingStage stage : ranking.getStages()) {
+      if (stage.getName() == null || stage.getName().trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format("Ranking stage name cannot be empty for asset type: %s", assetType));
+      }
+      if (!stageNames.add(stage.getName())) {
+        throw new SystemSettingsException(
+            String.format(
+                "Duplicate ranking stage found for stage: %s in asset type: %s",
+                stage.getName(), assetType));
+      }
+      if (stage.getFields() == null || stage.getFields().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stage %s must define at least one field for asset type: %s",
+                stage.getName(), assetType));
+      }
+      if (stage.getWeight() != null && stage.getWeight() <= 0.0) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stage %s weight must be greater than zero for asset type: %s",
+                stage.getName(), assetType));
+      }
+    }
+    validateStopWordsByLanguage(ranking, assetType);
+    if (ranking.getSignals() != null
+        && ranking.getSignals().getMaxBoost() != null
+        && ranking.getSignals().getMaxBoost() <= 0.0) {
+      throw new SystemSettingsException(
+          String.format("Ranking signal maxBoost must be positive for asset type: %s", assetType));
+    }
+  }
+
+  private void validateStopWordsByLanguage(RankingConfiguration ranking, String assetType) {
+    StopWordsByLanguage stopWordsByLanguage = ranking.getStopWordsByLanguage();
+    if (stopWordsByLanguage == null || stopWordsByLanguage.getAdditionalProperties() == null) {
+      return;
+    }
+    for (Map.Entry<String, List<String>> entry :
+        stopWordsByLanguage.getAdditionalProperties().entrySet()) {
+      if (entry.getKey() == null || entry.getKey().trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stopword language cannot be empty for asset type: %s", assetType));
+      }
+      if (entry.getValue() == null) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stopwords cannot be null for language: %s in asset type: %s",
+                entry.getKey(), assetType));
+      }
+    }
   }
 
   private void validateExtensionField(String fieldName, String assetType) {
@@ -58,6 +139,162 @@ public class SearchSettingsHandler {
                 fieldName, assetType));
       }
     }
+  }
+
+  /**
+   * Shapes a copy of the settings for serving: every field the UI will render carries a verdict on
+   * whether the index mapping can highlight it.
+   *
+   * <p>Call this on the response only. It mutates the object it is given and persists nothing — the
+   * flag is derived from the index mapping, so storing it would create a second source of truth that
+   * goes stale the first time a mapping changes. It is computed by the same classifier that rejects
+   * a bad value in {@link #validateHighlightFields}, so what the UI offers and what the API accepts
+   * cannot disagree.
+   */
+  public void annotateHighlightableFields(SearchSettings searchSettings) {
+    if (searchSettings != null) {
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(searchSettings.getAssetTypeConfigurations())) {
+        listConfiguredSearchFieldsAsAllowed(searchSettings, assetConfig);
+      }
+      for (AllowedSearchFields allowedFields : listOrEmpty(searchSettings.getAllowedFields())) {
+        annotateHighlightableFields(allowedFields);
+      }
+    }
+  }
+
+  /**
+   * Adds an {@code allowedFields} entry for any configured search field that lacks one, so it has
+   * somewhere to carry its verdict.
+   *
+   * <p>Not a migration and not a repair of stored data — this runs on the outgoing copy of each
+   * settings read. It exists because the UI renders one row per <em>search field</em> but reads the
+   * verdict from {@code allowedFields}, and the two lists do not coincide: 63 of the shipped search
+   * fields have no {@code allowedFields} entry ({@code name.keyword}, {@code name.compound},
+   * {@code columnNamesFuzzy}, …). Without an entry the UI sees no verdict and disables a toggle that
+   * would have worked.
+   */
+  private void listConfiguredSearchFieldsAsAllowed(
+      SearchSettings searchSettings, AssetTypeConfiguration assetConfig) {
+    AllowedSearchFields allowedFields =
+        allowedFieldsFor(searchSettings, assetConfig.getAssetType());
+    Set<String> known = new HashSet<>();
+    for (Field field : listOrEmpty(allowedFields.getFields())) {
+      known.add(field.getName());
+    }
+    for (FieldBoost searchField : listOrEmpty(assetConfig.getSearchFields())) {
+      if (known.add(searchField.getField())) {
+        allowedFields
+            .getFields()
+            .add(new Field().withName(searchField.getField()).withDescription(""));
+      }
+    }
+  }
+
+  private AllowedSearchFields allowedFieldsFor(SearchSettings searchSettings, String assetType) {
+    AllowedSearchFields result = null;
+    for (AllowedSearchFields allowedFields : listOrEmpty(searchSettings.getAllowedFields())) {
+      if (allowedFields.getEntityType() != null
+          && allowedFields.getEntityType().equalsIgnoreCase(assetType)) {
+        result = allowedFields;
+      }
+    }
+    if (result == null) {
+      result = new AllowedSearchFields().withEntityType(assetType).withFields(new ArrayList<>());
+      if (searchSettings.getAllowedFields() == null) {
+        searchSettings.setAllowedFields(new ArrayList<>());
+      }
+      searchSettings.getAllowedFields().add(result);
+    } else if (result.getFields() == null) {
+      result.withFields(new ArrayList<>());
+    }
+    return result;
+  }
+
+  private void annotateHighlightableFields(AllowedSearchFields allowedFields) {
+    for (Field field : listOrEmpty(allowedFields.getFields())) {
+      HighlightSupport support =
+          HighlightFieldClassifier.classify(allowedFields.getEntityType(), field.getName());
+      field.setHighlight(support == HighlightSupport.SUPPORTED);
+    }
+  }
+
+  /** Equivalent to {@link #validateHighlightFields(SearchSettings, SearchSettings)} with no stored settings — every unsupported field counts as newly added. */
+  public void validateHighlightFields(SearchSettings searchSettings) {
+    validateHighlightFields(searchSettings, null);
+  }
+
+  /**
+   * Rejects highlight fields the index mapping cannot highlight, but only when the incoming payload
+   * introduces them. A value already in {@code storedSettings} is dropped instead.
+   *
+   * <p>The split exists because rejecting outright would lock an upgraded cluster out of Settings &gt;
+   * Search entirely: a highlight field stored before this check existed (a custom property, say —
+   * the v1130/v11210 scrubs only remove hardcoded {@code columns.children.*} paths) is round-tripped
+   * by the UI on every save, since a disabled toggle does not remove the entry. Every subsequent PUT,
+   * even for an unrelated change, would 400 with an error the admin has no way to clear from the UI.
+   * Dropping the legacy value self-heals on the next save while still refusing new ones.
+   *
+   * <p>Deliberately not part of {@link #validateSearchSettings}: that runs inside {@link
+   * #mergeSearchSettings}, which {@code SettingsCache} calls at startup, and a cluster carrying a
+   * bad value must not be unable to boot.
+   */
+  public void validateHighlightFields(
+      SearchSettings searchSettings, SearchSettings storedSettings) {
+    if (searchSettings != null) {
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(searchSettings.getAssetTypeConfigurations())) {
+        validateHighlightFields(
+            assetConfig, storedHighlightFields(storedSettings, assetConfig.getAssetType()));
+      }
+    }
+  }
+
+  private Set<String> storedHighlightFields(SearchSettings storedSettings, String assetType) {
+    Set<String> result = new HashSet<>();
+    if (storedSettings != null) {
+      for (AssetTypeConfiguration assetConfig :
+          listOrEmpty(storedSettings.getAssetTypeConfigurations())) {
+        if (assetConfig.getAssetType() != null
+            && assetConfig.getAssetType().equalsIgnoreCase(assetType)) {
+          result.addAll(listOrEmpty(assetConfig.getHighlightFields()));
+        }
+      }
+    }
+    return result;
+  }
+
+  private void validateHighlightFields(
+      AssetTypeConfiguration assetConfig, Set<String> alreadyStored) {
+    List<String> retained = new ArrayList<>();
+    for (String field : listOrEmpty(assetConfig.getHighlightFields())) {
+      HighlightSupport support =
+          HighlightFieldClassifier.classify(assetConfig.getAssetType(), field);
+      if (support == HighlightSupport.SUPPORTED) {
+        retained.add(field);
+      } else if (alreadyStored.contains(field)) {
+        LOG.warn(
+            "Dropping stored highlight field '{}' for asset type '{}': {}",
+            field,
+            assetConfig.getAssetType(),
+            support);
+      } else {
+        throw new SystemSettingsException(
+            unsupportedHighlightMessage(field, assetConfig.getAssetType(), support));
+      }
+    }
+    assetConfig.setHighlightFields(retained);
+  }
+
+  private String unsupportedHighlightMessage(
+      String field, String assetType, HighlightSupport support) {
+    String reason =
+        support == HighlightSupport.NOT_ANALYZABLE
+            ? "is mapped as a flattened field, which has no analyzer and fails the highlight phase"
+            : "is not indexed (enabled:false in the index mapping), so it can never be highlighted";
+    return String.format(
+        "Highlight field '%s' for asset type '%s' %s. Remove it from highlightFields.",
+        field, assetType, reason);
   }
 
   public void validateGlobalSettings(GlobalSettings globalSettings) {
@@ -212,6 +449,11 @@ public class SearchSettingsHandler {
     if (incomingSearchSettings.getDefaultConfiguration() == null) {
       incomingSearchSettings.setDefaultConfiguration(
           defaultSearchSettings.getDefaultConfiguration());
+    } else if (incomingSearchSettings.getDefaultConfiguration().getRanking() == null
+        && defaultSearchSettings.getDefaultConfiguration() != null) {
+      incomingSearchSettings
+          .getDefaultConfiguration()
+          .setRanking(defaultSearchSettings.getDefaultConfiguration().getRanking());
     }
 
     // Merge asset type configurations

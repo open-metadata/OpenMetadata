@@ -6,6 +6,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -175,9 +176,24 @@ public class AppRepository extends EntityRepository<App> {
     return daoCollection.applicationDAO().listAppsRef();
   }
 
+  // openMetadataServerConnection and privateConfiguration are runtime-only fields
+  // (re-injected on demand by ApplicationHandler.setAppRuntimeProperties). They carry
+  // secrets (app bot JWT, external tokens) and must never be persisted or serialized.
+  public static final List<String> RUNTIME_SECRET_FIELDS =
+      List.of("openMetadataServerConnection", "privateConfiguration");
+
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("bot");
+    List<String> strippedFields = new ArrayList<>(RUNTIME_SECRET_FIELDS);
+    strippedFields.add("bot");
+    return strippedFields;
+  }
+
+  @Override
+  protected String serializeForVersionHistory(App entity) {
+    ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
+    node.remove(RUNTIME_SECRET_FIELDS);
+    return node.toString();
   }
 
   @Override
@@ -243,17 +259,6 @@ public class AppRepository extends EntityRepository<App> {
           Entity.BOT,
           Relationship.CONTAINS);
     }
-  }
-
-  @Override
-  protected void postDelete(App entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
-    // Delete the status stored in the app extension
-    // Note that we don't want to delete the LIMITS, since we want to keep them
-    // between different app installations
-    daoCollection
-        .appExtensionTimeSeriesDao()
-        .delete(entity.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
   }
 
   public final List<App> listAll() {
@@ -521,6 +526,12 @@ public class AppRepository extends EntityRepository<App> {
     return JsonUtils.readValue(result.get(0), clazz);
   }
 
+  /**
+   * Reached exclusively from {@code cleanup()}, which the delete path runs on the hard-delete
+   * branch only — so an app's run history survives a (reversible) soft delete and comes back with
+   * the app on restore. LIMITS extensions are deliberately left in place: they are meant to carry
+   * over between installations of the same app.
+   */
   @Override
   protected void entitySpecificCleanup(App app) {
     // Remove the Pipelines for Application
@@ -528,6 +539,9 @@ public class AppRepository extends EntityRepository<App> {
     pipelineRef.forEach(
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .delete(app.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
   }
 
   @Override

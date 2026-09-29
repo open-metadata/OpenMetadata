@@ -11,23 +11,14 @@
  *  limitations under the License.
  */
 
-import { DefaultOptionType } from 'antd/lib/select';
+import type { DefaultOptionType } from 'antd/lib/select';
 import { HTMLAttributes } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../enums/common.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
-
-export enum QueryVoteType {
-  'votedUp' = 'votedUp',
-  'votedDown' = 'votedDown',
-  'unVoted' = 'unVoted',
-}
-
-export type QueryVote = {
-  updatedVoteType: QueryVoteType;
-};
 
 export interface TableQueriesProp {
   isTableDeleted?: boolean;
@@ -44,6 +35,7 @@ export type FetchFilteredQueriesType = {
   tags?: SearchDropdownOption[];
   owners?: SearchDropdownOption[];
   pageNumber?: number;
+  pageSize?: number;
   timeRange?: { startTs: number; endTs: number };
   sortField?: string;
   sortOrder?: SORT_ORDER;
@@ -73,6 +65,8 @@ export interface QueryUsedByOtherTableProps {
 
 export type QuerySearchParams = {
   queryFrom?: number;
+  currentPage?: number;
+  pageSize?: number;
   after?: string;
   tableId?: string;
   query?: string;
@@ -91,3 +85,6 @@ export type QuerySearchMustFilterType = {
     should: QuerySearchShouldFilterType[];
   };
 };
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { QueryVote } from '../../../interface/entity/vote.interface';

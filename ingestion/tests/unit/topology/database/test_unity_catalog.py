@@ -13,7 +13,7 @@
 Test unitycatalog using the topology
 """
 
-from typing import List  # noqa: UP035
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -39,7 +39,9 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
+    ConstraintType,
     DataType,
+    TableConstraint,
     TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -93,7 +95,7 @@ mock_unitycatalog_config = {
 }
 
 
-MOCK_CATALOG_INFO: List[CatalogInfo] = [  # noqa: UP006
+MOCK_CATALOG_INFO: list[CatalogInfo] = [
     CatalogInfo(
         browse_only=False,
         catalog_type=CatalogType.MANAGED_CATALOG,
@@ -588,6 +590,52 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
         self.unitycatalog_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
 
         self.unitycatalog_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+
+    @patch.object(UnitycatalogSource, "_process_table")
+    @patch.object(UnitycatalogSource, "sql_connection", create=True)
+    @patch("databricks.sdk.service.catalog.TablesAPI.list")
+    @patch("databricks.sdk.service.catalog.TablesAPI.get")
+    def test_get_tables_with_constraints(
+        self, mock_dbx_get_table, mock_dbx_list_table, mock_sql_connection, mock_process_table
+    ):
+        mock_tables_with_constraints = [
+            SimpleNamespace(
+                table_catalog="demo",
+                table_schema="default",
+                table_name="table_with_constraints",
+            )
+        ]
+
+        mock_sql_connection.execute.return_value = mock_tables_with_constraints
+        mock_dbx_list_table.return_value = [
+            TableInfo(
+                catalog_name="demo",
+                schema_name="default",
+                name="table_with_constraints",
+                table_type=DatabricksTableType.MANAGED,
+            ),
+            TableInfo(
+                catalog_name="demo",
+                schema_name="default",
+                name="table_no_constraints",
+                table_type=DatabricksTableType.MANAGED,
+            ),
+        ]
+        mock_dbx_get_table.return_value = TableInfo(
+            catalog_name="demo",
+            schema_name="default",
+            name="table_with_constraints",
+            table_type=DatabricksTableType.MANAGED,
+            table_constraints=[TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, referredColumns=["id"])],
+        )
+        mock_process_table.side_effect = [
+            [("table_with_constraints", TableType.Regular)],
+            [("table_no_constraints", TableType.Regular)],
+        ]
+
+        list(self.unitycatalog_source.get_tables_name_and_type())
+        # Verify that the get method was called for the table with constraints
+        mock_dbx_get_table.assert_called_once()
 
     @patch("databricks.sdk.service.catalog.CatalogsAPI.list")
     def test_get_database_names_raw(self, mock_list):

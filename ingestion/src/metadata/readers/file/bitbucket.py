@@ -14,7 +14,6 @@ GitHub client to read files with token auth
 
 import traceback
 from enum import Enum
-from typing import List  # noqa: UP035
 
 import requests
 
@@ -78,7 +77,7 @@ class BitBucketReader(ApiReader):
 
         raise ReadException(f"Could not fetch file [{path}] from repo")
 
-    def _get_files_from_dir(self, url: str) -> List[str]:  # noqa: UP006
+    def _get_files_from_dir(self, url: str) -> list[str]:
         """
         Run the request and return the page results
         """
@@ -107,7 +106,7 @@ class BitBucketReader(ApiReader):
         res.raise_for_status()
         raise RuntimeError("Could not fetch the tree")
 
-    def _get_tree(self) -> List[str]:  # noqa: UP006
+    def _get_tree(self) -> list[str]:
         """
         Paginate over the results
         """

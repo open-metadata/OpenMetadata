@@ -15,9 +15,11 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.TABLE;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -175,6 +177,20 @@ public class FullyQualifiedName {
   public static String unquoteName(String name) {
     validateName(name);
     return isQuotedName(name) ? decodeQuotedName(name) : name;
+  }
+
+  /**
+   * Encodes a value so that {@link #unquoteName} gives it back unchanged, i.e. {@code
+   * unquoteName(escapeForUnquote(v)).equals(v)} for every {@code v}. {@link #quoteName} is not that
+   * inverse — it unquotes a value like {@code "a"} that does not need quoting, which loses the
+   * quotes a caller meant literally. Needed wherever arbitrary text travels through a field that is
+   * unquoted on the way back, such as the name half of a paging cursor built from a display name.
+   */
+  public static String escapeForUnquote(String value) {
+    if (value == null || !isQuotedName(value)) {
+      return value;
+    }
+    return "\"" + value.replace("\"", "\"\"") + "\"";
   }
 
   /**
@@ -343,11 +359,24 @@ public class FullyQualifiedName {
     return build(split[0], split[1], split[2]);
   }
 
+  /**
+   * Split a metric dimension/measure FQN of format metricName.dimension.dimensionName
+   * or metricName.measure.measureName and return the parent metric FQN.
+   */
+  public static String getMetricFQN(String childFQN) {
+    String[] split = split(childFQN);
+    if (split.length < 3) {
+      throw new IllegalArgumentException("Invalid metric child FQN: " + childFQN);
+    }
+    return build(Arrays.copyOf(split, split.length - 2));
+  }
+
   // Get parent entity fqn for a given column fqn
   public static String getParentEntityFQN(String columnFQN, String entityType) {
     return switch (entityType) {
       case TABLE -> getTableFQN(columnFQN);
       case DASHBOARD_DATA_MODEL -> getDashboardDataModelFQN(columnFQN);
+      case METRIC -> getMetricFQN(columnFQN);
       default -> throw new IllegalArgumentException("Unsupported entity type: " + entityType);
     };
   }

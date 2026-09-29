@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { FilterFunnel01, XCircle, XClose } from '@untitledui/icons';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { FilterFunnel01, XClose } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +37,6 @@ const ExploreQueryFilterChips = ({
   onRemoveValue,
   onRemoveBrowseLevel,
   onClearAll,
-  hasAdditionalQuery = false,
   emptyText,
 }: ExploreQueryFilterChipsProps) => {
   const { t } = useTranslation();
@@ -78,10 +77,9 @@ const ExploreQueryFilterChips = ({
     [fields, t]
   );
 
-  const hasActiveQuery =
-    !isEmpty(chips) || !isEmpty(browseFields) || hasAdditionalQuery;
+  const hasFilterChips = !isEmpty(chips) || !isEmpty(browseFields);
 
-  if (!hasActiveQuery && !emptyText) {
+  if (!hasFilterChips && !emptyText) {
     return null;
   }
 
@@ -94,12 +92,14 @@ const ExploreQueryFilterChips = ({
         {t('label.query')}
       </span>
 
-      {!hasActiveQuery && (
-        <span
-          className="explore-query-filter-chips__empty"
-          data-testid="query-bar-empty-text">
+      {!hasFilterChips && (
+        <Typography
+          className="tw:text-quaternary"
+          data-testid="query-bar-empty-text"
+          size="text-xs"
+          weight="medium">
           {emptyText}
-        </span>
+        </Typography>
       )}
 
       {browseFields.map((field) => {
@@ -157,16 +157,15 @@ const ExploreQueryFilterChips = ({
         </span>
       ))}
 
-      {hasActiveQuery && onClearAll && (
+      {hasFilterChips && onClearAll && (
         <Button
-          className="tw:ml-auto"
-          color="secondary"
+          className="text-primary tw:ml-auto tw:self-center tw:cursor-pointer tw:bg-transparent tw:p-0! tw:font-medium tw:shadow-none tw:after:outline-0 tw:hover:bg-transparent"
+          color="tertiary"
           data-testid="clear-all-chips"
-          iconLeading={XCircle}
-          size="xs"
+          size="sm"
           type="button"
           onClick={onClearAll}>
-          {t('label.clear')}
+          {t('label.clear-entity', { entity: t('label.all') })}
         </Button>
       )}
     </div>

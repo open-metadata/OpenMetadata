@@ -34,7 +34,7 @@ const mockSwTokenStorage = swTokenStorage as jest.Mocked<typeof swTokenStorage>;
 const mockIsServiceWorkerAvailable = isServiceWorkerAvailable as jest.Mock;
 
 // Mock localStorage
-const mockLocalStorage: Record<string, any> = {
+const mockLocalStorage: Record<string, jest.Mock> = {
   getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),

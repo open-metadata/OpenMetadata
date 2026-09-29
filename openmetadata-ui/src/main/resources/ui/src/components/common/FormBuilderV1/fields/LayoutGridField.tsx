@@ -163,6 +163,7 @@ const LayoutGridField = (props: FieldProps) => {
             row.className ?? uiOptions.rowClassName,
             'tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2'
           )}
+          // eslint-disable-next-line react/no-array-index-key -- static form layout rows
           key={`layout-row-${rowIndex}`}>
           {Array.isArray(row.columns) &&
             row.columns.map((column: LayoutGridColumn) =>

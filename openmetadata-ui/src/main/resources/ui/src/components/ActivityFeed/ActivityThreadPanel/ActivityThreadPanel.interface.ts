@@ -12,59 +12,20 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { CreateThread } from '../../../generated/api/feed/createThread';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
-import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
-import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export type ActivityThreadPanelView = 'tasks' | 'conversations';
 
 export interface ActivityThreadPanelProp
   extends HTMLAttributes<HTMLDivElement> {
   threadLink: string;
-  threadType?: ThreadType;
+  initialView?: ActivityThreadPanelView;
   open?: boolean;
-  postFeedHandler: (value: string, id: string) => void;
-  createThread: (data: CreateThread) => Promise<void>;
-  updateThreadHandler: ThreadUpdatedFunc;
   onCancel?: () => void;
-  deletePostHandler?: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
 }
 
 export interface ActivityThreadPanelBodyProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<
-      ActivityThreadPanelProp,
-      | 'threadLink'
-      | 'updateThreadHandler'
-      | 'postFeedHandler'
-      | 'onCancel'
-      | 'createThread'
-      | 'deletePostHandler'
-    > {
+    Pick<ActivityThreadPanelProp, 'threadLink' | 'onCancel'> {
   view: ActivityThreadPanelView;
   showHeader?: boolean;
-}
-
-export interface ActivityThreadListProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
-  editAnnouncementPermission?: boolean;
-  threads: Thread[];
-  selectedThreadId: string;
-  postFeed: (value: string) => void;
-  onThreadIdSelect: (value: string) => void;
-  onThreadSelect: (value: string) => void;
-  onConfirmation?: (data: ConfirmState) => void;
-}
-export interface ActivityThreadProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
-  selectedThread: Thread;
-  postFeed: (value: string) => void;
-  onConfirmation?: (data: ConfirmState) => void;
 }

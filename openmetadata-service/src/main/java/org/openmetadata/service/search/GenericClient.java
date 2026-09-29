@@ -5,7 +5,9 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 /**
  * Interface for generic search client operations.
@@ -14,6 +16,31 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 public interface GenericClient {
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
+
+  /** Application-owned marker; external template replacements must not preserve stale values. */
+  String INDEX_TEMPLATE_FINGERPRINT_KEY = "openmetadataFingerprint";
+
+  long INDEX_TEMPLATE_PRIORITY = 100L;
+  String INDEX_TEMPLATE_FINGERPRINT_FILTER_PATH =
+      "index_templates.name,index_templates.index_template.index_patterns,"
+          + "index_templates.index_template.composed_of,"
+          + "index_templates.index_template._meta."
+          + INDEX_TEMPLATE_FINGERPRINT_KEY;
+
+  static String calculateIndexTemplateFingerprint(String indexPattern, String mappingContent) {
+    return SeedDataGate.fingerprint(
+        Map.of(
+            "indexPattern",
+            indexPattern,
+            "mappingContent",
+            mappingContent,
+            "priority",
+            Long.toString(INDEX_TEMPLATE_PRIORITY)));
+  }
+
+  default String indexTemplateFingerprint(String indexPattern, String mappingContent) {
+    return calculateIndexTemplateFingerprint(indexPattern, mappingContent);
+  }
 
   /**
    * Get list of data streams matching a prefix.
@@ -59,6 +86,19 @@ public interface GenericClient {
    */
   default void createOrUpdateIndexTemplate(
       String templateName, String indexPattern, String mappingContent) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /**
+   * Read OpenMetadata definition fingerprints from composable index templates in one request.
+   *
+   * @param templateNamePattern template name or wildcard pattern
+   * @return template name to definition fingerprint; templates without it are omitted
+   * @throws IOException if the operation fails
+   */
+  default Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

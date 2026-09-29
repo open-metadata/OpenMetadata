@@ -20,10 +20,10 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
-import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.DefaultRecreateHandler;
@@ -160,13 +160,23 @@ public class DistributedIndexingStrategy {
 
     currentStats.set(stats);
 
-    boolean success =
+    boolean allPromoted =
         finalizeAllEntityReindex(
             stagedIndexHandler,
             stagedIndexContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
+    // Promotion sweep is done; flip the job from PROMOTING to its terminal status. The job stayed
+    // non-terminal until now, so the pod was not torn down mid-promotion.
+    distributedExecutor.markPromotionComplete(distributedJob.getId(), allPromoted);
+
     ExecutionResult.Status resultStatus = determineStatus(stats);
+    if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
+      LOG.error(
+          "Reindex finished but one or more staged indexes could not be promoted; reporting "
+              + "COMPLETED_WITH_ERRORS so the stale indexes are not treated as a clean rebuild");
+      resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
+    }
 
     StatsReconciler.reconcile(stats);
 
@@ -234,12 +244,11 @@ public class DistributedIndexingStrategy {
                 return;
               }
 
-              IndexJobStatus status = job.getStatus();
-              if (status == IndexJobStatus.COMPLETED
-                  || status == IndexJobStatus.COMPLETED_WITH_ERRORS
-                  || status == IndexJobStatus.FAILED
-                  || status == IndexJobStatus.STOPPED) {
-                LOG.info("Distributed job {} completed with status: {}", jobId, status);
+              // PROMOTING counts as processing-complete: stop monitoring and let the strategy run
+              // the
+              // promotion sweep, then flip the job terminal via markPromotionComplete().
+              if (job.isProcessingComplete()) {
+                LOG.info("Distributed job {} reached status: {}", jobId, job.getStatus());
                 completionLatch.countDown();
                 return;
               }
@@ -466,9 +475,8 @@ public class DistributedIndexingStrategy {
       String correctedType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
       if (!SearchIndexEntityTypes.isTimeSeriesEntity(correctedType)) {
-        return Entity.getEntityRepository(correctedType)
-            .getDao()
-            .listCount(new ListFilter(Include.ALL));
+        EntityRepository<?> repository = Entity.getEntityRepository(correctedType);
+        return repository.getDao().listCount(repository.getReindexFilter());
       } else {
         // Include.ALL to match PartitionCalculator.getTimeSeriesEntityCount — the two counts
         // must use identical filters or the job total and the partition plan drift apart.

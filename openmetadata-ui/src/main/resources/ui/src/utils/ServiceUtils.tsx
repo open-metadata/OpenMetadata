@@ -13,7 +13,6 @@
 
 import { startCase } from 'lodash';
 import type { ServiceTypes } from 'Models';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
   ADMONITION_BLOCK_REGEX,
   MARKDOWN_MATCH_ID,
@@ -29,16 +28,14 @@ import type { PipelineService } from '../generated/entity/services/pipelineServi
 import type { DatabaseServiceSearchSource } from '../interface/search.interface';
 import type { ServicesType } from '../interface/service.interface';
 import { searchService } from '../rest/serviceAPI';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
-import { getSettingPath } from './RouterUtils';
-import {
-  getSearchIndexFromService,
-  getServiceRouteFromServiceType,
-} from './ServicePureUtils';
+import { getSearchIndexFromService } from './ServicePureUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getOptionalFields = (
   service: ServicesType,
@@ -50,7 +47,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
+          <span className="m-b-0">{t('label.broker-plural') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -64,7 +61,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -78,7 +75,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
@@ -94,7 +91,7 @@ export const getOptionalFields = (
       return (
         <>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.registry')}:</label>
+            <span className="m-b-0">{t('label.registry')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
@@ -102,7 +99,7 @@ export const getOptionalFields = (
             </span>
           </div>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.tracking')}:</label>
+            <span className="m-b-0">{t('label.tracking')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
@@ -150,16 +147,42 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
   }
 };
 
+/**
+ * Only honour a deep-linked serviceType (router `state.serviceType`) that is actually a supported
+ * connector for the given category; otherwise return '' so the wizard shows the connector grid
+ * rather than landing on the Connect step with an unknown/empty connector.
+ *
+ * Shared by both add-service pages: the onboarding connector picker deep-links this way, and so
+ * does picking a card in the flattened "all services" grid, which navigates to that connector's
+ * own category with the type in router state.
+ */
+export const getValidatedServiceType = (
+  state: unknown,
+  serviceCategory: string
+): string => {
+  const requested = (state as { serviceType?: string } | null)?.serviceType;
+  if (!requested) {
+    return '';
+  }
+  const supported = (
+    serviceUtilClassBase.getSupportedServiceFromList() as Record<
+      string,
+      string[]
+    >
+  )[serviceCategory];
+
+  return (supported ?? []).includes(requested) ? requested : '';
+};
+
 export const getAddServiceEntityBreadcrumb = (
   serviceCategory: ServiceCategory
 ) => {
   return [
     {
       label: startCase(serviceCategory),
-      href: getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(serviceCategory)
-      ),
+      // Delegated so an embedded experience that owns the service listing can redirect this
+      // crumb; the base implementation returns the same settings path.
+      href: connectionsRouterClassBase.getSettingsServicesPath(serviceCategory),
       id: 'category',
     },
     {

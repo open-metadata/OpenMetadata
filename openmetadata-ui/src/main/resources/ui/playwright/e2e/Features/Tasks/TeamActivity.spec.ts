@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -407,7 +407,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
       const notificationBox = page.locator('.notification-box');
 
       if (await notificationBox.isVisible()) {
-        const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+        const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
         if (await tasksTab.isVisible()) {
           await tasksTab.click();
@@ -429,7 +429,9 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -618,7 +620,7 @@ test.describe('Team Activity - Notifications', () => {
 
       if (await notificationBox.isVisible()) {
         // Look for Tasks tab
-        const tasksTab = notificationBox.getByText('Tasks', { exact: false });
+        const tasksTab = notificationBox.getByRole('tab', { name: /Tasks/ });
 
         if (await tasksTab.isVisible()) {
           await tasksTab.click();

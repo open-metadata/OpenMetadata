@@ -18,6 +18,7 @@ import { Column, DataType, Table } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
+import { getEntityIcon } from '../utils/EntityIconUtils';
 import { ExtraTableDropdownOptions } from '../utils/TableDropdownOptions';
 import {
   extractColumnsFromData,
@@ -44,7 +45,6 @@ import {
   updateFieldExtension,
 } from '../utils/TablePureUtils';
 import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
-import { getEntityIcon } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TablePureUtils';
@@ -1157,6 +1157,7 @@ describe('TableUtils', () => {
     editCustomAttributePermission: true,
     editLineagePermission: true,
     feedCount: {
+      activityCount: 0,
       closedTaskCount: 0,
       conversationCount: 0,
       mentionCount: 0,
@@ -1168,6 +1169,7 @@ describe('TableUtils', () => {
     fetchTableDetails: jest.fn(),
     getEntityFeedCount: jest.fn(),
     handleFeedCount: jest.fn(),
+    isQueryCountLoading: false,
     isTourOpen: false,
     isViewTableType: true,
     queryCount: 0,

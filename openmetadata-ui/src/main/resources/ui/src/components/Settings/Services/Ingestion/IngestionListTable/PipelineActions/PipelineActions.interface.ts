@@ -19,6 +19,11 @@ import { SelectedRowDetails } from '../../ingestion.interface';
 
 export interface PipelineActionsProps {
   pipeline: IngestionPipeline;
+  /**
+   * Closes down every control in the row. Set when the pipeline service is unreachable — pausing,
+   * resuming, running, deploying, killing, and reading logs all go through it.
+   */
+  isDisabled?: boolean;
   ingestionPipelinePermissions?: OperationPermission;
   serviceCategory?: ServiceCategory;
   serviceName?: string;

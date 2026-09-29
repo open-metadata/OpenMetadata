@@ -16,4 +16,5 @@ export type ModalWithQueryEditorProps = {
   onSave?: (text: string) => void;
   onCancel?: () => void;
   visible: boolean;
+  getContainer?: () => HTMLElement;
 };

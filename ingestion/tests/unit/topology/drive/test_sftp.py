@@ -17,9 +17,15 @@ from collections import namedtuple
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.generated.schema.entity.services.connections.drive.sftp.basicAuth import (
+    UsernamePasswordAuthentication,
+)
+from metadata.generated.schema.entity.services.connections.drive.sftp.keyAuth import (
+    PrivateKeyAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
-    BasicAuth,
-    KeyAuth,
     SftpConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -207,14 +213,14 @@ class TestSftpConnection(TestCase):
     """Test SFTP connection configuration"""
 
     def test_basic_auth_config(self):
-        """Test BasicAuth configuration"""
-        auth = BasicAuth(username="testuser", password="testpass")
+        """Test username/password auth configuration"""
+        auth = UsernamePasswordAuthentication(username="testuser", password="testpass")
         self.assertEqual(auth.username, "testuser")
         self.assertEqual(auth.password.get_secret_value(), "testpass")
 
     def test_key_auth_config(self):
-        """Test KeyAuth configuration"""
-        auth = KeyAuth(
+        """Test private-key auth configuration"""
+        auth = PrivateKeyAuthentication(
             username="testuser",
             privateKey="-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
             privateKeyPassphrase="passphrase",
@@ -228,7 +234,7 @@ class TestSftpConnection(TestCase):
         config = SftpConnection(
             host="localhost",
             port=22,
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             rootDirectories=["/data", "/home"],
         )
         self.assertEqual(config.host, "localhost")
@@ -240,8 +246,8 @@ class TestSftpSource(TestCase):
     """Test SFTP Source class"""
 
     @patch("metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection")
-    @patch("metadata.ingestion.source.drive.sftp.metadata.get_connection")
-    def setUp(self, mock_get_connection, mock_test_connection):
+    @patch("metadata.ingestion.source.drive.sftp.metadata.create_connection")
+    def setUp(self, mock_create_connection, mock_test_connection):
         """Set up test fixtures"""
         mock_test_connection.return_value = False
 
@@ -251,7 +257,8 @@ class TestSftpSource(TestCase):
         self.mock_client = MagicMock()
         self.mock_client.sftp = self.mock_sftp
         self.mock_client.transport = self.mock_transport
-        mock_get_connection.return_value = self.mock_client
+        self.mock_connection = mock_create_connection.return_value
+        self.mock_connection.client = self.mock_client
 
         # Set up mock listdir_attr
         self.mock_sftp.listdir_attr = get_mock_listdir_attr
@@ -358,7 +365,7 @@ class TestSftpSource(TestCase):
         self.assertEqual(self.sftp_source._directories_cache, {})
         self.assertEqual(self.sftp_source._files_by_parent_cache, {})
         self.assertEqual(self.sftp_source._directory_fqn_cache, {})
-        self.mock_client.close.assert_called_once()
+        self.mock_connection.close.assert_called_once()
 
 
 class TestSftpConnectionModule(TestCase):
@@ -368,7 +375,9 @@ class TestSftpConnectionModule(TestCase):
     @patch("metadata.ingestion.source.drive.sftp.connection.SFTPClient")
     def test_get_connection_basic_auth(self, mock_sftp_client, mock_transport):
         """Test get_connection with basic auth"""
-        from metadata.ingestion.source.drive.sftp.connection import get_connection
+        from metadata.ingestion.source.drive.sftp.connection import (
+            SftpConnection as SftpConnectionHandler,
+        )
 
         mock_transport_instance = MagicMock()
         mock_transport.return_value = mock_transport_instance
@@ -378,10 +387,10 @@ class TestSftpConnectionModule(TestCase):
         connection = SftpConnection(
             host="localhost",
             port=22,
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
         )
 
-        client = get_connection(connection)
+        client = SftpConnectionHandler(connection)._get_client()
 
         mock_transport.assert_called_once_with(("localhost", 22))
         mock_transport_instance.connect.assert_called_once_with(username="user", password="pass")
@@ -393,7 +402,9 @@ class TestSftpConnectionModule(TestCase):
     @patch("metadata.ingestion.source.drive.sftp.connection.SFTPClient")
     def test_get_connection_key_auth(self, mock_sftp_client, mock_transport, mock_parse_key):
         """Test get_connection with key auth"""
-        from metadata.ingestion.source.drive.sftp.connection import get_connection
+        from metadata.ingestion.source.drive.sftp.connection import (
+            SftpConnection as SftpConnectionHandler,
+        )
 
         mock_transport_instance = MagicMock()
         mock_transport.return_value = mock_transport_instance
@@ -405,13 +416,13 @@ class TestSftpConnectionModule(TestCase):
         connection = SftpConnection(
             host="localhost",
             port=2222,
-            authType=KeyAuth(
+            authType=PrivateKeyAuthentication(
                 username="user",
                 privateKey="-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
             ),
         )
 
-        client = get_connection(connection)  # noqa: F841
+        client = SftpConnectionHandler(connection)._get_client()  # noqa: F841
 
         mock_transport.assert_called_once_with(("localhost", 2222))
         mock_transport_instance.connect.assert_called_once_with(username="user", pkey=mock_pkey)
@@ -448,8 +459,8 @@ class TestCsvExtraction(TestCase):
     """Test CSV schema extraction functionality"""
 
     @patch("metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection")
-    @patch("metadata.ingestion.source.drive.sftp.metadata.get_connection")
-    def setUp(self, mock_get_connection, mock_test_connection):
+    @patch("metadata.ingestion.source.drive.sftp.metadata.create_connection")
+    def setUp(self, mock_create_connection, mock_test_connection):
         """Set up test fixtures"""
         mock_test_connection.return_value = False
 
@@ -458,7 +469,7 @@ class TestCsvExtraction(TestCase):
         self.mock_client = MagicMock()
         self.mock_client.sftp = self.mock_sftp
         self.mock_client.transport = self.mock_transport
-        mock_get_connection.return_value = self.mock_client
+        mock_create_connection.return_value.client = self.mock_client
 
         self.mock_sftp.listdir_attr = get_mock_listdir_attr
 
@@ -582,7 +593,7 @@ class TestConfigOptions(TestCase):
         """Test structuredDataFilesOnly defaults to False"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
         )
         self.assertFalse(connection.structuredDataFilesOnly)
 
@@ -590,7 +601,7 @@ class TestConfigOptions(TestCase):
         """Test structuredDataFilesOnly can be enabled"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             structuredDataFilesOnly=True,
         )
         self.assertTrue(connection.structuredDataFilesOnly)
@@ -599,7 +610,7 @@ class TestConfigOptions(TestCase):
         """Test extractSampleData defaults to False"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
         )
         self.assertFalse(connection.extractSampleData)
 
@@ -607,7 +618,7 @@ class TestConfigOptions(TestCase):
         """Test extractSampleData can be enabled"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             extractSampleData=True,
         )
         self.assertTrue(connection.extractSampleData)
@@ -616,7 +627,7 @@ class TestConfigOptions(TestCase):
         """Test both options can be enabled together"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             structuredDataFilesOnly=True,
             extractSampleData=True,
         )
@@ -628,8 +639,8 @@ class TestSampleDataIngestion(TestCase):
     """Test sample data ingestion functionality"""
 
     @patch("metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection")
-    @patch("metadata.ingestion.source.drive.sftp.metadata.get_connection")
-    def setUp(self, mock_get_connection, mock_test_connection):
+    @patch("metadata.ingestion.source.drive.sftp.metadata.create_connection")
+    def setUp(self, mock_create_connection, mock_test_connection):
         """Set up test fixtures"""
         mock_test_connection.return_value = False
 
@@ -638,7 +649,7 @@ class TestSampleDataIngestion(TestCase):
         self.mock_client = MagicMock()
         self.mock_client.sftp = self.mock_sftp
         self.mock_client.transport = self.mock_transport
-        mock_get_connection.return_value = self.mock_client
+        mock_create_connection.return_value.client = self.mock_client
 
         self.mock_sftp.listdir_attr = get_mock_listdir_attr
 
@@ -763,3 +774,33 @@ class TestSampleDataIngestion(TestCase):
 
         self.sftp_source.metadata.get_by_name.assert_called_once()
         self.sftp_source.metadata.ingest_file_sample_data.assert_not_called()
+
+
+OWNED_CONNECTION_CONFIG = {
+    "type": "Sftp",
+    "serviceName": "sftp_test",
+    "serviceConnection": {
+        "config": {
+            "type": "Sftp",
+            "host": "sftp.example.com",
+            "port": 22,
+            "authType": {"username": "testuser", "password": "testpass"},
+        }
+    },
+    "sourceConfig": {"config": {"type": "DriveMetadata"}},
+}
+
+
+def test_owned_connection_closed_when_test_connection_fails():
+    with patch("metadata.ingestion.source.drive.sftp.metadata.create_connection") as mock_create_connection:
+        owned_connection = mock_create_connection.return_value
+        with (
+            patch(
+                "metadata.ingestion.source.drive.drive_service.run_test_connection",
+                side_effect=RuntimeError("cannot connect"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            SftpSource.create(OWNED_CONNECTION_CONFIG, MagicMock())
+
+        owned_connection.close.assert_called_once()

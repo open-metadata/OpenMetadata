@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { startCase } from 'lodash';
-import { useEffect, useState } from 'react';
+import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
@@ -22,7 +22,7 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
-import { LANDING_WIDGET_DEFAULT_ICON_URL } from './LandingPageWidgetIconUtils.constants';
+import { getServiceIcon } from './ServiceIconUtils';
 
 type DataAssetServiceCategory =
   | 'api'
@@ -107,122 +107,22 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
   sqlite: 'SQLite',
 };
 
-const SERVICE_ICON_IMPORTS: Record<string, () => Promise<{ default: string }>> =
-  {
-    airflow: () => import('../assets/img/service-icon-airflow.webp'),
-    airbyte: () => import('../assets/img/Airbyte.webp'),
-    alationsink: () => import('../assets/img/service-icon-alation-sink.webp'),
-    amundsen: () => import('../assets/img/service-icon-amundsen.webp'),
-    athena: () => import('../assets/img/service-icon-athena.webp'),
-    atlas: () => import('../assets/img/service-icon-atlas.svg'),
-    azuresql: () => import('../assets/img/service-icon-azuresql.webp'),
-    bigquery: () => import('../assets/img/service-icon-query.webp'),
-    bigtable: () => import('../assets/img/service-icon-bigtable.webp'),
-    burstiq: () => import('../assets/img/service-icon-burstiq.webp'),
-    cassandra: () => import('../assets/img/service-icon-cassandra.webp'),
-    clickhouse: () => import('../assets/img/service-icon-clickhouse.webp'),
-    cockroach: () => import('../assets/img/service-icon-cockroach.webp'),
-    couchbase: () => import('../assets/img/service-icon-couchbase.svg'),
-    customdrive: () => import('../assets/svg/ic-custom-drive.svg'),
-    dagster: () => import('../assets/img/service-icon-dagster.webp'),
-    databricks: () => import('../assets/img/service-icon-databrick.webp'),
-    databrickspipeline: () =>
-      import('../assets/img/service-icon-databrick.webp'),
-    datalake: () => import('../assets/img/service-icon-datalake.webp'),
-    db2: () => import('../assets/img/service-icon-ibmdb2.webp'),
-    dbtcloud: () => import('../assets/img/service-icon-dbt.webp'),
-    deltalake: () => import('../assets/img/service-icon-delta-lake.webp'),
-    domodashboard: () => import('../assets/img/service-icon-domo.webp'),
-    domodatabase: () => import('../assets/img/service-icon-domo.webp'),
-    domopipeline: () => import('../assets/img/service-icon-domo.webp'),
-    doris: () => import('../assets/img/service-icon-doris.webp'),
-    druid: () => import('../assets/img/service-icon-druid.webp'),
-    dynamodb: () => import('../assets/img/service-icon-dynamodb.webp'),
-    elasticsearch: () => import('../assets/svg/elasticsearch.svg'),
-    exasol: () => import('../assets/img/service-icon-exasol.webp'),
-    fivetran: () => import('../assets/img/service-icon-fivetran.webp'),
-    flink: () => import('../assets/img/service-icon-flink.webp'),
-    gcs: () => import('../assets/img/service-icon-gcs.webp'),
-    glue: () => import('../assets/img/service-icon-glue.webp'),
-    gluepipeline: () => import('../assets/img/service-icon-glue.webp'),
-    googledrive: () => import('../assets/svg/service-icon-google-drive.svg'),
-    grafana: () => import('../assets/img/service-icon-grafana.webp'),
-    greenplum: () => import('../assets/img/service-icon-greenplum.webp'),
-    hex: () => import('../assets/svg/service-icon-hex.svg'),
-    hive: () => import('../assets/img/service-icon-hive.webp'),
-    ibmdb2: () => import('../assets/img/service-icon-ibmdb2.webp'),
-    impala: () => import('../assets/img/service-icon-impala.webp'),
-    iomete: () => import('../assets/img/service-icon-iomete.webp'),
-    kafka: () => import('../assets/img/service-icon-kafka.webp'),
-    kafkaconnect: () => import('../assets/img/service-icon-kafka.webp'),
-    kinesis: () => import('../assets/img/service-icon-kinesis.webp'),
-    lightdash: () => import('../assets/img/service-icon-lightdash.webp'),
-    looker: () => import('../assets/img/service-icon-looker.webp'),
-    mariadb: () => import('../assets/img/service-icon-mariadb.webp'),
-    metabase: () => import('../assets/img/service-icon-metabase.webp'),
-    microstrategy: () => import('../assets/img/service-icon-microstrategy.svg'),
-    mode: () => import('../assets/img/service-icon-mode.webp'),
-    mlflow: () => import('../assets/svg/service-icon-mlflow.svg'),
-    mongodb: () => import('../assets/img/service-icon-mongodb.webp'),
-    mssql: () => import('../assets/img/service-icon-mssql.webp'),
-    mysql: () => import('../assets/img/service-icon-sql.webp'),
-    nifi: () => import('../assets/img/service-icon-nifi.webp'),
-    opensearch: () => import('../assets/svg/open-search.svg'),
-    openlineage: () => import('../assets/img/service-icon-openlineage.svg'),
-    oracle: () => import('../assets/img/service-icon-oracle.webp'),
-    pinotdb: () => import('../assets/img/service-icon-pinot.webp'),
-    postgres: () => import('../assets/img/service-icon-post.webp'),
-    powerbi: () => import('../assets/img/service-icon-power-bi.webp'),
-    presto: () => import('../assets/img/service-icon-presto.webp'),
-    pubsub: () => import('../assets/svg/service-icon-pubsub.svg'),
-    qliksense: () => import('../assets/img/service-icon-qlik-sense.webp'),
-    questdb: () => import('../assets/img/service-icon-questdb.webp'),
-    quicksight: () => import('../assets/img/service-icon-quicksight.webp'),
-    redash: () => import('../assets/img/service-icon-redash.webp'),
-    redpanda: () => import('../assets/img/service-icon-redpanda.webp'),
-    redshift: () => import('../assets/img/service-icon-redshift.webp'),
-    rest: () => import('../assets/svg/ic-service-rest-api.svg'),
-    s3: () => import('../assets/img/service-icon-amazon-s3.svg'),
-    sagemaker: () => import('../assets/img/service-icon-sagemaker.webp'),
-    salesforce: () => import('../assets/img/service-icon-salesforce.webp'),
-    saperp: () => import('../assets/img/service-icon-sap-erp.webp'),
-    saphana: () => import('../assets/img/service-icon-sap-hana.webp'),
-    sas: () => import('../assets/img/service-icon-sas.svg'),
-    scikit: () => import('../assets/img/service-icon-scikit.webp'),
-    sklearn: () => import('../assets/img/service-icon-scikit.webp'),
-    sftp: () => import('../assets/svg/service-icon-sftp.svg'),
-    sigma: () => import('../assets/img/service-icon-sigma.webp'),
-    singlestore: () => import('../assets/img/service-icon-singlestore.webp'),
-    snowflake: () => import('../assets/img/service-icon-snowflakes.webp'),
-    spark: () => import('../assets/img/service-icon-spark.webp'),
-    spline: () => import('../assets/img/service-icon-spline.webp'),
-    sqlite: () => import('../assets/img/service-icon-sqlite.webp'),
-    ssrs: () => import('../assets/img/service-icon-ssrs.webp'),
-    starrocks: () => import('../assets/img/service-icon-starrocks.webp'),
-    superset: () => import('../assets/img/service-icon-superset.webp'),
-    synapse: () => import('../assets/img/service-icon-synapse.webp'),
-    tableau: () => import('../assets/img/service-icon-tableau.webp'),
-    teradata: () => import('../assets/svg/teradata.svg'),
-    timescale: () => import('../assets/img/service-icon-timescale.webp'),
-    trino: () => import('../assets/img/service-icon-trino.webp'),
-    unitycatalog: () => import('../assets/img/service-icon-unitycatalog.svg'),
-    vertica: () => import('../assets/img/service-icon-vertica.webp'),
-  };
+const DEFAULT_ICON_KEYS: Record<DataAssetServiceCategory, string> = {
+  api: 'restservice',
+  dashboard: 'dashboarddefault',
+  database: 'databasedefault',
+  drive: 'drivedefault',
+  mlmodel: 'mlmodeldefault',
+  pipeline: 'pipelinedefault',
+  search: 'searchdefault',
+  security: 'securitydefault',
+  storage: 'storagedefault',
+  topic: 'topicdefault',
+};
 
-const DEFAULT_ICON_IMPORTS: Record<
-  DataAssetServiceCategory,
-  () => Promise<{ default: string }>
-> = {
-  api: () => import('../assets/svg/ic-service-rest-api.svg'),
-  dashboard: () => import('../assets/svg/dashboard.svg'),
-  database: () => import('../assets/svg/ic-custom-database.svg'),
-  drive: () => import('../assets/svg/ic-drive-service.svg'),
-  mlmodel: () => import('../assets/svg/ic-custom-model.svg'),
-  pipeline: () => import('../assets/svg/pipeline.svg'),
-  search: () => import('../assets/svg/ic-custom-search.svg'),
-  security: () => import('../assets/svg/security-safe.svg'),
-  storage: () => import('../assets/svg/ic-custom-storage.svg'),
-  topic: () => import('../assets/svg/topic.svg'),
+const SERVICE_ICON_ALIASES: Record<string, string> = {
+  ibmdb2: 'db2',
+  sklearn: 'scikit',
 };
 
 export const getDataAssetServiceCategory = (
@@ -300,30 +200,12 @@ export const DataAssetServiceLogo = ({
 }): JSX.Element | null => {
   const category = getDataAssetServiceCategory(serviceType);
   const normalizedServiceType = normalizeServiceType(serviceType);
-  const [logo, setLogo] = useState<string>(LANDING_WIDGET_DEFAULT_ICON_URL);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadIcon =
-      SERVICE_ICON_IMPORTS[normalizedServiceType] ??
-      DEFAULT_ICON_IMPORTS[category];
-
-    loadIcon()
-      .then((icon) => {
-        if (isMounted) {
-          setLogo(icon.default);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setLogo(LANDING_WIDGET_DEFAULT_ICON_URL);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [category, normalizedServiceType]);
+  const logo =
+    getServiceIcon(
+      SERVICE_ICON_ALIASES[normalizedServiceType] ?? normalizedServiceType
+    ) ??
+    getServiceIcon(DEFAULT_ICON_KEYS[category]) ??
+    defaultServiceIconUrl;
 
   return <img alt="" className={className} src={logo} />;
 };

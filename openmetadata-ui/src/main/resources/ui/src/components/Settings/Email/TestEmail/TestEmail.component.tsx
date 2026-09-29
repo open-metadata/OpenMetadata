@@ -69,6 +69,7 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
           name="email"
           rules={[{ type: 'email', required: true }]}>
           <Input
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of test-email form
             autoFocus
             data-testid="test-email-input"
             placeholder={t('label.enter-entity', {

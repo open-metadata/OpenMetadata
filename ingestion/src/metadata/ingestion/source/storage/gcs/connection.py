@@ -11,7 +11,6 @@
 """GCS storage connection"""
 
 from dataclasses import dataclass
-from typing import Optional
 
 from google.cloud.exceptions import NotFound
 from google.cloud.monitoring_v3 import MetricServiceClient
@@ -165,8 +164,8 @@ class GcsConnection(BaseConnection[GcsConnectionConfig, GcsObjectStoreClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

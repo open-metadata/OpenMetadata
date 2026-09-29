@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,7 +198,14 @@ class SelectiveFieldReindexUIIT {
         () -> {
           final ExplorePage explore =
               ExplorePage.openWithSearch(ui, Tab.TABLES, fixtures.tableColumnMarker);
-          explore.assertCountForTab(Tab.TABLES, 1);
+          // Assert the seeded table itself surfaces for the column-name query, not that it's the
+          // ONLY hit: the Explore filter-count is a global fuzzy total, so on the shared cluster a
+          // concurrent run's ngram-colliding table would inflate an == 1 count. Presence of the
+          // seeded table still fails if the reindex drops columns from _source (the regression).
+          PlaywrightAssertions.assertThat(explore.firstResultByName(fixtures.tableName))
+              .isVisible(
+                  new LocatorAssertions.IsVisibleOptions()
+                      .setTimeout(INNER_ASSERT_TIMEOUT.toMillis()));
         });
   }
 
@@ -231,7 +239,12 @@ class SelectiveFieldReindexUIIT {
         () -> {
           final ExplorePage explore =
               ExplorePage.openWithSearch(ui, Tab.WORKSHEETS, fixtures.worksheetColumnMarker);
-          explore.assertCountForTab(Tab.WORKSHEETS, 1);
+          // Presence of the seeded worksheet, not an == 1 global fuzzy count — see the rationale in
+          // assertTableSearchableByColumnName.
+          PlaywrightAssertions.assertThat(explore.firstResultByName(fixtures.worksheetName))
+              .isVisible(
+                  new LocatorAssertions.IsVisibleOptions()
+                      .setTimeout(INNER_ASSERT_TIMEOUT.toMillis()));
         });
   }
 
@@ -343,7 +356,14 @@ class SelectiveFieldReindexUIIT {
     final String shortId = ns.uniqueShortId();
     LOG.info("Seeding entities for selective-field reindex coverage (shortId={})", shortId);
 
-    final DatabaseService dbService = createShortPostgresService(shortId);
+    // Track the two service roots so TestNamespaceExtension.afterEach recursively hard-deletes the
+    // whole seeded subtree (db/schema/table/query/testCase/testSuite and
+    // drive/spreadsheet/worksheet).
+    // Without this the seed leaks a full "Selective-field reindex seed" cohort on the shared
+    // cluster
+    // every run — the children all cascade from these two roots.
+    final DatabaseService dbService =
+        ns.trackRoot(Entity.DATABASE_SERVICE, createShortPostgresService(shortId));
     final DatabaseSchema schema = createShortSchema(shortId, dbService);
 
     final String tableColumnMarker = "tcol" + shortId;
@@ -352,16 +372,19 @@ class SelectiveFieldReindexUIIT {
     createQueryLinkedTo(shortId, dbService.getFullyQualifiedName(), table);
     final TestCaseSeed testCaseSeed = createTestCaseWithResult(shortId, table);
 
-    final DriveService driveService = createShortDriveService(shortId);
+    final DriveService driveService =
+        ns.trackRoot(Entity.DRIVE_SERVICE, createShortDriveService(shortId));
     final String worksheetColumnMarker = "wcol" + shortId;
-    createWorksheetWithColumnMarker(
-        shortId, driveService.getFullyQualifiedName(), worksheetColumnMarker);
+    final String worksheetName =
+        createWorksheetWithColumnMarker(
+            shortId, driveService.getFullyQualifiedName(), worksheetColumnMarker);
 
     return new SeededFixtures(
         table.getFullyQualifiedName(),
         table.getName(),
         tableColumnMarker,
         worksheetColumnMarker,
+        worksheetName,
         testCaseSeed.testCaseName,
         testCaseSeed.testSuiteName);
   }
@@ -495,7 +518,7 @@ class SelectiveFieldReindexUIIT {
     }
   }
 
-  private static void createWorksheetWithColumnMarker(
+  private static String createWorksheetWithColumnMarker(
       final String shortId, final String driveServiceFqn, final String columnMarker) {
     final Spreadsheet spreadsheet =
         SdkClients.adminClient()
@@ -508,7 +531,7 @@ class SelectiveFieldReindexUIIT {
             .withName("ws_" + shortId)
             .withSpreadsheet(spreadsheet.getFullyQualifiedName())
             .withColumns(List.of(markerColumn));
-    SdkClients.adminClient().worksheets().create(request);
+    return SdkClients.adminClient().worksheets().create(request).getName();
   }
 
   private record SeededFixtures(
@@ -516,6 +539,7 @@ class SelectiveFieldReindexUIIT {
       String tableName,
       String tableColumnMarker,
       String worksheetColumnMarker,
+      String worksheetName,
       String testCaseName,
       String testSuiteName) {}
 

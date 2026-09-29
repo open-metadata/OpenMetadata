@@ -10,383 +10,178 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type {
-  PopoverProps,
-  SelectItemType,
-} from '@openmetadata/ui-core-components';
-import { Autocomplete } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
-import { debounce, isArray, isString } from 'lodash';
-import {
-  FC,
-  Key,
-  ReactNode,
-  UIEvent,
-  UIEventHandler,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { PAGE_SIZE } from '../../../constants/constants';
+import { Autocomplete, SelectItemType } from '@openmetadata/ui-core-components';
+import { castArray, isString } from 'lodash';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/entity/type';
-import { Paging } from '../../../generated/type/paging';
-import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../common/Loader/Loader';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import { useAsyncDataAssetOptions } from '../DataAssetSelectList/useAsyncDataAssetOptions';
 import {
   DataAssetAsyncSelectListProps,
   DataAssetOption,
-  FetchOptionsResponse,
 } from './DataAssetAsyncSelectList.interface';
 
-const createPlaceholderOption = (fqn: string): DataAssetOption => ({
-  id: fqn,
+const getOptionFqn = (option: DataAssetOption) =>
+  option.value ?? option.reference.fullyQualifiedName ?? '';
+
+// A bare FQN whose option was never loaded still needs a chip to show.
+const toPlaceholderOption = (fqn: string): DataAssetOption => ({
   label: fqn,
   value: fqn,
-  reference: { fullyQualifiedName: fqn } as EntityReference,
   displayName: fqn,
+  reference: { id: fqn, type: '', fullyQualifiedName: fqn },
+});
+
+const toSelectItem = (option: DataAssetOption): SelectItemType => ({
+  id: getOptionFqn(option),
+  label: option.displayName,
+  supportingText: option.reference.type,
 });
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   multiple = false,
   autoFocus = true,
+  id,
+  placeholder,
   onChange,
   debounceTimeout = 800,
   initialOptions,
   searchIndex = SearchIndex.ALL,
-  value: selectedValue,
+  value,
   filterFqns = [],
   queryFilter,
-  popoverClassName: callerPopoverClassName,
-  popoverProps: callerPopoverProps,
-  ...props
+  popoverClassName,
 }) => {
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [options, setOptions] = useState<DataAssetOption[]>(
-    initialOptions ?? []
-  );
-  const [selectedItems, setSelectedItems] = useState<DataAssetOption[]>(
-    initialOptions ?? []
-  );
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [searchValue, setSearchValue] = useState<string>('');
-  const hasInitiallyLoaded = useRef(false);
-  // Tracks all options ever seen so selected items survive option list changes
-  const knownOptionsRef = useRef<Map<string, DataAssetOption>>(
-    new Map(initialOptions?.map((opt) => [opt.value, opt]) ?? [])
-  );
+  const [isOpen, setIsOpen] = useState(false);
+  const [selected, setSelected] = useState<DataAssetOption[]>([]);
 
-  const defaultQueryFilter = useMemo(
-    () => ({ query: { bool: { must_not: [{ match: { isBot: true } }] } } }),
-    []
-  );
-
-  const fetchOptions = useCallback(
-    async (
-      searchQueryParam: string,
-      page: number
-    ): Promise<FetchOptionsResponse> => {
-      const dataAssetsResponse = await searchQuery({
-        query: searchQueryParam ? `*${searchQueryParam}*` : '*',
-        pageNumber: page,
-        pageSize: PAGE_SIZE,
-        searchIndex: searchIndex,
-        // Filter out bots from user search
-        queryFilter: queryFilter ?? defaultQueryFilter,
-      });
-
-      const hits = dataAssetsResponse.hits.hits;
-      const total = dataAssetsResponse.hits.total.value;
-
-      const dataAssets = hits.map(({ _source }) => {
-        const entityName = getEntityName(_source);
-        const sourceType = (_source as { entityType: EntityType }).entityType;
-        const entityRef = getEntityReferenceFromEntity(
-          _source as EntityReference,
-          sourceType
-        );
-
-        return {
-          id: entityRef.fullyQualifiedName,
-          label: entityName,
-          value: entityRef.fullyQualifiedName,
-          reference: {
-            ...entityRef,
-          },
-          displayName: entityName,
-          name: entityRef.name,
-          icon: searchClassBase.getEntityIcon(
-            entityRef.type,
-            'tw:text-sm tw:h-4'
-          ) as ReactNode,
-        };
-      });
-
-      return {
-        data: dataAssets,
-        paging: {
-          total,
-        },
-      };
-    },
-    [searchIndex, queryFilter, defaultQueryFilter]
-  );
-
-  const loadOptions = useCallback(
-    async (value: string) => {
-      try {
-        const res = await fetchOptions(value, 1);
-        setOptions(res.data);
-        setSearchValue(value);
-        setPaging(res.paging);
-        setCurrentPage(1);
-        // Track all loaded options so selection survives option list changes
-        res.data.forEach((opt) => knownOptionsRef.current.set(opt.value, opt));
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [fetchOptions]
-  );
-
-  const loadMoreOptions = useCallback(async () => {
-    if (isLoadingMore || options.length >= paging.total) {
-      return;
-    }
-
-    try {
-      setIsLoadingMore(true);
-      const res = await fetchOptions(searchValue, currentPage + 1);
-      setOptions((prev) => [...prev, ...res.data]);
-      setPaging(res.paging);
-      setCurrentPage((prev) => prev + 1);
-      res.data.forEach((opt) => knownOptionsRef.current.set(opt.value, opt));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [
-    isLoadingMore,
-    options.length,
-    paging.total,
-    fetchOptions,
-    searchValue,
-    currentPage,
-  ]);
-
-  const filteredOptions = useMemo(() => {
-    return options.filter(
-      (op) => !filterFqns.includes(op.reference.fullyQualifiedName ?? '')
-    );
-  }, [options, filterFqns]);
-
-  const debouncedSearch = useMemo(
-    () => debounce(loadOptions, debounceTimeout),
-    [loadOptions, debounceTimeout]
-  );
+  const { options, loadOptions, handleSearchChange, handleScroll } =
+    useAsyncDataAssetOptions({
+      isOpen,
+      searchIndex,
+      queryFilter,
+      debounceTimeout,
+    });
 
   useEffect(() => {
-    return () => {
-      debouncedSearch.cancel();
-    };
-  }, [debouncedSearch]);
+    if (isOpen) {
+      loadOptions('');
+    }
+  }, [isOpen, loadOptions]);
 
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      debouncedSearch(value);
-    },
-    [debouncedSearch]
+  useEffect(() => {
+    const values = value ? castArray<DataAssetOption | string>(value) : [];
+    setSelected((prev) => {
+      const known = new Map(
+        [...(initialOptions ?? []), ...prev].map((o) => [getOptionFqn(o), o])
+      );
+
+      return values.map((v) =>
+        isString(v) ? known.get(v) ?? toPlaceholderOption(v) : v
+      );
+    });
+  }, [value, initialOptions]);
+
+  const optionMap = useMemo(
+    () =>
+      new Map(
+        options
+          .filter(
+            (o) => !filterFqns.includes(o.reference.fullyQualifiedName ?? '')
+          )
+          .map((o) => [getOptionFqn(o), o])
+      ),
+    [options, filterFqns]
   );
+
+  const items = useMemo(
+    () => [...optionMap.values()].map(toSelectItem),
+    [optionMap]
+  );
+  const selectedItems = useMemo(() => selected.map(toSelectItem), [selected]);
 
   const handleItemInserted = useCallback(
     (key: Key) => {
-      const item = filteredOptions.find((opt) => opt.id === key);
-      if (!item) {
+      const option = optionMap.get(String(key));
+      if (!option) {
         return;
       }
-
-      if (multiple) {
-        setSelectedItems((prev) => {
-          if (prev.some((i) => i.id === item.id)) {
-            return prev;
-          }
-          const updatedSelection = [...prev, item];
-          onChange?.(updatedSelection);
-
-          return updatedSelection;
-        });
-      } else {
-        setSelectedItems([item]);
-        onChange?.(item);
-      }
+      const next = multiple ? [...selected, option] : [option];
+      setSelected(next);
+      onChange?.(multiple ? next : option);
     },
-    [filteredOptions, multiple, onChange]
+    [optionMap, selected, multiple, onChange]
   );
 
   const handleItemCleared = useCallback(
     (key: Key) => {
-      setSelectedItems((prev) => {
-        const updatedSelection = prev.filter((item) => item.id !== key);
-        if (multiple) {
-          onChange?.(updatedSelection);
-        } else {
-          onChange?.(updatedSelection[0] ?? null);
-        }
-
-        return updatedSelection;
-      });
+      const next = selected.filter((o) => getOptionFqn(o) !== key);
+      setSelected(next);
+      onChange?.(multiple ? next : undefined);
     },
-    [multiple, onChange]
+    [selected, multiple, onChange]
   );
 
-  useEffect(() => {
-    if (!selectedValue) {
-      setSelectedItems([]);
+  const renderItem = (item: SelectItemType) => {
+    const option = optionMap.get(item.id);
+    const type = option?.reference.type;
+    const isUserOrTeam =
+      searchIndex === SearchIndex.USER ||
+      searchIndex === SearchIndex.TEAM ||
+      type === EntityType.USER ||
+      type === EntityType.TEAM;
 
-      return;
+    if (isUserOrTeam) {
+      return (
+        <Autocomplete.Item id={item.id} key={item.id} label={item.label}>
+          <div className="tw:flex tw:items-center tw:gap-2">
+            <ProfilePicture
+              isTeam={type === EntityType.TEAM}
+              name={option?.name ?? ''}
+              width="24"
+            />
+            <span data-testid={item.label}>{item.label}</span>
+          </div>
+        </Autocomplete.Item>
+      );
     }
-    if (isArray(selectedValue)) {
-      const arr = selectedValue as (string | DataAssetOption)[];
-      if (arr.length === 0) {
-        setSelectedItems([]);
 
-        return;
-      }
-      if (isString(arr[0])) {
-        // Array of FQN strings - resolve from knownOptionsRef or create placeholder
-        const items = (arr as string[]).map(
-          (val) =>
-            knownOptionsRef.current.get(val) ?? createPlaceholderOption(val)
-        );
-        setSelectedItems(items);
-      } else {
-        // Array of DataAssetOption objects
-        setSelectedItems(arr as DataAssetOption[]);
-      }
-    } else if (isString(selectedValue)) {
-      // Single FQN string - resolve from knownOptionsRef or create placeholder
-      const item =
-        knownOptionsRef.current.get(selectedValue) ??
-        createPlaceholderOption(selectedValue);
-      setSelectedItems([item]);
-    } else {
-      // Single DataAssetOption object
-      setSelectedItems([selectedValue]);
-    }
-  }, [selectedValue]);
-
-  useEffect(() => {
-    if (!hasInitiallyLoaded.current) {
-      hasInitiallyLoaded.current = true;
-      loadOptions('');
-    }
-  }, []);
-
-  const customPopoverClassName = useMemo(() => {
-    return `data-asset-async-select-popover ${callerPopoverClassName ?? ''}`;
-  }, [callerPopoverClassName]);
-
-  const handleNativeScroll: UIEventHandler<HTMLDivElement> = useCallback(
-    (e) => {
-      const target = e.currentTarget;
-      const scrollThreshold = 50;
-      const isNearBottom =
-        target.scrollHeight - target.scrollTop - target.clientHeight <
-        scrollThreshold;
-
-      if (isNearBottom) {
-        loadMoreOptions();
-      }
-    },
-    [loadMoreOptions]
-  );
-
-  const popoverProps = useMemo(() => {
-    const callerOnScroll = callerPopoverProps?.onScroll;
-
-    return {
-      ...callerPopoverProps,
-      onScroll: (e: UIEvent<HTMLElement>) => {
-        callerOnScroll?.(e);
-        handleNativeScroll(e as UIEvent<HTMLDivElement>);
-      },
-    } as Partial<PopoverProps>;
-  }, [callerPopoverProps, handleNativeScroll]);
+    return (
+      <Autocomplete.Item
+        data-testid={`option-${item.id}`}
+        icon={searchClassBase.getEntityIconWithBg(
+          type ?? '',
+          EntityIconSize.Size14
+        )}
+        id={item.id}
+        key={item.id}
+        label={item.label}
+        supportingText={type}
+      />
+    );
+  };
 
   return (
     <Autocomplete
-      {...props}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the async select when the list mounts
       autoFocus={autoFocus}
       data-testid="asset-select-list"
-      items={filteredOptions}
+      filterOption={() => true}
+      id={id}
+      items={items}
       multiple={multiple}
-      placeholder={props.placeholder}
-      popoverClassName={customPopoverClassName}
-      popoverProps={popoverProps}
+      placeholder={placeholder}
+      popoverClassName={popoverClassName}
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}
       onItemInserted={handleItemInserted}
+      onOpenChange={setIsOpen}
+      onPopoverScroll={handleScroll}
       onSearchChange={handleSearchChange}>
-      {(item: SelectItemType) => {
-        const dataAssetItem = item as DataAssetOption;
-        const { reference, displayName, name } = dataAssetItem;
-
-        if (
-          searchIndex === SearchIndex.USER ||
-          searchIndex === SearchIndex.TEAM ||
-          reference.type === EntityType.USER ||
-          reference.type === EntityType.TEAM
-        ) {
-          return (
-            <Autocomplete.Item
-              id={item.id}
-              key={item.id}
-              label={getEntityName(dataAssetItem)}>
-              <div className="tw:flex tw:items-center tw:gap-2">
-                <ProfilePicture
-                  className="d-flex"
-                  isTeam={reference.type === EntityType.TEAM}
-                  name={name ?? ''}
-                  type="circle"
-                  width="24"
-                />
-                <span data-testid={getEntityName(dataAssetItem)}>
-                  {getEntityName(dataAssetItem)}
-                </span>
-              </div>
-            </Autocomplete.Item>
-          );
-        }
-
-        const isLastItem =
-          filteredOptions[filteredOptions.length - 1]?.id === item.id;
-
-        return (
-          <Autocomplete.Item
-            data-testid={`option-${item.id}`}
-            icon={item.icon}
-            id={item.id}
-            key={item.id}
-            label={displayName}
-            supportingText={reference.type}>
-            {isLoadingMore && isLastItem && (
-              <div className="tw:flex tw:justify-center tw:p-2">
-                <Loader size="small" />
-              </div>
-            )}
-          </Autocomplete.Item>
-        );
-      }}
+      {renderItem}
     </Autocomplete>
   );
 };

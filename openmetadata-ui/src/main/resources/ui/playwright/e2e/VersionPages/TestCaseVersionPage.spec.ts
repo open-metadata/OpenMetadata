@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -72,9 +73,11 @@ test.describe('TestCase Version Page', () => {
 
     await redirectToHomePage(page);
     await page.goto(
-      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
+      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await waitForAllLoadersToDisappear(page);
+    await verifyTestCaseLastRunBanner(page, 'not-run-yet');
 
     /**
      * Step: Display name change
@@ -147,17 +150,17 @@ test.describe('TestCase Version Page', () => {
      */
     await test.step('Parameter change', async () => {
       await page.getByTestId('edit-parameter-icon').click();
-      await page.locator('#tableTestForm').waitFor();
+      await page.getByTestId('test-case-form-v1').waitFor();
 
-      await page.locator('#tableTestForm_params_minValue').clear();
-      await page.locator('#tableTestForm_params_minValue').fill('20');
-      await page.locator('#tableTestForm_params_maxValue').clear();
-      await page.locator('#tableTestForm_params_maxValue').fill('40');
+      await page.locator('#testCaseFormV1_params_minValue').clear();
+      await page.locator('#testCaseFormV1_params_minValue').fill('20');
+      await page.locator('#testCaseFormV1_params_maxValue').clear();
+      await page.locator('#testCaseFormV1_params_maxValue').fill('40');
 
       const updateParameterRes = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*'
       );
-      await page.getByRole('button', { name: 'Save' }).click();
+      await page.getByTestId('create-btn').click();
       await updateParameterRes;
 
       await expect(page.getByTestId('version-button')).toHaveText('0.4');

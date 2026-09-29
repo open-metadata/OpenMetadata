@@ -10,21 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
-import { Button, Skeleton, Typography } from 'antd';
+import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { EntityChildrenItem } from '../../../interface/lineage.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
+import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
-import { EntityChildrenItem } from './NodeChildren/NodeChildren.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 const DEPTH_INDENT_PX = 16;
@@ -108,7 +110,10 @@ const ExpandHandle = ({
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      role="presentation"
+      onBlur={handleLineageNodeHandleMouseOut}
       onClick={handleLineageNodeHandleClick}
+      onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
@@ -145,23 +150,30 @@ export const getCollapseHandle = (
 ) => {
   return (
     <Button
+      aria-label={t('label.collapse')}
+      // custom-node.less `.react-flow .lineage-node-handle` owns size, radius,
+      // border colour and surface bg (!important); these only replace what the
+      // antd button supplied (1px border, no padding).
       className={classNames(
-        'absolute lineage-node-minus lineage-node-handle flex-center',
+        'absolute lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border tw:p-0!',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      color="tertiary"
       data-testid={
         direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      icon={
-        <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
+      iconLeading={
+        <MinusIcon
+          className="lineage-expand-icon tw:dark:[&_path]:fill-fg-quaternary"
+          data-testid="minus-icon"
+        />
       }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
+      size="sm"
+      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();
       }}
@@ -206,6 +218,8 @@ interface ColumnContentProps {
   summary?: ColumnTestSummaryDefinition;
   depth?: number;
   className?: string;
+  onColumnHover?: (columnFqn?: string) => void;
+  onColumnSelect?: (columnFqn?: string) => void;
 }
 
 const ColumnContentInner = ({
@@ -216,8 +230,9 @@ const ColumnContentInner = ({
   summary,
   depth = 0,
   className = '',
+  onColumnHover,
+  onColumnSelect,
 }: ColumnContentProps) => {
-  const { onColumnMouseEnter } = useLineageProvider();
   const {
     selectedColumn,
     setSelectedColumn,
@@ -234,23 +249,26 @@ const ColumnContentInner = ({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setSelectedColumn(fullyQualifiedName ?? '');
+      onColumnSelect?.(fullyQualifiedName);
     },
-    [fullyQualifiedName, setSelectedColumn]
+    [fullyQualifiedName, onColumnSelect, setSelectedColumn]
   );
 
   const handleMouseEnter = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(fullyQualifiedName);
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  }, [selectedColumn, fullyQualifiedName, onColumnMouseEnter]);
+  }, [fullyQualifiedName, onColumnHover, selectedColumn]);
 
   const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(undefined);
     setTracedColumns(new Set());
-  }, [selectedColumn, setTracedColumns]);
+  }, [onColumnHover, selectedColumn, setTracedColumns]);
 
   const columnNameContentRender = useMemo(
     () => getColumnNameContent(column, isLoading),
@@ -274,8 +292,10 @@ const ColumnContentInner = ({
     <div
       className={classNames(`custom-node-column-container ${className}`, {
         'custom-node-header-column-tracing': isColumnTraced,
+        'tw:dark:text-primary': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
+      role="presentation"
       style={{
         paddingLeft: depth * DEPTH_INDENT_PX + 8, // 8px is base padding
       }}
@@ -313,17 +333,51 @@ const ColumnContentInner = ({
   );
 };
 
-export const ColumnContent = memo(
-  ColumnContentInner,
-  (prev, next) =>
+export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
+  const coreColumnPropsEqual =
     prev.column === next.column &&
     prev.isConnectable === next.isConnectable &&
     prev.isLoading === next.isLoading &&
-    prev.showDataObservabilitySummary === next.showDataObservabilitySummary &&
+    prev.showDataObservabilitySummary === next.showDataObservabilitySummary;
+  const renderPropsEqual =
     prev.summary === next.summary &&
     prev.depth === next.depth &&
-    prev.className === next.className
-);
+    prev.className === next.className;
+  const columnCallbacksEqual =
+    prev.onColumnHover === next.onColumnHover &&
+    prev.onColumnSelect === next.onColumnSelect;
+
+  return coreColumnPropsEqual && renderPropsEqual && columnCallbacksEqual;
+});
+
+/**
+ * Split across two named booleans so neither expression exceeds
+ * sonarjs/expression-complexity, and kept out of CustomNodeV1 so its operators
+ * do not count against that component's cyclomatic-complexity budget.
+ */
+export function shouldShowNodeRemoveButton({
+  isSelected,
+  isEditMode,
+  isRootNode,
+  isNodeRemovable,
+}: {
+  isSelected: boolean;
+  isEditMode: boolean;
+  isRootNode: boolean;
+  isNodeRemovable: boolean;
+}) {
+  const isRemovableSelection = isSelected && isEditMode;
+
+  return isRemovableSelection && !isRootNode && isNodeRemovable;
+}
+
+/**
+ * Dark swaps the static grey node/badge/handle borders (custom-node.less
+ * `@lineage-border`) for border-primary. A variable rather than a border class so
+ * the less hover/highlight/tracing states keep winning over it.
+ */
+export const LINEAGE_NODE_DARK_CLASS =
+  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
 
 export function getNodeClassNames({
   isSelected,
@@ -340,6 +394,7 @@ export function getNodeClassNames({
 }) {
   return classNames(
     'lineage-node p-0',
+    LINEAGE_NODE_DARK_CLASS,
     isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
     {
       'data-quality-failed-custom-node-header': showDqTracing,

@@ -16,20 +16,20 @@
 .service-connection-details {
   border: 1px solid @grey-15;
   border-radius: @border-rad-xs;
-  padding: 16px;
+  padding: var(--om-space-16);
   background-color: var(--tw-color-bg-primary);
 
   .filter-config {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding-left: 11px;
+    gap: var(--om-space-8);
+    padding-left: var(--om-space-11);
     .key {
       color: @text-grey-muted;
-      font-weight: 400;
+      font-weight: var(--om-font-weight-regular);
     }
     .value {
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
     }
   }
 }

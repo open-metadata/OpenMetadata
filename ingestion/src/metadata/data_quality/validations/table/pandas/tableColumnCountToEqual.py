@@ -13,8 +13,6 @@
 Validator for table column count to be equal test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -29,6 +27,6 @@ logger = test_suite_logger()
 class TableColumnCountToEqualValidator(BaseTableColumnCountToEqualValidator, PandasValidatorMixin):
     """Validator for table column count to be equal test case"""
 
-    def _run_results(self) -> Optional[int]:  # noqa: UP045
+    def _run_results(self) -> int | None:
         """compute result of the test case"""
         return len(next(self.runner()).columns)

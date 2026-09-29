@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   getAuthContext,
   getToken,
@@ -42,7 +42,7 @@ let pipelineServiceFqn: string;
 let topicFqn: string;
 let pipelineFqn: string;
 
-const LINEAGE_API = '/api/v1/lineage/getLineage?fqn=*';
+const LINEAGE_API = '**/api/v1/lineage/scene?*';
 
 test.describe('Lineage Pipeline Annotator', () => {
   test.beforeAll(async ({ browser }) => {
@@ -53,77 +53,82 @@ test.describe('Lineage Pipeline Annotator', () => {
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
 
-    table = new TableClass();
-    await table.create(apiContext);
-    dbServiceFqn = table.serviceResponseData.fullyQualifiedName ?? '';
+    try {
+      table = new TableClass();
+      await table.create(apiContext);
+      dbServiceFqn = table.serviceResponseData.fullyQualifiedName ?? '';
 
-    const msName = `pw-kafka-${uuid()}`;
-    const msResp = await apiContext
-      .post('/api/v1/services/messagingServices', {
-        data: {
-          name: msName,
-          serviceType: 'Kafka',
-          connection: {
-            config: { type: 'Kafka', bootstrapServers: 'localhost:9092' },
+      const msName = `pw-kafka-${uuid()}`;
+      const msResp = await apiContext
+        .post('/api/v1/services/messagingServices', {
+          data: {
+            name: msName,
+            serviceType: 'Kafka',
+            connection: {
+              config: { type: 'Kafka', bootstrapServers: 'localhost:9092' },
+            },
           },
-        },
-      })
-      .then((r) => r.json());
-    messagingServiceFqn = msResp.fullyQualifiedName;
+        })
+        .then((r) => r.json());
+      messagingServiceFqn = msResp.fullyQualifiedName;
 
-    const topicResp = await apiContext
-      .post('/api/v1/topics', {
-        data: {
-          name: `pw-topic-${uuid()}`,
-          service: messagingServiceFqn,
-          partitions: 1,
-        },
-      })
-      .then((r) => r.json());
-    topicFqn = topicResp.fullyQualifiedName;
+      const topicResp = await apiContext
+        .post('/api/v1/topics', {
+          data: {
+            name: `pw-topic-${uuid()}`,
+            service: messagingServiceFqn,
+            partitions: 1,
+          },
+        })
+        .then((r) => r.json());
+      topicFqn = topicResp.fullyQualifiedName;
 
-    const psName = `pw-airflow-${uuid()}`;
-    const psResp = await apiContext
-      .post('/api/v1/services/pipelineServices', {
+      const psName = `pw-airflow-${uuid()}`;
+      const psResp = await apiContext
+        .post('/api/v1/services/pipelineServices', {
+          data: {
+            name: psName,
+            serviceType: 'Airflow',
+            connection: {
+              config: {
+                type: 'Airflow',
+                hostPort: 'http://localhost:8080',
+              },
+            },
+          },
+        })
+        .then((r) => r.json());
+      pipelineServiceFqn = psResp.fullyQualifiedName;
+
+      const pipelineResp = await apiContext
+        .post('/api/v1/pipelines', {
+          data: {
+            name: `pw-pipeline-${uuid()}`,
+            service: pipelineServiceFqn,
+          },
+        })
+        .then((r) => r.json());
+      pipelineFqn = pipelineResp.fullyQualifiedName;
+
+      await apiContext.put('/api/v1/lineage', {
         data: {
-          name: psName,
-          serviceType: 'Airflow',
-          connection: {
-            config: {
-              type: 'Airflow',
-              hostPort: 'http://localhost:8080',
+          edge: {
+            fromEntity: { id: table.entityResponseData.id, type: 'table' },
+            toEntity: { id: topicResp.id, type: 'topic' },
+            lineageDetails: {
+              source: 'PipelineLineage',
+              pipeline: { id: pipelineResp.id, type: 'pipeline' },
             },
           },
         },
-      })
-      .then((r) => r.json());
-    pipelineServiceFqn = psResp.fullyQualifiedName;
-
-    const pipelineResp = await apiContext
-      .post('/api/v1/pipelines', {
-        data: {
-          name: `pw-pipeline-${uuid()}`,
-          service: pipelineServiceFqn,
-        },
-      })
-      .then((r) => r.json());
-    pipelineFqn = pipelineResp.fullyQualifiedName;
-
-    await apiContext.put('/api/v1/lineage', {
-      data: {
-        edge: {
-          fromEntity: { id: table.entityResponseData.id, type: 'table' },
-          toEntity: { id: topicResp.id, type: 'topic' },
-          lineageDetails: {
-            source: 'PipelineLineage',
-            pipeline: { id: pipelineResp.id, type: 'pipeline' },
-          },
-        },
-      },
-    });
-
-    await apiContext.dispose();
-    await page.close();
+      });
+    } finally {
+      try {
+        await apiContext.dispose();
+      } finally {
+        await page.close();
+      }
+    }
   });
 
   test.afterAll(async ({ browser }) => {
@@ -134,32 +139,41 @@ test.describe('Lineage Pipeline Annotator', () => {
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
 
-    await table.delete(apiContext);
-    await apiContext.delete(
-      `/api/v1/services/messagingServices/name/${encodeURIComponent(
-        messagingServiceFqn
-      )}?recursive=true&hardDelete=true`
-    );
-    await apiContext.delete(
-      `/api/v1/services/pipelineServices/name/${encodeURIComponent(
-        pipelineServiceFqn
-      )}?recursive=true&hardDelete=true`
-    );
-
-    await apiContext.dispose();
-    await page.close();
+    try {
+      await table.delete(apiContext);
+      await apiContext.delete(
+        `/api/v1/services/messagingServices/name/${encodeURIComponent(
+          messagingServiceFqn
+        )}?recursive=true&hardDelete=true`
+      );
+      await apiContext.delete(
+        `/api/v1/services/pipelineServices/name/${encodeURIComponent(
+          pipelineServiceFqn
+        )}?recursive=true&hardDelete=true`
+      );
+    } finally {
+      try {
+        await apiContext.dispose();
+      } finally {
+        await page.close();
+      }
+    }
   });
 
   test('entity lineage does not include service nodes', async ({ page }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
     await page.click('[data-testid="lineage"]');
     const lineageResponse = await lineageResponsePromise;
     const lineageData = await lineageResponse.json();
 
-    const nodeFqns = Object.keys(lineageData.nodes ?? {});
+    const nodeFqns = (lineageData.nodes ?? []).map(
+      (node: { fullyQualifiedName?: string }) => node.fullyQualifiedName
+    );
 
     expect(nodeFqns).not.toContain(dbServiceFqn);
     expect(nodeFqns).not.toContain(messagingServiceFqn);
@@ -171,17 +185,20 @@ test.describe('Lineage Pipeline Annotator', () => {
     page,
   }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
     await page.click('[data-testid="lineage"]');
     const lineageResponse = await lineageResponsePromise;
     const lineageData = await lineageResponse.json();
 
-    const downstreamEdges = Object.values(lineageData.downstreamEdges ?? {});
+    const sceneEdges = lineageData.edges ?? [];
 
-    const hasPipelineAnnotation = downstreamEdges.some(
-      (edge) => edge?.pipeline?.fullyQualifiedName === pipelineFqn
+    const hasPipelineAnnotation = sceneEdges.some(
+      (edge: { pipeline?: { fullyQualifiedName?: string } }) =>
+        edge.pipeline?.fullyQualifiedName === pipelineFqn
     );
 
     expect(hasPipelineAnnotation).toBe(true);
@@ -230,6 +247,42 @@ test.describe('Lineage Pipeline Annotator', () => {
     const nodeFqns = Object.keys(data.nodes ?? {});
 
     expect(nodeFqns).toContain(pipelineServiceFqn);
+    expect(nodeFqns).not.toContain(messagingServiceFqn);
+
+    await apiContext.dispose();
+  });
+
+  test('service view routes through the pipeline instead of drawing a direct edge', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    const response = await apiContext.get(
+      '/api/v1/lineage/getPlatformLineage?view=service&upstreamDepth=3&downstreamDepth=3'
+    );
+
+    expect(response.ok()).toBe(true);
+
+    const data = await response.json();
+    const edges = [
+      ...Object.values(data.upstreamEdges ?? {}),
+      ...Object.values(data.downstreamEdges ?? {}),
+    ] as Array<{
+      fromEntity?: { fullyQualifiedName?: string };
+      toEntity?: { fullyQualifiedName?: string };
+    }>;
+    const edgePairs = edges.map(
+      (edge) =>
+        `${edge.fromEntity?.fullyQualifiedName}->${edge.toEntity?.fullyQualifiedName}`
+    );
+
+    expect(edgePairs).toContain(`${dbServiceFqn}->${pipelineServiceFqn}`);
+    expect(edgePairs).toContain(
+      `${pipelineServiceFqn}->${messagingServiceFqn}`
+    );
+    expect(edgePairs).not.toContain(`${dbServiceFqn}->${messagingServiceFqn}`);
 
     await apiContext.dispose();
   });

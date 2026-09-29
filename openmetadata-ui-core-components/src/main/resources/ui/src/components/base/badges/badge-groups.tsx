@@ -14,13 +14,13 @@ const baseClasses: Record<
   { root?: string; addon?: string; icon?: string }
 > = {
   light: {
-    root: 'tw:rounded-full tw:ring-1 tw:ring-inset',
-    addon: 'tw:rounded-full tw:ring-1 tw:ring-inset',
+    root: 'tw:rounded-full tw:outline-1 tw:-outline-offset-1',
+    addon: 'tw:rounded-full tw:outline-1 tw:-outline-offset-1',
   },
   modern: {
-    root: 'tw:rounded-[10px] tw:bg-primary tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-inset tw:ring-primary tw:hover:bg-secondary',
+    root: 'tw:rounded-[10px] tw:bg-primary tw:text-secondary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:hover:bg-secondary',
     addon:
-      'tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-inset tw:ring-primary',
+      'tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
     icon: 'tw:text-utility-gray-500',
   },
 };
@@ -92,28 +92,28 @@ const colorClasses: Record<
 > = sortCx({
   light: {
     brand: {
-      root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:ring-utility-brand-200 tw:hover:bg-utility-brand-100',
-      addon: 'tw:bg-primary tw:text-current tw:ring-utility-brand-200',
+      root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:outline-utility-brand-200 tw:hover:bg-utility-brand-100',
+      addon: 'tw:bg-primary tw:text-current tw:outline-utility-brand-200',
       icon: 'tw:text-utility-brand-500',
     },
     gray: {
-      root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:ring-utility-gray-200 tw:hover:bg-utility-gray-100',
-      addon: 'tw:bg-primary tw:text-current tw:ring-utility-gray-200',
+      root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200 tw:hover:bg-utility-gray-100',
+      addon: 'tw:bg-primary tw:text-current tw:outline-utility-gray-200',
       icon: 'tw:text-utility-gray-500',
     },
     error: {
-      root: 'tw:bg-utility-error-50 tw:text-utility-error-700 tw:ring-utility-error-200 tw:hover:bg-utility-error-100',
-      addon: 'tw:bg-primary tw:text-current tw:ring-utility-error-200',
+      root: 'tw:bg-utility-error-50 tw:text-utility-error-700 tw:outline-utility-error-200 tw:hover:bg-utility-error-100',
+      addon: 'tw:bg-primary tw:text-current tw:outline-utility-error-200',
       icon: 'tw:text-utility-error-500',
     },
     warning: {
-      root: 'tw:bg-utility-warning-50 tw:text-utility-warning-700 tw:ring-utility-warning-200 tw:hover:bg-utility-warning-100',
-      addon: 'tw:bg-primary tw:text-current tw:ring-utility-warning-200',
+      root: 'tw:bg-utility-warning-50 tw:text-utility-warning-700 tw:outline-utility-warning-200 tw:hover:bg-utility-warning-100',
+      addon: 'tw:bg-primary tw:text-current tw:outline-utility-warning-200',
       icon: 'tw:text-utility-warning-500',
     },
     success: {
-      root: 'tw:bg-utility-success-50 tw:text-utility-success-700 tw:ring-utility-success-200 tw:hover:bg-utility-success-100',
-      addon: 'tw:bg-primary tw:text-current tw:ring-utility-success-200',
+      root: 'tw:bg-utility-success-50 tw:text-utility-success-700 tw:outline-utility-success-200 tw:hover:bg-utility-success-100',
+      addon: 'tw:bg-primary tw:text-current tw:outline-utility-success-200',
       icon: 'tw:text-utility-success-500',
     },
   },

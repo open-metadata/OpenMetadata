@@ -12,8 +12,15 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import '../../../test/unit/mocks/mui.mock';
 import DataDistributionHistogram from './DataDistributionHistogram.component';
+
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    cursorFill: '#123456',
+    grid: '#234567',
+    primary: '#345678',
+  }),
+}));
 
 const MOCK_HISTOGRAM_DATA = [
   {

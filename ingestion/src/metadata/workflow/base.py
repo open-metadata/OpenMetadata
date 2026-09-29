@@ -12,12 +12,14 @@
 Base workflow definition.
 """
 
+import json
 import traceback
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
 from statistics import mean
-from typing import Any, Dict, List, Optional, TypeVar, Union  # noqa: UP035
+from typing import Any, TypeVar, cast
 
 from metadata.__version__ import get_client_version
 from metadata.config.common import WorkflowExecutionError
@@ -32,17 +34,23 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineState,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
+    ProgressUpdateType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
+    OpenMetadataWorkflowConfig,
+    SourceConfig,
     WorkflowConfig,
 )
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion import diagnostics
 from metadata.ingestion.api.step import Step, Summary
+from metadata.ingestion.models.custom_pydantic import BaseModel as OpenMetadataBaseModel
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
@@ -69,7 +77,7 @@ logger = ingestion_logger()
 # Type of service linked to the Ingestion Pipeline
 T = TypeVar("T")
 
-REPORTS_INTERVAL_SECONDS = 60
+REPORTS_INTERVAL_SECONDS = 30
 
 
 class InvalidWorkflowJSONException(Exception):  # noqa: N818
@@ -83,15 +91,15 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     Base workflow implementation
     """
 
-    config: Union[Any, Dict]  # noqa: UP006, UP007
-    _run_id: Optional[str] = None  # noqa: UP045
+    config: Any | dict
+    _run_id: str | None = None
     metadata: OpenMetadata
     metadata_config: OpenMetadataConnection
     service_type: ServiceType
 
     def __init__(
         self,
-        config: Union[Any, Dict],  # noqa: UP006, UP007
+        config: Any | dict,
         workflow_config: WorkflowConfig,
         service_type: ServiceType,
         output_handler: WorkflowOutputHandler = WorkflowOutputHandler(),
@@ -103,8 +111,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.config = config
         self.workflow_config = workflow_config
         self.service_type = service_type
-        self._timer: Optional[RepeatedTimer] = None  # noqa: UP045
-        self._ingestion_pipeline: Optional[IngestionPipeline] = None  # noqa: UP045
+        self._timer: RepeatedTimer | None = None
+        self._ingestion_pipeline: IngestionPipeline | None = None
         self._steps_closed = False
         self._start_ts = datetime_to_ts(datetime.now())
 
@@ -140,7 +148,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         self.post_init()
 
-    def _build_user_agent(self) -> Optional[str]:  # noqa: UP045
+    def _build_user_agent(self) -> str | None:
         """
         HTTP User-Agent identifying this workflow's requests to the OpenMetadata server.
         Subclasses override this to provide more specific identifiers. Best-effort: the
@@ -153,7 +161,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             return "openmetadata-ingestion"
 
     @property
-    def ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
+    def ingestion_pipeline(self) -> IngestionPipeline | None:
         """Get or create the Ingestion Pipeline from the configuration"""
         if not self._ingestion_pipeline and self.config.ingestionPipelineFQN:
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
@@ -236,7 +244,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def execute_internal(self) -> None:
         """Workflow-specific logic to execute safely"""
 
-    def calculate_success(self) -> Optional[float]:  # noqa: UP045
+    def calculate_success(self) -> float | None:
         """
         Get the success % of the internal execution.
         Since we'll use this to get a single success % from multiple steps, we'll take
@@ -252,20 +260,24 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         return mean([step.get_status().calculate_success() for step in self.workflow_steps()])
 
     @abstractmethod
-    def get_failures(self) -> List[StackTraceError]:  # noqa: UP006
+    def get_failures(self) -> list[StackTraceError]:
         """Get the failures to flag whether if the workflow succeeded or not"""
 
     @abstractmethod
-    def workflow_steps(self) -> List[Step]:  # noqa: UP006
+    def workflow_steps(self) -> list[Step]:
         """Steps to report status from"""
+
+    def _step_meets_success_threshold(self, step: Step) -> bool:
+        """True iff the step has no failures or its success ratio meets the workflow's successThreshold."""
+        status = step.get_status()
+        if not status.failures:
+            return True
+        return status.calculate_success() >= self.workflow_config.successThreshold  # pyright: ignore[reportOperatorIssue]
 
     def raise_from_status_internal(self, raise_warnings=False) -> None:
         """Based on the internal workflow status, raise a WorkflowExecutionError"""
         for step in self.workflow_steps():
-            if (
-                step.get_status().failures
-                and step.get_status().calculate_success() < self.workflow_config.successThreshold
-            ):
+            if not self._step_meets_success_threshold(step):
                 raise WorkflowExecutionError(f"{step.name} reported errors: {Summary.from_step(step)}")
 
             if raise_warnings and step.status.warnings:
@@ -289,6 +301,13 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         pipeline_state = PipelineState.success
         self.timer.trigger()
         diagnostics.install(self)
+        # Emit a "run started" update immediately. The reporting timer's first
+        # tick is a full REPORTS_INTERVAL_SECONDS away, so without this a run
+        # that finishes inside that window would only ever emit its terminal
+        # event — and any live viewer would see nothing while it ran. This
+        # registers the run with the server up front so it is visible the moment
+        # it starts, regardless of duration.
+        self.send_progress_update(ProgressUpdateType.DISCOVERY)
         # `self.config` is typed Union[Any, Dict]; getattr keeps the static
         # checker happy without changing behavior (the Dict branch never
         # carries this attribute at runtime).
@@ -331,7 +350,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 logger.debug("close_steps failed", exc_info=True)
             try:
                 ingestion_status = self.build_ingestion_status()
-                self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                try:
+                    self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                finally:
+                    self.send_progress_update(self.terminal_progress_update_type(pipeline_state))
                 try:
                     self.print_status()
                 finally:
@@ -354,7 +376,20 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         return self._run_id
 
-    def get_or_create_ingestion_pipeline(self) -> Optional[IngestionPipeline]:  # noqa: UP045
+    def _source_config_with_explicit_type(self) -> SourceConfig:
+        workflow_config = cast("OpenMetadataWorkflowConfig", self.config)
+        source_config = workflow_config.source.sourceConfig
+        config = source_config.config
+        if not isinstance(config, OpenMetadataBaseModel):
+            return source_config
+
+        config_type = getattr(config, "type", None)
+        if config_type is None:
+            return source_config
+
+        return source_config.model_copy(update={"config": config.model_copy(update={"type": config_type})})
+
+    def get_or_create_ingestion_pipeline(self) -> IngestionPipeline | None:
         """
         If we get the `ingestionPipelineFqn` from the `workflowConfig`, it means we want to
         keep track of the status.
@@ -369,7 +404,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         status at the end of the flow.
         """
         try:
-            maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(  # noqa: UP045
+            maybe_pipeline: IngestionPipeline | None = self.metadata.get_by_name(
                 entity=IngestionPipeline,
                 fqn=self.config.ingestionPipelineFQN,
             )
@@ -391,7 +426,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                             type=get_reference_type_from_service_type(self.service_type),
                         ),
                         pipelineType=get_pipeline_type_from_source_config(self.config.source.sourceConfig),
-                        sourceConfig=self.config.source.sourceConfig,
+                        sourceConfig=self._source_config_with_explicit_type(),
                         airflowConfig=AirflowConfig(),
                         enableStreamableLogs=self.config.enableStreamableLogs,
                     )
@@ -403,7 +438,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
             return None
 
-    def _get_ingestion_pipeline_service(self) -> Optional[T]:  # noqa: UP045
+    def _get_ingestion_pipeline_service(self) -> T | None:
         """
         Ingestion Pipelines are linked to either an EntityService (DatabaseService, MessagingService,...)
         or a Test Suite.
@@ -448,6 +483,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"Processes: {metrics.active_processes}"
                 )
 
+            registry = self._find_progress_registry()
+            if registry is not None:
+                text = registry.render_cli()
+                if text:
+                    logger.info("Ingestion progress:\n%s", text)
+
             # Send progress update to the server for live tracking
             self.send_progress_update()
 
@@ -472,3 +513,21 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             start_time,
             self._is_debug_enabled(),
         )
+
+    def write_status_file(self, path: Path) -> None:
+        """Write per-step status as JSON to `path`.
+
+        `success` is True iff every step meets its success threshold.
+        `source_type` identifies the configured source or application class.
+        Shape: {"source_type": str | None, "ingestion_pipeline_fqn": str | None, "success": bool, "steps": list}
+        """
+        ingestion_status = self.build_ingestion_status()
+        success = all(self._step_meets_success_threshold(step) for step in self.workflow_steps())
+        source = getattr(self.config, "source", None)
+        payload = {
+            "source_type": getattr(source, "type", None) or getattr(self.config, "sourcePythonClass", None),
+            "ingestion_pipeline_fqn": getattr(self.config, "ingestionPipelineFQN", None),
+            "success": success,
+            "steps": ingestion_status.model_dump(),
+        }
+        path.write_text(json.dumps(payload, indent=2, default=str))

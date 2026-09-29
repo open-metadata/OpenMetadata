@@ -14,13 +14,15 @@ Entity Fetcher Strategy
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, Iterator, List, Optional, cast  # noqa: UP035
+from collections.abc import Iterable, Iterator
+from typing import cast
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -33,6 +35,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.entity_interface import EntityInterfaceWithTags
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ManualProgress
 from metadata.profiler.source.fetcher.config import EntityFilterConfigInterface
 from metadata.profiler.source.fetcher.profiler_source_factory import (
     profiler_source_factory,
@@ -44,9 +47,13 @@ from metadata.utils.filters import (
     filter_by_container,
     filter_by_schema,
     filter_by_table,
+    filter_by_topic,
     validate_regex,
 )
 from metadata.utils.fqn import split
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 FIELDS = ["tableProfilerConfig", "columns", "customMetrics", "tags"]
 CONTAINER_FIELDS = ["dataModel", "tags"]
@@ -57,15 +64,15 @@ class RegexFilter(BaseModel):
     mode: str
 
 
-def _combine_patterns(patterns: List[str]) -> str:  # noqa: UP006
+def _combine_patterns(patterns: list[str]) -> str:
     if len(patterns) == 1:
         return patterns[0]
     return "|".join(f"({p})" for p in patterns)
 
 
 def _build_regex_from_filter(
-    filter_pattern: Optional[FilterPattern],  # noqa: UP045
-) -> Optional[RegexFilter]:  # noqa: UP045
+    filter_pattern: FilterPattern | None,
+) -> RegexFilter | None:
     """Build a RegexFilter from a FilterPattern for server-side filtering.
 
     When both includes and excludes are set, includes take precedence.
@@ -89,14 +96,16 @@ class FetcherStrategy(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
+        progress: ManualProgress,
     ) -> None:
         self.config = config
         self.source_config = config.source.sourceConfig.config
         self.metadata = metadata
         self.global_profiler_config = global_profiler_config
         self.status = status
+        self.progress = progress
 
     def filter_classifications(self, entity: EntityInterfaceWithTags) -> bool:
         """Given a list of entities, filter out entities that do not match the classification filter pattern
@@ -137,17 +146,18 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
+        progress: ManualProgress,
     ) -> None:
-        super().__init__(config, metadata, global_profiler_config, status)
+        super().__init__(config, metadata, global_profiler_config, status, progress)
         self.database_filter_pattern = _build_regex_from_filter(self.source_config.databaseFilterPattern)
         self.schema_filter_pattern = _build_regex_from_filter(self.source_config.schemaFilterPattern)
         self.table_filter_pattern = _build_regex_from_filter(self.source_config.tableFilterPattern)
         self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker  # noqa: TC006
 
-    def _build_database_params(self) -> Dict[str, str]:  # noqa: UP006
-        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore  # noqa: UP006
+    def _build_database_params(self) -> dict[str, str]:
+        params: dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore
         db_filter = self.database_filter_pattern
         if db_filter:
             params["databaseRegex"] = db_filter.regex
@@ -192,8 +202,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
-    def _build_table_params(self, database: Database) -> Dict[str, str]:  # noqa: UP006
-        params: Dict[str, str] = {  # noqa: UP006
+    def _build_table_params(self, database: Database) -> dict[str, str]:
+        params: dict[str, str] = {
             "service": self.config.source.serviceName,  # type: ignore
             "database": database.fullyQualifiedName.root,  # type: ignore
         }
@@ -205,7 +215,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
         )
 
-        regex_mode: Optional[str] = None  # noqa: UP045
+        regex_mode: str | None = None
         if schema_filter and (not conflicting_modes or schema_filter.mode == "include"):
             params["databaseSchemaRegex"] = schema_filter.regex
             regex_mode = schema_filter.mode
@@ -280,9 +290,26 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 continue
             yield table
 
+    def _seed_table_total(self, database: Database, db_fqn: str) -> None:
+        """Seed this database's server-side-filtered table count so % and ETA
+        have an immediate denominator. A failure only skips the seed — the
+        scope still reconciles to the observed count."""
+        try:
+            total = self.metadata.list_entities(entity=Table, params=self._build_table_params(database), limit=1).total
+        except Exception as exc:
+            logger.debug(f"Could not seed table total for `{db_fqn}`: {exc}")
+            total = None
+        if total is not None:
+            self.progress.seed_scope_total(Table.__name__, db_fqn, total)
+        else:
+            self.progress.mark_reconcilable(Table.__name__)
+
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch database entity"""
         for database in self._get_database_entities():
+            db_fqn = getattr(database.fullyQualifiedName, "root", None) or str(database.name.root)
+            self._seed_table_total(database, db_fqn)
+            observed = 0
             try:
                 profiler_source = profiler_source_factory.create(
                     self.config.source.type.lower(),
@@ -293,6 +320,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 )
 
                 for table in self._get_table_entities(database):
+                    observed += 1
+                    self.progress.track_asset(Table.__name__)
                     yield Either(
                         left=None,
                         right=ProfilerSourceAndEntity(
@@ -303,12 +332,14 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=database.fullyQualifiedName.root,  # type: ignore
+                        name=db_fqn,
                         error=f"Error listing source and entities for database due to [{exc}]",
                         stackTrace=traceback.format_exc(),
                     ),
                     right=None,
                 )
+            finally:
+                self.progress.reconcile_scope_total(Table.__name__, db_fqn, observed)
 
 
 class StorageFetcherStrategy(FetcherStrategy):
@@ -318,10 +349,11 @@ class StorageFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
+        progress: ManualProgress,
     ) -> None:
-        super().__init__(config, metadata, global_profiler_config, status)
+        super().__init__(config, metadata, global_profiler_config, status, progress)
 
     def _filter_buckets(self, container: Container) -> bool:
         """Filter buckets (top-level containers) based on the bucket filter pattern
@@ -421,7 +453,10 @@ class StorageFetcherStrategy(FetcherStrategy):
                 self.global_profiler_config,
             )
 
-            for container in self._get_container_entities():
+            containers = list(self._get_container_entities())
+            self.progress.set_total(Container.__name__, len(containers))
+            for container in containers:
+                self.progress.track_asset(Container.__name__)
                 yield Either(
                     left=None,
                     right=ProfilerSourceAndEntity(
@@ -434,6 +469,69 @@ class StorageFetcherStrategy(FetcherStrategy):
                 left=StackTraceError(
                     name=self.config.source.serviceName,
                     error=f"Error listing source and entities for storage service due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+
+class MessagingFetcherStrategy(FetcherStrategy):
+    """Messaging fetcher strategy for Topic entities"""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        global_profiler_config: Settings | None,
+        status: Status,
+        progress: ManualProgress,
+    ) -> None:
+        super().__init__(config, metadata, global_profiler_config, status, progress)
+
+    def _get_topic_entities(self) -> Iterable[Topic]:
+        """Get topic entities for the service, applying topicFilterPattern and skipping schema-less topics."""
+        service_name = self.config.source.serviceName
+        topics = self.metadata.list_all_entities(
+            entity=Topic,
+            fields=["messageSchema", "tags"],
+            params={"service": service_name} if service_name else None,
+        )
+        source_config = self.config.source.sourceConfig.config
+        topic_filter = getattr(source_config, "topicFilterPattern", None)
+        use_fqn = getattr(source_config, "useFqnForFiltering", False)
+        for topic in cast(Iterable[Topic], topics):  # noqa: TC006
+            if not (topic.messageSchema and topic.messageSchema.schemaFields):
+                continue
+            name = topic.fullyQualifiedName.root if use_fqn and topic.fullyQualifiedName else topic.name.root
+            if topic_filter and filter_by_topic(topic_filter, name):
+                self.status.filter(name, "Topic pattern not allowed")
+                continue
+            yield topic
+
+    def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
+        """Fetch topic entities from messaging service"""
+        try:
+            profiler_source = profiler_source_factory.create(
+                self.config.source.type.lower(),
+                self.config,
+                None,
+                self.metadata,
+                self.global_profiler_config,
+            )
+
+            for topic in self._get_topic_entities():
+                yield Either(
+                    left=None,
+                    right=ProfilerSourceAndEntity(
+                        profiler_source=profiler_source,
+                        entity=topic,
+                    ),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=self.config.source.serviceName or "unknown",
+                    error=f"Error listing source and entities for messaging service due to [{exc}]",
                     stackTrace=traceback.format_exc(),
                 ),
                 right=None,

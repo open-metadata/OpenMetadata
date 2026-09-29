@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { SearchIndex } from '../../../enums/search.enum';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -83,7 +84,7 @@ jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
     React.useEffect(() => {
       if (props.queryFilter === 'my-data') {
         searchQuery({
-          searchIndex: ['all'] as any,
+          searchIndex: ['all'] as unknown as SearchIndex[],
           query: '*',
           filters: props.queryFilter,
         });
@@ -148,7 +149,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
     )
 );
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../common/EntityDescription/Description', () => {
   return jest
     .fn()
     .mockImplementation(({ onDescriptionUpdate, hasEditAccess }) => (
@@ -361,8 +362,8 @@ describe('Test User Component', () => {
     });
 
     expect(
-      (await screen.findByTestId('access-token'))?.closest('.ant-tabs-tab')
-    ).toHaveClass('ant-tabs-tab-disabled');
+      await screen.findByRole('tab', { name: /label.access-token/ })
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('MyData tab should make query call only once on initial load', async () => {

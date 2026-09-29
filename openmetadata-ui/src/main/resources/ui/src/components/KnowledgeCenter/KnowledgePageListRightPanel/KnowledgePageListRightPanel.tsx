@@ -10,24 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from '@openmetadata/ui-core-components';
-import { Skeleton, Space, Typography } from 'antd';
+import {
+  Box,
+  Card,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { QuickLink } from '@openmetadata/ui-core-components/icons';
+import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import Loader from '../../../components/common/Loader/Loader';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   KNOWLEDGE_CENTER_CLASSIFICATION,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -150,7 +154,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
       <div className="p-md p-x-lg" data-testid="loader">
         {Array.from({ length: 3 }).map(() => (
           <div className="m-b-lg" key={uniqueId()}>
-            <Space className="w-full" direction="vertical">
+            <Box className="tw:w-full" direction="col">
               <Skeleton
                 active
                 paragraph={{ rows: 1, width: 100 }}
@@ -161,7 +165,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 paragraph={{ rows: 3, width: '100%' }}
                 title={false}
               />
-            </Space>
+            </Box>
           </div>
         ))}
       </div>
@@ -170,18 +174,26 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
 
   if (!isLoading && isEmpty(quickLinksByTag) && !refreshTagsCategory) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-quick-link"
-        className="border-none"
-        heading={t('label.quick-link-plural')}
-        permission={permissions.Create}
-        permissionValue={t('label.create-entity', {
-          entity: t('label.quick-link'),
-        })}
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={onAdd}
-      />
+      <Card className="tw:relative tw:flex-1 tw:h-full tw:p-5">
+        <EmptyPlaceholder
+          actions={
+            permissions.Create
+              ? [
+                  {
+                    color: 'primary',
+                    key: 'add-quick-link',
+                    label: t('label.create-entity', {
+                      entity: t('label.quick-link'),
+                    }),
+                    onPress: onAdd,
+                  },
+                ]
+              : []
+          }
+          icon={<QuickLink className="tw:text-secondary" />}
+          title={t('label.quick-link-plural')}
+        />
+      </Card>
     );
   }
 
@@ -199,25 +211,25 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
           refresh={refreshBookMarkWidget}
         />
 
-        <ExpandableCard
-          cardProps={{
-            title: (
-              <div className="flex items-center gap-2">
-                <EyeIcon height={16} width={16} />
-                <Typography className="text-sm font-medium">
-                  {t('label.recently-viewed')}
-                </Typography>
-              </div>
-            ),
-          }}>
+        <WidgetCard
+          title={t('label.recently-viewed')}
+          titleIcon={
+            <EyeIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={16}
+              width={16}
+            />
+          }>
           {isEmpty(recentlyViewed) ? (
-            t('message.no-recently-viewed-date')
+            <Typography className="tw:text-quaternary" size="text-xs">
+              {t('message.no-recently-viewed-data')}
+            </Typography>
           ) : (
-            <Space direction="vertical" size={8}>
+            <Box direction="col" gap={2}>
               {recentViewsElement}
-            </Space>
+            </Box>
           )}
-        </ExpandableCard>
+        </WidgetCard>
 
         {refreshTagsCategory ? (
           <Loader />
@@ -229,23 +241,21 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
               }
 
               return (
-                <ExpandableCard
-                  cardProps={{
-                    title: (
-                      <div className="flex items-center gap-2">
-                        <IconArticle height={16} width={16} />
-                        <Typography className="text-sm font-medium">
-                          {startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
-                        </Typography>
-                      </div>
-                    ),
-                  }}>
-                  <Space direction="vertical" size={8}>
+                <WidgetCard
+                  title={startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
+                  titleIcon={
+                    <FileIcon
+                      className="tw:text-quaternary tw:shrink-0"
+                      height={16}
+                      width={16}
+                    />
+                  }>
+                  <Box direction="col" gap={2}>
                     {map(uniqueLinks, (matchedQuickLink) =>
                       getLink(matchedQuickLink, `tag-category-${tagFqn}`)
                     )}
-                  </Space>
-                </ExpandableCard>
+                  </Box>
+                </WidgetCard>
               );
             })}
           </>

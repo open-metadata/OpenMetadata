@@ -6,17 +6,28 @@ This document outlines the standards and best practices that must be followed wh
 
 - [ ] **No `any` types**: Code must never use `any` type - use proper types or `unknown` with type guards
 - [ ] **Proper type imports**: All types imported from existing definitions (e.g., `RJSFSchema` from `@rjsf/utils`, types from `generated/`)
-- [ ] **Interface definitions**: All component props have defined interfaces in `.interface.ts` files
+- [ ] **Prop types defined**: All component props have declared types — `.types.ts` for new files, `.interface.ts` in legacy ones
 - [ ] **Type assertions**: Avoid type assertions unless absolutely necessary and well-justified
 - [ ] **Discriminated unions**: Use discriminated unions for action types and state variants
 
 ## React Component Standards
 
 ### File Structure and Naming
-- [ ] **Component files**: Named as `ComponentName.component.tsx`
-- [ ] **Interface files**: Named as `ComponentName.interface.ts`
+
+Full spec: [`src/main/resources/ui/DEVELOPER_HANDBOOK.md`](src/main/resources/ui/DEVELOPER_HANDBOOK.md).
+
+- [ ] **Placement**: new files live at `<layer>/<domain>/<feature>/` — layers are `components/`,
+      `pages/`, `rest/`, `utils/`, `hooks/`; domains are `discovery`, `governance`, `observability`,
+      `insights`, `platform`. Cross-cutting features (`lineage`, `data-contract`, `entity`,
+      `activity-feed`) sit at the domain level
+- [ ] **New file names**: one stem + role suffix — `GlossaryList.tsx`, `.types.ts`, `.utils.ts`,
+      `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`
+- [ ] **Legacy files untouched**: do not ask for existing `.component.tsx` / `.interface.ts` files to
+      be renamed — the suffix marks migration status
+- [ ] **No `index.ts` barrel** inside a component folder (`no-internal-barrel-imports`)
+- [ ] **Business logic in `*.utils.ts`**: pure functions, no React or JSX, unit-testable without rendering
 - [ ] **Functional components only**: No class components
-- [ ] **Custom hooks**: Prefixed with `use`, placed in `src/hooks/`, return typed objects
+- [ ] **Custom hooks**: Prefixed with `use`, placed in `src/hooks/<domain>/`, return typed objects
 
 ### Component Implementation
 - [ ] **State management**: Uses `useState` with proper typing
@@ -35,9 +46,9 @@ This document outlines the standards and best practices that must be followed wh
 
 ## Styling and UI Components
 
-### MUI Migration
-- [ ] **Prefer MUI v7.3.1**: New features use Material-UI components, not Ant Design
-- [ ] **Theme tokens**: Uses theme colors and design tokens from MUI theme, not hardcoded values
+### Component Library
+- [ ] **Prefer `openmetadata-ui-core-components`**: New features use `openmetadata-ui-core-components`, not Ant Design
+- [ ] **Theme tokens**: Uses design tokens from `openmetadata-ui-core-components`, not hardcoded values — see [`src/main/resources/ui/docs/colors.md`](src/main/resources/ui/docs/colors.md) for the full token reference
 - [ ] **Theme reference**: Styles reference `openmetadata-ui-core-components` theme data
 - [ ] **Legacy components**: Ant Design components only acceptable in existing code, flag for future refactoring
 
@@ -50,7 +61,7 @@ This document outlines the standards and best practices that must be followed wh
 
 ### Import Organization
 - [ ] **Correct order**: Imports organized as:
-  1. External libraries (React, MUI, etc.)
+  1. External libraries (React, etc.)
   2. Internal absolute imports (`generated/`, `constants/`, `hooks/`)
   3. Relative imports (utilities, components)
   4. Asset imports (SVGs, styles)
@@ -108,7 +119,7 @@ This document outlines the standards and best practices that must be followed wh
 - [ ] **Semantic HTML**: Uses appropriate semantic elements
 - [ ] **ARIA labels**: Proper ARIA attributes for interactive elements
 - [ ] **Keyboard navigation**: Interactive elements accessible via keyboard
-- [ ] **MUI accessibility**: MUI components used correctly with accessibility in mind
+- [ ] **Component accessibility**: `openmetadata-ui-core-components` components used correctly with accessibility in mind
 
 ## Security
 
@@ -165,7 +176,7 @@ yarn playwright:run    # Run E2E tests (if applicable)
 
 1. **Hardcoded strings** instead of translation keys
 2. **`any` type usage** anywhere in TypeScript
-3. **Ant Design components** in new features (should use MUI)
+3. **Ant Design components** in new features (should use `openmetadata-ui-core-components`)
 4. **Hardcoded colors** instead of theme tokens
 5. **Missing error handling** in async operations
 6. **Console.log** statements left in code

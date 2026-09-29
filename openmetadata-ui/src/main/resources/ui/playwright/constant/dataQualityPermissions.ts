@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ResourceEntity } from '../../src/context/PermissionProvider/PermissionProvider.interface';
 import {
   Effect,
   Operation,
 } from '../../src/generated/entity/policies/accessControl/rule';
 import { uuid } from '../utils/common';
+import { ResourceEntity } from './permission';
 
 type PolicyRule = {
   name: string;

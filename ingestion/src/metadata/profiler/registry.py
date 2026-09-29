@@ -19,7 +19,6 @@ and we can easily access the desired values.
 """
 
 from enum import Enum
-from typing import Optional
 
 from sqlalchemy.sql.sqltypes import TypeDecorator
 
@@ -69,7 +68,7 @@ class MetricRegistry(Enum):
         return self.value.name()
 
     @classmethod
-    def get(cls, key: str) -> Optional[Metric]:  # noqa: UP045
+    def get(cls, key: str) -> Metric | None:
         """
         Safely retrieve an element
         from the Registry.

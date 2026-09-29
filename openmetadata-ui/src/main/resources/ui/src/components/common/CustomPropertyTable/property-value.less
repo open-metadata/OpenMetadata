@@ -13,14 +13,11 @@
 
 @import (reference) '../../../styles/variables.less';
 
-.entity-reference-list-item:last-child {
-  border-bottom: none;
-}
 .entity-ref-link {
   display: flex;
   align-items: center;
   max-width: 100%;
-  padding: 4px;
+  padding: var(--om-space-4);
 
   .entity-icon {
     height: 24px;
@@ -40,7 +37,7 @@
   svg {
     vertical-align: middle;
     width: 14px;
-    transition: 0.3s ease-in-out;
+    transition: var(--om-duration-300) ease-in-out;
   }
 }
 
@@ -50,57 +47,8 @@
   }
 }
 
-.ant-tag.enum-key-tag {
-  width: max-content;
-  margin: 0px;
-  padding: 2px 8px;
-  border: 1px solid @text-color;
-  background: var(--tw-color-bg-primary);
-}
-
-.sql-query-custom-property {
-  .ant-space-item:first-child {
-    width: 100%;
-  }
-}
-.custom-property-card {
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  .ant-card-body {
-    overflow-x: scroll;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  .property-name {
-    font-weight: 400;
-  }
-
-  .property-value {
-    font-weight: 500;
-  }
-}
-
 .custom-property-card-right-panel {
   overflow-x: scroll;
-}
-
-.ant-tag.time-interval-separator {
-  height: 26px;
-  background: @grey-1;
-  padding: 4px 8px;
-  border-radius: 30px;
-  margin-right: 0px;
-  font-size: 12px;
-  text-align: center;
-  font-weight: 500;
-  line-height: 18px;
 }
 
 .custom-property-inline-edit-container {
@@ -124,11 +72,9 @@
 }
 
 .value-container {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  gap: @size-md;
 }
 
 .custom-property-scrollable-container {

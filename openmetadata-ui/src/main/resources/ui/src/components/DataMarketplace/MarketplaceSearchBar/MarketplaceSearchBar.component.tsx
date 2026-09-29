@@ -14,6 +14,7 @@
 import {
   Input,
   SelectPopover,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
@@ -39,7 +40,14 @@ import './marketplace-search-bar.less';
 
 const PAGE_SIZE = 5;
 
-const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
+const MarketplaceSearchBar = ({
+  isEditView,
+  compact,
+}: {
+  isEditView?: boolean;
+  /** Header-embedded sizing: 36px control height, no bottom margin. */
+  compact?: boolean;
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
@@ -225,12 +233,13 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
                 <div className="search-result-icon">
                   {getDataProductIconByUrl(dp.style?.iconURL)}
                 </div>
-                <Typography
-                  as="span"
-                  className="tw:truncate tw:block tw:text-sm"
-                  title={dp.displayName || dp.name}>
-                  {dp.displayName || dp.name}
-                </Typography>
+                <Tooltip title={dp.displayName || dp.name}>
+                  <Typography
+                    as="span"
+                    className="tw:truncate tw:block tw:text-sm">
+                    {dp.displayName || dp.name}
+                  </Typography>
+                </Tooltip>
               </div>
             ))}
           </div>
@@ -257,12 +266,13 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
                 <div className="search-result-icon">
                   {getDomainIcon(domain.style?.iconURL)}
                 </div>
-                <Typography
-                  as="span"
-                  className="tw:truncate tw:block tw:text-sm"
-                  title={domain.displayName || domain.name}>
-                  {domain.displayName || domain.name}
-                </Typography>
+                <Tooltip title={domain.displayName || domain.name}>
+                  <Typography
+                    as="span"
+                    className="tw:truncate tw:block tw:text-sm">
+                    {domain.displayName || domain.name}
+                  </Typography>
+                </Tooltip>
               </div>
             ))}
           </div>
@@ -280,29 +290,32 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
 
   return (
     <div
-      className="marketplace-search-bar"
+      className={`marketplace-search-bar${compact ? ' tw:!mb-0' : ''}`}
       data-testid="marketplace-search-bar"
       ref={containerRef}>
       <div className="tw:relative">
         <div className="tw:absolute tw:left-3 tw:top-1/2 tw:-translate-y-1/2 tw:z-10 tw:flex tw:items-center">
           {isNLPEnabled ? (
-            <button
-              className={`marketplace-nlq-button${
-                isNLPActive ? ' active' : ''
-              }`}
-              data-testid="marketplace-nlq-toggle"
+            <Tooltip
               title={
                 isNLPActive
                   ? t('message.natural-language-search-active')
                   : t('label.use-natural-language-search')
-              }
-              onClick={() => setNLPActive(!isNLPActive)}>
-              {isNLPActive ? (
-                <IconSuggestionsActive />
-              ) : (
-                <IconSuggestionsBlue />
-              )}
-            </button>
+              }>
+              <button
+                className={`marketplace-nlq-button${
+                  isNLPActive ? ' active' : ''
+                }`}
+                data-testid="marketplace-nlq-toggle"
+                type="button"
+                onClick={() => setNLPActive(!isNLPActive)}>
+                {isNLPActive ? (
+                  <IconSuggestionsActive />
+                ) : (
+                  <IconSuggestionsBlue />
+                )}
+              </button>
+            </Tooltip>
           ) : (
             <SearchLg className="tw:size-4 tw:text-text-tertiary" />
           )}
@@ -318,7 +331,9 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
               t('label.data-product-plural') + ', ' + t('label.domain-plural'),
           })}
           value={searchValue}
-          wrapperClassName="marketplace-search-input tw:!rounded-xl tw:!items-center tw:!py-1"
+          wrapperClassName={`marketplace-search-input tw:!rounded-xl tw:!items-center ${
+            compact ? 'tw:!py-0' : 'tw:!py-1'
+          }`}
           onChange={(value) => handleChange(value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

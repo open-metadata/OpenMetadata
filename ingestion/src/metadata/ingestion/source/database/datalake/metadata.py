@@ -15,8 +15,9 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 
 import json
 import traceback
+from collections.abc import Iterable
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -52,7 +53,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.storage.storage_service import (
@@ -71,6 +75,10 @@ from metadata.utils.datalake.datalake_utils import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
+
 logger = ingestion_logger()
 
 OBJECT_FILTERED_OUT_MESSAGE = "Object Filtered Out"
@@ -88,16 +96,17 @@ class DatalakeSource(DatabaseServiceSource):
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.table_constraints = None
         self.database_source_state = set()
         self.config_source = self.service_connection.configSource
-        self.connection_obj = self.client
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatalakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatalakeConnection):
@@ -151,33 +160,30 @@ class DatalakeSource(DatabaseServiceSource):
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
+
+        Errors are allowed to propagate so the topology producer wrapper
+        (`_run_node_producer`) records a clean StackTraceError. Do NOT yield an
+        Either(left=...) here: the framework treats each yielded item as a
+        schema-name string, and a yielded Either would surface downstream as a
+        masked ``TypeError: expected string or bytes-like object``.
         """
-        try:
-            for schema_name in self.client.get_database_schema_names(self.service_connection.bucketName):
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                )
-
-                if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
-                ):
-                    self.status.filter(schema_fqn, "Bucket Filtered Out")
-                    continue
-
-                yield schema_name
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name="Bucket",
-                    error=f"Unexpected exception to yield bucket: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
+        for schema_name in self.client.get_database_schema_names(self.service_connection.bucketName):
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
             )
+
+            if filter_by_schema(
+                self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
+            ):
+                self.status.filter(schema_fqn, "Bucket Filtered Out")
+                continue
+
+            yield schema_name
 
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
@@ -201,7 +207,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[Tuple[str, TableType, SupportedTypes, Optional[int]]]:  # noqa: UP006, UP045
+    ) -> Iterable[tuple[str, TableType, SupportedTypes, int | None, str | None]]:
         """
         Handle table and views.
 
@@ -233,27 +239,36 @@ class DatalakeSource(DatabaseServiceSource):
                     continue
                 logger.info(f"Processing table: {table_name}")
                 file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
+                separator = (
+                    next(
+                        (entry.separator for entry in metadata_entry.entries if key_name == entry.dataPath),
+                        None,
+                    )
+                    if metadata_entry
+                    else None
+                )
 
                 if table_name.endswith("/") or not file_extension:
                     logger.debug(f"Object filtered due to unsupported file type: {key_name}")
                     continue
 
-                yield table_name, TableType.Regular, file_extension, file_size
+                yield table_name, TableType.Regular, file_extension, file_size, separator
 
     def yield_table(
         self,
-        table_name_and_type: Tuple[str, TableType, SupportedTypes, Optional[int]],  # noqa: UP006, UP045
+        table_name_and_type: tuple[str, TableType, SupportedTypes, int | None, str | None],
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
         Uses first chunk only for schema inference to avoid loading entire file.
         """
-        table_name, table_type, table_extension, file_size = table_name_and_type
+        table_name, table_type, table_extension, file_size, separator = table_name_and_type
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None
-            data_frame, raw_data = fetch_dataframe_first_chunk(
+            # The helper's legacy annotation omits the tuple returned when raw data is requested.
+            data_frame, raw_data = fetch_dataframe_first_chunk(  # pyright: ignore[reportGeneralTypeIssues]
                 config_source=self.config_source,
                 client=self.client.client,
                 file_fqn=DatalakeTableSchemaWrapper(
@@ -261,6 +276,7 @@ class DatalakeSource(DatabaseServiceSource):
                     bucket_name=schema_name,
                     file_extension=table_extension,
                     file_size=file_size,
+                    separator=separator,
                 ),
                 fetch_raw_data=True,
                 session=getattr(self.client, "session", None),
@@ -276,7 +292,7 @@ class DatalakeSource(DatabaseServiceSource):
                 display_name = None
                 if len(table_name) > 256:
                     display_name = table_name
-                    table_name = md5(table_name.encode()).hexdigest()
+                    table_name = md5(table_name.encode(), usedforsecurity=False).hexdigest()
                     logger.debug(
                         f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "
                         f"as name and storing the full path in displayName: [{display_name}]"
@@ -350,6 +366,3 @@ class DatalakeSource(DatabaseServiceSource):
             )
             return True
         return False
-
-    def close(self):
-        self.client.close(self.service_connection)

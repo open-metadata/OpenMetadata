@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { CODE_EDITOR_LINE } from '../../utils/codeEditor';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateViewPermissions } from '../../utils/permission';
@@ -71,9 +73,11 @@ const test = base.extend<{
   userPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -209,7 +213,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     await queryListResponse;
     await userPage.click('[data-testid="query-btn"]');
     await userPage.click('[data-menu-id*="edit-query"]');
-    await userPage.locator('.CodeMirror-line').click();
+    await userPage.locator(CODE_EDITOR_LINE).click();
     await userPage.keyboard.type('updated');
     const saveQueryResponse = userPage.waitForResponse('/api/v1/queries/*');
     await userPage.click('[data-testid="save-query-btn"]');
@@ -267,7 +271,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     const saveTestResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await userPage.getByTestId('update-btn').click();
+    await userPage.getByTestId('create-btn').click();
     await saveTestResponse;
   });
 });

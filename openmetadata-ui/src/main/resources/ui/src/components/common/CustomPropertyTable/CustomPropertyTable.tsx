@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Skeleton, Typography } from 'antd';
+import {
+  Card,
+  Divider,
+  Grid,
+  GridItem,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
+import { GridDotsOuter } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -25,7 +32,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CustomPropertyEmpty } from '../../../assets/svg/custom-property-empty.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -39,13 +45,12 @@ import {
 } from '../../../utils/EntityDiffPureUtils';
 import { getUpdatedExtensionDiffFields } from '../../../utils/EntityDiffUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
-import ExpandableCard from '../ExpandableCard/ExpandableCard';
-import './custom-property-table.less';
+import WidgetCard from '../WidgetCard/WidgetCard';
 import {
   CustomPropertyProps,
   ExtentionEntities,
@@ -198,8 +203,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (entityTypeDetailLoading) {
     return (
-      <div className="p-lg border-default border-radius-sm">
-        <Skeleton active />
+      <div
+        className="p-lg border-default border-radius-sm"
+        data-testid="custom-property-table-loader">
+        <SkeletonParagraph className="tw:mb-3.5" />
       </div>
     );
   }
@@ -225,50 +232,43 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full flex-center border-default border-radius-sm">
-        <ErrorPlaceHolder
-          className="border-none"
-          contentMaxWidthClass="tw:max-w-96"
-          icon={<CustomPropertyEmpty />}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
-          <Transi18next
-            i18nKey="message.no-custom-properties-entity"
-            renderElement={
-              <a
-                href={CUSTOM_PROPERTIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-                title="Custom properties documentation"
-              />
-            }
-            values={{
-              docs: t('label.doc-plural-lowercase'),
-              entity: startCase(entityType),
-            }}
-          />
-        </ErrorPlaceHolder>
+      <div className="h-full tw:relative tw:min-h-90">
+        <CreatePlaceholder
+          actions={[
+            {
+              key: 'read-docs',
+              id: 'custom-property-read-docs',
+              label: t('label.read-type', { type: t('label.doc-plural') }),
+              color: 'primary',
+              onPress: () =>
+                window.open(CUSTOM_PROPERTIES_DOCS, '_blank', 'noreferrer'),
+            },
+          ]}
+          description={t('message.custom-property-empty-description', {
+            entity: startCase(entityType).toLowerCase(),
+          })}
+          icon={<GridDotsOuter className="tw:text-utility-brand-600" />}
+          title={t('label.no-custom-properties-defined')}
+        />
       </div>
     );
   }
 
   if (isRenderedInRightPanel) {
-    const header = (
-      <div className={classNames('d-flex justify-between')}>
-        <Typography.Text className={classNames('text-sm font-medium')}>
-          {t('label.custom-property-plural')}
-        </Typography.Text>
-        {viewAllBtn}
-      </div>
-    );
+    const headerTitle = t('label.custom-property-plural');
+    const headerExtra = viewAllBtn;
     const propertyList = (
       <div className="custom-property-right-panel-container">
         {dataSource.map((record, index) => (
           <Fragment key={record.name}>
             <div
-              className={classNames('custom-property-right-panel-card', {
-                'top-border-radius': index === 0,
-                'bottom-border-radius': index === dataSource.length - 1,
-              })}
+              className={classNames(
+                'custom-property-right-panel-card tw:py-3.5',
+                {
+                  'top-border-radius': index === 0,
+                  'bottom-border-radius': index === dataSource.length - 1,
+                }
+              )}
               key={record.name}>
               <PropertyValue
                 extension={extensionObject.extensionObject}
@@ -281,7 +281,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
                 onExtensionUpdate={onExtensionUpdate}
               />
             </div>
-            {index !== dataSource.length - 1 && <Divider className="m-y-0" />}
+            {index !== dataSource.length - 1 && <Divider />}
           </Fragment>
         ))}
       </div>
@@ -293,13 +293,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     }
 
     return (
-      <ExpandableCard
-        cardProps={{
-          className: 'no-scrollbar',
-          title: header,
-        }}>
+      <WidgetCard
+        className="no-scrollbar"
+        headerExtra={headerExtra}
+        title={headerTitle}>
         {propertyList}
-      </ExpandableCard>
+      </WidgetCard>
     );
   }
 
@@ -308,12 +307,13 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return (
-    <div className="custom-properties-card">
-      <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+    <Card className="custom-properties-card tw:p-5">
+      <Grid data-testid="custom-properties-card" gap="4">
         {dataSourceColumns.map((columns, colIndex) => (
-          <Col key={colIndex} span={8}>
+          // eslint-disable-next-line react/no-array-index-key -- static grid-layout column partition, fixed order
+          <GridItem key={colIndex} span={8}>
             {columns.map((record) => (
-              <div key={record.name} style={{ marginBottom: '16px' }}>
+              <div className="tw:mb-4" key={record.name}>
                 <PropertyValue
                   extension={extensionObject.extensionObject}
                   hasEditPermissions={hasEditAccess}
@@ -325,9 +325,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
                 />
               </div>
             ))}
-          </Col>
+          </GridItem>
         ))}
-      </Row>
-    </div>
+      </Grid>
+    </Card>
   );
 };

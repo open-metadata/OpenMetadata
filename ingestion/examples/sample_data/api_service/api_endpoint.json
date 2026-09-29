@@ -266,6 +266,62 @@
       "description": "Delete pet by ID",
       "endpointURL": "https://petstore3.swagger.io/#/pet/deletePet",
       "requestMethod": "DELETE"
+    },
+    {
+      "name": "provider_address_texas_endpoint",
+      "apiCollection": "sample_api_service.pet",
+      "displayName": "Provider Address Texas Endpoint",
+      "description": "Search relevancy fixture endpoint for provider address Texas lookups.",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/providerAddressTexas",
+      "requestMethod": "GET",
+      "responseSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "provider_id",
+            "dataType": "INT",
+            "description": "Provider identifier"
+          },
+          {
+            "name": "provider_address",
+            "dataType": "STRING",
+            "description": "Provider address"
+          },
+          {
+            "name": "texas_region",
+            "dataType": "STRING",
+            "description": "Texas region"
+          }
+        ]
+      }
+    },
+    {
+      "name": "customer_profiles_endpoint",
+      "apiCollection": "sample_api_service.pet",
+      "displayName": "Customer Profiles Endpoint",
+      "description": "Search relevancy fixture endpoint for customer profiles lookups.",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/customerProfiles",
+      "requestMethod": "GET",
+      "responseSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "customer_id",
+            "dataType": "INT",
+            "description": "Customer identifier"
+          },
+          {
+            "name": "customer_profile_id",
+            "dataType": "STRING",
+            "description": "Customer profile identifier"
+          },
+          {
+            "name": "profile_status",
+            "dataType": "STRING",
+            "description": "Customer profile status"
+          }
+        ]
+      }
     }
   ]
 }

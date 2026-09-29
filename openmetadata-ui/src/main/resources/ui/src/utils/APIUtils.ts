@@ -100,14 +100,17 @@ export const isBlobLikeResponse = (value: unknown): value is Blob => {
     return true;
   }
 
-  return Boolean(
+  const isObjectValue = Boolean(value) && typeof value === 'object';
+  const hasBlobReaders =
     value &&
-      typeof value === 'object' &&
-      typeof (value as Blob).text === 'function' &&
-      typeof (value as Blob).size === 'number' &&
-      typeof (value as Blob).type === 'string' &&
-      typeof (value as Blob).slice === 'function'
-  );
+    typeof (value as Blob).text === 'function' &&
+    typeof (value as Blob).slice === 'function';
+  const hasBlobMeta =
+    value &&
+    typeof (value as Blob).size === 'number' &&
+    typeof (value as Blob).type === 'string';
+
+  return Boolean(isObjectValue && hasBlobReaders && hasBlobMeta);
 };
 
 export const parseExportErrorMessage = async (

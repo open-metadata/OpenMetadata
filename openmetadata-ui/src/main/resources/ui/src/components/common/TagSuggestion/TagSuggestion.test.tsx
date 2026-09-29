@@ -11,16 +11,41 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { TagSource } from '../../../generated/entity/data/container';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import TagSuggestion from './TagSuggestion';
-import { MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
+import { MOCK_GLOSSARY_OPTIONS, MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
 
 const mockGetTags = jest.fn();
+const mockFetchGlossaryList = jest.fn();
+const mockEnsureComboboxMenuOpen = jest.fn();
 
 jest.mock('../../../utils/TagClassBase', () => ({
   __esModule: true,
   default: {
     getTags: (...args: unknown[]) => mockGetTags(...args),
   },
+}));
+
+jest.mock('../../../utils/formPureUtils', () => ({
+  ...jest.requireActual('../../../utils/formPureUtils'),
+  ensureComboboxMenuOpen: (...args: unknown[]) =>
+    mockEnsureComboboxMenuOpen(...args),
+}));
+
+const mockGlossaryTermPicker = jest.fn();
+jest.mock('../GlossaryTermPicker/GlossaryTermPicker', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    mockGlossaryTermPicker(props, {});
+
+    return <div data-testid="glossary-term-picker" />;
+  },
+}));
+
+jest.mock('../../../utils/TagsUtils', () => ({
+  __esModule: true,
+  fetchGlossaryList: (...args: unknown[]) => mockFetchGlossaryList(...args),
 }));
 
 jest.mock('lodash', () => {
@@ -37,19 +62,6 @@ jest.mock('lodash', () => {
     },
   };
 });
-
-jest.mock('../atoms/TagChip', () => ({
-  TagChip: ({ label, onDelete }: { label: string; onDelete?: () => void }) => (
-    <span data-testid="tag-chip">
-      {label}
-      {onDelete && (
-        <button data-testid="tag-chip-delete" onClick={onDelete}>
-          x
-        </button>
-      )}
-    </span>
-  ),
-}));
 
 type MockItem = { id: string; label: string; supportingText?: string };
 
@@ -90,10 +102,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
     return (
       <div>
-        {label && <label>{label}</label>}
+        {label && (
+          // eslint-disable-next-line jsx-a11y/label-has-for -- test mock caption
+          <label>{label}</label>
+        )}
         <input
           aria-controls={listboxId}
           aria-expanded={open}
+          aria-label="Tags"
           placeholder={placeholder}
           role="combobox"
           value={inputValue}
@@ -138,7 +154,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     supportingText?: string;
   }) => ({ id, label, supportingText });
 
-  return { Autocomplete };
+  const BadgeWithButton = ({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  );
+
+  const Dot = () => <span data-testid="dot" />;
+
+  return { Autocomplete, BadgeWithButton, Dot };
 });
 
 describe('TagSuggestion', () => {
@@ -149,6 +171,10 @@ describe('TagSuggestion', () => {
     mockGetTags.mockResolvedValue({
       data: MOCK_TAG_OPTIONS,
       paging: { total: 3 },
+    });
+    mockFetchGlossaryList.mockResolvedValue({
+      data: MOCK_GLOSSARY_OPTIONS,
+      paging: { total: 2 },
     });
   });
 
@@ -301,5 +327,93 @@ describe('TagSuggestion', () => {
     });
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('should stamp source Classification on an inserted tag by default', async () => {
+    render(<TagSuggestion onChange={mockOnChange} />);
+
+    const input = screen.getByRole('combobox');
+
+    fireEvent.mouseDown(input);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('tag-option-PersonalData.Personal')
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+
+    expect(mockOnChange.mock.calls[0][0][0].source).toBe(
+      TagSource.Classification
+    );
+  });
+
+  describe('menu open on field vs label pointer-down', () => {
+    it('force-opens the menu when the field itself is pressed', async () => {
+      render(<TagSuggestion label="Tags" onChange={mockOnChange} />);
+
+      fireEvent.pointerDown(screen.getByRole('combobox'));
+
+      expect(mockEnsureComboboxMenuOpen).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not force-open the menu when the label is pressed', async () => {
+      render(<TagSuggestion label="Tags" onChange={mockOnChange} />);
+
+      fireEvent.pointerDown(screen.getByText('Tags'));
+
+      expect(mockEnsureComboboxMenuOpen).not.toHaveBeenCalled();
+    });
+
+    it('reopens the menu after a tag is inserted so a following Escape closes the menu, not the drawer', async () => {
+      render(<TagSuggestion onChange={mockOnChange} />);
+
+      fireEvent.mouseDown(screen.getByRole('combobox'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('tag-option-PersonalData.Personal')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+
+      // mouseDown (not pointerDown) doesn't hit the field handler, so this call
+      // comes from the insertion path re-opening the menu.
+      expect(mockEnsureComboboxMenuOpen).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('when tagType is Glossary', () => {
+    it('should render the glossary term picker, not the flat autocomplete', () => {
+      render(
+        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
+      );
+
+      expect(screen.getByTestId('glossary-term-picker')).toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+      expect(mockFetchGlossaryList).not.toHaveBeenCalled();
+      expect(mockGetTags).not.toHaveBeenCalled();
+    });
+
+    it('should hand the picker the current terms and the change handler', () => {
+      const value = [
+        { tagFQN: 'Business.Revenue', source: TagSource.Glossary },
+      ] as TagLabel[];
+
+      render(
+        <TagSuggestion
+          tagType={TagSource.Glossary}
+          value={value}
+          onChange={mockOnChange}
+        />
+      );
+
+      expect(mockGlossaryTermPicker).toHaveBeenCalledWith(
+        expect.objectContaining({ value, onChange: mockOnChange }),
+        {}
+      );
+    });
   });
 });

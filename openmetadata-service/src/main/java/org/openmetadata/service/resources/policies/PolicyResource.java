@@ -107,7 +107,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
-    repository.initSeedDataFromResources();
+    repository.initSeedDataFromResourcesOnStartup();
   }
 
   @Override

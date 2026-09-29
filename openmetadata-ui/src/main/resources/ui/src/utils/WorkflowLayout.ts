@@ -29,7 +29,7 @@ export const applyFlowchartLayout = (
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({
     rankdir: 'LR',
-    nodesep: 80,
+    nodesep: 100,
     ranksep: 150,
     edgesep: 40,
   });

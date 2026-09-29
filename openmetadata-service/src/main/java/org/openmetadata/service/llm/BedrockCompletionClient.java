@@ -60,6 +60,7 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
         BedrockRuntimeClient.builder()
             .credentialsProvider(AwsCredentialsUtil.buildCredentialsProvider(awsConfig))
             .region(Region.of(awsConfig.getRegion()))
+            .overrideConfiguration(AwsCredentialsUtil.throttleResilientOverrideConfiguration())
             .build();
   }
 

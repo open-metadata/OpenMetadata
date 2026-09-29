@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/glossary.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Glossary",
   "description": "This schema defines the Glossary entity. A Glossary is collection of hierarchical GlossaryTerms.",
   "$comment": "@om-entity-type",
@@ -124,6 +124,31 @@
     "entityStatus": {
       "description": "Status of the Glossary.",
       "$ref": "../../type/status.json"
+    },
+    "ontologyConfiguration": {
+      "description": "Ontology modeling, layering, import, and IRI settings inherited by glossary terms.",
+      "$ref": "../../type/ontologyConfiguration.json"
+    },
+    "namespaces": {
+      "description": "Namespace prefix to IRI mappings for terms imported from an external ontology. Used to render CURIEs and preserve identity when re-exporting the glossary as RDF/OWL.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "javaType": "org.openmetadata.schema.type.OntologyNamespace",
+        "properties": {
+          "prefix": {
+            "description": "Short prefix for the namespace (e.g., `hcp`).",
+            "type": "string"
+          },
+          "namespace": {
+            "description": "Full namespace IRI the prefix expands to (e.g., `http://example.com/ontology/hcp#`).",
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": []
     }
   },
   "required": ["id", "name", "description"],

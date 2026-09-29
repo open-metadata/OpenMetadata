@@ -1,0 +1,282 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.mcp.tools;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.jena.query.Dataset;
+import org.apache.jena.query.DatasetFactory;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+
+class EntityNeighborhoodToolTest {
+
+  private static final String BASE_URI = "https://open-metadata.org/";
+  private static final String KNOWLEDGE_GRAPH = BASE_URI + "graph/knowledge";
+  private static final String ONTOLOGY_GRAPH = BASE_URI + "graph/ontology";
+  private static final Authorizer AUTHORIZER = mock(Authorizer.class);
+  private static final CatalogSecurityContext SECURITY_CONTEXT = mock(CatalogSecurityContext.class);
+
+  @Test
+  void rejectsMissingEntityId() {
+    assertValidationError("'entityId' parameter is required", Map.of("entityType", "table"));
+  }
+
+  @Test
+  void rejectsMissingEntityType() {
+    assertValidationError(
+        "'entityType' parameter is required", Map.of("entityId", UUID.randomUUID().toString()));
+  }
+
+  @Test
+  void rejectsInvalidEntityReference() {
+    assertValidationError(
+        "'entityId' must be a UUID", Map.of("entityId", "not-a-uuid", "entityType", "table"));
+    assertValidationError(
+        "'entityType' must be alphanumeric",
+        Map.of("entityId", UUID.randomUUID().toString(), "entityType", "table> ; DROP --"));
+  }
+
+  @Test
+  void rejectsDisabledRepository() {
+    RdfRepository repository = mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(false);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                tool(repository)
+                    .execute(
+                        AUTHORIZER,
+                        SECURITY_CONTEXT,
+                        Map.of("entityId", UUID.randomUUID().toString(), "entityType", "table")));
+
+    assertTrue(exception.getMessage().contains("not enabled"));
+  }
+
+  @Test
+  void returnsTypedNeighborhoodAndClampsDepth() throws IOException {
+    RdfRepository repository = enabledRepository();
+    when(repository.executeSparqlQuery(anyString(), org.mockito.ArgumentMatchers.eq("text/turtle")))
+        .thenReturn("<urn:table> <urn:hasColumn> <urn:column> .");
+    when(repository.executeSparqlQuery(
+            anyString(), org.mockito.ArgumentMatchers.eq("application/sparql-results+json")))
+        .thenReturn(
+            """
+            {"results":{"bindings":[{
+              "direction":{"type":"literal","value":"outgoing"},
+              "predicate":{"type":"uri","value":"https://open-metadata.org/ontology/hasColumn"},
+              "neighbor":{"type":"uri","value":"urn:column"}
+            }]}}
+            """);
+
+    EntityNeighborhoodTool.Neighborhood result =
+        tool(repository)
+            .execute(
+                AUTHORIZER,
+                SECURITY_CONTEXT,
+                Map.of(
+                    "entityId",
+                    "11111111-1111-1111-1111-111111111111",
+                    "entityType",
+                    "table",
+                    "depth",
+                    99));
+
+    assertEquals(3, result.depth());
+    assertNotNull(result.triples());
+    assertEquals(1, result.edges().size());
+    assertEquals("outgoing", result.edges().getFirst().direction());
+  }
+
+  @Test
+  void constructReturnsEveryTraversedTripleInBothDirections() {
+    Model source = ModelFactory.createDefaultModel();
+    Resource start = source.createResource("urn:start");
+    Resource outgoingOne = source.createResource("urn:outgoing-one");
+    Resource outgoingTwo = source.createResource("urn:outgoing-two");
+    Resource outgoingThree = source.createResource("urn:outgoing-three");
+    Resource incomingOne = source.createResource("urn:incoming-one");
+    Resource incomingTwo = source.createResource("urn:incoming-two");
+    Resource incomingThree = source.createResource("urn:incoming-three");
+    Property predicate = source.createProperty("urn:connected-to");
+    source.add(start, predicate, outgoingOne);
+    source.add(outgoingOne, predicate, outgoingTwo);
+    source.add(outgoingTwo, predicate, outgoingThree);
+    source.add(incomingOne, predicate, start);
+    source.add(incomingTwo, predicate, incomingOne);
+    source.add(incomingThree, predicate, incomingTwo);
+
+    Model depthOne = executeConstruct(source, 1);
+    Model depthTwo = executeConstruct(source, 2);
+    Model depthThree = executeConstruct(source, 3);
+    try {
+      assertTrue(depthOne.contains(start, predicate, outgoingOne));
+      assertTrue(depthOne.contains(incomingOne, predicate, start));
+      assertFalse(depthOne.contains(outgoingOne, predicate, outgoingTwo));
+      assertFalse(depthOne.contains(incomingTwo, predicate, incomingOne));
+      assertTrue(depthTwo.contains(outgoingOne, predicate, outgoingTwo));
+      assertTrue(depthTwo.contains(incomingTwo, predicate, incomingOne));
+      assertTrue(depthThree.contains(outgoingTwo, predicate, outgoingThree));
+      assertTrue(depthThree.contains(incomingThree, predicate, incomingTwo));
+    } finally {
+      depthOne.close();
+      depthTwo.close();
+      depthThree.close();
+      source.close();
+    }
+  }
+
+  @Test
+  void constructDoesNotTraverseFromInstancesIntoOntologyDefinitions() {
+    Model source = ModelFactory.createDefaultModel();
+    Model ontology = ModelFactory.createDefaultModel();
+    Resource table = source.createResource("urn:start");
+    Resource column = source.createResource("urn:column");
+    Resource tableClass = source.createResource("https://open-metadata.org/ontology/Table");
+    Resource rowCount = source.createResource("https://open-metadata.org/ontology/rowCount");
+    Property hasColumn = source.createProperty("https://open-metadata.org/ontology/hasColumn");
+    source.add(table, RDF.type, tableClass);
+    source.add(table, hasColumn, column);
+    ontology.add(tableClass, RDF.type, OWL.Class);
+    ontology.add(rowCount, RDFS.domain, tableClass);
+
+    Model result = executeConstruct(source, ontology, 2, 100);
+    try {
+      assertTrue(result.contains(table, hasColumn, column));
+      assertFalse(result.contains(tableClass, RDF.type, OWL.Class));
+      assertFalse(result.contains(rowCount, RDFS.domain, tableClass));
+    } finally {
+      result.close();
+      ontology.close();
+      source.close();
+    }
+  }
+
+  @Test
+  void wrapsRepositoryFailureWithNeighborhoodContext() {
+    RdfRepository repository = enabledRepository();
+    when(repository.executeSparqlQuery(anyString(), anyString()))
+        .thenThrow(new RuntimeException("connection refused"));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                tool(repository)
+                    .execute(
+                        AUTHORIZER,
+                        SECURITY_CONTEXT,
+                        Map.of(
+                            "entityId",
+                            "22222222-2222-2222-2222-222222222222",
+                            "entityType",
+                            "pipeline")));
+
+    assertTrue(exception.getMessage().contains("Neighborhood query failed"));
+  }
+
+  private static void assertValidationError(String expectedMessage, Map<String, Object> params) {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new EntityNeighborhoodTool(() -> null)
+                    .execute(AUTHORIZER, SECURITY_CONTEXT, params));
+    assertEquals(expectedMessage, exception.getMessage());
+  }
+
+  /**
+   * A hub start node must not starve the deeper hops.
+   *
+   * <p>The traversal branches used to share one {@code LIMIT} over an unordered UNION, so on a node
+   * with many 1-hop edges the 1-hop branches could consume the whole budget and the 2-hop triples
+   * would silently never appear - {@code depth} looked honoured while having no effect. Each branch
+   * now carries its own limit, so the 2-hop edge survives even when the 1-hop fan-out dwarfs it.
+   */
+  @Test
+  void deeperHopsSurviveAHighDegreeStartNode() {
+    Model source = ModelFactory.createDefaultModel();
+    Resource start = source.createResource("urn:start");
+    Property predicate = source.createProperty("urn:connected-to");
+    Resource hop = source.createResource("urn:hop");
+    for (int i = 0; i < 200; i++) {
+      source.add(start, predicate, source.createResource("urn:noise-" + i));
+    }
+    source.add(start, predicate, hop);
+    Resource twoHop = source.createResource("urn:two-hop");
+    source.add(hop, predicate, twoHop);
+
+    Model result = executeConstruct(source, null, 2, 6);
+    try {
+      assertTrue(
+          result.contains(hop, predicate, twoHop),
+          "2-hop triple was crowded out by the 1-hop fan-out, so depth had no effect");
+    } finally {
+      result.close();
+      source.close();
+    }
+  }
+
+  private static EntityNeighborhoodTool tool(RdfRepository repository) {
+    return new EntityNeighborhoodTool(() -> repository);
+  }
+
+  private static Model executeConstruct(Model source, int depth) {
+    return executeConstruct(source, null, depth, 100);
+  }
+
+  private static Model executeConstruct(Model source, Model ontology, int depth, int limit) {
+    Dataset dataset = DatasetFactory.createTxnMem();
+    dataset.addNamedModel(KNOWLEDGE_GRAPH, ModelFactory.createDefaultModel().add(source));
+    if (ontology != null) {
+      dataset.addNamedModel(ONTOLOGY_GRAPH, ModelFactory.createDefaultModel().add(ontology));
+    }
+    String query = EntityNeighborhoodTool.buildConstructQuery("urn:start", BASE_URI, depth, limit);
+    try (QueryExecution execution = QueryExecutionFactory.create(query, dataset)) {
+      return execution.execConstruct();
+    } finally {
+      dataset.close();
+    }
+  }
+
+  private static RdfRepository enabledRepository() {
+    RdfRepository repository = mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.getBaseUri()).thenReturn("https://open-metadata.org/");
+    return repository;
+  }
+}

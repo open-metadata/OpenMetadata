@@ -13,6 +13,7 @@
 
 import { Card, Typography } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
+import { renderBreakableTooltip } from '../../../utils/TooltipUtils';
 
 interface MarketplaceItemCardProps {
   icon: ReactNode;
@@ -32,7 +33,7 @@ const MarketplaceItemCard = ({
   return (
     <Card
       isClickable
-      className="tw:flex tw:items-center tw:gap-3 tw:p-3 tw:flex-1 tw:min-w-[235px] tw:max-w-[calc((100%-24px)/3)] tw:shadow-xs"
+      className="tw:flex tw:items-center tw:gap-3 tw:p-3 tw:flex-1 tw:min-w-[235px] tw:max-w-[calc((100%-24px)/3)] tw:shadow-xs tw:dark:bg-secondary"
       data-testid={dataTestId}
       role="button"
       tabIndex={0}
@@ -47,14 +48,14 @@ const MarketplaceItemCard = ({
       <div className="tw:flex tw:flex-col tw:min-w-0 tw:gap-0.5">
         <Typography
           as="span"
-          className="tw:font-semibold tw:text-sm tw:leading-5 tw:text-primary tw:truncate tw:block"
-          title={name}>
+          className="tw:font-semibold tw:text-sm tw:leading-5 tw:text-primary tw:truncate tw:block tw:text-left"
+          ellipsis={{ tooltip: renderBreakableTooltip(name) }}>
           {name}
         </Typography>
         <Typography
           as="span"
-          className="tw:text-xs tw:leading-[18px] tw:text-tertiary tw:truncate tw:block"
-          title={subtitle}>
+          className="tw:text-xs tw:leading-[18px] tw:text-tertiary tw:truncate tw:block tw:text-left"
+          ellipsis={{ tooltip: renderBreakableTooltip(subtitle) }}>
           {subtitle}
         </Typography>
       </div>

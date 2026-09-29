@@ -12,6 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+import { ReactElement } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import FQNListSelect, { resolveWildcardFqns } from './FQNListSelect.component';
@@ -20,11 +21,17 @@ jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let capturedProps: any;
+interface CapturedTagProps {
+  value: string;
+  closable: boolean;
+  onClose: () => void;
+}
+interface CapturedAsyncSelectProps {
+  tagRender: (props: CapturedTagProps) => ReactElement;
+}
+let capturedProps: CapturedAsyncSelectProps | undefined;
 jest.mock('../../common/AsyncSelect/AsyncSelect', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  AsyncSelect: (props: any) => {
+  AsyncSelect: (props: CapturedAsyncSelectProps) => {
     capturedProps = props;
 
     return <div data-testid="async-select" />;
@@ -131,7 +138,7 @@ describe('FQNListSelect', () => {
 
     await waitFor(() => {
       const containerTag = render(
-        capturedProps.tagRender({
+        (capturedProps as CapturedAsyncSelectProps).tagRender({
           value: 'svc',
           closable: true,
           onClose: jest.fn(),
@@ -145,7 +152,7 @@ describe('FQNListSelect', () => {
     });
 
     const leafTag = render(
-      capturedProps.tagRender({
+      (capturedProps as CapturedAsyncSelectProps).tagRender({
         value: 'svc.db.schema.tbl',
         closable: true,
         onClose: jest.fn(),
@@ -169,7 +176,7 @@ describe('FQNListSelect', () => {
     await screen.findByTestId('async-select');
 
     const tag = render(
-      capturedProps.tagRender({
+      (capturedProps as CapturedAsyncSelectProps).tagRender({
         value: 'svc',
         closable: true,
         onClose: jest.fn(),

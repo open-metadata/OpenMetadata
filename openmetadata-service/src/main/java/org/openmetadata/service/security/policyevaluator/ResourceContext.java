@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +42,18 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
   private Include include;
   private Fields requestedFields;
+  private final Set<String> loadedFieldNames = new HashSet<>();
   private RelationIncludes relationIncludes;
+  // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
+  // of once per entity. Null for single-entity requests, which keep the per-entity load.
+  private BulkFieldHydrator bulkFieldHydrator;
+  // Service attributes are read only when a condition asks for them, then memoized for this
+  // context. The loaded flags are needed separately because "no service" is a valid null result.
+  private EntityInterface serviceEntity;
+  private boolean serviceEntityLoaded;
+  private List<TagLabel> serviceTags;
+  private boolean serviceTagsLoaded;
+  private Boolean serviceResource;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
@@ -110,6 +123,21 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.entityRepository = repository;
   }
 
+  /**
+   * Bulk-authorization variant: {@code bulkFieldHydrator} is shared by every {@link ResourceContext}
+   * in one bulk request. The first entity whose policy reads an on-demand field batch-loads it for
+   * the whole request; later reads are no-ops. Omitting it (the constructor above) keeps the
+   * per-entity on-demand load used by single-entity requests.
+   */
+  public ResourceContext(
+      @NonNull String resource,
+      T entity,
+      EntityRepository<T> repository,
+      BulkFieldHydrator bulkFieldHydrator) {
+    this(resource, entity, repository);
+    this.bulkFieldHydrator = bulkFieldHydrator;
+  }
+
   @Override
   public List<EntityReference> getOwners() {
     resolveEntity();
@@ -167,7 +195,180 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   @Override
   public List<TagLabel> getTags() {
     resolveEntity();
-    return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
+    if (entity == null) {
+      return Collections.emptyList();
+    }
+    ensureTagsLoaded();
+    return Entity.getEntityTags(getResource(), entity);
+  }
+
+  /**
+   * Populates tags on the already-resolved entity. Tags are the one policy attribute with unbounded
+   * cardinality — a heavily tagged table can carry tens of thousands — so they are excluded from the
+   * authorization load and fetched only when a condition actually reads them. A deployment whose
+   * policies use no tag conditions therefore never pays for them. The fields are applied to the
+   * existing instance, so this adds no entity reload.
+   */
+  // Package-private so the bulk batch-vs-per-entity routing can be unit-tested directly.
+  void ensureTagsLoaded() {
+    if (!loadedFieldNames.contains(Entity.FIELD_TAGS) && entityRepository.isSupportsTags()) {
+      if (bulkFieldHydrator != null) {
+        bulkFieldHydrator.hydrate(Entity.FIELD_TAGS); // one batch query for the whole bulk request
+      } else {
+        entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+      }
+      loadedFieldNames.add(Entity.FIELD_TAGS);
+    }
+  }
+
+  /**
+   * A service is its own service, so a condition over service attributes hides the service itself
+   * alongside its assets. Without this a Deny would strip every table from the catalog but leave
+   * the service listed, which reads as a bug rather than as a policy. Mirrors {@link #getOwners()}
+   * treating a user as its own owner and {@link #getDomains()} treating a domain as its own domain.
+   */
+  @Override
+  public EntityReference getServiceReference() {
+    resolveEntity();
+    if (entity == null) {
+      return null;
+    }
+    if (isServiceResource()) {
+      return entity.getEntityReference();
+    }
+    EntityReference service = entity.getService();
+    if (service == null) {
+      warnServiceNotPopulated();
+    }
+    return service;
+  }
+
+  /**
+   * {@code EntityInterface.getService()} defaults to null, so an entity type whose repository does
+   * not populate it answers "no service" here. Every {@code matchAnyService*} condition then
+   * returns false, and for a Deny rule false means the rule does not apply -- the assets stay
+   * visible with no exception and nothing in the log. The premise that roughly thirty
+   * service-backed repositories all populate the field is a convention with nothing asserting it,
+   * so a type that does not, or one added later that forgets, silently opts itself out of a
+   * feature whose whole purpose is access control.
+   *
+   * <p>Logged once per entity type so a missing field is greppable without putting a line on every
+   * authorization check. Bounded by the number of registered entity types.
+   */
+  private void warnServiceNotPopulated() {
+    String type = entityRepository.getEntityType();
+    if (!SERVICE_FIELD_REPORTED.add(type)) {
+      return;
+    }
+    if (ServiceAttributeUtil.declaresService(entityRepository.getEntityClass())) {
+      LOG.warn(
+          "Entity type {} declares 'service' but did not populate it, so "
+              + "matchAnyServiceTag/Type/Name/Environment cannot match it and any Deny rule using "
+              + "them will not hide its assets",
+          type);
+    } else {
+      // A Deny scoped to All evaluates against every resource type, so these conditions are asked
+      // about glossary terms, users, teams and domains on every such check. Having no service is
+      // the documented, correct answer for them -- warning would fire on correct behaviour and
+      // bury the case above.
+      LOG.debug("Entity type {} has no service, so service conditions do not apply to it", type);
+    }
+  }
+
+  private static final Set<String> SERVICE_FIELD_REPORTED = ConcurrentHashMap.newKeySet();
+
+  /**
+   * Tags of the service that ingested this resource.
+   *
+   * <p>Loaded on demand and memoized for the life of this context: a rule set with several service
+   * conditions evaluates each of them against every requested operation, so the accessor is called
+   * many times per entity.
+   *
+   * <p>No {@link BulkFieldHydrator} entry is needed even in bulk requests. Unlike the entity's own
+   * tags, this read is keyed by the service rather than by the entity, and {@link
+   * org.openmetadata.service.util.RequestEntityCache} keys on (type, id, fields, include) — so a
+   * fixed {@code tags} projection collapses the whole batch to one read per distinct service, not
+   * one per entity.
+   */
+  @Override
+  public List<TagLabel> getServiceTags() {
+    if (!serviceTagsLoaded) {
+      serviceTags = loadServiceTags();
+      serviceTagsLoaded = true;
+    }
+    return serviceTags;
+  }
+
+  /** Read off the already-resolved service entity, so matching costs no extra read. */
+  @Override
+  public String getServiceType() {
+    return ServiceAttributeUtil.serviceTypeOf(getServiceEntity());
+  }
+
+  @Override
+  public String getServiceEnvironment() {
+    return ServiceAttributeUtil.environmentOf(getServiceEntity());
+  }
+
+  /**
+   * The resolved service entity, or null when the resource has no service or the service is gone.
+   * Carries the service's {@code tags}; every other service field is stored inline, so callers
+   * needing {@code serviceType} or {@code name} can read them off the same instance.
+   */
+  private EntityInterface getServiceEntity() {
+    if (!serviceEntityLoaded) {
+      serviceEntity = loadServiceEntity();
+      serviceEntityLoaded = true;
+    }
+    return serviceEntity;
+  }
+
+  private List<TagLabel> loadServiceTags() {
+    if (isServiceResource()) {
+      // The resource is the service: its own tags are already reachable through the entity's
+      // on-demand tag load, so resolving a separate service entity would be a redundant read.
+      return getTags();
+    }
+    EntityInterface service = getServiceEntity();
+    if (service == null) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityTags(service.getEntityReference().getType(), service);
+  }
+
+  /**
+   * Uses {@code getEntityOrNull} rather than {@code getEntity}: a hard-deleted service would
+   * otherwise raise {@link EntityNotFoundException} from inside the authorization decision and
+   * surface as a 500 on a read that should simply not match the condition.
+   */
+  private EntityInterface loadServiceEntity() {
+    if (isServiceResource()) {
+      resolveEntity();
+      return entity;
+    }
+    EntityReference serviceReference = getServiceReference();
+    return Entity.getEntityOrNull(serviceReference, Entity.FIELD_TAGS, Include.ALL);
+  }
+
+  /**
+   * Memoized because {@code getServiceEntityTypes()} copies its backing map on every call, and the
+   * service accessors consult this on each condition evaluated against each requested operation.
+   */
+  private boolean isServiceResource() {
+    if (serviceResource == null) {
+      serviceResource = Entity.getServiceEntityTypes().contains(entityRepository.getEntityType());
+    }
+    return serviceResource;
+  }
+
+  @Override
+  public EntityInterface getResolvedEntity() {
+    return entity;
+  }
+
+  @Override
+  public Set<String> getLoadedFields() {
+    return Collections.unmodifiableSet(loadedFieldNames);
   }
 
   @Override
@@ -189,30 +390,16 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private EntityInterface resolveEntity() {
     if (entity == null) {
       Fields fieldList;
-      String fields = "";
       RelationIncludes relationIncludesToUse = relationIncludes;
       if (operation == ResourceContextInterface.Operation.PATCH) {
         fieldList = entityRepository.getPatchFields();
       } else if (operation == ResourceContextInterface.Operation.PUT) {
         fieldList = entityRepository.getPutFields();
-      } else if (requestedFields != null) {
-        fieldList = requestedFields;
       } else {
-        if (entityRepository.isSupportsOwners()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
-        }
-        if (entityRepository.isSupportsTags()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
-        }
-        if (entityRepository.isSupportsDomains()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
-        }
-        if (entityRepository.isSupportsReviewers()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
-        }
-        fieldList = entityRepository.getFields(fields);
+        fieldList = authorizationFields();
       }
 
+      loadedFieldNames.addAll(fieldList.getFieldList());
       Include includeToUse = resolveInclude();
       boolean fromCache = useRepositoryCache();
       if (relationIncludesToUse == null) {
@@ -231,6 +418,52 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       }
     }
     return entity;
+  }
+
+  /**
+   * Bounded policy attributes the entity must carry for evaluation. These are always loaded so a
+   * condition can never read an attribute as absent merely because the caller did not request it —
+   * an unloaded attribute makes a conditional rule misfire in both directions (isOwner reads false
+   * and a Deny fails open; noOwner reads true and a Deny over-blocks). Tags are deliberately absent
+   * here and fetched on demand by {@link #ensureTagsLoaded()} because their cardinality is
+   * unbounded. Caller-requested fields are unioned on top rather than replaced, so the decision
+   * never sees less than it did before.
+   */
+  private Fields authorizationFields() {
+    Fields securityFields = authorizationFields(entityRepository);
+    Fields result = securityFields;
+    if (requestedFields != null) {
+      Set<String> merged = new HashSet<>(securityFields.getFieldList());
+      merged.addAll(requestedFields.getFieldList());
+      result = new Fields(merged);
+    }
+    return result;
+  }
+
+  /**
+   * The same bounded policy attributes as above, for a caller that loads the entity itself and then
+   * hands it to the pre-resolved constructor. That path never runs {@link #resolveEntity()}, so
+   * without this the entity arrives with whatever fields the caller happened to ask for and every
+   * unloaded attribute misfires its condition. Exposed so the two cannot drift.
+   */
+  public static Fields authorizationFields(EntityRepository<?> entityRepository) {
+    String fields = "";
+    if (entityRepository.isSupportsOwners()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
+    }
+    if (entityRepository.isSupportsDomains()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
+    }
+    if (entityRepository.isSupportsReviewers()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+    }
+    // Requested explicitly rather than riding along with tags: setFields populates certification
+    // when either tags or certification is present, so excluding tags from this set would leave
+    // matchAnyCertification reading null and its Deny rule failing open.
+    if (entityRepository.isSupportsCertification()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_CERTIFICATION);
+    }
+    return entityRepository.getFields(fields);
   }
 
   private Include resolveInclude() {

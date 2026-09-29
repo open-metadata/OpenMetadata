@@ -12,13 +12,12 @@
 Impala source methods.
 """
 
-import re  # noqa: I001
-from typing import Optional
+import re
 
-from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
 from sqlalchemy import text, types, util
 from sqlalchemy.engine import reflection
 
+from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaConnection,
 )
@@ -169,7 +168,7 @@ class ImpalaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: ImpalaConnection = config.serviceConnection.root.config
         if not isinstance(connection, ImpalaConnection):

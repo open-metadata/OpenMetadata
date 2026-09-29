@@ -49,7 +49,7 @@
   overflow: hidden;
 
   .ant-select-selection-overflow {
-    padding-left: 2px !important;
+    padding-left: var(--om-space-2) !important;
     padding-right: @size-md;
     gap: @size-xxs;
     padding-bottom: 0;
@@ -61,7 +61,7 @@
     gap: @size-xxs;
     background: @blue-29;
     border: 1px solid @blue-30;
-    border-radius: 6px;
+    border-radius: var(--om-radius-md);
     margin: 0;
     min-height: @size-lg;
     height: auto;
@@ -133,9 +133,9 @@
     .ant-select-selection-placeholder {
       color: @grey-500;
       font-size: @font-size-base;
-      font-weight: 400;
+      font-weight: var(--om-font-weight-regular);
       line-height: @size-mlg;
-      margin-left: 2px;
+      margin-left: var(--om-space-2);
     }
   }
 

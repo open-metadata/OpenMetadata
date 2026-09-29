@@ -13,7 +13,6 @@ UnityCatalog Query parser module
 """
 
 from abc import ABC
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
@@ -55,7 +54,7 @@ class UnityCatalogQueryParserSource(DatabricksQueryParserSource, QueryParserSour
         self.sql_client = get_sqlalchemy_connection(self.service_connection)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config

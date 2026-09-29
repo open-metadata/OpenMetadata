@@ -1,11 +1,11 @@
 import type { IconComponentType } from '@/components/base/badges/badge-types';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
-import type { PopoverProps } from '@/components/base/select/popover';
 import { Popover } from '@/components/base/select/popover';
 import {
   type SelectItemType,
   SelectContext,
+  SelectEmptyState,
   sizes,
 } from '@/components/base/select/select';
 import { Typography } from '@/components/foundations/typography';
@@ -20,8 +20,10 @@ import type {
   ReactNode,
   RefAttributes,
   RefObject,
+  UIEventHandler,
 } from 'react';
 import {
+  Children,
   createContext,
   isValidElement,
   useCallback,
@@ -99,6 +101,8 @@ export interface AutocompleteProps
   placeholder?: string;
   items?: SelectItemType[];
   popoverClassName?: string;
+  /** Fires when the dropdown list scrolls — use it to page in more async results. */
+  onPopoverScroll?: UIEventHandler<HTMLElement>;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
   icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
@@ -110,7 +114,6 @@ export interface AutocompleteProps
   onSearchChange?: (value: string) => void;
   maxVisibleItems?: number;
   multiple?: boolean;
-  popoverProps?: Partial<Omit<PopoverProps, 'size' | 'className'>>;
   allowsCreation?: boolean;
   hideDropdown?: boolean;
 }
@@ -252,6 +255,7 @@ const InnerAutocomplete = ({
           ) : (
             <BadgeWithButton
               color="gray"
+              data-testid="autocomplete-selected-item"
               isDisabled={isDisabled}
               key={item.id}
               size="lg"
@@ -281,7 +285,7 @@ const InnerAutocomplete = ({
           !multiple && !isSelectionEmpty && 'tw:hidden'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onBlur={(event) => {
             const inputValue = event.target.value.trim();
@@ -313,11 +317,16 @@ const AutocompleteTrigger = ({
       {...otherProps}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
+          // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out). `outline-hidden` is gone — the
+          // outline IS the border and focus indicator, as in input.tsx.
+          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
-          isInvalid && 'tw:ring-error_subtle',
-          isFocusWithin && 'tw:ring-2 tw:ring-brand',
-          isFocusWithin && isInvalid && 'tw:ring-2 tw:ring-error',
+          isInvalid && 'tw:outline-error_subtle',
+          isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
+          isFocusWithin &&
+            isInvalid &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
           sizes[size].root
         )
       }
@@ -355,6 +364,7 @@ export const AutocompleteBase = ({
   onItemInserted,
   placeholder = 'Search',
   popoverClassName,
+  onPopoverScroll,
   renderTag,
   filterOption,
   onFocus,
@@ -365,7 +375,6 @@ export const AutocompleteBase = ({
   hideDropdown = false,
   name: _name,
   className: _className,
-  popoverProps,
   ...props
 }: AutocompleteProps) => {
   const { contains } = useFilter({ sensitivity: 'base' });
@@ -404,6 +413,33 @@ export const AutocompleteBase = ({
     [allItems]
   );
 
+  // The ListBox renders the caller's static children. Filter them by the
+  // computed `visibleItems` so the default `contains` filter actually narrows
+  // the list as the user types. Async callers neutralize this by passing
+  // `filterOption={() => true}` (visibleItems === allItems), and any non-item
+  // child (create/footer rows, whose id isn't in the collection) is preserved.
+  const visibleIds = useMemo(
+    () => new Set(visibleItems.map((item) => String(item.id))),
+    [visibleItems]
+  );
+  const visibleChildren = useMemo(() => {
+    if (typeof children === 'function') {
+      return children;
+    }
+
+    return Children.toArray(children).filter((child) => {
+      if (!isValidElement(child)) {
+        return true;
+      }
+      const childId = (child.props as { id?: Key }).id;
+      if (childId == null || !itemMap.has(childId as SelectItemType['id'])) {
+        return true;
+      }
+
+      return visibleIds.has(String(childId));
+    });
+  }, [children, visibleIds, itemMap]);
+
   const onRemove = useCallback(
     (keys: Set<Key>) => {
       const key = keys.values().next().value;
@@ -417,8 +453,30 @@ export const AutocompleteBase = ({
     [onItemCleared]
   );
 
+  // react-aria commits the focused option on blur/Tab, and the listbox focuses
+  // whatever the pointer last passed over — so leaving the field inserted an
+  // option the user never picked. Only a press or Enter adds a value.
+  const isLeavingRef = useRef(false);
+  const suppressCommit = useCallback(() => {
+    isLeavingRef.current = true;
+    queueMicrotask(() => {
+      isLeavingRef.current = false;
+    });
+  }, []);
+  const onKeyDownCapture = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        suppressCommit();
+      }
+    },
+    [suppressCommit]
+  );
+
   const onSelectionChange = (id: Key | null) => {
     if (!id) {
+      return;
+    }
+    if (multiple && isLeavingRef.current) {
       return;
     }
     if (!multiple && internalSelected.length >= 1) {
@@ -467,20 +525,24 @@ export const AutocompleteBase = ({
   );
 
   const triggerRef = useRef<HTMLDivElement>(null);
+
+  // Match the popover width to the trigger. The base Popover relies on
+  // `--trigger-width`, but react-aria only sets that on a trigger's own context
+  // popover — a standalone `<Popover triggerRef>` (as used here) never receives
+  // it, so the dropdown would otherwise collapse to its content width. Measure
+  // the trigger and set the width explicitly (same approach as MultiSelect).
   const [popoverWidth, setPopoverWidth] = useState('');
 
   const onResize = useCallback(() => {
-    if (!triggerRef.current) {
-      return;
+    if (triggerRef.current) {
+      setPopoverWidth(triggerRef.current.getBoundingClientRect().width + 'px');
     }
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPopoverWidth(rect.width + 'px');
   }, [triggerRef]);
 
   useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
   const selectContextValue = useMemo(
-    () => ({ size: 'sm' as const, fontSize: 'md' as const }),
+    () => ({ size: 'sm' as const, fontSize: 'sm' as const }),
     []
   );
 
@@ -523,13 +585,16 @@ export const AutocompleteBase = ({
           allowsEmptyCollection
           inputValue={filterText}
           items={visibleItems}
-          menuTrigger="input"
+          menuTrigger="focus"
           selectedKey={null}
           onInputChange={onInputChange}
           onSelectionChange={onSelectionChange}
           {...props}>
           {(state) => (
-            <div className="tw:flex tw:flex-col tw:gap-1.5">
+            <div
+              className="tw:flex tw:flex-col tw:gap-1.5"
+              onBlurCapture={suppressCommit}
+              onKeyDownCapture={onKeyDownCapture}>
               {label && (
                 <Label isRequired={state.isRequired} tooltip={tooltip}>
                   {label}
@@ -552,15 +617,16 @@ export const AutocompleteBase = ({
 
               {!hideDropdown && (
                 <Popover
-                  {...popoverProps}
                   className={popoverClassName}
                   size="md"
                   style={{ width: popoverWidth }}
-                  triggerRef={triggerRef}>
+                  triggerRef={triggerRef}
+                  onScroll={onPopoverScroll}>
                   <AriaListBox
                     className="tw:size-full tw:outline-hidden"
+                    renderEmptyState={() => <SelectEmptyState />}
                     selectionMode="multiple">
-                    {children}
+                    {visibleChildren}
                   </AriaListBox>
                 </Popover>
               )}

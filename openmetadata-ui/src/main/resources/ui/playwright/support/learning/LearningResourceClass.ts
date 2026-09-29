@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type LearningResourceContext = {
@@ -92,9 +97,8 @@ export class LearningResourceClass {
     apiContext: APIRequestContext,
     patchData: Partial<LearningResourceData>
   ) {
-    const response = await apiContext.patch(
-      `/api/v1/learning/resources/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/learning/resources/${this.responseData.id}`, {
         data: [
           ...Object.entries(patchData).map(([key, value]) => ({
             op: 'replace',
@@ -105,16 +109,17 @@ export class LearningResourceClass {
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-    const data = await response.json();
+    const data = await okJson(response, 'LearningResourceClass.patch');
     this.responseData = data;
 
     return data;
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/learning/resources/${this.responseData.id}?hardDelete=true`
     );
 

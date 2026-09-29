@@ -69,7 +69,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
-import org.openmetadata.service.drive.ContextFileProcessingService;
+import org.openmetadata.service.context.center.ContextFileProcessingService;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -173,8 +173,23 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
       @Parameter(description = "Sort files by updatedAt. Supported values: ASC, DESC.")
           @QueryParam("orderBy")
-          String orderBy) {
+          String orderBy,
+      @Parameter(description = "Filter files by folder ID.") @QueryParam("folderId")
+          String folderId,
+      @Parameter(
+              description =
+                  "Filter files by the user who last updated them (their username). Combine with "
+                      + "include=deleted to scope the archive page to files archived by that user - "
+                      + "an archived file cannot be edited, so updatedBy stays the user who archived it.")
+          @QueryParam("updatedBy")
+          String updatedBy) {
     ListFilter filter = new ListFilter(include);
+    if (folderId != null && !folderId.isBlank()) {
+      filter.addQueryParam("folderId", folderId);
+    }
+    if (updatedBy != null && !updatedBy.isBlank()) {
+      filter.addQueryParam("updatedBy", updatedBy);
+    }
     if (orderBy == null || orderBy.isBlank()) {
       return super.listInternal(
           uriInfo, securityContext, fieldsParam, filter, limit, before, after);
@@ -312,8 +327,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
 
     ContextFile file = mapper.createToEntity(createFile, user);
+    // prepareInternal validates the name (incl. archived namesakes) before we stream to storage,
+    // so a duplicate upload fails fast without a wasted object-store write.
     repository.prepareInternal(file, false);
-    repository.validateNoDuplicateFileName(pageName, file.getFolder(), null);
 
     try (ContextFileUploadSupport.BufferedUpload bufferedUpload =
         ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {

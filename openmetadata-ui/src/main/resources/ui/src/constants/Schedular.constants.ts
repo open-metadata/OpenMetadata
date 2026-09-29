@@ -12,21 +12,7 @@
  */
 
 import { toString } from 'lodash';
-import { Combination } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
-import { SchedularOptions } from '../enums/Schedular.enum';
-
-export const SCHEDULAR_OPTIONS = [
-  {
-    title: 'label.schedule',
-    description: 'message.schedule-description',
-    value: SchedularOptions.SCHEDULE,
-  },
-  {
-    title: 'label.on-demand',
-    description: 'message.on-demand-description',
-    value: SchedularOptions.ON_DEMAND,
-  },
-];
+import { Combination } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.types';
 
 export const PERIOD_OPTIONS = [
   {

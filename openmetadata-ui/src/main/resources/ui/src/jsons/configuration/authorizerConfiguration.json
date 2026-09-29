@@ -1,0 +1,127 @@
+{
+  "title": "AuthorizerConfiguration",
+  "description": "This schema defines the Authorization Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.security.AuthorizerConfiguration",
+  "properties": {
+    "className": {
+      "title": "Class Name",
+      "description": "Class Name for authorizer.",
+      "type": "string"
+    },
+    "containerRequestFilter": {
+      "title": "Container Request Filter",
+      "description": "Filter for the request authorization.",
+      "type": "string"
+    },
+    "adminPrincipals": {
+      "title": "Admin Principals",
+      "description": "[DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "deprecated": true
+    },
+    "adminEmails": {
+      "title": "Admin Emails",
+      "description": "List of email addresses that should be granted admin privileges. Preferred over adminPrincipals.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "email"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "allowedEmailDomains": {
+      "title": "Allowed Email Domains",
+      "description": "List of email domains allowed to authenticate. If empty, all domains are allowed.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "botDomain": {
+      "title": "Bot Domain",
+      "description": "Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).",
+      "type": "string"
+    },
+    "botPrincipals": {
+      "title": "Bot Principals",
+      "description": "[DEPRECATED] List of unique bot principals.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": null,
+      "deprecated": true
+    },
+    "testPrincipals": {
+      "title": "Test Principals",
+      "description": "List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT TO BE USED IN PRODUCTION SETUP**",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "allowedEmailRegistrationDomains": {
+      "title": "Allowed Email Registration Domains",
+      "description": "List of unique email domains that are allowed to signup on the platforms",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "principalDomain": {
+      "title": "Principal Domain",
+      "description": "[DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions] Domain to use for constructing email addresses.",
+      "type": "string",
+      "deprecated": true
+    },
+    "allowedDomains": {
+      "title": "Allowed Domains",
+      "description": "[DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "deprecated": true
+    },
+    "enforcePrincipalDomain": {
+      "title": "Enable Enforce Principal Domain",
+      "description": "[DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.",
+      "type": "boolean",
+      "deprecated": true
+    },
+    "enableSecureSocketConnection": {
+      "title": "Enable Secure Socket Connection.",
+      "description": "Enable Secure Socket Connection.",
+      "type": "boolean"
+    },
+    "useRolesFromProvider": {
+      "title": "Use Roles from Provider",
+      "description": "Use Roles from Provider",
+      "type": "boolean",
+      "default": false
+    },
+    "defaultOAuthRole": {
+      "title": "Default OAuth Role",
+      "description": "Default role assigned to new OAuth users during self-signup. If not specified, users will be created without roles.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "className",
+    "containerRequestFilter",
+    "enableSecureSocketConnection"
+  ],
+  "additionalProperties": false
+}

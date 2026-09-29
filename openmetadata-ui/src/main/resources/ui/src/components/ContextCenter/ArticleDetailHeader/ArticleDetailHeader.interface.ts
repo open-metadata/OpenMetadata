@@ -12,12 +12,12 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   ArticleTab,
   ContentChangeState,
   KnowledgePage,
 } from '../../../interface/knowledge-center.interface';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 export type { ArticleTab };
 
@@ -33,7 +33,6 @@ export interface ArticleDetailHeaderProps {
   onToggleRightPanel: () => void;
   onVoteChange: (type: VotingDataProps) => Promise<void>;
   onFollowChange: () => Promise<void>;
-  onSave?: () => void;
   onSetThreadLink: (link: string) => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
   onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;

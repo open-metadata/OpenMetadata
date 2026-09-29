@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import { createAdminApiContext } from '../../utils/admin';
 import {
   createNewPage,
   redirectToHomePage,
@@ -31,33 +32,12 @@ inactiveUser.data.password = 'Test@1234';
 // Use admin authentication for all tests
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const createOrFetchUser = async (
-  user: UserClass,
-  apiContext: APIRequestContext
-) => {
-  try {
-    await user.create(apiContext);
-  } catch {
-    // User may already exist from a prior retry — fetch by email
-    const email = encodeURIComponent(user.data.email);
-    const res = await apiContext.get(`/api/v1/users?email=${email}&limit=1`);
-
-    if (res.ok()) {
-      const body = await res.json();
-
-      if (body.data?.length > 0) {
-        user.responseData = body.data[0];
-      }
-    }
-  }
-};
-
 test.describe('User Profile Online Status', () => {
   test.beforeAll('Setup pre-requisites', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    await createOrFetchUser(activeUser, apiContext);
-    await createOrFetchUser(inactiveUser, apiContext);
+    await activeUser.create(apiContext);
+    await inactiveUser.create(apiContext);
     await afterAction();
   });
 
@@ -178,8 +158,8 @@ test.describe('User Profile Online Status', () => {
   test('Should update online status in real-time when user becomes active', async ({
     page,
   }) => {
-    // This test verifies that the online status updates when viewing a user's profile
-    // We'll use the admin user since they're always active
+    const { afterAction } = await createAdminApiContext();
+    await afterAction();
 
     // First navigate to admin profile
     await redirectToHomePage(page);

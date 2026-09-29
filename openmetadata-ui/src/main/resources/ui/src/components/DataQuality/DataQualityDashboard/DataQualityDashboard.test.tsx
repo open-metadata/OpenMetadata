@@ -18,12 +18,12 @@ import {
   FAILED_CHART_COLOR_SCHEME,
   SUCCESS_CHART_COLOR_SCHEME,
 } from '../../../constants/Chart.constants';
+import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
-import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import DataQualityDashboard from './DataQualityDashboard.component';
 
 const mockSearchQuery = jest.fn().mockResolvedValue({
@@ -112,6 +112,18 @@ jest.mock(
 );
 
 jest.mock(
+  '../../../components/common/GlossaryTermPicker/GlossaryTermPicker',
+  () =>
+    jest.fn().mockImplementation(({ label, onChange }) => (
+      <button
+        data-testid={`search-dropdown-${label}`}
+        onClick={() => onChange([{ tagFQN: 'tag1' }])}>
+        {label}
+      </button>
+    ))
+);
+
+jest.mock(
   '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
     UserTeamSelectableList: jest
@@ -129,28 +141,30 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/SearchDropdown/SearchDropdown', () =>
-  jest
-    .fn()
-    .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
-      <div>
-        <button
-          data-testid={`search-dropdown-${label}`}
-          onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
-          {label} SearchDropdown
-        </button>
-        {onSearch && (
+jest.mock(
+  '../../../components/common/FilterSelectDropdown/FilterSelectDropdown',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
+        <div>
           <button
-            data-testid={`search-dropdown-search-${label}`}
-            onClick={() => onSearch('pii')}>
-            Search {label}
+            data-testid={`search-dropdown-${label}`}
+            onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
+            {label} SearchDropdown
           </button>
-        )}
-        {selectedKeys
-          .map((option: SearchDropdownOption) => option.label)
-          .join(', ')}
-      </div>
-    ))
+          {onSearch && (
+            <button
+              data-testid={`search-dropdown-search-${label}`}
+              onClick={() => onSearch('pii')}>
+              Search {label}
+            </button>
+          )}
+          {selectedKeys
+            .map((option: SearchDropdownOption) => option.label)
+            .join(', ')}
+        </div>
+      ))
 );
 jest.mock('../../../utils/AdvancedSearchUtils', () => {
   return {
@@ -444,7 +458,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Success',
+            search: expect.stringContaining(
+              'testCaseStatus=Success&lastRunRange'
+            ),
           },
         })
       );
@@ -454,7 +470,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Failed',
+            search: expect.stringContaining(
+              'testCaseStatus=Failed&lastRunRange'
+            ),
           },
         })
       );
@@ -1245,7 +1263,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelectorAll(String.raw`.tw\:ring-0.tw\:shadow-none`)
+        container.querySelectorAll(String.raw`.tw\:shadow-none`)
       ).toHaveLength(4);
     });
 
@@ -1255,7 +1273,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelector(String.raw`.tw\:ring-0.tw\:shadow-none`)
+        container.querySelector(String.raw`.tw\:shadow-none`)
       ).not.toBeInTheDocument();
     });
 
@@ -1403,23 +1421,6 @@ describe('DataQualityDashboard', () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       fireEvent.click(screen.getByTestId('search-dropdown-search-label.tag'));
-
-      await waitFor(() => {
-        const wrappedCalls = mockSearchQuery.mock.calls.filter(
-          (args: unknown[]) =>
-            (args[0] as Record<string, unknown>).query === '*pii*'
-        );
-
-        expect(wrappedCalls.length).toBeGreaterThanOrEqual(1);
-      });
-    });
-
-    it('calls searchQuery with *text* when glossary term search text is non-empty', async () => {
-      render(<DataQualityDashboard />, { wrapper: MemoryRouter });
-
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-search-label.glossary-term')
-      );
 
       await waitFor(() => {
         const wrappedCalls = mockSearchQuery.mock.calls.filter(

@@ -12,7 +12,8 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Segmented, Space } from 'antd';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
@@ -26,6 +27,10 @@ import {
   MenuOptions,
 } from '../../../constants/execution.constants';
 import { PIPELINE_EXECUTION_TABS } from '../../../constants/pipeline.constants';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
 import { getPipelineStatus } from '../../../rest/pipelineAPI';
 import {
@@ -51,13 +56,13 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [searchValue, setSearchValue] = useState<string>('');
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
-  const [startTime, setStartTime] = useState(
+  const [startTime, setStartTime] = useState(() =>
     getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
-  const [endTime, setEndTime] = useState(getCurrentMillis());
+  const [endTime, setEndTime] = useState(() => getCurrentMillis());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchPipelineStatus = async (startRange: number, endRange: number) => {
     try {
@@ -139,13 +144,27 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Space className="justify-between w-full">
-            <Segmented
-              className="segment-toggle"
+            <ButtonGroup
+              disallowEmptySelection
+              className={SEGMENT_TOGGLE_GROUP_CLASS}
               data-testid="radio-switch"
-              options={Object.values(PIPELINE_EXECUTION_TABS)}
-              value={view}
-              onChange={(value) => setView(value as PIPELINE_EXECUTION_TABS)}
-            />
+              selectedKeys={[view]}
+              size="sm"
+              onSelectionChange={(keys) => {
+                const selected = [...keys][0];
+                if (selected) {
+                  setView(selected as PIPELINE_EXECUTION_TABS);
+                }
+              }}>
+              {Object.values(PIPELINE_EXECUTION_TABS).map((tab) => (
+                <ButtonGroupItem
+                  className={SEGMENT_TOGGLE_ITEM_CLASS}
+                  id={tab}
+                  key={tab}>
+                  {tab}
+                </ButtonGroupItem>
+              ))}
+            </ButtonGroup>
 
             <Space>
               <Dropdown menu={statusMenuItems} placement="bottom">
@@ -172,9 +191,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                       setIsClickedCalendar(true);
                     }}>
                     <span className="date-container">
-                      {!datesSelected && (
-                        <label>{t('label.date-filter')}</label>
-                      )}
+                      {!datesSelected && <span>{t('label.date-filter')}</span>}
                       <DatePicker.RangePicker
                         allowClear
                         showNow

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { t } from 'i18next';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg';
 import type { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TEXT_GREY_MUTED } from '../../constants/constants';
@@ -40,8 +40,8 @@ export const getPieChartLabel = (label: string, value = 0) => {
   return (
     <>
       <text
+        className="tw:fill-text-primary"
         dy={8}
-        fill="#1D2939"
         fontSize={20}
         fontWeight={600}
         textAnchor="middle"

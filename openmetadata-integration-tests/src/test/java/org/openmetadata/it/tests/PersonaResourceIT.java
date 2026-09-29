@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -18,9 +21,12 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Persona entity operations.
@@ -569,4 +575,126 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
     assertTrue(
         verifyPersona.getUsers().stream().noneMatch(ref -> ref.getId().equals(userToRemove)));
   }
+
+  // ===================================================================
+  // SEARCH ENDPOINT TESTS
+  // ===================================================================
+
+  @Test
+  void test_searchPersonasEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String uniqueToken = ns.prefix("srch");
+
+    // Distinct name/displayName personas to exercise both search paths.
+    Persona byName =
+        createEntity(
+            new CreatePersona()
+                .withName(uniqueToken + "ByNameOnly")
+                .withDescription("Persona findable by name"));
+
+    Persona byDisplay =
+        createEntity(
+            new CreatePersona()
+                .withName(ns.prefix("hiddenName"))
+                .withDisplayName(uniqueToken + " Visible Display")
+                .withDescription("Persona findable by display name, not by name token"));
+
+    for (int i = 0; i < 4; i++) {
+      createEntity(
+          new CreatePersona()
+              .withName(uniqueToken + "Paged" + i)
+              .withDescription("Persona for pagination"));
+    }
+
+    // -- Shared token returns both the name-match and the displayName-match --
+    ResultList<Persona> allMatches = searchPersonas(client, uniqueToken, 50, 0);
+    assertNotNull(allMatches.getData());
+    assertEquals(6, allMatches.getData().size(), "Should find all 6 personas matching the token");
+    assertTrue(
+        allMatches.getData().stream().anyMatch(p -> p.getId().equals(byName.getId())),
+        "Should find persona matched by name");
+    assertTrue(
+        allMatches.getData().stream().anyMatch(p -> p.getId().equals(byDisplay.getId())),
+        "Should find persona matched by displayName");
+
+    // -- Results are ordered by name --
+    List<String> names = allMatches.getData().stream().map(Persona::getName).toList();
+    List<String> sorted = names.stream().sorted().toList();
+    assertEquals(sorted, names, "Search results should be ordered by name");
+
+    // -- Search is case-insensitive --
+    assertEquals(
+        allMatches.getData().size(),
+        searchPersonas(client, uniqueToken.toUpperCase(), 50, 0).getData().size(),
+        "UPPERCASE query should return the same results");
+    assertEquals(
+        allMatches.getData().size(),
+        searchPersonas(client, uniqueToken.toLowerCase(), 50, 0).getData().size(),
+        "lowercase query should return the same results");
+
+    // -- No matches returns an empty list, not an error --
+    ResultList<Persona> noMatches =
+        searchPersonas(client, "nonExistentPersonaXyz" + System.nanoTime(), 50, 0);
+    assertNotNull(noMatches.getData());
+    assertEquals(0, noMatches.getData().size());
+
+    // -- Offset pagination walks all 6 results in pages of 2 with no duplicates --
+    ResultList<Persona> page1 = searchPersonas(client, uniqueToken, 2, 0);
+    assertEquals(2, page1.getData().size());
+    assertEquals(6, page1.getPaging().getTotal());
+    assertEquals(0, page1.getPaging().getOffset());
+
+    ResultList<Persona> page2 = searchPersonas(client, uniqueToken, 2, 2);
+    assertEquals(2, page2.getData().size());
+    assertEquals(2, page2.getPaging().getOffset());
+
+    ResultList<Persona> page3 = searchPersonas(client, uniqueToken, 2, 4);
+    assertEquals(2, page3.getData().size());
+    assertEquals(4, page3.getPaging().getOffset());
+
+    List<UUID> pagedIds = new ArrayList<>();
+    page1.getData().forEach(p -> pagedIds.add(p.getId()));
+    page2.getData().forEach(p -> pagedIds.add(p.getId()));
+    page3.getData().forEach(p -> pagedIds.add(p.getId()));
+    assertEquals(6, new HashSet<>(pagedIds).size(), "No duplicates across pages");
+
+    // -- Empty query falls back to listing personas --
+    ResultList<Persona> emptyQuery = searchPersonas(client, null, 10, 0);
+    assertNotNull(emptyQuery.getData());
+    assertFalse(emptyQuery.getData().isEmpty(), "Empty query should return personas");
+
+    // -- A deleted persona no longer appears in search (personas hard-delete) --
+    deleteEntity(byName.getId().toString());
+    ResultList<Persona> afterDelete = searchPersonas(client, uniqueToken, 50, 0);
+    assertFalse(
+        afterDelete.getData().stream().anyMatch(p -> p.getId().equals(byName.getId())),
+        "Deleted persona should not appear in search results");
+    assertEquals(5, afterDelete.getData().size(), "Should have one fewer result after delete");
+  }
+
+  private ResultList<Persona> searchPersonas(
+      OpenMetadataClient client, String query, Integer limit, Integer offset) {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (query != null) {
+      optionsBuilder.queryParam("q", query);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
+    }
+    if (offset != null) {
+      optionsBuilder.queryParam("offset", offset.toString());
+    }
+
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/personas/search",
+            null,
+            PersonaResultList.class,
+            optionsBuilder.build());
+  }
+
+  private static class PersonaResultList extends ResultList<Persona> {}
 }

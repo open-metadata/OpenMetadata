@@ -1,4 +1,5 @@
 from collections.abc import Iterable, Iterator
+from datetime import datetime
 from typing import Any
 
 from google.auth.credentials import Credentials
@@ -25,5 +26,6 @@ class Bucket:
 class Blob:
     name: str
     size: int | None
+    time_created: datetime | None
     def download_as_bytes(self, **kwargs: Any) -> bytes: ...
     def download_as_string(self, **kwargs: Any) -> bytes: ...

@@ -29,6 +29,7 @@ jest.mock('../WidgetCard/WidgetCard', () => {
       <div
         className={`widget-card ${isSelected ? 'selected' : ''}`}
         data-testid={`widget-card-${widget.id}`}
+        role="presentation"
         onClick={() => onSelectWidget?.(widget.id ?? '')}>
         <span>{widget.name}</span>
         <span data-testid={`selected-${widget.id}`}>

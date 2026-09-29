@@ -82,17 +82,17 @@ class MaxLength(StaticMetric):
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[int], Optional[int]](  # noqa: UP045
+        return PandasComputation[int | None, int | None](
             create_accumulator=lambda: None,
             update_accumulator=lambda acc, df: MaxLength.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_max: Optional[int], df: "pd.DataFrame", column) -> Optional[int]:  # noqa: UP045
+    def update_accumulator(current_max: int | None, df: "pd.DataFrame", column) -> int | None:
         """Computes one DataFrame chunk and updates the running maximum"""
-        import pandas as pd  # noqa: PLC0415
-        from numpy import vectorize  # noqa: PLC0415
+        import pandas as pd
+        from numpy import vectorize
 
         length_vectorize_func = vectorize(len)
         chunk_max = None

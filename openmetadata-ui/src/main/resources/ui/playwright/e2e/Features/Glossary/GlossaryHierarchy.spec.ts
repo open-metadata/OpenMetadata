@@ -18,6 +18,7 @@ import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   changeTermHierarchyFromModal,
+  confirmationDragAndDropGlossary,
   dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
@@ -38,6 +39,7 @@ test.describe('Glossary Hierarchy', () => {
   test('should move nested term to root level of same glossary', async ({
     page,
   }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary);
@@ -61,10 +63,25 @@ test.describe('Glossary Hierarchy', () => {
         glossary.responseData.fullyQualifiedName
       );
 
-      // Refresh responseData so cleanup uses the post-move FQN.
-      // Moving to root rewrites the term's fullyQualifiedName in the DB, and
-      // GlossaryTerm.delete() looks up by name — without this, the finally
-      // block tries to delete by the stale pre-move FQN and 404s.
+      // moveAsync is async — poll until the backend clears the term's parent.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+            );
+            if (!res.ok()) {
+              return true; // keep retrying on transient errors
+            }
+            const term = await res.json();
+
+            return term.parent;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBeFalsy();
+
+      // Refresh so cleanup deletes by the post-move FQN, not the stale one.
       const refreshed = await apiContext.get(
         `/api/v1/glossaryTerms/${childTerm.responseData.id}`
       );
@@ -87,9 +104,56 @@ test.describe('Glossary Hierarchy', () => {
     }
   });
 
+  // H-M03b: Drag nested term to top level (root) of same glossary
+  test('should drag nested term to root level of same glossary', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const parentTerm = new GlossaryTerm(glossary);
+    const childTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
+      childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
+      await childTerm.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await performExpandAll(page);
+
+      await dragAndDropTerm(page, childTerm.data.displayName, 'Terms');
+      await confirmationDragAndDropGlossary(
+        page,
+        childTerm.data.name,
+        glossary.responseData.displayName,
+        true
+      );
+
+      const refreshed = await apiContext.get(
+        `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+      );
+      childTerm.responseData = await refreshed.json();
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await expect(
+        page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
+      ).toBeVisible();
+    } finally {
+      await childTerm.delete(apiContext);
+      await parentTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   // H-M04: Move term to root of different glossary
-  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term to root of different glossary', async ({ page }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = new Glossary();
     const glossary2 = new Glossary();
@@ -111,6 +175,22 @@ test.describe('Glossary Hierarchy', () => {
         glossary2.responseData.fullyQualifiedName
       );
 
+      // moveAsync returns 200 immediately; the actual hierarchy change is
+      // processed asynchronously. Poll until the term's glossary updates.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${term1.responseData.id}`
+            );
+            const term = await res.json();
+
+            return term.glossary?.fullyQualifiedName;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBe(glossary2.responseData.fullyQualifiedName);
+
       // Verify term is now in glossary2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -127,7 +207,6 @@ test.describe('Glossary Hierarchy', () => {
   });
 
   // H-M05: Move term with children to different glossary
-  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term with children to different glossary', async ({
     page,
   }) => {
@@ -162,6 +241,24 @@ test.describe('Glossary Hierarchy', () => {
         glossary2.responseData.fullyQualifiedName
       );
       await waitForAllLoadersToDisappear(page);
+
+      // moveAsync returns 200 immediately; the actual hierarchy change is
+      // processed asynchronously (change-event consumer, ~1 req/s).
+      // Poll the API until the parent term's glossary field updates before
+      // asserting the UI — otherwise the UI check races the async write.
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${parentTerm.responseData.id}`
+            );
+            const term = await res.json();
+
+            return term.glossary?.fullyQualifiedName;
+          },
+          { timeout: 60_000, intervals: [1000, 2000, 5000] }
+        )
+        .toBe(glossary2.responseData.fullyQualifiedName);
 
       // Verify parent and child are now in glossary2
       await redirectToHomePage(page);
@@ -203,7 +300,9 @@ test.describe('Glossary Hierarchy', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('change-parent-button').click();
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(
+        page.getByTestId('change-parent-hierarchy-modal')
+      ).toBeVisible();
 
       // Click cancel button
       await page
@@ -213,7 +312,7 @@ test.describe('Glossary Hierarchy', () => {
 
       // Verify modal is closed
       await expect(
-        page.locator('[role="dialog"].change-parent-hierarchy-modal')
+        page.getByTestId('change-parent-hierarchy-modal')
       ).not.toBeVisible();
       await waitForAllLoadersToDisappear(page);
 
@@ -320,17 +419,13 @@ test.describe('Glossary Hierarchy', () => {
       );
 
       // Wait for confirmation modal content to be visible
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeVisible();
+      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
 
       // Click Cancel button
       await page.getByRole('button', { name: 'Cancel' }).click();
 
       // Verify modal content is closed
-      await expect(
-        page.getByTestId('confirmation-modal').locator('.ant-modal-content')
-      ).toBeHidden();
+      await expect(page.getByTestId('confirmation-modal')).toBeHidden();
 
       // Verify terms are still at root level (no hierarchy change)
       await expect(

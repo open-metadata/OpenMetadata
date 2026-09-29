@@ -97,8 +97,8 @@ describe('TableTypePropertyEditTable', () => {
   it('should call handleCopy and handlePaste when triggered', () => {
     render(<TableTypePropertyEditTable {...getProps()} />);
     // Simulate copy and paste by calling the prop directly
-    handleCopy({} as any);
-    handlePaste({} as any);
+    handleCopy({});
+    handlePaste({});
 
     expect(handleCopy).toHaveBeenCalled();
     expect(handlePaste).toHaveBeenCalled();

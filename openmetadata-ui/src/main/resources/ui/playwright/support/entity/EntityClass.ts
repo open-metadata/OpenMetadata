@@ -10,18 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
+  getApiContext,
   removeDataProduct,
   removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
+  CustomPropertyTypeByName,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
@@ -68,6 +71,7 @@ import { EntityTypeEndpoint } from './Entity.interface';
 
 export class EntityClass {
   type = '';
+  exploreTabName?: string;
   serviceCategory?: GlobalSettingOptions;
   serviceType?: ServiceTypes;
   childrenTabId?: string;
@@ -93,7 +97,7 @@ export class EntityClass {
     return {};
   }
 
-  public set(_data: any) {
+  public set(_data: unknown) {
     // handle in parent component
   }
 
@@ -101,12 +105,16 @@ export class EntityClass {
     // Override for entity visit
   }
 
-  async prepareCustomProperty(apiContext: APIRequestContext) {
+  async prepareCustomProperty(
+    apiContext: APIRequestContext,
+    propertyTypes?: readonly CustomPropertyTypeByName[]
+  ) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       const data = await createCustomPropertyForEntity(
         apiContext,
-        this.endpoint
+        this.endpoint,
+        propertyTypes
       );
 
       this.customPropertyValue = data.customProperties;
@@ -329,11 +337,12 @@ export class EntityClass {
     }
     await removeTag(page, [tag1]);
 
-    await page
-      .getByTestId('KnowledgePanel.Tags')
-      .getByTestId('tags-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.Tags')
+        .getByTestId('tags-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async tagChildren({
@@ -381,11 +390,12 @@ export class EntityClass {
       entityEndpoint,
     });
 
-    await page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('tags-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('tags-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async glossaryTerm(
@@ -407,11 +417,12 @@ export class EntityClass {
     await assignGlossaryTerm(page, glossaryTerm2, 'Edit', this.endpoint);
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
-    await page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByTestId('glossary-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.GlossaryTerms')
+        .getByTestId('glossary-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async glossaryTermChildren({
@@ -453,11 +464,12 @@ export class EntityClass {
       rowSelector,
     });
 
-    await page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('glossary-container')
-      .getByTestId('add-tag')
-      .isVisible();
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('glossary-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
   }
 
   async upVote(page: Page) {
@@ -489,11 +501,26 @@ export class EntityClass {
   }
 
   async inactiveAnnouncement(page: Page) {
-    await createInactiveAnnouncement(page, {
+    const announcementId = await createInactiveAnnouncement(page, {
       title: 'Inactive Playwright announcement',
       description: 'Inactive Playwright announcement description',
     });
-    await deleteAnnouncement(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      const deleteResponse = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/announcements/${announcementId}`
+      );
+
+      if (!deleteResponse.ok()) {
+        throw new Error(
+          `Failed to clean up inactive announcement ${announcementId}: ${deleteResponse.status()}`
+        );
+      }
+    } finally {
+      await afterAction();
+    }
   }
 
   async renameEntity(page: Page, entityName: string) {

@@ -31,7 +31,12 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { okJson } from '../../utils/apiResponse';
+import {
+  getApiContext,
+  uuid,
+  waitForDeletionFromSearchIndex,
+} from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   getEntityDisplayName,
@@ -41,6 +46,7 @@ import {
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
@@ -114,7 +120,12 @@ const testTier = 'Tier1';
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
-    test.slow(true); // 5 minutes
+    // Explicit hook budget for the 9 sequential entity creations. Do NOT
+    // use test.slow(true) here: combined with the (now removed) suite-wide
+    // beforeEach slow, stacked tripled budgets let a single failing attempt
+    // grind for 9 minutes before reporting (hook 3m + nested hook 3m + test
+    // 3m — run 32500973433) instead of failing fast.
+    test.setTimeout(120_000);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -130,11 +141,6 @@ test.describe('Right Panel Test Suite', () => {
     } finally {
       await afterAction();
     }
-  });
-
-  // No need for explicit beforeEach instantiation as fixtures handle it
-  test.beforeEach(async () => {
-    test.slow(true);
   });
 
   // Cleanup test data
@@ -172,6 +178,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -199,6 +207,14 @@ test.describe('Right Panel Test Suite', () => {
           rightPanel,
           overview,
         }) => {
+          // Each body runs 50-73 s on healthy PR infra (run 35820419064) and
+          // 72-84 s on nightly EKS/RDS: seven full Explore round-trips, each
+          // paying an unfiltered /explore load before the search even starts.
+          // A degraded runner stretches every action 1.5-3x (run 35826885658,
+          // shard chromium-23 — median 1.54x across 147 tests), which pushed
+          // two of these bodies past the old flat 120 s cap. slow() gives 3x
+          // the 60 s default, scoped to this one test rather than the file.
+          test.slow();
           const fqn = getEntityFqn(entityInstance);
 
           await test.step('Navigate to entity', async () => {
@@ -256,19 +272,11 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeTag([tagToUpdate]);
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            rightPanel.setEntityConfig(entityInstance);
-            await overview.navigateToOverviewTab();
-
-            const tagElement = adminPage.getByTestId(
-              `tag-${testClassification.data.name}.${testTag.data.name}`
-            );
+            const tagElement = rightPanel
+              .getSummaryPanel()
+              .getByTestId(
+                `tag-${testClassification.data.name}.${testTag.data.name}`
+              );
             await expect(tagElement).not.toBeVisible();
           });
 
@@ -276,17 +284,8 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeTier();
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            rightPanel.setEntityConfig(entityInstance);
-            await overview.navigateToOverviewTab();
-
-            const tierElement = adminPage
+            const tierElement = rightPanel
+              .getSummaryPanel()
               .locator('.tier-section')
               .getByText(testTier);
             await expect(tierElement).not.toBeVisible();
@@ -296,19 +295,9 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeGlossaryTerm([glossaryTermToUpdate]);
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            rightPanel.setEntityConfig(entityInstance);
-            await overview.navigateToOverviewTab();
-
-            const glossarySection = adminPage.locator(
-              '.glossary-terms-section'
-            );
+            const glossarySection = rightPanel
+              .getSummaryPanel()
+              .locator('.glossary-terms-section');
             await expect(
               glossarySection.getByText(glossaryTermToUpdate)
             ).not.toBeVisible();
@@ -318,17 +307,9 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeDomain(domainToUpdate);
             await waitForAllLoadersToDisappear(adminPage);
 
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            rightPanel.setEntityConfig(entityInstance);
-            await overview.navigateToOverviewTab();
-
-            const domainsSection = adminPage.locator('.domains-section');
+            const domainsSection = rightPanel
+              .getSummaryPanel()
+              .locator('.domains-section');
             await expect(
               domainsSection.getByText(domainToUpdate)
             ).not.toBeVisible();
@@ -338,6 +319,50 @@ test.describe('Right Panel Test Suite', () => {
             await overview.removeOwner([user1.getUserDisplayName()], 'Users');
             await waitForAllLoadersToDisappear(adminPage);
 
+            const ownerElement = rightPanel
+              .getSummaryPanel()
+              .locator('.owners-section')
+              .getByText(user1.getUserDisplayName());
+            await expect(ownerElement).not.toBeVisible();
+          });
+
+          await test.step('Read saved values and reopen the panel', async () => {
+            const { apiContext, afterAction } = await getApiContext(adminPage);
+            try {
+              const persisted = await okJson<{
+                description?: string;
+                tags?: Array<{ tagFQN: string }>;
+                owners?: Array<{ id: string }>;
+                domains?: Array<{ id: string }>;
+              }>(
+                await apiContext.get(
+                  `/api/v1/${entityInstance.endpoint}/${entityInstance.entityResponseData.id}?fields=tags,owners,domains`
+                ),
+                'Read right-panel edits'
+              );
+              expect(persisted.description).toBe(
+                `<p>${descriptionToUpdate}</p>`
+              );
+              for (const tagFQN of [
+                testTag.responseData.fullyQualifiedName,
+                testGlossaryTerm.responseData.fullyQualifiedName,
+                `Tier.${testTier}`,
+              ]) {
+                expect(tagFQN).toEqual(expect.any(String));
+                expect(
+                  persisted.tags?.map((tag) => tag.tagFQN) ?? []
+                ).not.toContain(tagFQN);
+              }
+              expect(
+                persisted.owners?.map((owner) => owner.id) ?? []
+              ).not.toContain(user1.responseData.id);
+              expect(
+                persisted.domains?.map((domain) => domain.id) ?? []
+              ).not.toContain(domainEntity.responseData.id);
+            } finally {
+              await afterAction();
+            }
+
             await navigateToExploreAndSelectEntity({
               page: adminPage,
               entityName: getEntityDisplayName(entityInstance.entity),
@@ -347,11 +372,29 @@ test.describe('Right Panel Test Suite', () => {
             await rightPanel.waitForPanelVisible();
             rightPanel.setEntityConfig(entityInstance);
             await overview.navigateToOverviewTab();
-
-            const ownerElement = adminPage
-              .locator('.owners-section')
-              .getByText(user1.getUserDisplayName());
-            await expect(ownerElement).not.toBeVisible();
+            await overview.shouldShowDescriptionWithText(descriptionToUpdate);
+            const panel = rightPanel.getSummaryPanel();
+            await expect(
+              panel.getByTestId(
+                `tag-${testClassification.data.name}.${testTag.data.name}`
+              )
+            ).toBeHidden();
+            await expect(
+              panel.locator('.tier-section').getByText(testTier)
+            ).toBeHidden();
+            await expect(
+              panel
+                .locator('.glossary-terms-section')
+                .getByText(glossaryTermToUpdate)
+            ).toBeHidden();
+            await expect(
+              panel.locator('.domains-section').getByText(domainToUpdate)
+            ).toBeHidden();
+            await expect(
+              panel
+                .locator('.owners-section')
+                .getByText(user1.getUserDisplayName())
+            ).toBeHidden();
           });
         });
       });
@@ -372,7 +415,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -454,11 +498,13 @@ test.describe('Right Panel Test Suite', () => {
                 if (firstField && secondField) {
                   // 1. Search for first field
                   const searchRes = usesServerSideSearch
-                    ? adminPage.waitForResponse(
+                    ? waitForResponseWithStatus(
+                        adminPage,
                         (res) =>
+                          res.request().method() === 'GET' &&
                           res.url().includes('columns/search?offset=') &&
-                          res.url().includes('q=') &&
-                          res.status() === 200
+                          res.url().includes('q='),
+                        200
                       )
                     : undefined;
                   await schema.searchFor(firstField);
@@ -469,10 +515,12 @@ test.describe('Right Panel Test Suite', () => {
 
                   // 2. Clear search
                   const clearRes = usesServerSideSearch
-                    ? adminPage.waitForResponse(
+                    ? waitForResponseWithStatus(
+                        adminPage,
                         (res) =>
-                          res.url().includes('/columns?offset=') &&
-                          res.status() === 200
+                          res.request().method() === 'GET' &&
+                          res.url().includes('/columns?offset='),
+                        200
                       )
                     : undefined;
                   await schema.clearSearch();
@@ -483,11 +531,13 @@ test.describe('Right Panel Test Suite', () => {
 
                   // 3. Search for non-existent field
                   const noMatchRes = usesServerSideSearch
-                    ? adminPage.waitForResponse(
+                    ? waitForResponseWithStatus(
+                        adminPage,
                         (res) =>
+                          res.request().method() === 'GET' &&
                           res.url().includes('columns/search?offset=') &&
-                          res.url().includes('q=') &&
-                          res.status() === 200
+                          res.url().includes('q='),
+                        200
                       )
                     : undefined;
                   await schema.searchFor('zzz_no_match_xyz');
@@ -919,11 +969,13 @@ test.describe('Right Panel Test Suite', () => {
             await localDQ.shouldShowTestCaseCardsCount(2);
 
             // 3. Search for non-existent test case
-            const noMatchRes = adminPage.waitForResponse(
+            const noMatchRes = waitForResponseWithStatus(
+              adminPage,
               (res) =>
+                res.request().method() === 'GET' &&
                 res.url().includes('dataQuality/testCases/search/list') &&
-                res.url().includes('q=') &&
-                res.status() === 200
+                res.url().includes('q='),
+              200
             );
             await localDQ.searchFor('zzz_non_existent_search');
             await noMatchRes;
@@ -1002,6 +1054,8 @@ test.describe('Right Panel Test Suite', () => {
     }); // end: Entity validation with shared read-only entities
 
     test.describe('Overview panel - Deleted entity verification', () => {
+      test.describe.configure({ mode: 'default' });
+
       const deletedEntityVerificationEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
@@ -1073,7 +1127,19 @@ test.describe('Right Panel Test Suite', () => {
               await overview.shouldShowOwner(deletedUser.getUserDisplayName());
 
               await deletedUser.delete(apiContext);
-              await adminPage.reload();
+              // The owner dropdown is search-backed and index deletion is
+              // eventually consistent — gate on the index before asserting
+              // absence, or the dropdown can still return the deleted user.
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedUser.getUserDisplayName(),
+                'user',
+                [
+                  deletedUser.getUserDisplayName(),
+                  deletedUser.responseData.name,
+                ]
+              );
+              await adminPage.reload({ waitUntil: 'domcontentloaded' });
               await rightPanel.waitForPanelVisible();
 
               const deletedOwnerLocator =
@@ -1124,7 +1190,15 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedTag.delete(apiContext);
               await deletedClassification.delete(apiContext);
-              await adminPage.reload();
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed tag dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTagDisplayName,
+                'tag',
+                [deletedTagDisplayName]
+              );
+              await adminPage.reload({ waitUntil: 'domcontentloaded' });
               await rightPanel.waitForPanelVisible();
 
               const deletedTagLocator =
@@ -1172,7 +1246,15 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedGlossaryTerm.delete(apiContext);
               await deletedGlossary.delete(apiContext);
-              await adminPage.reload();
+              // Gate on index deletion propagating before asserting absence
+              // in the search-backed term dropdown (eventual consistency).
+              await waitForDeletionFromSearchIndex(
+                apiContext,
+                deletedTermDisplayName,
+                'glossaryTerm',
+                [deletedTermDisplayName]
+              );
+              await adminPage.reload({ waitUntil: 'domcontentloaded' });
               await rightPanel.waitForPanelVisible();
 
               const deletedTermLocator =
@@ -1446,7 +1528,8 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        // Bounded hook budget — see the suite-level beforeAll comment.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -2002,7 +2085,9 @@ test.describe('Right Panel Test Suite', () => {
             adminPage,
           }) => {
             const { page: authenticatedPage, afterAction } =
-              await performAdminLogin(adminPage.context().browser()!);
+              await performAdminLogin(adminPage.context().browser()!, {
+                navigate: true,
+              });
             const rightPanel = new RightPanelPageObject(authenticatedPage);
             const localOverview = new OverviewPageObject(rightPanel);
 
@@ -2080,7 +2165,9 @@ test.describe('Right Panel Test Suite', () => {
         adminPage,
       }) => {
         const { page: authenticatedPage, afterAction } =
-          await performAdminLogin(adminPage.context().browser()!);
+          await performAdminLogin(adminPage.context().browser()!, {
+            navigate: true,
+          });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 
@@ -2144,7 +2231,9 @@ test.describe('Right Panel Test Suite', () => {
           page: authenticatedPage,
           apiContext,
           afterAction,
-        } = await performAdminLogin(adminPage.context().browser()!);
+        } = await performAdminLogin(adminPage.context().browser()!, {
+          navigate: true,
+        });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 

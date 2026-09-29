@@ -13,22 +13,31 @@
 
 package org.openmetadata.service.util;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 /**
- * Evaluates Data Insight chart formulas as numeric arithmetic.
+ * Validates and evaluates Data Insight chart formulas as numeric arithmetic.
  *
- * <p>Callers must gate the input with {@link #NUMERIC_VALIDATION_REGEX} (digits, decimal,
- * {@code + - * /}, parens, space) before calling {@link #evaluate(String)}. The regex is
- * the security boundary; this util bypasses {@code ExpressionValidator} on purpose
- * because that validator's allowlist does not include arithmetic operators.
+ * <p>A DI formula is arithmetic over aggregation-function placeholders (count/sum/...). The
+ * security boundary is {@link #NUMERIC_VALIDATION_REGEX}, not the SpEL node allowlist, so this
+ * util bypasses {@code ExpressionValidator} on purpose — that validator forbids the arithmetic
+ * DI formulas need. {@link #isValidFormula} and {@link #evaluate} share the regex so they can't
+ * diverge.
  */
+@Slf4j
 public final class DataInsightFormulaEvaluator {
 
   public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\) ]+";
 
   private static final SpelExpressionParser PARSER = new SpelExpressionParser();
+  private static final Pattern FORMULA_FUNCTION_PATTERN =
+      Pattern.compile(DataInsightSystemChartRepository.FORMULA_FUNC_REGEX);
+  private static final String FORMULA_FUNCTION_PLACEHOLDER = "1.0";
 
   private DataInsightFormulaEvaluator() {}
 
@@ -40,5 +49,40 @@ public final class DataInsightFormulaEvaluator {
   public static Double evaluate(String regexGatedFormula) {
     Expression expression = PARSER.parseExpression(regexGatedFormula);
     return (Double) expression.getValue();
+  }
+
+  /**
+   * Validate a raw DI chart formula: each aggregation call is replaced with a number, and the
+   * remainder must match {@link #NUMERIC_VALIDATION_REGEX} and parse cleanly. Any non-aggregation
+   * token (unknown function, policy {@code @Function}, SpEL type reference) fails the numeric gate.
+   */
+  public static boolean isValidFormula(String formula) {
+    boolean valid = false;
+    if (formula != null && !formula.isBlank()) {
+      String arithmetic = replaceFunctionsWithPlaceholder(formula);
+      valid = arithmetic.matches(NUMERIC_VALIDATION_REGEX) && parsesCleanly(arithmetic);
+    }
+    return valid;
+  }
+
+  private static String replaceFunctionsWithPlaceholder(String formula) {
+    Matcher matcher = FORMULA_FUNCTION_PATTERN.matcher(formula);
+    String result = formula;
+    while (matcher.find()) {
+      result = result.replace(matcher.group(), FORMULA_FUNCTION_PLACEHOLDER);
+    }
+    return result;
+  }
+
+  private static boolean parsesCleanly(String numericExpression) {
+    boolean parses;
+    try {
+      PARSER.parseExpression(numericExpression).getValue();
+      parses = true;
+    } catch (RuntimeException e) {
+      LOG.debug("Rejected Data Insight formula '{}': {}", numericExpression, e.getMessage());
+      parses = false;
+    }
+    return parses;
   }
 }

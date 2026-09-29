@@ -17,7 +17,6 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DataQualityPageParams } from '../../components/DataQuality/DataQuality.interface';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { Operation } from '../../generated/entity/policies/policy';
 import { TestSummary } from '../../generated/tests/testCase';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -26,7 +25,7 @@ import {
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
 import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityPureUtils';
-import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
@@ -38,7 +37,23 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
   {} as DataQualityContextInterface
 );
 
-const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
+const DataQualityProvider = ({
+  children,
+  createActions,
+  isActive = true,
+}: {
+  children: React.ReactNode;
+  createActions?: DataQualityContextInterface['createActions'];
+  /**
+   * Whether this page currently owns the URL. Filters here are derived from the
+   * query string, which is global — so a host that keeps the page mounted while
+   * routing elsewhere (AI mode caches visited routes) must pass `false`, or the
+   * backgrounded page re-derives its filters from whatever route now owns the
+   * query string and refetches with another page's params. Defaults to `true`
+   * for hosts that unmount the page on navigation.
+   */
+  isActive?: boolean;
+}) => {
   const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
     useRequiredParams<{
       tab: DataQualityPageTabs;
@@ -59,6 +74,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       currentPage: _currentPage,
       pageSize: _pageSize,
+      searchValue: _searchValue,
       ...filters
     } = params;
 
@@ -83,10 +99,14 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       testCaseSummary,
       isTestCaseSummaryLoading,
       activeTab,
+      createActions,
     };
-  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
+  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
-  const fetchTestSummary = async (params?: DataQualityPageParams) => {
+  const fetchTestSummary = async (
+    params?: DataQualityPageParams,
+    shouldIgnore = () => false
+  ) => {
     const filters = {
       ...pick(params, [
         'tags',
@@ -128,28 +148,51 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
         totalEntityCount = total;
       }
 
-      const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary({
-        ...updatedData,
-        unhealthy,
-        healthy: total - unhealthy,
-        totalDQEntities: total,
-        totalEntityCount,
-      });
+      // A newer filter request can finish first; do not let this older response
+      // replace the summary that belongs to the current URL filters.
+      if (!shouldIgnore()) {
+        const updatedData = transformToTestCaseStatusObject(data);
+        setTestCaseSummary({
+          ...updatedData,
+          unhealthy,
+          healthy: total - unhealthy,
+          totalDQEntities: total,
+          totalEntityCount,
+        });
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!shouldIgnore()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsTestCaseSummaryLoading(false);
+      if (!shouldIgnore()) {
+        setIsTestCaseSummaryLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    if (getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic)) {
-      fetchTestSummary(filterParams);
+    let ignore = false;
+
+    // The dashboard owns its chart requests. When this provider is backgrounded
+    // or the dashboard is active, retain the last summary instead of issuing
+    // duplicate requests with query parameters owned by another view.
+    if (!isActive || activeTab === DataQualityPageTabs.DASHBOARD) {
+      setIsTestCaseSummaryLoading(false);
+
+      return;
+    }
+
+    if (getDerivedPermissionFlags(testCasePermission).canViewBasic) {
+      fetchTestSummary(filterParams, () => ignore);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, [filterKey]);
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, filterKey, isActive]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>

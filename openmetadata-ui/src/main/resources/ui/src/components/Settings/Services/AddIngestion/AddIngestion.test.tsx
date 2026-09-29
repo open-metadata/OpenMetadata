@@ -11,10 +11,21 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import AddIngestion from './AddIngestion.component';
 import { AddIngestionProps } from './IngestionWorkflow.interface';
 
@@ -23,6 +34,7 @@ const mockAddIngestionProps: AddIngestionProps = {
   setActiveIngestionStep: jest.fn(),
   serviceData: {
     name: 'serviceName',
+    owners: [{ id: 'service-owner-id', type: 'user' }],
     connection: {
       config: {
         database: 'testDb',
@@ -52,12 +64,31 @@ jest.mock('../Ingestion/IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
 
-jest.mock('./Steps/ScheduleInterval', () => {
-  return jest.fn().mockImplementation(() => <div>ScheduleInterval</div>);
+jest.mock('./Steps/ScheduleIntervalStep', () => {
+  return jest.fn().mockImplementation(({ onDeploy }) => (
+    <div>
+      ScheduleIntervalStep
+      <button
+        data-testid="mock-deploy"
+        onClick={() => onDeploy?.({ cron: '0 0 * * *', retries: 0 })}>
+        deploy
+      </button>
+    </div>
+  ));
 });
 
 jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () => {
-  return jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>);
+  return jest.fn().mockImplementation(({ onReady, onSubmit }) => (
+    <div>
+      Ingestion workflow form
+      <button data-testid="mock-form-ready" onClick={() => onReady?.()}>
+        ready
+      </button>
+      <button data-testid="mock-form-submit" onClick={() => onSubmit?.({})}>
+        submit
+      </button>
+    </div>
+  ));
 });
 
 jest.mock('../../../../utils/SchedularUtils', () => ({
@@ -65,7 +96,66 @@ jest.mock('../../../../utils/SchedularUtils', () => ({
   getRaiseOnErrorFormField: jest.fn().mockReturnValue({}),
 }));
 
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockReturnValue({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  }),
+}));
+
+// The real picker fetches users/teams; expose a button that returns a fixed
+// selection so the owners wiring can be driven from tests.
+jest.mock(
+  '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest.fn().mockImplementation(({ onUpdate }) => (
+      <button data-testid="mock-pick-owner" onClick={() => onUpdate([])}>
+        pick
+      </button>
+    )),
+  })
+);
+
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: { id: 'current-user-id', name: 'admin' },
+    theme: { primaryColor: '#0950c5' },
+  }),
+}));
+
+// Mock the hook but run the real derivation, so the flags the component reads
+// come from the same policy the app uses.
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: jest.fn(),
+  })
+);
+
+const mockUseEntityPermissions = useEntityPermissions as jest.Mock;
+
+const setPermissions = (overrides: Partial<OperationPermission>) => {
+  const permissions = {
+    ...DEFAULT_ENTITY_PERMISSION,
+    ...overrides,
+  } as OperationPermission;
+
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
 describe('Test AddIngestion component', () => {
+  beforeEach(() => {
+    setPermissions({ [Operation.EditOwners]: true });
+  });
+
   it('AddIngestion component should render', async () => {
     const { container } = render(<AddIngestion {...mockAddIngestionProps} />);
 
@@ -80,5 +170,227 @@ describe('Test AddIngestion component', () => {
 
     expect(addIngestionContainer).toBeInTheDocument();
     expect(configureIngestion).toBeInTheDocument();
+  });
+
+  it('should report the configure step as ready only once the workflow form mounts', async () => {
+    const onStepReadyChange = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        onStepReadyChange={onStepReadyChange}
+      />
+    );
+
+    expect(onStepReadyChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.click(await screen.findByTestId('mock-form-ready'));
+
+    expect(onStepReadyChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('should report the schedule step as ready without waiting for the workflow form', () => {
+    const onStepReadyChange = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        onStepReadyChange={onStepReadyChange}
+      />
+    );
+
+    expect(onStepReadyChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('should send the service owners in the create payload', async () => {
+    const onAddIngestionSave = jest.fn().mockResolvedValue(undefined);
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        onAddIngestionSave={onAddIngestionSave}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-deploy'));
+
+    expect(onAddIngestionSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owners: [{ id: 'service-owner-id', type: 'user' }],
+      })
+    );
+  });
+
+  it('should fall back to the current user when the service has no owners', async () => {
+    const onAddIngestionSave = jest.fn().mockResolvedValue(undefined);
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        serviceData={{ name: 'serviceName' }}
+        onAddIngestionSave={onAddIngestionSave}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-deploy'));
+
+    expect(onAddIngestionSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owners: [{ id: 'current-user-id', type: 'user' }],
+      })
+    );
+  });
+
+  it('should advance to the schedule step while owners are set', async () => {
+    const setActiveIngestionStep = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        setActiveIngestionStep={setActiveIngestionStep}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-form-submit'));
+
+    expect(setActiveIngestionStep).toHaveBeenCalledWith(2);
+  });
+
+  it('should block the schedule step and show an error when owners are cleared', async () => {
+    const setActiveIngestionStep = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        setActiveIngestionStep={setActiveIngestionStep}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-pick-owner'));
+    fireEvent.click(await screen.findByTestId('mock-form-submit'));
+
+    expect(setActiveIngestionStep).not.toHaveBeenCalledWith(2);
+    expect(await screen.findByTestId('owners-error')).toBeInTheDocument();
+  });
+
+  it('should prefill the saved owners and send them back on edit', async () => {
+    const onUpdateIngestion = jest.fn().mockResolvedValue(undefined);
+    const savedOwners = [{ id: 'saved-owner-id', type: 'team' }];
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        data={
+          {
+            id: 'pipeline-id',
+            name: 'pipeline',
+            owners: savedOwners,
+            airflowConfig: {},
+            sourceConfig: { config: {} },
+          } as AddIngestionProps['data']
+        }
+        status={FormSubmitType.EDIT}
+        onUpdateIngestion={onUpdateIngestion}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-deploy'));
+
+    expect(onUpdateIngestion).toHaveBeenCalledWith(
+      expect.objectContaining({ owners: savedOwners }),
+      expect.anything(),
+      'pipeline-id',
+      'pipeline'
+    );
+  });
+
+  // A pipeline created through the API carries no owners. The mandatory gate
+  // must not make those impossible to edit and save.
+  it('should let an agent with no saved owners still be edited', async () => {
+    const setActiveIngestionStep = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        data={
+          {
+            id: 'pipeline-id',
+            name: 'pipeline',
+            airflowConfig: {},
+            sourceConfig: { config: {} },
+          } as AddIngestionProps['data']
+        }
+        serviceData={{ name: 'serviceName' }}
+        setActiveIngestionStep={setActiveIngestionStep}
+        status={FormSubmitType.EDIT}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-form-submit'));
+
+    expect(setActiveIngestionStep).toHaveBeenCalledWith(2);
+    expect(screen.queryByTestId('owners-error')).not.toBeInTheDocument();
+  });
+
+  it('should withhold the owners selector on edit without EditOwners', async () => {
+    setPermissions({ [Operation.EditDescription]: true });
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        data={
+          {
+            id: 'pipeline-id',
+            name: 'pipeline',
+            airflowConfig: {},
+            sourceConfig: { config: {} },
+          } as AddIngestionProps['data']
+        }
+        status={FormSubmitType.EDIT}
+      />
+    );
+
+    expect(await screen.findByTestId('ingestion-owners-field')).toBeVisible();
+    expect(screen.queryByTestId('mock-pick-owner')).not.toBeInTheDocument();
+  });
+
+  // The seeded fallback would otherwise put an `/owners` op in the patch that
+  // the server rejects with a 403 for a user who cannot edit owners.
+  it('should leave owners out of the edit payload without EditOwners', async () => {
+    setPermissions({ [Operation.EditDescription]: true });
+    const onUpdateIngestion = jest.fn().mockResolvedValue(undefined);
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        data={
+          {
+            id: 'pipeline-id',
+            name: 'pipeline',
+            airflowConfig: {},
+            sourceConfig: { config: {} },
+          } as AddIngestionProps['data']
+        }
+        status={FormSubmitType.EDIT}
+        onUpdateIngestion={onUpdateIngestion}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-deploy'));
+
+    expect(onUpdateIngestion).toHaveBeenCalled();
+    expect(onUpdateIngestion.mock.calls[0][0]).not.toHaveProperty('owners');
+  });
+
+  it('should not require owners for a settings pipeline', async () => {
+    const setActiveIngestionStep = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        pipelineType={PipelineType.DataInsight}
+        setActiveIngestionStep={setActiveIngestionStep}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-pick-owner'));
+    fireEvent.click(await screen.findByTestId('mock-form-submit'));
+
+    expect(setActiveIngestionStep).toHaveBeenCalledWith(2);
+    expect(screen.queryByTestId('owners-error')).not.toBeInTheDocument();
   });
 });

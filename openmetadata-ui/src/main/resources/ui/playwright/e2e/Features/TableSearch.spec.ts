@@ -38,7 +38,9 @@ test.describe('Table Search', () => {
       const service1 = EntityDataClass.databaseService.get();
       const service2 = EntityDataClass.storedProcedure1.get().service;
 
-      await page.goto('/settings/services/databases');
+      await page.goto('/settings/services/databases', {
+        waitUntil: 'domcontentloaded',
+      });
       await testTableSearch(
         page,
         'databaseService',
@@ -70,7 +72,8 @@ test.describe('Table Search', () => {
       apiEndpoint2.entityResponseData = await response.json();
 
       await page.goto(
-        `/apiCollection/${apiEndpoint1.apiCollection.fullyQualifiedName}`
+        `/apiCollection/${apiEndpoint1.apiCollection.fullyQualifiedName}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(
         page,
@@ -88,33 +91,46 @@ test.describe('Table Search', () => {
       page,
     }) => {
       const { afterAction, apiContext } = await getApiContext(page);
-      const table1 = EntityDataClass.table1.get();
+      const table1 = new TableClass();
       const table2 = new TableClass();
 
-      table2.service.name = table1.service.name;
-      table2.database.name = table1.database.name;
-      table2.database.service = table1.service.name;
-      table2.schema.name = table1.schema.name;
-      table2.schema.database = `${table1.service.name}.${table1.database.name}`;
-      table2.entity.databaseSchema = table1.schema.fullyQualifiedName;
+      try {
+        await table1.create(apiContext);
 
-      const response = await apiContext.post(
-        `/api/v1/${EntityTypeEndpoint.Table}`,
-        {
-          data: table2.entity,
+        table2.service.name = table1.serviceResponseData.name;
+        table2.database.name = table1.databaseResponseData.name;
+        table2.database.service = table1.serviceResponseData.name;
+        table2.schema.name = table1.schemaResponseData.name;
+        table2.schema.database =
+          table1.databaseResponseData.fullyQualifiedName ?? '';
+        table2.entity.databaseSchema =
+          table1.schemaResponseData.fullyQualifiedName ?? '';
+
+        const response = await apiContext.post(
+          `/api/v1/${EntityTypeEndpoint.Table}`,
+          {
+            data: table2.entity,
+          }
+        );
+        table2.entityResponseData = await response.json();
+
+        await page.goto(
+          `/databaseSchema/${table1.schemaResponseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
+        );
+        await testTableSearch(
+          page,
+          'table',
+          table1.entity.name,
+          table2.entity.name
+        );
+      } finally {
+        try {
+          await table1.delete(apiContext);
+        } finally {
+          await afterAction();
         }
-      );
-      table2.entityResponseData = await response.json();
-
-      await page.goto(`/databaseSchema/${table1.schema.fullyQualifiedName}`);
-      await testTableSearch(
-        page,
-        'table',
-        table1.entity.name,
-        table2.entity.name
-      );
-
-      await afterAction();
+      }
     });
   });
 
@@ -141,7 +157,8 @@ test.describe('Table Search', () => {
       dataModel2.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/dashboardServices/${dataModel1.service.name}/data-model`
+        `/service/dashboardServices/${dataModel1.service.name}/data-model`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(
         page,
@@ -182,7 +199,8 @@ test.describe('Table Search', () => {
       dataModel.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/dashboardServices/${baseDataModel.service.name}/data-model`
+        `/service/dashboardServices/${baseDataModel.service.name}/data-model`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(
         page,
@@ -227,7 +245,8 @@ test.describe('Table Search', () => {
       dataModel.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/dashboardServices/${baseDataModel.service.name}/data-model`
+        `/service/dashboardServices/${baseDataModel.service.name}/data-model`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await test.step('search with original mixed-case term', async () => {
@@ -292,7 +311,8 @@ test.describe('Table Search', () => {
       storedProcedure2.entityResponseData = await response.json();
 
       await page.goto(
-        `/databaseSchema/${storedProcedure1.schema.fullyQualifiedName}/stored_procedure`
+        `/databaseSchema/${storedProcedure1.schema.fullyQualifiedName}/stored_procedure`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(
         page,
@@ -323,7 +343,8 @@ test.describe('Table Search', () => {
       topic2.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/messagingServices/${topic1.service.name}/topics`
+        `/service/messagingServices/${topic1.service.name}/topics`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(
         page,
@@ -360,7 +381,8 @@ test.describe('Table Search', () => {
       directory2.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/driveServices/${directory1.service.name}/directories`
+        `/service/driveServices/${directory1.service.name}/directories`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(
         page,
@@ -396,7 +418,9 @@ test.describe('Table Search', () => {
       );
       file2.entityResponseData = await response.json();
 
-      await page.goto(`/service/driveServices/${file1.service.name}/files`);
+      await page.goto(`/service/driveServices/${file1.service.name}/files`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testTableSearch(page, 'file', file1.entity.name, file2.entity.name);
 
       await afterAction();
@@ -427,7 +451,8 @@ test.describe('Table Search', () => {
       spreadsheet2.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/driveServices/${spreadsheet1.service.name}/spreadsheets`
+        `/service/driveServices/${spreadsheet1.service.name}/spreadsheets`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSearch(
         page,

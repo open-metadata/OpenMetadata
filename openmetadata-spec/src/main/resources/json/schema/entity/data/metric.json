@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/metrics.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Metric",
   "description": "This schema defines the Metrics entity. `Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.",
   "$comment": "@om-entity-type",
@@ -64,6 +64,10 @@
             "MODE",
             "STANDARD_DEVIATION",
             "VARIANCE",
+            "SIMPLE",
+            "CUMULATIVE",
+            "DERIVED",
+            "CONVERSION",
             "OTHER"
         ]
     },
@@ -97,6 +101,75 @@
         "QUARTER",
         "YEAR"
       ]
+    },
+    "metricDimension": {
+      "type": "object",
+      "description": "A dimension associated with a metric from a semantic layer.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the dimension."
+        },
+        "fullyQualifiedName": {
+          "description": "Fully qualified name of the dimension, in the format 'metricFQN.dimension.<name>'.",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the dimension.",
+          "enum": ["CATEGORICAL", "TIME"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the dimension."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Expression used to compute the dimension."
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "metricMeasure": {
+      "type": "object",
+      "description": "A measure associated with a metric from a semantic layer.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the measure."
+        },
+        "fullyQualifiedName": {
+          "description": "Fully qualified name of the measure, in the format 'metricFQN.measure.<name>'.",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "aggregation": {
+          "type": "string",
+          "description": "Aggregation function for the measure (e.g., sum, count, average)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the measure."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Expression used to compute the measure."
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "metricFilter": {
+      "type": "object",
+      "description": "A filter applied to a metric.",
+      "properties": {
+        "where": {
+          "type": "string",
+          "description": "SQL WHERE clause for the filter."
+        }
+      },
+      "required": ["where"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -140,8 +213,52 @@
       "description": "Metric's granularity.",
       "$ref": "#/definitions/metricGranularity"
     },
+    "dimensions": {
+      "description": "Dimensions associated with this metric from a semantic layer.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metricDimension"
+      },
+      "default": null
+    },
+    "measures": {
+      "description": "Measures associated with this metric from a semantic layer.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metricMeasure"
+      },
+      "default": null
+    },
+    "filters": {
+      "description": "Filters applied to this metric.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metricFilter"
+      },
+      "default": null
+    },
     "relatedMetrics": {
       "description": "Related Metrics.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "parent": {
+      "description": "Parent metric this metric is a variant of. Metric fully qualified names stay flat, so the hierarchy is tracked purely through CONTAINS relationships and reparenting never rewrites the fully qualified name.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "metricGroup": {
+      "description": "Metric Group this metric belongs to, if any. A group organizes metrics for browsing; membership is a relationship, so it is derived on read and never stored on the metric.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "Immediate child metrics (variants) of this metric.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "childrenCount": {
+      "description": "Count of immediate, non-deleted child metrics. Computed on read and never stored.",
+      "type": "integer"
+    },
+    "assets": {
+      "description": "Data assets (tables, columns, dashboards, etc.) this metric is computed on or applies to. Establishes a first-class metric-to-asset relationship so the metric can be surfaced as context for those assets.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
@@ -167,6 +284,11 @@
     "owners": {
       "description": "Owners of this metrics.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "experts": {
+      "description": "Users who are experts in this Metric.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "reviewers": {
       "description": "Reviewers of this Metric.",

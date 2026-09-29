@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { clickOutside, descriptionBox, toastNotification } from './common';
+import {
+  clickOutside,
+  dismissHoverPopovers,
+  fillDescriptionBox,
+  toastNotification,
+} from './common';
 
 export type TaskDetails = {
   term: string;
@@ -26,6 +31,23 @@ export type TaskDetails = {
 const tag = 'PII.None';
 
 export const TASK_OPEN_FETCH_LINK = '/api/v1/tasks**';
+
+export const getTaskDisplayId = (taskId: string) => {
+  expect(taskId).toMatch(/^TASK-\d+$/);
+
+  return `#${Number(taskId.replace('TASK-', ''))}`;
+};
+
+export const getTaskCard = (
+  page: Page,
+  taskId: string,
+  scope: Page | Locator = page
+) =>
+  scope.getByTestId('task-feed-card').filter({
+    has: page
+      .locator('.task-details-id')
+      .filter({ hasText: new RegExp(`^${getTaskDisplayId(taskId)}\\s*$`) }),
+  });
 
 const isTaskCreateRequest = (url: string) =>
   /\/api\/v1\/tasks(?:\?|$)/.test(url) &&
@@ -120,9 +142,7 @@ export const createDescriptionTask = async (
   }
 
   if (addDescription) {
-    await page
-      .locator(descriptionBox)
-      .fill(value.description ?? 'Updated description');
+    await fillDescriptionBox(page, value.description ?? 'Updated description');
   }
   const taskResponse = waitForTaskCreateResponse(page);
   await page.click('button[type="submit"]');
@@ -203,6 +223,7 @@ export const checkTaskCountInActivityFeed = async (
   await page.locator('.ant-skeleton-element').first().waitFor({
     state: 'detached',
   });
+  await dismissHoverPopovers(page);
   await page.getByTestId('user-profile-page-task-filter-icon').click();
   const openTaskItem = page
     .locator('.task-tab-custom-dropdown .task-count-text')

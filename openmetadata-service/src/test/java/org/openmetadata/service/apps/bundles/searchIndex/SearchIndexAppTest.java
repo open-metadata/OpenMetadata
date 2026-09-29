@@ -43,8 +43,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdent
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobExecutionContext;
 
@@ -286,7 +286,7 @@ class SearchIndexAppTest {
             null,
             System.currentTimeMillis(),
             1);
-    when(jobDAO.findByStatuses(List.of("RUNNING", "READY", "INITIALIZING")))
+    when(jobDAO.findByStatuses(List.of("RUNNING", "PROMOTING", "READY", "INITIALIZING")))
         .thenReturn(List.of(activeJob));
 
     App appEntity = new App();
@@ -367,7 +367,7 @@ class SearchIndexAppTest {
             null,
             System.currentTimeMillis(),
             1);
-    when(jobDAO.findByStatuses(List.of("RUNNING", "READY", "INITIALIZING")))
+    when(jobDAO.findByStatuses(List.of("RUNNING", "PROMOTING", "READY", "INITIALIZING")))
         .thenReturn(List.of(activeJob));
     doThrow(new RuntimeException("DB error"))
         .when(jobDAO)

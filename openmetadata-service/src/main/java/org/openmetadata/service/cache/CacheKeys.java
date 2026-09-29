@@ -1,6 +1,7 @@
 package org.openmetadata.service.cache;
 
 import java.util.UUID;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class CacheKeys {
@@ -53,6 +54,26 @@ public final class CacheKeys {
   public String refByName(String type, String fqn) {
     String fqnHash = FullyQualifiedName.buildHash(fqn);
     return ns + ":rn:" + type + ":" + fqnHash;
+  }
+
+  public String personaContextMarkdown(UUID personaId, String definitionHash) {
+    return ns + ":pctx:" + personaId + ":md:" + definitionHash;
+  }
+
+  public String personaContextJson(UUID personaId, String definitionHash) {
+    return ns + ":pctx:" + personaId + ":json:" + definitionHash;
+  }
+
+  public String personaContextLock(UUID personaId) {
+    return ns + ":pctx:lock:" + personaId;
+  }
+
+  public String credentialState(String credentialType, String userName) {
+    return ns + ":credential:" + credentialType + ":" + EntityUtil.hash(userName);
+  }
+
+  public String credentialMutationLock(String credentialType, String userName) {
+    return ns + ":credential:lock:" + credentialType + ":" + EntityUtil.hash(userName);
   }
 
   /**

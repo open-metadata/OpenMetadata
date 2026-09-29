@@ -15,11 +15,11 @@
 .overview-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--om-space-12);
 }
 
 .overview-row {
-  gap: 16px;
+  gap: var(--om-space-16);
   word-break: break-word;
   display: flex;
   flex-direction: row;
@@ -28,18 +28,20 @@
 }
 
 .overview-label {
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   color: @grey-700;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   text-align: left;
   flex-shrink: 0;
   width: 120px; /* Fixed width for consistent alignment */
 }
 
 .overview-value {
-  color: #181d27;
-  font-weight: 500;
-  font-size: 13px;
+  // Semantic text token: gray-900 is a raw palette step that goes near-black
+  // in dark and vanished on the card.
+  color: var(--om-color-text-primary);
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-13);
   text-align: left;
   flex: 1;
 }

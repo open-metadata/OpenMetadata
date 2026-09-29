@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { createOrFetch, deleteFixtureEntity } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type ResponseDataType = {
@@ -40,17 +41,20 @@ export class RolesClass {
   }
 
   async create(apiContext: APIRequestContext, policies: string[]) {
-    const response = await apiContext.post('/api/v1/roles', {
+    const data = await createOrFetch(apiContext, {
+      label: 'RolesClass.create',
+      createPath: '/api/v1/roles',
+      fqnSegments: [this.data.name],
       data: { ...this.data, policies },
     });
-    const data = await response.json();
     this.responseData = data;
 
     return data;
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/roles/${this.responseData.id}?hardDelete=true&recursive=true`
     );
 

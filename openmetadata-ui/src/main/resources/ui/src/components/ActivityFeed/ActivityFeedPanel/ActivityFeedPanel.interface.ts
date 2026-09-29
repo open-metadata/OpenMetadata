@@ -12,12 +12,11 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { ThreadType } from '../../../generated/api/feed/createThread';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 
 export interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
-  selectedThread: Thread;
+  selectedThread: Conversation;
   open?: boolean;
   onCancel: () => void;
   postFeed: (value: string) => void;
@@ -34,8 +33,7 @@ export interface FeedPanelHeaderProp
     Pick<ActivityFeedPanelProp, 'onCancel'> {
   entityLink: string;
   noun?: string;
-  threadType?: ThreadType;
   onShowNewConversation?: (v: boolean) => void;
   hideCloseIcon?: boolean;
-  feed?: Thread;
+  feed?: Conversation;
 }

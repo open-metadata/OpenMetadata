@@ -22,7 +22,7 @@ export const InputPrefix = ({
   <span
     {...props}
     className={cx(
-      'tw:flex tw:text-md tw:text-tertiary tw:shadow-xs tw:ring-1 tw:ring-border-primary tw:ring-inset',
+      'tw:flex tw:text-md tw:text-tertiary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-border-primary',
       // Styles when the prefix is within an `InputGroup`
       'tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-l-lg',
       'tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-r-lg',
@@ -30,7 +30,7 @@ export const InputPrefix = ({
       'tw:in-data-input-wrapper:in-data-[input-size=md]:py-2.5 tw:in-data-input-wrapper:in-data-[input-size=md]:pr-3 tw:in-data-input-wrapper:in-data-[input-size=md]:pl-3.5 tw:in-data-input-wrapper:in-data-[input-size=sm]:px-3 tw:in-data-input-wrapper:in-data-[input-size=sm]:py-2',
       // Disabled styles
       isDisabled && 'tw:border-disabled tw:bg-disabled_subtle tw:text-tertiary',
-      'tw:in-data-input-wrapper:group-disabled:bg-disabled_subtle tw:in-data-input-wrapper:group-disabled:text-disabled tw:in-data-input-wrapper:group-disabled:ring-border-disabled',
+      'tw:in-data-input-wrapper:group-disabled:bg-disabled_subtle tw:in-data-input-wrapper:group-disabled:text-disabled tw:in-data-input-wrapper:group-disabled:outline-border-disabled',
 
       props.className
     )}>
@@ -115,7 +115,9 @@ export const InputGroup = ({
         hasLeading && 'tw:rounded-l-none',
         hasTrailing && 'tw:rounded-r-none',
         // When select element is passed as a child
-        'tw:group-has-[&>select]:bg-transparent tw:group-has-[&>select]:shadow-none tw:group-has-[&>select]:ring-0 tw:group-has-[&>select]:focus-within:ring-0',
+        // outline-0, not ring-0: the Input wrapper's border is an outline now, so a ring
+        // suppressor would be a no-op and the border would double up with this group's own.
+        'tw:group-has-[&>select]:bg-transparent tw:group-has-[&>select]:shadow-none tw:group-has-[&>select]:outline-0 tw:group-has-[&>select]:focus-within:outline-0',
         // In `Input` component, there is "group-disabled" class so here we need to use
         // "group-disabled:group-has-[&>select]" to avoid conflict
         'tw:group-disabled:group-has-[&>select]:bg-transparent'
@@ -129,13 +131,16 @@ export const InputGroup = ({
             className={cx(
               'tw:group tw:relative tw:flex tw:h-max tw:w-full tw:flex-row tw:justify-center tw:rounded-lg tw:bg-primary tw:transition-all tw:duration-100 tw:ease-linear',
 
-              // Only apply focus ring when child is select and input is focused
-              'tw:has-[&>select]:shadow-xs tw:has-[&>select]:ring-1 tw:has-[&>select]:ring-border-primary tw:has-[&>select]:ring-inset tw:has-[&>select]:has-[input:focus]:ring-2 tw:has-[&>select]:has-[input:focus]:ring-border-brand',
+              // Only apply focus border when child is select and input is focused.
+              // Outline, not ring: WebKit does not pixel-snap box-shadow, so rings
+              // thin/vanish in Safari when zoomed out.
+              'tw:has-[&>select]:shadow-xs tw:has-[&>select]:outline-1 tw:has-[&>select]:-outline-offset-1 tw:has-[&>select]:outline-border-primary',
+              'tw:has-[&>select]:has-[input:focus]:outline-2 tw:has-[&>select]:has-[input:focus]:-outline-offset-2 tw:has-[&>select]:has-[input:focus]:outline-border-brand',
 
               isDisabled &&
-                'tw:cursor-not-allowed tw:has-[&>select]:bg-disabled_subtle tw:has-[&>select]:ring-border-disabled',
+                'tw:cursor-not-allowed tw:has-[&>select]:bg-disabled_subtle tw:has-[&>select]:outline-border-disabled',
               isInvalid &&
-                'tw:has-[&>select]:ring-border-error_subtle tw:has-[&>select]:has-[input:focus]:ring-border-error'
+                'tw:has-[&>select]:outline-border-error_subtle tw:has-[&>select]:has-[input:focus]:outline-border-error'
             )}
             data-input-size={size}>
             {leadingAddon && (

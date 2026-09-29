@@ -27,10 +27,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.awaitility.core.ConditionTimeoutException;
 import org.flowable.engine.ManagementService;
@@ -48,6 +50,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -1902,6 +1905,348 @@ public class WorkflowDefinitionResourceIT {
         operationName);
   }
 
+  /**
+   * #28433: Verify the checkEntityAttributesTask evaluates {@code assetsCount > 0} as true for a
+   * DataProduct that has at least one asset.
+   */
+  @Test
+  void test_CheckEntityAttributes_DataProductAssetCount(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    // Create domain and a data product
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("dpac_domain"))
+                    .withDescription("Domain for asset count test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    org.openmetadata.schema.entity.domains.DataProduct dpWithAssets =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_with_assets"))
+                    .withDescription("DP with assets")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    // Create a table in the same domain and add it as an asset
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpac_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dpac_db"))
+                    .withDescription("DB")
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dpac_schema"))
+                    .withDescription("Schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("dpac_table"))
+                    .withDescription("Table for asset")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Primary key"))));
+    client
+        .dataProducts()
+        .bulkAddAssets(
+            dpWithAssets.getFullyQualifiedName(),
+            new org.openmetadata.schema.type.api.BulkAssets()
+                .withAssets(List.of(table.getEntityReference())));
+
+    // Build workflow: checkEntityAttributes with assetsCount > 0. The workflow is created AFTER
+    // the DP has its asset so the Updated event fired below evaluates against assetsCount = 1.
+    String workflowName = "dpAssetWF_" + ns.uniqueShortId();
+    String workflowJson =
+        String.format(
+            """
+        {
+          "name": "%s",
+          "displayName": "DP Asset Count Check",
+          "description": "Tests assetsCount enrichment on DataProduct",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataProduct"],
+              "events": ["Updated"]
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "start"},
+            {
+              "type": "automatedTask",
+              "subType": "checkEntityAttributesTask",
+              "name": "checkAssets",
+              "displayName": "Check Assets > 0",
+              "config": {"rules": "{\\">\\":[{\\"var\\":\\"assetsCount\\"},0]}"},
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["result"],
+              "branches": ["true", "false"]
+            },
+            {"type": "endEvent", "subType": "endEvent", "name": "endTrue"},
+            {"type": "endEvent", "subType": "endEvent", "name": "endFalse"}
+          ],
+          "edges": [
+            {"from": "start", "to": "checkAssets"},
+            {"from": "checkAssets", "to": "endTrue", "condition": "true"},
+            {"from": "checkAssets", "to": "endFalse", "condition": "false"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """,
+            workflowName);
+
+    Map<String, Object> workflowRequest = MAPPER.readValue(workflowJson, Map.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+    assertNotNull(response);
+    LOG.debug("Created DP asset count workflow: {}", workflowName);
+
+    try {
+      waitForWorkflowDeployment(client, workflowName);
+
+      // Fire the Updated event on the DP (which already has an asset) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with assets - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithAssets.getId(), dpPatch);
+
+      // Wait for the workflow run and verify the checkAssets node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkAssets_result");
+    } finally {
+      safeDeleteWorkflow(client, workflowName);
+    }
+  }
+
+  /**
+   * #28433: Verify the checkEntityAttributesTask evaluates {@code outputPortsCount > 0} as true for
+   * a DataProduct that has output ports.
+   */
+  @Test
+  void test_CheckEntityAttributes_DataProductOutputPortCount(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("dpop_domain"))
+                    .withDescription("Domain for output port count test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    org.openmetadata.schema.entity.domains.DataProduct dpWithPorts =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_with_ports"))
+                    .withDescription("DP with output ports")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    // Create a table in the same domain, add as asset first, then as output port
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpop_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dpop_db"))
+                    .withDescription("DB")
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dpop_schema"))
+                    .withDescription("Schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("dpop_table"))
+                    .withDescription("Table for output port")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Primary key"))));
+    org.openmetadata.schema.type.api.BulkAssets bulkAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client.dataProducts().bulkAddAssets(dpWithPorts.getFullyQualifiedName(), bulkAssets);
+    client.dataProducts().bulkAddOutputPorts(dpWithPorts.getFullyQualifiedName(), bulkAssets);
+
+    // The workflow is created AFTER the DP has its output port so the Updated event fired
+    // below evaluates against outputPortsCount = 1.
+    String workflowName = "dpOpWF_" + ns.uniqueShortId();
+    String workflowJson =
+        String.format(
+            """
+        {
+          "name": "%s",
+          "displayName": "DP Output Port Count Check",
+          "description": "Tests outputPortsCount enrichment on DataProduct",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataProduct"],
+              "events": ["Updated"]
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "start"},
+            {
+              "type": "automatedTask",
+              "subType": "checkEntityAttributesTask",
+              "name": "checkOutputPorts",
+              "displayName": "Check Output Ports > 0",
+              "config": {"rules": "{\\">\\":[{\\"var\\":\\"outputPortsCount\\"},0]}"},
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["result"],
+              "branches": ["true", "false"]
+            },
+            {"type": "endEvent", "subType": "endEvent", "name": "endTrue"},
+            {"type": "endEvent", "subType": "endEvent", "name": "endFalse"}
+          ],
+          "edges": [
+            {"from": "start", "to": "checkOutputPorts"},
+            {"from": "checkOutputPorts", "to": "endTrue", "condition": "true"},
+            {"from": "checkOutputPorts", "to": "endFalse", "condition": "false"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """,
+            workflowName);
+
+    Map<String, Object> workflowRequest = MAPPER.readValue(workflowJson, Map.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+    assertNotNull(response);
+    LOG.debug("Created DP output port count workflow: {}", workflowName);
+
+    try {
+      waitForWorkflowDeployment(client, workflowName);
+
+      // Fire the Updated event on the DP (which already has an output port) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with output ports - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithPorts.getId(), dpPatch);
+
+      // Wait for the workflow run and verify the checkOutputPorts node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkOutputPorts_result");
+    } finally {
+      safeDeleteWorkflow(client, workflowName);
+    }
+  }
+
+  /**
+   * Polls until the given workflow has at least one instance whose recorded stage carries {@code
+   * <nodeName>_result = true} (written by the node's stage listeners when storeStageStatus=true).
+   */
+  private void awaitStageResultTrue(
+      OpenMetadataClient client, String workflowDefinitionName, String resultKey) {
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(3))
+        .untilAsserted(
+            () -> {
+              String instancesPath =
+                  "/v1/governance/workflowInstances?workflowDefinitionName="
+                      + workflowDefinitionName
+                      + "&startTs=0&endTs="
+                      + System.currentTimeMillis()
+                      + "&limit=100";
+              String instancesJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
+              JsonNode instances = MAPPER.readTree(instancesJson).path("data");
+              assertTrue(instances.size() > 0, "Workflow should have at least one instance");
+              assertTrue(
+                  anyInstanceStageHasTrueResult(
+                      client, workflowDefinitionName, instances, resultKey),
+                  "At least one workflow instance should have a stage with " + resultKey + "=true");
+            });
+  }
+
+  private boolean anyInstanceStageHasTrueResult(
+      OpenMetadataClient client,
+      String workflowDefinitionName,
+      JsonNode instances,
+      String resultKey)
+      throws Exception {
+    boolean found = false;
+    for (JsonNode instance : instances) {
+      String instanceId = instance.path("id").asText(null);
+      if (instanceId == null) {
+        continue;
+      }
+      String statesPath =
+          "/v1/governance/workflowInstanceStates/"
+              + workflowDefinitionName
+              + "/"
+              + instanceId
+              + "?startTs=0&endTs="
+              + System.currentTimeMillis()
+              + "&limit=100";
+      String statesJson =
+          client
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, statesPath, null, RequestOptions.builder().build());
+      for (JsonNode state : MAPPER.readTree(statesJson).path("data")) {
+        if (state.path("stage").path("variables").path(resultKey).asBoolean(false)) {
+          found = true;
+        }
+      }
+    }
+    return found;
+  }
+
   private void safeDeleteWorkflow(OpenMetadataClient client, String workflowName) {
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
@@ -3035,25 +3380,29 @@ public class WorkflowDefinitionResourceIT {
     Glossary glossary = client.glossaries().create(createGlossary);
     LOG.debug("Created glossary: {}", glossary.getName());
 
-    // Create glossary term that SHOULD trigger workflow (has description)
+    // Trigger filter is an EXCLUSION filter: a matching JsonLogic tells the workflow to
+    // NOT trigger for that entity. A term whose description contains "workflow" therefore
+    // matches the filter and is EXCLUDED; a term without "workflow" in its description does
+    // not match, so the workflow runs and rewrites its displayName.
     CreateGlossaryTerm createTermToMatch =
         new CreateGlossaryTerm()
             .withName("createTermToMatch")
-            .withDisplayName("Complete Term")
-            .withDescription("This term has a description and should trigger workflow")
+            .withDisplayName("Excluded Term")
+            .withDescription("This term description contains workflow so it is excluded")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termToMatch = client.glossaryTerms().create(createTermToMatch);
-    LOG.debug("Created glossary term that should match filter: {}", termToMatch.getName());
+    LOG.debug("Created glossary term that matches filter (excluded): {}", termToMatch.getName());
 
-    // Create glossary term that should NOT trigger workflow (will not match filter)
     CreateGlossaryTerm createTermNotToMatch =
         new CreateGlossaryTerm()
             .withName("createTermNotToMatch")
-            .withDisplayName("Incomplete Term")
+            .withDisplayName("Triggering Term")
             .withDescription("Simple description without the magic word")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termNotToMatch = client.glossaryTerms().create(createTermNotToMatch);
-    LOG.debug("Created glossary term that should NOT match filter: {}", termNotToMatch.getName());
+    LOG.debug(
+        "Created glossary term that does not match filter (triggers): {}",
+        termNotToMatch.getName());
 
     // Ensure WorkflowEventConsumer is active
     ensureWorkflowEventConsumerIsActive(client);
@@ -3084,31 +3433,32 @@ public class WorkflowDefinitionResourceIT {
             .withDatabase(database.getFullyQualifiedName());
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
 
-    // Create table that SHOULD trigger workflow (production table)
+    // Same exclusion semantics for the table entity: names containing "production" match the
+    // table filter and are EXCLUDED; names without "production" do not match, so the workflow
+    // triggers and rewrites the displayName.
     CreateTable createProdTable =
         new CreateTable()
             .withName("production_customer_data")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Production table that should trigger workflow")
+            .withDescription("Production table (matches filter -> excluded)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("data").withDataType(ColumnDataType.STRING)));
     Table prodTable = client.tables().create(createProdTable);
-    LOG.debug("Created production table that should match filter: {}", prodTable.getName());
+    LOG.debug("Created production table that matches filter (excluded): {}", prodTable.getName());
 
-    // Create table that should NOT trigger workflow (dev/test table)
     CreateTable createDevTable =
         new CreateTable()
             .withName("dev_test_table")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Dev table that should NOT trigger workflow")
+            .withDescription("Dev table (does not match filter -> triggers)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("test_data").withDataType(ColumnDataType.STRING)));
     Table devTable = client.tables().create(createDevTable);
-    LOG.debug("Created dev table that should NOT match filter: {}", devTable.getName());
+    LOG.debug("Created dev table that does not match filter (triggers): {}", devTable.getName());
 
     // Create workflow with entity-specific filters - using raw JSON like reference test
     String workflowJson =
@@ -3227,8 +3577,9 @@ public class WorkflowDefinitionResourceIT {
     JsonNode devTablePatch = MAPPER.readTree(devTablePatchStr);
     client.tables().patch(devTableId, devTablePatch);
 
-    // Wait for workflow processing using Awaitility
-    LOG.info("Waiting for workflow to process entities...");
+    // Wait for the non-matching entities to be processed by the workflow. Matching entities are
+    // silently excluded by the trigger filter, so we cannot wait on them — they never change.
+    LOG.info("Waiting for workflow to process non-matching entities...");
     await()
         .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
@@ -3236,19 +3587,18 @@ public class WorkflowDefinitionResourceIT {
         .until(
             () -> {
               try {
-                // Check if entities that match filters got processed
-                GlossaryTerm updatedTermToMatch = client.glossaryTerms().get(termToMatchId);
-                Table updatedProdTable = client.tables().get(prodTableId);
+                GlossaryTerm updatedTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
+                Table updatedDevTable = client.tables().get(devTableId);
 
                 boolean termProcessed =
-                    updatedTermToMatch.getDisplayName() != null
-                        && updatedTermToMatch.getDisplayName().startsWith("[FILTERED]");
+                    updatedTermNotToMatch.getDisplayName() != null
+                        && updatedTermNotToMatch.getDisplayName().startsWith("[FILTERED]");
                 boolean tableProcessed =
-                    updatedProdTable.getDisplayName() != null
-                        && updatedProdTable.getDisplayName().startsWith("[FILTERED]");
+                    updatedDevTable.getDisplayName() != null
+                        && updatedDevTable.getDisplayName().startsWith("[FILTERED]");
 
                 if (termProcessed && tableProcessed) {
-                  LOG.debug("Both matching entities have been processed by workflow");
+                  LOG.debug("Both non-matching entities have been processed by workflow");
                   return true;
                 }
 
@@ -3266,35 +3616,34 @@ public class WorkflowDefinitionResourceIT {
     // Verify results
     LOG.info("Verifying workflow results");
 
-    // Entities that match filter should be processed
-    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
-    assertTrue(
-        finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm with description should have been processed by workflow");
-    LOG.info(
-        "✓ GlossaryTerm with description was correctly processed using glossaryterm-specific filter");
-
-    Table finalProdTable = client.tables().get(prodTableId);
-    assertTrue(
-        finalProdTable.getDisplayName().startsWith("[FILTERED]"),
-        "Production table should have been processed by workflow");
-    LOG.info(
-        "✓ Table with 'production' in name was correctly processed using table-specific filter");
-
-    // Entities that don't match filter should NOT be processed
+    // Entities that do NOT match filter should be processed (exclusion filter fell through).
     GlossaryTerm finalTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
-    assertFalse(
-        finalTermNotToMatch.getDisplayName() != null
-            && finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm without description should NOT have been processed by workflow");
-    LOG.info("✓ GlossaryTerm without description was correctly filtered out");
+    assertTrue(
+        finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm without the excluded keyword should have been processed by workflow");
+    LOG.info(
+        "✓ GlossaryTerm without 'workflow' in description was processed (exclusion filter did not match)");
 
     Table finalDevTable = client.tables().get(devTableId);
+    assertTrue(
+        finalDevTable.getDisplayName().startsWith("[FILTERED]"),
+        "Table without 'production' in name should have been processed by workflow");
+    LOG.info("✓ Table without 'production' in name was processed (exclusion filter did not match)");
+
+    // Entities that MATCH the filter must be excluded — the workflow must not touch them.
+    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
     assertFalse(
-        finalDevTable.getDisplayName() != null
-            && finalDevTable.getDisplayName().startsWith("[FILTERED]"),
-        "Dev table should NOT have been processed by workflow");
-    LOG.info("✓ Table without 'production' in name was correctly filtered out");
+        finalTermToMatch.getDisplayName() != null
+            && finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm matching the exclusion filter should NOT have been processed by workflow");
+    LOG.info("✓ GlossaryTerm with 'workflow' in description was correctly excluded");
+
+    Table finalProdTable = client.tables().get(prodTableId);
+    assertFalse(
+        finalProdTable.getDisplayName() != null
+            && finalProdTable.getDisplayName().startsWith("[FILTERED]"),
+        "Production table matching the exclusion filter should NOT have been processed");
+    LOG.info("✓ Table with 'production' in name was correctly excluded");
 
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
@@ -3464,12 +3813,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3576,12 +3925,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3620,6 +3969,190 @@ public class WorkflowDefinitionResourceIT {
     }
 
     LOG.info("test_MixedEntityTypesWithReviewerSupport completed successfully");
+  }
+
+  /**
+   * Regression guard for #31692. A custom approval workflow assigns its task to <b>owners</b>
+   * (addOwners=true, addReviewers=false) on a {@code tag} — a Group-2 entity that used to wire
+   * {@code updateReviewers() -> updateTaskWithNewReviewers}. The workflow triggers on {@code Created}
+   * only, so changing the tag's reviewers afterwards cannot re-trigger it; the ONLY thing that could
+   * mutate the open task's assignees on a reviewer change was the removed repository sync. After the
+   * removal, changing reviewers must leave the owner-assigned approval task's assignees untouched —
+   * the added reviewer must NOT be injected as an approver. Before the removal this test fails: the
+   * repository overwrites the task's assignees with the reviewer list inside the PATCH transaction.
+   */
+  @Test
+  @Order(220)
+  void test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask(TestNamespace ns)
+      throws Exception {
+    LOG.info("Starting test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask");
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = "ownerAssignedTagApproval_" + UUID.randomUUID();
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Owner Assigned Tag Approval",
+              "description": "Approval task assigned to owners, triggered on tag creation only",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["tag"],
+                  "events": ["Created"]
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "ApproveTag",
+                  "displayName": "Approve Tag",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1,
+                    "stageId": "review",
+                    "stageDisplayName": "Review",
+                    "taskStatus": "Open",
+                    "assigneeStrategy": "reviewers-and-assignees",
+                    "transitionMetadata": [
+                      {"id": "approve", "label": "Approve", "targetStageId": "approved", "targetTaskStatus": "Approved", "resolutionType": "Approved", "formRef": "approve", "requiresComment": false},
+                      {"id": "reject", "label": "Reject", "targetStageId": "rejected", "targetTaskStatus": "Rejected", "resolutionType": "Rejected", "formRef": "reject", "requiresComment": true}
+                    ]
+                  },
+                  "inputNamespaceMap": {"relatedEntity": "global"}
+                },
+                {"name": "endApproved", "displayName": "End Approved", "type": "endEvent", "subType": "endEvent"},
+                {"name": "endRejected", "displayName": "End Rejected", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "ApproveTag"},
+                {"from": "ApproveTag", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTag", "to": "endRejected", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """
+            .formatted(workflowName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class),
+                RequestOptions.builder().build());
+    JsonNode created = MAPPER.readTree(createResponse);
+    assertTrue(created.has("id"));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+    ensureWorkflowEventConsumerIsActive(client);
+
+    // Classification + tag owned by USER1 with USER2 as an initial reviewer.
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(
+                        ns.prefix("revguard")
+                            .substring(0, Math.min(25, ns.prefix("revguard").length())))
+                    .withDescription("Classification for reviewer-change approval guard"));
+    CreateTag createTag =
+        new CreateTag()
+            .withName("guardTag")
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Owner-assigned approval guard tag")
+            .withOwners(List.of(shared.USER1_REF))
+            .withReviewers(List.of(shared.USER2_REF));
+    Tag tag = client.tags().create(createTag);
+
+    Task task = awaitOpenApprovalTaskForEntity(tag.getFullyQualifiedName());
+    Set<UUID> assignees = assigneeIds(task);
+    assertTrue(
+        assignees.contains(shared.USER1.getId()),
+        "Owner must be assigned to the approval task, assignees=" + assignees);
+    assertFalse(
+        assignees.contains(shared.USER2.getId()),
+        "Reviewer must not be assigned to an owners-only approval task, assignees=" + assignees);
+
+    // Change reviewers: add USER3. The Created-only workflow cannot re-trigger on this Updated
+    // event.
+    JsonNode reviewerPatch =
+        MAPPER.readTree(
+            String.format(
+                "[{\"op\":\"replace\",\"path\":\"/reviewers\",\"value\":"
+                    + "[{\"id\":\"%s\",\"type\":\"user\"},{\"id\":\"%s\",\"type\":\"user\"}]}]",
+                shared.USER2.getId(), shared.USER3.getId()));
+    client.tags().patch(tag.getId().toString(), reviewerPatch);
+
+    // The open approval task's assignees must be unchanged — still the owner, never the reviewers.
+    Task afterPatch = openApprovalTaskById(tag.getFullyQualifiedName(), task.getId());
+    assertNotNull(
+        afterPatch, "The owner-assigned approval task must remain open after the reviewer change");
+    Set<UUID> afterAssignees = assigneeIds(afterPatch);
+    assertTrue(
+        afterAssignees.contains(shared.USER1.getId()),
+        "Owner must remain assigned after the reviewer change, assignees=" + afterAssignees);
+    assertFalse(
+        afterAssignees.contains(shared.USER3.getId()),
+        "A newly added reviewer must not be injected into an owners-only task, assignees="
+            + afterAssignees);
+    assertFalse(
+        afterAssignees.contains(shared.USER2.getId()),
+        "Reviewers must not leak into an owners-only task, assignees=" + afterAssignees);
+
+    LOG.info("test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask completed successfully");
+  }
+
+  private Task awaitOpenApprovalTaskForEntity(String entityFqn) {
+    await("open approval task for " + entityFqn)
+        .atMost(Duration.ofMinutes(5))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> !openApprovalTasks(entityFqn).isEmpty());
+    List<Task> tasks = openApprovalTasks(entityFqn);
+    assertFalse(tasks.isEmpty(), "Expected an open approval task for " + entityFqn);
+    return tasks.get(0);
+  }
+
+  private Task openApprovalTaskById(String entityFqn, UUID taskId) {
+    return openApprovalTasks(entityFqn).stream()
+        .filter(t -> taskId.equals(t.getId()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private List<Task> openApprovalTasks(String entityFqn) {
+    List<Task> tasks;
+    try {
+      ListResponse<Task> response =
+          SdkClients.adminClient()
+              .tasks()
+              .listWithFilters(
+                  Map.of(
+                      "limit",
+                      "100",
+                      "status",
+                      TaskEntityStatus.Open.value(),
+                      "aboutEntity",
+                      entityFqn));
+      tasks = response.getData() == null ? List.of() : response.getData();
+    } catch (RuntimeException e) {
+      tasks = List.of();
+    }
+    return tasks;
+  }
+
+  private Set<UUID> assigneeIds(Task task) {
+    return task.getAssignees() == null
+        ? Set.of()
+        : task.getAssignees().stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   @Test
@@ -3973,12 +4506,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approval",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "approval",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4056,12 +4589,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "false"
+                  "condition": "reject"
                 },
                 {
                   "from": "setTask",
@@ -4699,7 +5232,7 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approvalTask",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4713,8 +5246,8 @@ public class WorkflowDefinitionResourceIT {
           assertThrows(
               OpenMetadataException.class,
               () -> client.workflowDefinitions().validate(missingTrueConditionWorkflow));
-      assertTrue(missingTrueEx.getMessage().contains("must have both TRUE and FALSE"));
-      LOG.debug("UserApprovalTask missing TRUE condition correctly rejected");
+      assertTrue(missingTrueEx.getMessage().contains("must have both approve and reject"));
+      LOG.debug("UserApprovalTask missing approve condition correctly rejected");
 
       // Test 16 (Test 10 in original): Valid conditional task with both TRUE and FALSE
       String validConditionalJson =
@@ -5339,9 +5872,9 @@ public class WorkflowDefinitionResourceIT {
                       ],
                       "edges": [
                         {"from": "StartNode", "to": "UserApproval"},
-                        {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
+                        {"from": "UserApproval", "to": "SetDescription", "condition": "approve"},
                         {"from": "SetDescription", "to": "EndNode"},
-                        {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                        {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
                       ],
                       "config": {"storeStageStatus": true}
                     }
@@ -5842,9 +6375,9 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "StartNode", "to": "UserApproval"},
-                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "true"},
+                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "approve"},
                 {"from": "SetStatusApproved", "to": "EndNode"},
-                {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -6129,8 +6662,8 @@ public class WorkflowDefinitionResourceIT {
                   ],
                   "edges": [
                     {"from": "Start", "to": "UserApproval"},
-                    {"from": "UserApproval", "to": "End", "condition": "true"},
-                    {"from": "UserApproval", "to": "End", "condition": "false"}
+                    {"from": "UserApproval", "to": "End", "condition": "approve"},
+                    {"from": "UserApproval", "to": "End", "condition": "reject"}
                   ],
                   "config": {"storeStageStatus": true}
                 }
@@ -6361,12 +6894,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -7531,8 +8064,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -7857,8 +8390,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -8145,8 +8678,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -9698,12 +10231,12 @@ public class WorkflowDefinitionResourceIT {
             {
               "from": "userApproval",
               "to": "setApproved",
-              "condition": "true"
+              "condition": "approve"
             },
             {
               "from": "userApproval",
               "to": "setRejected",
-              "condition": "false"
+              "condition": "reject"
             },
             {
               "from": "setApproved",
@@ -10125,8 +10658,8 @@ public class WorkflowDefinitionResourceIT {
           "edges": [
             {"from": "start", "to": "setStatusInReview"},
             {"from": "setStatusInReview", "to": "ApprovalTask"},
-            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "true"},
-            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "false"},
+            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "approve"},
+            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "reject"},
             {"from": "setStatusApproved", "to": "endApproved"},
             {"from": "setStatusRejected", "to": "endRejected"}
           ],
@@ -10563,8 +11096,8 @@ public class WorkflowDefinitionResourceIT {
             { "from": "start", "to": "checkChangeDesc" },
             { "from": "checkChangeDesc", "to": "userApproval", "condition": "true" },
             { "from": "checkChangeDesc", "to": "setDraft", "condition": "false" },
-            { "from": "userApproval", "to": "setApproved", "condition": "true" },
-            { "from": "userApproval", "to": "setRejected", "condition": "false" },
+            { "from": "userApproval", "to": "setApproved", "condition": "approve" },
+            { "from": "userApproval", "to": "setRejected", "condition": "reject" },
             { "from": "setApproved", "to": "end" },
             { "from": "setRejected", "to": "end" },
             { "from": "setDraft", "to": "end" }
@@ -10629,5 +11162,329 @@ public class WorkflowDefinitionResourceIT {
     } catch (Exception e) {
       LOG.warn("Cleanup error: {}", e.getMessage());
     }
+  }
+
+  /**
+   * Trigger filter is an EXCLUSION filter: if the JsonLogic evaluates to TRUE for the entity, the
+   * workflow does NOT trigger; if it evaluates to FALSE, or the filter is unparseable garbage
+   * (returns false from RuleEngine on any exception), the workflow triggers normally.
+   *
+   * <p>Original design: PR #22437 (return {@code !jsonFilter}, comment: "if jsonLogic evaluates
+   * to true, then don't trigger the workflow"). Task Redesign (PR #25894) accidentally dropped
+   * the {@code !} inversion and flipped this to inclusion, breaking every customer with a real
+   * JsonLogic filter or a legacy poisoned filter value like {@code "\"\""}.
+   *
+   * <p>Test exercises three cases end to end against the real trigger BPMN + FilterEntityImpl:
+   * a valid filter that does NOT match (triggers), a valid filter that matches (excludes), and
+   * a poisoned filter that fails to parse (falls open, triggers).
+   */
+  @Test
+  @Order(200)
+  void test_EventTriggerFilterIsExclusionAndFailsOpen(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = ns.prefix("exclusionFilterWorkflow").substring(0, 30);
+    String glossaryName = ns.prefix("exclusionGlossary").substring(0, 30);
+    String triggerMarker = "trigger";
+    String excludeMarker = "skipme";
+
+    createExclusionFilterWorkflow(client, workflowName, excludeMarker);
+    Glossary glossary = createExclusionGlossary(client, glossaryName);
+
+    GlossaryTerm triggeringTerm =
+        createTerm(client, glossary, "triggering_term", triggerMarker + " content");
+    GlossaryTerm excludedTerm =
+        createTerm(client, glossary, "excluded_term", excludeMarker + " content");
+
+    awaitDisplayNamePrefixedWith(client, triggeringTerm.getId(), "[TRIGGERED]");
+    assertDisplayNameUnchangedAfterQuietPeriod(client, excludedTerm.getId());
+
+    patchFilterOn(client, workflowName, "\"\\\"\\\"\"");
+    GlossaryTerm poisonedTerm =
+        createTerm(client, glossary, "poisoned_term", "any content, filter is broken");
+    awaitDisplayNamePrefixedWith(client, poisonedTerm.getId(), "[TRIGGERED]");
+  }
+
+  private void createExclusionFilterWorkflow(
+      OpenMetadataClient client, String workflowName, String excludeMarker) throws Exception {
+    // JsonLogic: description contains excludeMarker → excludes term from workflow trigger.
+    String filterLogic =
+        String.format(
+            "{\\\"in\\\": [\\\"%s\\\", {\\\"var\\\": \\\"description\\\"}]}", excludeMarker);
+    String workflowJson =
+        String.format(
+            """
+            {
+              "name": "%s",
+              "displayName": "Exclusion Filter Test Workflow",
+              "description": "Verifies the trigger filter behaves as an exclusion filter",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["glossaryTerm"],
+                  "events": ["Created", "Updated"],
+                  "exclude": ["reviewers"],
+                  "filter": {"glossaryTerm": "%s"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "Start"},
+                {
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "name": "MarkTriggered",
+                  "displayName": "Mark Triggered",
+                  "config": {"fieldName": "displayName", "fieldValue": "[TRIGGERED]"},
+                  "input": ["relatedEntity", "updatedBy"],
+                  "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                  "output": []
+                },
+                {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "End"}
+              ],
+              "edges": [
+                {"from": "start", "to": "MarkTriggered"},
+                {"from": "MarkTriggered", "to": "end"}
+              ],
+              "config": {"storeStageStatus": false}
+            }
+            """,
+            workflowName, filterLogic);
+    CreateWorkflowDefinition workflow =
+        MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    trackWorkflowFromJson(MAPPER.readTree(response));
+    waitForWorkflowDeployment(client, workflowName);
+  }
+
+  private Glossary createExclusionGlossary(OpenMetadataClient client, String name)
+      throws Exception {
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription("Glossary for exclusion filter test");
+    return client.glossaries().create(create);
+  }
+
+  private GlossaryTerm createTerm(
+      OpenMetadataClient client, Glossary glossary, String name, String description)
+      throws Exception {
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription(description)
+            .withGlossary(glossary.getFullyQualifiedName());
+    return client.glossaryTerms().create(create);
+  }
+
+  private void patchFilterOn(
+      OpenMetadataClient client, String workflowName, String filterMapJsonValue) throws Exception {
+    WorkflowDefinition workflow = client.workflowDefinitions().getByName(workflowName, null);
+    String patchStr =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryTerm\":%s}}]",
+            filterMapJsonValue);
+    client.workflowDefinitions().patch(workflow.getId(), MAPPER.readTree(patchStr));
+  }
+
+  private void awaitDisplayNamePrefixedWith(
+      OpenMetadataClient client, UUID termId, String expectedPrefix) {
+    await("glossary term " + termId + " displayName starts with " + expectedPrefix)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              GlossaryTerm current = client.glossaryTerms().get(termId);
+              return current.getDisplayName() != null
+                  && current.getDisplayName().startsWith(expectedPrefix);
+            });
+  }
+
+  /**
+   * A userApprovalTask node whose {@code config.transitionMetadata} is empty must still resolve.
+   * Verifies the end-to-end contract: task creation projects the default approve/reject pair onto
+   * {@code availableTransitions}, {@code POST /tasks/{id}/resolve} with {@code transitionId=approve}
+   * succeeds, and Flowable routes the signal (task closes as Approved rather than staying Open).
+   */
+  @Test
+  @Order(210)
+  void test_UserApprovalTask_EmptyTransitionMetadata_TaskResolvesWithDefaultTransitions(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = ns.prefix("emptyTransitionMeta").substring(0, 30);
+    String dbServiceName = ns.prefix("emptyTransitionMetaSvc").substring(0, 30);
+
+    String reviewerSuffix = UUID.randomUUID().toString().substring(0, 8);
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("empty_meta_rvwr_" + reviewerSuffix)
+                    .withEmail("empty_meta_rvwr_" + reviewerSuffix + "@example.com")
+                    .withDisplayName("Empty Meta Reviewer")
+                    .withPassword("password123"));
+
+    // userApprovalTask with NO transitionMetadata. branches ["true","false"] mirrors legacy BPMN
+    // edge conditions (v200 migration rewrites those to approve/reject on redeploy).
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Empty Transition Metadata Workflow",
+              "description": "userApprovalTask with no transitionMetadata — must still resolve",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {"entityTypes": ["table"], "events": ["Created"]},
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "TaskReview",
+                  "displayName": "Task Review",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user",
+                         "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1,
+                    "stageId": "review",
+                    "stageDisplayName": "Review",
+                    "taskStatus": "Open"
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {"name": "endApproved", "type": "endEvent", "subType": "endEvent"},
+                {"name": "endRejected", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "TaskReview"},
+                {"from": "TaskReview", "to": "endApproved", "condition": "approve"},
+                {"from": "TaskReview", "to": "endRejected", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": false}
+            }
+            """
+            .formatted(
+                workflowName,
+                reviewer.getId(),
+                reviewer.getFullyQualifiedName(),
+                reviewer.getName());
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    waitForWorkflowDeployment(client, workflowName);
+
+    DatabaseService dbService =
+        client.databaseServices().create(createDatabaseServiceRequest(dbServiceName));
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db"))
+                    .withService(dbService.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("empty_meta_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+
+    String tableFqn = table.getFullyQualifiedName();
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> !listOpenApprovalTasks(client, tableFqn).getData().isEmpty());
+
+    Task task =
+        listOpenApprovalTasks(client, tableFqn).getData().stream()
+            .filter(
+                t ->
+                    t.getAssignees() != null
+                        && t.getAssignees().stream()
+                            .anyMatch(a -> reviewer.getName().equals(a.getName())))
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("Task with expected reviewer assignee not found"));
+
+    // Empty transitionMetadata on the userApprovalTask node triggers
+    // resolveTransitionsForStage's default fallback at CreateTask time, so the task row must
+    // carry the default approve/reject pair.
+    assertEquals(
+        2,
+        task.getAvailableTransitions().size(),
+        "userApprovalTask with empty transitionMetadata must project approve/reject");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "approve".equals(t.getId())),
+        "availableTransitions must contain default 'approve'");
+    assertTrue(
+        task.getAvailableTransitions().stream().anyMatch(t -> "reject".equals(t.getId())),
+        "availableTransitions must contain default 'reject'");
+
+    // /resolve on transitionId=approve returns 200 and Flowable routes the signal (redeployed
+    // BPMN's approve/reject edge conditions match the projected id).
+    OpenMetadataClient reviewerClient =
+        SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
+    org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
+        new org.openmetadata.schema.api.tasks.ResolveTask()
+            .withTransitionId("approve")
+            .withResolutionType(TaskResolutionType.Approved);
+    reviewerClient.tasks().resolve(task.getId().toString(), resolveRequest);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              Task refetched = client.tasks().get(task.getId().toString());
+              return refetched.getStatus() == TaskEntityStatus.Approved;
+            });
+  }
+
+  private void assertDisplayNameUnchangedAfterQuietPeriod(OpenMetadataClient client, UUID termId)
+      throws Exception {
+    String originalDisplayName = client.glossaryTerms().get(termId).getDisplayName();
+    simulateWork(Duration.ofSeconds(20).toMillis());
+    GlossaryTerm current = client.glossaryTerms().get(termId);
+    assertEquals(
+        originalDisplayName,
+        current.getDisplayName(),
+        "Excluded term must not be touched by workflow, but displayName changed to "
+            + current.getDisplayName());
   }
 }

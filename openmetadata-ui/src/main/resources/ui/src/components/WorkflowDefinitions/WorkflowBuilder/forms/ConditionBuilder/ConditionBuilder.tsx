@@ -21,6 +21,7 @@ import {
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
+import { debounce } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -31,6 +32,12 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
 import { useWorkflowModeContext } from '../../../../../contexts/WorkflowModeContext';
+import { WorkflowTriggerFields } from '../../../../../generated/type/workflowTriggerFields';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS } from './ConditionBuilder.constants';
 import type {
   ConditionBuilderOption,
@@ -54,6 +61,31 @@ interface ConditionBuilderValueControlProps {
   readonly values: string[];
   onChange: (values: string[]) => void;
 }
+
+// These fields hold glossary-term FQNs, so they get the tree picker.
+const GLOSSARY_TERM_CONDITION_FIELDS: string[] = [
+  WorkflowTriggerFields.Glossary,
+  WorkflowTriggerFields.RelatedTerms,
+];
+
+const isGlossaryTermConditionField = (
+  fieldDef: ConditionFieldDefinition | undefined
+): boolean =>
+  Boolean(fieldDef && GLOSSARY_TERM_CONDITION_FIELDS.includes(fieldDef.value));
+
+const resolveMultiSelectItems = (
+  hasFetchOptions: boolean,
+  loading: boolean,
+  asyncOptions: ConditionBuilderOption[],
+  staticOptions: ConditionBuilderOption[]
+): SelectItemType[] => {
+  let sourceOptions = staticOptions;
+  if (hasFetchOptions) {
+    sourceOptions = loading ? [] : asyncOptions;
+  }
+
+  return sourceOptions.map((o) => ({ id: o.value, label: o.label }));
+};
 
 function ConditionBuilderValueControl(
   props: Readonly<ConditionBuilderValueControlProps>
@@ -80,6 +112,8 @@ function ConditionBuilderValueControl(
     }));
   }, [fieldDef, t]);
 
+  const supportsSearch = hasFetchOptions && fieldDef?.supportsSearch !== false;
+
   const loadAsyncOptions = useCallback(
     async (search: string) => {
       if (!fieldDef?.fetchOptions) {
@@ -102,11 +136,24 @@ function ConditionBuilderValueControl(
     [fieldDef]
   );
 
+  const debouncedLoadAsyncOptions = useMemo(
+    () => debounce((search: string) => loadAsyncOptions(search), 300),
+    [loadAsyncOptions]
+  );
+
+  useEffect(
+    () => () => {
+      debouncedLoadAsyncOptions.cancel();
+    },
+    [debouncedLoadAsyncOptions]
+  );
+
   useEffect(() => {
-    if (hasFetchOptions && asyncOptions.length === 0) {
+    if (hasFetchOptions) {
+      setAsyncOptions([]);
       loadAsyncOptions('');
     }
-  }, [hasFetchOptions, asyncOptions.length, loadAsyncOptions]);
+  }, [hasFetchOptions, loadAsyncOptions]);
 
   // useListData for the multi-select controls
   const selectedItems = useListData<SelectItemType>({ initialItems: [] });
@@ -146,6 +193,18 @@ function ConditionBuilderValueControl(
     );
   }
 
+  if (isGlossaryTermConditionField(fieldDef)) {
+    return (
+      <GlossaryTermPicker
+        data-testid={dataTestId}
+        disabled={disabled}
+        placeholder={placeholder}
+        value={fqnsToGlossaryTags(values)}
+        onChange={(terms) => onChange(glossaryTagsToFqns(terms))}
+      />
+    );
+  }
+
   if (isText) {
     const textValue = values.join(', ');
 
@@ -167,14 +226,18 @@ function ConditionBuilderValueControl(
   }
 
   const options = hasFetchOptions ? asyncOptions : staticOptions;
-  const items: SelectItemType[] = (
-    hasFetchOptions ? (loading ? [] : asyncOptions) : staticOptions
-  ).map((o) => ({ id: o.value, label: o.label }));
+  const items: SelectItemType[] = resolveMultiSelectItems(
+    hasFetchOptions,
+    loading,
+    asyncOptions,
+    staticOptions
+  );
 
   return (
     <Autocomplete
       className="tw:w-full"
       data-testid={dataTestId}
+      filterOption={supportsSearch ? () => true : undefined}
       isDisabled={disabled ?? false}
       items={items}
       maxVisibleItems={1}
@@ -193,7 +256,8 @@ function ConditionBuilderValueControl(
           label: opt?.label ?? String(key),
         });
         onChange([...selectedItems.items.map((i) => i.id), String(key)]);
-      }}>
+      }}
+      onSearchChange={supportsSearch ? debouncedLoadAsyncOptions : undefined}>
       {(item) => (
         <Autocomplete.Item
           id={item.id}

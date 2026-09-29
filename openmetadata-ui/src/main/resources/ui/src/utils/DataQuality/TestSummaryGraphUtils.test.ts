@@ -10,11 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
+import {
+  BLUE_500,
+  GREEN_3,
+  RED_3,
+  YELLOW_3,
+} from '../../constants/Color.constants';
+import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
+  applyStatusPlacements,
   formatTestSummaryYAxis,
   getStatusDotColor,
+  getTestSummaryTooltipPosition,
+  getThresholdReference,
+  isSameTooltipPosition,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -46,6 +56,43 @@ jest.mock('../ChartUtils', () => ({
 }));
 
 describe('prepareChartData', () => {
+  it('should resolve incident metadata from tasks', () => {
+    const incidentId = '3093dbee-196b-4284-9f97-7103063d0dd7';
+    const task = {
+      id: incidentId,
+      taskId: 'TASK-00244',
+    } as Task;
+
+    const result = prepareChartData({
+      tasks: [task],
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          incidentId,
+          testCaseStatus: TestCaseStatus.Failed,
+          timestamp: 1720525804736,
+        },
+      ],
+    });
+
+    expect(result.data[0].task).toEqual(task);
+  });
+
+  it('should not attach an incident to results that have no incidentId', () => {
+    const result = prepareChartData({
+      tasks: [{ id: 'd0a1c3e2-6b64-4f2e-9a1a-3d0a5f8b7c22' } as Task],
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          testCaseStatus: TestCaseStatus.Success,
+          timestamp: 1720525804736,
+        },
+      ],
+    });
+
+    expect(result.data[0].task).toBeUndefined();
+  });
+
   it('should prepare chart data correctly', () => {
     const testObj = {
       testCaseParameterValue: [
@@ -90,7 +137,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -172,7 +219,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -234,7 +281,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -273,7 +320,7 @@ describe('prepareChartData', () => {
         },
       ],
       testCaseResults: [],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -312,7 +359,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -365,7 +412,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -419,7 +466,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -456,8 +503,14 @@ describe('getStatusDotColor', () => {
     expect(getStatusDotColor(TestCaseStatus.Failed)).toBe(RED_3);
   });
 
-  it('should return YELLOW_2 for non success/failure status', () => {
-    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_2);
+  it('should return YELLOW_3 for Aborted', () => {
+    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_3);
+  });
+
+  // Aborted and Queued read as the same run to a colour-blind eye when they
+  // share a dot: one produced no result, the other has not run yet.
+  it('should return BLUE_500 for Queued', () => {
+    expect(getStatusDotColor(TestCaseStatus.Queued)).toBe(BLUE_500);
   });
 });
 
@@ -471,5 +524,256 @@ describe('formatTestSummaryYAxis', () => {
   it('should use axis tick format when useFreshnessFormat is false', () => {
     expect(formatTestSummaryYAxis(1000, false)).toBe('1k');
     expect(formatTestSummaryYAxis(1_000_000, false)).toBe('1M');
+  });
+});
+
+describe('getTestSummaryTooltipPosition', () => {
+  const boundary = { height: 300, width: 800, x: 80, y: 16 };
+  const tooltipSize = { height: 160, width: 240 };
+
+  it('should keep the preferred bottom-right placement when it fits', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 200, y: 80 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 204, y: 84 });
+  });
+
+  it('should flip above when the tooltip would overflow the bottom', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 200, y: 280 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 204, y: 116 });
+  });
+
+  it('should flip left when the tooltip would overflow the right edge', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 850, y: 80 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 606, y: 84 });
+  });
+
+  it('should flip both axes at the bottom-right corner', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 850, y: 280 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 606, y: 116 });
+  });
+
+  it('should clamp oversized tooltips to the boundary origin', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 400, y: 150 },
+        boundary,
+        gap: 4,
+        tooltipSize: { height: 400, width: 900 },
+      })
+    ).toEqual({ x: 80, y: 16 });
+  });
+});
+
+describe('isSameTooltipPosition', () => {
+  it('should treat sub-pixel measurement noise as the same position', () => {
+    expect(
+      isSameTooltipPosition({ x: 516, y: 196 }, { x: 516.25, y: 195.75 })
+    ).toBe(true);
+  });
+
+  it('should treat a visible shift as a new position', () => {
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 520, y: 196 })).toBe(
+      false
+    );
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 204 })).toBe(
+      false
+    );
+  });
+
+  it('should treat an identical position as the same position', () => {
+    expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 196 })).toBe(
+      true
+    );
+  });
+});
+
+describe('getThresholdReference', () => {
+  const params = (values: Record<string, string>) =>
+    Object.entries(values).map(([name, value]) => ({ name, value }));
+
+  it('should read the single assertion parameter as the expected value', () => {
+    expect(
+      getThresholdReference(
+        params({ value: '10000', threshold: '5', thresholdUnit: 'PERCENTAGE' })
+      )
+    ).toEqual({
+      y: 10000,
+      labelKey: 'label.expected-value',
+      labelValue: (10000).toLocaleString(),
+    });
+  });
+
+  // `threshold` is a tolerance on tableRowCountToEqual and the assertion
+  // itself on tableCustomSQLQuery, so it only becomes the line when no other
+  // numeric parameter carries the assertion.
+  it('should fall back to threshold when it is the only numeric parameter', () => {
+    expect(
+      getThresholdReference(
+        params({
+          sqlExpression: 'SELECT 1',
+          strategy: 'ROWS',
+          operator: '==',
+          threshold: '0',
+        })
+      )
+    ).toEqual({
+      y: 0,
+      labelKey: 'label.threshold-value',
+      labelValue: (0).toLocaleString(),
+    });
+  });
+
+  it('should draw the upper bound for a two-sided range', () => {
+    expect(
+      getThresholdReference(params({ minValue: '1', maxValue: '3489' }))
+    ).toEqual({ y: 3489, labelKey: 'label.allowed-max' });
+  });
+
+  // tableRowInsertedCountToBeBetween requires rangeInterval, a time window,
+  // while its bounds are optional.
+  it('should read a lone min as the allowed min, not the range interval', () => {
+    expect(
+      getThresholdReference(params({ min: '50', rangeInterval: '1000' }))
+    ).toEqual({ y: 50, labelKey: 'label.allowed-min' });
+  });
+
+  it('should read a lone minValue as the allowed min', () => {
+    expect(getThresholdReference(params({ minValue: '12' }))).toEqual({
+      y: 12,
+      labelKey: 'label.allowed-min',
+    });
+  });
+
+  it('should read a lone maxValue as the allowed max', () => {
+    expect(getThresholdReference(params({ maxValue: '99' }))).toEqual({
+      y: 99,
+      labelKey: 'label.allowed-max',
+    });
+  });
+
+  it('should ignore numeric parameters that are not bounds', () => {
+    expect(
+      getThresholdReference(params({ rangeInterval: '1000' }), {
+        maxBound: 10500,
+      })
+    ).toEqual({ y: 10500, labelKey: 'label.learned-baseline' });
+    expect(
+      getThresholdReference(params({ max: '500', rangeInterval: '1000' }))
+    ).toEqual({ y: 500, labelKey: 'label.allowed-max' });
+  });
+
+  it('should ignore a parameter saved with an empty value', () => {
+    expect(
+      getThresholdReference(params({ minValue: '', maxValue: ' ' }))
+    ).toBeUndefined();
+    expect(
+      getThresholdReference(params({ minValue: '', maxValue: '750' }))
+    ).toEqual({ y: 750, labelKey: 'label.allowed-max' });
+  });
+
+  it('should fall back to the learned bound when no parameter is numeric', () => {
+    expect(getThresholdReference([], { maxBound: 10500 })).toEqual({
+      y: 10500,
+      labelKey: 'label.learned-baseline',
+    });
+  });
+
+  it('should return undefined when there is nothing to draw', () => {
+    expect(getThresholdReference([])).toBeUndefined();
+    expect(getThresholdReference(params({ strategy: 'ROWS' }))).toBeUndefined();
+  });
+});
+
+describe('applyStatusPlacements', () => {
+  const series = ['rowCount'];
+
+  // A run that produced no value has no key for the series, so recharts drew
+  // nothing at all for it: the run was simply missing from the chart.
+  it('should pin an aborted run to the lowest plotted value', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Success, rowCount: 120 },
+        { name: 2, status: TestCaseStatus.Success, rowCount: 90 },
+        { name: 3, status: TestCaseStatus.Aborted },
+      ],
+      series
+    );
+
+    // Placed on the series itself, so the line runs through the run.
+    expect(data[2]).toEqual({
+      name: 3,
+      status: TestCaseStatus.Aborted,
+      rowCount: 90,
+      placedKeys: ['rowCount'],
+    });
+  });
+
+  it('should pin a queued run to the expectation line', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Success, rowCount: 120 },
+        { name: 2, status: TestCaseStatus.Queued },
+      ],
+      series,
+      10000
+    );
+
+    expect(data[1]).toEqual({
+      name: 2,
+      status: TestCaseStatus.Queued,
+      rowCount: 10000,
+      placedKeys: ['rowCount'],
+    });
+  });
+
+  // An aborted run that did record a value is plotted where it landed; only
+  // a missing value is placed.
+  it('should keep a value an aborted run did record', () => {
+    const point = { name: 1, status: TestCaseStatus.Aborted, rowCount: 42 };
+
+    expect(
+      applyStatusPlacements(
+        [{ name: 0, status: TestCaseStatus.Success, rowCount: 10 }, point],
+        series
+      )[1]
+    ).toEqual(point);
+  });
+
+  it('should leave a run that plotted a value untouched', () => {
+    const point = { name: 1, status: TestCaseStatus.Failed, rowCount: 5 };
+
+    expect(applyStatusPlacements([point], series)).toEqual([point]);
+  });
+
+  it('should place nothing when no run plotted a value and no line exists', () => {
+    const data = applyStatusPlacements(
+      [{ name: 1, status: TestCaseStatus.Aborted }],
+      series
+    );
+
+    expect(data[0]).toEqual({ name: 1, status: TestCaseStatus.Aborted });
   });
 });

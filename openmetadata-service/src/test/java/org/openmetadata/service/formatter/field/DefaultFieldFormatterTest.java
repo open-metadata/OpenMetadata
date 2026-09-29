@@ -9,13 +9,13 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.feed.FeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.TestMessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 class DefaultFieldFormatterTest {
@@ -55,22 +55,22 @@ class DefaultFieldFormatterTest {
 
   @Test
   void getFieldNameChangeHandlesNestedAndExtensionFields() {
-    Thread thread = baseThread("<#E::table::service.sales.orders>");
+    FormattedMessage message = baseMessage("<#E::table::service.sales.orders>");
 
     assertEquals(
         "customer_id.description",
-        DefaultFieldFormatter.getFieldNameChange("columns.customer_id.description", thread));
-    assertEquals("extension", DefaultFieldFormatter.getFieldNameChange("extension.owner", thread));
-    assertEquals("description", DefaultFieldFormatter.getFieldNameChange("description", thread));
+        DefaultFieldFormatter.getFieldNameChange("columns.customer_id.description", message));
+    assertEquals("extension", DefaultFieldFormatter.getFieldNameChange("extension.owner", message));
+    assertEquals("description", DefaultFieldFormatter.getFieldNameChange("description", message));
   }
 
   @Test
   void formatterBuildsMessagesAndPopulatesThreadFeedInfo() {
-    Thread thread = baseThread("<#E::table::service.sales.orders>");
+    FormattedMessage message = baseMessage("<#E::table::service.sales.orders>");
     DefaultFieldFormatter formatter =
         new DefaultFieldFormatter(
             new TestMessageDecorator(),
-            thread,
+            message,
             new FieldChange().withName("description").withOldValue("old").withNewValue("new"));
 
     assertEquals("Added <b>description</b>: <ins>new</ins>", formatter.formatAddedField());
@@ -84,16 +84,20 @@ class DefaultFieldFormatterTest {
 
     FeedInfo feedInfo = new FeedInfo().withHeaderMessage("header");
     DefaultFieldFormatter.populateThreadFeedInfo(
-        thread, "message", Thread.CardStyle.DESCRIPTION, Thread.FieldOperation.UPDATED, feedInfo);
+        message,
+        "message",
+        FormattedMessage.CardStyle.DESCRIPTION,
+        FormattedMessage.FieldOperation.UPDATED,
+        feedInfo);
 
-    assertEquals("message", thread.getMessage());
-    assertEquals(Thread.CardStyle.DESCRIPTION, thread.getCardStyle());
-    assertEquals(Thread.FieldOperation.UPDATED, thread.getFieldOperation());
-    assertSame(feedInfo, thread.getFeedInfo());
+    assertEquals("message", message.getMessage());
+    assertEquals(FormattedMessage.CardStyle.DESCRIPTION, message.getCardStyle());
+    assertEquals(FormattedMessage.FieldOperation.UPDATED, message.getFieldOperation());
+    assertSame(feedInfo, message.getFeedInfo());
   }
 
-  private static Thread baseThread(String about) {
-    return new Thread()
+  private static FormattedMessage baseMessage(String about) {
+    return new FormattedMessage()
         .withId(UUID.randomUUID())
         .withAbout(about)
         .withUpdatedBy("alice")

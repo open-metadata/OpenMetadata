@@ -46,6 +46,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.awaitility.core.ConditionTimeoutException;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -76,14 +77,19 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
- * Integration test for Context Center Drive file upload with MinIO-backed S3 storage using
+ * Integration test for Context Center Drive file upload with S3-backed object storage using
  * fixture files from src/test/resources.
  */
 @ExtendWith(TestNamespaceExtension.class)
 class DriveFileUploadIT {
 
-  private static final String MINIO_BUCKET = "test-bucket";
+  private static final String S3_BUCKET = "test-bucket";
   private static final String TIKA_TESSERACT_PATH_PROPERTY = "collate.tika.tesseract.path";
+  private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
+  private static final int SEARCH_RESULT_SIZE = 100;
+  private static final int DIAGNOSTIC_BODY_LIMIT = 4000;
   private static String serverBaseUrl;
   private static Client multipartClient;
   private static WebTarget uploadTarget;
@@ -189,7 +195,7 @@ class DriveFileUploadIT {
 
   private String resolveStoredObjectKey(S3Client s3Client, String assetId) {
     return s3Client
-        .listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(MINIO_BUCKET).build())
+        .listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(S3_BUCKET).build())
         .contents()
         .stream()
         .map(S3Object::key)
@@ -198,25 +204,22 @@ class DriveFileUploadIT {
         .orElse(null);
   }
 
-  private S3Client buildMinioClient() {
+  private S3Client buildS3Client() {
     return S3Client.builder()
         .region(Region.US_EAST_1)
         .credentialsProvider(
-            StaticCredentialsProvider.create(AwsBasicCredentials.create("minio", "minio123")))
+            StaticCredentialsProvider.create(AwsBasicCredentials.create("accesskey", "secretkey")))
         .endpointOverride(
             URI.create(
                 System.getProperty(
-                    "IT_MINIO_ENDPOINT",
-                    System.getenv().getOrDefault("IT_MINIO_ENDPOINT", "http://localhost:9000"))))
+                    "IT_S3_ENDPOINT",
+                    System.getenv().getOrDefault("IT_S3_ENDPOINT", "http://localhost:9000"))))
         .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
         .build();
   }
 
-  private void assertStoredInMinIO(String assetId, byte[] expectedBytes) {
-    try (S3Client s3Client = buildMinioClient()) {
-      // atMost must stay above the global Awaitility pollInterval that
-      // K8sOMJobOperatorIT raises to 5s; otherwise Awaitility rejects with
-      // "Timeout must be greater than the poll delay".
+  private void assertStoredInS3(String assetId, byte[] expectedBytes) {
+    try (S3Client s3Client = buildS3Client()) {
       await()
           .pollDelay(Duration.ZERO)
           .pollInterval(Duration.ofMillis(200))
@@ -227,16 +230,17 @@ class DriveFileUploadIT {
                 assertNotNull(objectKey, "Expected uploaded object for asset " + assetId);
                 try (ResponseInputStream<GetObjectResponse> objectStream =
                     s3Client.getObject(
-                        GetObjectRequest.builder().bucket(MINIO_BUCKET).key(objectKey).build())) {
+                        GetObjectRequest.builder().bucket(S3_BUCKET).key(objectKey).build())) {
                   assertArrayEquals(expectedBytes, objectStream.readAllBytes());
                 }
               });
     }
   }
 
-  private void assertRemovedFromMinIO(String assetId) {
-    try (S3Client s3Client = buildMinioClient()) {
+  private void assertRemovedFromS3(String assetId) {
+    try (S3Client s3Client = buildS3Client()) {
       await()
+          .pollInterval(POLL_INTERVAL)
           .atMost(Duration.ofSeconds(10))
           .untilAsserted(() -> assertTrue(resolveStoredObjectKey(s3Client, assetId) == null));
     }
@@ -262,20 +266,69 @@ class DriveFileUploadIT {
   private void assertSearchContainsFile(String query, UUID fileId) {
     RestClient rest = RestClient.admin();
     String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+    String searchPath =
+        "v1/search/query?q="
+            + encodedQuery
+            + "&index=context_file_search_index&from=0&size="
+            + SEARCH_RESULT_SIZE;
 
+    try {
+      await()
+          .pollInterval(POLL_INTERVAL)
+          .atMost(SEARCH_VISIBLE_TIMEOUT)
+          .untilAsserted(
+              () -> {
+                try (Response searchResponse = rest.rawGet(searchPath)) {
+                  String responseBody = searchResponse.readEntity(String.class);
+                  assertEquals(200, searchResponse.getStatus(), responseBody);
+                  assertTrue(responseBody.contains(fileId.toString()));
+                }
+              });
+    } catch (ConditionTimeoutException e) {
+      throw new AssertionError(searchFailureDiagnostics(rest, searchPath, query, fileId), e);
+    }
+  }
+
+  private String searchFailureDiagnostics(
+      RestClient rest, String searchPath, String query, UUID fileId) {
+    String searchResponse = readDiagnosticResponse(rest, searchPath);
+    String indexedDocument =
+        readDiagnosticResponse(
+            rest, "v1/search/get/context_file_search_index/doc/" + fileId.toString());
+    return "Context file "
+        + fileId
+        + " was not searchable for query "
+        + query
+        + ". Search response: "
+        + searchResponse
+        + ". Indexed document: "
+        + indexedDocument;
+  }
+
+  private String readDiagnosticResponse(RestClient rest, String path) {
+    try (Response response = rest.rawGet(path)) {
+      String body = response.readEntity(String.class);
+      String truncatedBody =
+          body.length() <= DIAGNOSTIC_BODY_LIMIT
+              ? body
+              : body.substring(0, DIAGNOSTIC_BODY_LIMIT) + "...[truncated]";
+      return "status=" + response.getStatus() + ", body=" + truncatedBody;
+    } catch (Exception e) {
+      return "request failed: " + e.getMessage();
+    }
+  }
+
+  private ContextFile awaitProcessed(UUID fileId, String expectedText) {
     await()
-        .atMost(Duration.ofSeconds(20))
+        .pollInterval(POLL_INTERVAL)
+        .atMost(EXTRACTION_TIMEOUT)
         .untilAsserted(
             () -> {
-              try (Response searchResponse =
-                  rest.rawGet(
-                      "v1/search/query?q="
-                          + encodedQuery
-                          + "&index=context_file_search_index&from=0&size=10")) {
-                assertEquals(200, searchResponse.getStatus());
-                assertTrue(searchResponse.readEntity(String.class).contains(fileId.toString()));
-              }
+              ContextFile refreshed = fetchFile(fileId);
+              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
+              assertTrue(refreshed.getExtractedText().contains(expectedText));
             });
+    return fetchFile(fileId);
   }
 
   private byte[] createPdf(String text) throws IOException {
@@ -360,32 +413,25 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadPdfToMinIO(TestNamespace ns) throws Exception {
+  void testUploadPdfToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
     ContextFile file;
     try (Response response = uploadUniqueFixture(ns, "/drive/sample-report.pdf", "Annual Report")) {
-      file = readCreatedContextFile(response, "Upload to MinIO failed");
+      file = readCreatedContextFile(response, "Upload to S3 failed");
       assertNotNull(file.getId());
       assertNotNull(file.getAssetId(), "File should have assetId from S3 upload");
       assertNotNull(file.getHeadContentId(), "File should point at a current content snapshot");
       assertEquals("Annual Report", file.getDisplayName());
       assertEquals(content.length, file.getFileSize().intValue());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains("Context Center PDF Fixture"));
-              assertEquals(1, refreshed.getPageCount());
-            });
+    ContextFile refreshed = awaitProcessed(file.getId(), "Context Center PDF Fixture");
+    assertEquals(1, refreshed.getPageCount());
   }
 
   @Test
-  void testUploadSpreadsheetToMinIO(TestNamespace ns) throws Exception {
+  void testUploadSpreadsheetToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-pricing.xlsx");
     Response response = uploadUniqueFixture(ns, "/drive/sample-pricing.xlsx", "Pricing Sheet");
 
@@ -397,7 +443,7 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadCsvToMinIO(TestNamespace ns) throws Exception {
+  void testUploadCsvToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-data.csv");
     String uploadedFileName = uniqueUploadedFileName(ns, "/drive/sample-data.csv");
     Response response = uploadFixture("/drive/sample-data.csv", uploadedFileName, null, null);
@@ -432,20 +478,18 @@ class DriveFileUploadIT {
             .getBytes(StandardCharsets.UTF_8);
 
     ContextFile file;
-    try (Response response = uploadFile("search-fixture.txt", content, "Search Fixture", null)) {
+    try (Response response =
+        uploadFile(
+            uniqueUploadedFileName(ns, "search-fixture.txt"),
+            content,
+            ns.shortPrefix("Search Fixture"),
+            null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -457,20 +501,17 @@ class DriveFileUploadIT {
 
     ContextFile file;
     try (Response response =
-        uploadFile("search-fixture.pdf", content, ns.shortPrefix("PDF Search"), null)) {
+        uploadFile(
+            uniqueUploadedFileName(ns, "search-fixture.pdf"),
+            content,
+            ns.shortPrefix("PDF Search"),
+            null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -482,20 +523,17 @@ class DriveFileUploadIT {
 
     ContextFile file;
     try (Response response =
-        uploadFile("search-fixture.xlsx", content, ns.shortPrefix("Spreadsheet Search"), null)) {
+        uploadFile(
+            uniqueUploadedFileName(ns, "search-fixture.xlsx"),
+            content,
+            ns.shortPrefix("Spreadsheet Search"),
+            null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -514,20 +552,17 @@ class DriveFileUploadIT {
 
       ContextFile file;
       try (Response response =
-          uploadFile("search-fixture.png", content, ns.shortPrefix("Image Search"), null)) {
+          uploadFile(
+              uniqueUploadedFileName(ns, "search-fixture.png"),
+              content,
+              ns.shortPrefix("Image Search"),
+              null)) {
         String body = response.readEntity(String.class);
         assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
         file = JsonUtils.readValue(body, ContextFile.class);
       }
 
-      await()
-          .atMost(Duration.ofSeconds(20))
-          .untilAsserted(
-              () -> {
-                ContextFile refreshed = fetchFile(file.getId());
-                assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-                assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-              });
+      awaitProcessed(file.getId(), uniqueToken);
 
       assertSearchContainsFile(uniqueToken, file.getId());
     } finally {
@@ -581,7 +616,7 @@ class DriveFileUploadIT {
       assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
       ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
       assertEquals("First Title", file.getDisplayName());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
 
       assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
       assertTrue(body2.contains("duplicate.pdf"));
@@ -610,7 +645,7 @@ class DriveFileUploadIT {
       ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
       assertEquals("Nested First", file.getDisplayName());
       assertEquals(folder.getId(), file.getFolder().getId());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
 
       assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
       assertTrue(body2.contains("nestedduplicate.txt"));
@@ -632,7 +667,7 @@ class DriveFileUploadIT {
       assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
       ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
       assertEquals(expectedName, file.getName());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
 
       assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
       assertTrue(body2.contains(expectedName));
@@ -669,8 +704,8 @@ class DriveFileUploadIT {
       assertEquals(secondFolder.getId(), secondFile.getFolder().getId());
       assertEquals("First Folder Title", firstFile.getDisplayName());
       assertEquals("Second Folder Different Title", secondFile.getDisplayName());
-      assertStoredInMinIO(firstFile.getAssetId(), content);
-      assertStoredInMinIO(secondFile.getAssetId(), content);
+      assertStoredInS3(firstFile.getAssetId(), content);
+      assertStoredInS3(secondFile.getAssetId(), content);
     }
   }
 
@@ -921,19 +956,19 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testHardDeleteRemovesObjectFromMinIO(TestNamespace ns) throws Exception {
+  void testHardDeleteRemovesObjectFromS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-notes.txt");
     RestClient rest = RestClient.admin();
 
     Response uploadResponse = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Hard Delete");
     ContextFile file = readCreatedContextFile(uploadResponse, "Upload failed");
-    assertStoredInMinIO(file.getAssetId(), content);
+    assertStoredInS3(file.getAssetId(), content);
 
     rest.hardDelete("v1/contextCenter/drive/files", file.getId());
 
     // Hard delete is asynchronous: the server returns 200 immediately, then a background
     // worker soft-deletes (if needed), removes search/relationship state, drops the row,
-    // and unlinks the object from MinIO. Under CI load this chain can take well over 10s,
+    // and unlinks the object from S3. Under CI load this chain can take well over 10s,
     // so poll with a generous ceiling rather than gambling on a tight window.
     await()
         .pollInterval(Duration.ofMillis(200))
@@ -945,6 +980,6 @@ class DriveFileUploadIT {
                 assertEquals(404, deletedResponse.getStatus());
               }
             });
-    assertRemovedFromMinIO(file.getAssetId());
+    assertRemovedFromS3(file.getAssetId());
   }
 }

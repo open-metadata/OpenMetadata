@@ -19,7 +19,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,8 +33,24 @@ public class EntityCompletionTracker {
   private final Map<String, AtomicInteger> completedPartitions = new ConcurrentHashMap<>();
   private final Map<String, AtomicInteger> failedPartitions = new ConcurrentHashMap<>();
   private final Set<String> promotedEntities = ConcurrentHashMap.newKeySet();
-  private volatile BiConsumer<String, Boolean> onEntityComplete;
+  private volatile EntityPromotionCallback onEntityComplete;
   private final UUID jobId;
+
+  /**
+   * Callback invoked to promote an entity's staged index once all its partitions complete.
+   * Returns whether promotion actually succeeded so the tracker can keep failed promotions
+   * eligible for retry instead of silently marking them done.
+   */
+  @FunctionalInterface
+  public interface EntityPromotionCallback {
+    /**
+     * @param entityType the entity whose staged index should be promoted
+     * @param reindexSuccess whether the entity's partitions all succeeded (vs. some failed)
+     * @return {@code true} if the entity reached a correct terminal serving state; {@code false}
+     *     if promotion failed and the entity must remain eligible for retry
+     */
+    boolean promote(String entityType, boolean reindexSuccess);
+  }
 
   public EntityCompletionTracker(UUID jobId) {
     this.jobId = jobId;
@@ -61,9 +76,10 @@ public class EntityCompletionTracker {
   /**
    * Set the callback to invoke when all partitions for an entity complete.
    *
-   * @param callback BiConsumer receiving (entityType, allPartitionsSucceeded)
+   * @param callback receives (entityType, allPartitionsSucceeded) and returns whether the staged
+   *     index was actually promoted
    */
-  public void setOnEntityComplete(BiConsumer<String, Boolean> callback) {
+  public void setOnEntityComplete(EntityPromotionCallback callback) {
     this.onEntityComplete = callback;
   }
 
@@ -194,30 +210,42 @@ public class EntityCompletionTracker {
   }
 
   private void promoteIfReady(String entityType, boolean hasFailed) {
-    if (promotedEntities.add(entityType)) {
-      boolean success = !hasFailed;
+    // promotedEntities.add doubles as the dedup guard: the winner attempts promotion while
+    // concurrent callers skip. On failure the winner rolls the mark back below so a later
+    // reconciliation / the reindex finalizer retries the entity.
+    if (!promotedEntities.add(entityType)) {
+      LOG.debug("Entity '{}' already promoted or in flight, skipping (job {})", entityType, jobId);
+      return;
+    }
 
-      LOG.debug(
-          "Entity '{}' all partitions complete (success={}, hasFailed={}, job {})",
-          entityType,
-          success,
-          hasFailed,
-          jobId);
+    boolean success = !hasFailed;
+    LOG.debug(
+        "Entity '{}' all partitions complete (success={}, hasFailed={}, job {})",
+        entityType,
+        success,
+        hasFailed,
+        jobId);
 
-      if (onEntityComplete != null) {
-        try {
-          onEntityComplete.accept(entityType, success);
-        } catch (Exception e) {
-          LOG.error(
-              "Error in entity completion callback for '{}' (job {}). "
-                  + "Entity is STILL in promotedEntities - will be SKIPPED by finalization!",
-              entityType,
-              jobId,
-              e);
-        }
+    boolean promoted = true;
+    if (onEntityComplete != null) {
+      try {
+        promoted = onEntityComplete.promote(entityType, success);
+      } catch (Exception e) {
+        promoted = false;
+        LOG.error("Error in entity completion callback for '{}' (job {})", entityType, jobId, e);
       }
-    } else {
-      LOG.debug("Entity '{}' already in promotedEntities, skipping (job {})", entityType, jobId);
+    }
+
+    if (!promoted) {
+      // The alias swap did not succeed. Roll back the optimistic mark so the final DB
+      // reconciliation and the reindex finalizer retry this entity, rather than silently leaving
+      // it served by the stale pre-reindex index (which surfaces as fielddata/mapping errors on
+      // upgraded clusters).
+      promotedEntities.remove(entityType);
+      LOG.warn(
+          "Promotion not confirmed for entity '{}' (job {}); left unpromoted for finalizer/next-run retry",
+          entityType,
+          jobId);
     }
   }
 

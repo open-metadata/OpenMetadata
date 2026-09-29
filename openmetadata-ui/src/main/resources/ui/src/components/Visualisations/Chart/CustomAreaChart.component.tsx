@@ -19,11 +19,42 @@ import {
   Tooltip,
   TooltipProps,
 } from 'recharts';
-import { BLUE_2, PRIMARY_COLOR } from '../../../constants/Color.constants';
-import { WHITE_COLOR } from '../../../constants/constants';
+import { DQ_CHART_BLUE_COLOR } from '../../../constants/Color.constants';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { CustomAreaChartProps } from './Chart.interface';
 import './chart.less';
+
+interface CustomTooltipProps extends TooltipProps<string, number | string> {
+  valueFormatter?: CustomAreaChartProps['valueFormatter'];
+}
+
+const CustomTooltip = ({
+  active,
+  payload = [],
+  valueFormatter,
+}: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    const payloadData = payload[0].payload;
+
+    return (
+      <Card className="custom-tooltip-area-chart">
+        <div className="flex-center gap-2">
+          <Typography.Text className="font-medium text-md">
+            {valueFormatter
+              ? valueFormatter(payloadData['count'])
+              : payloadData['count']}
+          </Typography.Text>
+          <Divider type="vertical" />
+          <Typography.Text className="text-xs">
+            {formatDate(payloadData.timestamp)}
+          </Typography.Text>
+        </div>
+      </Card>
+    );
+  }
+
+  return null;
+};
 
 const CustomAreaChart = ({
   data,
@@ -32,47 +63,20 @@ const CustomAreaChart = ({
   colorScheme,
   valueFormatter,
 }: CustomAreaChartProps) => {
-  const CustomTooltip = (props: TooltipProps<string, number | string>) => {
-    const { active, payload = [] } = props;
-
-    if (active && payload && payload.length) {
-      const payloadData = payload[0].payload;
-
-      return (
-        <Card className="custom-tooltip-area-chart">
-          <div className="flex-center gap-2">
-            <Typography.Text className="font-medium text-md">
-              {valueFormatter
-                ? valueFormatter(payloadData['count'])
-                : payloadData['count']}
-            </Typography.Text>
-            <Divider type="vertical" />
-            <Typography.Text className="text-xs">
-              {formatDate(payloadData.timestamp)}
-            </Typography.Text>
-          </div>
-        </Card>
-      );
-    }
-
-    return null;
-  };
   const gradientId = `${name}-splitColor`;
 
   const gradientArea = useMemo(() => {
+    const startColor =
+      colorScheme?.strokeColor ??
+      colorScheme?.gradientStartColor ??
+      DQ_CHART_BLUE_COLOR;
+    const endColor = colorScheme?.gradientEndColor ?? startColor;
+
     return (
       <defs>
         <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop
-            offset="0%"
-            stopColor={colorScheme?.gradientStartColor ?? BLUE_2}
-            stopOpacity="0.7"
-          />
-          <stop
-            offset="100%"
-            stopColor={colorScheme?.gradientEndColor ?? WHITE_COLOR}
-            stopOpacity="0.2"
-          />
+          <stop offset="0%" stopColor={startColor} stopOpacity="0.18" />
+          <stop offset="100%" stopColor={endColor} stopOpacity="0" />
         </linearGradient>
       </defs>
     );
@@ -91,7 +95,7 @@ const CustomAreaChart = ({
           left: 0,
           bottom: 5,
         }}>
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip valueFormatter={valueFormatter} />} />
 
         {gradientArea}
         <Area
@@ -100,7 +104,7 @@ const CustomAreaChart = ({
           dot={false}
           fill={`url(#${gradientId})`}
           isAnimationActive={false}
-          stroke={colorScheme?.strokeColor ?? PRIMARY_COLOR}
+          stroke={colorScheme?.strokeColor ?? DQ_CHART_BLUE_COLOR}
           strokeWidth={2}
           type="monotone"
         />

@@ -1,0 +1,97 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "LLMModel": {
+        "@id": "om:LLMModel",
+        "@type": "om:Entity"
+      },
+      "AIApplication": {
+        "@id": "om:AIApplication",
+        "@type": "om:Entity"
+      },
+      "McpServer": {
+        "@id": "om:McpServer",
+        "@type": "om:Entity"
+      },
+      "AgentExecution": {
+        "@id": "om:AgentExecution",
+        "@type": ["om:Entity", "prov:Activity"]
+      },
+      "McpExecution": {
+        "@id": "om:McpExecution",
+        "@type": ["om:Entity", "prov:Activity"]
+      },
+      "PromptTemplate": {
+        "@id": "om:PromptTemplate",
+        "@type": "om:Entity"
+      },
+      "modelType": {
+        "@id": "om:modelType",
+        "@type": "xsd:string"
+      },
+      "modelProvider": {
+        "@id": "om:modelProvider",
+        "@type": "xsd:string"
+      },
+      "modelVersion": {
+        "@id": "om:modelVersion",
+        "@type": "xsd:string"
+      },
+      "applicationType": {
+        "@id": "om:applicationType",
+        "@type": "xsd:string"
+      },
+      "developmentStage": {
+        "@id": "om:developmentStage",
+        "@type": "xsd:string"
+      },
+      "trainingDatasets": {
+        "@id": "om:hasTrainingDataset",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "validationDatasets": {
+        "@id": "om:hasValidationDataset",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "models": {
+        "@id": "om:usesModel",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "mcpServers": {
+        "@id": "om:usesMcpServer",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "tools": {
+        "@id": "om:usesTool",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "promptTemplates": {
+        "@id": "om:hasPromptTemplate",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "application": {
+        "@id": "om:executedBy",
+        "@type": "@id"
+      },
+      "executionStatus": {
+        "@id": "om:executionStatus",
+        "@type": "xsd:string"
+      },
+      "startTime": {
+        "@id": "prov:startedAtTime",
+        "@type": "xsd:dateTime"
+      },
+      "endTime": {
+        "@id": "prov:endedAtTime",
+        "@type": "xsd:dateTime"
+      }
+    }
+  ]
+}

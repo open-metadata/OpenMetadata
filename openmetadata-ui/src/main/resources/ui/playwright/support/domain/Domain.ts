@@ -13,6 +13,12 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -60,17 +66,12 @@ export class Domain extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/domains', {
+    const data = await createOrFetch(apiContext, {
+      label: 'Domain.create',
+      createPath: '/api/v1/domains',
+      fqnSegments: [this.data.name],
       data: this.data,
     });
-
-    if (!response.ok()) {
-      throw new Error(
-        `Domain.create() failed with status ${response.status()}: ${await response.text()}`
-      );
-    }
-
-    const data = await response.json();
     this.responseData = data;
 
     return data;
@@ -81,7 +82,8 @@ export class Domain extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/domains/name/${encodeURIComponent(
         this.responseData?.fullyQualifiedName ?? this.data.name
       )}?recursive=true&hardDelete=true`
@@ -97,17 +99,15 @@ export class Domain extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/domains/${this.responseData?.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/domains/${this.responseData?.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'Domain.patch');
 
     return {
       entity: this.responseData,

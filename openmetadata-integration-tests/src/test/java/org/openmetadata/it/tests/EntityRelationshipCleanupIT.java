@@ -13,33 +13,42 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.util.EntityRelationshipCleanup;
+import org.openmetadata.service.util.ServiceHierarchyCleanup;
 
 /**
  * End-to-end test for the rewritten {@link EntityRelationshipCleanup} used by the Data Retention
@@ -86,9 +95,8 @@ public class EntityRelationshipCleanupIT {
   @Test
   void dryRun_reportsOrphansButDeletesNothing(TestNamespace ns) {
     String marker = "ITDRYRUN_" + ns.uniqueShortId();
+    List<String> seededFromIds = seedOrphans(marker, SEEDED_ORPHANS);
     try {
-      seedOrphans(marker, SEEDED_ORPHANS);
-
       EntityRelationshipCleanup.EntityCleanupResult result =
           new EntityRelationshipCleanup(Entity.getCollectionDAO(), true).performCleanup(25);
 
@@ -98,7 +106,7 @@ public class EntityRelationshipCleanupIT {
       assertEquals(0, result.getRelationshipsDeleted(), "dry run must not delete anything");
       assertEquals(SEEDED_ORPHANS, orphanCount(marker), "dry run must leave seeded orphans intact");
     } finally {
-      deleteOrphans(marker);
+      deleteByFromIds(seededFromIds);
     }
   }
 
@@ -136,6 +144,41 @@ public class EntityRelationshipCleanupIT {
     }
   }
 
+  /**
+   * A chart is contained by its dashboard service; a dashboard only references it through HAS. The
+   * hierarchy check used to look for a dashboard parent, so the weekly Data Retention run
+   * hard-deleted every chart that no dashboard used. Reads the detection query the delete shares
+   * instead of deleting, so no other suite's entities are touched.
+   */
+  @Test
+  void hierarchyCleanup_keepsChartThatNoDashboardUses(TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+    Chart chart =
+        SdkClients.adminClient()
+            .charts()
+            .create(
+                new CreateChart()
+                    .withName(ns.prefix("standaloneChart"))
+                    .withService(service.getFullyQualifiedName())
+                    .withChartType(ChartType.Bar));
+
+    ServiceHierarchyCleanup cleanup = new ServiceHierarchyCleanup(Entity.getCollectionDAO(), true);
+    List<ServiceHierarchyCleanup.ServiceHierarchy> chartHierarchies =
+        ServiceHierarchyCleanup.getServiceHierarchies().values().stream()
+            .flatMap(List::stream)
+            .filter(hierarchy -> Entity.CHART.equals(hierarchy.getChildEntityType()))
+            .toList();
+    assertFalse(chartHierarchies.isEmpty(), "the hierarchy cleanup must still check charts");
+
+    List<String> brokenCharts =
+        chartHierarchies.stream()
+            .flatMap(hierarchy -> cleanup.getBrokenEntitiesForHierarchy(hierarchy).stream())
+            .toList();
+    assertTrue(
+        brokenCharts.stream().noneMatch(fqn -> fqn.contains(chart.getFullyQualifiedName())),
+        "a chart contained by its dashboard service must not be reported broken: " + brokenCharts);
+  }
+
   private Table createTable(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String id = ns.uniqueShortId();
@@ -163,16 +206,21 @@ public class EntityRelationshipCleanupIT {
                     List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
   }
 
-  private void seedOrphans(String marker, int count) {
+  /** Returns the {@code fromId} of every seeded row, so cleanup can delete them via from_index. */
+  private List<String> seedOrphans(String marker, int count) {
+    List<String> fromIds = new ArrayList<>();
     for (int i = 0; i < count; i++) {
+      String fromId = UUID.randomUUID().toString();
       insertOrphan(
-          UUID.randomUUID().toString(),
+          fromId,
           UUID.randomUUID().toString(),
           Entity.DATABASE_SCHEMA,
           Entity.TABLE,
           Relationship.CONTAINS.ordinal(),
           marker);
+      fromIds.add(fromId);
     }
+    return fromIds;
   }
 
   private void insertOrphan(
@@ -194,14 +242,21 @@ public class EntityRelationshipCleanupIT {
                     .execute());
   }
 
-  private void deleteOrphans(String marker) {
+  /**
+   * Deletes by {@code fromId} rather than by the marker in {@code relationType}. No index leads with
+   * relationType, so a DELETE filtered on it full-scans entity_relationship and, under InnoDB
+   * REPEATABLE READ, next-key-locks every row it touches - deadlocking against the other suites
+   * concurrently writing relationships. from_index keeps the lock footprint to the seeded rows.
+   */
+  private void deleteByFromIds(List<String> fromIds) {
     TestSuiteBootstrap.getJdbi()
         .useHandle(
-            handle ->
-                handle
-                    .createUpdate("DELETE FROM entity_relationship WHERE relationType = :m")
-                    .bind("m", marker)
-                    .execute());
+            handle -> {
+              PreparedBatch batch =
+                  handle.prepareBatch("DELETE FROM entity_relationship WHERE fromId = :f");
+              fromIds.forEach(fromId -> batch.bind("f", fromId).add());
+              batch.execute();
+            });
   }
 
   private void deleteByFromId(String fromId) {

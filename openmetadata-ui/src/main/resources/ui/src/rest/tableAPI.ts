@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
@@ -29,8 +28,9 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export type TableListParams = {
   fields?: string;
@@ -287,11 +287,13 @@ export type GetTableColumnsParams = {
 
 export const getTableColumnsById = async (
   id: string,
-  params?: GetTableColumnsParams
+  params?: GetTableColumnsParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<PagingResponse<Table['columns']>>(
     `${BASE_URL}/${id}/columns`,
     {
+      signal,
       params: { ...params, include: params?.include ?? Include.All },
     }
   );
@@ -315,6 +317,8 @@ export const getTableColumnsByFQN = async (
 
 export interface SearchTableColumnsParams extends GetTableColumnsParams {
   q?: string; // Search query
+  tags?: string; // Comma-separated classification tag FQNs to filter columns by
+  glossaryTerms?: string; // Comma-separated glossary term FQNs to filter columns by
 }
 
 export const searchTableColumnsById = async (

@@ -35,6 +35,7 @@ export const Default: Story = {
 };
 
 export const Colors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Button color="primary">Primary</Button>
@@ -50,6 +51,9 @@ export const Colors: StoryObj = {
 export const Sizes: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <Button color="primary" size="xxs">
+        XXSmall
+      </Button>
       <Button color="primary" size="xs">
         XSmall
       </Button>
@@ -70,6 +74,7 @@ export const Sizes: StoryObj = {
 };
 
 export const WithLeadingIcon: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Button color="primary" iconLeading={Plus} size="xs">
@@ -105,6 +110,7 @@ export const WithTrailingIcon: StoryObj = {
 };
 
 export const IconOnly: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <Button color="primary" iconLeading={Plus} size="xs" />
@@ -148,6 +154,7 @@ export const Disabled: StoryObj = {
 };
 
 export const LinkColors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 16 }}>
       <Button color="link-gray">Link Gray</Button>
@@ -207,6 +214,53 @@ export const AsLink: StoryObj = {
         <Button isDisabled color="primary" href="https://open-metadata.org">
           Disabled Link
         </Button>
+      </div>
+    </div>
+  ),
+};
+
+export const AllVariants: Story = {
+  parameters: { theme: 'both' },
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <h3 style={{ marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+          Colors
+        </h3>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button color="primary">Primary</Button>
+          <Button color="secondary">Secondary</Button>
+          <Button color="tertiary">Tertiary</Button>
+        </div>
+      </div>
+      <div>
+        <h3 style={{ marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+          Sizes
+        </h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button color="primary" size="sm">
+            Small
+          </Button>
+          <Button color="primary" size="md">
+            Medium
+          </Button>
+          <Button color="primary" size="lg">
+            Large
+          </Button>
+        </div>
+      </div>
+      <div>
+        <h3 style={{ marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+          States
+        </h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button isLoading color="primary">
+            Loading
+          </Button>
+          <Button isDisabled color="primary">
+            Disabled
+          </Button>
+        </div>
       </div>
     </div>
   ),

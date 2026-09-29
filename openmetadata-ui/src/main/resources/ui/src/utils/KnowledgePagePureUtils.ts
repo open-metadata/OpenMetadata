@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { DataNode } from 'antd/lib/tree';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, unionBy } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   PLACEHOLDER_ROUTE_FQN,
@@ -220,10 +220,11 @@ export const updateTreeData = (
   ): boolean => {
     for (const page of pages) {
       if (page.fullyQualifiedName === key) {
-        if (!page.children) {
-          page.children = [];
-        }
-        page.children.push(...children);
+        page.children = unionBy(
+          page.children ?? [],
+          children,
+          'fullyQualifiedName'
+        );
 
         return true;
       }
@@ -262,8 +263,22 @@ export const getUpdatePageHierarchy = (
     nodes.forEach((node) => {
       if (node.fullyQualifiedName === activePage?.fullyQualifiedName) {
         if (updateChildren) {
-          const children = (activePage?.children ?? []) as PageHierarchy[];
-          node.children = children;
+          const freshChildren = (activePage?.children ?? []) as PageHierarchy[];
+          const previousChildrenByFqn = new Map(
+            (node.children ?? []).map((child) => [
+              child.fullyQualifiedName,
+              child,
+            ])
+          );
+          node.children = freshChildren.map((freshChild) => {
+            const previousChild = previousChildrenByFqn.get(
+              freshChild.fullyQualifiedName
+            );
+
+            return isEmpty(freshChild.children) && previousChild?.children
+              ? { ...freshChild, children: previousChild.children }
+              : freshChild;
+          });
         } else {
           node.displayName = activePage?.displayName;
         }
@@ -278,6 +293,20 @@ export const getUpdatePageHierarchy = (
 
   return newPages;
 };
+
+export const remapSubtreeFqn = (
+  nodes: PageHierarchy[],
+  fromPrefix: string,
+  toPrefix: string
+): PageHierarchy[] =>
+  nodes.map((node) => ({
+    ...node,
+    fullyQualifiedName:
+      toPrefix + node.fullyQualifiedName.slice(fromPrefix.length),
+    children: node.children
+      ? remapSubtreeFqn(node.children, fromPrefix, toPrefix)
+      : node.children,
+  }));
 
 export const getUpdatePageHierarchyForDelete = (
   fullyQualifiedName: string,

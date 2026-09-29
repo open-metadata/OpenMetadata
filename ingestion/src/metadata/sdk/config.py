@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
@@ -18,19 +17,19 @@ class OpenMetadataConfig:
     """Configuration for OpenMetadata SDK."""
 
     server_url: str
-    jwt_token: Optional[str]  # noqa: UP045
-    api_key: Optional[str]  # noqa: UP045
+    jwt_token: str | None
+    api_key: str | None
     verify_ssl: bool
-    ca_bundle: Optional[str]  # noqa: UP045
+    ca_bundle: str | None
     client_timeout: int
 
     def __init__(
         self,
         server_url: str,
-        jwt_token: Optional[str] = None,  # noqa: UP045
-        api_key: Optional[str] = None,  # noqa: UP045
-        verify_ssl: bool = False,
-        ca_bundle: Optional[str] = None,  # noqa: UP045
+        jwt_token: str | None = None,
+        api_key: str | None = None,
+        verify_ssl: bool = True,
+        ca_bundle: str | None = None,
         client_timeout: int = 30,
     ):
         self.server_url = server_url.rstrip("/")
@@ -52,7 +51,7 @@ class OpenMetadataConfig:
         Reads from:
         - OPENMETADATA_HOST or OPENMETADATA_SERVER_URL: Server URL
         - OPENMETADATA_JWT_TOKEN or OPENMETADATA_API_KEY: Authentication token
-        - OPENMETADATA_VERIFY_SSL: SSL verification (default: false)
+        - OPENMETADATA_VERIFY_SSL: SSL verification (default: true)
         - OPENMETADATA_CA_BUNDLE: CA bundle path
         - OPENMETADATA_CLIENT_TIMEOUT: Client timeout in seconds (default: 30)
         """
@@ -64,7 +63,7 @@ class OpenMetadataConfig:
             )
 
         jwt_token = os.environ.get("OPENMETADATA_JWT_TOKEN") or os.environ.get("OPENMETADATA_API_KEY")
-        verify_ssl = os.environ.get("OPENMETADATA_VERIFY_SSL", "false").lower() == "true"
+        verify_ssl = os.environ.get("OPENMETADATA_VERIFY_SSL", "true").lower() != "false"
         ca_bundle = os.environ.get("OPENMETADATA_CA_BUNDLE")
         client_timeout = int(os.environ.get("OPENMETADATA_CLIENT_TIMEOUT", "30"))
 
@@ -102,11 +101,11 @@ class OpenMetadataConfigBuilder:
     """Builder for :class:`OpenMetadataConfig`."""
 
     def __init__(self) -> None:
-        self._server_url: Optional[str] = None  # noqa: UP045
-        self._jwt_token: Optional[str] = None  # noqa: UP045
-        self._api_key: Optional[str] = None  # noqa: UP045
-        self._verify_ssl: bool = False
-        self._ca_bundle: Optional[str] = None  # noqa: UP045
+        self._server_url: str | None = None
+        self._jwt_token: str | None = None
+        self._api_key: str | None = None
+        self._verify_ssl: bool = True
+        self._ca_bundle: str | None = None
         self._client_timeout: int = 30
 
     def server_url(self, url: str) -> "OpenMetadataConfigBuilder":  # noqa: UP037

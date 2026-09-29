@@ -14,12 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CHART;
 import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,20 +30,14 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -82,48 +73,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setFullyQualifiedName(
         FullyQualifiedName.add(
             dashboard.getService().getFullyQualifiedName(), dashboard.getName()));
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("charts")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (entityLink.getArrayFieldValue() != null) {
-        return new ChartDescriptionAndTagTaskWorkflow(threadContext);
-      }
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class ChartDescriptionAndTagTaskWorkflow extends DescriptionTaskWorkflow {
-    ChartDescriptionAndTagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      EntityLink entityLink = threadContext.getAbout();
-      Dashboard dashboard =
-          Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
-      String chartName = threadContext.getAbout().getArrayFieldName();
-      EntityReference chartReference =
-          dashboard.getCharts().stream()
-              .filter(c -> c.getName().equals(chartName))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("chart", chartName)));
-      Chart chart = Entity.getEntity(chartReference, "", ALL);
-      if (entityLink.getArrayFieldValue().equals(FIELD_DESCRIPTION)) {
-        threadContext.setAbout(
-            new EntityLink(
-                Entity.CHART, chart.getFullyQualifiedName(), FIELD_DESCRIPTION, null, null));
-      } else if (entityLink.getArrayFieldValue().equals(FIELD_TAGS)) {
-        threadContext.setAbout(
-            new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), FIELD_TAGS, null, null));
-      }
-      threadContext.setAboutEntity(chart);
-    }
   }
 
   @Override

@@ -90,26 +90,36 @@ jest.mock('antd', () => {
 
   return {
     ...actual,
-    Menu: jest.fn().mockImplementation(({ items, onClick, selectedKeys }) => (
-      <ul
-        className="ant-menu ant-menu-root ant-menu-vertical ant-menu-light vertical-nav-menu"
-        role="menu">
-        {items.map(
-          (item: { key: string; icon: React.ReactNode; label: string }) => (
-            <li
-              className={`ant-menu-item ${
-                selectedKeys.includes(item.key) ? 'ant-menu-item-selected' : ''
-              }`}
-              key={item.key}
-              role="menuitem"
-              onClick={() => onClick({ key: item.key })}>
-              <span className="ant-menu-item-icon">{item.icon}</span>
-              <span className="ant-menu-title-content">{item.label}</span>
-            </li>
-          )
-        )}
-      </ul>
-    )),
+    Menu: jest.fn().mockImplementation(({ items, onClick, selectedKeys }) => {
+      // Mirrors antd's real ul/li menu DOM; the interactive menu roles on these
+      // list elements are inherent to that markup (test relies on <li> + role).
+      /* eslint-disable jsx-a11y/no-noninteractive-element-to-interactive-role */
+      return (
+        <ul
+          className="ant-menu ant-menu-root ant-menu-vertical ant-menu-light vertical-nav-menu"
+          role="menu">
+          {items.map(
+            (item: { key: string; icon: React.ReactNode; label: string }) => (
+              <li
+                className={`ant-menu-item ${
+                  selectedKeys.includes(item.key)
+                    ? 'ant-menu-item-selected'
+                    : ''
+                }`}
+                key={item.key}
+                role="menuitem"
+                tabIndex={0}
+                onClick={() => onClick({ key: item.key })}
+                onKeyDown={() => onClick({ key: item.key })}>
+                <span className="ant-menu-item-icon">{item.icon}</span>
+                <span className="ant-menu-title-content">{item.label}</span>
+              </li>
+            )
+          )}
+        </ul>
+      );
+      /* eslint-enable jsx-a11y/no-noninteractive-element-to-interactive-role */
+    }),
     Typography: actual.Typography
       ? {
           ...actual.Typography,

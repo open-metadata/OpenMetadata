@@ -22,7 +22,6 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.formatter.field.TestCaseResultFormatter.TEST_RESULT_FIELD;
 
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
@@ -41,15 +40,12 @@ import org.openmetadata.service.formatter.field.FollowersFormatter;
 import org.openmetadata.service.formatter.field.OwnerFormatter;
 import org.openmetadata.service.formatter.field.TagFormatter;
 import org.openmetadata.service.formatter.field.TestCaseResultFormatter;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 public final class ParserFactory {
   private ParserFactory() {}
 
   public static EntityFormatter getEntityParser(String entityType) {
-    // Handle Thread entity separately
-    if (entityType.equals(Entity.THREAD)) {
-      throw new IllegalArgumentException("Thread entity cannot be handled by Entity Parser.");
-    }
     return switch (entityType) {
       case Entity.QUERY -> new QueryFormatter();
       case Entity.KPI -> new KpiFormatter();
@@ -61,7 +57,7 @@ public final class ParserFactory {
 
   public static DefaultFieldFormatter getFieldParserObject(
       MessageDecorator<?> decorator,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       String fieldChangeName) {
     return switch (fieldChangeName) {

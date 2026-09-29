@@ -34,7 +34,7 @@
   > div:last-child {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--om-space-12);
     grid-template-columns: none;
     flex-direction: row;
 
@@ -52,14 +52,14 @@
 
   .owner-team-name {
     font-size: var(--text-sm);
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
   }
 }
 
 .knowledge-center-filter-page {
-  margin: 0px auto;
+  margin: 0 auto;
   max-width: 850px;
-  padding: 12px 16px;
+  padding: var(--om-space-12) var(--om-space-16);
 
   .knowledge-card-title.ant-typography-ellipsis {
     max-width: 650px;

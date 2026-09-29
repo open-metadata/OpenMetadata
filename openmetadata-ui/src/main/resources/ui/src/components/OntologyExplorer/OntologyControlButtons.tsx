@@ -50,7 +50,7 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
           />
         </Tooltip>
       </TooltipTrigger>
-      <div className="tw:h-6 tw:w-px tw:bg-gray-200" />
+      <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
 
       <TooltipTrigger>
         <Tooltip placement="top" title={t('label.zoom-in')}>
@@ -63,7 +63,7 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
           />
         </Tooltip>
       </TooltipTrigger>
-      <div className="tw:h-6 tw:w-px tw:bg-gray-200" />
+      <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
       <TooltipTrigger>
         <Tooltip placement="top" title={t('label.zoom-out')}>
           <Button
@@ -75,7 +75,7 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
           />
         </Tooltip>
       </TooltipTrigger>
-      <div className="tw:h-6 tw:w-px tw:bg-gray-200" />
+      <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
 
       <TooltipTrigger>
         <Tooltip placement="top" title={t('label.refresh')}>

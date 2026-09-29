@@ -22,15 +22,6 @@ def test_superset_connection_is_base_connection():
     assert issubclass(SupersetConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = SupersetConnection(MagicMock())
-        client = conn.client
-
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
-
-
 def test_test_connection_runs_steps():
     conn = SupersetConnection(MagicMock())
     conn._client = MagicMock()

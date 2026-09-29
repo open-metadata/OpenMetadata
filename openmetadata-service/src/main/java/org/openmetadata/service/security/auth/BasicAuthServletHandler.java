@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
+import static org.openmetadata.service.security.SecurityUtil.writeFailureResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeMessageResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -110,7 +111,7 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
 
     } catch (Exception e) {
       LOG.error("Error handling login", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      writeFailureResponse(resp, e);
     }
   }
 
@@ -178,7 +179,7 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling refresh", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      writeFailureResponse(resp, e);
     }
   }
 

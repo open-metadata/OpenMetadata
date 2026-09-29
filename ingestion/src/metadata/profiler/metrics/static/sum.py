@@ -13,8 +13,9 @@
 SUM Metric definition
 """
 
+from collections.abc import Callable
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import column
 
@@ -80,20 +81,20 @@ class Sum(StaticMetric):
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[float], Optional[float]](  # noqa: UP045
+        return PandasComputation[float | None, float | None](
             create_accumulator=lambda: None,
             update_accumulator=lambda acc, df: Sum.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_sum: Optional[float], df: "pd.DataFrame", column) -> Optional[float]:  # noqa: UP045
+    def update_accumulator(current_sum: float | None, df: "pd.DataFrame", column) -> float | None:
         """Computes one DataFrame chunk and updates the running maximum
 
         Maintains a single maximum value (not a list). Compares chunk's max
         with current maximum and returns the larger value.
         """
-        import pandas as pd  # noqa: PLC0415
+        import pandas as pd
 
         chunk_sum = None
 
@@ -117,7 +118,7 @@ class Sum(StaticMetric):
             return current_sum + chunk_sum
         return None
 
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:  # noqa: UP045
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], T | None]:
         """nosql function"""
         if is_quantifiable(self.col.type):
             return partial(adaptor.sum, column=self.col)

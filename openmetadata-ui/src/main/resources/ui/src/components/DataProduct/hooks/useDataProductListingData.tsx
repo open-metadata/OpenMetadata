@@ -36,8 +36,8 @@ import {
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {
   const { dataProductBasePath } = useMarketplaceStore();
-  const filterKeys = useMemo(() => DATAPRODUCT_DEFAULT_QUICK_FILTERS, []);
-  const filterConfigs = useMemo(() => DATAPRODUCT_FILTERS, []);
+  const filterKeys = DATAPRODUCT_DEFAULT_QUICK_FILTERS;
+  const filterConfigs = DATAPRODUCT_FILTERS;
 
   const getDomains = useCallback(
     (dataProduct: DataProduct) => dataProduct.domains || [],

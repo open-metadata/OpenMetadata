@@ -52,6 +52,18 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
   }
 
   @Test
+  void test_hrefUsesOwnCollectionPath(TestNamespace ns) {
+    T service = createEntity(createMinimalRequest(ns));
+
+    assertNotNull(service.getHref(), "Service href must be set");
+    assertTrue(
+        service.getHref().getPath().endsWith(getResourcePath() + service.getId()),
+        String.format(
+            "%s href '%s' must live under '%s'",
+            getEntityType(), service.getHref(), getResourcePath()));
+  }
+
+  @Test
   void test_listWithDomainFilter(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String typePrefix = getEntityType().replace("Service", "").toLowerCase();
@@ -200,8 +212,12 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
         subtree != null, "service type provides no deletable subtree builder; skipping");
 
     for (SearchDoc sd : subtree.searchDocs()) {
+      // Secondary docs (e.g. column_search_index) are written on the async per-entity indexing lane
+      // and can sit briefly behind a concurrent full-reindex alias swap, so allow the same
+      // tolerance
+      // as the post-delete checks rather than a tighter 60s that flakes under full IT load.
       Awaitility.await("descendant indexed in search before delete: " + sd.index())
-          .atMost(Duration.ofSeconds(60))
+          .atMost(Duration.ofSeconds(120))
           .pollInterval(Duration.ofSeconds(1))
           .ignoreExceptions()
           .untilAsserted(

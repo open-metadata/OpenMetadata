@@ -96,6 +96,11 @@ export interface DataContract {
      */
     name: string;
     /**
+     * ODCS schema element attributes with no OpenMetadata equivalent, stored during import for
+     * round-trip compatibility with ODCS export.
+     */
+    odcsElementExtensions?: OdcsElementExtension[];
+    /**
      * ODCS quality rules stored during import for round-trip compatibility with ODCS export.
      */
     odcsQualityRules?: OdcsQualityRule[];
@@ -346,9 +351,57 @@ export enum ContractExecutionStatus {
 }
 
 /**
+ * ODCS attributes of a schema element that OpenMetadata does not model on its own Column
+ * type. Anchored by element name so they can be reattached to the right element on export.
+ * Unlike the other definitions here, which stay open so that vendor-specific keys in an
+ * uploaded ODCS document survive the round trip, this one is closed: it is never
+ * deserialised from a raw ODCS document, and the OpenMetadata envelopes that do carry it
+ * (createDataContract, dataContract) are themselves closed.
+ */
+export interface OdcsElementExtension {
+    /**
+     * External documentation links declared on the element.
+     */
+    authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
+    /**
+     * Name of the schema element these attributes belong to. Empty when the attributes belong
+     * to the contract itself.
+     */
+    element?: string;
+    /**
+     * Source objects the element is derived from.
+     */
+    transformSourceObjects?: string[];
+}
+
+/**
+ * External reference link.
+ */
+export interface OdcsAuthoritativeDefinition {
+    /**
+     * Name of the authoritative definition.
+     */
+    name?: string;
+    /**
+     * Type of the reference (e.g., documentation, specification).
+     */
+    type?: string;
+    /**
+     * URL to the authoritative definition.
+     */
+    url?: string;
+    [property: string]: any;
+}
+
+/**
  * Data quality rule definition.
  */
 export interface OdcsQualityRule {
+    /**
+     * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+     * `invalidValues` check.
+     */
+    arguments?: OdcsQualityRuleArguments;
     /**
      * External rule documentation.
      */
@@ -377,6 +430,12 @@ export interface OdcsQualityRule {
      * Vendor name (soda, greatExpectations, etc.).
      */
     engine?: string;
+    /**
+     * Stable identifier of the rule (ODCS 3.1.0). When the rule is turned into an OpenMetadata
+     * test case, the id becomes the test case name, so re-importing the same rule updates that
+     * test case instead of creating another one.
+     */
+    id?: string;
     /**
      * Vendor-specific configuration.
      */
@@ -461,21 +520,30 @@ export interface OdcsQualityRule {
 }
 
 /**
- * External reference link.
+ * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+ * `invalidValues` check.
+ *
+ * Arguments of an ODCS 3.1.0 library metric. Open, because each metric defines its own
+ * arguments.
  */
-export interface OdcsAuthoritativeDefinition {
+export interface OdcsQualityRuleArguments {
     /**
-     * Name of the authoritative definition.
+     * Values that count as missing on top of null (`missingValues` metric).
      */
-    name?: string;
+    missingValues?: string[];
     /**
-     * Type of the reference (e.g., documentation, specification).
+     * Regex a property must match (`invalidValues` metric).
      */
-    type?: string;
+    pattern?: string;
     /**
-     * URL to the authoritative definition.
+     * Properties a table-level check applies to, e.g. the columns of a composite
+     * `duplicateValues` check.
      */
-    url?: string;
+    properties?: string[];
+    /**
+     * Values a property may take (`invalidValues` metric).
+     */
+    validValues?: string[];
     [property: string]: any;
 }
 
@@ -760,9 +828,6 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.

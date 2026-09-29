@@ -128,4 +128,14 @@ public final class Directories {
           : client.directories().get(identifier, fields);
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().directories().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().directories().getContextByName(fqn);
+  }
 }

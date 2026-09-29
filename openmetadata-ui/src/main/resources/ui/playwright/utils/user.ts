@@ -23,11 +23,12 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -37,6 +38,7 @@ import {
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
+import { getCellByName } from './scopedLocators';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -69,6 +71,7 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
       origins: [],
     },
   });
+  await installServerLoadReducers(context);
   const page = await context.newPage();
   await user.login(page);
   const token = await getToken(page);
@@ -115,45 +118,31 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  await settingClick(page, GlobalSettingOptions.USERS);
-  await page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
+  // Deliberately not routed through the user-list search box. That list is
+  // Elasticsearch-backed and a user created seconds earlier may not be indexed
+  // yet; once the empty result renders nothing re-issues the query, so waiting
+  // on the row cannot recover. The profile page reads the user from the API by
+  // name, which is immediately consistent.
+  const encodedUserName = encodeURIComponent(userName);
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=*&from=0&size=*'
+    `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-  const loaderPromise = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader')
-    .waitFor({
-      state: 'detached',
-    });
-  const searchBar = page.getByTestId('searchbar');
+  await page.goto(`/users/${encodedUserName}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
-  await expect
-    .poll(
-      async () => {
-        const searchRequest = page.waitForResponse('/api/v1/search/query*');
-        await searchBar.fill('');
-        await searchBar.fill(userName);
-        await searchRequest;
-        await loaderPromise.catch(() => undefined);
+  // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
+  // its loader and renders an error state. Callers that guard their assertions
+  // on visibility would silently assert nothing, so fail here instead.
+  const response = await userResponse;
 
-        return await page.getByTestId(userName).count();
-      },
-      {
-        timeout: 60000,
-        intervals: [1000, 2000, 5000],
-        message: `Timed out waiting for user ${userName} to become visible in the user list`,
-      }
-    )
-    .toBeGreaterThan(0);
+  expect(
+    response.ok(),
+    `Profile for "${userName}" failed to load: HTTP ${response.status()}`
+  ).toBeTruthy();
 
-  await userResponse.catch(() => undefined);
-  await page.getByTestId(userName).click();
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('user-email-value')).toBeVisible();
 };
 
 export const softDeleteUserProfilePage = async (
@@ -186,12 +175,7 @@ export const softDeleteUserProfilePage = async (
 
   await page.getByText('Delete Profile').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
-
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.getByTestId('delete-modal').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=false&recursive=true'
@@ -234,14 +218,9 @@ export const hardDeleteUserProfilePage = async (
 ) => {
   await page.getByTestId('user-profile-manage-btn').click();
   await page.getByText('Delete Profile').click();
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.click('[data-testid="hard-delete"]');
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=true&recursive=true'
@@ -299,7 +278,7 @@ export const editDescription = async (
   await page.click('[data-testid="edit-description"]');
 
   // Clear and type the new description
-  await page.locator(descriptionBox).fill(updatedDescription);
+  await fillDescriptionBox(page, updatedDescription);
 
   const updateDescription = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save"]');
@@ -319,9 +298,7 @@ export const handleAdminUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -331,11 +308,7 @@ export const handleUserUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse(
-    '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
-  );
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -371,7 +344,6 @@ export const softDeleteUser = async (
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
   // Soft deleting the user
   await page.click('[data-testid="soft-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const fetchUpdatedUsers = page.waitForResponse('/api/v1/users/*');
   const deleteResponse = page.waitForResponse(
@@ -467,18 +439,10 @@ export const permanentDeleteUser = async (
   // Click on delete user button
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
 
-  if (!isUserSoftDeleted) {
-    // Modal opens with soft-delete as default; wait for the form's
-    // initialization effect before switching, otherwise the click races
-    // with setFieldsValue and the selection gets clobbered.
-    await page
-      .locator('.ant-radio-wrapper-checked [data-testid="soft-delete"]')
-      .waitFor();
-  }
+  await page.getByTestId('delete-modal').waitFor();
 
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const reFetchUsers = page.waitForResponse(
     '/api/v1/users?**include=non-deleted'
@@ -614,6 +578,12 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   ).not.toBeVisible();
   await expect(page.locator('[data-testid="delete-button"]')).not.toBeVisible();
 
+  // The core manage menu is modal; close it so the tab click is not swallowed.
+  await clickOutside(page);
+  await expect(
+    page.getByTestId('manage-dropdown-list-container')
+  ).not.toBeVisible();
+
   await page.click('[data-testid="lineage"]');
 
   await waitForAllLoadersToDisappear(page);
@@ -659,13 +629,14 @@ export const checkStewardServicesPermissions = async (page: Page) => {
     .fill('table');
   await dataAssetDropdownRequest;
 
-  await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
+  const tableRow = page.getByTestId('drop-down-menu').getByTestId('table');
+  await tableRow.scrollIntoViewIfNeeded();
 
   // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="table-checkbox"]');
+  await tableRow.click();
   await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
@@ -684,8 +655,7 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await page
-    .getByRole('cell', { name: /user_id/i })
+  await getCellByName(page, /user_id/i)
     .getByTestId('edit-displayName-button')
     .waitFor({ state: 'attached' });
 
@@ -740,18 +710,21 @@ export const addUser = async (
   }
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const initialRolesSearchResponse = page.waitForResponse(
+    '/api/v1/roles/search?*'
+  );
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles/search?*');
+  await initialRolesSearchResponse;
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
+  await page.fill('input[name="password"]', password);
+  await page.fill('input[name="confirmPassword"]', password);
 
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
@@ -815,11 +788,11 @@ export const checkForUserExistError = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('#password', password);
-  await page.fill('#confirmPassword', password);
+  await page.fill('input[name="password"]', password);
+  await page.fill('input[name="confirmPassword"]', password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');

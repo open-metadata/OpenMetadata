@@ -12,20 +12,56 @@
  */
 
 import { EntityType } from '../enums/entity.enum';
+import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
+import { t } from './i18next/LocalUtil';
+
+const getEntityTypesFromDataAssets = (
+  config: NodeConfig
+): EntityType | EntityType[] | undefined => {
+  if (!config.dataAssets || config.dataAssets.length === 0) {
+    return undefined;
+  }
+
+  const entityTypes = config.dataAssets.filter(Boolean);
+
+  if (entityTypes.length > 1) {
+    return entityTypes as EntityType[];
+  } else if (entityTypes.length === 1) {
+    return entityTypes[0] as EntityType;
+  }
+
+  return undefined;
+};
+
+const mapTriggerEntityTypes = (
+  entityTypes: string[]
+): EntityType | EntityType[] => {
+  const mappedEntityTypes = entityTypes
+    .map((entityType: string) => {
+      return Object.values(EntityType).includes(entityType as EntityType)
+        ? (entityType as EntityType)
+        : entityType;
+    })
+    .filter(Boolean);
+
+  if (mappedEntityTypes.length > 1) {
+    return mappedEntityTypes as EntityType[];
+  } else if (mappedEntityTypes.length === 1) {
+    return mappedEntityTypes[0] as EntityType;
+  } else {
+    return EntityType.ALL;
+  }
+};
 
 export const getSelectedEntityTypes = (
   config: NodeConfig,
-  workflowDefinition: any
+  workflowDefinition: WorkflowDefinition
 ): EntityType | EntityType[] => {
-  if (config.dataAssets && config.dataAssets.length > 0) {
-    const entityTypes = config.dataAssets.filter(Boolean);
+  const dataAssetTypes = getEntityTypesFromDataAssets(config);
 
-    if (entityTypes.length > 1) {
-      return entityTypes as EntityType[];
-    } else if (entityTypes.length === 1) {
-      return entityTypes[0] as EntityType;
-    }
+  if (dataAssetTypes !== undefined) {
+    return dataAssetTypes;
   }
 
   if (!workflowDefinition) {
@@ -48,24 +84,42 @@ export const getSelectedEntityTypes = (
     Array.isArray(triggerConfig.entityTypes) &&
     triggerConfig.entityTypes.length > 0
   ) {
-    const mappedEntityTypes = triggerConfig.entityTypes
-      .map((entityType: string) => {
-        return Object.values(EntityType).includes(entityType as EntityType)
-          ? (entityType as EntityType)
-          : entityType;
-      })
-      .filter(Boolean);
-
-    if (mappedEntityTypes.length > 1) {
-      return mappedEntityTypes;
-    } else if (mappedEntityTypes.length === 1) {
-      return mappedEntityTypes[0];
-    } else {
-      return EntityType.ALL;
-    }
+    return mapTriggerEntityTypes(triggerConfig.entityTypes);
   }
 
   return EntityType.ALL;
+};
+
+const hasRequiredBaseFields = (config: NodeConfig): boolean => {
+  const hasName = Boolean(config.name && config.name.trim() !== '');
+  const hasTriggerType = Boolean(
+    config.triggerType && config.triggerType.trim() !== ''
+  );
+  const hasDataAssets = Boolean(
+    config.dataAssets && config.dataAssets.length > 0
+  );
+
+  return hasName && hasTriggerType && hasDataAssets;
+};
+
+const validatePeriodicBatchConfig = (config: NodeConfig): boolean => {
+  const hasScheduleType = Boolean(
+    config.scheduleType && config.scheduleType.trim() !== ''
+  );
+
+  // Must have a schedule type selected
+  if (!hasScheduleType) {
+    return false;
+  }
+
+  // If scheduled, validate cron expression
+  if (config.scheduleType === 'Scheduled') {
+    return Boolean(
+      config.cronExpression && config.cronExpression.trim() !== ''
+    );
+  }
+
+  return true;
 };
 
 export const validateWorkflowConfig = (
@@ -76,15 +130,7 @@ export const validateWorkflowConfig = (
     return true;
   }
 
-  const hasName = Boolean(config.name && config.name.trim() !== '');
-  const hasTriggerType = Boolean(
-    config.triggerType && config.triggerType.trim() !== ''
-  );
-  const hasDataAssets = Boolean(
-    config.dataAssets && config.dataAssets.length > 0
-  );
-
-  if (!hasName || !hasTriggerType || !hasDataAssets) {
+  if (!hasRequiredBaseFields(config)) {
     return false;
   }
 
@@ -92,33 +138,11 @@ export const validateWorkflowConfig = (
   const isPeriodicBatch = config.triggerType === 'Periodic Batch';
 
   if (isEventBased) {
-    const hasEventType = Boolean(
-      config.eventType && config.eventType.length > 0
-    );
-
-    return hasEventType;
+    return Boolean(config.eventType && config.eventType.length > 0);
   }
 
   if (isPeriodicBatch) {
-    const hasScheduleType = Boolean(
-      config.scheduleType && config.scheduleType.trim() !== ''
-    );
-
-    // Must have a schedule type selected
-    if (!hasScheduleType) {
-      return false;
-    }
-
-    // If scheduled, validate cron expression
-    if (config.scheduleType === 'Scheduled') {
-      const hasCronExpression = Boolean(
-        config.cronExpression && config.cronExpression.trim() !== ''
-      );
-
-      return hasCronExpression;
-    }
-
-    return true;
+    return validatePeriodicBatchConfig(config);
   }
 
   return true;
@@ -142,4 +166,61 @@ export const filterExcludeFields = (
 
     return true;
   });
+};
+
+export const EXTENSION_FIELD_PREFIX = 'extension.';
+
+// Custom properties are addressed as extension.<name> everywhere in the workflow builder.
+export const withExtensionPrefix = (name: string): string =>
+  `${EXTENSION_FIELD_PREFIX}${name}`;
+
+// Inverse of withExtensionPrefix: the bare name shown to the user.
+export const getFieldLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? value.slice(EXTENSION_FIELD_PREFIX.length)
+    : value;
+
+// Display label for a workflow field option: the bare name, with custom properties
+// marked so a custom property and a same-named standard field stay distinguishable.
+export const getFieldDisplayLabel = (value: string): string =>
+  value.startsWith(EXTENSION_FIELD_PREFIX)
+    ? `${getFieldLabel(value)} (${t('label.custom-property')})`
+    : getFieldLabel(value);
+
+/**
+ * Builds the de-duplicated field-option list for a workflow field picker.
+ *
+ * Custom properties are stored under `extension.<name>` and workflow nodes resolve a field path
+ * against the entity, where a custom property is only reachable at that path. The fields API returns
+ * custom properties by their bare name, so prefix those (and only those) with `extension.`, matching
+ * how the trigger/filter field lists are built (see NodeConfigSidebar). Standard fields are left
+ * as-is. The prefix is applied after {@link filterExcludeFields} so the added dot does not exclude
+ * the property.
+ *
+ * Call this per entity type (each type's own custom properties) and merge the results, so a custom
+ * property on one type does not prefix a standard field of the same name on another type.
+ */
+export const buildFieldOptions = (
+  fields: Array<{ name?: string }>,
+  customPropertyNames: Set<string>
+): string[] => {
+  const seen = new Set<string>();
+  const options: string[] = [];
+
+  filterExcludeFields(fields).forEach(({ name }) => {
+    if (!name) {
+      return;
+    }
+
+    const value = customPropertyNames.has(name)
+      ? withExtensionPrefix(name)
+      : name;
+
+    if (!seen.has(value)) {
+      seen.add(value);
+      options.push(value);
+    }
+  });
+
+  return options;
 };

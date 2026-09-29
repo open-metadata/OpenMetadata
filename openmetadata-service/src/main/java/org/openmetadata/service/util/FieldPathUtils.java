@@ -15,10 +15,13 @@ package org.openmetadata.service.util;
 
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 
@@ -54,6 +57,24 @@ public class FieldPathUtils {
       String user,
       String fieldPath,
       String newDescription) {
+    return updateFieldDescription(entity, repository, user, fieldPath, newDescription, null);
+  }
+
+  /**
+   * Update a field's description, recording where the new text came from.
+   *
+   * <p>The source rides the patch, so one versioned write carries the provenance into the change
+   * summary and, through the normal lifecycle, the search document's {@code descriptionSource}.
+   *
+   * @param changeSource provenance of the new text, or null to leave it defaulted
+   */
+  public static boolean updateFieldDescription(
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      String fieldPath,
+      String newDescription,
+      ChangeSource changeSource) {
 
     // Take snapshot before modification
     String originalJson = JsonUtils.pojoToJson(entity);
@@ -75,10 +96,23 @@ public class FieldPathUtils {
     }
 
     // Apply patch
-    repository.patch(null, entity.getId(), user, patch, null, null);
+    repository.patch(null, entity.getId(), user, patch, changeSource, null);
     LOG.info(
         "[FieldPathUtils] Updated description at '{}' in entity '{}'", fieldPath, entity.getName());
     return true;
+  }
+
+  /**
+   * Locate the nested field POJO addressed by {@code fieldPath} (e.g. a Column or SchemaField).
+   * Returns empty when the path cannot be resolved. Callers can then read/mutate the POJO via
+   * its own getters/setters and generate a JSON patch against the parent entity.
+   */
+  public static Optional<Object> findField(EntityInterface entity, String fieldPath) {
+    FieldPathComponents components = parseFieldPath(fieldPath);
+    if (components == null) {
+      return Optional.empty();
+    }
+    return locateField(entity, components);
   }
 
   /**
@@ -183,12 +217,23 @@ public class FieldPathUtils {
       }
     }
 
-    // Handle dot separator format
+    // Handle dot separator format. The property is always the final segment; everything
+    // between the container and it is the field name, which may itself be a dotted path
+    // into nested children (e.g. columns.profile.personal.full_name.description).
     if (fieldPath.contains(".")) {
-      String[] parts = fieldPath.split("\\.", 3);
-      if (parts.length >= 2) {
-        return new FieldPathComponents(
-            parts[0], parts[1], parts.length >= 3 ? parts[2] : "description");
+      try {
+        String[] parts = FullyQualifiedName.split(fieldPath);
+        if (parts.length >= 2) {
+          boolean hasProperty = parts.length >= 3;
+          String property = hasProperty ? parts[parts.length - 1] : "description";
+          int fieldEnd = hasProperty ? parts.length - 1 : parts.length;
+          String fieldName =
+              FullyQualifiedName.unquoteName(
+                  String.join(".", Arrays.copyOfRange(parts, 1, fieldEnd)));
+          return new FieldPathComponents(parts[0], fieldName, property);
+        }
+      } catch (ParseCancellationException | IllegalArgumentException e) {
+        LOG.warn("[FieldPathUtils] Could not parse dot field path: {}", fieldPath, e);
       }
     }
 
@@ -383,6 +428,86 @@ public class FieldPathUtils {
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
+    return Optional.empty();
+  }
+
+  /** Navigate the parsed components to the target field POJO. */
+  private static Optional<Object> locateField(
+      EntityInterface entity, FieldPathComponents components) {
+    String container = components.containerName();
+    String fieldName = components.fieldName();
+
+    List<?> fieldList = getFieldList(entity, container);
+    if (fieldList != null) {
+      return findFieldInList(fieldList, fieldName);
+    }
+
+    List<?> nested = getNestedContainerList(entity, container);
+    if (nested != null) {
+      return findFieldInList(nested, fieldName);
+    }
+
+    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
+    return Optional.empty();
+  }
+
+  /** Get the list of fields hosted by a nested container (messageSchema, dataModel, …). */
+  private static List<?> getNestedContainerList(EntityInterface entity, String container) {
+    List<?> result = null;
+    if ("messageSchema".equals(container)) {
+      Object schema = invokeGetter(entity, "getMessageSchema");
+      if (schema != null) {
+        result = getFieldListFromObject(schema, "schemaFields");
+      }
+    } else if ("dataModel".equals(container)) {
+      Object dataModel = invokeGetter(entity, "getDataModel");
+      if (dataModel != null) {
+        result = getFieldListFromObject(dataModel, "columns");
+      }
+    } else if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
+      Object schema = invokeGetter(entity, "get" + capitalize(container));
+      if (schema != null) {
+        result = getFieldListFromObject(schema, "schemaFields");
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Locate a field POJO in a list by name, recursing into `children` for dotted paths and any
+   * nested subtrees, mirroring {@link #setDescriptionInList}.
+   */
+  @SuppressWarnings("unchecked")
+  private static Optional<Object> findFieldInList(List<?> fieldList, String fieldName) {
+    Optional<Object> found = (Optional<Object>) findFieldByName(fieldList, fieldName);
+    if (found.isPresent()) {
+      return found;
+    }
+
+    if (fieldName.contains(".")) {
+      String[] parts = fieldName.split("\\.", 2);
+      Optional<?> parent = findFieldByName(fieldList, parts[0]);
+      if (parent.isPresent()) {
+        List<?> children = getFieldListFromObject(parent.get(), "children");
+        if (children != null) {
+          Optional<Object> childHit = findFieldInList(children, parts[1]);
+          if (childHit.isPresent()) {
+            return childHit;
+          }
+        }
+      }
+    }
+
+    for (Object item : fieldList) {
+      List<?> children = getFieldListFromObject(item, "children");
+      if (children != null && !children.isEmpty()) {
+        Optional<Object> hit = findFieldInList(children, fieldName);
+        if (hit.isPresent()) {
+          return hit;
+        }
+      }
+    }
+
     return Optional.empty();
   }
 

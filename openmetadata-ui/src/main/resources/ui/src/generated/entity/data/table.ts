@@ -14,6 +14,12 @@
  * A `Table` entity organizes data in rows and columns and is defined in a `Database Schema`.
  */
 export interface Table {
+    /**
+     * Alternate fully qualified SQL names that resolve to this table, such as SQL Server
+     * synonyms. Source-managed: the ingestion connector recomputes and overwrites this list on
+     * every run.
+     */
+    aliases?:       string[];
     certification?: AssetCertification;
     /**
      * Change that lead to this version of the entity.
@@ -814,9 +820,6 @@ export interface EntityReference {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -1262,6 +1265,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",
@@ -1275,6 +1279,7 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Prefect = "Prefect",
     SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",
@@ -1358,9 +1363,11 @@ export enum DatabaseServiceType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
@@ -1706,6 +1713,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    SemanticView = "SemanticView",
     Stage = "Stage",
     Stream = "Stream",
     Transient = "Transient",

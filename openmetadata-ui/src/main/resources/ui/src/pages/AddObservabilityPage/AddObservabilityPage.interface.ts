@@ -11,41 +11,129 @@
  *  limitations under the License.
  */
 
-import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
-import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
+import type { FormInstance } from 'antd';
+import type { ComponentType } from 'react';
+import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
+import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { ResourceEntity } from '../../enums/permissions.enum';
+import type { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import {
-  Destination,
-  EventSubscription,
-  SubscriptionCategory,
-  SubscriptionType,
-  Webhook,
+  AlertType,
+  EventFilterRule,
 } from '../../generated/events/eventSubscription';
+import { EventType } from '../../generated/type/changeEvent';
+import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
+import type {
+  AddAlertPageLoadingState,
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+} from '../../utils/AlertsClassBase.interface';
 
-export interface ModifiedWebhookConfig extends Webhook {
-  headers?: { key: string; value: string }[];
-  queryParams?: { key: string; value: string }[];
+export type {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+};
+
+export interface ObservabilityFilterResourceDescriptor {
+  containerEntities?: string[];
+  name?: string;
+  supportedActions?: EventFilterRule[];
+  /** Event types the source emits; narrows the event-type filter options. */
+  supportedEventTypes?: EventType[];
+  supportedFilters?: EventFilterRule[];
 }
 
-export interface ModifiedDestination extends Destination {
-  destinationType: SubscriptionType | SubscriptionCategory;
-  config?: ModifiedWebhookConfig;
+export interface UseObservabilityAlertFormOptions {
+  afterSaveAction?: (fqn: string) => Promise<void> | void;
+  /** Defaults to Observability; selects which resource catalogue to load. */
+  alertType?: AlertType;
+  form?: FormInstance<ModifiedCreateEventSubscription>;
+  fqn?: string;
+  onCancel?: () => void;
 }
 
-export interface ModifiedEventSubscription
-  extends Omit<EventSubscription, 'notificationTemplate'> {
-  destinations: ModifiedDestination[];
-  notificationTemplate?: string | EventSubscription['notificationTemplate'];
-  timeout: number;
-  readTimeout: number;
+export interface UseAlertFormDataOptions
+  extends Omit<UseObservabilityAlertFormOptions, 'form'> {
+  /** The chosen alert source; narrows the loaded source catalogue. */
+  selectedTrigger?: string;
 }
 
-export interface ModifiedCreateEventSubscription
-  extends Omit<CreateEventSubscription, 'notificationTemplate'> {
-  notificationTemplate?:
-    | string
-    | CreateEventSubscription['notificationTemplate'];
-  customNotificationTemplateData?: NotificationTemplate;
-  destinations: ModifiedDestination[];
-  timeout: number;
-  readTimeout: number;
+export interface UseObservabilityAlertResourcesReturn {
+  containerEntities?: string[];
+  filterResources: ObservabilityFilterResourceDescriptor[];
+  loading: boolean;
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+  supportedFilters?: EventFilterRule[];
+  supportedTriggers?: EventFilterRule[];
+}
+
+export interface UseObservabilityAlertTemplatesReturn {
+  loading: boolean;
+  templateResourcePermission: OperationPermission;
+  templates: NotificationTemplate[];
+}
+
+export interface UseObservabilityAlertTemplatesOptions {
+  extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  getResourcePermission: (
+    resourceEntity: ResourceEntity
+  ) => Promise<OperationPermission>;
+}
+
+export interface UseObservabilityAlertFormReturn {
+  alert?: ModifiedEventSubscription;
+  breadcrumb: {
+    name: string;
+    url: string;
+  }[];
+  containerEntities?: string[];
+  extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  filterResources: ObservabilityFilterResourceDescriptor[];
+  form: FormInstance<ModifiedCreateEventSubscription>;
+  handleCancel: () => void;
+  handleSave: (data: ModifiedCreateEventSubscription) => Promise<void>;
+  inlineAlertDetails?: InlineAlertProps;
+  isEditMode: boolean;
+  isLoading: boolean;
+  loadingState: AddAlertPageLoadingState;
+  saving: boolean;
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+  supportedFilters?: EventFilterRule[];
+  supportedTriggers?: EventFilterRule[];
+  templateResourcePermission: OperationPermission;
+  templates: NotificationTemplate[];
+}
+
+export type UseAlertFormDataReturn = Omit<
+  UseObservabilityAlertFormReturn,
+  'form'
+>;
+
+export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
+
+export type ObservabilityAlertFormFieldsProps = Pick<
+  ObservabilityAlertFormProps,
+  | 'alert'
+  | 'containerEntities'
+  | 'extraFormWidgets'
+  | 'filterResources'
+  | 'form'
+  | 'isLoading'
+  | 'shouldShowActionsSection'
+  | 'shouldShowFiltersSection'
+  | 'supportedFilters'
+  | 'supportedTriggers'
+  | 'templateResourcePermission'
+  | 'templates'
+>;
+
+export interface AddObservabilityPageProps {
+  pageTitle: string;
 }

@@ -39,6 +39,8 @@ export interface CustomPieChartProps {
   name: string;
   data: CustomPieChartData[];
   label?: React.ReactNode;
+  /** Minimum slice angle in degrees, used to keep small non-zero values visible. */
+  minAngle?: number;
   onSegmentClick?: (segment: CustomPieChartData, index: number) => void;
   showLegends?: boolean;
 }

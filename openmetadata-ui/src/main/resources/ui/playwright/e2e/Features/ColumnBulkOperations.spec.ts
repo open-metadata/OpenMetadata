@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   fullUuid,
@@ -29,17 +30,22 @@ const METADATA_STATUS_FILTER_TESTID = 'search-dropdown-Has / Missing Metadata';
 const GRID_API_URL = '/api/v1/columns/grid';
 const BULK_UPDATE_API_URL = '/api/v1/columns/bulk-update-async';
 
-async function waitForGridResponse(page: Page) {
-  return page.waitForResponse(
-    (r) => r.url().includes(GRID_API_URL) && r.status() === 200
-  );
+async function waitForGridRequest(page: Page, timeout = 15000) {
+  return page.waitForRequest((r) => r.url().includes(GRID_API_URL), {
+    timeout,
+  });
 }
 
 async function visitColumnBulkOperationsPage(page: Page) {
   await redirectToHomePage(page);
-  const dataRes = waitForGridResponse(page);
+  // Register before sidebarClick so the listener is active before navigation fires.
+  const responsePromise = page.waitForResponse(
+    (r) => r.url().includes(GRID_API_URL),
+    { timeout: 30000 }
+  );
   await sidebarClick(page, SidebarItem.COLUMN_BULK_OPERATIONS);
-  await dataRes;
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 }
 
@@ -104,7 +110,9 @@ async function waitForColumnInGridIndex(
         );
 
         if (!response.ok()) {
-          return 0;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();
@@ -230,10 +238,10 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     await test.step('Open metadata status filter and select MISSING', async () => {
       await page.getByTestId(METADATA_STATUS_FILTER_TESTID).click();
       await page.getByTestId('MISSING').click();
-
-      const gridRes = waitForGridResponse(page);
+      // Register before update-btn click so the listener is active when the request fires.
+      const gridReq = waitForGridRequest(page);
       await page.getByTestId('update-btn').click();
-      await gridRes;
+      await gridReq;
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -256,8 +264,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       );
 
       await page.getByRole('button', { name: 'Asset Type' }).click();
-      await page.getByRole('menuitem', { name: 'Table' }).click();
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Table' }).click();
+      await page.getByTestId('update-btn').click();
 
       const apiRequest = await apiCallPromise;
       expect(apiRequest.url()).toContain('entityTypes=table');
@@ -266,12 +274,18 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
 
   test('should restore filters from URL on page load', async ({ page }) => {
     await test.step('Navigate to page with metadataStatus in URL', async () => {
-      const dataRes = waitForGridResponse(page);
+      const dataReq = waitForGridRequest(page);
       await page.goto(
-        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`
+        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`,
+        { waitUntil: 'domcontentloaded' }
       );
-      await dataRes;
+      await dataReq;
       await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify the grid survived the load', async () => {
+      // A render crash swaps the page for the error boundary, so assert the grid is still mounted.
+      await expect(page.getByTestId('column-grid-container')).toBeVisible();
     });
 
     await test.step('Verify filter chip is restored', async () => {
@@ -349,9 +363,13 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
 
   test('should clear individual filter and update URL', async ({ page }) => {
     await test.step('Navigate with metadataStatus filter in URL', async () => {
-      const dataRes = waitForGridResponse(page);
-      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
-      await dataRes;
+      // Use waitForRequest (not waitForResponse) so we don't depend on response
+      // status code — the UI filter chip is driven by URL params, not response data.
+      const dataReq = waitForGridRequest(page);
+      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await dataReq;
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -365,10 +383,10 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     await test.step('Deselect the MISSING filter', async () => {
       await page.getByTestId(METADATA_STATUS_FILTER_TESTID).click();
       await page.getByTestId('MISSING').click();
-
-      const gridRes = waitForGridResponse(page);
+      // Register before button click so listener is active when the request fires.
+      const gridReq = waitForGridRequest(page);
       await page.getByTestId('update-btn').click();
-      await gridRes;
+      await gridReq;
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -458,13 +476,14 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
 
   test('should show Service filter chip from URL', async ({ page }) => {
     await test.step('Navigate with service filter in URL', async () => {
-      const dataRes = waitForGridResponse(page);
+      const dataReq = waitForGridRequest(page);
       await page.goto(
         `${COLUMN_BULK_OPERATIONS_URL}?service.displayName.keyword=${encodeURIComponent(
           'sample_data'
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
-      await dataRes;
+      await dataReq;
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -1107,9 +1126,9 @@ test.describe('Column Bulk Operations - Pagination', () => {
       const isNextEnabled = await nextButton.isEnabled();
 
       if (isNextEnabled) {
-        const dataRes = waitForGridResponse(page);
+        const dataReq = waitForGridRequest(page);
         await nextButton.click();
-        await dataRes;
+        await dataReq;
         await waitForAllLoadersToDisappear(page);
 
         const prevButton = page.getByRole('button', { name: 'Previous' });

@@ -854,12 +854,12 @@ describe('getEntityExtraInfoLength', () => {
 
   it('should handle conditional rendering', () => {
     const showExtra = true;
+    const hideExtra = false;
     const element = (
       <div>
         <span>Always shown</span>
         {showExtra && <span>Conditional child</span>}
-        {/* eslint-disable-next-line no-constant-binary-expression */}
-        {false && <span>Never shown</span>}
+        {hideExtra && <span>Never shown</span>}
         {null}
         {undefined}
       </div>

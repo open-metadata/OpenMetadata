@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Skeleton, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Skeleton } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getServiceInsightsWidgetPlaceholder } from '../../../utils/ServiceInsightsWidgets';
@@ -45,21 +45,20 @@ function TotalDataAssetsWidget({
         placeholderClassName: 'border-none',
         theme,
       }),
-    []
+    [theme]
   );
 
   return (
     <Card
       className="widget-info-card total-data-assets-widget"
       data-testid="total-data-assets-widget">
-      <div className="flex items-center gap-2">
-        <div className="p-0 icon-container">
-          <PieChartIcon height={16} width={16} />
-        </div>
-
-        <Typography.Text className="font-semibold text-md">
+      <div className="flex flex-col gap-1 widget-header">
+        <Typography size="text-lg" weight="medium">
           {t('label.total-entity', { entity: t('label.data-asset-plural') })}
-        </Typography.Text>
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('message.total-data-assets-description')}
+        </Typography>
       </div>
       <Skeleton loading={isLoading}>
         {showPlaceholder ? (
@@ -73,14 +72,12 @@ function TotalDataAssetsWidget({
                 <div className="flex items-center gap-3">
                   <div className="p-0 icon-container">{entity.icon}</div>
 
-                  <Typography.Text>{entity.name}</Typography.Text>
+                  <Typography>{entity.name}</Typography>
                 </div>
 
-                <Typography.Text
-                  className="font-bold"
-                  data-testid={`${entity.name}-count`}>
+                <Typography data-testid={`${entity.name}-count`} weight="bold">
                   {getReadableCountString(entity.value)}
-                </Typography.Text>
+                </Typography>
               </div>
             ))}
           </div>

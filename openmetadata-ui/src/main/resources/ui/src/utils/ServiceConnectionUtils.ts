@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { cloneDeep, isNil, reduce } from 'lodash';
+import { MASKED_PASSWORD_VALUE } from '../constants/Secrets.constants';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
+import {
+  ADVANCED_PROPERTIES,
+  OPTIONAL_CONNECTION_PROPERTIES,
+  OPTIONAL_SCOPE_PROPERTIES,
+} from '../constants/ServiceType.constant';
 import {
   ServiceCategory,
   ServiceNestedConnectionFields,
@@ -88,58 +94,65 @@ export const buildValidConfig = (data?: ServicesType): ConfigData => {
   return validConfig;
 };
 
+type ConnectionSchemaLoader = (
+  serviceType: string
+) => Promise<ConnectionSchemaResult['connSch']>;
+
+// Lookup table keyed by ServiceCategory instead of a switch, so the dispatch
+// itself has no branching to grow a cyclomatic-complexity count as service
+// categories are added.
+const CONNECTION_SCHEMA_LOADERS: Partial<
+  Record<ServiceCategory, ConnectionSchemaLoader>
+> = {
+  [ServiceCategory.DATABASE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getDatabaseServiceConfig(
+      serviceType as DatabaseServiceType
+    ),
+  [ServiceCategory.MESSAGING_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getMessagingServiceConfig(
+      serviceType as MessagingServiceType
+    ),
+  [ServiceCategory.DASHBOARD_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getDashboardServiceConfig(
+      serviceType as DashboardServiceType
+    ),
+  [ServiceCategory.PIPELINE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getPipelineServiceConfig(
+      serviceType as PipelineServiceType
+    ),
+  [ServiceCategory.ML_MODEL_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getMlModelServiceConfig(
+      serviceType as MlModelServiceType
+    ),
+  [ServiceCategory.METADATA_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getMetadataServiceConfig(
+      serviceType as MetadataServiceType
+    ),
+  [ServiceCategory.STORAGE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getStorageServiceConfig(
+      serviceType as StorageServiceType
+    ),
+  [ServiceCategory.SEARCH_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getSearchServiceConfig(
+      serviceType as SearchServiceType
+    ),
+  [ServiceCategory.API_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getAPIServiceConfig(serviceType as APIServiceType),
+  [ServiceCategory.SECURITY_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getSecurityServiceConfig(
+      serviceType as SecurityServiceType
+    ),
+  [ServiceCategory.DRIVE_SERVICES]: (serviceType) =>
+    serviceUtilClassBase.getDriveServiceConfig(serviceType as DriveServiceType),
+};
+
 export const loadConnectionSchema = async (
   serviceCategory: ServiceCategory,
   serviceType: string
 ): Promise<ConnectionSchemaResult['connSch']> => {
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES:
-      return serviceUtilClassBase.getDatabaseServiceConfig(
-        serviceType as DatabaseServiceType
-      );
-    case ServiceCategory.MESSAGING_SERVICES:
-      return serviceUtilClassBase.getMessagingServiceConfig(
-        serviceType as MessagingServiceType
-      );
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return serviceUtilClassBase.getDashboardServiceConfig(
-        serviceType as DashboardServiceType
-      );
-    case ServiceCategory.PIPELINE_SERVICES:
-      return serviceUtilClassBase.getPipelineServiceConfig(
-        serviceType as PipelineServiceType
-      );
-    case ServiceCategory.ML_MODEL_SERVICES:
-      return serviceUtilClassBase.getMlModelServiceConfig(
-        serviceType as MlModelServiceType
-      );
-    case ServiceCategory.METADATA_SERVICES:
-      return serviceUtilClassBase.getMetadataServiceConfig(
-        serviceType as MetadataServiceType
-      );
-    case ServiceCategory.STORAGE_SERVICES:
-      return serviceUtilClassBase.getStorageServiceConfig(
-        serviceType as StorageServiceType
-      );
-    case ServiceCategory.SEARCH_SERVICES:
-      return serviceUtilClassBase.getSearchServiceConfig(
-        serviceType as SearchServiceType
-      );
-    case ServiceCategory.API_SERVICES:
-      return serviceUtilClassBase.getAPIServiceConfig(
-        serviceType as APIServiceType
-      );
-    case ServiceCategory.SECURITY_SERVICES:
-      return serviceUtilClassBase.getSecurityServiceConfig(
-        serviceType as SecurityServiceType
-      );
-    case ServiceCategory.DRIVE_SERVICES:
-      return serviceUtilClassBase.getDriveServiceConfig(
-        serviceType as DriveServiceType
-      );
-    default:
-      return EMPTY_CONNECTION_SCHEMA;
-  }
+  const loader = CONNECTION_SCHEMA_LOADERS[serviceCategory];
+
+  return loader ? loader(serviceType) : EMPTY_CONNECTION_SCHEMA;
 };
 
 export const getConnectionSchemas = async ({
@@ -293,6 +306,17 @@ const PASSWORD_KEY = 'password';
 const PRIVATE_KEY_RE = /privatekey/i;
 const PASSPHRASE_RE = /passphrase/i;
 
+/** Mirrors the backend convention: {@link SecretsManager#SECRET_FIELD_PREFIX}. */
+export const SECRET_FIELD_PREFIX = 'secret:';
+
+/**
+ * Mirrors the backend convention: {@link PasswordEntityMasker#PASSWORD_MASK}.
+ * The API always returns this sentinel for stored password fields instead of
+ * the real value, so an unmodified field on an edit form must not be treated
+ * as a plaintext value missing the secret prefix.
+ */
+export { MASKED_PASSWORD_VALUE };
+
 type JsonObject = Record<string, Record<string, unknown>>;
 
 const getFlatSecretKeys = (
@@ -311,6 +335,113 @@ const getFlatSecretKeys = (
     ),
   };
 };
+
+export type PasswordFieldWithoutPrefix = {
+  path: (string | number)[];
+  key: string;
+};
+
+const isMaskablePasswordValue = (
+  propertySchema: Record<string, unknown> | undefined,
+  value: unknown
+): value is string =>
+  propertySchema?.format === PASSWORD_FORMAT &&
+  typeof value === 'string' &&
+  value.trim() !== '' &&
+  value !== MASKED_PASSWORD_VALUE;
+
+const isMissingSecretPrefix = (value: string, prefix: string): boolean =>
+  !value.startsWith(prefix) || value.slice(prefix.length).trim() === '';
+
+/**
+ * Recursively walks a connection schema (including `oneOf`/`anyOf` branches,
+ * resolved against the currently-selected branch in `formData`, same
+ * resolution strategy as {@link getMissingSchemaRequiredFieldsCountForSelectedBranch})
+ * and reports every `format: 'password'` field whose current value is
+ * non-empty and either doesn't start with `prefix` or is just the bare
+ * prefix with no secret id after it.
+ */
+export function findPasswordFieldsWithoutPrefix(
+  schema: Record<string, unknown>,
+  formData?: Record<string, unknown>,
+  prefix: string = SECRET_FIELD_PREFIX
+): PasswordFieldWithoutPrefix[] {
+  /** Handles a single property for this function's own scan, recursing back into it for nested objects. */
+  function findPasswordFieldHitsForKey(
+    key: string,
+    propertySchema: Record<string, unknown> | undefined,
+    value: unknown,
+    innerPrefix: string
+  ): PasswordFieldWithoutPrefix[] {
+    if (
+      isMaskablePasswordValue(propertySchema, value) &&
+      isMissingSecretPrefix(value, innerPrefix)
+    ) {
+      return [{ path: [key], key }];
+    }
+
+    const isObjectPropertySchema =
+      propertySchema && typeof propertySchema === 'object';
+    if (
+      isObjectPropertySchema &&
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+    ) {
+      return findPasswordFieldsWithoutPrefix(
+        propertySchema as Record<string, unknown>,
+        value as Record<string, unknown>,
+        innerPrefix
+      ).map((hit) => ({ path: [key, ...hit.path], key: hit.key }));
+    }
+
+    return [];
+  }
+
+  const branches = [
+    ...(Array.isArray(schema.oneOf) ? schema.oneOf : []),
+    ...(Array.isArray(schema.anyOf) ? schema.anyOf : []),
+  ].filter(
+    (branch): branch is Record<string, unknown> =>
+      Boolean(branch) && typeof branch === 'object'
+  );
+
+  if (branches.length > 0) {
+    const dataKeys = Object.keys(formData ?? {}).filter(
+      (k) => (formData as Record<string, unknown>)[k] !== undefined
+    );
+    const matchingBranch =
+      dataKeys.length > 0
+        ? branches.find((branch) => {
+            const branchProps = new Set(
+              Object.keys((branch.properties ?? {}) as Record<string, unknown>)
+            );
+
+            return dataKeys.every((k) => branchProps.has(k));
+          })
+        : undefined;
+
+    // No unambiguously-selected branch (e.g. stale keys left over after
+    // switching auth types) - unlike the required-fields count, we can't take
+    // a union across branches here: a password field from a branch that
+    // isn't rendered would falsely block submit on a field the user can't
+    // see or edit. Report nothing rather than guess.
+    return matchingBranch
+      ? findPasswordFieldsWithoutPrefix(matchingBranch, formData, prefix)
+      : [];
+  }
+
+  const properties = (schema.properties ?? {}) as JsonObject;
+
+  return Object.keys(properties).reduce((acc, key) => {
+    const value = (formData as Record<string, unknown> | undefined)?.[key];
+    findPasswordFieldHitsForKey(key, properties[key], value, prefix).forEach(
+      (hit) => acc.push(hit)
+    );
+
+    return acc;
+  }, [] as PasswordFieldWithoutPrefix[]);
+}
 
 const hasSynthesizableFlatAuth = (
   schema?: Record<string, unknown>
@@ -460,10 +591,11 @@ export const getMissingSchemaRequiredFieldsCountForSelectedBranch = (
     const value = (formData as Record<string, unknown>)[key];
     const propertySchema = properties[key];
 
+    const isNonNullObjectValue =
+      value !== null && value !== undefined && typeof value === 'object';
+
     if (
-      value !== null &&
-      value !== undefined &&
-      typeof value === 'object' &&
+      isNonNullObjectValue &&
       !Array.isArray(value) &&
       propertySchema &&
       typeof propertySchema === 'object'
@@ -635,7 +767,102 @@ export const wrapFlatCredentialsIntoAuthType = (
   return result;
 };
 
-/** Flattens a synthesized `authType` object back to top-level flat secrets. */
+const resolveChildFieldSchema = (
+  parent: Record<string, unknown>,
+  fieldName: string
+): Record<string, unknown> | undefined => {
+  const props = parent.properties as
+    | Record<string, Record<string, unknown>>
+    | undefined;
+  if (props?.[fieldName]) {
+    return props[fieldName];
+  }
+
+  for (const combiner of ['oneOf', 'anyOf', 'allOf'] as const) {
+    const branches = parent[combiner] as
+      | Array<Record<string, unknown>>
+      | undefined;
+    for (const branch of branches ?? []) {
+      const match = resolveChildFieldSchema(branch, fieldName);
+      if (match) {
+        return match;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+/** Resolves the `{title, description}` schema metadata for an RJSF field id. */
+export const getFieldSchemaForId = (
+  schema: Record<string, unknown>,
+  fieldId: string
+): { title?: string; description?: string } | undefined => {
+  const cleanId = fieldId.replace(/__(oneof|anyof|allof)_select$/, '');
+  const parts = cleanId.split('/').filter((p) => p && p !== 'root');
+  let current: Record<string, unknown> | undefined = schema;
+  for (const part of parts) {
+    current = resolveChildFieldSchema(current, part);
+    if (!current) {
+      return undefined;
+    }
+  }
+
+  return {
+    title: current.title as string | undefined,
+    description: current.description as string | undefined,
+  };
+};
+
+export type ConnectionFieldSection =
+  | 'connection'
+  | 'authentication'
+  | 'scope'
+  | 'advanced';
+
+/**
+ * Classifies a connection form field into the section it renders under
+ * (Connection / Authentication / Scope & Options / Advanced Config) by
+ * mirroring the grouping ConnectionObjectFieldTemplate derives for the same
+ * schema, so callers that only have a field id (e.g. the docs side panel)
+ * don't have to re-guess it from a static field-name list.
+ */
+export const getConnectionFieldSection = (
+  schema: Record<string, unknown>,
+  fieldId: string
+): ConnectionFieldSection => {
+  const cleanId = fieldId.replace(/__(oneof|anyof|allof)_select$/, '');
+  const topLevelName = cleanId.split('/').filter((p) => p && p !== 'root')[0];
+  const schemaProperties = (schema.properties ?? {}) as Record<
+    string,
+    Record<string, unknown>
+  >;
+  const isAdvanced = (name: string) => ADVANCED_PROPERTIES.includes(name);
+  const isAuth = (name: string) =>
+    name === AUTH_PROPERTY_KEY || schemaProperties[name]?.format === 'password';
+
+  let section: ConnectionFieldSection = 'connection';
+  if (!topLevelName) {
+    section = 'connection';
+  } else if (isAdvanced(topLevelName)) {
+    section = 'advanced';
+  } else if (isAuth(topLevelName)) {
+    section = 'authentication';
+  } else {
+    const requiredKeys = (schema.required as string[]) ?? [];
+    const hasExplicitRequiredConnectionField = requiredKeys.some(
+      (name) => !isAdvanced(name) && !isAuth(name)
+    );
+    const isConnection = hasExplicitRequiredConnectionField
+      ? requiredKeys.includes(topLevelName) ||
+        OPTIONAL_CONNECTION_PROPERTIES.has(topLevelName)
+      : !OPTIONAL_SCOPE_PROPERTIES.has(topLevelName);
+    section = isConnection ? 'connection' : 'scope';
+  }
+
+  return section;
+};
+
 export const flattenAuthTypeIntoConfig = (
   config?: ConfigData,
   schema?: Record<string, unknown>

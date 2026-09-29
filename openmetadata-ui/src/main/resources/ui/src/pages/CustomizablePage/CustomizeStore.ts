@@ -16,6 +16,11 @@ import { create } from 'zustand';
 import { Document } from '../../generated/entity/docStore/document';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import {
+  getPersonaPage,
+  normalizePersonaDocument,
+  updatePersonaDocumentPage,
+} from '../../utils/CustomizePage/PersonaPage.utils';
 
 interface CustomizePageStore {
   document: Document | null;
@@ -42,35 +47,28 @@ export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
   currentPersonaDocStore: null,
   setDocument: (document: Document) => {
     const { updateCurrentPage, currentPageType } = get();
+    const normalizedDocument = normalizePersonaDocument(document);
+    const newPage = getPersonaPage(normalizedDocument, currentPageType);
 
-    // Remove undefined or null pages
-    const pages = document?.data?.pages?.filter(Boolean);
+    updateCurrentPage(newPage ?? ({ pageType: currentPageType } as Page));
 
-    const newPage = pages?.find((p: Page) => p?.pageType === currentPageType);
-
-    updateCurrentPage(newPage ?? { pageType: currentPageType });
-
-    set({ document: { ...document, data: { ...document?.data, pages } } });
+    set({ document: normalizedDocument });
   },
 
   setPage: (page: Page) => {
     const { document } = get();
-    const newDocument = {
-      ...document,
-      data: {
-        ...document?.data,
-        pages: document?.data?.pages?.map((p: Page) =>
-          p.pageType === page.pageType ? page : p
-        ),
-      },
-    } as Document;
-    set({ document: newDocument });
+
+    if (document) {
+      set({
+        document: updatePersonaDocumentPage(document, page.pageType, page),
+      });
+    }
   },
 
   getPage: (pageType: string) => {
     const { document } = get();
 
-    return document?.data?.pages?.find((p: Page) => p.pageType === pageType);
+    return getPersonaPage(document, pageType) ?? null;
   },
 
   getNavigation: () => {

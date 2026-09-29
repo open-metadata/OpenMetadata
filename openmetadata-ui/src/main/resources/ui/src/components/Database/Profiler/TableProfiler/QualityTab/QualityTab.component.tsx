@@ -31,9 +31,9 @@ import {
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -43,10 +43,8 @@ import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI'
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
 import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import {
-  checkPermission,
-  getPrioritizedEditPermission,
-} from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
+import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -58,7 +56,10 @@ import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
-import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
+import {
+  DataQualityTabProps,
+  ProfilerTabPath,
+} from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 export const QualityTab = () => {
@@ -67,6 +68,7 @@ export const QualityTab = () => {
     fetchAllTests,
     onTestCaseUpdate,
     allTestCases,
+    allTestCasesPermissions,
     isTestsLoading,
     testCasePaging,
     table,
@@ -84,20 +86,21 @@ export const QualityTab = () => {
     showPagination,
   } = testCasePaging;
 
-  const { editTest } = useMemo(() => {
-    return {
-      editTest:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditTests),
-      editDataProfile:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
-    };
-  }, [permissions, getPrioritizedEditPermission]);
+  const editTest = useMemo(
+    () =>
+      permissions &&
+      getDerivedPermissionFlags(permissions).can(Operation.EditTests),
+    [permissions]
+  );
 
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
+  const originBreadcrumb = (
+    location.state as {
+      breadcrumbData?: DataQualityTabProps['breadcrumbData'];
+    } | null
+  )?.breadcrumbData;
 
   const searchData = useMemo(() => {
     const param = location.search;
@@ -129,6 +132,14 @@ export const QualityTab = () => {
   const testSuite = useMemo(() => table?.testSuite, [table]);
   const [ingestionPipelineCount, setIngestionPipelineCount] =
     useState<number>(0);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(searchValue) ||
+      Boolean(selectedTestCaseStatus) ||
+      selectedTestType !== TestCaseType.all,
+    [searchValue, selectedTestCaseStatus, selectedTestType]
+  );
 
   const totalTestCaseSummary = useMemo(() => {
     const tests = testCaseSummary?.total ?? INITIAL_TEST_SUMMARY;
@@ -215,11 +226,15 @@ export const QualityTab = () => {
   };
 
   const tableBreadcrumb = useMemo(() => {
+    if (originBreadcrumb?.length) {
+      return originBreadcrumb;
+    }
+
     return table
       ? [
           ...getBreadcrumbForTable(table),
           {
-            name: getEntityName(table),
+            name: table.name,
             url: getEntityDetailsPath(
               EntityType.TABLE,
               table.fullyQualifiedName ?? '',
@@ -229,7 +244,7 @@ export const QualityTab = () => {
           },
         ]
       : undefined;
-  }, [table]);
+  }, [originBreadcrumb, table]);
 
   const handleTestCaseStatusChange = (value: TestCaseStatus) => {
     if (value !== selectedTestCaseStatus) {
@@ -345,7 +360,7 @@ export const QualityTab = () => {
           qualityTab: String(tab),
         }),
       },
-      { state: undefined, replace: true }
+      { state: location.state, replace: true }
     );
   };
 
@@ -375,8 +390,10 @@ export const QualityTab = () => {
       </div>
 
       <div className="tw:border tw:border-secondary tw:rounded-[10px]">
-        <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:p-4">
-          <div className="tw:flex tw:items-center tw:gap-5">
+        <div
+          className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-4 tw:gap-y-4 tw:p-4"
+          data-testid="quality-tab-toolbar">
+          <div className="tw:flex tw:min-w-100 tw:flex-auto tw:items-center tw:gap-3">
             <Tabs
               className="tw:w-max"
               selectedKey={qualityTab}
@@ -391,7 +408,9 @@ export const QualityTab = () => {
             </Tabs>
 
             {isTestCaseTab && (
-              <div className="tw:w-100">
+              <div
+                className="tw:min-w-50 tw:max-w-75 tw:flex-1"
+                data-testid="quality-tab-search">
                 <Searchbar
                   removeMargin
                   placeholder={t('label.search-entity', {
@@ -405,16 +424,22 @@ export const QualityTab = () => {
           </div>
 
           {isTestCaseTab && (
-            <Form className="new-form-style" layout="inline">
-              <Space align="center" className="w-full justify-end" size={20}>
-                <Form.Item className="m-0 w-52" label={t('label.type')}>
+            <Form
+              className="new-form-style tw:ml-auto tw:shrink-0"
+              data-testid="quality-tab-filter-controls"
+              layout="inline">
+              <Space
+                align="center"
+                className="tw:w-full tw:justify-end"
+                size={12}>
+                <Form.Item className="tw:m-0 tw:w-44" label={t('label.type')}>
                   <Select
                     options={TEST_CASE_TYPE_OPTION}
                     value={selectedTestType}
                     onChange={handleTestCaseTypeChange}
                   />
                 </Form.Item>
-                <Form.Item className="m-0 w-52" label={t('label.status')}>
+                <Form.Item className="tw:m-0 tw:w-44" label={t('label.status')}>
                   <Select
                     options={TEST_CASE_STATUS_OPTION}
                     value={selectedTestCaseStatus}
@@ -447,7 +472,9 @@ export const QualityTab = () => {
                 (await getResourceLimit('dataQuality', true, true));
             }}
             breadcrumbData={tableBreadcrumb}
+            entityPermissions={allTestCasesPermissions}
             fetchTestCases={handleSortTestCase}
+            hasActiveFilters={hasActiveFilters}
             isEditAllowed={editTest}
             isLoading={isTestsLoading}
             pagingData={pagingData}

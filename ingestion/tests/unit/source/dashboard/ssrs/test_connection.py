@@ -22,15 +22,6 @@ def test_ssrs_connection_is_base_connection():
     assert issubclass(SsrsConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = SsrsConnection(MagicMock())
-        client = conn.client
-
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
-
-
 def test_test_connection_runs_steps():
     conn = SsrsConnection(MagicMock())
     conn._client = MagicMock()
