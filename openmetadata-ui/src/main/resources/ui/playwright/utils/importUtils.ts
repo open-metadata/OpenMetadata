@@ -41,6 +41,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { DomainPickerTarget, selectDomainInPicker } from './domainPicker';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
@@ -630,23 +631,14 @@ export const fillGlossaryTermDetails = async (
 
 export const fillDomainDetails = async (
   page: Page,
-  domains: { name: string; displayName: string; fullyQualifiedName?: string }
+  domains: DomainPickerTarget
 ) => {
   await page.keyboard.press('Enter');
-
   await page.click('[data-testid="domain-selectable-tree-search"]');
 
-  const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
-  );
-
-  await page.getByTestId('domain-selectable-tree-search').fill(domains.name);
-
-  await searchDomain;
-
-  await page.getByTestId(`tree-node-${domains.fullyQualifiedName}`).click();
-  // Multi-select picker: commit the staged selection via the Apply footer.
-  await page.getByTestId('update-btn').click();
+  // Bulk edit stages the whole sheet and saves it later, so there is no PATCH
+  // to wait for on this cell.
+  await selectDomainInPicker(page, domains, { awaitPatch: false });
 };
 
 const openActiveCellPopover = async (

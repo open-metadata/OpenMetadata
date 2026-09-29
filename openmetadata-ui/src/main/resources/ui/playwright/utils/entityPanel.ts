@@ -19,6 +19,7 @@ import {
   openGlossaryPicker,
   searchGlossaryPicker,
 } from './glossaryPicker';
+import { selectDomainInPicker } from './domainPicker';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { ENTITY_PATH } from '../support/entity/Entity.interface';
@@ -387,40 +388,17 @@ export const editDomain = async (page: Page, domainName: string) => {
   await domainsSection
     .locator('[data-testid="add-domain"]')
     .scrollIntoViewIfNeeded();
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
+  await page.getByTestId('add-domain').waitFor({ state: 'visible' });
   await page.locator('[data-testid="add-domain"]').click();
-  const search = page.getByTestId('domain-selectable-tree-search');
 
-  await search.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
+  // The panel renders no FQN, so the picker matches on the visible name.
+  const patchResponse = await selectDomainInPicker(
+    page,
+    { name: domainName },
+    { multiSelect: false }
   );
 
-  await search.fill(domainName);
-
-  const searchDomainResponse = await searchDomainPromise;
-  expect(searchDomainResponse.status()).toBe(200);
-
-  const tagSelector = page
-    .getByTestId('domain-selectable-tree-popover')
-    .getByText(domainName);
-  await tagSelector.waitFor({ state: 'visible' });
-
-  const patchReqPromise = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await tagSelector.click();
-
-  const patchResponse = await patchReqPromise;
-  expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
+  expect(patchResponse?.status()).toBe(200);
 };
 
 export const verifyDeletedEntityNotVisible = async (
@@ -575,39 +553,22 @@ export const removeOwnerFromPanel = async (
 };
 
 export const removeDomainFromPanel = async (page: Page, domainName: string) => {
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
+  await page.getByTestId('add-domain').waitFor({ state: 'visible' });
 
   // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
   await page.getByTestId('add-domain').click({ force: true });
 
-  const domainSearch = page.getByTestId('domain-selectable-tree-search');
-  await domainSearch.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
+  // Clicking the selected node deselects it. This panel's picker commits on
+  // select, like `editDomain` above.
+  //
+  // The removed `getByRole('button', { name: 'Update' })` fallback was already
+  // dead: the staged footer's confirm button is labelled "Apply"/"Apply (N)",
+  // never "Update", so `isVisible()` could not be true.
+  await selectDomainInPicker(
+    page,
+    { name: domainName },
+    { multiSelect: false }
   );
-
-  await domainSearch.fill(domainName);
-
-  await searchDomainPromise;
-
-  const domainItem = page
-    .getByTestId('domain-selectable-tree-popover')
-    .getByText(domainName);
-  const patchPromise = waitForPatchResponse(page);
-
-  await domainItem.click();
-
-  const updateButton = page.getByRole('button', { name: 'Update' });
-  if (await updateButton.isVisible()) {
-    await updateButton.click();
-  }
-
-  await patchPromise;
 };
 
 export const assignTierToPanel = async (page: Page, tierName: string) => {

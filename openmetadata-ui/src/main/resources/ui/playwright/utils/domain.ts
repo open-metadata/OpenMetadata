@@ -46,6 +46,7 @@ import {
   selectOptionWithRetry,
   uuid,
 } from './common';
+import { DomainPickerTarget, selectDomainInPicker } from './domainPicker';
 import {
   addOwner,
   escapeESReservedCharacters,
@@ -258,40 +259,14 @@ export const removeCertificationFromWidget = async (
 
 export const assignDomainWidget = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  domain: DomainPickerTarget,
   multiSelect = false,
   isUpdate = false
 ) => {
   await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
   await waitForAllLoadersToDisappear(page);
 
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const domainTag = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
-  await domainTag.waitFor({ state: 'visible' });
-
-  if (multiSelect) {
-    await domainTag.click();
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await page.getByTestId('update-btn').click();
-    await patchReq;
-  } else {
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await domainTag.click();
-    await patchReq;
-  }
-
-  await waitForAllLoadersToDisappear(page);
+  await selectDomainInPicker(page, domain, { multiSelect });
 
   await expect(
     page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
@@ -300,28 +275,18 @@ export const assignDomainWidget = async (
 
 export const removeDomainWidget = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: DomainPickerTarget
 ) => {
   // Removing implies a domain is already assigned, so the widget shows edit.
   await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
   await waitForAllLoadersToDisappear(page);
 
-  await page.getByTestId('domain-selectable-tree-search').clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
+  // Clicking the selected node deselects it; the single-select picker commits
+  // that on the click itself.
+  await selectDomainInPicker(page, domain, {
+    multiSelect: false,
+    clearSearch: true,
+  });
 
   await expect(
     page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
