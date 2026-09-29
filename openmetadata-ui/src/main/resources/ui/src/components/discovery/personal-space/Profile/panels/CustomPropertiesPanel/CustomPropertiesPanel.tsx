@@ -20,7 +20,8 @@ import {
 import { Hint } from '@openmetadata/ui-core-components/icons';
 import { Settings02 } from '@untitledui/icons';
 import type { Key } from 'react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AxiosError } from 'axios';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
@@ -28,10 +29,13 @@ import { usePermissionProvider } from '../../../../../../context/PermissionProvi
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
@@ -42,6 +46,8 @@ import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 import {
   getBreadcrumbItems,
   getPageTitle,
+  parseCustomPropertiesHash,
+  viewToSubPath,
 } from './CustomPropertiesPanel.utils';
 
 interface CustomPropertiesPanelProps {
@@ -53,49 +59,151 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { state: hashState, setHash } = useSettingsHash();
+
+  const parsedHash = useMemo(
+    () => parseCustomPropertiesHash(hashState.subPath),
+    [hashState.subPath]
+  );
+
   const [subView, setSubView] = useState<CustomPropertiesSubView>({
     type: 'landing',
   });
   const [showHint, setShowHint] = useState(false);
+  const resolvedFqnRef = useRef<string | null>(null);
 
-  const handleSelectEntityType = useCallback((entityType: Type) => {
-    setSubView({ type: 'detail', entityType });
-  }, []);
+  useEffect(() => {
+    if (!parsedHash.entityFqn) {
+      setSubView({ type: 'landing' });
+      resolvedFqnRef.current = null;
+
+      return;
+    }
+
+    if (parsedHash.entityFqn === resolvedFqnRef.current) {
+      setSubView((prev) => {
+        if (prev.type === 'landing') {
+          return prev;
+        }
+
+        if (parsedHash.action === 'add' && prev.type !== 'add') {
+          return { type: 'add', entityType: prev.entityType };
+        }
+
+        if (parsedHash.action === 'detail' && prev.type !== 'detail') {
+          return { type: 'detail', entityType: prev.entityType };
+        }
+
+        return prev;
+      });
+
+      return;
+    }
+
+    resolvedFqnRef.current = parsedHash.entityFqn;
+    getTypeByFQN(parsedHash.entityFqn)
+      .then((entityType) => {
+        if (parsedHash.action === 'add') {
+          setSubView({ type: 'add', entityType });
+        } else if (
+          parsedHash.action === 'edit' &&
+          parsedHash.propertyName
+        ) {
+          const property = entityType.customProperties?.find(
+            (p) => p.name === parsedHash.propertyName
+          );
+
+          if (property) {
+            setSubView({ type: 'edit', entityType, property });
+          } else {
+            setSubView({ type: 'detail', entityType });
+          }
+        } else {
+          setSubView({ type: 'detail', entityType });
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+        setHash('custom-properties');
+      });
+  }, [parsedHash, setHash]);
+
+  const handleSelectEntityType = useCallback(
+    (entityType: Type) => {
+      setHash(
+        'custom-properties',
+        entityType.fullyQualifiedName ?? undefined
+      );
+    },
+    [setHash]
+  );
 
   const handleAddProperty = useCallback(() => {
     setSubView((prev) => {
       if (prev.type === 'detail') {
-        return { type: 'add', entityType: prev.entityType };
+        const next: CustomPropertiesSubView = {
+          type: 'add',
+          entityType: prev.entityType,
+        };
+        setHash('custom-properties', viewToSubPath(next));
+
+        return next;
       }
 
       return prev;
     });
-  }, []);
+  }, [setHash]);
 
-  const handleEditProperty = useCallback((property: CustomProperty) => {
-    setSubView((prev) => {
-      if (prev.type === 'detail') {
-        return { type: 'edit', entityType: prev.entityType, property };
-      }
+  const handleEditProperty = useCallback(
+    (property: CustomProperty) => {
+      setSubView((prev) => {
+        if (prev.type === 'detail') {
+          const next: CustomPropertiesSubView = {
+            type: 'edit',
+            entityType: prev.entityType,
+            property,
+          };
+          setHash('custom-properties', viewToSubPath(next));
 
-      return prev;
-    });
-  }, []);
+          return next;
+        }
+
+        return prev;
+      });
+    },
+    [setHash]
+  );
 
   const handleBackToDetail = useCallback(() => {
     setSubView((prev) => {
       if (prev.type === 'add' || prev.type === 'edit') {
-        return { type: 'detail', entityType: prev.entityType };
+        const next: CustomPropertiesSubView = {
+          type: 'detail',
+          entityType: prev.entityType,
+        };
+        setHash('custom-properties', viewToSubPath(next));
+
+        return next;
       }
 
       return prev;
     });
-  }, []);
+  }, [setHash]);
 
   const hasTypeViewPermission = userPermissions.hasViewPermissions(
     ResourceEntity.TYPE,
     permissions
   );
+
+  useEffect(() => {
+    if (
+      subView.type !== 'landing' &&
+      Object.keys(permissions).length > 0 &&
+      !hasTypeViewPermission
+    ) {
+      setHash('custom-properties');
+    }
+  }, [subView.type, permissions, hasTypeViewPermission, setHash]);
 
   const globalSettingsItems = useMemo<SettingMenuItem[]>(() => {
     if (!hasTypeViewPermission) {
@@ -151,7 +259,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   const handleBreadcrumbAction = useCallback(
     (id: Key) => {
       if (id === CRUMB.WORKSPACE || id === CRUMB.LANDING) {
-        setSubView({ type: 'landing' });
+        setHash('custom-properties');
       } else if (
         id === CRUMB.DETAIL &&
         (subView.type === 'add' || subView.type === 'edit')
@@ -159,7 +267,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         setSubView({ type: 'detail', entityType: subView.entityType });
       }
     },
-    [subView]
+    [subView, setHash]
   );
 
   // Push dynamic header state (breadcrumbs, icon, actions) up to ProfilePage

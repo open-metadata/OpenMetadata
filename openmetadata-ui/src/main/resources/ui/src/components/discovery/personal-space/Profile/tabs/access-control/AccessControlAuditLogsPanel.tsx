@@ -51,6 +51,7 @@ import {
   PAGE_SIZE_MEDIUM,
   SOCKET_EVENTS,
 } from '../../../../../../constants/constants';
+import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import { Paging } from '../../../../../../generated/type/paging';
 import {
@@ -137,9 +138,17 @@ const AccessControlAuditLogsPanel: React.FC<
   const { t } = useTranslation();
   const { socket } = useWebSocketConnector();
 
+  const {
+    page: currentPage,
+    pageSize: hashPageSize,
+    cursor: hashCursor,
+    cursorType: hashCursorType,
+    setPage: setHashPage,
+  } = useHashPagingParams();
+  const pageSize = hashPageSize || PAGE_SIZE_MEDIUM;
+
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [paging, setPaging] = useState<Paging>(INITIAL_PAGING);
-  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
   // pageCursorsRef[N] = 'after' cursor returned when page N was fetched.
@@ -156,7 +165,6 @@ const AccessControlAuditLogsPanel: React.FC<
     {}
   );
   const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportDateRange, setExportDateRange] = useState<{
@@ -210,15 +218,23 @@ const AccessControlAuditLogsPanel: React.FC<
 
   useEffect(() => {
     pageCursorsRef.current = {};
-    setCurrentPage(1);
-    fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
+    if (currentPage <= 1 || !hashCursor) {
+      fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
+    } else if (hashCursorType === 'before') {
+      fetchAuditLogs({ before: hashCursor }, undefined, currentPage);
+    } else {
+      fetchAuditLogs({ after: hashCursor }, undefined, currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAuditLogs]);
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    pageCursorsRef.current = {};
-    setPageSize(size);
-    setCurrentPage(1);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      pageCursorsRef.current = {};
+      setHashPage(1, undefined, undefined, size);
+    },
+    [setHashPage]
+  );
 
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {
@@ -226,10 +242,10 @@ const AccessControlAuditLogsPanel: React.FC<
       setActiveFilters(filters);
       setFilterParams(params);
       filterParamsRef.current = params;
-      setCurrentPage(1);
+      setHashPage(1, undefined, undefined, pageSize);
       fetchAuditLogs({ after: undefined, before: undefined }, params, 1);
     },
-    [fetchAuditLogs]
+    [fetchAuditLogs, setHashPage, pageSize]
   );
 
   const handleSearchChange = useCallback(
@@ -237,10 +253,10 @@ const AccessControlAuditLogsPanel: React.FC<
       pageCursorsRef.current = {};
       setSearchTerm(query);
       searchTermRef.current = query;
-      setCurrentPage(1);
+      setHashPage(1, undefined, undefined, pageSize);
       fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
     },
-    [fetchAuditLogs]
+    [fetchAuditLogs, setHashPage, pageSize]
   );
 
   const [searchInputValue, setSearchInputValue] = useState('');
@@ -264,10 +280,10 @@ const AccessControlAuditLogsPanel: React.FC<
     filterParamsRef.current = {};
     setSearchTerm('');
     searchTermRef.current = '';
-    setCurrentPage(1);
+    setHashPage(1, undefined, undefined, pageSize);
     setSearchInputValue('');
     fetchAuditLogs({ after: undefined, before: undefined }, {}, 1);
-  }, [debouncedSearch, fetchAuditLogs]);
+  }, [debouncedSearch, fetchAuditLogs, setHashPage, pageSize]);
 
   const handleRemoveFilter = useCallback(
     (category: string) => {
@@ -277,10 +293,10 @@ const AccessControlAuditLogsPanel: React.FC<
       setActiveFilters(remaining);
       setFilterParams(params);
       filterParamsRef.current = params;
-      setCurrentPage(1);
+      setHashPage(1, undefined, undefined, pageSize);
       fetchAuditLogs({ after: undefined, before: undefined }, params, 1);
     },
-    [activeFilters, fetchAuditLogs]
+    [activeFilters, fetchAuditLogs, setHashPage, pageSize]
   );
 
   const walkToPage = useCallback(
@@ -322,7 +338,7 @@ const AccessControlAuditLogsPanel: React.FC<
 
           setLogs(response.data);
           setPaging(response.paging ?? INITIAL_PAGING);
-          setCurrentPage(newPage);
+          setHashPage(newPage, undefined, undefined, pageSize);
 
           if (response.paging?.after) {
             pageCursorsRef.current[newPage] = response.paging.after;
@@ -337,7 +353,7 @@ const AccessControlAuditLogsPanel: React.FC<
         }
       }
     },
-    [pageSize]
+    [pageSize, setHashPage]
   );
 
   const handlePageChange = useCallback(
@@ -348,7 +364,7 @@ const AccessControlAuditLogsPanel: React.FC<
 
       if (newPage === 1) {
         pageCursorsRef.current = {};
-        setCurrentPage(1);
+        setHashPage(1, undefined, undefined, pageSize);
         fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
 
         return;
@@ -357,7 +373,7 @@ const AccessControlAuditLogsPanel: React.FC<
       // Direct jump: we already have the cursor for page newPage-1
       const cachedCursor = pageCursorsRef.current[newPage - 1];
       if (cachedCursor) {
-        setCurrentPage(newPage);
+        setHashPage(newPage, undefined, cachedCursor, pageSize);
         fetchAuditLogs({ after: cachedCursor }, undefined, newPage);
 
         return;
@@ -383,7 +399,7 @@ const AccessControlAuditLogsPanel: React.FC<
 
       walkToPage(startCursor, startPage, newPage);
     },
-    [currentPage, fetchAuditLogs, walkToPage]
+    [currentPage, fetchAuditLogs, walkToPage, setHashPage, pageSize]
   );
 
   const handleExportDownload = useCallback((data: string) => {

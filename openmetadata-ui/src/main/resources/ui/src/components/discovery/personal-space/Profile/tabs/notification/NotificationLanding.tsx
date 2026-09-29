@@ -11,16 +11,29 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NotificationView } from './Notification.types';
+
+interface LandingCard {
+  id: string;
+  icon: FC<{ className?: string }>;
+  titleKey: string;
+  descriptionKey: string;
+  view: NotificationView;
+}
+
+const LANDING_CARDS: LandingCard[] = [
+  {
+    id: 'alerts',
+    icon: Bell01,
+    titleKey: 'label.alert-plural',
+    descriptionKey: 'message.alerts-description',
+    view: { type: 'list' },
+  },
+];
 
 interface NotificationLandingProps {
   onNavigate: (view: NotificationView) => void;
@@ -33,38 +46,46 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
       data-testid="notification-landing">
-      <Card size="md">
-        <Card.Content>
-          <Button
-            className="tw:w-full tw:text-left tw:no-underline"
-            color="link-color"
-            data-testid="notification-card-alerts"
-            onPress={() => onNavigate({ type: 'list' })}>
-            <Box align="start" direction="row" gap={4}>
+      {LANDING_CARDS.map((card) => {
+        const Icon = card.icon;
+
+        return (
+          <Card
+            isClickable
+            key={card.id}
+            size="md"
+            onClick={() => onNavigate(card.view)}>
+            <Card.Content>
               <Box
-                align="center"
-                className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
-                justify="center">
-                <Bell01 className="tw:size-6 tw:text-secondary" />
+                align="start"
+                data-testid={`notification-card-${card.id}`}
+                direction="row"
+                gap={4}>
+                <Box
+                  align="center"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  justify="center">
+                  <Icon className="tw:size-6 tw:text-secondary" />
+                </Box>
+                <Box className="tw:min-w-0" direction="col" gap={1}>
+                  <Typography
+                    className="tw:text-primary"
+                    size="text-sm"
+                    weight="semibold">
+                    {t(card.titleKey)}
+                  </Typography>
+                  <Typography
+                    className="tw:text-tertiary tw:line-clamp-2"
+                    size="text-sm"
+                    weight="regular">
+                    {t(card.descriptionKey)}
+                  </Typography>
+                </Box>
               </Box>
-              <Box className="tw:min-w-0" direction="col" gap={1}>
-                <Typography
-                  className="tw:text-primary"
-                  size="text-sm"
-                  weight="semibold">
-                  {t('label.alert-plural')}
-                </Typography>
-                <Typography
-                  className="tw:text-tertiary tw:line-clamp-2"
-                  size="text-sm"
-                  weight="regular">
-                  {t('message.alerts-description')}
-                </Typography>
-              </Box>
-            </Box>
-          </Button>
-        </Card.Content>
-      </Card>
+            </Card.Content>
+          </Card>
+        );
+      })}
     </Box>
   );
 };

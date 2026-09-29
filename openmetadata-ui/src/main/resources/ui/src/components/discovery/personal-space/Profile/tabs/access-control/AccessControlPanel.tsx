@@ -26,9 +26,11 @@ import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { AccessControlView } from './AccessControl.types';
+import { hashSubPathToView, viewToSubPath } from './AccessControl.utils';
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';
 import AccessControlAddRoleForm from './AccessControlAddRoleForm';
 import AccessControlAuditLogsPanel from './AccessControlAuditLogsPanel';
@@ -53,13 +55,19 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [view, setView] = React.useState<AccessControlView>({
-    type: 'landing',
-  });
+  const { state: hashState, setHash } = useSettingsHash();
 
-  const onNavigate = useCallback((nextView: AccessControlView) => {
-    setView(nextView);
-  }, []);
+  const view = useMemo<AccessControlView>(
+    () => hashSubPathToView(hashState.subPath),
+    [hashState.subPath]
+  );
+
+  const onNavigate = useCallback(
+    (nextView: AccessControlView) => {
+      setHash('access-control', viewToSubPath(nextView));
+    },
+    [setHash]
+  );
 
   const isAuditLogsView = view.type === 'audit-logs';
 
@@ -74,6 +82,12 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     useState<React.ReactNode>(undefined);
   const [detailHeaderTitleSuffix, setDetailHeaderTitleSuffix] =
     useState<React.ReactNode>(undefined);
+  const [resolvedDetailName, setResolvedDetailName] = useState('');
+
+  const viewFqn =
+    view.type === ROLES_DETAIL || view.type === POLICIES_DETAIL
+      ? view.fqn
+      : undefined;
 
   // Clear detail header state when navigating away.
   // panelHeaderActions is cleared by AccessControlAuditLogsPanel's own effect cleanup on unmount.
@@ -81,7 +95,8 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     setDetailHeaderActions(undefined);
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
-  }, [view.type]);
+    setResolvedDetailName('');
+  }, [view.type, viewFqn]);
 
   const canAddRole = useMemo(
     () =>
@@ -96,6 +111,20 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       checkPermission(Operation.Create, ResourceEntity.POLICY, permissions),
     [permissions]
   );
+
+  const permissionsLoaded = !isEmpty(permissions);
+
+  useEffect(() => {
+    if (view.type === 'roles-add' && permissionsLoaded && !canAddRole) {
+      onNavigate({ type: 'roles' });
+    }
+  }, [view.type, permissionsLoaded, canAddRole, onNavigate]);
+
+  useEffect(() => {
+    if (view.type === 'policies-add' && permissionsLoaded && !canAddPolicy) {
+      onNavigate({ type: 'policies' });
+    }
+  }, [view.type, permissionsLoaded, canAddPolicy, onNavigate]);
 
   // Push header updates up to ProfilePage whenever the internal view changes.
   useEffect(() => {
@@ -117,10 +146,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     let isDetailView = false;
 
     if (view.type === ROLES_DETAIL) {
-      roleName = view.name;
+      roleName = resolvedDetailName || view.name;
       isDetailView = true;
     } else if (view.type === POLICIES_DETAIL) {
-      policyName = view.name;
+      policyName = resolvedDetailName || view.name;
       isDetailView = true;
     }
 
@@ -202,11 +231,11 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
 
     const onBreadcrumbAction = (id: Key) => {
       if (id === 'access-control') {
-        setView({ type: 'landing' });
+        onNavigate({ type: 'landing' });
       } else if (id === 'roles') {
-        setView({ type: 'roles' });
+        onNavigate({ type: 'roles' });
       } else if (id === 'policies') {
-        setView({ type: 'policies' });
+        onNavigate({ type: 'policies' });
       }
     };
 
@@ -275,6 +304,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     detailHeaderActions,
     detailHeaderTitleInput,
     detailHeaderTitleSuffix,
+    resolvedDetailName,
   ]);
 
   // Audit logs manages its own height/scroll and injects its own header actions.
@@ -303,11 +333,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
         <AccessControlRoleDetail
           fqn={view.fqn}
           onNavigate={onNavigate}
-          onRename={(newName) =>
-            setView((prev) =>
-              prev.type === ROLES_DETAIL ? { ...prev, name: newName } : prev
-            )
-          }
+          onRename={setResolvedDetailName}
           onSetHeaderActions={setDetailHeaderActions}
           onSetHeaderTitleInput={setDetailHeaderTitleInput}
           onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
@@ -328,11 +354,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
         <AccessControlPolicyDetail
           fqn={view.fqn}
           onNavigate={onNavigate}
-          onRename={(newName) =>
-            setView((prev) =>
-              prev.type === POLICIES_DETAIL ? { ...prev, name: newName } : prev
-            )
-          }
+          onRename={setResolvedDetailName}
           onSetHeaderActions={setDetailHeaderActions}
           onSetHeaderTitleInput={setDetailHeaderTitleInput}
           onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}

@@ -21,6 +21,7 @@ import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../../../../../utils/RouterUtils';
+import type { AccessControlView } from './AccessControl.types';
 
 export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
   uniqBy(
@@ -29,6 +30,83 @@ export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
     ),
     'id'
   );
+
+export function hashSubPathToView(subPath: string): AccessControlView {
+  if (!subPath) {
+    return { type: 'landing' };
+  }
+
+  const parts = subPath.split('/');
+
+  if (parts[0] === 'roles') {
+    if (!parts[1]) {
+      return { type: 'roles' };
+    }
+
+    if (parts[1] === 'add') {
+      return { type: 'roles-add' };
+    }
+
+    return {
+      type: 'roles-detail',
+      fqn: parts.slice(1).join('/'),
+      name: parts[1],
+    };
+  }
+
+  if (parts[0] === 'policies') {
+    if (!parts[1]) {
+      return { type: 'policies' };
+    }
+
+    if (parts[1] === 'add') {
+      return { type: 'policies-add' };
+    }
+
+    return {
+      type: 'policies-detail',
+      fqn: parts.slice(1).join('/'),
+      name: parts[1],
+    };
+  }
+
+  if (parts[0] === 'permission-debugger') {
+    return { type: 'permission-debugger' };
+  }
+
+  if (parts[0] === 'audit-logs') {
+    return { type: 'audit-logs' };
+  }
+
+  return { type: 'landing' };
+}
+
+export function viewToSubPath(
+  view: AccessControlView
+): string | undefined {
+  switch (view.type) {
+    case 'landing':
+      return undefined;
+    case 'roles':
+      return 'roles';
+    case 'roles-add':
+      return 'roles/add';
+    case 'roles-detail':
+      return `roles/${view.fqn}`;
+    case 'policies':
+      return 'policies';
+    case 'policies-add':
+      return 'policies/add';
+    case 'policies-detail':
+      return `policies/${view.fqn}`;
+    case 'permission-debugger':
+      return 'permission-debugger';
+    case 'audit-logs':
+      return 'audit-logs';
+    default:
+      return undefined;
+  }
+}
 
 export const getEntityLink = (entityType: string, fqn: string): string => {
   switch (entityType) {
