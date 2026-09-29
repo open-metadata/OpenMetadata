@@ -76,7 +76,6 @@ interface LineageState {
   showAddEdgeModal: boolean;
   showDeleteModal: boolean;
   isDrawerOpen: boolean;
-  newAddedNode?: Node;
   deletionState: { loading: boolean; status: LoadingState };
 
   // Actions
@@ -143,7 +142,6 @@ interface LineageState {
   closeDeleteModal: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
-  setNewAddedNode: (node?: Node) => void;
   setDeletionState: (next: { loading: boolean; status: LoadingState }) => void;
 }
 
@@ -189,7 +187,6 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   showAddEdgeModal: false,
   showDeleteModal: false,
   isDrawerOpen: false,
-  newAddedNode: undefined,
   deletionState: { loading: false, status: 'initial' },
 
   // Actions
@@ -360,7 +357,6 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       showAddEdgeModal: false,
       showDeleteModal: false,
       isDrawerOpen: false,
-      newAddedNode: undefined,
       deletionState: { loading: false, status: 'initial' },
     }),
 
@@ -452,8 +448,6 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   openDrawer: () => set({ isDrawerOpen: true }),
 
   closeDrawer: () => set({ isDrawerOpen: false }),
-
-  setNewAddedNode: (newAddedNode?: Node) => set({ newAddedNode }),
 
   setDeletionState: (deletionState: {
     loading: boolean;

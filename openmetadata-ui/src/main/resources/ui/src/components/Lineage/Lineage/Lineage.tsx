@@ -12,11 +12,10 @@
  */
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
+import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
 import {
-  DragEvent,
   ReactNode,
   useCallback,
   useEffect,
@@ -116,7 +115,6 @@ import {
   createNodes,
   getConnectedNodesEdges,
   getEntityTypeFromPlatformView,
-  getNodeLineageData,
   getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
 } from '../../../utils/EntityLineageNodeUtils';
@@ -135,11 +133,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import '../../Entity/EntityLineage/entity-lineage.style.less';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
-import EntityLineageSidebar from '../../Entity/EntityLineage/EntityLineageSidebar.component';
-import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { getRealEntityRef } from '../LineageMap/LineageMapEdit.utils';
-import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import {
   LineageOverlays,
   LineageOverlaysHandlers,
@@ -486,7 +481,6 @@ export const Lineage = ({
   const lastFetchedLineageKeyRef = useRef<string>();
 
   const {
-    canEditLineage,
     lineageConfig,
     setLineageConfig,
     tracedColumns,
@@ -544,13 +538,11 @@ export const Lineage = ({
     removeEdgeById,
     removeEdgesBySourceTarget,
     removeEdgesByDocId,
-    addNodes,
     updateEdge,
   } = useMapBasedNodesEdges([], []);
   const [loading, setLoading] = useState(true);
   const [init, setInit] = useState(false);
   const [status, setStatus] = useState<LoadingState>('initial');
-  const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const selectedQuickFilters = useLineageStore((s) => s.selectedQuickFilters);
   const [entityType, setEntityType] = useState<EntityType | undefined>(
     entityTypeProp
@@ -1487,97 +1479,8 @@ export const Lineage = ({
           nodes: updatedNodes,
         };
       });
-
-      setNewAddedNode({} as Node);
     },
     [entityLineage, edges, removeNodeById, removeEdgesBySourceTarget]
-  );
-
-  const onEntitySelect = useCallback(
-    (selectedEntity: EntityReference, nodeId: string) => {
-      const isExistingNode = nodes.some(
-        (n) =>
-          n.data.node.fullyQualifiedName === selectedEntity.fullyQualifiedName
-      );
-      if (isExistingNode) {
-        setNodes((es) =>
-          es
-            .map((n) =>
-              n.id.includes(nodeId)
-                ? {
-                    ...n,
-                    selectable: true,
-                    className: `${n.className} selected`,
-                  }
-                : n
-            )
-            .filter((es) => es.id !== nodeId)
-        );
-        setNewAddedNode({} as Node);
-      } else {
-        setNodes((es) => {
-          return es.map((el) => {
-            if (el.id === nodeId) {
-              return {
-                ...el,
-                connectable: true,
-                selectable: true,
-                id: selectedEntity.id,
-                data: {
-                  saved: false,
-                  node: getNodeLineageData(selectedEntity),
-                },
-              };
-            } else {
-              return el;
-            }
-          });
-        });
-      }
-    },
-    [nodes, setNodes]
-  );
-
-  const onNodeDrop = useCallback(
-    (event: DragEvent, reactFlowBounds: DOMRect) => {
-      event.preventDefault();
-      const entityType = event.dataTransfer.getData('application/reactflow');
-      if (entityType) {
-        const position = reactFlowInstance?.project({
-          x: event.clientX - (reactFlowBounds?.left ?? 0),
-          y: event.clientY - (reactFlowBounds?.top ?? 0),
-        });
-        const nodeId = uniqueId();
-        const newNode = {
-          id: nodeId,
-          nodeType: EntityLineageNodeType.DEFAULT,
-          position,
-          className: '',
-          connectable: false,
-          selectable: false,
-          type: EntityLineageNodeType.DEFAULT,
-          data: {
-            label: (
-              <>
-                <LineageNodeRemoveButton
-                  onRemove={() => removeNodeHandler(newNode as Node)}
-                />
-
-                <NodeSuggestions
-                  entityType={entityType}
-                  onSelectHandler={(value) => onEntitySelect(value, nodeId)}
-                />
-              </>
-            ),
-            isNewNode: true,
-          },
-        };
-        addNodes([newNode as Node]);
-
-        setNewAddedNode(newNode as Node);
-      }
-    },
-    [addNodes, onEntitySelect, reactFlowInstance, removeNodeHandler]
   );
 
   const selectLoadMoreNode = useCallback(
@@ -1884,8 +1787,6 @@ export const Lineage = ({
               );
             setEdges(createdEdges);
             setColumnsHavingLineage(columnsHavingLineage);
-
-            setNewAddedNode({} as Node);
           })
           .catch((err) => {
             showErrorToast(err);
@@ -2341,7 +2242,6 @@ export const Lineage = ({
       loadChildNodesHandler,
       removeNodeHandler,
       onNodeClick,
-      onNodeDrop,
       onNodeCollapse,
       onConnect,
       onEdgeDetailsUpdate,
@@ -2353,7 +2253,6 @@ export const Lineage = ({
       loadChildNodesHandler,
       removeNodeHandler,
       onNodeClick,
-      onNodeDrop,
       onNodeCollapse,
       onConnect,
       onEdgeDetailsUpdate,
@@ -2391,10 +2290,6 @@ export const Lineage = ({
           'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
         })}>
         {children}
-        <EntityLineageSidebar
-          newAddedNode={newAddedNode}
-          show={canEditLineage}
-        />
         <LineageOverlays handlers={overlayHandlers} />
       </div>
     </LineageHandlersContext.Provider>

@@ -27,15 +27,8 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import type { LayoutOptions } from 'elkjs/lib/elk.bundled.js';
-import { debounce, uniqueId } from 'lodash';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { debounce } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
@@ -69,14 +62,12 @@ import { LineageDirection } from '../../../generated/api/lineage/lineageDirectio
 import {
   LineageBand,
   LineageLens,
-  LineageLevelKind,
   LineageScene,
   LineageSceneBreadcrumb,
   LineageSceneEdge,
   LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
-import { EntityReference } from '../../../generated/entity/type';
 import { LineageLayer } from '../../../generated/settings/settings';
 import { LineagePlatformView } from '../../../hooks/lineage/types';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -116,7 +107,6 @@ import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../../Entity/EntityLineage/LineageLayers/LineageLayers';
-import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import AddLineagePopover from '../AddLineagePopover/AddLineagePopover';
 import {
@@ -127,7 +117,6 @@ import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapp
 import { LineageProps } from '../Lineage.interface';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
 import LineageNodeDeleteModal from '../LineageNodeDeleteModal/LineageNodeDeleteModal';
-import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
 import {
   buildLineagePathHighlightIndex,
@@ -247,10 +236,8 @@ interface SceneFlowNodeData {
   isPathHighlighted?: boolean;
   onSceneColumnHover?: (columnFqn?: string) => void;
   onSceneColumnSelect?: (columnFqn?: string) => void;
-  isNewNode?: boolean;
   isNodeRemovable?: boolean;
   isNodeEditable?: boolean;
-  label?: ReactNode;
   onSceneNodeRemove?: (node: { id: string }) => void;
   onSceneLineageEdit?: (request: LineageEditRequest) => void;
 }
@@ -1282,7 +1269,6 @@ const LineageMapCanvas = ({
           getEndpointNodeId(edge.to) === node.id
       );
       if (
-        !flowNode.data.isNewNode &&
         !isRemovableSceneNode(
           flowNode.data.sceneNode,
           currentScene.edges,
@@ -2035,145 +2021,6 @@ const LineageMapCanvas = ({
     onPaneClick();
   }, [setActiveNode, setSelectedEdge, setSelectedNode]);
 
-  const handleNewNodeSelect = useCallback(
-    (nodeId: string, value: EntityReference) => {
-      const sourceEntity = value as EntityReference & Partial<SourceType>;
-      const selectedEntityType = sourceEntity.entityType ?? value.type;
-      const currentNode = nodesRef.current.find((node) => node.id === nodeId);
-      if (!currentNode || !selectedEntityType || !value.id) {
-        return;
-      }
-      const selectedSceneNode: LineageSceneNode = {
-        ...currentNode.data.sceneNode,
-        entityType: selectedEntityType,
-        fullyQualifiedName: value.fullyQualifiedName,
-        label:
-          value.displayName ?? value.name ?? value.fullyQualifiedName ?? '',
-        sourceEntity: {
-          ...sourceEntity,
-          entityType: selectedEntityType,
-          type: selectedEntityType,
-        },
-      };
-      const selectedLineageNode = toLineageNode(selectedSceneNode, t);
-      setNodes((currentNodes) =>
-        currentNodes.map((node) =>
-          node.id === nodeId
-            ? {
-                ...node,
-                connectable: true,
-                data: {
-                  ...node.data,
-                  isNewNode: false,
-                  isNodeRemovable: true,
-                  label: undefined,
-                  node: selectedLineageNode,
-                  sceneNode: selectedSceneNode,
-                },
-              }
-            : node
-        )
-      );
-      setSelectedEdge(undefined);
-      setSelectedNode(selectedLineageNode as unknown as SourceType);
-    },
-    [setSelectedEdge, setSelectedNode, t]
-  );
-
-  const handleDragOver = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      if (!canEditScene) {
-        return;
-      }
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-    },
-    [canEditScene]
-  );
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      if (
-        !canEditScene ||
-        !scene ||
-        !reactFlowInstance ||
-        !wrapperRef.current
-      ) {
-        return;
-      }
-      event.preventDefault();
-      const droppedEntityType = event.dataTransfer.getData(
-        'application/reactflow'
-      );
-      if (!droppedEntityType) {
-        return;
-      }
-      const nodeId = `temporary:${uniqueId('lineage-map-node-')}`;
-      const bounds = wrapperRef.current.getBoundingClientRect();
-      const position = reactFlowInstance.project({
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top,
-      });
-      const temporarySceneNode: LineageSceneNode = {
-        band: scene.band,
-        entityType: droppedEntityType,
-        id: nodeId,
-        label: droppedEntityType,
-        levelKind: LineageLevelKind.Asset,
-        sourceEntity: {
-          entityType: droppedEntityType,
-          type: droppedEntityType,
-        },
-      };
-      const temporaryLineageNode = toLineageNode(temporarySceneNode, t);
-      const temporaryNode: Node<SceneFlowNodeData> = {
-        connectable: false,
-        data: {
-          hasIncomers: false,
-          hasOutgoers: false,
-          isDownstreamNode: false,
-          isNewNode: true,
-          isNodeRemovable: true,
-          isRootNode: false,
-          isUpstreamNode: false,
-          label: (
-            <>
-              <LineageNodeRemoveButton
-                onRemove={() => requestNodeDelete({ id: nodeId })}
-              />
-              <NodeSuggestions
-                entityType={droppedEntityType}
-                onSelectHandler={(value) => handleNewNodeSelect(nodeId, value)}
-              />
-            </>
-          ),
-          node: temporaryLineageNode,
-          nodeWidth: NODE_WIDTH,
-          onSceneDrill: handleDrill,
-          onSceneNodeRemove: requestNodeDelete,
-          sceneBand: scene.band,
-          sceneDrillLabel: t('label.zoom-in'),
-          sceneNode: temporarySceneNode,
-        },
-        height: NODE_HEIGHT,
-        id: nodeId,
-        position,
-        type: EntityLineageNodeType.DEFAULT,
-        width: NODE_WIDTH,
-      };
-      setNodes((currentNodes) => [...currentNodes, temporaryNode]);
-    },
-    [
-      canEditScene,
-      handleDrill,
-      handleNewNodeSelect,
-      reactFlowInstance,
-      requestNodeDelete,
-      scene,
-      t,
-    ]
-  );
-
   useEffect(() => {
     const handleDeleteKey = (event: KeyboardEvent) => {
       const action = getDeleteKeyAction(event, {
@@ -2328,8 +2175,6 @@ const LineageMapCanvas = ({
         onConnect={handleConnect}
         onConnectEnd={() => setIsCreatingEdge(false)}
         onConnectStart={() => setIsCreatingEdge(true)}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
         onInit={setReactFlowInstance}
         onMove={handleMove}
         onMoveStart={handleMoveStart}

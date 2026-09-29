@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createContext, DragEvent, useContext } from 'react';
+import { createContext, useContext } from 'react';
 import type { Connection, Edge, Node, NodeProps } from 'reactflow';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -33,7 +33,6 @@ export type LineageHandlersValue = {
   ) => Promise<void>;
   removeNodeHandler: (node: Node | NodeProps) => Promise<void>;
   onNodeClick: (node: Node) => void;
-  onNodeDrop: (event: DragEvent, reactFlowBounds: DOMRect) => void;
   onNodeCollapse: (node: Node | NodeProps, direction: LineageDirection) => void;
   onConnect: (connection: Edge | Connection) => void;
   onEdgeDetailsUpdate: (updatedEdgeDetails: AddLineage) => Promise<void>;
@@ -56,7 +55,6 @@ export const LineageHandlersContext = createContext<LineageHandlersValue>({
   loadChildNodesHandler: noopAsync,
   removeNodeHandler: noopAsync,
   onNodeClick: noop,
-  onNodeDrop: noop,
   onNodeCollapse: noop,
   onConnect: noop,
   onEdgeDetailsUpdate: noopAsync,

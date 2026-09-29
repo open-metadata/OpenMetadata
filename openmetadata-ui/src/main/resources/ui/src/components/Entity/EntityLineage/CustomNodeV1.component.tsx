@@ -212,8 +212,6 @@ const CustomNodeV1 = (props: NodeProps) => {
   const [columnsExpanded, setColumnsExpanded] = useState<boolean>();
 
   const {
-    label,
-    isNewNode,
     node = {},
     isRootNode,
     hasOutgoers = false,
@@ -341,10 +339,6 @@ const CustomNodeV1 = (props: NodeProps) => {
   );
 
   const nodeLabel = useMemo(() => {
-    if (isNewNode) {
-      return label;
-    }
-
     return (
       <>
         <div className="tw:min-w-0 tw:flex-1">
@@ -376,8 +370,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     node,
     onSceneNodeSelect,
     handleEntityClick,
-    isNewNode,
-    label,
     columnsExpanded,
     showColumnsWithLineageOnly,
     toggleShowColumnsWithLineageOnly,

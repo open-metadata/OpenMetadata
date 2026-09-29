@@ -713,17 +713,6 @@ describe('ui slice', () => {
     expect(useLineageStore.getState().isDrawerOpen).toBe(false);
   });
 
-  it('setNewAddedNode stores and clears the node', () => {
-    const n = { id: 'n' } as unknown as Node;
-    useLineageStore.getState().setNewAddedNode(n);
-
-    expect(useLineageStore.getState().newAddedNode).toBe(n);
-
-    useLineageStore.getState().setNewAddedNode(undefined);
-
-    expect(useLineageStore.getState().newAddedNode).toBeUndefined();
-  });
-
   it('setDeletionState replaces the payload', () => {
     useLineageStore.getState().setDeletionState({
       loading: true,
