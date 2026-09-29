@@ -109,7 +109,7 @@ describe('ChangeRequestsIndicator', () => {
     expect(withdrawChangeRequest).toHaveBeenCalledWith('cr-1', 2);
   });
 
-  it('offers no withdraw on someone else\'s request', async () => {
+  it("offers no withdraw on someone else's request", async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
       request({ requestedBy: 'bob' }),
     ]);
