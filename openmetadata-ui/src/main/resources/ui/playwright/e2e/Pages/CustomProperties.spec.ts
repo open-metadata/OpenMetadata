@@ -84,6 +84,7 @@ import {
   editCreatedProperty,
   fillCustomPropertyEditModal,
   getCustomPropertyEditButton,
+  getCustomPropertyCard,
   openCustomPropertiesTab,
   openCustomPropertyEditModal,
   setValueForProperty,
@@ -560,9 +561,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           const editModal = await openCustomPropertyEditModal(page, container);
 
           const value =
@@ -581,9 +580,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Verify the editor viewport is height-constrained and scrollable', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           // CodeMirror scrolls inside its own scroller, not the value wrapper.
           const codeMirrorScroll = container
             .getByTestId('sql-query-value')
@@ -596,9 +593,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           await expect(
             container.getByTestId(`toggle-${propertyName}`)
           ).not.toBeVisible();
@@ -620,9 +615,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           const editModal = await openCustomPropertyEditModal(page, container);
 
           for (const user of users) {
@@ -650,18 +643,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Verify item count (7) next to the property name', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           await expect(container.getByTestId('property-item-count')).toHaveText(
             '7'
           );
         });
 
         await test.step('Verify the list collapses behind "+N more"', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           const showMore = container.getByTestId('toggle-collapsed-values');
           await expect(showMore).toBeVisible();
           await showMore.click();
@@ -673,9 +662,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           await expect(
             container.getByTestId(`toggle-${propertyName}`)
           ).not.toBeVisible();
@@ -721,9 +708,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         // the link is checked on the property's card in the tab.
         await page.getByTestId('custom_properties').click();
 
-        const userLink = page
-          .getByTestId(`custom-property-${propertyName}-card`)
-          .getByTestId(userName);
+        const userLink = getCustomPropertyCard(page, propertyName).getByTestId(
+          userName
+        );
         await expect(userLink).toContainText(userName);
 
         const userDetailsResponse = page.waitForResponse(
@@ -767,9 +754,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           const editButton = getCustomPropertyEditButton(container);
           await editButton.scrollIntoViewIfNeeded();
           await expect(editButton).toBeVisible();
@@ -807,18 +792,17 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Verify row count (5) next to the property name', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           await expect(container.getByTestId('property-item-count')).toHaveText(
             '5'
           );
         });
 
         await test.step('Verify every saved row renders in the table', async () => {
-          const tableValue = page
-            .getByTestId(`custom-property-${propertyName}-card`)
-            .getByTestId('table-type-property-value');
+          const tableValue = getCustomPropertyCard(
+            page,
+            propertyName
+          ).getByTestId('table-type-property-value');
           for (let i = 1; i <= 5; i++) {
             await expect(
               tableValue.getByRole('row').filter({ hasText: `row${i}-col1` })
@@ -827,9 +811,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           await expect(
             container.getByTestId(`toggle-${propertyName}`)
           ).not.toBeVisible();
@@ -849,9 +831,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           const editButton = getCustomPropertyEditButton(container);
           await editButton.scrollIntoViewIfNeeded();
           await editButton.click();
@@ -875,9 +855,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await test.step('Edit button visible and clickable with wide table in markdown value', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
+          const container = getCustomPropertyCard(page, propertyName);
           const editButton = getCustomPropertyEditButton(container);
           await editButton.scrollIntoViewIfNeeded();
           await expect(editButton).toBeVisible();
@@ -903,9 +881,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
         await openCustomPropertiesTab(page);
 
-        const propertyCard = page.getByTestId(
-          `custom-property-${propertyName}-card`
-        );
+        const propertyCard = getCustomPropertyCard(page, propertyName);
         const isTablePatch = (resp: Response) =>
           resp.url().includes('/api/v1/tables/') &&
           resp.request().method() === 'PATCH';
@@ -1242,9 +1218,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               propertyType: 'string',
             });
 
-            await expect(
-              page.getByTestId(`custom-property-${propertyName}-card`)
-            ).toHaveCount(1);
+            await expect(getCustomPropertyCard(page, propertyName)).toHaveCount(
+              1
+            );
             await expect(
               page.getByTestId(`custom-property-"${propertyName}"-card`)
             ).toHaveCount(0);
@@ -1261,9 +1237,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               propertyType: 'string',
             });
 
-            await expect(
-              page.getByTestId(`custom-property-${propertyName}-card`)
-            ).toHaveCount(1);
+            await expect(getCustomPropertyCard(page, propertyName)).toHaveCount(
+              1
+            );
             await expect(
               page.getByTestId(`custom-property-"${propertyName}"-card`)
             ).toHaveCount(0);
@@ -1336,11 +1312,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             .property.name;
 
         await EntityDataClass.container1.visitEntityPage(page);
-        await page.click('[data-testid="custom_properties"]');
+        await openCustomPropertiesTab(page);
 
-        const containerLocator = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"]`
-        );
+        const containerLocator = getCustomPropertyCard(page, propertyName);
 
         await expect(containerLocator.getByTestId('no-data')).toBeVisible();
         await expect(containerLocator.getByTestId('no-data')).toContainText(
@@ -1357,16 +1331,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             .property.name;
 
         await EntityDataClass.container1.visitEntityPage(page);
-        await page.click('[data-testid="custom_properties"]');
+        await openCustomPropertiesTab(page);
 
-        const editButton = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
+        // The hyperlink has no value yet, so the card shows "Add value"
+        // instead of the edit icon; the helper opens the modal from either.
+        const editModal = await openCustomPropertyEditModal(
+          page,
+          getCustomPropertyCard(page, propertyName)
         );
-        await editButton.scrollIntoViewIfNeeded();
-        await editButton.click();
-
-        // The edit modal portals to document.body, outside the card.
-        const editModal = page.getByTestId('custom-property-edit-modal');
         await editModal
           .getByTestId('hyperlink-url-input')
           .fill('javascript:alert("XSS")');
@@ -1402,9 +1374,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           propertyType: 'hyperlink-cp',
         });
 
-        const hyperlinkElement = page
-          .locator(`[data-testid="custom-property-${propertyName}-card"]`)
-          .getByTestId('hyperlink-value');
+        const hyperlinkElement = getCustomPropertyCard(
+          page,
+          propertyName
+        ).getByTestId('hyperlink-value');
 
         await expect(hyperlinkElement).toHaveAttribute(
           'href',
