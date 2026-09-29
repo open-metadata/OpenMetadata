@@ -291,18 +291,14 @@ export const fillCustomPropertyEditModal = async (data: {
       break;
 
     case 'email':
-      await expect(
-        editModal.locator('[data-testid="email-input"]')
-      ).toBeVisible();
-      await editModal.locator('[data-testid="email-input"]').fill(value);
+      await expect(editModal.getByTestId('email-input')).toBeVisible();
+      await editModal.getByTestId('email-input').fill(value);
 
       break;
 
     case 'duration':
-      await expect(
-        editModal.locator('[data-testid="duration-input"]')
-      ).toBeVisible();
-      await editModal.locator('[data-testid="duration-input"]').fill(value);
+      await expect(editModal.getByTestId('duration-input')).toBeVisible();
+      await editModal.getByTestId('duration-input').fill(value);
 
       break;
 
@@ -324,10 +320,8 @@ export const fillCustomPropertyEditModal = async (data: {
       break;
 
     case 'timestamp':
-      await expect(
-        editModal.locator('[data-testid="timestamp-input"]')
-      ).toBeVisible();
-      await editModal.locator('[data-testid="timestamp-input"]').fill(value);
+      await expect(editModal.getByTestId('timestamp-input')).toBeVisible();
+      await editModal.getByTestId('timestamp-input').fill(value);
 
       break;
 
@@ -336,14 +330,10 @@ export const fillCustomPropertyEditModal = async (data: {
       // Epoch inputs sit behind the editor's "Enter manually" switch. Click
       // its label: react-aria's visually hidden input overlaps the footer.
       await editModal.getByTestId('time-interval-manual-toggle').click();
-      await expect(
-        editModal.locator('[data-testid="start-input"]')
-      ).toBeVisible();
-      await editModal.locator('[data-testid="start-input"]').fill(startValue);
-      await expect(
-        editModal.locator('[data-testid="end-input"]')
-      ).toBeVisible();
-      await editModal.locator('[data-testid="end-input"]').fill(endValue);
+      await expect(editModal.getByTestId('start-input')).toBeVisible();
+      await editModal.getByTestId('start-input').fill(startValue);
+      await expect(editModal.getByTestId('end-input')).toBeVisible();
+      await editModal.getByTestId('end-input').fill(endValue);
 
       break;
     }
@@ -368,10 +358,8 @@ export const fillCustomPropertyEditModal = async (data: {
     case 'string':
     case 'integer':
     case 'number':
-      await expect(
-        editModal.locator('[data-testid="value-input"]')
-      ).toBeVisible();
-      await editModal.locator('[data-testid="value-input"]').fill(value);
+      await expect(editModal.getByTestId('value-input')).toBeVisible();
+      await editModal.getByTestId('value-input').fill(value);
 
       break;
 
@@ -412,13 +400,11 @@ export const fillCustomPropertyEditModal = async (data: {
     case 'hyperlink-cp': {
       // Value format: "url,displayText" or just "url"
       const [url, displayText] = value.split(',');
-      await expect(
-        editModal.locator('[data-testid="hyperlink-url-input"]')
-      ).toBeVisible();
-      await editModal.locator('[data-testid="hyperlink-url-input"]').fill(url);
+      await expect(editModal.getByTestId('hyperlink-url-input')).toBeVisible();
+      await editModal.getByTestId('hyperlink-url-input').fill(url);
       if (displayText) {
         await editModal
-          .locator('[data-testid="hyperlink-display-text-input"]')
+          .getByTestId('hyperlink-display-text-input')
           .fill(displayText);
       }
 

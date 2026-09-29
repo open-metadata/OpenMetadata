@@ -286,23 +286,16 @@ export const testCommonOperations = async (
   }
 
   // Check custom properties
-  const customPropertiesLocator = testUserPage.locator(
-    '[data-testid="custom_properties"]'
-  );
+  const customPropertiesLocator = testUserPage.getByTestId('custom_properties');
   if (await customPropertiesLocator.isVisible()) {
     await customPropertiesLocator.click();
+    const visibleEditButtons = getCustomPropertyEditButton(
+      testUserPage.getByTestId('custom-properties-card')
+    ).filter({ visible: true });
     if (effect === 'allow') {
-      await expect(
-        getCustomPropertyEditButton(
-          testUserPage.locator('[data-testid="custom-properties-card"]').first()
-        ).first()
-      ).toBeVisible();
+      await expect(visibleEditButtons).not.toHaveCount(0);
     } else {
-      await expect(
-        getCustomPropertyEditButton(
-          testUserPage.locator('[data-testid="custom-properties-card"]').first()
-        ).first()
-      ).not.toBeVisible();
+      await expect(visibleEditButtons).toHaveCount(0);
     }
   }
 };

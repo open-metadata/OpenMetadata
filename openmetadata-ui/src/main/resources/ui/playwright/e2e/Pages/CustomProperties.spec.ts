@@ -817,7 +817,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
         await test.step('Verify every saved row renders in the table', async () => {
           const tableValue = page
-            .locator(`[data-testid="custom-property-${propertyName}-card"]`)
+            .getByTestId(`custom-property-${propertyName}-card`)
             .getByTestId('table-type-property-value');
           for (let i = 1; i <= 5; i++) {
             await expect(
