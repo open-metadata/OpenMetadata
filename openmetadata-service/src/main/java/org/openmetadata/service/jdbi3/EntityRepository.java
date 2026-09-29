@@ -4906,56 +4906,59 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final void cleanup(String deletedBy, T entityInterface) {
     Entity.getJdbi()
         .inTransaction(
-            handle -> {
-              // Perform Entity Specific Cleanup
-              entitySpecificCleanup(deletedBy, entityInterface);
+            handle ->
+                TransactionRollbackTracker.runAttempt(
+                    () -> {
+                      // Perform Entity Specific Cleanup
+                      entitySpecificCleanup(deletedBy, entityInterface);
 
-              UUID id = entityInterface.getId();
+                      UUID id = entityInterface.getId();
 
-              // Must run before the relationship delete below: the Task 2.0 artifacts
-              // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
-              // which deleteAll() removes, so collecting them afterwards would orphan them.
-              deleteFeedArtifactsAbout(id);
+                      // Must run before the relationship delete below: the Task 2.0 artifacts
+                      // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact
+                      // edge, which deleteAll() removes, so collecting them afterwards would
+                      // orphan them.
+                      deleteFeedArtifactsAbout(id);
 
-              // Delete all the relationships to other entities
-              daoCollection.relationshipDAO().deleteAll(id, entityType);
+                      // Delete all the relationships to other entities
+                      daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .fieldRelationshipDAO()
-                    .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-              }
+                      if (shouldCleanupFqnDependents()) {
+                        daoCollection
+                            .fieldRelationshipDAO()
+                            .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+                      }
 
-              // Delete all the extensions of entity
-              daoCollection.entityExtensionDAO().deleteAll(id);
+                      // Delete all the extensions of entity
+                      daoCollection.entityExtensionDAO().deleteAll(id);
 
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
-              }
-              // Delete all the usage data
-              daoCollection.usageDAO().delete(id);
+                      if (shouldCleanupFqnDependents()) {
+                        daoCollection
+                            .tagUsageDAO()
+                            .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+                        daoCollection
+                            .tagUsageDAO()
+                            .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+                      }
+                      // Delete all the usage data
+                      daoCollection.usageDAO().delete(id);
 
-              // Delete the extension data storing custom properties
-              removeExtension(entityInterface);
+                      // Delete the extension data storing custom properties
+                      removeExtension(entityInterface);
 
-              // Delete all the threads that are about this entity
-              Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
+                      // Delete all the threads that are about this entity
+                      Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
-              // Drop cached state before the DB row goes away. A concurrent read arriving
-              // between this invalidate and the dao.delete below would still observe the
-              // entity in the DB; the post-commit invalidate below closes that window.
-              invalidate(entityInterface);
+                      // Drop cached state before the DB row goes away. A concurrent read arriving
+                      // between this invalidate and the dao.delete below would still observe the
+                      // entity in the DB; the post-commit invalidate below closes that window.
+                      invalidate(entityInterface);
 
-              // Finally, delete the entity
-              dao.delete(id);
+                      // Finally, delete the entity
+                      dao.delete(id);
 
-              return null;
-            });
+                      return null;
+                    }));
     // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
     // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
     // workflow queries out of the entity transaction's lock-hold time.
@@ -5086,10 +5089,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         () ->
             Entity.getJdbi()
                 .inTransaction(
-                    handle -> {
-                      flushBody.run();
-                      return null;
-                    }));
+                    handle ->
+                        TransactionRollbackTracker.runAttempt(
+                            () -> {
+                              flushBody.run();
+                              return null;
+                            })));
   }
 
   protected T createNewEntity(T entity) {
@@ -6904,11 +6909,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     jdbi.inTransaction(
-        handle -> {
-          bulkCleanupReferences(entities);
-          bulkDeleteEntityRows(entities);
-          return null;
-        });
+        handle ->
+            TransactionRollbackTracker.runAttempt(
+                () -> {
+                  bulkCleanupReferences(entities);
+                  bulkDeleteEntityRows(entities);
+                  return null;
+                }));
     // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
     cancelWorkflowInstances(entityIds(entities));
   }

@@ -281,7 +281,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // tag.id; under the parallel-tests fork the tag table grows large and the default
           // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
           // for an integration-test workload and well under the 4GB overall limit.
-          "--sort_buffer_size=8M");
+          "--sort_buffer_size=8M",
+          // A deadlock error only names the statement that lost. InnoDB can log both
+          // transactions and their locks, but writes the report as a Note, which the default
+          // error-log verbosity of 2 drops.
+          "--innodb_print_all_deadlocks=ON",
+          "--log_error_verbosity=3");
+      mysql.withLogConsumer(
+          new InnoDbDeadlockReportLogger(
+              report -> LOG.warn("InnoDB deadlock report:{}{}", System.lineSeparator(), report)));
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
