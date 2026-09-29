@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,6 +65,11 @@ public class DataProductOrphanRelationshipIT {
 
     client.dataProducts().delete(dataProductId.toString());
 
+    // Sequential, not the concurrent race the fix also closes: the guard is asserted to reject the
+    // write outright so that no edge survives this delete. The concurrent interleaving cannot be
+    // forced deterministically through the public API (no hook to hold the delete uncommitted or to
+    // pause between the DELETE and the assets/add), so it is covered at the SQL layer by the
+    // existence check running inside the insert statement itself.
     OpenMetadataException failure =
         assertThrows(OpenMetadataException.class, () -> addAssets(client, fixture, table));
 
@@ -81,9 +87,11 @@ public class DataProductOrphanRelationshipIT {
     Table table = fixture.table();
 
     // Reproduce the pre-fix state: the asset was attached, then its data product was hard-deleted
-    // while the asset kept the association.
+    // while the asset kept the association. This is the orphan fixture the comment describes: the
+    // edge (if the delete failed to remove it) is exactly what must not break reads below.
     addAssets(client, fixture, table);
     assertTrue(hasDataProduct(client, table, dataProductId), "fixture must start attached");
+    client.dataProducts().delete(dataProductId.toString());
 
     // Read the asset the way a data product UI does. A dangling association must not break it:
     // the asset is the one thing that still exists, so it has to stay reachable and mutable.
