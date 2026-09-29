@@ -277,10 +277,23 @@ public class DataContractService extends EntityServiceBase<DataContract> {
    */
   public ContractValidation validateODCSYaml(String yamlContent, UUID entityId, String entityType)
       throws OpenMetadataException {
+    return validateODCSYaml(yamlContent, entityId, entityType, true);
+  }
+
+  /**
+   * Validate an ODCS YAML contract without importing it. The result carries the import report:
+   * what the import keeps, changes and leaves out, and what each quality rule becomes.
+   *
+   * @param createTestCases whether the import would create test cases from the quality rules
+   */
+  public ContractValidation validateODCSYaml(
+      String yamlContent, UUID entityId, String entityType, boolean createTestCases)
+      throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityId", entityId.toString())
             .queryParam("entityType", entityType)
+            .queryParam(CREATE_TEST_CASES, String.valueOf(createTestCases))
             .header("Content-Type", "application/yaml")
             .build();
     return httpClient.execute(
