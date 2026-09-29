@@ -159,6 +159,42 @@ jobs:
       # breaches step below).
       issues: write
     steps:
+      - name: Gate verified merge-group shards
+        if: ${{ github.event_name == 'merge_group' }}
+        env:
+          GATE_RESULT: ${{ needs.playwright.outputs.gate_result }}
+          SHOULD_RUN: ${{ needs.playwright.outputs.gate_should_run }}
+          PLAN_RESULT: ${{ needs.playwright.outputs.plan_playwright_result }}
+          SHARD_RESULT: ${{ needs.playwright.outputs.playwright_ci_result }}
+          EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
+        run: |
+          node <<'NODE'
+          const checks = {
+            authorization: process.env.GATE_RESULT === 'success',
+            selected: process.env.SHOULD_RUN === 'true',
+            planning: process.env.PLAN_RESULT === 'success',
+            shards: process.env.SHARD_RESULT === 'success',
+          };
+          const matrix = JSON.parse(process.env.EXPECTED_MATRIX || '{}').include;
+          checks.nonemptyPlan = Array.isArray(matrix) && matrix.length > 0 &&
+            matrix.every(shard => typeof shard.shardId === 'string' && shard.shardId.length > 0) &&
+            new Set(matrix.map(shard => shard.shardId)).size === matrix.length;
+          const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
+          if (failed.length) {
+            console.error(`Merge-group validation failed: ${failed.join(', ')}`);
+            process.exit(1);
+          }
+          console.log(`${matrix.length} shards passed tests and local coverage verification.`);
+          NODE
+
+      # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
+      # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
+      # check out here becomes trusted code executing with token access. For fork PRs
+      # (pull_request_target) we MUST NOT check out the fork's head — a malicious fork
+      # could otherwise edit render_playwright_summary.cjs to exfiltrate the token or
+      # rewrite the check result. Use the base branch's SHA on pull_request_target.
+      # Merge groups use the inline gate above and never execute checked-out code here.
+
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
       # check out here becomes trusted code executing with token access. For fork PRs
@@ -240,6 +276,17 @@ jobs:
       # `results/playwright-results-json-<shardId>/results.json` (expected)
       # or somewhere else. Remove once single-shard runs are consistently
       # green.
+      - name: Validate and normalize execution artifacts
+        id: normalize-results
+        # Checks every shard's results came from this commit and run, collapses
+        # transport duplicates, and fails on conflicting evidence. Advisory: its
+        # outcome feeds the classifier's artifactIntegrityVerified measurement.
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+        run: node .github/scripts/normalize_playwright_artifacts.cjs results "$EXPECTED_HEAD_SHA"
+
       - name: Diagnose downloaded results layout
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
@@ -506,6 +553,8 @@ jobs:
             --expected-matrix-json "$EXPECTED_MATRIX" \
             --profile postgresql-pr \
             --source-sha "$SOURCE_SHA" \
+            --coverage "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json" \
+            --artifact-integrity-outcome "${{ steps.normalize-results.outcome }}" \
             --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
 
       - name: Upload Playwright shadow-gate ledger

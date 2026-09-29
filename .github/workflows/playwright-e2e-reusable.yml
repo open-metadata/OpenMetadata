@@ -795,6 +795,28 @@ jobs:
           jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
             "$RUNNER_TEMP/playwright-plans/matrix.json"
 
+      - name: Inventory existing quarantined coverage
+        if: ${{ github.event_name != 'merge_group' }}
+        run: |
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true --env PLAYWRIGHT_IS_OSS=true \
+            --env PLAYWRIGHT_RUN_QUARANTINED=true \
+            --env PW_DEDICATED_INGESTION=true --env PW_DEDICATED_IMPORT_EXPORT=true \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/playwright test --list --reporter=json --pass-with-no-tests \
+            --project=chromium --project=Basic --project="Data Insight" \
+            --project=Ingestion --project=ImportExport \
+            --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled \
+            --project=SearchRBAC --project=DomainIsolation --project=Reindex \
+            --project=GlobalSettings --project=SystemCertificationTags \
+            --project=IntakeForm --project=AdvancedSearch --project=search-nightly \
+            > "$RUNNER_TEMP/playwright-plans/quarantine-inventory.json"
+
       - name: Upload shard plans
         uses: actions/upload-artifact@v6
         with:
@@ -1644,6 +1666,29 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify shard coverage
+        id: verify-shard-coverage
+        # Every planned test must run against the merge-group commit. Retry passes
+        # are recorded, not rejected: the queue keeps one retry until first-attempt
+        # data shows it can go to zero (then add --require-single-attempt).
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.run-tests.outcome != 'skipped' }}
+        env:
+          SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
+          SHARD_ID: ${{ matrix.shardId }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == 'merge_group' && "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]]; then
+            echo 'The shard did not test the merge-group commit' >&2
+            exit 1
+          fi
+          jq -e --arg shard "$SHARD_ID" '.shardId == $shard and (.testIds | length > 0)' "$SHARD_PLAN" >/dev/null
+          python3 .github/scripts/verify_playwright_coverage.py \
+            --require-native-evidence \
+            --plan-glob "$SHARD_PLAN" \
+            --timing-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/playwright-timings.json" \
+            --result-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json" \
+            --output "$RUNNER_TEMP/shard-coverage.json"
+          jq '{plannedTests, executedTests, zeroAttemptSkippedTestIds}' "$RUNNER_TEMP/shard-coverage.json"
+
       - name: Record shard phase metrics
         if: always()
         env:
@@ -1706,6 +1751,9 @@ jobs:
           STATUS_DIR="openmetadata-ui/src/main/resources/ui/playwright/output"
           mkdir -p "$STATUS_DIR"
           jq -n \
+            --arg headSha "$(git rev-parse HEAD)" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
             --arg shard "${{ matrix.shardId }}" \
             --arg checkout "$CHECKOUT_OUTCOME" \
             --arg downloadDistribution "$DOWNLOAD_DISTRIBUTION_OUTCOME" \
@@ -1721,6 +1769,9 @@ jobs:
             --arg bundleSmoke "$BUNDLE_SMOKE_OUTCOME" \
             --arg tests "$TEST_OUTCOME" \
             '{
+              headSha: $headSha,
+              runId: $runId,
+              runAttempt: $runAttempt,
               shard: $shard,
               steps: {
                 checkout: $checkout,
