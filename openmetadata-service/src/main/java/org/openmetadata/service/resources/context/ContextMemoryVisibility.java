@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
@@ -37,8 +38,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Visibility rules for {@link ContextMemory}. Every read on {@code /v1/contextCenter/memories} runs
  * through this check so a non-admin user cannot read another user's PRIVATE memory via the public
- * API. Visibility is independent of the OSS policy/authorizer model because it is driven by the
- * per-memory {@code shareConfig} (visibility + sharedWith) rather than role/policy.
+ * API. The rule is driven by the per-memory {@code shareConfig}; an {@code Entity} memory anchored
+ * to an asset ({@code primaryEntity}) is readable only by readers of that asset.
  *
  * <p>Because it sits outside the policy model, no {@code authorizer.authorize(...)} call can ever
  * enforce it: a read path that authorizes and fetches is not yet a read path that is allowed to
@@ -53,26 +54,47 @@ public final class ContextMemoryVisibility {
   /** The field selection that already asks for every allowed field, owners included. */
   private static final String ALL_FIELDS = "*";
 
+  /** Relationship fields the decision reads. */
+  private static final List<String> DECISION_FIELDS =
+      List.of(Entity.FIELD_OWNERS, ContextMemoryRepository.FIELD_PRIMARY_ENTITY);
+
+  /** Whether a caller may read the asset an Entity memory is anchored to. */
+  @FunctionalInterface
+  interface AnchorAccess {
+    boolean canView(String userName, EntityReference anchor);
+  }
+
   private ContextMemoryVisibility() {}
 
   public static boolean isVisibleToUser(ContextMemory memory, String userName, boolean isAdmin) {
-    if (isAdmin) {
-      return true;
-    }
-    if (isOwnedBy(memory, userName)) {
-      return true;
-    }
-    if (memory.getShareConfig() == null) {
-      return false;
-    }
-    MemoryVisibility visibility = memory.getShareConfig().getVisibility();
+    return isVisibleToUser(memory, userName, isAdmin, ContextMemoryAnchorAccess::canView);
+  }
+
+  static boolean isVisibleToUser(
+      ContextMemory memory, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
+    return isAdmin
+        || isOwnedBy(memory, userName)
+        || isVisibleThroughShareConfig(memory, userName, anchorAccess);
+  }
+
+  private static boolean isVisibleThroughShareConfig(
+      ContextMemory memory, String userName, AnchorAccess anchorAccess) {
+    MemoryVisibility visibility =
+        memory.getShareConfig() == null ? null : memory.getShareConfig().getVisibility();
+    boolean visible = false;
     if (visibility == MemoryVisibility.ENTITY) {
-      return true;
+      visible = isAnchorReadable(memory, userName, anchorAccess);
+    } else if (visibility == MemoryVisibility.SHARED) {
+      visible = isInSharedWithList(memory, userName);
     }
-    if (visibility == MemoryVisibility.SHARED) {
-      return isInSharedWithList(memory, userName);
-    }
-    return false;
+    return visible;
+  }
+
+  /** Entity means "readers of the anchor"; an unanchored Entity memory stays org-wide. */
+  private static boolean isAnchorReadable(
+      ContextMemory memory, String userName, AnchorAccess anchorAccess) {
+    EntityReference anchor = memory.getPrimaryEntity();
+    return anchor == null || anchorAccess.canView(userName, anchor);
   }
 
   public static void enforceVisibility(ContextMemory memory, String userName, boolean isAdmin) {
@@ -104,16 +126,15 @@ public final class ContextMemoryVisibility {
   }
 
   /**
-   * Merges the fields the decision reads into a caller's field selection. Owners is a relationship
-   * field, null unless the fetch asked for it, so a read that omits it hands the guard an ownerless
-   * memory - denying the owner their own private memory. Field selections that already cover owners
-   * ({@code *}, or an explicit {@code owners}) are returned unchanged.
+   * Merges the fields the decision reads into a caller's field selection. Owners and primaryEntity
+   * are relationship fields, null unless fetched: without owners an owner is denied their own
+   * memory, without primaryEntity an anchored Entity memory reads as org-wide.
    */
   public static String guardFields(String entityType, String requestedFields) {
     String fields = requestedFields;
     if (hasVisibilityRules(entityType) && !ALL_FIELDS.equals(requestedFields)) {
       Set<String> requested = new LinkedHashSet<>(splitFields(requestedFields));
-      requested.add(Entity.FIELD_OWNERS);
+      requested.addAll(DECISION_FIELDS);
       fields = String.join(",", requested);
     }
     return fields;
@@ -137,10 +158,8 @@ public final class ContextMemoryVisibility {
   }
 
   /**
-   * A caller too anonymous to decide from is treated as one, not waved through: {@link
-   * #isVisibleToUser} then matches no owner and no shared principal, leaving the org-wide ({@code
-   * ENTITY}) memories - the same fallback {@code ContextMemorySearchVisibility} applies to an
-   * unresolvable search subject.
+   * An anonymous caller matches no owner, shared principal or anchor reader, so it keeps only the
+   * unanchored ENTITY memories; search's unresolvable-subject fallback keeps every ENTITY memory.
    */
   private static String callerName(SecurityContext securityContext) {
     return securityContext == null || securityContext.getUserPrincipal() == null
@@ -204,16 +223,19 @@ public final class ContextMemoryVisibility {
   }
 
   private static String getVisibilityDeniedMessage(ContextMemory memory) {
-    if (memory.getShareConfig() == null) {
-      return "Not authorized to access this memory.";
+    String message = "Not authorized to access this memory.";
+    if (memory.getShareConfig() != null) {
+      message = deniedMessageFor(memory.getShareConfig().getVisibility());
     }
-    MemoryVisibility visibility = memory.getShareConfig().getVisibility();
-    if (visibility == null || visibility == MemoryVisibility.PRIVATE) {
-      return "Memory with visibility PRIVATE is only accessible to its owner.";
-    }
-    if (visibility == MemoryVisibility.SHARED) {
-      return "Memory with visibility SHARED is only accessible to explicitly shared users.";
-    }
-    return "Not authorized to access this memory.";
+    return message;
+  }
+
+  private static String deniedMessageFor(MemoryVisibility visibility) {
+    return switch (visibility == null ? MemoryVisibility.PRIVATE : visibility) {
+      case PRIVATE -> "Memory with visibility PRIVATE is only accessible to its owner.";
+      case SHARED -> "Memory with visibility SHARED is only accessible to explicitly shared users.";
+      case ENTITY -> "Memory with visibility ENTITY is only accessible to users who can view its"
+          + " primary entity.";
+    };
   }
 }
