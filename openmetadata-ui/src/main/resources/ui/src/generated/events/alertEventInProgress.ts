@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 /**
- * A note an alert writes before it reads events and clears when it commits. It counts the
- * ticks in a row that opened at one position and never committed, so an event that stops
- * the server every time can be set aside.
+ * A note an alert writes before it reads events and clears when the tick ends, however it
+ * ends. It counts the ticks in a row that opened at one position and never came back, so an
+ * event that stops the server every time can be set aside.
  */
 export interface AlertEventInProgress {
     /**
-     * Ticks in a row that opened at this position and did not commit.
+     * Ticks in a row that opened at this position and never came back.
      */
     attempts: number;
     /**

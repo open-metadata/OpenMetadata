@@ -89,7 +89,7 @@ public final class AlertLedger {
     return measuredHere ? gapWaitAtOpen.getSince() : 0L;
   }
 
-  /** Ticks in a row that opened at this position and never committed, before this one. */
+  /** Ticks in a row that opened at this position and never came back, before this one. */
   public int interruptedAttempts() {
     boolean sameplace =
         interrupted != null && interrupted.getOffset().equals(position.getCurrentOffset());
@@ -135,7 +135,9 @@ public final class AlertLedger {
   /** A tick that ends, however it ends, was not interrupted. */
   public void clearOpeningNote() {
     if (noted) {
-      dao().deleteSubscriberExtension(alertId, LedgerKeys.IN_PROGRESS);
+      attempt(
+          "cleared opening note",
+          () -> dao().deleteSubscriberExtension(alertId, LedgerKeys.IN_PROGRESS));
       noted = false;
     }
   }
