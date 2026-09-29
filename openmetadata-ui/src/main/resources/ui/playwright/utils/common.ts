@@ -27,6 +27,7 @@ import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { claimFirstBoot } from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
@@ -1935,4 +1936,102 @@ export const selectOptionWithRetry = async (
 
     await option.click({ timeout: 2000 });
   }).toPass({ timeout: 15000 });
+};
+
+export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+  await expect(trigger).toBeVisible();
+  const nestedControl = trigger.locator(
+    'input[role="combobox"], button[aria-haspopup="listbox"]'
+  );
+  const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
+  await control.focus();
+
+  // The listbox popup is a non-modal react-aria popover, and that is exactly
+  // what wires useCloseOnScroll: while it is open, ANY capture-phase scroll
+  // whose target contains the trigger closes it — a drawer body, a scrollable
+  // form panel, the document, or the scroll Playwright performs itself as part
+  // of a click's actionability checks. A one-shot open-then-click therefore
+  // dismisses the popup as often as it selects from it, and nothing reopens
+  // it, so the option click waits out the entire test timeout on a node that
+  // was detached mid-click. Centring the control before opening removes the
+  // actionability scroll that would close it; the retry remains for a popup
+  // dismissed by anything else, with a short option timeout so a detached
+  // option reopens quickly instead of waiting out a long click.
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(control);
+      if ((await control.getAttribute('role')) === 'combobox') {
+        await control.press('ArrowDown');
+      } else {
+        await control.click({ timeout: 5_000 });
+      }
+    }
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+};
+
+export const dismissHoverPopovers = async (page: Page) => {
+  await page.mouse.move(0, 0);
+  await expect(
+    page.locator('.ant-popover:not(.ant-popover-hidden)')
+  ).toHaveCount(0);
+};
+
+export const dismissToasts = async (page: Page) => {
+  // Re-query between passes: closing one toast re-lays out the stack, and the
+  // handles collected before the click go stale.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const closeIcons = await page.getByTestId('alert-icon-close').all();
+
+    if (closeIcons.length === 0) {
+      return;
+    }
+
+    for (const closeIcon of closeIcons) {
+      await closeIcon.click({ timeout: 2_000 }).catch(() => undefined);
+    }
+  }
+};
+
+export const searchDataProductOptions = async (
+  page: Page,
+  dataProduct: { displayName: string; fullyQualifiedName?: string }
+): Promise<Locator> => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      dataProduct.fullyQualifiedName,
+      'dataProduct'
+    );
+  } finally {
+    await afterAction();
+  }
+  const input = page.locator('[data-testid="data-product-selector"] input');
+  if ((await input.inputValue()) === dataProduct.displayName) {
+    await input.clear();
+  }
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'dataProduct' &&
+      url.searchParams.get('q') ===
+        dataProduct.displayName.replaceAll('"', '\\"')
+    );
+  });
+  await input.fill(dataProduct.displayName);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  return page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId('tag-' + dataProduct.fullyQualifiedName);
+};
+
+export const waitForAntdModalToSettle = async (page: Page) => {
+  await expect(
+    page.locator('.ant-modal[class*="-appear"], .ant-modal[class*="-enter"]')
+  ).toHaveCount(0);
 };
