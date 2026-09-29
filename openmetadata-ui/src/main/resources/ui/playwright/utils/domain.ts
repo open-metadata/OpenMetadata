@@ -28,6 +28,9 @@ import { SubDomain } from '../support/domain/SubDomain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
@@ -1130,11 +1133,25 @@ export const removeAssetsFromDataProduct = async (
   await assetsRemoveRes;
 };
 
-export const setupAssetsForDomain = async (page: Page) => {
+/**
+ * `ownServices` gives each asset its own service — pass it when the test
+ * assigns the domain to the services too; the shared ones would carry every
+ * concurrent test's domain.
+ */
+export const setupAssetsForDomain = async (
+  page: Page,
+  { ownServices = false }: { ownServices?: boolean } = {}
+) => {
   const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  const topic = new TopicClass();
-  const dashboard = new DashboardClass();
+  const table = new TableClass(
+    ownServices ? { service: new DatabaseServiceClass() } : {}
+  );
+  const topic = new TopicClass(
+    ownServices ? { service: new MessagingServiceClass() } : {}
+  );
+  const dashboard = new DashboardClass(
+    ownServices ? { service: new DashboardServiceClass() } : {}
+  );
   await Promise.all([
     table.create(apiContext),
     topic.create(apiContext),
