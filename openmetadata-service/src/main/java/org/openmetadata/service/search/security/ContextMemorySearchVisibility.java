@@ -53,6 +53,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * JSON (it serves both engines from a {@code StringBuilder}); {@link
  * org.openmetadata.service.resources.context.ContextMemoryVisibility#isVisibleToUser} decides it
  * in-memory for the REST read paths. Nothing compares them automatically.
+ *
+ * <p>REST reads an anchored {@code Entity} memory only for readers of its {@code primaryEntity}.
+ * Search cannot evaluate policies per document, so it relies on the anchor's domain, copied onto
+ * the memory at create, and search RBAC. The two paths can differ for an asset without a domain.
  */
 public class ContextMemorySearchVisibility {
 

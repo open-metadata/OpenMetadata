@@ -219,7 +219,14 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     ResultList<ContextMemory> memories =
         addHref(
             uriInfo,
-            listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+            listInternal(
+                uriInfo,
+                securityContext,
+                ContextMemoryVisibility.guardFields(entityType, fieldsParam),
+                filter,
+                limitParam,
+                before,
+                after));
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
     if (visible.size() == memories.getData().size()) {

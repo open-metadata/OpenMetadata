@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -11,12 +12,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
@@ -24,11 +28,18 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
 
@@ -82,6 +93,89 @@ public class ContextMemoryAnchorIT {
     assertTrue(
         domainIds(memory).isEmpty(),
         "two domains would break 'Multiple Domains are not allowed' on every later PATCH");
+  }
+
+  @Test
+  void getAndGetByName_hideAMemoryWhoseAnchorTheCallerCannotView(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    ContextMemory anchored =
+        adminMemories()
+            .create(
+                entityMemory(ns, "anchored").withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
+    ContextMemoryService reader = memoriesAs(createUser(ns, null, null));
+    ContextMemoryService blocked = memoriesAs(createUser(ns, denyTableView(ns), null));
+
+    assertEquals(anchored.getId(), reader.get(anchored.getId().toString()).getId());
+    assertThrows(ForbiddenException.class, () -> blocked.get(anchored.getId().toString()));
+    assertThrows(
+        ForbiddenException.class, () -> blocked.getByName(anchored.getFullyQualifiedName()));
+  }
+
+  @Test
+  void listing_dropsMemoriesWhoseAnchorTheCallerCannotView(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    ContextMemory anchored =
+        adminMemories()
+            .create(
+                entityMemory(ns, "listed").withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
+    ListParams byAnchor =
+        new ListParams().setLimit(100).addFilter("primaryEntityId", anchor.getId().toString());
+
+    assertEquals(
+        List.of(anchored.getId()), ids(memoriesAs(createUser(ns, null, null)).list(byAnchor)));
+    assertTrue(ids(memoriesAs(createUser(ns, denyTableView(ns), null)).list(byAnchor)).isEmpty());
+  }
+
+  @Test
+  void theOwnerKeepsTheirAnchoredMemory(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    User owner = createUser(ns, denyTableView(ns), null);
+    ContextMemory owned =
+        adminMemories()
+            .create(
+                entityMemory(ns, "owned")
+                    .withPrimaryEntity(ref(Entity.TABLE, anchor.getId()))
+                    .withOwners(List.of(ref(Entity.USER, owner.getId()))));
+
+    assertEquals(owned.getId(), memoriesAs(owner).get(owned.getId().toString()).getId());
+  }
+
+  @Test
+  void anUnanchoredEntityMemory_staysOrgWide(TestNamespace ns) {
+    ContextMemory orgWide = adminMemories().create(entityMemory(ns, "org-wide"));
+    ContextMemoryService blocked = memoriesAs(createUser(ns, denyTableView(ns), null));
+
+    assertEquals(orgWide.getId(), blocked.get(orgWide.getId().toString()).getId());
+  }
+
+  private static Role denyTableView(TestNamespace ns) {
+    Rule deny =
+        new Rule()
+            .withName("DenyTableView")
+            .withEffect(Rule.Effect.DENY)
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withResources(List.of(Entity.TABLE));
+    Policy policy =
+        SdkClients.adminClient()
+            .policies()
+            .create(
+                new CreatePolicy().withName(ns.prefix("deny-table-view")).withRules(List.of(deny)));
+    return SdkClients.adminClient()
+        .roles()
+        .create(
+            new CreateRole()
+                .withName(ns.prefix("no-tables"))
+                .withPolicies(List.of(policy.getFullyQualifiedName())));
+  }
+
+  private static ContextMemoryService memoriesAs(User user) {
+    OpenMetadataClient client =
+        SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+    return new ContextMemoryService(client.getHttpClient());
+  }
+
+  private static List<UUID> ids(ListResponse<ContextMemory> response) {
+    return response.getData().stream().map(ContextMemory::getId).toList();
   }
 
   private static List<UUID> domainIds(ContextMemory memory) {

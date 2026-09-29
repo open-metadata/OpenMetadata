@@ -59,7 +59,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
-  static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
+  public static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
   static final String FIELD_SOURCE_FILE = "sourceFile";
