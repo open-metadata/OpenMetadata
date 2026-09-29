@@ -2,6 +2,7 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,18 +12,27 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.AlertCapabilities;
 import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
+import org.openmetadata.schema.entity.events.Argument;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /** What the form asks before a save, over the wire. */
+@ExtendWith(TestNamespaceExtension.class)
 class CapabilitiesIT {
 
   private static final String PATH = "/v1/events/subscriptions/capabilities";
@@ -64,6 +74,30 @@ class CapabilitiesIT {
     assertTrue(String.valueOf(refused.getMessage()).contains("different kinds"));
   }
 
+  // Names are never looked up, so the answer does not depend on which services exist.
+  @Test
+  void warningDoesNotDependOnWhichServicesExist(TestNamespace ns) {
+    DashboardService dashboards = DashboardServiceTestFactory.createMetabase(ns);
+    ArgumentsInput byName =
+        new ArgumentsInput()
+            .withName("filterByFqn")
+            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withArguments(
+                List.of(
+                    new Argument()
+                        .withName("fqnList")
+                        .withInput(List.of(dashboards.getFullyQualifiedName()))));
+
+    AlertCapabilities capabilities =
+        ask(
+            new AlertCapabilitiesRequest()
+                .withAlertType(AlertType.NOTIFICATION)
+                .withSources(List.of("table", "dashboard"))
+                .withInput(new AlertFilteringInput().withFilters(List.of(byName))));
+
+    assertNull(warningOf(capabilities, "table"));
+  }
+
   @Test
   void requiresViewPermission() throws Exception {
     String body =
@@ -88,13 +122,21 @@ class CapabilitiesIT {
         .orElseThrow();
   }
 
+  private static String warningOf(AlertCapabilities capabilities, String name) {
+    return capabilities.getSources().stream()
+        .filter(source -> name.equals(source.getName()))
+        .findFirst()
+        .orElseThrow()
+        .getWarning();
+  }
+
   private static AlertCapabilities ask(AlertType alertType, List<String> sources) {
+    return ask(new AlertCapabilitiesRequest().withAlertType(alertType).withSources(sources));
+  }
+
+  private static AlertCapabilities ask(AlertCapabilitiesRequest request) {
     return SdkClients.adminClient()
         .getHttpClient()
-        .execute(
-            HttpMethod.POST,
-            PATH,
-            new AlertCapabilitiesRequest().withAlertType(alertType).withSources(sources),
-            AlertCapabilities.class);
+        .execute(HttpMethod.POST, PATH, request, AlertCapabilities.class);
   }
 }
