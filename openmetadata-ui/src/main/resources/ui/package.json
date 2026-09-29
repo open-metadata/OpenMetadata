@@ -105,7 +105,7 @@
     "antd": "4.24.16",
     "antlr4": "4.9.2",
     "autoprefixer": "^10.0.0",
-    "axios": "1.18.0",
+    "axios": "1.20.0",
     "classnames": "^2.3.1",
     "codemirror": "^5.65.16",
     "cookie-storage": "^6.1.0",
@@ -275,6 +275,7 @@
     "vite-tsconfig-paths": "^5.1.4"
   },
   "resolutions": {
+    "axios": "1.20.0",
     "@types/react": "^18.2.55",
     "@babel/runtime": "7.26.10",
     "prosemirror-model": "1.22.1",
