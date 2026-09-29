@@ -1,63 +1,13 @@
-import { mergeRefs } from '@react-aria/utils';
-import type { Ref } from 'react';
-import { useContext, useMemo, useRef } from 'react';
-import { useInteractOutside } from 'react-aria';
+import type { RefAttributes } from 'react';
 import type { PopoverProps as AriaPopoverProps } from 'react-aria-components';
-import {
-  Popover as AriaPopover,
-  OverlayTriggerStateContext,
-  PopoverContext,
-  useSlottedContext,
-} from 'react-aria-components';
+import { Popover as AriaPopover } from 'react-aria-components';
 import { cx } from '@/utils/cx';
 
-interface PopoverProps extends AriaPopoverProps {
-  ref?: Ref<HTMLElement>;
+interface PopoverProps extends AriaPopoverProps, RefAttributes<HTMLElement> {
   size: 'sm' | 'md';
-  /**
-   * Close when a press is released outside the popover. `isNonModal` below
-   * also switches off react-aria's own outside-press dismissal (usePopover
-   * passes `isDismissable: !isNonModal`), leaving only close-on-blur — which
-   * ignores clicks on non-focusable page areas and, on a Select trigger,
-   * closes then instantly reopens the list (the trigger opens on press start).
-   * Input-driven popups (ComboBox) must not opt in: pressing their own input
-   * would close the list.
-   */
-  isDismissable?: boolean;
 }
 
-export const Popover = ({
-  isDismissable = false,
-  ref,
-  ...props
-}: PopoverProps) => {
-  const popoverRef = useRef<HTMLElement>(null);
-  const mergedRef = useMemo(() => mergeRefs(popoverRef, ref), [ref]);
-  const state = useContext(OverlayTriggerStateContext);
-  const popoverContext = useSlottedContext(PopoverContext);
-  const triggerRef = props.triggerRef ?? popoverContext?.triggerRef;
-
-  // Pressing the trigger while open must close the list, but the trigger's
-  // own press handling reopens it (it opens on press start, and its click
-  // handler starts a press too). Swallow both halves of that press before
-  // they reach the trigger — as react-aria's modal popovers do for every
-  // outside press — and close from here instead.
-  const stopIfOnTrigger = (e: Event) => {
-    if (e.target instanceof Node && triggerRef?.current?.contains(e.target)) {
-      e.stopPropagation();
-    }
-  };
-
-  useInteractOutside({
-    ref: popoverRef,
-    isDisabled: !isDismissable || !state?.isOpen,
-    onInteractOutsideStart: stopIfOnTrigger,
-    onInteractOutside: (e) => {
-      stopIfOnTrigger(e);
-      state?.close();
-    },
-  });
-
+export const Popover = (props: PopoverProps) => {
   return (
     <AriaPopover
       // Combobox/select popups must be non-modal: modal popovers apply
@@ -78,7 +28,6 @@ export const Popover = ({
       data-react-aria-top-layer="true"
       offset={4}
       placement="bottom"
-      ref={mergedRef}
       {...props}
       className={(state) =>
         cx(

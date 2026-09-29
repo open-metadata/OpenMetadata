@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Select } from './select';
 
 describe('Select in a modal', () => {
@@ -84,143 +84,6 @@ describe('Select sections', () => {
     );
     expect(govern).not.toContainElement(
       screen.getByRole('option', { name: 'Home' })
-    );
-  });
-});
-
-describe('Select labelWeight', () => {
-  const renderSelect = (props: {
-    labelWeight?: 'regular' | 'semibold';
-    defaultSelectedKey?: string;
-  }) =>
-    render(
-      <Select aria-label="Landing page" {...props}>
-        <Select.Item id="home" label="Home" supportingText="/my-data" />
-        <Select.Item
-          id="glossary"
-          label="Glossary"
-          supportingText="/glossary"
-        />
-      </Select>
-    );
-
-  const getTrigger = () => screen.getByRole('button', { name: /Landing page/ });
-
-  it('bolds the selected label, not its supporting text, in the trigger', () => {
-    renderSelect({ labelWeight: 'semibold', defaultSelectedKey: 'home' });
-
-    expect(within(getTrigger()).getByText('Home')).toHaveClass(
-      'tw:font-semibold'
-    );
-    expect(within(getTrigger()).getByText('/my-data')).not.toHaveClass(
-      'tw:font-semibold'
-    );
-  });
-
-  it('bolds item labels, not their supporting text, in the list', async () => {
-    const user = userEvent.setup();
-    renderSelect({ labelWeight: 'semibold' });
-
-    await user.click(getTrigger());
-    const option = await screen.findByRole('option', { name: /Glossary/ });
-
-    expect(within(option).getByText('Glossary')).toHaveClass(
-      'tw:font-semibold'
-    );
-    expect(within(option).getByText('/glossary')).not.toHaveClass(
-      'tw:font-semibold'
-    );
-  });
-
-  it('keeps the regular weight by default', () => {
-    renderSelect({ defaultSelectedKey: 'home' });
-
-    expect(within(getTrigger()).getByText('Home')).not.toHaveClass(
-      'tw:font-semibold'
-    );
-  });
-});
-
-// jsdom has no PointerEvent, so react-aria falls back to a mouse-event path
-// that never hits the reopen-on-press-start race the trigger test guards.
-class PointerEventPolyfill extends MouseEvent {
-  readonly pointerId: number;
-  readonly pointerType: string;
-  readonly width: number;
-  readonly height: number;
-  readonly isPrimary: boolean;
-
-  constructor(type: string, init: PointerEventInit = {}) {
-    super(type, init);
-    this.pointerId = init.pointerId ?? 1;
-    this.pointerType = init.pointerType ?? 'mouse';
-    // react-aria treats a 0x0 pointer as a virtual (screen reader) press.
-    this.width = init.width ?? 1;
-    this.height = init.height ?? 1;
-    this.isPrimary = init.isPrimary ?? true;
-  }
-}
-
-describe('Select dismissal', () => {
-  beforeAll(() => {
-    vi.stubGlobal('PointerEvent', PointerEventPolyfill);
-  });
-
-  afterAll(() => {
-    vi.unstubAllGlobals();
-  });
-
-  const renderSelect = () =>
-    render(
-      <>
-        <p>Outside</p>
-        <Select aria-label="Landing page">
-          <Select.Item id="home" label="Home" />
-          <Select.Item id="glossary" label="Glossary" />
-        </Select>
-      </>
-    );
-
-  const openList = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: /Landing page/ }));
-    await screen.findByRole('listbox');
-  };
-
-  it('closes without a selection when clicking outside the list', async () => {
-    const user = userEvent.setup();
-    renderSelect();
-    await openList(user);
-
-    await user.click(screen.getByText('Outside'));
-
-    await waitFor(() =>
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-    );
-  });
-
-  it('closes when the trigger is clicked again', async () => {
-    const user = userEvent.setup();
-    renderSelect();
-    await openList(user);
-
-    await user.click(screen.getByRole('button', { name: /Landing page/ }));
-
-    await waitFor(() =>
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-    );
-  });
-
-  it('still commits a selection made inside the list', async () => {
-    const user = userEvent.setup();
-    renderSelect();
-    await openList(user);
-
-    await user.click(screen.getByRole('option', { name: 'Glossary' }));
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /Landing page/ })
-      ).toHaveTextContent('Glossary')
     );
   });
 });

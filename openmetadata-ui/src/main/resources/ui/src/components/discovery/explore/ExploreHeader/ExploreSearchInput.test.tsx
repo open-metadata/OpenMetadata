@@ -21,7 +21,6 @@ let mockIsAppleDevice = true;
 const ARIA_KEY_SHORTCUTS = 'aria-keyshortcuts';
 
 jest.mock('@react-aria/utils', () => ({
-  ...jest.requireActual('@react-aria/utils'),
   isAppleDevice: () => mockIsAppleDevice,
 }));
 

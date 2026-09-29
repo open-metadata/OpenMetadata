@@ -28,7 +28,7 @@ import {
 import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop, omit } from 'lodash';
-import { ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavigationBlocker } from '../../../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -43,8 +43,6 @@ import {
   ViewModePage,
   VIEW_MODE_PAGES,
 } from '../../../../constants/platform/personaViewMode.constants';
-import { Document } from '../../../../generated/entity/docStore/document';
-import { Persona } from '../../../../generated/entity/teams/persona';
 import {
   AppMode,
   DefaultViewModes,
@@ -52,22 +50,13 @@ import {
 } from '../../../../generated/type/personaPreferences';
 import {
   getPersonaPreferences,
-  PersonaAppLayoutPreferences,
   resolvePersonaLandingPage,
 } from '../../../../utils/CustomizePage/PersonaPage.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-
-interface Props {
-  personaDetails?: Persona;
-  personaDocument: Document | null;
-  onSave: (preferences: PersonaAppLayoutPreferences) => Promise<void>;
-}
-
-interface PreferenceRowProps {
-  title: string;
-  description: string;
-  children: ReactNode;
-}
+import {
+  PersonaAppLayoutPageProps,
+  PreferenceRowProps,
+} from './PersonaAppLayoutPage.types';
 
 // A persona without an `appMode` forces nothing, so the tenant default
 // applies. Radio values can't be `undefined`, so that choice travels as this
@@ -124,7 +113,7 @@ export const PersonaAppLayoutPage = ({
   personaDetails,
   personaDocument,
   onSave,
-}: Props) => {
+}: PersonaAppLayoutPageProps) => {
   const { t } = useTranslation();
 
   const persistedPreferences = getPersonaPreferences(
@@ -188,7 +177,11 @@ export const PersonaAppLayoutPage = ({
         pageTitle={t('label.customize-entity', {
           entity: t('label.app-layout'),
         })}>
-        <Box direction="col" gap={5}>
+        {/* The Select list closes when focus moves to another element, and a
+            click on plain page content moves it nowhere. Being focusable lets
+            this box take that focus, as a modal's dialog does, so an outside
+            click closes the list. */}
+        <Box direction="col" gap={5} tabIndex={-1}>
           <CustomizablePageHeader
             disableSave={disableSave}
             personaName={personaName}
@@ -251,7 +244,6 @@ export const PersonaAppLayoutPage = ({
                 aria-label={t('label.default-landing-page')}
                 data-testid="default-landing-page-select"
                 fontSize="sm"
-                labelWeight="semibold"
                 selectedKey={landingPage}
                 size="md"
                 onSelectionChange={(key) => key && setLandingPage(String(key))}>

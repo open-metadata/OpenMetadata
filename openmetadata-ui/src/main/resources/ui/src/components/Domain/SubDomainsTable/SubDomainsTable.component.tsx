@@ -22,8 +22,9 @@ import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { VIEW_MODE_PAGE } from '../../../constants/platform/personaViewMode.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { PageViewMode } from '../../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
@@ -35,7 +36,6 @@ import EntityCardView from '../../common/EntityCardView/EntityCardView.component
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ViewToggle from '../../common/ViewToggle/ViewToggle';
-import { PageViewMode } from '../../../generated/type/personaPreferences';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 

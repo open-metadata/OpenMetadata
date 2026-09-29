@@ -49,15 +49,11 @@ export const SelectEmptyState = ({
   </div>
 );
 
-type SelectLabelWeight = 'regular' | 'semibold';
-
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
     RefAttributes<HTMLDivElement>,
     SelectCommonProps {
   items?: SelectItemType[];
-  /** Weight of the item label, in both the trigger and the list. */
-  labelWeight?: SelectLabelWeight;
   popoverClassName?: string;
   icon?: FC | ReactNode;
   children: ReactNode | ((item: SelectItemType) => ReactNode);
@@ -67,7 +63,6 @@ interface SelectValueProps {
   isOpen: boolean;
   size: 'sm' | 'md';
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  labelWeight: SelectLabelWeight;
   isFocused: boolean;
   isDisabled: boolean;
   placeholder?: string;
@@ -86,7 +81,6 @@ const SelectValue = ({
   isDisabled,
   size,
   fontSize,
-  labelWeight,
   placeholder,
   icon,
   ref,
@@ -135,8 +129,7 @@ const SelectValue = ({
                   <p
                     className={cx(
                       'tw:truncate tw:text-primary',
-                      fontSizeClass[fontSize],
-                      labelWeight === 'semibold' && 'tw:font-semibold'
+                      fontSizeClass[fontSize]
                     )}>
                     {state.selectedItem?.label}
                   </p>
@@ -179,7 +172,6 @@ const SelectValue = ({
 export const SelectContext = createContext<{
   size: 'sm' | 'md';
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  labelWeight?: SelectLabelWeight;
 }>({
   fontSize: 'sm',
   size: 'sm',
@@ -193,7 +185,6 @@ const Select = ({
   children,
   items,
   label,
-  labelWeight = 'regular',
   hint,
   tooltip,
   emptyState,
@@ -201,7 +192,7 @@ const Select = ({
   ...rest
 }: SelectProps) => {
   return (
-    <SelectContext.Provider value={{ fontSize, size, labelWeight }}>
+    <SelectContext.Provider value={{ fontSize, size }}>
       <AriaSelect
         {...rest}
         className={(state) =>
@@ -220,14 +211,11 @@ const Select = ({
 
             <SelectValue
               {...state}
-              {...{ size, fontSize, labelWeight, placeholder }}
+              {...{ size, fontSize, placeholder }}
               icon={icon}
             />
 
-            <Popover
-              isDismissable
-              className={rest.popoverClassName}
-              size={size}>
+            <Popover className={rest.popoverClassName} size={size}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
                 items={items}

@@ -33,7 +33,6 @@ export const LANDING_PAGE_SECTIONS: LandingPageSection[] = [
       { path: ROUTES.MY_DATA, labelKey: 'label.home-my-data' },
       { path: ROUTES.EXPLORE, labelKey: 'label.explore' },
       { path: ROUTES.PLATFORM_LINEAGE, labelKey: 'label.lineage' },
-      { path: ROUTES.DATA_INSIGHT, labelKey: 'label.insight-plural' },
     ],
   },
   {
@@ -49,6 +48,7 @@ export const LANDING_PAGE_SECTIONS: LandingPageSection[] = [
     options: [
       { path: ROUTES.DATA_QUALITY, labelKey: 'label.data-quality' },
       { path: ROUTES.INCIDENT_MANAGER, labelKey: 'label.incident-manager' },
+      { path: ROUTES.DATA_INSIGHT, labelKey: 'label.insight-plural' },
     ],
   },
   {

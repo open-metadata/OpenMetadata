@@ -34,7 +34,6 @@ import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ViewToggle from '../../components/common/ViewToggle/ViewToggle';
-import { PageViewMode } from '../../generated/type/personaPreferences';
 import {
   CATEGORY_BADGE_COLORS,
   LEARNING_CATEGORIES,
@@ -55,6 +54,7 @@ import {
   PAGE_IDS,
 } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaViewMode.constants';
+import { PageViewMode } from '../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';

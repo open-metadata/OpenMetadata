@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CookieStorage } from 'cookie-storage';
-import { ReactNode, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { DEFAULT_LANDING_PAGE } from '../../../../constants/platform/personaLandingPage.constants';
@@ -20,10 +20,7 @@ import { usePersonaDocument } from '../../../../hooks/platform/usePersonaDocumen
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { resolvePersonaLandingPage } from '../../../../utils/CustomizePage/PersonaPage.utils';
 import Loader from '../../../common/Loader/Loader';
-
-interface PersonaLandingRedirectProps {
-  children: ReactNode;
-}
+import { PersonaLandingRedirectProps } from './PersonaLandingRedirect.types';
 
 /**
  * Sends the page the app opens on — `/`, after a sign-in, a reload or in a new
