@@ -77,7 +77,6 @@ const PickerRow = ({
   const meta = getPropertyTypeMeta(property.propertyType.name);
   const TypeIcon = meta.icon;
   const propertyLabel = getEntityName(property);
-  const isDimmed = !isChecked;
   const { itemRef, handleRef, isDragging } = useLayoutItemDrag<HTMLLIElement>({
     dragType: DRAG_TYPE,
     index,
@@ -90,8 +89,7 @@ const PickerRow = ({
   return (
     <li
       className={classNames(
-        'tw:relative tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:rounded-xl tw:border tw:py-2.5 tw:pr-3 tw:pl-2',
-        isDimmed ? 'tw:bg-secondary' : 'tw:bg-primary',
+        'tw:relative tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:rounded-xl tw:border tw:bg-primary tw:py-2.5 tw:pr-3 tw:pl-2',
         isDragging
           ? 'tw:border-dashed tw:border-brand tw:opacity-50'
           : 'tw:border-secondary'
@@ -110,12 +108,7 @@ const PickerRow = ({
         isSelected={isChecked}
         onChange={(checked) => onToggle(property.name, checked)}
       />
-      <Box
-        align="center"
-        className={classNames('tw:min-w-0 tw:flex-1', {
-          'tw:opacity-60': isDimmed,
-        })}
-        gap={3}>
+      <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
         <span
           aria-hidden
           className={`tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg ${
@@ -124,10 +117,7 @@ const PickerRow = ({
           <TypeIcon className="tw:size-4" />
         </span>
         <Typography
-          className={classNames('tw:min-w-0 tw:flex-1 tw:truncate', {
-            'tw:font-medium tw:text-primary': !isDimmed,
-            'tw:text-tertiary': isDimmed,
-          })}
+          className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-medium tw:text-primary"
           size="text-sm">
           {propertyLabel}
         </Typography>
