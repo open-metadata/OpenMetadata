@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -436,6 +437,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     validateSharedPrincipals(entity);
     setCreatorAsDefaultOwner(entity, update);
     prepareLifecycle(entity, update);
+    inheritAnchorDomains(entity, update);
   }
 
   private void validateNotSelfReference(ContextMemory entity, UUID referencedId, String field) {
@@ -492,6 +494,29 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       throw new BadRequestException(
           String.format("%s must reference an existing, non-deleted context memory", field));
     }
+  }
+
+  /** A new memory follows its anchor's single domain for policy and search access. */
+  private void inheritAnchorDomains(ContextMemory memory, boolean update) {
+    if (shouldInheritAnchorDomains(memory, update)) {
+      List<EntityReference> domains = listOrEmpty(anchorDomains(memory.getPrimaryEntity()));
+      if (domains.size() == 1) {
+        memory.setDomains(validateDomainsByRef(domains));
+      }
+    }
+  }
+
+  private static boolean shouldInheritAnchorDomains(ContextMemory memory, boolean update) {
+    EntityReference anchor = memory.getPrimaryEntity();
+    return !update
+        && anchor != null
+        && nullOrEmpty(memory.getDomains())
+        && Entity.getEntityRepository(anchor.getType()).isSupportsDomains();
+  }
+
+  private static List<EntityReference> anchorDomains(EntityReference anchor) {
+    EntityInterface entity = Entity.getEntity(anchor, Entity.FIELD_DOMAINS, Include.NON_DELETED);
+    return entity.getDomains();
   }
 
   @Override
