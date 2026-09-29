@@ -72,6 +72,7 @@ export const ICON_MAP: Record<
   Users01: Users01,
   Tag01: Tag01,
   Search: Search,
+  SearchLg: Search,
   Grid01: Grid01,
   Menu01: Menu01,
   Plus: Plus,
