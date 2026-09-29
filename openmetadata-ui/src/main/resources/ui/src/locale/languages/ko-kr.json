@@ -1847,6 +1847,7 @@
     "metric-for": "대상 지표",
     "metric-group": "메트릭 그룹",
     "metric-hierarchy": "메트릭 계층",
+    "metric-lowercase": "지표",
     "metric-plural": "지표",
     "metric-type": "지표 유형",
     "metric-value": "지표 값",

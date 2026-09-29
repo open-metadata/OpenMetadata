@@ -43,6 +43,7 @@ export const getAssetsPageQuickFilters = (
       return [...DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS];
 
     case AssetsOfEntity.GLOSSARY:
+    case AssetsOfEntity.METRIC:
       return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
 
     case AssetsOfEntity.TAG:
