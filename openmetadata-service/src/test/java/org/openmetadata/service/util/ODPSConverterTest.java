@@ -430,7 +430,9 @@ class ODPSConverterTest {
   @Test
   void fromODPS_rejectsNameThatSanitizesToEmptyFromPunctuationOnly() {
     ODPSDataProduct odps = basicODPS();
+    // Both productID and name unsanitizable, so neither can yield an entity name.
     odps.getProduct().getDetails().getAdditionalProperties().get("en").setProductID("///");
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("///");
 
     IllegalArgumentException ex =
         assertThrows(IllegalArgumentException.class, () -> ODPSConverter.fromODPS(odps));
@@ -456,14 +458,30 @@ class ODPSConverterTest {
   @Test
   void fromODPS_rejectsNameThatSanitizesToEmptyFromNonAsciiOnly() {
     ODPSDataProduct odps = basicODPS();
-    // CJK-only name has no chars in the [a-zA-Z0-9_\-.] allow-list.
+    // CJK-only productID and name have no chars in the [a-zA-Z0-9_\-.] allow-list.
     odps.getProduct().getDetails().getAdditionalProperties().get("en").setProductID("数据产品");
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("数据产品");
 
     IllegalArgumentException ex =
         assertThrows(IllegalArgumentException.class, () -> ODPSConverter.fromODPS(odps));
     assertTrue(
         ex.getMessage().contains("数据产品"),
         "Expected error to include the original unsanitizable value: " + ex.getMessage());
+  }
+
+  @Test
+  void fromODPS_fallsBackToNameWhenProductIdNotSanitizable() {
+    ODPSDataProduct odps = basicODPS();
+    // A non-ASCII productID has no entity-name-safe characters; the name is a valid
+    // slug, so the import should still succeed keyed on the name (as it did before
+    // productID became the identity) rather than failing.
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setProductID("数据产品");
+    odps.getProduct().getDetails().getAdditionalProperties().get("en").setName("sales-analytics");
+
+    DataProduct dp = ODPSConverter.fromODPS(odps);
+
+    assertEquals("sales-analytics", dp.getName());
+    assertEquals("sales-analytics", dp.getDisplayName());
   }
 
   @Test
