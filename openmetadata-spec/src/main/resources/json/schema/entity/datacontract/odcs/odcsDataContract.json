@@ -9,7 +9,7 @@
     "odcsApiVersion": {
       "description": "ODCS API version.",
       "type": "string",
-      "enum": ["v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1", "v2.2.0"],
+      "enum": ["v3.2.0", "v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1", "v2.2.0"],
       "default": "v3.1.0"
     },
     "odcsKind": {
