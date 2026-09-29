@@ -19,15 +19,19 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
 import {
+  createArticleViaApi,
+  deleteArticleByFqn,
+} from '../../utils/ContextCenterUtil';
+import {
   addCuratedAssetPlaceholder,
   CURATED_ASSETS_WIDGET_KEY,
   ENTITY_TYPE_CONFIGS,
+  NameableEntityResponse,
   navigateToCustomizeLandingPage,
   removeAndCheckWidget,
   saveCustomizeLayoutPage,
   selectAssetTypes,
   setUserDefaultPersona,
-  toNameableEntity,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
@@ -37,29 +41,27 @@ import {
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
+let knowledgePage: Awaited<ReturnType<typeof createArticleViaApi>>;
 
-// Define the type for test entities using EntityDataClass properties
-type TestEntity = (typeof EntityDataClass)[keyof typeof EntityDataClass];
-
-// Map entity types to their EntityDataClass properties
-const entityTypeToTestEntity: Record<string, TestEntity> = {
-  'API Collection': EntityDataClass.apiCollection1,
-  'API Endpoint': EntityDataClass.apiEndpoint1,
-  'Data Model': EntityDataClass.dashboardDataModel1,
-  'Data Product': EntityDataClass.dataProduct1,
-  'Database Schema': EntityDataClass.databaseSchema,
-  'Glossary Term': EntityDataClass.glossaryTerm1,
-  'ML Model': EntityDataClass.mlModel1,
-  'Search Index': EntityDataClass.searchIndex1,
-  'Stored Procedure': EntityDataClass.storedProcedure1,
-  Chart: EntityDataClass.chart1,
-  Container: EntityDataClass.container1,
-  Dashboard: EntityDataClass.dashboard1,
-  Database: EntityDataClass.database,
-  Metric: EntityDataClass.metric1,
-  Pipeline: EntityDataClass.pipeline1,
-  Table: EntityDataClass.table1,
-  Topic: EntityDataClass.topic1,
+const entityTypeToTestEntity: Record<string, () => NameableEntityResponse> = {
+  'API Collection': () => EntityDataClass.apiCollection1.entityResponseData,
+  'API Endpoint': () => EntityDataClass.apiEndpoint1.entityResponseData,
+  'Data Model': () => EntityDataClass.dashboardDataModel1.entityResponseData,
+  'Data Product': () => EntityDataClass.dataProduct1.responseData,
+  'Database Schema': () => EntityDataClass.databaseSchema.entityResponseData,
+  'Glossary Term': () => EntityDataClass.glossaryTerm1.responseData,
+  'Knowledge Page': () => knowledgePage,
+  'ML Model': () => EntityDataClass.mlModel1.entityResponseData,
+  'Search Index': () => EntityDataClass.searchIndex1.entityResponseData,
+  'Stored Procedure': () => EntityDataClass.storedProcedure1.entityResponseData,
+  Chart: () => EntityDataClass.chart1.entityResponseData,
+  Container: () => EntityDataClass.container1.entityResponseData,
+  Dashboard: () => EntityDataClass.dashboard1.entityResponseData,
+  Database: () => EntityDataClass.database.entityResponseData,
+  Metric: () => EntityDataClass.metric1.entityResponseData,
+  Pipeline: () => EntityDataClass.pipeline1.entityResponseData,
+  Table: () => EntityDataClass.table1.entityResponseData,
+  Topic: () => EntityDataClass.topic1.entityResponseData,
 };
 
 const test = base.extend<{ page: Page }>({
@@ -78,6 +80,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
+  knowledgePage = await createArticleViaApi(apiContext);
 
   await afterAction();
 });
@@ -88,6 +91,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
   // Delete user and persona
   await adminUser.delete(apiContext);
   await persona.delete(apiContext);
+  await deleteArticleByFqn(apiContext, knowledgePage.fullyQualifiedName);
 
   await afterAction();
 });
@@ -108,10 +112,8 @@ test.describe('Curated Assets Widget', () => {
     }) => {
       test.slow(true);
 
-      const testEntity = entityTypeToTestEntity[entityType.name];
-      if (!testEntity) {
-        return;
-      }
+      const testEntity = entityTypeToTestEntity[entityType.name]?.();
+      expect(testEntity, `Seeded entity for ${entityType.name}`).toBeDefined();
 
       // Add a new curated asset placeholder
       await addCuratedAssetPlaceholder({
@@ -151,8 +153,17 @@ test.describe('Curated Assets Widget', () => {
         'Contains'
       );
 
-      const entityDisplayName =
-        getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
+      // entityTypeToTestEntity already yields the nameable response, so do not
+      // unwrap it again -- toNameableEntity would read .entityResponseData off
+      // something that has no such field and hand back undefined. The old 'pw'
+      // fallback then searched for a prefix every seeded entity shares, which
+      // passed by accident for most types and failed for Metric and Knowledge
+      // Page. Assert the name instead of guessing at it.
+      const entityDisplayName = getEntityDisplayName(testEntity);
+      expect(
+        entityDisplayName,
+        `Seeded display name for ${entityType.name}`
+      ).toBeTruthy();
       await ruleLocator
         .getByTestId('advanced-search-value')
         .locator('input')
