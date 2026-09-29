@@ -67,7 +67,7 @@ export const getCustomPropertiesByEntityType = async (entityType: string) => {
 
 export interface WorkflowTriggerFieldsConfig {
   common: string[];
-  byEntity: Record<string, string[]>;
+  entitySpecific: Record<string, string[]>;
 }
 
 export const getWorkflowTriggerFields =

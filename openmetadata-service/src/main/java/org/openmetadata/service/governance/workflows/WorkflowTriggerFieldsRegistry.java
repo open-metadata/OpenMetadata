@@ -23,8 +23,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Fields whose change can trigger a governance workflow, split into a {@code common} set applicable
- * to every entity type and a {@code byEntity} map of additional fields specific to an entity type
+ * to every entity type and an {@code entitySpecific} map of additional fields specific to an entity type
  * (for example {@code table -> [columns]}). The effective set for an entity is the union of the two.
+ * {@code internal} lists system and bookkeeping fields that never trigger a workflow; it documents
+ * why those fields are absent from the other two sets and is not consulted when filtering.
  *
  * <p>The definition is a data resource loaded once at class-init and fails fast if missing.
  */
@@ -36,7 +38,8 @@ public final class WorkflowTriggerFieldsRegistry {
 
   public record WorkflowTriggerFieldsConfig(
       @JsonProperty("common") List<String> common,
-      @JsonProperty("byEntity") Map<String, List<String>> byEntity) {}
+      @JsonProperty("internal") List<String> internal,
+      @JsonProperty("entitySpecific") Map<String, List<String>> entitySpecific) {}
 
   private static WorkflowTriggerFieldsConfig load() {
     try (InputStream in = WorkflowTriggerFieldsRegistry.class.getResourceAsStream(RESOURCE)) {
@@ -60,7 +63,7 @@ public final class WorkflowTriggerFieldsRegistry {
   }
 
   public static List<String> getEntityFields(String entityType) {
-    return CONFIG.byEntity().getOrDefault(entityType, List.of());
+    return CONFIG.entitySpecific().getOrDefault(entityType, List.of());
   }
 
   public static Set<String> getEffectiveFields(String entityType) {

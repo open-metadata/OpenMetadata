@@ -50,7 +50,7 @@ class FilterEntityImplTest {
 
   @Test
   void testExistingFieldsAreRecognizedAsTriggerFields() throws Exception {
-    List<String> existingFields =
+    List<String> commonFields =
         List.of(
             "name",
             "displayName",
@@ -63,65 +63,98 @@ class FilterEntityImplTest {
             "domains",
             "dataProducts",
             "extension",
-            "deleted",
-            "synonyms",
-            "relatedTerms",
-            "references",
-            "glossary",
-            "parent",
-            "children",
-            "experts");
-
-    for (String field : existingFields) {
+            "deleted");
+    for (String field : commonFields) {
       assertTrue(
           invokeFilter(List.of(fieldChange(field)), null, null),
-          "Existing field should trigger workflow: " + field);
+          "Common field should trigger workflow: %s".formatted(field));
     }
+
+    List<String> glossaryTermFields =
+        List.of("synonyms", "relatedTerms", "references", "glossary", "parent");
+    for (String field : glossaryTermFields) {
+      assertTrue(
+          invokeFilterFor("glossaryTerm", List.of(fieldChange(field)), null, null),
+          "Glossary term field should trigger workflow: %s".formatted(field));
+    }
+    assertTrue(invokeFilterFor("domain", List.of(fieldChange("experts")), null, null));
+    assertTrue(invokeFilterFor("domain", List.of(fieldChange("children")), null, null));
+    assertFalse(invokeFilterFor("glossaryTerm", List.of(fieldChange("children")), null, null));
   }
 
   @Test
   void testNewCommonFieldsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("style")), null, null));
+    assertTrue(invokeFilterFor("glossaryTerm", List.of(fieldChange("style")), null, null));
     assertTrue(invokeFilter(List.of(fieldChange("lifeCycle")), null, null));
   }
 
   @Test
   void testNewDataContractFieldsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("semantics")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("qualityExpectations")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("termsOfUse")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("security")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("testSuite")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("latestResult")), null, null));
+    for (String field :
+        List.of("schema", "semantics", "qualityExpectations", "termsOfUse", "security", "sla")) {
+      assertTrue(
+          invokeFilterFor("dataContract", List.of(fieldChange(field)), null, null),
+          "Data contract field should trigger workflow: %s".formatted(field));
+    }
+    // Written by contract validation, not by users: never a trigger field.
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("latestResult")), null, null));
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("testSuite")), null, null));
+  }
+
+  @Test
+  void testServerComputedFieldsDoNotTriggerWorkflow() throws Exception {
+    // Recorded on every test-result post; a trigger here would fire a workflow per DQ run.
+    for (String field : List.of("testCaseResult", "testCaseStatus")) {
+      assertFalse(invokeFilterFor("testCase", List.of(fieldChange(field)), null, null));
+    }
+    assertTrue(invokeFilterFor("testCase", List.of(fieldChange("parameterValues")), null, null));
+    assertFalse(
+        invokeFilterFor("testSuite", List.of(fieldChange("testCaseResultSummary")), null, null));
+    assertFalse(invokeFilterFor("query", List.of(fieldChange("checksum")), null, null));
+    assertFalse(invokeFilterFor("user", List.of(fieldChange("allowImpersonation")), null, null));
+    assertFalse(
+        invokeFilterFor("mcpServer", List.of(fieldChange("usedByApplications")), null, null));
   }
 
   @Test
   void testNewDataProductFieldsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("consumesFrom")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("providesTo")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("lifecycleStage")), null, null));
+    for (String field : List.of("dataProductType", "visibility", "portfolioPriority", "assets")) {
+      assertTrue(
+          invokeFilterFor("dataProduct", List.of(fieldChange(field)), null, null),
+          "Data product field should trigger workflow: %s".formatted(field));
+    }
   }
 
   @Test
   void testInputOutputPortsAndGlossaryTermsAreRecognizedAsTriggerFields() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("inputPorts")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("outputPorts")), null, null));
+    assertTrue(invokeFilterFor("dataProduct", List.of(fieldChange("inputPorts")), null, null));
+    assertTrue(invokeFilterFor("dataProduct", List.of(fieldChange("outputPorts")), null, null));
     assertTrue(invokeFilter(List.of(fieldChange("glossaryTerms")), null, null));
   }
 
   @Test
   void testInputOutputPortsCanBeIncludedOrExcluded() throws Exception {
     List<String> includePortFields = List.of("inputPorts", "outputPorts");
-    assertTrue(invokeFilter(List.of(fieldChange("inputPorts")), includePortFields, null));
-    assertTrue(invokeFilter(List.of(fieldChange("outputPorts")), includePortFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("description")), includePortFields, null));
+    assertTrue(
+        invokeFilterFor(
+            "dataProduct", List.of(fieldChange("inputPorts")), includePortFields, null));
+    assertTrue(
+        invokeFilterFor(
+            "dataProduct", List.of(fieldChange("outputPorts")), includePortFields, null));
+    assertFalse(
+        invokeFilterFor(
+            "dataProduct", List.of(fieldChange("description")), includePortFields, null));
 
     List<String> excludePortFields = List.of("inputPorts", "outputPorts");
-    assertFalse(invokeFilter(List.of(fieldChange("inputPorts")), null, excludePortFields));
-    assertFalse(invokeFilter(List.of(fieldChange("outputPorts")), null, excludePortFields));
-    assertTrue(invokeFilter(List.of(fieldChange("description")), null, excludePortFields));
+    assertFalse(
+        invokeFilterFor(
+            "dataProduct", List.of(fieldChange("inputPorts")), null, excludePortFields));
+    assertFalse(
+        invokeFilterFor(
+            "dataProduct", List.of(fieldChange("outputPorts")), null, excludePortFields));
+    assertTrue(
+        invokeFilterFor(
+            "dataProduct", List.of(fieldChange("description")), null, excludePortFields));
   }
 
   @Test
@@ -150,20 +183,25 @@ class FilterEntityImplTest {
   void testIncludeFilterAllowsOnlySpecifiedFields() throws Exception {
     List<String> includeFields = List.of("sla", "schema");
 
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, null));
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), includeFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("semantics")), includeFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("tags")), includeFields, null));
+    assertTrue(invokeFilterFor("dataContract", List.of(fieldChange("sla")), includeFields, null));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("schema")), includeFields, null));
+    assertFalse(
+        invokeFilterFor("dataContract", List.of(fieldChange("semantics")), includeFields, null));
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("tags")), includeFields, null));
   }
 
   @Test
   void testExcludeFilterBlocksSpecifiedFields() throws Exception {
     List<String> excludeFields = List.of("sla", "latestResult");
 
-    assertFalse(invokeFilter(List.of(fieldChange("sla")), null, excludeFields));
-    assertFalse(invokeFilter(List.of(fieldChange("latestResult")), null, excludeFields));
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), null, excludeFields));
-    assertTrue(invokeFilter(List.of(fieldChange("semantics")), null, excludeFields));
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("sla")), null, excludeFields));
+    assertFalse(
+        invokeFilterFor("dataContract", List.of(fieldChange("latestResult")), null, excludeFields));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("schema")), null, excludeFields));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("semantics")), null, excludeFields));
   }
 
   @Test
@@ -171,7 +209,49 @@ class FilterEntityImplTest {
     List<String> includeFields = List.of("sla");
     List<String> excludeFields = List.of("sla");
 
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, excludeFields));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("sla")), includeFields, excludeFields));
+  }
+
+  @Test
+  void testEntitySpecificFieldsDoNotTriggerForOtherEntityTypes() throws Exception {
+    // Glossary, data product and data contract fields are trigger fields only for the entity types
+    // that have them; a same-named change on a table does not fire a table workflow.
+    for (String field :
+        List.of("synonyms", "style", "inputPorts", "consumesFrom", "sla", "schema")) {
+      assertFalse(
+          invokeFilter(List.of(fieldChange(field)), null, null),
+          "Field should not trigger a table workflow: %s".formatted(field));
+    }
+  }
+
+  @Test
+  void testMetricFieldsTriggerOnlyForMetrics() throws Exception {
+    // Every metric attribute a user or a semantic-layer sync can change fires a metric workflow,
+    // including the formula; the same field names are not trigger fields for other entity types.
+    for (String field :
+        List.of(
+            "metricExpression",
+            "metricType",
+            "unitOfMeasurement",
+            "customUnitOfMeasurement",
+            "granularity",
+            "dimensions",
+            "measures",
+            "filters",
+            "relatedMetrics",
+            "metricGroup",
+            "assets")) {
+      assertTrue(
+          invokeFilterFor("metric", List.of(fieldChange(field)), null, null),
+          "metric field '%s' should trigger a metric workflow".formatted(field));
+    }
+    assertTrue(
+        invokeFilterFor("metric", List.of(fieldChange("metricExpression.code")), null, null));
+    assertFalse(invokeFilterFor("table", List.of(fieldChange("metricExpression")), null, null));
+    assertFalse(
+        invokeFilterFor(
+            "metric", List.of(fieldChange("metricExpression")), null, List.of("metricExpression")));
   }
 
   @Test
@@ -199,7 +279,7 @@ class FilterEntityImplTest {
   void testMultipleChangedFieldsPassIfAnyMatchesTriggerFields() throws Exception {
     List<FieldChange> changes = List.of(fieldChange("updatedAt"), fieldChange("schema"));
 
-    assertTrue(invokeFilter(changes, null, null));
+    assertTrue(invokeFilterFor("dataContract", changes, null, null));
   }
 
   @Test
@@ -216,36 +296,47 @@ class FilterEntityImplTest {
 
   @Test
   void testNestedFieldMatchesParentTriggerField() throws Exception {
-    assertTrue(invokeFilter(List.of(fieldChange("sla.refreshFrequency")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("sla.maxLatency")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("semantics.0.ruleName")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("schema.0.dataType")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("security.dataClassification")), null, null));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("sla.refreshFrequency")), null, null));
+    assertTrue(invokeFilterFor("dataContract", List.of(fieldChange("sla.maxLatency")), null, null));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("semantics.0.ruleName")), null, null));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("schema.0.dataType")), null, null));
+    assertTrue(
+        invokeFilterFor(
+            "dataContract", List.of(fieldChange("security.dataClassification")), null, null));
   }
 
   @Test
   void testNestedFieldDoesNotMatchSimilarPrefix() throws Exception {
-    assertFalse(invokeFilter(List.of(fieldChange("slaSpecial")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("schemaVersion")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("tagsExtra")), null, null));
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("slaSpecial")), null, null));
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("schemaVersion")), null, null));
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("tagsExtra")), null, null));
   }
 
   @Test
   void testNestedFieldIncludeFilter() throws Exception {
     List<String> includeFields = List.of("sla");
 
-    assertTrue(invokeFilter(List.of(fieldChange("sla.refreshFrequency")), includeFields, null));
-    assertTrue(invokeFilter(List.of(fieldChange("sla")), includeFields, null));
-    assertFalse(invokeFilter(List.of(fieldChange("schema")), includeFields, null));
+    assertTrue(
+        invokeFilterFor(
+            "dataContract", List.of(fieldChange("sla.refreshFrequency")), includeFields, null));
+    assertTrue(invokeFilterFor("dataContract", List.of(fieldChange("sla")), includeFields, null));
+    assertFalse(
+        invokeFilterFor("dataContract", List.of(fieldChange("schema")), includeFields, null));
   }
 
   @Test
   void testNestedFieldExcludeFilter() throws Exception {
     List<String> excludeFields = List.of("sla");
 
-    assertFalse(invokeFilter(List.of(fieldChange("sla.refreshFrequency")), null, excludeFields));
-    assertFalse(invokeFilter(List.of(fieldChange("sla")), null, excludeFields));
-    assertTrue(invokeFilter(List.of(fieldChange("schema")), null, excludeFields));
+    assertFalse(
+        invokeFilterFor(
+            "dataContract", List.of(fieldChange("sla.refreshFrequency")), null, excludeFields));
+    assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("sla")), null, excludeFields));
+    assertTrue(
+        invokeFilterFor("dataContract", List.of(fieldChange("schema")), null, excludeFields));
   }
 
   // sanitizeFilterValue: guards against the historical UI bug where an incomplete
@@ -325,9 +416,18 @@ class FilterEntityImplTest {
       List<FieldChange> changedFields, List<String> includeFields, List<String> excludeFields)
       throws Exception {
     // Common trigger fields are recognized for every entity type; "table" is a representative one.
+    return invokeFilterFor("table", changedFields, includeFields, excludeFields);
+  }
+
+  private boolean invokeFilterFor(
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludeFields)
+      throws Exception {
     return (boolean)
         passesFieldBasedFilter.invoke(
-            filterEntity, "table", changedFields, includeFields, excludeFields);
+            filterEntity, entityType, changedFields, includeFields, excludeFields);
   }
 
   private String invokeSanitize(String filter) throws Exception {

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -21,7 +20,6 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,10 +36,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -51,8 +47,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+  private final TableMetadataLoader columnExtensions;
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
-  private static final String COLUMN_EXTENSION_JSON_SCHEMA = "columnExtension";
 
   public DashboardDataModelRepository() {
     super(
@@ -71,6 +67,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    // The loader's column-extension read is keyed by column FQN hash, not by entity type, so it
+    // serves data model columns exactly as it does table columns.
+    columnExtensions = new TableMetadataLoader(() -> daoCollection.entityExtensionDAO());
   }
 
   @Override
@@ -154,58 +153,14 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
     if (fields.contains("columns") && fields.contains("extension")) {
-      setColumnExtensions(dashboardDataModel.getId(), dashboardDataModel.getColumns());
+      columnExtensions.loadColumnExtensions(
+          dashboardDataModel.getId(), dashboardDataModel.getColumns());
     }
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
     EntityReference service = getContainer(dashboardDataModel.getId());
     dashboardDataModel.withService(service);
-  }
-
-  private Object getColumnExtension(UUID dataModelId, String columnFQN) {
-    try {
-      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
-      String extensionJson =
-          daoCollection.entityExtensionDAO().getExtension(dataModelId, extensionKey);
-      if (extensionJson != null) {
-        return JsonUtils.readValue(extensionJson, Object.class);
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
-    }
-    return null;
-  }
-
-  /**
-   * Hydrates {@code extension} on every column and nested child in a single query — used by the
-   * full-column-list read paths (the single-column path uses the targeted {@link
-   * #getColumnExtension} instead).
-   */
-  private void setColumnExtensions(UUID dataModelId, List<Column> columns) {
-    if (nullOrEmpty(columns)) {
-      return;
-    }
-    Map<String, Object> extensionByColumnHash = new HashMap<>();
-    for (ExtensionRecord record :
-        daoCollection
-            .entityExtensionDAO()
-            .getExtensionsByJsonSchema(dataModelId, COLUMN_EXTENSION_JSON_SCHEMA)) {
-      try {
-        extensionByColumnHash.put(
-            record.extensionName(), JsonUtils.readValue(record.extensionJson(), Object.class));
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to deserialize column extension for data model {} extensionKey {}: {}",
-            dataModelId,
-            record.extensionName(),
-            e.getMessage());
-      }
-    }
-    for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
-      column.setExtension(
-          extensionByColumnHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName())));
-    }
   }
 
   // Individual field fetchers registered in constructor
@@ -371,7 +326,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      setColumnExtensions(dataModel.getId(), paginatedColumns);
+      columnExtensions.loadColumnExtensions(dataModel.getId(), paginatedColumns);
     }
 
     // Calculate pagination metadata
@@ -391,10 +346,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
     }
     if (fieldsParam.contains("extension")) {
-      for (Column flattened : EntityUtil.getFlattenedEntityField(singleton)) {
-        flattened.setExtension(
-            getColumnExtension(dataModel.getId(), flattened.getFullyQualifiedName()));
-      }
+      columnExtensions.loadColumnExtensions(dataModel.getId(), singleton);
     }
     return column;
   }

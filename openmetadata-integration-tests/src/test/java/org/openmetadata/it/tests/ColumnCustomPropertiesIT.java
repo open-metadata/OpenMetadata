@@ -23,6 +23,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Columns;
@@ -1287,6 +1289,65 @@ public class ColumnCustomPropertiesIT {
           versionAfterCreate,
           reingested.getVersion(),
           "re-ingesting an unchanged nested column custom property must not bump the version");
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_extensionUnchangedBulkReingest_noVersionBump(TestNamespace ns)
+      throws Exception {
+    String propName = ns.prefix("bulkReingestProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      Map<String, Object> idExtension = new HashMap<>();
+      idExtension.put(propName, "unchanged-bulk-value");
+      CreateTable request =
+          new CreateTable()
+              .withName(ns.prefix("bulkReingestTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName("id")
+                          .withDataType(ColumnDataType.BIGINT)
+                          .withExtension(idExtension),
+                      createDeeplyNestedColumn(propName)));
+      Table created = client.tables().create(request);
+      Double versionAfterCreate =
+          client.tables().get(created.getId().toString(), "columns,extension").getVersion();
+
+      // Re-ingest the identical table through the bulk upsert path. The bulk path hydrates its
+      // originals separately from the single-entity PUT, so the stored column extensions (top-level
+      // and nested) must be loaded there too; an unchanged value must not record a FieldChange.
+      BulkOperationResult result =
+          BulkApi.upsert("tables", List.of(request), false, BulkApi.botToken());
+      assertEquals(1, result.getNumberOfRowsPassed(), "bulk re-ingest row must succeed");
+
+      Table reingested = client.tables().get(created.getId().toString(), "columns,extension");
+      assertEquals(
+          versionAfterCreate,
+          reingested.getVersion(),
+          "bulk re-ingesting an unchanged column custom property must not bump the version");
+
+      // A changed value through the same bulk path must still be recorded, so the assertion above
+      // reflects a correct baseline rather than the bulk path ignoring column extensions.
+      idExtension.put(propName, "changed-bulk-value");
+      BulkOperationResult changedResult =
+          BulkApi.upsert("tables", List.of(request), false, BulkApi.botToken());
+      assertEquals(1, changedResult.getNumberOfRowsPassed(), "bulk change row must succeed");
+      Table changed = client.tables().get(created.getId().toString(), "columns,extension");
+      assertTrue(
+          changed.getVersion() > versionAfterCreate,
+          "bulk-changing a column custom property must bump the version");
+      assertNotNull(
+          findColumnExtensionChange(changed.getChangeDescription(), "id"),
+          "bulk-changing a column custom property must record the column extension change");
     } finally {
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
     }

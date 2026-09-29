@@ -177,7 +177,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   // page level and pass it down so opening the start node's config panel triggers no per-open
   // request.
   const [triggerFieldsConfig, setTriggerFieldsConfig] =
-    useState<WorkflowTriggerFieldsConfig>({ common: [], byEntity: {} });
+    useState<WorkflowTriggerFieldsConfig>({ common: [], entitySpecific: {} });
 
   useEffect(() => {
     getWorkflowTriggerFields()

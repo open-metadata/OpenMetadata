@@ -12,10 +12,7 @@
  */
 
 import React from 'react';
-import {
-  AVAILABLE_OPTIONS,
-  WorkflowType,
-} from '../../../../constants/WorkflowBuilder.constants';
+import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
 import { DataAssetFiltersSection } from './DataAssetFiltersSection';
@@ -26,6 +23,7 @@ import { TriggerConfigSection } from './TriggerConfigSection';
 
 interface WorkflowConfigFormV1Props {
   config: NodeConfig;
+  availableDataAssets: string[];
   availableEventTypes: string[];
   availableExcludeFields: string[];
   fieldGroups?: Record<string, string>;
@@ -58,6 +56,7 @@ function getEventTriggerEntityType(
 
 export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   config,
+  availableDataAssets,
   availableEventTypes,
   availableExcludeFields,
   fieldGroups,
@@ -91,7 +90,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       />
 
       <DataAssetFormSection
-        availableDataAssets={[...AVAILABLE_OPTIONS.DATA_ASSETS]}
+        availableDataAssets={availableDataAssets}
         dataAssets={config.dataAssets}
         lockFields={lockCoreStartFields}
         onDataAssetsChange={(dataAssets) =>

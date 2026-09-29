@@ -40,6 +40,7 @@ import {
 } from '../../../utils/NodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
+  buildEntityFieldGroups,
   validateWorkflowConfig,
   withExtensionPrefix,
 } from '../../../utils/WorkflowConfigUtils';
@@ -170,7 +171,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   const availableExcludeFields = useMemo(() => {
     const assets = effectiveConfig.dataAssets ?? [];
     const entitySpecificFields = assets.flatMap(
-      (asset) => triggerFieldsConfig.byEntity[asset] ?? []
+      (asset) => triggerFieldsConfig.entitySpecific[asset] ?? []
     );
 
     return [
@@ -182,21 +183,22 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     ];
   }, [triggerFieldsConfig, effectiveConfig.dataAssets, customPropertyFields]);
 
-  // Label each entity-specific field with the entity type it comes from so the selector groups
-  // them below the common fields (e.g. `columns` shown under `table`).
-  const excludeFieldGroups = useMemo(() => {
-    const assets = effectiveConfig.dataAssets ?? [];
-    const groups: Record<string, string> = {};
-    assets.forEach((asset) => {
-      (triggerFieldsConfig.byEntity[asset] ?? []).forEach((fieldName) => {
-        if (!groups[fieldName]) {
-          groups[fieldName] = asset;
-        }
-      });
-    });
+  // The trigger-fields registry's entity types are the ones a workflow can be defined on.
+  const workflowEntityTypes = useMemo(
+    () => Object.keys(triggerFieldsConfig.entitySpecific),
+    [triggerFieldsConfig]
+  );
 
-    return groups;
-  }, [triggerFieldsConfig, effectiveConfig.dataAssets]);
+  // Group entity-specific fields under their entity type below the common fields
+  // (e.g. `columns` shown under `table`).
+  const excludeFieldGroups = useMemo(
+    () =>
+      buildEntityFieldGroups(
+        triggerFieldsConfig.entitySpecific,
+        effectiveConfig.dataAssets ?? []
+      ),
+    [triggerFieldsConfig, effectiveConfig.dataAssets]
+  );
 
   useEffect(() => {
     if (isStartNode(node)) {
@@ -479,6 +481,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         allowStartNodeFilterScheduleAndBatchEdit={
           allowStartNodeFilterScheduleAndBatchEdit
         }
+        availableDataAssets={workflowEntityTypes}
         availableEventTypes={[...AVAILABLE_OPTIONS.EVENT_TYPES]}
         availableExcludeFields={availableExcludeFields}
         config={effectiveConfig}
