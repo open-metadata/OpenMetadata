@@ -85,6 +85,7 @@ import {
   EntityChildren,
   LineageConfig,
   LineageNodeType,
+  type EdgeFromToData,
 } from '../../../interface/lineage.interface';
 import {
   QueryFieldInterface,
@@ -141,7 +142,7 @@ import {
   type LineageSceneRequest,
 } from './LineageMap.utils';
 import {
-  buildConnectPayload,
+  buildLineagePayload,
   getEndpointHandle,
   getEndpointNodeId,
   getRealEntityRef,
@@ -470,16 +471,6 @@ const getExistingEdgeDetails = async (fromId: string, toId: string) => {
     return undefined;
   }
 };
-
-const getSceneConnectionHandles = ({
-  source,
-  sourceHandle,
-  target,
-  targetHandle,
-}: Connection) => ({
-  sourceHandle: sourceHandle === source ? undefined : sourceHandle ?? undefined,
-  targetHandle: targetHandle === target ? undefined : targetHandle ?? undefined,
-});
 
 const getSemanticZoomBand = (
   band: LineageBand,
@@ -1897,6 +1888,49 @@ const LineageMapCanvas = ({
     [refetchCurrentScene, scene, setActiveNode, setSelectedNode, t]
   );
 
+  const createLineageEdge = useCallback(
+    async (
+      fromEntity: EdgeFromToData,
+      toEntity: EdgeFromToData,
+      columnPair?: { fromColumn: string; toColumn: string }
+    ): Promise<boolean> => {
+      setIsCreatingEdge(true);
+      try {
+        const existingDetails = await getExistingEdgeDetails(
+          fromEntity.id,
+          toEntity.id
+        );
+        const payload = buildLineagePayload(
+          fromEntity,
+          toEntity,
+          existingDetails,
+          columnPair
+        );
+        if (!payload) {
+          return false;
+        }
+        await addLineageHandler(payload);
+        setSelectedEdge(undefined);
+        setSelectedNode(undefined);
+        // Wait for the entity edge only: column edges are not drawn in every band.
+        await refetchCurrentScene((response) =>
+          hasSceneEntityConnection(response, fromEntity.id, toEntity.id)
+        );
+
+        return true;
+      } catch (error) {
+        if ((error as AxiosError).response?.status !== undefined) {
+          showErrorToast(error as AxiosError);
+        }
+
+        return false;
+      } finally {
+        setIsCreatingEdge(false);
+      }
+    },
+    [refetchCurrentScene, setIsCreatingEdge, setSelectedEdge, setSelectedNode]
+  );
+
   const handleConnect = useCallback(
     async (connection: Connection) => {
       if (!canEditScene) {
@@ -1926,50 +1960,9 @@ const LineageMapCanvas = ({
         return;
       }
 
-      setIsCreatingEdge(true);
-      try {
-        const existingDetails = await getExistingEdgeDetails(
-          fromEntity.id,
-          toEntity.id
-        );
-        const payload = buildConnectPayload(
-          connection,
-          nodeById,
-          existingDetails
-        );
-        if (!payload) {
-          return;
-        }
-        await addLineageHandler(payload);
-        setSelectedEdge(undefined);
-        setSelectedNode(undefined);
-        const { sourceHandle, targetHandle } =
-          getSceneConnectionHandles(connection);
-        await refetchCurrentScene((response) =>
-          hasSceneEntityConnection(
-            response,
-            fromEntity.id,
-            toEntity.id,
-            sourceHandle,
-            targetHandle
-          )
-        );
-      } catch (error) {
-        if ((error as AxiosError).response?.status !== undefined) {
-          showErrorToast(error as AxiosError);
-        }
-      } finally {
-        setIsCreatingEdge(false);
-      }
+      await createLineageEdge(fromEntity, toEntity);
     },
-    [
-      canEditScene,
-      refetchCurrentScene,
-      setIsCreatingEdge,
-      setSelectedEdge,
-      setSelectedNode,
-      t,
-    ]
+    [canEditScene, createLineageEdge, t]
   );
 
   const handlePaneClick = useCallback(() => {

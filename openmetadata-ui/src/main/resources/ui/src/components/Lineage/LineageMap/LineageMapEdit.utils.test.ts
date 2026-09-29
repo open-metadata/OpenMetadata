@@ -25,6 +25,7 @@ import {
 } from '../../../generated/type/entityLineage';
 import {
   buildConnectPayload,
+  buildLineagePayload,
   FIELD_SEPARATOR,
   getEndpointHandle,
   getEndpointNodeId,
@@ -549,5 +550,70 @@ describe('LineageMap edit utils', () => {
         )
       ).toBeNull();
     });
+  });
+});
+
+describe('buildLineagePayload', () => {
+  const from = { id: 'a', type: 'table', fullyQualifiedName: 's.d.sc.a' };
+  const to = { id: 'b', type: 'table', fullyQualifiedName: 's.d.sc.b' };
+
+  it('builds an entity edge keeping existing details', () => {
+    const payload = buildLineagePayload(from, to, {
+      description: 'desc',
+      sqlQuery: 'select 1',
+    });
+
+    expect(payload?.edge.fromEntity).toEqual({ id: 'a', type: 'table' });
+    expect(payload?.edge.toEntity).toEqual({ id: 'b', type: 'table' });
+    expect(payload?.edge.lineageDetails?.description).toBe('desc');
+    expect(payload?.edge.lineageDetails?.sqlQuery).toBe('select 1');
+  });
+
+  it('rejects a self edge', () => {
+    expect(buildLineagePayload(from, from)).toBeNull();
+  });
+
+  it('adds a column pair', () => {
+    const payload = buildLineagePayload(
+      from,
+      to,
+      {},
+      {
+        fromColumn: 's.d.sc.a.x',
+        toColumn: 's.d.sc.b.y',
+      }
+    );
+
+    expect(payload?.edge.lineageDetails?.columnsLineage).toEqual([
+      { fromColumns: ['s.d.sc.a.x'], toColumn: 's.d.sc.b.y' },
+    ]);
+  });
+
+  it('merges into an existing column mapping without duplicating', () => {
+    const existing = {
+      columnsLineage: [{ fromColumns: ['s.d.sc.a.z'], toColumn: 's.d.sc.b.y' }],
+    };
+    const payload = buildLineagePayload(from, to, existing, {
+      fromColumn: 's.d.sc.a.x',
+      toColumn: 's.d.sc.b.y',
+    });
+
+    expect(payload?.edge.lineageDetails?.columnsLineage).toEqual([
+      { fromColumns: ['s.d.sc.a.z', 's.d.sc.a.x'], toColumn: 's.d.sc.b.y' },
+    ]);
+  });
+
+  it('does not add the same column pair twice', () => {
+    const existing = {
+      columnsLineage: [{ fromColumns: ['s.d.sc.a.x'], toColumn: 's.d.sc.b.y' }],
+    };
+    const payload = buildLineagePayload(from, to, existing, {
+      fromColumn: 's.d.sc.a.x',
+      toColumn: 's.d.sc.b.y',
+    });
+
+    expect(payload?.edge.lineageDetails?.columnsLineage).toEqual(
+      existing.columnsLineage
+    );
   });
 });

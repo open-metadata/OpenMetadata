@@ -405,12 +405,57 @@ export const hydrateSelectedEdge = (
   };
 };
 
+export const buildLineagePayload = (
+  fromEntity: EdgeFromToData,
+  toEntity: EdgeFromToData,
+  existingDetails: LineageDetails = {},
+  columnPair?: { fromColumn: string; toColumn: string }
+): AddLineage | null => {
+  if (fromEntity.id === toEntity.id) {
+    return null;
+  }
+  const existingColumns = existingDetails.columnsLineage ?? [];
+  const alreadyMapped =
+    columnPair &&
+    existingColumns.some(
+      (lineage) =>
+        lineage.toColumn === columnPair.toColumn &&
+        lineage.fromColumns?.includes(columnPair.fromColumn)
+    );
+  const columnsLineage =
+    columnPair && !alreadyMapped
+      ? getUpdatedColumnsFromEdge(
+          {
+            source: fromEntity.id,
+            target: toEntity.id,
+            sourceHandle: columnPair.fromColumn,
+            targetHandle: columnPair.toColumn,
+          },
+          { fromEntity, toEntity, columns: existingColumns }
+        )
+      : existingColumns;
+
+  return {
+    edge: {
+      fromEntity: { id: fromEntity.id, type: fromEntity.type },
+      toEntity: { id: toEntity.id, type: toEntity.type },
+      lineageDetails: {
+        columnsLineage,
+        description: existingDetails.description,
+        pipeline: existingDetails.pipeline,
+        source: existingDetails.source,
+        sqlQuery: existingDetails.sqlQuery ?? '',
+        tempLineageTables: existingDetails.tempLineageTables,
+      },
+    },
+  };
+};
+
 export const buildConnectPayload = (
   connection: Connection,
   nodeById: Map<string, LineageSceneNode>,
   existingDetails: LineageDetails = {}
 ): AddLineage | null => {
-  const { columnsLineage: existingColumns = [] } = existingDetails;
   const fromEntity = getRealEntityRef(nodeById.get(connection.source ?? ''));
   const toEntity = getRealEntityRef(nodeById.get(connection.target ?? ''));
   const sourceHandle = getConnectionHandle(
@@ -421,44 +466,21 @@ export const buildConnectPayload = (
     connection.targetHandle,
     connection.target
   );
-  const isColumnConnection = Boolean(sourceHandle && targetHandle);
 
   if (
     !fromEntity ||
     !toEntity ||
-    fromEntity.id === toEntity.id ||
     Boolean(sourceHandle) !== Boolean(targetHandle)
   ) {
     return null;
   }
 
-  const currentEdge: EdgeDetails = {
+  return buildLineagePayload(
     fromEntity,
     toEntity,
-    columns: existingDetails?.columnsLineage,
-  };
-  const columnsLineage = isColumnConnection
-    ? getUpdatedColumnsFromEdge(connection, currentEdge)
-    : existingColumns;
-
-  return {
-    edge: {
-      fromEntity: {
-        id: fromEntity.id,
-        type: fromEntity.type,
-      },
-      toEntity: {
-        id: toEntity.id,
-        type: toEntity.type,
-      },
-      lineageDetails: {
-        columnsLineage,
-        description: existingDetails?.description,
-        pipeline: existingDetails?.pipeline,
-        source: existingDetails?.source,
-        sqlQuery: existingDetails?.sqlQuery ?? '',
-        tempLineageTables: existingDetails?.tempLineageTables,
-      },
-    },
-  };
+    existingDetails,
+    sourceHandle && targetHandle
+      ? { fromColumn: sourceHandle, toColumn: targetHandle }
+      : undefined
+  );
 };
