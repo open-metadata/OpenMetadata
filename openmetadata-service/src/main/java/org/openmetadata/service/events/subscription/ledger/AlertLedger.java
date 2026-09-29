@@ -18,6 +18,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 
 /**
  * Everything one tick of one alert leaves behind. The tick reports to it while it runs and the
@@ -53,9 +54,7 @@ public final class AlertLedger {
   private int failedEvents;
   private final Map<String, DestinationOutcome> outcomeThisTick = new LinkedHashMap<>();
   private final List<ChangeEvent> delivered = new ArrayList<>();
-  private final List<FailureRow> failures = new ArrayList<>();
-
-  private record FailureRow(String key, String json, String source) {}
+  private final List<FailedEventRow> failures = new ArrayList<>();
 
   public AlertLedger(EventSubscription alert, Map<String, String> rows) {
     this.alertId = alert.getId().toString();
@@ -162,7 +161,7 @@ public final class AlertLedger {
 
   /** Written at commit with the other rows, so a tick that outlives its alert leaves nothing. */
   public void failure(String key, String json, String source) {
-    failures.add(new FailureRow(key, json, source));
+    failures.add(new FailedEventRow(key, json, source));
   }
 
   /** A delivery a consumer made on its own, with no change event behind it. */
@@ -296,7 +295,9 @@ public final class AlertLedger {
   }
 
   private void writeFailures() {
-    failures.forEach(row -> dao().upsertFailedEvent(alertId, row.key(), row.json(), row.source()));
+    if (!failures.isEmpty()) {
+      dao().batchUpsertFailedEvents(alertId, List.copyOf(failures));
+    }
   }
 
   private void writeHealth() {

@@ -43,6 +43,7 @@ import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -828,8 +829,9 @@ class AbstractEventConsumerTest {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     EventSubscriptionDAOs.EventSubscriptionDAO subscriptionDAO = daoHoldingThePosition();
     when(collectionDAO.eventSubscriptionDAO()).thenReturn(subscriptionDAO);
-    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<String> extension = ArgumentCaptor.forClass(String.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<FailedEventRow>> rows =
+        ArgumentCaptor.forClass((Class<List<FailedEventRow>>) (Class<?>) List.class);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
@@ -839,17 +841,15 @@ class AbstractEventConsumerTest {
       consumer.commit(null);
     }
 
-    verify(subscriptionDAO, times(2))
-        .upsertFailedEvent(
-            eq(subscriptionId.toString()), extension.capture(), json.capture(), anyString());
-    FailedEvent written = JsonUtils.readValue(json.getAllValues().getFirst(), FailedEvent.class);
+    verify(subscriptionDAO).batchUpsertFailedEvents(eq(subscriptionId.toString()), rows.capture());
+    FailedEvent written = JsonUtils.readValue(rows.getValue().getFirst().json(), FailedEvent.class);
     assertNull(written.getChangeEvent(), "there is no change event behind this failure");
     assertEquals("smtp refused the message", written.getReason());
     assertEquals(subscriptionId, written.getFailingSubscriptionId());
     assertNotNull(written.getTimestamp(), "the row has to date itself");
     assertEquals(
-        extension.getAllValues().getFirst(),
-        extension.getAllValues().getLast(),
+        rows.getValue().getFirst().extension(),
+        rows.getValue().getLast().extension(),
         "one key per subscription, so repeated failures replace rather than accumulate");
   }
 
