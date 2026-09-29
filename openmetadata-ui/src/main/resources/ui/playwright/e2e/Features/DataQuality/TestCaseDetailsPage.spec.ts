@@ -663,6 +663,7 @@ test.describe(
   () => {
     let detailsTable: TableClass;
     let detailsTestCaseFqn: string;
+    let abortedTestCaseFqn: string;
 
     test.beforeAll(
       'Create a test case whose latest run failed',
@@ -684,6 +685,33 @@ test.describe(
           testResultValue: [{ name: 'rowCount', value: '110' }],
           timestamp: getCurrentMillis() - 60_000,
         });
+
+        // A run that aborts before measuring sends no values; every run of
+        // this test case did, so the chart has no series of its own.
+        const abortedTestCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        abortedTestCaseFqn = abortedTestCase.fullyQualifiedName as string;
+        for (const minutesAgo of [3, 1]) {
+          await detailsTable.addTestCaseResult(apiContext, abortedTestCaseFqn, {
+            duration: 30000,
+            errorDetails: {
+              errorType: 'QueryTimeoutError',
+              message: 'Connection to the warehouse timed out',
+              stackTrace: [
+                'Traceback (most recent call last):',
+                '  File "/ingestion/validator.py", line 42, in run',
+                '    rows = session.execute(query)',
+                'QueryTimeoutError: Connection to the warehouse timed out',
+              ].join('\n'),
+            },
+            result: 'Error computing tableRowCountToEqual',
+            testCaseStatus: 'Aborted',
+            testResultValue: [],
+            timestamp: getCurrentMillis() - minutesAgo * 60_000,
+          });
+        }
 
         await afterAction();
       }
@@ -717,6 +745,42 @@ test.describe(
         '-9,890 (-98.9%)'
       );
       await expect(card.getByTestId('run-details-comparison')).toBeVisible();
+    });
+
+    test('shows an aborted run as an execution error and still charts it', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, abortedTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(card).toHaveAttribute('data-status', 'Aborted');
+      await expect(card.getByTestId('run-details-duration')).toHaveText(
+        '30.0s (timeout)'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('—');
+      await expect(card.getByTestId('run-details-comparison')).toHaveCount(0);
+      await expect(card.getByTestId('run-execution-error-type')).toHaveText(
+        'QueryTimeoutError'
+      );
+      await expect(card.getByTestId('run-execution-error-message')).toHaveText(
+        'Connection to the warehouse timed out'
+      );
+      await expect(
+        card.getByTestId('run-execution-error-traceback')
+      ).toContainText(
+        'QueryTimeoutError: Connection to the warehouse timed out'
+      );
+
+      // Both aborted runs get a point on the chart despite recording no value.
+      await expect(
+        page
+          .getByTestId('graph-container')
+          .locator(
+            '[data-testid^="test-summary-point-"][data-status="Aborted"]'
+          )
+      ).toHaveCount(2);
     });
   }
 );
