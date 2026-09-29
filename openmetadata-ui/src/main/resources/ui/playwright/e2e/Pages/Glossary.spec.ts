@@ -25,6 +25,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { okJson } from '../../utils/apiResponse';
 import {
   clearMockedWebSocket,
   emitDeleteFailure,
@@ -38,6 +39,7 @@ import {
 import {
   clickOutside,
   descriptionBox,
+  dismissToasts,
   fillDescriptionBox,
   getAuthContext,
   getRandomLastName,
@@ -1583,7 +1585,7 @@ test.describe('Glossary tests', () => {
         await selectColumns(page, columnKeys);
         await verifyColumnsVisibility(page, columnLabels, true);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyColumnsVisibility(page, columnLabels, true);
       });
@@ -1595,7 +1597,7 @@ test.describe('Glossary tests', () => {
         await deselectColumns(page, columnKeys);
         await verifyColumnsVisibility(page, columnLabels, false);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyColumnsVisibility(page, columnLabels, false);
       });
@@ -1613,7 +1615,7 @@ test.describe('Glossary tests', () => {
         ];
         await verifyAllColumns(page, tableColumns, true);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyAllColumns(page, tableColumns, true);
       });
@@ -1629,7 +1631,7 @@ test.describe('Glossary tests', () => {
         ];
         await verifyAllColumns(page, tableColumns, false);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await verifyAllColumns(page, tableColumns, false);
       });
@@ -2049,7 +2051,7 @@ test.describe('Glossary tests', () => {
         const waitForInstanceRes = reviewerPage.waitForResponse(
           '/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/*'
         );
-        await reviewerPage.reload();
+        await reviewerPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForInstanceRes;
         await reviewerPage.getByTestId('workflow-history-widget').click();
 
@@ -2114,6 +2116,9 @@ test.describe('Glossary tests', () => {
 
       await test.step('Save glossary and verify creation with domain', async () => {
         const glossaryResponse = page1.waitForResponse('/api/v1/glossaries');
+        // Save sits under the fixed bottom-center toast region; an error toast left
+        // over from the Glossary landing page never drains on its own.
+        await dismissToasts(page1);
         await page1.click('[data-testid="save-glossary"]');
         await glossaryResponse;
 
@@ -2427,6 +2432,9 @@ test.describe('Glossary tests', () => {
           response.url().includes('/api/v1/glossaries') &&
           response.request().method() === 'POST'
       );
+      // Save sits under the fixed bottom-center toast region; an error toast left
+      // over from the Glossary landing page never drains on its own.
+      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
       await glossaryResponse;
 
@@ -2516,7 +2524,8 @@ test.describe('Glossary tests', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossary.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -2585,7 +2594,8 @@ test.describe('Glossary tests', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossary.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -2679,7 +2689,8 @@ test.describe('Glossary tests', () => {
       await page.goto(
         `/glossary/${encodeURIComponent(
           glossary.responseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -2834,18 +2845,33 @@ test.describe('Glossary tests', () => {
       await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Click manage button and rename
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="rename-button"]');
+      await page.getByTestId('manage-button').click();
+      const renameItem = page
+        .getByRole('menuitem')
+        .filter({ has: page.getByTestId('rename-button') });
+      await expect(renameItem).toBeVisible();
+      await waitForAntdPopupToSettle(page);
+      await renameItem.click();
 
-      await expect(page.locator('#name')).toBeVisible();
+      const renameModal = page.getByRole('dialog');
+      await expect(renameModal.locator('#name')).toBeVisible();
 
       const newName = `${glossary.data.name}-renamed`;
-      await page.fill('#name', newName);
+      await renameModal.locator('#name').fill(newName);
 
-      const updateNameResponse = page.waitForResponse('/api/v1/glossaries/*');
-      await page.click('[data-testid="save-button"]');
-      await updateNameResponse;
+      const updateNameResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/glossaries/${glossary.responseData.id}`
+      );
+      await renameModal.getByTestId('save-button').click();
+      glossary.responseData = await okJson(
+        await updateNameResponse,
+        'Rename glossary'
+      );
+
+      expect(glossary.responseData.name).toBe(newName);
 
       await waitForAllLoadersToDisappear(page);
 
@@ -2853,10 +2879,6 @@ test.describe('Glossary tests', () => {
       await expect(
         page.locator('[data-testid="entity-header-name"]')
       ).toHaveText(newName);
-
-      // Update glossary object for cleanup
-      glossary.responseData.name = newName;
-      glossary.responseData.fullyQualifiedName = newName;
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

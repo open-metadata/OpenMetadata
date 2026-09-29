@@ -13,7 +13,13 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-components/icons';
-import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
+import {
+  Bell01,
+  Key01,
+  Settings02,
+  ShieldTick,
+  User01,
+} from '@untitledui/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -24,6 +30,7 @@ import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
 export type ProfileNavId =
@@ -32,13 +39,15 @@ export type ProfileNavId =
   | 'access-token'
   | 'my-connections'
   | 'access-control'
-  | 'custom-properties';
+  | 'custom-properties'
+  | 'notification';
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
 export type ProfileNavGroup =
   | 'account'
   | 'administration'
   | 'workspace'
+  | 'application'
   | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
@@ -46,6 +55,7 @@ export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   account: 'label.account',
   administration: 'label.administration',
   workspace: 'label.workspace',
+  application: 'label.application',
   credentials: 'label.credential-plural',
 };
 
@@ -54,6 +64,7 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'account',
   'administration',
   'workspace',
+  'application',
   'credentials',
 ];
 
@@ -185,5 +196,26 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
+export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'notification',
+    group: 'application',
+    label: 'label.notification',
+    description: 'message.alerts-description',
+    icon: Bell01 as FC<{ className?: string }>,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.EVENT_SUBSCRIPTION,
+        permissions
+      ),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <NotificationPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+];
+
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
-  PROFILE_NAV_ITEMS.find((item) => item.id === id) ?? PROFILE_NAV_ITEMS[0];
+  [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...APPLICATION_NAV_ITEMS].find(
+    (item) => item.id === id
+  ) ?? PROFILE_NAV_ITEMS[0];
