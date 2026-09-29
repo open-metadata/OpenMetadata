@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 /**
  * Unit test for the #4789 fix: {@link VectorDocBuilder#fromEntity} must emit one standalone
@@ -368,6 +370,38 @@ class VectorDocBuilderChunkTest {
             memory(MemoryVisibility.SHARED, first, second)),
         VectorDocBuilder.computeFingerprintForEntity(
             memory(MemoryVisibility.SHARED, second, first)));
+  }
+
+  @Test
+  void chunkDocs_carryTheMemoryStatusOnEveryChunk() {
+    ContextMemory memory =
+        memory(MemoryVisibility.ENTITY).withStatus(ContextMemoryStatus.SUPERSEDED);
+    memory.withDescription("revenue ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1);
+    for (Map<String, Object> doc : docs) {
+      assertEquals(ContextMemoryStatus.SUPERSEDED.value(), doc.get("status"));
+    }
+  }
+
+  @Test
+  void contentFingerprint_tracksLifecycleStatusButLeavesActiveMemoriesUnchanged() {
+    ContextMemory memory = memory(MemoryVisibility.ENTITY);
+    String entityType = memory.getEntityReference().getType();
+    String preLifecycle =
+        TextChunkManager.computeFingerprint(
+            VectorDocBuilder.buildMetaLightText(memory, entityType)
+                + "|"
+                + VectorDocBuilder.buildBodyText(memory, entityType)
+                + "|"
+                + MemoryVisibility.ENTITY.value()
+                + "|");
+
+    assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
+    memory.setStatus(ContextMemoryStatus.SUPERSEDED);
+    assertNotEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
   }
 
   /**

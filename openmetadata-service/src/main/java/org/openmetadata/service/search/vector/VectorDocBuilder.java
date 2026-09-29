@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Database;
@@ -53,7 +54,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 4;
+  public static final int CHUNK_DOC_VERSION = 5;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -375,9 +376,7 @@ public class VectorDocBuilder {
       addMetricFields(fields, metric);
     }
     if (entity instanceof ContextMemory memory) {
-      // Reuses the entity-doc definition so both documents stamp identical values; see
-      // ContextMemoryIndex#shareConfigFields.
-      fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
+      addContextMemoryFields(fields, memory);
     }
     return fields;
   }
@@ -399,6 +398,11 @@ public class VectorDocBuilder {
     // read side resolves OTHER -> customUnitOfMeasurement for display.
     putIfPresent(fields, "unitOfMeasurement", enumValue(metric.getUnitOfMeasurement()));
     putIfPresent(fields, "customUnitOfMeasurement", metric.getCustomUnitOfMeasurement());
+  }
+
+  private static void addContextMemoryFields(Map<String, Object> fields, ContextMemory memory) {
+    fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
+    putIfPresent(fields, ContextMemoryIndex.FIELD_STATUS, ContextMemoryIndex.statusValue(memory));
   }
 
   /**
@@ -582,24 +586,33 @@ public class VectorDocBuilder {
     String entityType = entity.getEntityReference().getType();
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
-    return TextChunkManager.computeFingerprint(metaLight + "|" + body + shareConfigPart(entity));
+    return TextChunkManager.computeFingerprint(metaLight + "|" + body + memoryFilterPart(entity));
   }
 
   /**
-   * Share config folded into the content fingerprint, so a visibility change restamps the chunk docs
-   * that the search-time privacy filter reads {@code visibility} from. Sorted, so reordering {@code
-   * sharedWith} is not mistaken for a change. Empty for types without a share config.
+   * Memory filter fields enter the fingerprint so changes restamp chunk docs. Shared principals
+   * are sorted, and Active status contributes nothing to preserve existing fingerprints.
    */
   @SuppressWarnings("unchecked")
-  private static String shareConfigPart(EntityInterface entity) {
+  private static String memoryFilterPart(EntityInterface entity) {
     String part = "";
     if (entity instanceof ContextMemory memory) {
       Map<String, Object> shareConfig = ContextMemoryIndex.shareConfigFields(memory);
       List<String> sharedWithIds = new ArrayList<>((List<String>) shareConfig.get("sharedWithIds"));
       Collections.sort(sharedWithIds);
-      part = "|" + shareConfig.get("visibility") + "|" + String.join(",", sharedWithIds);
+      part =
+          "|"
+              + shareConfig.get("visibility")
+              + "|"
+              + String.join(",", sharedWithIds)
+              + statusPart(memory);
     }
     return part;
+  }
+
+  private static String statusPart(ContextMemory memory) {
+    ContextMemoryStatus status = memory.getStatus();
+    return status == null || status == ContextMemoryStatus.ACTIVE ? "" : "|" + status.value();
   }
 
   static String buildMetaLightText(EntityInterface entity, String entityType) {

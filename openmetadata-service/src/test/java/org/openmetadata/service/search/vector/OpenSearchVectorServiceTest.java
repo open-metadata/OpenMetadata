@@ -11,6 +11,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -606,6 +608,15 @@ class OpenSearchVectorServiceTest {
     assertTrue(schema.has("name"), "databaseSchema.name mapped");
     assertTrue(
         schema.has("displayName"), "databaseSchema.displayName mapped (matches service/database)");
+  }
+
+  @Test
+  void chunkMappingUpgradeBody_mapsTheMemoryStatusAsAKeyword() throws Exception {
+    Method method = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    method.setAccessible(true);
+    JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
+
+    assertEquals("keyword", body.path("properties").path("status").path("type").asText());
   }
 
   @Test

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -80,6 +81,33 @@ class VectorSearchQueryBuilderTest {
             .path("must");
     assertTrue(termClauseExists(must, "sourceType", "FileExtraction"));
     assertTrue(termClauseExists(must, "visibility", MemoryVisibility.SHARED.value()));
+  }
+
+  @Test
+  void testMemoryStatusFilterReachesBothVectorEngines() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of("status", List.of(ContextMemoryStatus.ACTIVE.value()));
+    float[] vector = {0.1f, 0.2f};
+
+    JsonNode openSearchMust =
+        MAPPER
+            .readTree(VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0))
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+    JsonNode elasticMust =
+        MAPPER
+            .readTree(VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters))
+            .path("knn")
+            .path("filter")
+            .path("bool")
+            .path("must");
+
+    assertTrue(termClauseExists(openSearchMust, "status", ContextMemoryStatus.ACTIVE.value()));
+    assertTrue(termClauseExists(elasticMust, "status", ContextMemoryStatus.ACTIVE.value()));
   }
 
   private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
