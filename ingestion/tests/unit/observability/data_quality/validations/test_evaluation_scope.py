@@ -87,8 +87,11 @@ def build_not_null_validator(scope, null_count, row_count, threshold=None, unit=
 
     validator = build_validator(ColumnValuesToBeNotNullValidator, parameter_values, True)
     validator.get_column = MagicMock()
-    validator._run_results = MagicMock(return_value=null_count)
-    validator.get_row_count = MagicMock(return_value=row_count)
+    # The SQA validator folds the violation count and the row count into one query
+    # (`_run_results_and_row_count`), so that is the seam to hand both metrics through.
+    validator._run_results_and_row_count = MagicMock(
+        return_value={Metrics.nullCount.name: null_count, Metrics.rowCount.name: row_count}
+    )
     return validator
 
 
