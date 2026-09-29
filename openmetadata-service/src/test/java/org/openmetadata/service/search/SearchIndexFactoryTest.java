@@ -271,8 +271,10 @@ class SearchIndexFactoryTest {
   }
 
   @Test
-  void teamReindexFieldsIncludeParents() {
-    assertReindexFields(Entity.TEAM, "parents");
+  void teamReindexFieldsIncludeParentsAndCounts() {
+    // TeamRepository.clearFields zeroes userCount and childrenCount unless requested, so a
+    // reindex, and the re-read a user's team change triggers, wrote every team as empty.
+    assertReindexFields(Entity.TEAM, "parents", "userCount", "childrenCount");
   }
 
   @Test
