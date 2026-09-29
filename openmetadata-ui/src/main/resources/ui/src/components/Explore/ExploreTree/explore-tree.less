@@ -40,7 +40,10 @@
   // Dark: antd's light-blue selected fill glares on the dark card; use the
   // sidebar's selected pill instead. Light keeps antd's selected colour.
   .dark-mode & .ant-tree-node-content-wrapper.ant-tree-node-selected {
-    background-color: var(--ask-selected-surface);
+    background-color: var(
+      --ask-selected-surface,
+      var(--color-bg-brand-primary)
+    );
   }
 
   .ant-tree-iconEle {
