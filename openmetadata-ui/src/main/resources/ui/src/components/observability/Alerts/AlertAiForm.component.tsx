@@ -33,7 +33,14 @@ import { validateAlertAiForm } from './AlertAiFormFieldsValidationUtils';
 /** Wraps AI alert fields in a Core UI form and gates submit handling in view mode. */
 function AlertAiForm(props: Readonly<AlertAiFormProps>) {
   const { t } = useTranslation();
-  const { formId, mode, onSubmit, showHint, ...fieldProps } = props;
+  const {
+    fieldDocDisplay = 'panel',
+    formId,
+    mode,
+    onSubmit,
+    showHint,
+    ...fieldProps
+  } = props;
   const fieldDocForm = useForm();
   const isViewMode = mode === 'view';
   const [validationErrors, setValidationErrors] =
@@ -81,7 +88,7 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
           width="100%"
         />
       }
-      fieldDocDisplay="panel"
+      fieldDocDisplay={fieldDocDisplay}
       fieldDocHeader={
         <Box align="center" className="tw:gap-2" direction="row">
           <Lightbulb05 className="tw:size-4 tw:text-secondary" />
