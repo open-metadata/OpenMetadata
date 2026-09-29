@@ -19,9 +19,9 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -50,6 +50,7 @@ import {
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
@@ -68,6 +69,21 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MlModelDetailProp } from './MlModelDetail.interface';
+
+// Storage/image-repository values come from ingestion; only http(s) URLs are
+// rendered as links, anything else (e.g. `s3://`, `javascript:`) as plain text.
+const renderExternalUrl = (value: string) => {
+  const safeUrl = getSafeHttpUrl(value);
+
+  return safeUrl ? (
+    <a href={safeUrl} rel="noopener noreferrer" target="_blank">
+      {value}
+    </a>
+  ) : (
+    value
+  );
+};
+
 const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelDetailsState,
   mlModelDetail,
@@ -262,25 +278,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         title: t('label.storage'),
         dataIndex: 'storage',
         key: 'storage',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
       {
         title: t('label.image-repository'),
         dataIndex: 'imageRepository',
         key: 'imageRepository',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
     ];
 

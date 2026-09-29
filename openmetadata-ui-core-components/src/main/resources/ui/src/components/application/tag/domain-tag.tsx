@@ -13,6 +13,7 @@
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
 import { Domain } from '../../../icons/Domain';
+import { Inherit } from '../../../icons/Inherit';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
 import {
@@ -31,6 +32,7 @@ import { EntityTagProps } from './tag.types';
  */
 export const DomainTag: FC<EntityTagProps> = ({
   label,
+  labelNode,
   color,
   icon,
   size = 'sm',
@@ -41,10 +43,27 @@ export const DomainTag: FC<EntityTagProps> = ({
   className,
   tooltip,
   closeButtonTestId,
+  inherited,
+  inheritedLabel,
   ...otherProps
 }) => {
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
   const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
+
+  const inheritedGlyph = inherited ? (
+    <span
+      aria-hidden={inheritedLabel ? undefined : true}
+      aria-label={inheritedLabel}
+      className="tw:inline-flex tw:shrink-0 tw:items-center"
+      data-testid="domain-inherited-icon"
+      role={inheritedLabel ? 'img' : undefined}>
+      <Inherit
+        className="tag-color-text"
+        height={ICON_PX[size]}
+        width={ICON_PX[size]}
+      />
+    </span>
+  ) : undefined;
 
   const content = (
     <TagChipContent
@@ -60,7 +79,10 @@ export const DomainTag: FC<EntityTagProps> = ({
       iconTestId="domain-icon"
       label={label}
       labelClassName={cx('tag-color-text')}
+      labelContent={labelNode}
+      labelTestId="domain-link"
       maxWidth={maxWidth}
+      trailing={inheritedGlyph}
     />
   );
 

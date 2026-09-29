@@ -13,52 +13,12 @@
 import { isNil, startCase } from 'lodash';
 import { useCallback } from 'react';
 import { create } from 'zustand';
+import {
+  LimitConfig,
+  ResourceLimit,
+} from '../../interface/platform/limits.interface';
 import { getLimitByResource } from '../../rest/limitsAPI';
 import i18n from '../../utils/i18next/LocalUtil';
-
-export interface ResourceLimit {
-  featureLimitStatuses: Array<{
-    configuredLimit: {
-      name: string;
-      maxVersions?: number;
-      disableFields?: Array<string>;
-      disabledFields?: Array<string>;
-      limits: {
-        softLimit: number;
-        hardLimit: number;
-      };
-    };
-    limitReached: boolean;
-    currentCount: number;
-    name: string;
-  }>;
-}
-
-export type LimitConfig = {
-  enable: boolean;
-  limits: {
-    config: {
-      version: string;
-      plan: string;
-      installationType: string;
-      deployment: string;
-      companyName: string;
-      domain: string;
-      instances: number;
-      featureLimits: Array<{
-        name: string;
-        maxVersions: number;
-        versionHistory: number;
-        limits: {
-          softLimit: number;
-          hardLimit: number;
-        };
-        disableFields: Array<string>;
-        pipelineSchedules?: Array<string>;
-      }>;
-    };
-  };
-};
 
 export type BannerDetails = {
   header: string;
@@ -187,9 +147,17 @@ export const useLimitStore = create<{
     let rLimit = resourceLimit[resource];
     if (isNil(rLimit) || force) {
       const limit = await getLimitByResource(resource);
+      const status = limit?.featureLimitStatuses?.[0];
 
-      setResourceLimit(resource, limit.featureLimitStatuses[0]);
-      rLimit = limit.featureLimitStatuses[0];
+      // No status means limits are off: OSS answers the per-feature call with an
+      // empty body. `config` can still be null here when AppContainer's
+      // getLimitConfig call failed (fetchAppConfigurations swallows the error).
+      if (isNil(status)) {
+        return buildDisabledResourceLimit(resource);
+      }
+
+      setResourceLimit(resource, status);
+      rLimit = status;
     }
 
     if (rLimit) {
@@ -225,3 +193,6 @@ export const useIsLimitReached = () => {
     [config?.enable, resourceLimit]
   );
 };
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { ResourceLimit } from '../../interface/platform/limits.interface';

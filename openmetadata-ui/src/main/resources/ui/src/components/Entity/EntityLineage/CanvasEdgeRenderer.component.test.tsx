@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
-import { Edge } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { CanvasEdgeRenderer } from './CanvasEdgeRenderer.component';
 
@@ -37,10 +37,8 @@ const mockUseLineageStore = {
   isCanvasReady: false,
   tracedNodes: new Set<string>(),
   tracedColumns: new Set<string>(),
-};
-
-const mockUseLineageProvider = {
   edges: mockEdges,
+  nodes: [] as Node[],
 };
 
 const mockGetNode = jest.fn();
@@ -56,16 +54,14 @@ jest.mock('reactflow', () => ({
   useViewport: () => mockViewport,
 }));
 
-jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: () => mockUseLineageProvider,
-}));
-
 jest.mock('../../../hooks/useCanvasEdgeRenderer', () => ({
   useCanvasEdgeRenderer: () => mockUseCanvasEdgeRenderer,
 }));
 
 jest.mock('../../../hooks/useLineageStore', () => ({
-  useLineageStore: () => mockUseLineageStore,
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockUseLineageStore) : mockUseLineageStore
+  ),
 }));
 
 jest.mock('../../../hooks/useLineageEdgeColors', () => ({
@@ -348,7 +344,7 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} />
     );
 
-    mockUseLineageProvider.edges = [
+    mockUseLineageStore.edges = [
       ...mockEdges,
       {
         id: 'edge-2',
@@ -496,7 +492,7 @@ describe('CanvasEdgeRenderer', () => {
         .calculateEdgeMidpoints as jest.Mock;
 
     beforeEach(() => {
-      mockUseLineageProvider.edges = mockEdges;
+      mockUseLineageStore.edges = mockEdges;
       mockUseLineageStore.columnsInCurrentPages = new Map<string, string[]>();
       mockUseLineageStore.isCanvasReady = true;
       mockIsPlaywrightEnv.mockReturnValue(true);
@@ -643,7 +639,7 @@ describe('CanvasEdgeRenderer', () => {
 
       expect(mockCalculateEdgeMidpoints).toHaveBeenCalledTimes(1);
 
-      mockUseLineageProvider.edges = [
+      mockUseLineageStore.edges = [
         ...mockEdges,
         {
           id: 'edge-2',

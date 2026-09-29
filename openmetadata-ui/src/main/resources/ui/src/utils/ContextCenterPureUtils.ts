@@ -190,3 +190,14 @@ export const getSortConfig = (
 
   return { sortBy: 'updatedAt', sortOrder: 'desc' };
 };
+
+export const getFilterTabClassName = ({
+  isSelected,
+}: {
+  isSelected: boolean;
+}): string =>
+  `tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer ${
+    isSelected
+      ? 'tw:border-utility-brand-100 tw:bg-brand-primary tw:text-brand-secondary'
+      : 'tw:border-primary tw:bg-surface tw:text-secondary'
+  }`;

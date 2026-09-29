@@ -10,23 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Divider } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import { FC, Fragment } from 'react';
-import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
-import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
-import UnorderedListIcon from '../../../assets/svg/ic-format-bullet-list.svg';
-import CodeBlockIcon from '../../../assets/svg/ic-format-code-block.svg';
-import HorizontalLineIcon from '../../../assets/svg/ic-format-horizontal-line.svg';
-import ImageIcon from '../../../assets/svg/ic-format-image-inline.svg';
-import InlineCodeIcon from '../../../assets/svg/ic-format-inline-code.svg';
-import ItalicIcon from '../../../assets/svg/ic-format-italic.svg';
-import LinkIcon from '../../../assets/svg/ic-format-link.svg';
-import OrderedListIcon from '../../../assets/svg/ic-format-numbered-list.svg';
-import StrikeIcon from '../../../assets/svg/ic-format-strike.svg';
+import { FC, Fragment, MouseEvent } from 'react';
+import { ReactComponent as BlockQuoteIcon } from '../../../assets/svg/ic-format-block-quote.svg';
+import { ReactComponent as BoldIcon } from '../../../assets/svg/ic-format-bold.svg';
+import { ReactComponent as UnorderedListIcon } from '../../../assets/svg/ic-format-bullet-list.svg';
+import { ReactComponent as CodeBlockIcon } from '../../../assets/svg/ic-format-code-block.svg';
+import { ReactComponent as HorizontalLineIcon } from '../../../assets/svg/ic-format-horizontal-line.svg';
+import { ReactComponent as ImageIcon } from '../../../assets/svg/ic-format-image-inline.svg';
+import { ReactComponent as InlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
+import { ReactComponent as ItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-format-link.svg';
+import { ReactComponent as OrderedListIcon } from '../../../assets/svg/ic-format-numbered-list.svg';
+import { ReactComponent as StrikeIcon } from '../../../assets/svg/ic-format-strike.svg';
 import { BarMenuProps, FileType } from '../BlockEditor.interface';
-import './bar-menu.less';
 
 const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
   const formats = [
@@ -142,40 +141,57 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     ],
   ];
 
+  // Light keeps the legacy toolbar greys (no matching token); dark flips to
+  // semantic surfaces. `!` beats ButtonUtility's own padding/hover utilities.
   return (
-    <div className="bar-menu-wrapper">
+    <div
+      className={classNames(
+        'bar-menu-wrapper tw:flex tw:flex-row tw:flex-wrap tw:gap-4 tw:rounded-t-sm tw:p-2',
+        'tw:border-b tw:border-(--om-color-gray-neutral-200) tw:bg-(--om-legacy-color-f7f9fc)',
+        'tw:dark:border-secondary tw:dark:bg-secondary'
+      )}>
       {formats.map((format, index) => {
         return (
           <Fragment key={`format-group-${uniqueId()}`}>
-            <div className="bar-menu-wrapper--format-group">
+            <div className="tw:flex tw:flex-row tw:gap-2">
               {format.map((item) => {
+                const isActive = item.isActive();
+
                 return (
-                  <Tooltip key={item.name} title={item.name}>
-                    <button
-                      className={classNames(
-                        'bar-menu-wrapper--format-group--button',
-                        { active: item.isActive() }
-                      )}
-                      type="button"
-                      onMouseDown={(e) => {
-                        // To prevent losing focus from editor
-                        // The mouseDown event fires before the click event and before focus changes,
-                        // so we can intercept it and prevent the default focus behavior.
-                        e.preventDefault();
-                        item.command();
-                      }}>
-                      <img
-                        alt={item.name}
-                        className="bar-menu-wrapper--format--button--icon"
-                        src={item.icon}
+                  <ButtonUtility
+                    className={classNames(
+                      'tw:p-0!',
+                      isActive
+                        ? 'tw:bg-(--om-legacy-color-e8e8e9) tw:hover:bg-(--om-legacy-color-e8e8e9)! tw:dark:bg-tertiary tw:dark:hover:bg-tertiary!'
+                        : 'tw:hover:bg-(--om-legacy-color-ecedee)! tw:dark:hover:bg-secondary_hover!'
+                    )}
+                    color="tertiary"
+                    icon={
+                      // Inline SVG so the glyph follows the theme; light keeps the
+                      // black it had as an <img> (currentColor defaulted to black).
+                      <item.icon
+                        aria-hidden
+                        className="bar-menu-wrapper--format--button--icon tw:size-7 tw:text-black tw:dark:text-fg-secondary"
                       />
-                    </button>
-                  </Tooltip>
+                    }
+                    key={item.name}
+                    tooltip={item.name}
+                    onMouseDown={(e: MouseEvent) => {
+                      // To prevent losing focus from editor
+                      // The mouseDown event fires before the click event and before focus changes,
+                      // so we can intercept it and prevent the default focus behavior.
+                      e.preventDefault();
+                      item.command();
+                    }}
+                  />
                 );
               })}
             </div>
             {index !== formats.length - 1 && (
-              <div className="bar-menu-wrapper--format-group--separator" />
+              <Divider
+                className="tw:bg-(--om-color-gray-neutral-200)! tw:dark:bg-border-secondary!"
+                orientation="vertical"
+              />
             )}
           </Fragment>
         );

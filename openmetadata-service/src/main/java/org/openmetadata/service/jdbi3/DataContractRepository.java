@@ -106,6 +106,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public static final String RESULT_SCHEMA = "dataContractResult";
   public static final String RESULT_EXTENSION_KEY = "id";
 
+  /** Prefix of the error raised when a contract's columns do not match its entity. */
+  public static final String SCHEMA_VALIDATION_FAILED = "Schema validation failed.";
+
   // deleteLogicalTestSuite walks the suite's tests and pipelines, so both have to be hydrated
   // before it runs.
   private static final String TEST_SUITE_LIFECYCLE_FIELDS = "tests,pipelines";
@@ -194,7 +197,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!errors.isEmpty()) {
       throw BadRequestException.of(
-          String.format("Schema validation failed. %s", String.join(". ", errors)));
+          String.format("%s %s", SCHEMA_VALIDATION_FAILED, String.join(". ", errors)));
     }
 
     if (!nullOrEmpty(dataContract.getOwners())) {
@@ -406,6 +409,18 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   /**
+   * Rejects a contract that {@link #prepare} would reject, without side effects. Callers that
+   * create other entities for a contract before storing it use this so a rejected contract leaves
+   * nothing behind.
+   */
+  public void assertImportable(DataContract dataContract, boolean update) {
+    if (!update) {
+      validateEntityReference(dataContract.getEntity());
+    }
+    prepareForValidation(dataContract);
+  }
+
+  /**
    * Validation-only version of prepare() that validates without creating any entities.
    * This is used for ODCS import preview and contract validation endpoints.
    * Unlike prepare(), this method has NO side effects (no test suite or pipeline creation).
@@ -435,7 +450,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!errors.isEmpty()) {
       throw BadRequestException.of(
-          String.format("Schema validation failed. %s", String.join(". ", errors)));
+          String.format("%s %s", SCHEMA_VALIDATION_FAILED, String.join(". ", errors)));
     }
 
     // Validate owners and reviewers references exist (without populating)
@@ -1480,13 +1495,24 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               dataContract.getFullyQualifiedName()));
     }
 
-    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
-    String resultJson =
-        timeSeriesDAO.getLatestExtensionByKey(
-            RESULT_EXTENSION_KEY,
-            dataContract.getLatestResult().getResultId().toString(),
-            dataContract.getFullyQualifiedName(),
-            RESULT_EXTENSION);
+    return getResult(dataContract, dataContract.getLatestResult().getResultId());
+  }
+
+  public DataContractResult getResult(DataContract dataContract, UUID resultId) {
+    final String resultJson =
+        Entity.getCollectionDAO()
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtensionByKey(
+                RESULT_EXTENSION_KEY,
+                resultId.toString(),
+                dataContract.getFullyQualifiedName(),
+                RESULT_EXTENSION);
+    if (resultJson == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format(
+              "Data contract result %s not found for %s",
+              resultId, dataContract.getFullyQualifiedName()));
+    }
     return JsonUtils.readValue(resultJson, DataContractResult.class);
   }
 

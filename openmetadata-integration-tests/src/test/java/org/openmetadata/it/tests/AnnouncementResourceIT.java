@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.AnnouncementStatus;
+import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -213,6 +214,64 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   }
 
   @Test
+  void testAnnouncementTypeDefaultsToInformation(TestNamespace ns) {
+    Announcement created = createEntity(createMinimalRequest(ns));
+    assertEquals(AnnouncementType.Information, created.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Information, fetched.getType());
+  }
+
+  @Test
+  void testAnnouncementTypeRoundTrips(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("warning-ann"))
+            .withDescription("Schema change coming")
+            .withType(AnnouncementType.Warning)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = createEntity(request);
+    assertEquals(AnnouncementType.Warning, created.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Warning, fetched.getType());
+  }
+
+  @Test
+  void testAnnouncementExplicitNullTypeBackfillsInformation(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("null-type-ann"))
+            .withDescription("Type omitted explicitly")
+            .withType(null)
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    Announcement created = createEntity(request);
+    assertEquals(AnnouncementType.Information, created.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Information, fetched.getType());
+  }
+
+  @Test
+  void testPatchAnnouncementType(TestNamespace ns) {
+    Announcement created = createEntity(createMinimalRequest(ns));
+    assertEquals(AnnouncementType.Information, created.getType());
+
+    created.setType(AnnouncementType.Issue);
+    Announcement updated = patchEntity(created.getId().toString(), created);
+    assertEquals(AnnouncementType.Issue, updated.getType());
+
+    Announcement fetched = getEntity(created.getId().toString());
+    assertEquals(AnnouncementType.Issue, fetched.getType());
+  }
+
+  @Test
   void testUpdateAnnouncementDescription(TestNamespace ns) {
     long now = System.currentTimeMillis();
     CreateAnnouncement request =
@@ -276,6 +335,59 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
 
     assertEquals(1, list.getData().size());
     assertEquals(createdMatching.getId(), list.getData().get(0).getId());
+  }
+
+  @Test
+  void testListAnnouncementsByType(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    String entityLink = "<#E::table::" + ns.prefix("service.db.schema.typed") + ">";
+    Announcement warning =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("type-filter-warning"))
+                .withDescription("Warning announcement")
+                .withType(AnnouncementType.Warning)
+                .withEntityLink(entityLink)
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+    Announcement information =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("type-filter-info"))
+                .withDescription("Information announcement")
+                .withEntityLink(entityLink)
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+
+    ListResponse<Announcement> warnings =
+        listEntities(
+            new ListParams()
+                .addQueryParam("type", "Warning")
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100));
+    assertEquals(
+        List.of(warning.getId()), warnings.getData().stream().map(Announcement::getId).toList());
+
+    ListResponse<Announcement> informational =
+        listEntities(
+            new ListParams()
+                .addQueryParam("type", "Information")
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100));
+    assertEquals(
+        List.of(information.getId()),
+        informational.getData().stream().map(Announcement::getId).toList());
+
+    ListResponse<Announcement> activeWarnings =
+        listEntities(
+            new ListParams()
+                .addQueryParam("type", "Warning")
+                .addQueryParam("active", "true")
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100));
+    assertEquals(
+        List.of(warning.getId()),
+        activeWarnings.getData().stream().map(Announcement::getId).toList());
   }
 
   @Test

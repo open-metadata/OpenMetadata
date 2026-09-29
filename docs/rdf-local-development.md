@@ -11,6 +11,51 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 - JSON-LD serialization of entities
 - Semantic search and graph exploration
 
+## Standards Compatibility
+
+The RDF stack runs Apache Jena and Fuseki 6.2.0. RDF 1.2 terms survive the whole round trip —
+import, storage, query, and result serialization:
+
+- **Triple terms**, including `rdf:reifies` statements and nested blank nodes, and **directional
+  language-tagged literals** such as `"قطة"@ar--rtl`.
+- **Storage.** Entities reach Fuseki as RDF Thrift and land in TDB2 named graphs; both carry triple
+  terms and preserve the `rdf:dirLangString` datatype. Fuseki's Lucene text index (`text:query`)
+  indexes directional literals like any other string.
+- **SPARQL 1.2.** `VERSION "1.2"` declarations, `TRIPLE()`/`LANGDIR()` expressions, and `<<( s p o )>>`
+  patterns all execute. Both the administrator (`/v1/rdf/sparql`) and agent query paths return them;
+  the agent path keeps its existing SELECT-only and graph-access restrictions.
+- **Results JSON.** A triple binding is `type: "triple"` with recursive `subject`, `predicate`, and
+  `object` terms; directional literals carry `its:dir`. Both `sparqlResponse.json` and
+  `agentSparqlResponse.json` model this, so typed clients and the SPARQL playground render a triple
+  term as `<<( <urn:s> <urn:p> "قطة"@ar--rtl )>>` rather than failing on it.
+- **SHACL.** The bundled shapes accept plain, language-tagged, and directional strings wherever they
+  constrain free text, so a conforming RDF 1.2 graph validates against them.
+
+### Choosing a serialization
+
+| Format | RDF 1.2 triple terms | Notes |
+|---|---|---|
+| Turtle, N-Triples | yes | The portable choice; N-Quads and TriG cover datasets. |
+| RDF/XML | yes, via Jena | Written as `rdf:parseType="Triple"`. Jena reads back what it writes; interoperability with other RDF/XML toolchains is not verified — prefer Turtle when the consumer is not Jena. |
+| JSON-LD | **no** | JSON-LD 1.1 has no triple-term syntax. Asking for `jsonld` on a result that contains one is rejected with a message naming the formats that work, rather than failing mid-write. Directional literals *are* written, as the JSON-LD 1.1 `i18n` datatype (`"@type": "https://www.w3.org/ns/i18n#ar_rtl"`), which does not read back as an `rdf:dirLangString` — so do not round-trip RDF 1.2 text through JSON-LD. |
+
+### Scope
+
+OpenMetadata does not itself emit RDF 1.2 terms: entity RDF is derived from JSON-LD contexts
+(`JsonLdTranslator`), so the graph the platform writes for its own entities is RDF 1.1. RDF 1.2
+terms enter through imported ontologies and user-authored SPARQL, and the guarantees above are about
+carrying those through unchanged.
+
+For example, both query paths accept this read query:
+
+```sparql
+VERSION "1.2"
+SELECT (TRIPLE(<https://example.com/subject>,
+               <https://example.com/predicate>,
+               "قطة"@ar--rtl) AS ?statement)
+WHERE {}
+```
+
 ## Architecture
 
 ```

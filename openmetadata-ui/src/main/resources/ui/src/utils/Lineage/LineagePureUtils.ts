@@ -12,15 +12,15 @@
  */
 
 import { get, omit, pick } from 'lodash';
-import type {
-  ColumnLevelLineageNode,
-  EdgeDetails,
-  LineageNodeType,
-  NodeData,
-} from '../../components/Lineage/Lineage.interface';
+import type { ColumnLevelLineageNode } from '../../components/Lineage/Lineage.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import type { Column } from '../../generated/entity/data/table';
 import type { TagLabel } from '../../generated/type/tagLabel';
+import type {
+  EdgeDetails,
+  LineageNodeType,
+  NodeData,
+} from '../../interface/lineage.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
 import type { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 

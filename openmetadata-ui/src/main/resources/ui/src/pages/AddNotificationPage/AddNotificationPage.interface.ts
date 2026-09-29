@@ -11,8 +11,4 @@
  *  limitations under the License.
  */
 
-export interface AddAlertPageLoadingState {
-  alerts: boolean;
-  functions: boolean;
-  templates: boolean;
-}
+export type { AddAlertPageLoadingState } from '../../utils/AlertsClassBase.interface';

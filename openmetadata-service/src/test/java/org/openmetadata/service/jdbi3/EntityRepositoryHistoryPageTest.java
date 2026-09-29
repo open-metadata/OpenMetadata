@@ -33,7 +33,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -53,6 +56,7 @@ class EntityRepositoryHistoryPageTest {
   private static final AtomicLong WINDOW = new AtomicLong(1_000_000L);
 
   private CollectionDAO.EntityExtensionDAO extensionDAO;
+  private CollectionDAO.DatabaseDAO databaseDAO;
   private CollectionDAO.PipelineDAO pipelineDAO;
 
   /** Hydration stub: a batch holding a vanished id fails the way a strict reference lookup does. */
@@ -90,15 +94,38 @@ class EntityRepositoryHistoryPageTest {
     protected void storeRelationships(Pipeline entity) {}
   }
 
+  private static class HistoryDatabaseRepo extends DatabaseRepository {
+    private final UUID survivingId;
+
+    HistoryDatabaseRepo(UUID survivingId) {
+      this.survivingId = survivingId;
+    }
+
+    @Override
+    public void setFieldsInBulk(Fields fields, List<Database> entities) {
+      entities.stream()
+          .filter(entity -> entity.getId().equals(survivingId))
+          .forEach(
+              entity ->
+                  entity.setService(
+                      new EntityReference()
+                          .withId(UUID.randomUUID())
+                          .withType(Entity.DATABASE_SERVICE)));
+    }
+  }
+
   @BeforeEach
   void setUp() {
     CollectionDAO daoCollection = mock(CollectionDAO.class);
     extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    databaseDAO = mock(CollectionDAO.DatabaseDAO.class);
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
     when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(daoCollection.databaseDAO()).thenReturn(databaseDAO);
     when(daoCollection.relationshipDAO())
         .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
     when(pipelineDAO.getTableName()).thenReturn("pipeline_entity");
+    when(databaseDAO.getTableName()).thenReturn("database_entity");
     Entity.setCollectionDAO(daoCollection);
   }
 
@@ -137,6 +164,21 @@ class EntityRepositoryHistoryPageTest {
 
     assertEquals(List.of(newest.getId(), oldest.getId()), ids(page));
     assertEquals(1, repo.hydrationCalls, "no vanished row means no row-by-row retry");
+  }
+
+  @Test
+  void databaseHistoryPage_dropsVersionWhoseRequiredServiceVanished() {
+    Database healthy = databaseVersion(30L);
+    Database gone = databaseVersion(20L);
+    long startTs = window();
+    stubVersionRows(startTs, List.of(healthy, gone));
+
+    ResultList<Database> page =
+        new HistoryDatabaseRepo(healthy.getId())
+            .listEntityHistoryByTimestamp(startTs, startTs + 99L, null, null, 10);
+
+    assertEquals(List.of(healthy.getId()), page.getData().stream().map(Database::getId).toList());
+    assertTrue(page.getData().getFirst().getService() != null);
   }
 
   /**
@@ -193,7 +235,16 @@ class EntityRepositoryHistoryPageTest {
         .withVersion(0.1);
   }
 
-  private void stubVersionRows(long startTs, List<Pipeline> rows) {
+  private static Database databaseVersion(long updatedAt) {
+    return new Database()
+        .withId(UUID.randomUUID())
+        .withName("db" + updatedAt)
+        .withUpdatedAt(updatedAt)
+        .withUpdatedBy("admin")
+        .withVersion(0.1);
+  }
+
+  private void stubVersionRows(long startTs, List<? extends EntityInterface> rows) {
     List<String> jsons = rows.stream().map(JsonUtils::pojoToJson).toList();
     when(extensionDAO.getEntityHistoryByTimestampRange(
             anyString(),

@@ -20,12 +20,15 @@ import {
   Button,
   Checkbox,
   Input,
+  Label,
   PasswordInput,
+  RadioButton,
+  RadioGroup,
   Select,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01 } from '@untitledui/icons';
+import { Plus, Settings01, Trash01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -33,10 +36,12 @@ import { useTranslation } from 'react-i18next';
 import { DESTINATION_TYPE_BASED_PLACEHOLDERS } from '../../../constants/Alerts.constants';
 import { EMAIL_REG_EX } from '../../../constants/regex.constants';
 import {
+  HTTPMethod,
   SubscriptionCategory,
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import { ModifiedWebhookConfig } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
@@ -444,6 +449,129 @@ const TeamOrUserDestinationFields = ({
   );
 };
 
+interface KeyValueListProps {
+  getConfigError: DestinationFieldsCommonProps['getConfigError'];
+  isViewOnly?: boolean;
+  name: number;
+  onChange: (entries: { key: string; value: string }[]) => void;
+  type: keyof Pick<ModifiedWebhookConfig, 'headers' | 'queryParams'>;
+  value: { key: string; value: string }[];
+}
+
+/** Controlled key/value list for webhook headers and query params — mirrors the classic KeyValueList without RHF. */
+const KeyValueList = ({
+  getConfigError,
+  isViewOnly,
+  name,
+  onChange,
+  type,
+  value: entries,
+}: KeyValueListProps) => {
+  const { t } = useTranslation();
+  const isHeaders = type === 'headers';
+  const testIdPrefix = isHeaders ? 'header' : 'query-param';
+  const updateEntry = (index: number, field: 'key' | 'value', next: string) =>
+    onChange(
+      entries.map((entry, i) =>
+        i === index ? { ...entry, [field]: next } : entry
+      )
+    );
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-2">
+      <div className="tw:flex tw:items-center tw:justify-between">
+        <Typography as="span" size="text-sm" weight="medium">
+          {isHeaders
+            ? t('label.header-plural')
+            : t('label.query-parameter-plural')}
+        </Typography>
+        {!isViewOnly && (
+          <Button
+            aria-label={t('label.add')}
+            color="secondary"
+            data-testid={`add-${testIdPrefix}-button-${name}`}
+            iconLeading={Plus}
+            size="xs"
+            onPress={() => onChange([...entries, { key: '', value: '' }])}
+          />
+        )}
+      </div>
+      {entries.map((entry, index) => (
+        // Entries have no stable id; index keys match the classic useFieldArray order.
+        // eslint-disable-next-line react/no-array-index-key
+        <div className="tw:flex tw:items-start tw:gap-2" key={index}>
+          <div className="tw:grid tw:flex-1 tw:grid-cols-2 tw:gap-2">
+            {(['key', 'value'] as const).map((field) => (
+              <Input
+                aria-label={t(`label.${field}`)}
+                data-testid={`${testIdPrefix}-${field}-input-${name}-${index}`}
+                hint={getConfigError(type, index, field)}
+                isDisabled={isViewOnly}
+                isInvalid={Boolean(getConfigError(type, index, field))}
+                key={field}
+                placeholder={t(`label.${field}`)}
+                size="sm"
+                value={entry[field] ?? ''}
+                onChange={(next) => updateEntry(index, field, next)}
+              />
+            ))}
+          </div>
+          {!isViewOnly && (
+            <Button
+              aria-label={t('label.remove')}
+              color="secondary"
+              data-testid={`remove-${testIdPrefix}-button-${name}-${index}`}
+              iconLeading={Trash01}
+              size="xs"
+              onPress={() => onChange(entries.filter((_, i) => i !== index))}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/** Webhook request headers, query params, and HTTP method — the rest of the classic advanced config. */
+const WebhookRequestFields = ({
+  destination,
+  getConfigError,
+  isViewOnly,
+  name,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {(['headers', 'queryParams'] as const).map((type) => (
+        <KeyValueList
+          getConfigError={getConfigError}
+          isViewOnly={isViewOnly}
+          key={type}
+          name={name}
+          type={type}
+          value={destination?.config?.[type] ?? []}
+          onChange={(entries) => updateDestinationConfig([type], entries)}
+        />
+      ))}
+      <RadioGroup
+        className="tw:flex tw:flex-col tw:gap-1.5"
+        data-testid={`http-method-${name}`}
+        isDisabled={isViewOnly}
+        value={destination?.config?.httpMethod ?? HTTPMethod.Post}
+        onChange={(next) => updateDestinationConfig(['httpMethod'], next)}>
+        <Label>{t('label.http-method')}</Label>
+        <div className="tw:flex tw:gap-4">
+          {[HTTPMethod.Post, HTTPMethod.Put].map((method) => (
+            <RadioButton key={method} label={method} value={method} />
+          ))}
+        </div>
+      </RadioGroup>
+    </>
+  );
+};
+
 const WebhookDestinationFields = ({
   authType,
   destination,
@@ -601,6 +729,13 @@ const WebhookDestinationFields = ({
                     />
                   </>
                 )}
+                <WebhookRequestFields
+                  destination={destination}
+                  getConfigError={getConfigError}
+                  isViewOnly={isViewOnly}
+                  name={name}
+                  updateDestinationConfig={updateDestinationConfig}
+                />
               </div>
             </AccordionPanel>
           </AccordionItem>

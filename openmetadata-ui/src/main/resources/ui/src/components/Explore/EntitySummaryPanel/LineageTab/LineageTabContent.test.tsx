@@ -12,10 +12,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import {
-  LineageData,
-  LineageEntityReference,
-} from '../../../../components/Lineage/Lineage.interface';
+import { LineageEntityReference } from '../../../../components/Lineage/Lineage.interface';
+import { LineageData } from '../../../../interface/lineage.interface';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
