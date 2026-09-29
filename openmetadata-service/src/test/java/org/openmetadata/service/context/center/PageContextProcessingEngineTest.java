@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -116,6 +117,20 @@ class PageContextProcessingEngineTest {
             eq(Entity.ADMIN_USER_NAME),
             anyLong(),
             anyLong());
+  }
+
+  @Test
+  void failedDeferralProcessesTheCurrentPage() {
+    String body = "Current body";
+    pageReturns(page(body, DigestUtils.sha256Hex(body)).withUpdatedAt(System.currentTimeMillis()));
+    doThrow(new IllegalStateException("queue unavailable"))
+        .when(jobDao)
+        .enqueuePageMemoryJob(
+            anyString(), anyString(), anyString(), anyString(), anyLong(), anyLong());
+
+    engine().runQueued(pageId);
+
+    assertEquals(PageProcessingStatus.Processed, capturedUpdates().getLast().getProcessingStatus());
   }
 
   @Test

@@ -61,7 +61,7 @@ public class ContextMemoryExtractionJobHandler implements JobHandler {
       }
     } catch (RuntimeException e) {
       throw new BackgroundJobException(
-          job.getId(), "Page memory extraction failed: " + e.getMessage(), e);
+          job.getId(), "Context memory extraction failed: " + e.getMessage(), e);
     } finally {
       RequestEntityCache.clear();
     }

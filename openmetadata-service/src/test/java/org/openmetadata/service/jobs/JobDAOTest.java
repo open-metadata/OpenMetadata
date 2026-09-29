@@ -50,7 +50,8 @@ class JobDAOTest {
   void pageQueueReschedulesAnExistingPendingJob() {
     JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
     when(jobDao.lockPageForMemoryQueue("page-id")).thenReturn("page-id");
-    when(jobDao.reschedulePendingMemoryJob("page:page-id", 100L, 50L)).thenReturn(1);
+    when(jobDao.findPendingMemoryJobId("page:page-id")).thenReturn(42L);
+    when(jobDao.reschedulePendingMemoryJob(42L, 100L, 50L)).thenReturn(1);
 
     jobDao.enqueuePageMemoryJob(
         "page-id", "page:page-id", "{\"jobKey\":\"page:page-id\"}", "admin", 100L, 50L);
@@ -82,13 +83,31 @@ class JobDAOTest {
   }
 
   @Test
+  void pageQueueInsertsWhenThePendingJobWasClaimed() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockPageForMemoryQueue("page-id")).thenReturn("page-id");
+    when(jobDao.findPendingMemoryJobId("page:page-id")).thenReturn(42L);
+
+    jobDao.enqueuePageMemoryJob(
+        "page-id", "page:page-id", "{\"jobKey\":\"page:page-id\"}", "admin", 100L, 50L);
+
+    verify(jobDao)
+        .insertJobInternal(
+            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            "ContextMemoryExtractionJobHandler",
+            "{\"jobKey\":\"page:page-id\"}",
+            "admin",
+            100L);
+  }
+
+  @Test
   void pageQueueSkipsADeletedSource() {
     JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
 
     jobDao.enqueuePageMemoryJob(
         "missing", "page:missing", "{\"jobKey\":\"page:missing\"}", "admin", 100L, 50L);
 
-    verify(jobDao, never()).reschedulePendingMemoryJob("page:missing", 100L, 50L);
+    verify(jobDao, never()).findPendingMemoryJobId("page:missing");
   }
 
   @Test
