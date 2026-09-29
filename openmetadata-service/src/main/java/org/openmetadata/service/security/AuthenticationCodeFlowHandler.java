@@ -158,6 +158,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private int tokenValidity;
   private String maxAge;
   private String promptType;
+  private boolean endsSessionWithProvider;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final SessionService sessionService;
@@ -281,6 +282,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.maxAge = normalizeMaxAge(authenticationConfiguration.getOidcConfiguration().getMaxAge());
     this.promptType =
         normalizePrompt(authenticationConfiguration.getOidcConfiguration().getPrompt());
+    this.endsSessionWithProvider =
+        Boolean.TRUE.equals(
+            authenticationConfiguration.getOidcConfiguration().getEndSessionWithProvider());
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
   }
 
@@ -755,12 +759,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   /**
    * Starts the provider renewal schedule from the login's own token response, so the first access
-   * token already ends before the provider's tokens need renewing. A provider that issued no refresh
-   * token leaves nothing to renew.
+   * token already ends before the provider's tokens need renewing. Nothing is kept when sessions do
+   * not end with the provider's ({@code oidcConfiguration.endSessionWithProvider}), or when the
+   * provider issued no refresh token.
    */
   SessionService.ProviderTokenUpdate providerTokensAtLogin(OidcCredentials credentials, long now) {
     // pac4j 6 re-parses the stored tokens on every to*Token() call; parse each once.
-    var providerRefreshToken = credentials.toRefreshToken();
+    var providerRefreshToken = endsSessionWithProvider ? credentials.toRefreshToken() : null;
     if (providerRefreshToken == null) {
       return SessionService.ProviderTokenUpdate.NONE;
     }
@@ -777,14 +782,16 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
    * active here (Keycloak counts refresh-token use as activity), and a rejected grant ends this
    * session too. A renewed grant never extends the session: refresh tokens can outlive the
    * provider's browser session, so only a new sign-in, which the browser attempts silently once the
-   * session ends, starts a new session lifetime.
+   * session ends, starts a new session lifetime. Only sessions that end with the provider's
+   * ({@code oidcConfiguration.endSessionWithProvider}) contact it.
    *
    * @return {@link SessionService.ProviderTokenUpdate#NONE} when the provider was not due or the
    *     session holds no provider token
    */
   private SessionService.ProviderTokenUpdate renewProviderTokensIfDue(
       UserSession session, String omRefreshToken) {
-    String providerRefreshToken = sessionService.decryptProviderRefreshToken(session);
+    String providerRefreshToken =
+        endsSessionWithProvider ? sessionService.decryptProviderRefreshToken(session) : null;
     long now = System.currentTimeMillis();
     if (nullOrEmpty(providerRefreshToken)
         || !ProviderTokenSchedule.isRenewalDue(
@@ -1378,9 +1385,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private JWTAuthMechanism generateJwtToken(User user, UserSession session) {
+    // A renewal time kept from while the setting was on must not keep cutting tokens short.
+    Long providerRenewalDueAt = endsSessionWithProvider ? session.getProviderRenewalDueAt() : null;
     int validitySeconds =
         ProviderTokenSchedule.accessTokenValiditySeconds(
-            session.getProviderRenewalDueAt(), System.currentTimeMillis(), tokenValidity);
+            providerRenewalDueAt, System.currentTimeMillis(), tokenValidity);
     return JWTTokenGenerator.getInstance()
         .generateJWTTokenForSession(
             user.getName(),

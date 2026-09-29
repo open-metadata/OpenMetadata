@@ -482,6 +482,7 @@ authenticationConfiguration:
     maxAge: ${OIDC_MAX_AGE:-""}
     prompt: ${OIDC_PROMPT_TYPE:-""}
     sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} #7 days
+    endSessionWithProvider: ${OIDC_END_SESSION_WITH_PROVIDER:-false}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:

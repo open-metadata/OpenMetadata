@@ -244,7 +244,7 @@ $$section
 - **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
-- **Note:** This value is not inherited from the Okta token lifetime, but for a confidential client that receives an Okta refresh token it is an upper bound: OpenMetadata tokens never outlive Okta's access token, so each refresh can renew the Okta tokens in time.
+- **Note:** This value is not inherited from the Okta token lifetime, but while **End Session With Identity Provider** is on it is an upper bound: OpenMetadata tokens never outlive Okta's access token, so each refresh can renew the Okta tokens in time.
 $$
 
 $$section
@@ -302,6 +302,18 @@ $$section
 - **Example:** 604800
 - **Why it matters:** Controls how often users need to re-authenticate.
 - **Note:** Only applies to confidential clients
+$$
+
+$$section
+### End Session With Identity Provider $(id="endSessionWithProvider")
+
+- **Definition:** Ends the OpenMetadata session when Okta stops renewing the user's tokens.
+- **Default:** Off
+- **Why it matters:** When on, OpenMetadata renews the Okta tokens on Okta's schedule while the user is active, and signs the user out once Okta rejects its refresh token, for example after the token expires or is revoked, or the user is disabled. When off, a session lasts the configured session expiry whatever happens at Okta.
+- **Note:**
+  - Only applies to confidential clients
+  - Needs an Okta refresh token: add `offline_access` to OIDC Request Scopes and allow the Refresh Token grant for the app.
+  - While on, OpenMetadata access tokens never outlive Okta's access tokens, so browsers refresh them more often.
 
 ## Authorizer Configuration
 $$

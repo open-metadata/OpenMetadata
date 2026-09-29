@@ -346,6 +346,15 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
+     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
+     * renews the provider's tokens on the provider's schedule while the user is active, and
+     * signs the user out once the provider rejects its refresh token: after the provider's idle
+     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
+     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
+     * configured session expiry whatever the provider does. Applies to confidential clients.
+     */
+    endSessionWithProvider?: boolean;
+    /**
      * Client ID.
      */
     id: string;

@@ -43,6 +43,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -59,6 +61,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -74,6 +77,7 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -101,6 +105,19 @@ class AuthenticationCodeFlowHandlerTest {
 
   private static final String TEST_SERVER_URL = "https://om.test";
   private static final String MCP_CALLBACK = "/mcp/callback";
+  private static final String DISCOVERY_DOCUMENT =
+      """
+      {
+        "issuer": "https://idp.test",
+        "authorization_endpoint": "https://idp.test/authorize",
+        "token_endpoint": "https://idp.test/token",
+        "jwks_uri": "https://idp.test/keys",
+        "response_types_supported": ["code"],
+        "subject_types_supported": ["public"],
+        "id_token_signing_alg_values_supported": ["RS256"],
+        "token_endpoint_auth_methods_supported": ["client_secret_post"]
+      }
+      """;
 
   @Mock private SessionService sessionService;
   @Mock private HttpServletRequest request;
@@ -1096,19 +1113,82 @@ class AuthenticationCodeFlowHandlerTest {
 
   @Test
   void providerTokensAtLogin_schedulesTheFirstRenewalFromTheLoginsExpiresIn() throws Exception {
-    OidcCredentials credentials = new OidcCredentials();
-    credentials.setAccessTokenObject(new BearerAccessToken("idp-access", 300, null));
-    credentials.setRefreshTokenObject(
-        new com.nimbusds.oauth2.sdk.token.RefreshToken("idp-refresh"));
     long now = System.currentTimeMillis();
 
     SessionService.ProviderTokenUpdate.Replaced providerTokens =
         assertInstanceOf(
             SessionService.ProviderTokenUpdate.Replaced.class,
-            createRefreshHandler().providerTokensAtLogin(credentials, now));
+            endingSessionsWithProvider(createRefreshHandler())
+                .providerTokensAtLogin(providerLoginCredentials(), now));
 
     assertEquals("idp-refresh", providerTokens.refreshToken());
     assertEquals(now + 300_000, providerTokens.renewalDueAt());
+  }
+
+  @Test
+  void providerTokensAtLogin_byDefault_storesNothingFromTheProvider() throws Exception {
+    // Unless the admin opts in, a session lasts sessionExpiry whatever the provider does, so there
+    // is no provider token to keep and no renewal to schedule.
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        createRefreshHandler()
+            .providerTokensAtLogin(providerLoginCredentials(), System.currentTimeMillis()));
+  }
+
+  @Test
+  void providerTokensAtLogin_followsTheConfiguredEndSessionWithProvider(@TempDir Path directory)
+      throws Exception {
+    // Startup and every SSO settings save build a new handler from the saved configuration.
+    Path discoveryDocument =
+        Files.writeString(directory.resolve("openid-configuration"), DISCOVERY_DOCUMENT);
+    OidcClientConfig oidcConfig =
+        new OidcClientConfig()
+            .withId("om-client")
+            .withSecret("om-secret")
+            .withDiscoveryUri("file:" + discoveryDocument.toAbsolutePath())
+            .withServerUrl(TEST_SERVER_URL)
+            .withCallbackUrl(TEST_SERVER_URL + "/callback");
+    long now = System.currentTimeMillis();
+
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        configuredHandler(oidcConfig).providerTokensAtLogin(providerLoginCredentials(), now));
+
+    oidcConfig.setEndSessionWithProvider(true);
+
+    assertInstanceOf(
+        SessionService.ProviderTokenUpdate.Replaced.class,
+        configuredHandler(oidcConfig).providerTokensAtLogin(providerLoginCredentials(), now));
+  }
+
+  @Test
+  void handleRefresh_byDefault_neverContactsTheProviderAndIssuesFullLengthTokens()
+      throws Exception {
+    // A session from while the setting was on still holds an overdue renewal. With it off, the
+    // provider is left alone and the token is no longer cut short to that schedule.
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+      AuthenticationCodeFlowHandler handler = createRefreshHandler();
+      setField(
+          handler,
+          "providerTokenRefresher",
+          providerAnswering(providerCalls, jsonResponse(400, "{\"error\":\"invalid_grant\"}")));
+
+      handler.handleRefresh(request, response);
+
+      assertEquals(0, providerCalls.get());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
+      verify(sessionService, never()).revokeSession(any(), any());
+      assertEquals(3600, issuedTokenValidity(generator));
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
   }
 
   @Test
@@ -1118,7 +1198,8 @@ class AuthenticationCodeFlowHandlerTest {
 
     assertEquals(
         SessionService.ProviderTokenUpdate.NONE,
-        createRefreshHandler().providerTokensAtLogin(credentials, System.currentTimeMillis()));
+        endingSessionsWithProvider(createRefreshHandler())
+            .providerTokensAtLogin(credentials, System.currentTimeMillis()));
   }
 
   @Test
@@ -1287,11 +1368,36 @@ class AuthenticationCodeFlowHandlerTest {
     return generator;
   }
 
+  /** A handler whose sessions end with the identity provider's, renewing through the refresher. */
   private AuthenticationCodeFlowHandler createRefreshHandler(
       OidcProviderTokenRefresher providerTokenRefresher) throws Exception {
-    AuthenticationCodeFlowHandler handler = createRefreshHandler();
+    AuthenticationCodeFlowHandler handler = endingSessionsWithProvider(createRefreshHandler());
     setField(handler, "providerTokenRefresher", providerTokenRefresher);
     return handler;
+  }
+
+  /** Turns on {@code endSessionWithProvider} for a handler built without its constructor. */
+  private static AuthenticationCodeFlowHandler endingSessionsWithProvider(
+      AuthenticationCodeFlowHandler handler) throws Exception {
+    setField(handler, "endsSessionWithProvider", true);
+    return handler;
+  }
+
+  private AuthenticationCodeFlowHandler configuredHandler(OidcClientConfig oidcConfig) {
+    AuthenticationConfiguration authConfig =
+        new AuthenticationConfiguration()
+            .withProvider(AuthProvider.CUSTOM_OIDC)
+            .withOidcConfiguration(oidcConfig);
+    return new AuthenticationCodeFlowHandler(
+        authConfig, new AuthorizerConfiguration(), sessionService);
+  }
+
+  private static OidcCredentials providerLoginCredentials() {
+    OidcCredentials credentials = new OidcCredentials();
+    credentials.setAccessTokenObject(new BearerAccessToken("idp-access", 300, null));
+    credentials.setRefreshTokenObject(
+        new com.nimbusds.oauth2.sdk.token.RefreshToken("idp-refresh"));
+    return credentials;
   }
 
   /** A real refresher whose only stub is the identity provider's token endpoint. */

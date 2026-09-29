@@ -218,10 +218,14 @@ anything else (expired, unknown, no cookie). The browser signs out on the first 
 re-authenticating: under `maxActiveSessionsPerUser`, a silently re-established session would evict
 another of the user's sessions, which would do the same in turn.
 
-**Confidential OIDC: following the identity provider.** The provider refresh token captured at the
-callback is kept, encrypted, in the session, together with `providerRenewalDueAt`: when the
-provider's tokens need renewing, taken from the token response's `expires_in`
-(`ProviderTokenSchedule`). The schedule follows the provider, not `sessionExpiry`:
+**Confidential OIDC: following the identity provider.** Opt-in with
+`oidcConfiguration.endSessionWithProvider` (`OIDC_END_SESSION_WITH_PROVIDER`), off by default: on
+providers that revoke refresh tokens with their session (Keycloak), signing out there or reaching
+its idle or maximum session lifetime then signs the user out of OpenMetadata too, which deployments
+that expect a `sessionExpiry`-long session do not want. With the setting on, the provider refresh
+token captured at the callback is kept, encrypted, in the session, together with
+`providerRenewalDueAt`: when the provider's tokens need renewing, taken from the token response's
+`expires_in` (`ProviderTokenSchedule`). The schedule follows the provider, not `sessionExpiry`:
 
 - A refresh renews the provider's tokens whenever they would lapse before the OpenMetadata JWT it
   is about to issue. The winning node redeems the provider refresh token with a refresh-token grant
@@ -249,9 +253,10 @@ Outcomes:
   user (`invalid_client`, `unauthorized_client`) are not a verdict. The session keeps going and the
   provider is asked again after `5m`; the JWT issued meanwhile is shortened to match.
 
-Sessions without a provider refresh token (Basic, LDAP, SAML, providers that issued none) never
-contact the provider and get the full `tokenValidity`; they end at `sessionExpiry`, and the browser
-re-authenticates silently.
+Sessions without a provider refresh token (Basic, LDAP, SAML, providers that issued none, and every
+confidential OIDC session while `endSessionWithProvider` is off) never contact the provider and get
+the full `tokenValidity`; they end at `sessionExpiry`, and the browser re-authenticates silently. A
+renewal time stored while the setting was on is ignored once it is off.
 
 ### 6.8 Logout and Revocation
 
@@ -286,8 +291,8 @@ Default timeouts:
 - pending session timeout: `10m`
 - authenticated session expiry: `authenticationConfiguration.sessionExpiry`, default `7d`; a
   successful provider refresh-token grant never extends it
-- provider renewal: when the provider's tokens would lapse before the next OpenMetadata JWT (their
-  `expires_in`); `5m` after a grant that got no verdict
+- provider renewal (`endSessionWithProvider` only): when the provider's tokens would lapse before the
+  next OpenMetadata JWT (their `expires_in`); `5m` after a grant that got no verdict
 - refresh lease: `15s`
 - cleanup retention: `7d`
 
@@ -561,8 +566,10 @@ Important scenarios covered or expected from this suite:
 - a due refresh renews the provider's tokens and shortens the JWT to them; a rejected grant answers
   `401` and revokes; no verdict keeps the session and asks again in `5m`; a provider not yet due or
   a session without a provider token is never contacted; the login's own `expires_in` starts the
-  schedule; an expired OpenMetadata refresh token answers `401`, not `500`
-  (`AuthenticationCodeFlowHandlerTest`)
+  schedule; `endSessionWithProvider` is read from the saved configuration, and with it off a login
+  stores nothing from the provider and a refresh never contacts it and issues full-length JWTs, even
+  for a session with an overdue renewal; an expired OpenMetadata refresh token answers `401`, not
+  `500` (`AuthenticationCodeFlowHandlerTest`)
 - a renewed or rescheduled provider grant never moves `expiresAt` (`SessionServiceTest`); the
   provider tokens and schedule round-trip through the store (`SessionStoreContractTest`)
 

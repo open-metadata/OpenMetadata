@@ -422,6 +422,7 @@ export const getDefaultsForProvider = (
       maxAge: '',
       prompt: '',
       sessionExpiry,
+      endSessionWithProvider: false,
     };
   } else if (!isSaml) {
     // For public clients, use root level fields (excluding SAML)

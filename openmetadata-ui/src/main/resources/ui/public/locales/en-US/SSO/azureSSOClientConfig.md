@@ -247,7 +247,7 @@ $$section
 - **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
-- **Note:** This value is not inherited from the Azure token lifetime, but for a confidential client that receives an Azure refresh token it is an upper bound: OpenMetadata tokens never outlive Azure's access token, so each refresh can renew the Azure tokens in time.
+- **Note:** This value is not inherited from the Azure token lifetime, but while **End Session With Identity Provider** is on it is an upper bound: OpenMetadata tokens never outlive Azure's access token, so each refresh can renew the Azure tokens in time.
 $$
 
 $$section
@@ -314,6 +314,18 @@ $$section
 - **Example:** 604800
 - **Why it matters:** Controls how often users need to re-authenticate.
 - **Note:** Only applies to confidential clients
+$$
+
+$$section
+### End Session With Identity Provider $(id="endSessionWithProvider")
+
+- **Definition:** Ends the OpenMetadata session when Azure AD stops renewing the user's tokens.
+- **Default:** Off
+- **Why it matters:** When on, OpenMetadata renews the Azure AD tokens on Azure AD's schedule while the user is active, and signs the user out once Azure AD rejects its refresh token, for example after the token expires or is revoked, or the user is disabled. When off, a session lasts the configured session expiry whatever happens at Azure AD.
+- **Note:**
+  - Only applies to confidential clients
+  - Signing out of Azure AD does not revoke its refresh tokens, so it does not end the OpenMetadata session; revoking the user's sessions in Azure AD does.
+  - While on, OpenMetadata access tokens never outlive Azure AD's access tokens, so browsers refresh them more often.
 
 ## Authorizer Configuration
 $$
