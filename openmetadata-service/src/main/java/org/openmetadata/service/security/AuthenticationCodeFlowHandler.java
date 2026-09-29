@@ -135,6 +135,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String SILENT_PROMPT = "none";
   // The only prompt a login request may ask for itself; any other value stays admin policy.
   private static final Set<String> REQUESTABLE_PROMPTS = Set.of(SILENT_PROMPT);
+  private static final String FORCED_LOGIN_PROMPT = "login";
   private static final String FORCED_REAUTHENTICATION_MAX_AGE = "0";
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
@@ -496,7 +497,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   /**
    * prompt=none asks the IdP to authenticate only if it can do so with no user interaction. The
    * browser requests it for a single login when it re-authenticates a user whose OpenMetadata
-   * session ended while the IdP session may still be alive. It is self-defeating on the MCP path: an
+   * session ended while the IdP session may still be alive, unless the admin configured
+   * prompt=login. It is self-defeating on the MCP path: an
    * MCP client has just opened a fresh browser context precisely so the user can log in, so forcing
    * silent auth there can only come back as login_required (#32671). Every other prompt value
    * (login, consent, select_account) is deliberate admin policy and still applies to MCP.
@@ -513,7 +515,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     if (!nullOrEmpty(requestedPrompt) && !isRequestable) {
       LOG.debug("Ignoring unsupported prompt request parameter '{}'", requestedPrompt);
     }
-    return isRequestable ? requestedPrompt : promptType;
+    return isRequestable && !isForcedLogin(promptType) ? requestedPrompt : promptType;
+  }
+
+  /**
+   * prompt=login is the admin asking for credentials on every sign-in, so a silent request must not
+   * replace it. The re-login is a full-page redirect, so the identity provider can show its form and
+   * the user still lands back where they were.
+   */
+  private static boolean isForcedLogin(String prompt) {
+    return prompt != null
+        && Arrays.stream(prompt.split("\\s+")).anyMatch(FORCED_LOGIN_PROMPT::equalsIgnoreCase);
   }
 
   private boolean isMcpRedirectUri(String redirectUri) {

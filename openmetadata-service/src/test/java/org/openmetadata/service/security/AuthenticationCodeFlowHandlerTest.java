@@ -59,6 +59,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -816,6 +818,26 @@ class AuthenticationCodeFlowHandlerTest {
     String location = capturedLoginRedirect();
     assertTrue(location.contains("prompt=none"), location);
     assertFalse(location.contains("prompt=consent"), location);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"login", "consent login"})
+  void handleLogin_promptNoneRequest_keepsAConfiguredLoginPrompt(String configuredPrompt)
+      throws Exception {
+    // prompt=login is the admin asking for credentials on every sign-in. The re-login after an
+    // OpenMetadata session ends must honour it rather than signing the user back in silently.
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "promptType", configuredPrompt);
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("none");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(
+        location.contains("prompt=" + configuredPrompt.replace(" ", "+"))
+            || location.contains("prompt=" + configuredPrompt.replace(" ", "%20")),
+        location);
+    assertFalse(location.contains("prompt=none"), location);
   }
 
   @Test

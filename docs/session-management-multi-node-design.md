@@ -208,7 +208,8 @@ OpenMetadata refresh token, a session with no refresh token, or an identity prov
 the session's grant (below). The browser treats that `401` as "re-authenticate at the identity
 provider" (one top-level `prompt=none` redirect, see
 `openmetadata-ui/.../docs/auth-coordinator-flows.md`); an unexpected failure releases the lease and
-answers `500`.
+answers `500`. A configured OIDC `prompt=login` still applies to that redirect: the login request
+keeps it in place of `none`, so the provider asks for credentials.
 
 When the lease finds no active session, the confidential OIDC and SAML refreshes say why
 (`SessionService.describeMissingSession`): `401 Session revoked` for a session OpenMetadata revoked
