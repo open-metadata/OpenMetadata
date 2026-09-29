@@ -19,9 +19,10 @@
 #   * `playwright-summary`    — the required PR check + PR-comment
 #                               payload uploader (comment forwarding lives
 #                               in playwright-postgresql-pr-comment.yml).
-#   * `refresh-timing-baseline` — merge_group-only direct commit to main
+#   * `refresh-timing-baseline` — full workflow_dispatch on main; direct commit
 #                                 that keeps `.github/playwright/timing-baseline.json`
-#                                 fresh from the latest full-mode run
+#                                 fresh from that run (merge groups upload no
+#                                 reports, so they cannot feed it)
 #                                 (materiality-gated; see the job comment).
 #
 # Reusable jobs are reported as `<caller-job> / <sub-job>` — GH always
@@ -204,6 +205,7 @@ jobs:
       # only reviewed-and-merged versions of these scripts ever run. Everything else
       # keeps github.sha (PR merge commit / merge-queue commit / dispatch ref).
       - name: Checkout
+        if: ${{ github.event_name != 'merge_group' }}
         id: checkout
         continue-on-error: true
         uses: actions/checkout@v7
@@ -213,7 +215,7 @@ jobs:
 
       - name: Download blob reports
         id: download-blobs
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -223,7 +225,7 @@ jobs:
 
       - name: Download timing metrics
         id: download-timings
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -232,7 +234,7 @@ jobs:
 
       - name: Download shard plans
         id: download-plans
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
@@ -241,7 +243,7 @@ jobs:
 
       - name: Download all results JSON
         id: download-results
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -265,7 +267,7 @@ jobs:
           merge-multiple: false
 
       - name: Keep only the newest attempt per shard
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: python3 .github/scripts/keep_latest_playwright_attempt.py results
 
@@ -281,14 +283,14 @@ jobs:
         # Checks every shard's results came from this commit and run, collapses
         # transport duplicates, and fails on conflicting evidence. Advisory: its
         # outcome feeds the classifier's artifactIntegrityVerified measurement.
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
         run: node .github/scripts/normalize_playwright_artifacts.cjs results "$EXPECTED_HEAD_SHA"
 
       - name: Diagnose downloaded results layout
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: |
           echo "=== results/ tree ==="
@@ -301,7 +303,7 @@ jobs:
 
       - name: Setup Node.js
         id: setup-node
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/setup-node@v5
         with:
@@ -328,7 +330,7 @@ jobs:
 
       - name: Install report dependencies
         id: install-report-dependencies
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
@@ -338,13 +340,13 @@ jobs:
 
       - name: Mark report generation start
         id: mark-report-start
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Merge HTML report
         id: merge-report
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
@@ -359,7 +361,7 @@ jobs:
 
       - name: Merge Playwright timing history
         id: merge-timings
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -374,7 +376,7 @@ jobs:
 
       - name: Verify Playwright timing coverage
         id: verify-coverage
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: |
           timeout --foreground --signal=TERM --kill-after=30s 1m \
@@ -386,7 +388,7 @@ jobs:
 
       - name: Evaluate Playwright performance
         id: evaluate-performance
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -407,7 +409,7 @@ jobs:
 
       - name: Upload merged Playwright report
         id: upload-report
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -418,7 +420,7 @@ jobs:
 
       - name: Record reporting and report-upload duration
         id: record-report-duration
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -455,7 +457,7 @@ jobs:
       # innocent PRs from the merge queue.
       - name: Signal Playwright budget breaches
         id: budget-signal
-        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -529,7 +531,7 @@ jobs:
 
       - name: Upload timing history
         id: upload-timing-history
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -539,7 +541,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Evaluate zero-retry gate in shadow mode
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
@@ -558,7 +560,7 @@ jobs:
             --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
 
       - name: Upload Playwright shadow-gate ledger
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -574,7 +576,7 @@ jobs:
       # explicit skip decision — hiding the gate failure and letting a
       # required check pass on an invalid pipeline state.
       - name: Guard against missing gate decision
-        if: ${{ needs.playwright.outputs.gate_result != 'success' }}
+        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_result != 'success' }}
         run: |
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1
@@ -588,14 +590,14 @@ jobs:
       # the pipeline correctly opting out. Match on the exact "false"
       # string (not != 'true') so unset outputs never fall through here.
       - name: Report gate-skipped run as green
-        if: ${{ needs.playwright.outputs.gate_should_run == 'false' }}
+        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'false' }}
         run: |
           echo "Gate decided should_run=false for event=${{ github.event_name }}."
           echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
           echo "Exiting 0 so this check does not block branch protection."
 
       - name: Render consolidated job summary and gate on results
-        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' }}
         uses: actions/github-script@v9
         env:
           CHECK_CHANGES_RESULT: ${{ needs.playwright.outputs.check_changes_result }}
@@ -633,7 +635,7 @@ jobs:
             await renderPlaywrightSummary({ github, context, core });
 
       - name: Upload Playwright PR comment payload
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -643,7 +645,8 @@ jobs:
           if-no-files-found: ignore
 
   # Auto-refresh the checked-in timing baseline from successful full-mode
-  # merge_group runs. Without this, `.github/playwright/timing-baseline.json`
+  # workflow_dispatch runs on main. Merge groups upload no reports (their
+  # shards verify coverage locally), so they cannot be the source. Without this, `.github/playwright/timing-baseline.json`
   # only gets updated by hand — and it drifts fast (see PR #30871 for the
   # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
   #
@@ -657,8 +660,8 @@ jobs:
   # merge-queue entries, which is why the materiality threshold exists.
   #
   # Guards:
-  #   * merge_group event only (skip on PR/dispatch — the ci-status
-  #     signal on merge_group is the safest known-good snapshot)
+  #   * workflow_dispatch on main only (merge groups upload no reports;
+  #     a PR run is not a known-good snapshot of main)
   #   * full execution mode only (targeted PR plans do not exercise every
   #     spec — a targeted refresh would lose coverage)
   #   * playwright-summary success only (no partial data on gate failures)
@@ -675,7 +678,8 @@ jobs:
     needs: [playwright, playwright-summary]
     if: |
       always() &&
-      github.event_name == 'merge_group' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
       needs.playwright.outputs.detect_changes_mode == 'full' &&
       needs.playwright-summary.result == 'success'
     runs-on: ubuntu-latest

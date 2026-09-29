@@ -94,3 +94,29 @@ def test_shard_status_records_execution_identity():
     )
     for field in ("headSha", "runId", "runAttempt"):
         assert f"{field}: ${field}" in status["run"]
+
+
+def test_merge_groups_upload_no_reports():
+    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "steps"
+    ]
+    for step in steps:
+        if step["name"] == "Gate verified merge-group shards":
+            continue
+        assert "github.event_name != 'merge_group'" in step["if"], step["name"]
+    # A green queue run costs no artifact storage, but a broken one must still
+    # leave evidence: re-running it locally is a different SHA on a moving base.
+    for step in shard_steps():
+        if not step.get("uses", "").startswith("actions/upload-artifact"):
+            continue
+        condition = step["if"]
+        if "github.event_name != 'merge_group'" in condition:
+            continue
+        assert "failure()" in condition, step["name"]
+
+
+def test_baseline_refresh_comes_from_full_dispatch_on_main():
+    refresh = workflow("playwright-postgresql-e2e.yml")["jobs"]["refresh-timing-baseline"]
+    assert "github.event_name == 'workflow_dispatch'" in refresh["if"]
+    assert "github.ref == 'refs/heads/main'" in refresh["if"]
+    assert "merge_group" not in refresh["if"]

@@ -1688,6 +1688,17 @@ jobs:
             --result-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json" \
             --output "$RUNNER_TEMP/shard-coverage.json"
           jq '{plannedTests, executedTests, zeroAttemptSkippedTestIds}' "$RUNNER_TEMP/shard-coverage.json"
+          # The queue uploads no reports, so surface retry passes here: they are the
+          # evidence for when the queue can drop its retry.
+          results="$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json"
+          retried=$(jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select((.results | length) > 1) | "\($s.file):\($s.line) › \($s.title)"] | unique | .[]' "$results")
+          if [[ -n "$retried" ]]; then
+            echo "### Passed only on retry ($SHARD_ID)" >> "$GITHUB_STEP_SUMMARY"
+            while read -r test; do
+              echo "- $test" >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning title=Retry pass in merge queue::$test"
+            done <<< "$retried"
+          fi
 
       - name: Record shard phase metrics
         if: always()
@@ -1792,7 +1803,7 @@ jobs:
 
       - name: Upload Playwright blob report
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
           name: playwright-blob-${{ matrix.shardId }}
@@ -1815,7 +1826,7 @@ jobs:
 
       - name: Upload timing and request metrics
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
           name: playwright-timings-${{ matrix.shardId }}
@@ -1849,7 +1860,7 @@ jobs:
       - name: Upload results JSON for summary
         id: upload-results-json
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) }}
         continue-on-error: true
         with:
           name: playwright-results-json-${{ matrix.shardId }}-a${{ github.run_attempt }}
@@ -1872,7 +1883,7 @@ jobs:
       # collapses `<shardId>-a<attempt>-retry` back to `<shardId>` and prefers
       # the retry when both are present within the same attempt.
       - name: Retry upload results JSON for summary
-        if: always() && steps.upload-results-json.outcome == 'failure'
+        if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) && steps.upload-results-json.outcome == 'failure' }}
         uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
