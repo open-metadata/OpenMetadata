@@ -55,9 +55,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
           </div>
         );
       },
-      Item: ({ id, label }: { id?: string; label?: string }) => (
+      Item: ({ id, children }: { id?: string; children?: ReactNode }) => (
         <button role="menuitem" onClick={() => mockMenuAction?.(id ?? '')}>
-          {label}
+          {children}
         </button>
       ),
     },
@@ -138,5 +138,24 @@ describe('TaskDetailListValue', () => {
     expect(
       screen.queryByTestId('task-detail-list-more')
     ).not.toBeInTheDocument();
+  });
+
+  // Dropdown.Item truncates its own label; a long nested path must wrap.
+  it('lets a long name wrap rather than cut off', () => {
+    const longName = 'payload.customer.billing_address.postal_code_extension';
+    render(
+      <TaskDetailListValue
+        items={[
+          ...COLUMNS.slice(0, 4),
+          { label: longName, to: '/table/svc.db.sch.t.long' },
+        ]}
+        title="Columns requested"
+      />
+    );
+
+    const name = screen.getByText(longName);
+
+    expect(name).toHaveTextContent(longName);
+    expect(name).toHaveClass('tw:whitespace-normal', 'tw:break-all');
   });
 });
