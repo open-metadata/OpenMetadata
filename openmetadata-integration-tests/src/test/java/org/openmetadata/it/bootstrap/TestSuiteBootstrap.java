@@ -114,6 +114,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final Integer ELASTIC_SOCKET_TIMEOUT = 60;
   private static final Integer ELASTIC_KEEP_ALIVE_TIMEOUT = 600;
   private static final Integer ELASTIC_BATCH_SIZE = 10;
+  // The pool sizes conf/openmetadata.yaml ships. Left unset, the server runs on the schema defaults
+  // (10 connections to the single search host), and the parallel lane's bursts queue past
+  // connectionRequestTimeoutSecs, failing requests with "error while performing request".
+  private static final Integer ELASTIC_MAX_CONN_TOTAL = 100;
+  private static final Integer ELASTIC_MAX_CONN_PER_ROUTE = 50;
   private static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
       IndexMappingLanguage.EN;
   private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
@@ -289,7 +294,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // 30-day expiry, and keeps it in the datadir — the tmpfs below. That is a second,
           // append-only copy of every write, kept for replication and point-in-time recovery that
           // a throwaway single-node test database never uses.
-          "--skip-log-bin");
+          "--skip-log-bin",
+          // A deadlock error only names the statement that lost. InnoDB can log both
+          // transactions and their locks, but writes the report as a Note, which the default
+          // error-log verbosity of 2 drops.
+          "--innodb_print_all_deadlocks=ON",
+          "--log_error_verbosity=3");
+      mysql.withLogConsumer(
+          new InnoDbDeadlockReportLogger(
+              report -> LOG.warn("InnoDB deadlock report:{}{}", System.lineSeparator(), report)));
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
@@ -773,6 +786,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withConnectionTimeoutSecs(ELASTIC_CONNECT_TIMEOUT)
         .withSocketTimeoutSecs(ELASTIC_SOCKET_TIMEOUT)
         .withKeepAliveTimeoutSecs(ELASTIC_KEEP_ALIVE_TIMEOUT)
+        .withMaxConnTotal(ELASTIC_MAX_CONN_TOTAL)
+        .withMaxConnPerRoute(ELASTIC_MAX_CONN_PER_ROUTE)
         .withBatchSize(ELASTIC_BATCH_SIZE)
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)

@@ -64,10 +64,11 @@ export interface ActivityFeedTabLeftPanelProps {
   onTabChange: (subTab: string) => void;
 }
 
-/** Structurally compatible with antd's MenuItemType without importing it. */
 export interface TaskFilterOption {
   key: TaskStatusGroup;
   label: ReactNode;
+  /** Plain-text name for the menu item's typeahead and accessible name. */
+  textValue: string;
   onClick: () => void;
 }
 

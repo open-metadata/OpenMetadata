@@ -22,9 +22,9 @@ import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -252,7 +252,9 @@ const TeamsPage = () => {
         include: Include.All,
       });
 
-      setSelectedTeam(data);
+      setSelectedTeam((previous) =>
+        previous.id === data.id ? { ...previous, ...data } : data
+      );
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
         await getParentTeam(data.parents[0].name, true, loadPage);
       }
@@ -281,7 +283,9 @@ const TeamsPage = () => {
           include: Include.All,
         });
 
-        setSelectedTeam((prev) => ({ ...prev, ...data }));
+        setSelectedTeam((previous) =>
+          previous.id === data.id ? { ...previous, ...data } : data
+        );
         fetchAssets(data);
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));

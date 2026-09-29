@@ -1602,6 +1602,17 @@ public interface TimeSeriesDAOs {
     String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
     String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
+    @SqlQuery(
+        "SELECT json FROM profiler_data_time_series "
+            + "WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+            + "AND timestamp <= :endTs ORDER BY timestamp DESC, operation DESC LIMIT :limit OFFSET :offset")
+    List<String> listProfileHistory(
+        @BindFQN("entityFQNHash") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("endTs") long endTs,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     /**
      * Purges the profiler history left behind by a hard-deleted table, bounded to profiles recorded
      * at or before {@code deletedAt}.

@@ -36,7 +36,6 @@ import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.datacontract.sla.RefreshHistory.Observation;
 import org.openmetadata.service.jdbi3.EntityProfileRepository;
-import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO;
 
 /**
@@ -45,6 +44,7 @@ import org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO;
  * record, then the last update its life cycle records.
  */
 public final class TableRefreshHistoryLoader implements RefreshHistoryLoader {
+  private static final int PROFILE_PAGE_SIZE = 100;
   private static final Set<DmlOperationType> WRITES =
       EnumSet.of(DmlOperationType.INSERT, DmlOperationType.UPDATE, DmlOperationType.WRITE);
 
@@ -67,9 +67,12 @@ public final class TableRefreshHistoryLoader implements RefreshHistoryLoader {
 
   private Optional<RefreshHistory> columnHistory(String columnFqn, Instant since, ZoneId zone) {
     List<Observation> observations =
-        records(columnFqn, TABLE_COLUMN_PROFILE_EXTENSION, since, ColumnProfile.class).stream()
-            .flatMap(profile -> columnObservation(profile, zone).stream())
-            .toList();
+        observations(
+            columnFqn,
+            TABLE_COLUMN_PROFILE_EXTENSION,
+            since,
+            toProfileData(ColumnProfile.class)
+                .andThen(profile -> columnObservation(profile, zone)));
     return history(RefreshedAtSource.SLA_COLUMN_PROFILE, observations);
   }
 
@@ -80,12 +83,20 @@ public final class TableRefreshHistoryLoader implements RefreshHistoryLoader {
 
   private Optional<RefreshHistory> systemHistory(String tableFqn, Instant since) {
     List<Observation> observations =
-        records(tableFqn, SYSTEM_PROFILE_EXTENSION, since, SystemProfile.class).stream()
-            .filter(profile -> WRITES.contains(profile.getOperation()))
-            .map(profile -> Instant.ofEpochMilli(profile.getTimestamp()))
-            .map(written -> new Observation(written, written))
-            .toList();
+        observations(
+            tableFqn,
+            SYSTEM_PROFILE_EXTENSION,
+            since,
+            toProfileData(SystemProfile.class)
+                .andThen(TableRefreshHistoryLoader::systemObservation));
     return history(RefreshedAtSource.SYSTEM_PROFILE, observations);
+  }
+
+  private static Optional<Observation> systemObservation(SystemProfile profile) {
+    return Optional.of(profile)
+        .filter(value -> WRITES.contains(value.getOperation()))
+        .map(value -> Instant.ofEpochMilli(value.getTimestamp()))
+        .map(written -> new Observation(written, written));
   }
 
   private static Optional<RefreshHistory> lifeCycleHistory(Table table) {
@@ -99,14 +110,27 @@ public final class TableRefreshHistoryLoader implements RefreshHistoryLoader {
     return history(RefreshedAtSource.LIFE_CYCLE, observations);
   }
 
-  /** The newest record, whenever it was taken, and every record taken since {@code since}. */
-  private <T> List<T> records(String fqn, String extension, Instant since, Class<T> type) {
-    List<String> rows = new ArrayList<>();
-    Optional.ofNullable(profiles.getLatestExtension(fqn, extension)).ifPresent(rows::add);
-    rows.addAll(
-        profiles.listBetweenTimestampsByOrder(
-            fqn, extension, since.toEpochMilli(), clock.millis(), OrderBy.DESC));
-    return rows.stream().map(toProfileData(type)).toList();
+  /**
+   * Keeps usable observations through the window and its last preceding refresh. Unusable rows
+   * must not hide an older refresh, including one that proves an availability deadline was missed.
+   */
+  private List<Observation> observations(
+      String fqn, String extension, Instant since, Function<String, Optional<Observation>> read) {
+    List<Observation> observations = new ArrayList<>();
+    long evaluatedAt = clock.millis();
+    int offset = 0;
+    boolean hasMore = true;
+    while (hasMore) {
+      List<String> rows =
+          profiles.listProfileHistory(fqn, extension, evaluatedAt, PROFILE_PAGE_SIZE, offset);
+      List<Observation> usable = rows.stream().flatMap(row -> read.apply(row).stream()).toList();
+      observations.addAll(usable);
+      hasMore =
+          rows.size() == PROFILE_PAGE_SIZE
+              && usable.stream().noneMatch(observation -> !observation.observedAt().isAfter(since));
+      offset += rows.size();
+    }
+    return observations;
   }
 
   private static <T> Function<String, T> toProfileData(Class<T> type) {

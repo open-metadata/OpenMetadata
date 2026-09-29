@@ -71,11 +71,13 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ContractExecutionStatus;
+import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
@@ -8244,9 +8246,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                             FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"))));
     long now = System.currentTimeMillis();
 
-    addUpdatedAtProfile(table, now - HOUR_MILLIS, Instant.ofEpochMilli(now - 2 * HOUR_MILLIS));
+    addUpdatedAtProfile(
+        table, now - HOUR_MILLIS, Instant.ofEpochMilli(now - 2 * HOUR_MILLIS).toString());
     DataContractResult fresh = SdkClients.adminClient().dataContracts().validate(contract.getId());
-    addUpdatedAtProfile(table, now, Instant.ofEpochMilli(now - 72 * HOUR_MILLIS));
+    addUpdatedAtProfile(table, now, Instant.ofEpochMilli(now - 72 * HOUR_MILLIS).toString());
     DataContractResult stale = SdkClients.adminClient().dataContracts().validate(contract.getId());
 
     assertEquals(Boolean.TRUE, fresh.getSlaValidation().getRefreshFrequencyMet());
@@ -8256,6 +8259,70 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(ContractExecutionStatus.Success, fresh.getContractExecutionStatus());
     assertEquals(Boolean.FALSE, stale.getSlaValidation().getRefreshFrequencyMet());
     assertEquals(ContractExecutionStatus.Failed, stale.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAUsesTheLastWriteWhenTheNewestSystemProfileIsADelete(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_latest_delete"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh()));
+    long now = System.currentTimeMillis();
+    long writtenAt = now - HOUR_MILLIS;
+    CreateTableProfile profile =
+        new CreateTableProfile()
+            .withTableProfile(
+                new TableProfile().withTimestamp(now).withRowCount(10.0).withColumnCount(4.0))
+            .withSystemProfile(
+                List.of(
+                    new SystemProfile()
+                        .withTimestamp(writtenAt)
+                        .withOperation(DmlOperationType.INSERT)
+                        .withRowsAffected(10),
+                    new SystemProfile()
+                        .withTimestamp(now)
+                        .withOperation(DmlOperationType.DELETE)
+                        .withRowsAffected(1)));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SYSTEM_PROFILE,
+        result.getSlaValidation().getRefreshedAtSource());
+    assertEquals(writtenAt, result.getSlaValidation().getLastRefreshedAt());
+    assertEquals(Boolean.TRUE, result.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAUsesAnEarlierColumnProfileWhenTheLatestMaximumIsUnreadable(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_unreadable_max"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh().withColumnName("updated_at")));
+    long now = System.currentTimeMillis();
+    Instant refreshedAt = Instant.ofEpochMilli(now - 2 * HOUR_MILLIS);
+    addUpdatedAtProfile(table, now - HOUR_MILLIS, refreshedAt.toString());
+    addUpdatedAtProfile(table, now, "not a time");
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SLA_COLUMN_PROFILE,
+        result.getSlaValidation().getRefreshedAtSource());
+    assertEquals(refreshedAt.toEpochMilli(), result.getSlaValidation().getLastRefreshedAt());
+    assertEquals(Boolean.TRUE, result.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
   }
 
   @Test
@@ -8315,7 +8382,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   /** A profile of the table whose {@code updated_at} column's newest value is {@code newest}. */
-  private static void addUpdatedAtProfile(Table table, long profiledAt, Instant newest) {
+  private static void addUpdatedAtProfile(Table table, long profiledAt, String newest) {
     CreateTableProfile profile =
         new CreateTableProfile()
             .withTableProfile(
@@ -8328,7 +8395,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                     new ColumnProfile()
                         .withName("updated_at")
                         .withTimestamp(profiledAt)
-                        .withMax(newest.toString())));
+                        .withMax(newest)));
     SdkClients.adminClient()
         .getHttpClient()
         .execute(

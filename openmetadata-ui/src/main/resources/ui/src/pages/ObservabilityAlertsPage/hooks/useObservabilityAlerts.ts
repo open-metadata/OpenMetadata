@@ -18,10 +18,8 @@ import { useNavigate } from 'react-router-dom';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   AlertType,
   EventSubscription,

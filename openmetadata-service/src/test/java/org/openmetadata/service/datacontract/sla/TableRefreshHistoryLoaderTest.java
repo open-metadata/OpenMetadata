@@ -15,6 +15,7 @@ package org.openmetadata.service.datacontract.sla;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -25,8 +26,10 @@ import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeri
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.CreateEntityProfile.ProfileTypeEnum;
@@ -40,7 +43,6 @@ import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.datacontract.sla.RefreshHistory.Observation;
-import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO;
 
 /** The profiler time series is the database boundary; it returns stored profile rows. */
@@ -118,20 +120,103 @@ class TableRefreshHistoryLoaderTest {
   @Test
   void newestRecordIsIncludedEvenWhenOlderThanTheWindow() {
     Instant longAgo = NOW.minusSeconds(30 * 86_400L);
-    when(profiles.getLatestExtension(TABLE_FQN, SYSTEM_PROFILE_EXTENSION))
-        .thenReturn(systemProfile(longAgo, DmlOperationType.WRITE));
+    stored(TABLE_FQN, SYSTEM_PROFILE_EXTENSION, systemProfile(longAgo, DmlOperationType.WRITE));
 
     Optional<RefreshHistory> history = loader.load(table(), null, SINCE, ZoneOffset.UTC);
 
     assertEquals(longAgo, history.orElseThrow().newest().refreshedAt());
   }
 
-  /** Rows newest first, as the time series returns them; the newest is also the latest record. */
+  @Test
+  void latestDeleteDoesNotHideAnEarlierWriteWithoutAnAvailabilityWindow() {
+    Instant insert = NOW.minusSeconds(3_600);
+    stored(
+        TABLE_FQN,
+        SYSTEM_PROFILE_EXTENSION,
+        systemProfile(NOW.minusSeconds(60), DmlOperationType.DELETE),
+        systemProfile(insert, DmlOperationType.INSERT));
+
+    RefreshHistory history = loader.load(table(), null, NOW, ZoneOffset.UTC).orElseThrow();
+
+    assertEquals(RefreshedAtSource.SYSTEM_PROFILE, history.source());
+    assertEquals(insert, history.newest().refreshedAt());
+  }
+
+  @Test
+  void unreadableLatestColumnMaximumDoesNotHideAnEarlierParseableProfile() {
+    Instant profiledAt = NOW.minusSeconds(3_600);
+    stored(
+        COLUMN_FQN,
+        TABLE_COLUMN_PROFILE_EXTENSION,
+        columnProfile(NOW.minusSeconds(60), "not a time"),
+        columnProfile(profiledAt, "2026-09-25T12:00:00Z"));
+    stored(TABLE_FQN, SYSTEM_PROFILE_EXTENSION, systemProfile(NOW, DmlOperationType.WRITE));
+
+    RefreshHistory history = loader.load(table(), COLUMN_FQN, NOW, ZoneOffset.UTC).orElseThrow();
+
+    assertEquals(RefreshedAtSource.SLA_COLUMN_PROFILE, history.source());
+    assertEquals(profiledAt, history.newest().observedAt());
+    assertEquals(Instant.parse("2026-09-25T12:00:00Z"), history.newest().refreshedAt());
+  }
+
+  @Test
+  void looksPastAPageOfDeletesForTheLastWrite() {
+    Instant insert = NOW.minusSeconds(86_400);
+    List<String> rows =
+        new ArrayList<>(
+            IntStream.range(0, 150)
+                .mapToObj(index -> systemProfile(NOW.minusSeconds(index), DmlOperationType.DELETE))
+                .toList());
+    rows.add(systemProfile(insert, DmlOperationType.INSERT));
+    stored(TABLE_FQN, SYSTEM_PROFILE_EXTENSION, rows.toArray(String[]::new));
+
+    RefreshHistory history = loader.load(table(), null, NOW, ZoneOffset.UTC).orElseThrow();
+
+    assertEquals(insert, history.newest().refreshedAt());
+  }
+
+  @Test
+  void retainsTheWriteBeforeTheAvailabilityWindowEvenAfterANewerWrite() {
+    Instant oldWrite = SINCE.minusSeconds(86_400);
+    stored(
+        TABLE_FQN,
+        SYSTEM_PROFILE_EXTENSION,
+        systemProfile(NOW.minusSeconds(60), DmlOperationType.WRITE),
+        systemProfile(oldWrite, DmlOperationType.INSERT));
+
+    RefreshHistory history = loader.load(table(), null, SINCE, ZoneOffset.UTC).orElseThrow();
+
+    assertEquals(
+        oldWrite, history.newestObservedBy(NOW.minusSeconds(3_600)).orElseThrow().refreshedAt());
+  }
+
+  @Test
+  void ignoresProfilesRecordedAfterTheEvaluationTime() {
+    Instant insert = NOW.minusSeconds(60);
+    stored(
+        TABLE_FQN,
+        SYSTEM_PROFILE_EXTENSION,
+        systemProfile(NOW.plusSeconds(3_600), DmlOperationType.WRITE),
+        systemProfile(insert, DmlOperationType.INSERT));
+
+    RefreshHistory history = loader.load(table(), null, NOW, ZoneOffset.UTC).orElseThrow();
+
+    assertEquals(insert, history.newest().refreshedAt());
+  }
+
   private void stored(String fqn, String extension, String... rows) {
-    when(profiles.getLatestExtension(fqn, extension)).thenReturn(rows[0]);
-    when(profiles.listBetweenTimestampsByOrder(
-            eq(fqn), eq(extension), anyLong(), anyLong(), eq(OrderBy.DESC)))
-        .thenReturn(List.of(rows));
+    when(profiles.listProfileHistory(eq(fqn), eq(extension), anyLong(), anyInt(), anyInt()))
+        .thenAnswer(
+            invocation ->
+                List.of(rows).stream()
+                    .filter(row -> timestamp(row) <= invocation.<Long>getArgument(2))
+                    .skip(invocation.<Integer>getArgument(4))
+                    .limit(invocation.<Integer>getArgument(3))
+                    .toList());
+  }
+
+  private static long timestamp(String row) {
+    return JsonUtils.readValue(row, EntityProfile.class).getTimestamp();
   }
 
   private static String columnProfile(Instant profiledAt, String max) {

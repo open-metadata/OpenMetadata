@@ -13,10 +13,8 @@
 
 import { act, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { getApiEndPointByFQN } from '../../rest/apiEndpointsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';

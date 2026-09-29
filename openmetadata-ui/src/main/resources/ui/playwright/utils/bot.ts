@@ -335,7 +335,7 @@ export const redirectToBotPage = async (page: Page) => {
 };
 
 export const resetTokenFromBotPage = async (page: Page, botName: string) => {
-  await page.goto(`/bots/${botName}`);
+  await page.goto(`/bots/${botName}`, { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('left-panel')).toBeVisible();

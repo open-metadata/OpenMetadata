@@ -70,6 +70,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -107,7 +108,6 @@ import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadc
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
-import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -170,6 +170,7 @@ export const DataAssetsHeader = ({
   onUpdateRetentionPeriod,
   extraDropdownContent,
   badge,
+  headerActions,
   isDqAlertSupported = false,
   isCustomizedView = false,
   disableRunAgentsButton = true,
@@ -1268,6 +1269,7 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            {headerActions}
             {renderManageButton()}
           </div>
         </div>

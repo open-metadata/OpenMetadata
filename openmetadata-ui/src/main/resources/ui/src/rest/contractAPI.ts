@@ -13,10 +13,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import {
-  ContractAllResult,
-  ContractResultFilter,
-} from '../components/DataContract/ContractDetailTab/contract.interface';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import {
@@ -26,6 +22,10 @@ import {
 import { ContractValidation } from '../generated/entity/datacontract/contractValidation';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
+import {
+  ContractAllResult,
+  ContractResultFilter,
+} from '../interface/data-contract/contract.interface';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/dataContracts';
