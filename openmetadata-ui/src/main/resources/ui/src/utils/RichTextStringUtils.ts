@@ -13,7 +13,6 @@
 import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import removeMarkdown from 'remove-markdown';
-import { decodeHtmlEntities } from './StringUtils';
 
 /**
  * Convert a template string into HTML DOM nodes.
@@ -29,6 +28,17 @@ export const stringToHTML = function (
 ): string | JSX.Element | JSX.Element[] {
   return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;
 };
+
+/**
+ * Decode HTML entities (e.g. "&amp;", "&#98;") into their literal characters.
+ * Uses DOMParser in text mode so embedded markup is never executed, only
+ * read back as plain text.
+ */
+export function decodeHtmlEntities(text: string): string {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+
+  return doc.documentElement.textContent ?? text;
+}
 
 export function stripMarkdown(text: string): string {
   return decodeHtmlEntities(removeMarkdown(text)).trim();

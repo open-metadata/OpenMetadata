@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { UserManager } from 'oidc-client';
-import { getCandidateUserManagerConfig } from './candidateUserManagerConfig';
 import { SSO_TEST_LOGIN_STORE_PREFIX } from '../../../utils/SsoTestLoginPopup';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
+import { getCandidateUserManagerConfig } from './candidateUserManagerConfig';
 
 export const SSO_TEST_LOGIN_CANDIDATE_KEY = `${SSO_TEST_LOGIN_STORE_PREFIX}candidate`;
 

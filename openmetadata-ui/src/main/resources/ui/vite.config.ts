@@ -291,13 +291,6 @@ export default defineConfig(async ({ mode }) => {
       return 'vendor-oidc-client';
     }
 
-    // Left to the auto-splitter, lodash-es fans out into one chunk per
-    // helper (~50 sub-1 KiB chunks). Only the functions we import survive
-    // tree-shaking, so one bucket stays small.
-    if (packageName === 'lodash-es') {
-      return 'vendor-lodash';
-    }
-
     if (
       packageName.startsWith('@react-aria/') ||
       packageName.startsWith('@react-stately/') ||
@@ -375,24 +368,6 @@ export default defineConfig(async ({ mode }) => {
                 .join('\n')
           );
           return out === code ? null : { code: out, map: null };
-        },
-      },
-      // react-tour's UMD build does `require("lodash")`; through the global
-      // `lodash → lodash-es` alias that CJS interop materialises the whole
-      // lodash-es namespace (~520 modules) and it lands in the entry chunk.
-      // Hand react-tour the real CJS lodash so it stays in the tour's lazy chunk.
-      {
-        name: 'react-tour-cjs-lodash',
-        enforce: 'pre' as const,
-        resolveId(source: string, importer?: string) {
-          if (
-            source === 'lodash-es' &&
-            importer?.includes('/@deuex-solutions/react-tour/')
-          ) {
-            return path.resolve(__dirname, 'node_modules/lodash/lodash.js');
-          }
-
-          return null;
         },
       },
       isProductionBundle && !isPlaywrightBundle && noEnumOnlyChunks(),

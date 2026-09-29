@@ -29,6 +29,7 @@ jest.mock('./i18next/LocalUtil', () => ({
 }));
 
 import { AxiosError } from 'axios';
+import { stringToHTML, stripMarkdown } from './RichTextStringUtils';
 import {
   decodeHtmlEntities,
   escapeESReservedCharacters,
@@ -46,7 +47,6 @@ import {
   replaceCallback,
   slugify,
 } from './StringUtils';
-import { stringToHTML, stripMarkdown } from './RichTextStringUtils';
 
 describe('StringUtils', () => {
   it('getEncodedFqn should return encoded Fqn', () => {

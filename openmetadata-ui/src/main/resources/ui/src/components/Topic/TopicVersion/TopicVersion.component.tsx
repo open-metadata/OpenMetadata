@@ -29,8 +29,8 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { getVersionPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/RichTextStringUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import Description from '../../common/EntityDescription/Description';
