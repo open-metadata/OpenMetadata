@@ -10,42 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Badge: ({ children }: { children?: ReactNode }) => (
-    <span data-testid="list-count">{children}</span>
-  ),
-  Box: ({
-    children,
-    'data-testid': testId,
-  }: {
-    children?: ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={testId}>{children}</div>,
-  // Open state lives in react-aria; here the trigger simply reveals the list.
-  PopoverTrigger: ({ children }: { children?: ReactNode }) => (
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Pass = ({ children }: { children?: ReactNode }) => (
     <div>{children}</div>
-  ),
-  Popover: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Button: ({
-    children,
-    'data-testid': testId,
-    onPress,
-  }: {
-    children?: ReactNode;
-    'data-testid'?: string;
-    onPress?: () => void;
-  }) => (
-    <button data-testid={testId} onClick={onPress}>
-      {children}
-    </button>
-  ),
-  Typography: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
-}));
+  );
+
+  return {
+    Badge: ({ children }: { children?: ReactNode }) => (
+      <span data-testid="list-count">{children}</span>
+    ),
+    Button: ({
+      children,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+    }) => <button data-testid={testId}>{children}</button>,
+    // Open state lives in react-aria; here the menu is always rendered.
+    Dropdown: {
+      Root: Pass,
+      Popover: Pass,
+      Section: Pass,
+      SectionHeader: Pass,
+      Menu: ({
+        children,
+        'data-testid': testId,
+      }: {
+        children?: ReactNode;
+        'data-testid'?: string;
+      }) => (
+        <div data-testid={testId} role="menu">
+          {children}
+        </div>
+      ),
+      Item: ({ label }: { label?: string }) => (
+        <div role="menuitem">{label}</div>
+      ),
+    },
+    Typography: ({ children }: { children?: ReactNode }) => (
+      <span>{children}</span>
+    ),
+  };
+});
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -70,16 +79,14 @@ describe('TaskDetailListValue', () => {
     );
   });
 
-  it('lists every item under the title in the popover', () => {
+  it('lists every item under the title in the standard dropdown', () => {
     render(<TaskDetailListValue items={COLUMNS} title="Columns requested" />);
 
-    fireEvent.click(screen.getByTestId('task-detail-list-more'));
+    const menu = screen.getByTestId('task-detail-list-popover');
 
-    const popover = screen.getByTestId('task-detail-list-popover');
-
-    expect(popover).toHaveTextContent('Columns requested');
+    expect(menu).toHaveTextContent('Columns requested');
     expect(screen.getByTestId('list-count')).toHaveTextContent('20');
-    expect(popover.querySelectorAll('li')).toHaveLength(20);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(20);
   });
 
   it('offers no popover when everything fits inline', () => {

@@ -12,10 +12,8 @@
  */
 import {
   Badge,
-  Box,
   Button,
-  Popover,
-  PopoverTrigger,
+  Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
 import React from 'react';
@@ -26,14 +24,14 @@ const INLINE_ITEM_COUNT = 4;
 
 export interface TaskDetailListValueProps {
   items: string[];
-  /** Heads the popover that lists every item; already translated. */
+  /** Heads the menu that lists every item; already translated. */
   title: string;
 }
 
 /**
  * A long list in a detail row: the first few items inline, then "View N more"
- * opening a popover with the full list, so twenty requested columns do not
- * stretch the row into a paragraph.
+ * opening the app's standard dropdown with the full list, so twenty requested
+ * columns do not stretch the row into a paragraph.
  */
 const TaskDetailListValue: React.FC<TaskDetailListValueProps> = ({
   items,
@@ -46,7 +44,7 @@ const TaskDetailListValue: React.FC<TaskDetailListValueProps> = ({
     <Typography size="text-sm">
       {items.slice(0, INLINE_ITEM_COUNT).join(', ')}
       {hiddenCount > 0 && (
-        <PopoverTrigger>
+        <Dropdown.Root>
           <Button
             className="tw:ml-2 tw:inline"
             color="link-color"
@@ -54,31 +52,29 @@ const TaskDetailListValue: React.FC<TaskDetailListValueProps> = ({
             size="sm">
             {t('label.view-more-count', { countValue: hiddenCount })}
           </Button>
-          <Popover arrow className="tw:w-80" placement="bottom start">
-            <Box data-testid="task-detail-list-popover" direction="col">
-              <Box
-                align="center"
-                className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-                gap={2}>
-                <Typography size="text-sm" weight="semibold">
-                  {title}
-                </Typography>
-                <Badge color="gray" size="sm" type="pill-color">
-                  {items.length}
-                </Badge>
-              </Box>
-              <ul className="tw:m-0 tw:max-h-64 tw:list-none tw:overflow-y-auto tw:px-4 tw:py-2">
+          <Dropdown.Popover className="tw:w-64" placement="bottom start">
+            <Dropdown.Menu
+              aria-label={title}
+              className="tw:max-h-64 tw:overflow-y-auto"
+              data-testid="task-detail-list-popover"
+              // A read-only list: nothing to pick, so no radio state.
+              selectionMode="none">
+              <Dropdown.Section>
+                <Dropdown.SectionHeader className="tw:flex tw:items-center tw:justify-between tw:px-3 tw:py-1.5">
+                  <Typography size="text-sm" weight="semibold">
+                    {title}
+                  </Typography>
+                  <Badge color="gray" size="sm" type="pill-color">
+                    {items.length}
+                  </Badge>
+                </Dropdown.SectionHeader>
                 {items.map((item) => (
-                  <li
-                    className="tw:py-1 tw:font-mono tw:text-sm tw:text-secondary"
-                    key={item}>
-                    {item}
-                  </li>
+                  <Dropdown.Item id={item} key={item} label={item} />
                 ))}
-              </ul>
-            </Box>
-          </Popover>
-        </PopoverTrigger>
+              </Dropdown.Section>
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       )}
     </Typography>
   );
