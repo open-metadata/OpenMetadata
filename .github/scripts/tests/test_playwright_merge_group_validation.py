@@ -1,0 +1,96 @@
+"""Merge-queue validation: the inline gate, shard coverage, and the retry policy."""
+
+import json
+import os
+import subprocess
+from pathlib import Path
+
+import pytest
+import yaml
+
+WORKFLOWS = Path(__file__).parents[2] / "workflows"
+
+
+def workflow(name):
+    return yaml.safe_load((WORKFLOWS / name).read_text())
+
+
+def summary_step(name):
+    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "steps"
+    ]
+    return next(step for step in steps if step["name"] == name)
+
+
+def shard_steps():
+    return workflow("playwright-e2e-reusable.yml")["jobs"]["playwright-ci"]["steps"]
+
+
+@pytest.mark.parametrize(
+    "overrides,passes",
+    [
+        ({}, True),
+        ({"SHARD_RESULT": "failure"}, False),
+        ({"SHARD_RESULT": "cancelled"}, False),
+        ({"SHARD_RESULT": "skipped"}, False),
+        ({"SHARD_RESULT": ""}, False),
+        ({"GATE_RESULT": "failure"}, False),
+        ({"SHOULD_RUN": "false"}, False),
+        ({"PLAN_RESULT": "failure"}, False),
+        ({"EXPECTED_MATRIX": '{"include": []}'}, False),
+        ({"EXPECTED_MATRIX": '{"include": [{"shardId": ""}]}'}, False),
+        (
+            {"EXPECTED_MATRIX": '{"include": [{"shardId": "a"}, {"shardId": "a"}]}'},
+            False,
+        ),
+        ({"EXPECTED_MATRIX": "{broken"}, False),
+    ],
+)
+def test_queue_gate_requires_every_upstream_job(tmp_path, overrides, passes):
+    gate = summary_step("Gate verified merge-group shards")
+    assert gate["if"] == "${{ github.event_name == 'merge_group' }}"
+    env = {
+        **os.environ,
+        "GATE_RESULT": "success",
+        "SHOULD_RUN": "true",
+        "PLAN_RESULT": "success",
+        "SHARD_RESULT": "success",
+        "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+        **overrides,
+    }
+    result = subprocess.run(
+        ["bash", "-e", "-c", gate["run"]],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert (result.returncode == 0) is passes, result.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_queue_shards_enforce_coverage_but_allow_one_retry():
+    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
+    assert "github.event_name == 'merge_group'" in coverage["if"]
+    assert not coverage.get("continue-on-error", False)
+    assert '"$(git rev-parse HEAD)" != "$GITHUB_SHA"' in coverage["run"]
+    assert "--require-native-evidence" in coverage["run"]
+    # The queue keeps one retry for now (#32833), so a retry pass must not fail
+    # coverage. Tightening the queue to zero retries adds this flag back.
+    assert "--require-single-attempt" not in coverage["run"]
+
+
+def test_retry_policy_is_zero_on_prs_and_one_elsewhere():
+    caller = workflow("playwright-postgresql-e2e.yml")
+    expression = caller["jobs"]["playwright"]["with"]["retries"]
+    assert "pull_request" in expression and "pull_request_target" in expression
+    assert expression.replace(" ", "").endswith("&&1||0}}")
+
+
+def test_shard_status_records_execution_identity():
+    status = next(
+        step for step in shard_steps() if step["name"] == "Record shard execution status"
+    )
+    for field in ("headSha", "runId", "runAttempt"):
+        assert f"{field}: ${field}" in status["run"]
