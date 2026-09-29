@@ -14,6 +14,7 @@
 package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceBackfill.backfillCustomPropertyReferences;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
@@ -71,5 +72,8 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
+    // Index existing custom-property entityReference values so hard deletes can find their
+    // holders, and mark references whose target is already gone. Idempotent.
+    backfillCustomPropertyReferences(collectionDAO);
   }
 }

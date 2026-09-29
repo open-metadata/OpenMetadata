@@ -500,3 +500,19 @@ DEALLOCATE PREPARE announcement_type_index_stmt;
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+-- Custom-property entityReference / entityReferenceList values copy the referenced entity into
+-- the holder's extension JSON with nothing linking the copy back. One row per reference lets a
+-- hard delete find every holder through an index; pendingCompaction marks references whose
+-- target is gone until the compaction sweep rewrites the JSON. Entity-level values only.
+CREATE TABLE IF NOT EXISTS entity_extension_reference (
+    id VARCHAR(36) NOT NULL,
+    extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    toId VARCHAR(36) NOT NULL,
+    toEntity VARCHAR(256) NOT NULL,
+    pendingCompaction BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (id, extension, toId),
+    INDEX entity_extension_reference_to_index (toId),
+    INDEX entity_extension_reference_extension_index (extension),
+    INDEX entity_extension_reference_pending_index (pendingCompaction)
+);

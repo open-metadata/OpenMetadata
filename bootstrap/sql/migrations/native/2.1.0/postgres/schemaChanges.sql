@@ -377,3 +377,20 @@ ALTER TABLE announcement_entity
   ADD COLUMN IF NOT EXISTS type character varying(32)
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
+
+-- Custom-property entityReference / entityReferenceList values copy the referenced entity into
+-- the holder's extension JSON with nothing linking the copy back. One row per reference lets a
+-- hard delete find every holder through an index; pendingCompaction marks references whose
+-- target is gone until the compaction sweep rewrites the JSON. Entity-level values only.
+CREATE TABLE IF NOT EXISTS entity_extension_reference (
+    id VARCHAR(36) NOT NULL,
+    extension VARCHAR(512) NOT NULL,
+    toId VARCHAR(36) NOT NULL,
+    toEntity VARCHAR(256) NOT NULL,
+    pendingCompaction BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (id, extension, toId)
+);
+CREATE INDEX IF NOT EXISTS entity_extension_reference_to_index ON entity_extension_reference (toId);
+CREATE INDEX IF NOT EXISTS entity_extension_reference_extension_index ON entity_extension_reference (extension);
+CREATE INDEX IF NOT EXISTS entity_extension_reference_pending_index
+  ON entity_extension_reference (id, extension) WHERE pendingCompaction;

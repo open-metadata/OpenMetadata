@@ -602,6 +602,17 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
   List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
 
+  /**
+   * Existence proof a writer takes inside its own transaction: the shared lock makes a concurrent
+   * hard delete of any of these rows wait for the writer's commit, so the cross-reference the
+   * writer is about to persist cannot be validated against a row that is already gone.
+   */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) <cond> FOR SHARE")
+  List<String> lockExistingIds(
+      @Define("table") String table,
+      @BindList("ids") List<String> ids,
+      @Define("cond") String cond);
+
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
       @Define("table") String table,

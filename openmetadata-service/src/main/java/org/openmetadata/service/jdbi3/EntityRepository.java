@@ -239,6 +239,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
+import org.openmetadata.service.jobs.EntityExtensionReferenceCompactionScheduler;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfTagUpdater;
@@ -5063,6 +5064,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
     PostCommitActionQueue.runOrDefer(() -> markEntityNotFound(entityInterface));
+    PostCommitActionQueue.runOrDefer(
+        () -> reprobeCustomPropertyReferences(List.of(entityInterface.getId())));
   }
 
   private void cleanupFlushBody(String deletedBy, T entityInterface) {
@@ -5079,8 +5082,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the relationships to other entities
     daoCollection.relationshipDAO().deleteAll(id, entityType);
 
+    // Holders that reference this entity from a custom property keep serving the reference until
+    // the sweep rewrites their values; marking here is what the read filter keys on.
+    markCustomPropertyReferencesPending(List.of(id));
     // Delete all the extensions of entity
     daoCollection.entityExtensionDAO().deleteAll(id);
+    daoCollection.entityExtensionReferenceDAO().deleteAll(id);
 
     // The FQN-prefix deletes run together, after entity_extension, to match the table order in
     // bulkCleanupReferences(). Both paths delete the same rows for overlapping subtrees — a direct
@@ -5297,6 +5304,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("createStoreEntity")) {
       storeEntity(entity, false);
       storeExtension(entity);
+      storeExtensionReferences(entity);
       storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
     }
     try (var ignored = phase("createStoreRelationships")) {
@@ -5870,9 +5878,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
         case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
-        case "entityReference" -> validateCustomPropertyEntityReference(fieldValue, fieldName);
-        case "entityReferenceList" -> validateCustomPropertyEntityReferenceList(
-            fieldValue, fieldName);
+        case "entityReference" -> {
+          validateCustomPropertyEntityReference(fieldValue, fieldName);
+          EntityExtensionReferences.warnOnDisallowedType(fieldValue, fieldName, propertyConfig);
+        }
+        case "entityReferenceList" -> {
+          validateCustomPropertyEntityReferenceList(fieldValue, fieldName);
+          EntityExtensionReferences.warnOnDisallowedType(fieldValue, fieldName, propertyConfig);
+        }
         default -> {}
       }
     }
@@ -6046,6 +6059,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     storeCustomProperties(entityIds, fieldFQNs, jsons);
+    entities.forEach(this::storeExtensionReferences);
   }
 
   /** Columns whose extensions are persisted on initial create. Default: empty. */
@@ -6107,6 +6121,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // table-level extension would silently wipe its column-level custom properties.
     if (!entityIds.isEmpty()) {
       daoCollection.entityExtensionDAO().deleteByJsonSchemaBatch(entityIds, "customFieldSchema");
+      daoCollection.entityExtensionReferenceDAO().deleteAllBatch(entityIds);
     }
   }
 
@@ -6115,6 +6130,79 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .entityExtensionDAO()
         .insert(entity.getId(), fieldFQN, "customFieldSchema", JsonUtils.pojoToJson(value));
+  }
+
+  private EntityExtensionReferences extensionReferences() {
+    return new EntityExtensionReferences(daoCollection);
+  }
+
+  private static JsonNode extensionFields(EntityInterface entity) {
+    JsonNode extension =
+        entity.getExtension() == null ? null : JsonUtils.valueToTree(entity.getExtension());
+    return extension != null && extension.isObject() ? extension : JsonUtils.getObjectNode();
+  }
+
+  private void storeExtensionReferences(EntityInterface entity) {
+    extensionFields(entity)
+        .fields()
+        .forEachRemaining(
+            field -> {
+              if (EntityExtensionReferences.isReferenceProperty(entityType, field.getKey())) {
+                extensionReferences()
+                    .store(
+                        entity.getId(),
+                        TypeRegistry.getCustomPropertyFQN(entityType, field.getKey()),
+                        field.getValue());
+              }
+            });
+  }
+
+  private void replaceExtensionReferences(EntityInterface original, EntityInterface updated) {
+    JsonNode before = extensionFields(original);
+    JsonNode after = extensionFields(updated);
+    Set<String> names = new LinkedHashSet<>();
+    before.fieldNames().forEachRemaining(names::add);
+    after.fieldNames().forEachRemaining(names::add);
+    for (String name : names) {
+      if (EntityExtensionReferences.isReferenceProperty(entityType, name)) {
+        extensionReferences()
+            .replace(
+                updated.getId(),
+                TypeRegistry.getCustomPropertyFQN(entityType, name),
+                before.get(name),
+                after.get(name));
+      }
+    }
+  }
+
+  /** Name-only references are completed before the diff so an echoed value is not a change. */
+  private Object fillReferenceIds(Object extension) {
+    JsonNode fields = extension == null ? null : JsonUtils.valueToTree(extension);
+    if (fields == null || !fields.isObject()) {
+      return extension;
+    }
+    fields
+        .fields()
+        .forEachRemaining(
+            field -> {
+              if (EntityExtensionReferences.isReferenceProperty(entityType, field.getKey())) {
+                EntityUtil.fillCustomPropertyReferenceIds(field.getValue());
+              }
+            });
+    return JsonUtils.treeToValue(fields, Object.class);
+  }
+
+  private void markCustomPropertyReferencesPending(List<UUID> deletedIds) {
+    extensionReferences().markPending(deletedIds);
+  }
+
+  /**
+   * A writer that proved its target under a shared lock can still commit after this delete's own
+   * mark ran, so mark once more after commit; the sweep then rewrites whatever landed in between.
+   */
+  private void reprobeCustomPropertyReferences(List<UUID> deletedIds) {
+    extensionReferences().markPending(deletedIds);
+    EntityExtensionReferenceCompactionScheduler.requestRun();
   }
 
   private void storeCustomProperties(
@@ -6157,7 +6245,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       objectNode.set(fieldName, fieldValue);
     }
-    return objectNode;
+    extensionReferences().removePending(Map.of(entity.getId(), objectNode));
+    return objectNode.isEmpty() ? null : objectNode;
   }
 
   protected void applyColumnTags(List<Column> columns) {
@@ -7275,8 +7364,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       daoCollection.relationshipDAO().batchDeleteRelationships(entityIds, entityType);
     }
     try (var ignored = phase("bulkHardDeleteExtensions")) {
+      markCustomPropertyReferencesPending(entityIds);
       daoCollection.entityExtensionDAO().deleteAllBatch(entityIdStrings);
+      daoCollection.entityExtensionReferenceDAO().deleteAllBatch(entityIdStrings);
     }
+    PostCommitActionQueue.runOrDefer(() -> reprobeCustomPropertyReferences(entityIds));
     // field_relationship and tag_usage are keyed by FQN hash, so a single prefix delete on an
     // ancestor's FQN clears the whole subtree. For FQN-nested types the recursive delete root's
     // cleanup() already issues that prefix delete (deleteAllByPrefix /
@@ -10020,6 +10112,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setExtension(origExtension);
         return;
       }
+      updatedExtension = fillReferenceIds(updatedExtension);
+      updated.setExtension(updatedExtension);
 
       List<JsonNode> addedFields = new ArrayList<>();
       List<JsonNode> deletedFields = new ArrayList<>();
@@ -10086,6 +10180,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       removeExtension(original);
       storeExtension(updated);
+      replaceExtensionReferences(original, updated);
     }
 
     protected void updateDomains() {
@@ -12471,7 +12566,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         records.stream()
             .collect(Collectors.groupingBy(CoreRelationshipDAOs.ExtensionRecordWithId::id));
 
-    Map<UUID, Object> result = new HashMap<>();
+    Map<UUID, ObjectNode> nodes = new HashMap<>();
 
     for (Entry<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> entry :
         extensionsMap.entrySet()) {
@@ -12485,9 +12580,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         objectNode.set(fieldName, extensionJsonNode);
       }
 
-      result.put(entityId, objectNode);
+      nodes.put(entityId, objectNode);
     }
+    extensionReferences().removePending(nodes);
 
+    Map<UUID, Object> result = new HashMap<>();
+    nodes.forEach(
+        (entityId, node) -> {
+          if (!node.isEmpty()) {
+            result.put(entityId, node);
+          }
+        });
     return result;
   }
 

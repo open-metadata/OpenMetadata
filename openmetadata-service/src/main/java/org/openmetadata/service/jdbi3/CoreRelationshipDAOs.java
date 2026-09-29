@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
@@ -72,6 +73,9 @@ public interface CoreRelationshipDAOs {
 
   @CreateSqlObject
   EntityExtensionDAO entityExtensionDAO();
+
+  @CreateSqlObject
+  EntityExtensionReferenceDAO entityExtensionReferenceDAO();
 
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
@@ -351,6 +355,151 @@ public interface CoreRelationshipDAOs {
      */
     default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
       EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
+    }
+
+    /** Null when the row is missing or another transaction holds it; callers treat both as skip. */
+    @SqlQuery(
+        "SELECT json FROM entity_extension WHERE id = :id AND extension = :extension "
+            + "FOR UPDATE SKIP LOCKED")
+    String getExtensionForUpdateSkipLocked(
+        @BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT id, extension, json FROM entity_extension "
+            + "WHERE extension = :extension AND id > :afterId ORDER BY id LIMIT :limit")
+    @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
+    List<ExtensionRecordWithId> listByExtensionAfterId(
+        @Bind("extension") String extension,
+        @Bind("afterId") String afterId,
+        @Bind("limit") int limit);
+  }
+
+  /**
+   * One row per entity referenced from an entity-level {@code entityReference} or {@code
+   * entityReferenceList} custom-property value: {@code (id, extension)} is the {@code
+   * entity_extension} row holding the value, {@code toId} the referenced entity. {@code
+   * pendingCompaction} marks references whose target was hard-deleted until the sweep rewrites
+   * the JSON; reads filter them out in the meantime.
+   */
+  interface EntityExtensionReferenceDAO {
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
+                + "VALUES (:id, :extension, :toId, :toEntity) "
+                + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity), pendingCompaction = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
+                + "VALUES (:id, :extension, :toId, :toEntity) "
+                + "ON CONFLICT (id, extension, toId) DO UPDATE SET "
+                + "toEntity = EXCLUDED.toEntity, pendingCompaction = FALSE",
+        connectionType = POSTGRES)
+    @BatchChunkSize(1000)
+    void insertMany(
+        @BindUUID("id") UUID id,
+        @Bind("extension") String extension,
+        @Bind("toId") List<String> toIds,
+        @Bind("toEntity") List<String> toEntities);
+
+    @SqlUpdate(
+        "DELETE FROM entity_extension_reference "
+            + "WHERE id = :id AND extension = :extension AND toId IN (<toIds>)")
+    void deleteManyInternal(
+        @BindUUID("id") UUID id,
+        @Bind("extension") String extension,
+        @BindList("toIds") List<String> toIds);
+
+    default void deleteMany(UUID id, String extension, List<String> toIds) {
+      if (!nullOrEmpty(toIds)) {
+        EntityDAO.updateInChunks(toIds, chunk -> deleteManyInternal(id, extension, chunk));
+      }
+    }
+
+    @SqlUpdate("DELETE FROM entity_extension_reference WHERE id = :id AND extension = :extension")
+    void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlUpdate("DELETE FROM entity_extension_reference WHERE id = :id")
+    void deleteAll(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM entity_extension_reference WHERE id IN (<ids>)")
+    void deleteAllBatchInternal(@BindList("ids") List<String> ids);
+
+    default void deleteAllBatch(List<String> ids) {
+      if (!nullOrEmpty(ids)) {
+        EntityDAO.updateInChunks(ids, this::deleteAllBatchInternal);
+      }
+    }
+
+    @SqlUpdate("DELETE FROM entity_extension_reference WHERE extension = :extension")
+    void deleteExtension(@Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT DISTINCT id, extension FROM entity_extension_reference WHERE toId IN (<toIds>)")
+    @RegisterRowMapper(ReferenceKeyMapper.class)
+    List<ReferenceKey> findByToIdsInternal(@BindList("toIds") List<String> toIds);
+
+    default List<ReferenceKey> findByToIds(List<String> toIds) {
+      return nullOrEmpty(toIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(toIds, this::findByToIdsInternal);
+    }
+
+    @SqlUpdate(
+        "UPDATE entity_extension_reference SET pendingCompaction = TRUE "
+            + "WHERE toId IN (<toIds>) AND pendingCompaction = FALSE")
+    int markPendingInternal(@BindList("toIds") List<String> toIds);
+
+    default int markPending(List<String> toIds) {
+      if (nullOrEmpty(toIds)) {
+        return 0;
+      }
+      int[] marked = {0};
+      EntityDAO.updateInChunks(toIds, chunk -> marked[0] += markPendingInternal(chunk));
+      return marked[0];
+    }
+
+    @SqlQuery(
+        "SELECT id, extension, toId FROM entity_extension_reference "
+            + "WHERE id IN (<ids>) AND pendingCompaction = TRUE")
+    @RegisterRowMapper(PendingReferenceMapper.class)
+    List<PendingReference> findPendingInternal(@BindList("ids") List<String> ids);
+
+    default List<PendingReference> findPending(List<String> ids) {
+      return nullOrEmpty(ids) ? List.of() : EntityDAO.queryInChunks(ids, this::findPendingInternal);
+    }
+
+    /** Non-locking candidate read for the sweep; one row per pending reference, dedupe in Java. */
+    @SqlQuery(
+        "SELECT id, extension FROM entity_extension_reference "
+            + "WHERE pendingCompaction = TRUE ORDER BY id, extension LIMIT :limit")
+    @RegisterRowMapper(ReferenceKeyMapper.class)
+    List<ReferenceKey> listPendingKeys(@Bind("limit") int limit);
+
+    /** Taken after the holder's entity_extension row lock, never before; see the sweep. */
+    @SqlQuery(
+        "SELECT toId FROM entity_extension_reference "
+            + "WHERE id = :id AND extension = :extension AND pendingCompaction = TRUE FOR UPDATE")
+    List<String> findPendingForUpdate(@BindUUID("id") UUID id, @Bind("extension") String extension);
+  }
+
+  record ReferenceKey(UUID id, String extension) {}
+
+  record PendingReference(UUID id, String extension, String toId) {}
+
+  class ReferenceKeyMapper implements RowMapper<ReferenceKey> {
+    @Override
+    public ReferenceKey map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ReferenceKey(UUID.fromString(rs.getString("id")), rs.getString("extension"));
+    }
+  }
+
+  class PendingReferenceMapper implements RowMapper<PendingReference> {
+    @Override
+    public PendingReference map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new PendingReference(
+          UUID.fromString(rs.getString("id")), rs.getString("extension"), rs.getString("toId"));
     }
   }
 

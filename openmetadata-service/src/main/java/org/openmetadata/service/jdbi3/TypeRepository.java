@@ -464,6 +464,7 @@ public class TypeRepository extends EntityRepository<Type> {
               Relationship.HAS.ordinal());
       // Delete all the data stored in the entity extension for the custom property
       daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+      daoCollection.entityExtensionReferenceDAO().deleteExtension(customPropertyFQN);
 
       if (Entity.hasEntityRepository(Entity.INTAKE_FORM)) {
         IntakeFormRepository intakeFormRepository =
