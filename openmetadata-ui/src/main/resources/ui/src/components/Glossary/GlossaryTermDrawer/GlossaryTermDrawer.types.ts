@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
 
-import { Glossary } from '../../../generated/entity/data/glossary';
-
-export interface GlossaryLeftPanelProps {
-  glossaries: Glossary[];
-  onAddGlossary: () => void;
+export interface GlossaryTermDrawerProps {
+  editMode: boolean;
+  glossaryTermFQN?: string;
+  // Rejects to keep the drawer open; the parent unmounts it on success.
+  onSave: (value: GlossaryTermForm) => Promise<void>;
+  onCancel: () => void;
 }
