@@ -241,8 +241,9 @@ export default defineConfig({
      * assertions are calibrated for the default motion path. */
     reducedMotion: 'reduce',
 
-    /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'on-first-retry',
+    /* Collect a trace on every run (not just on the first retry) so failures are
+     * always debuggable, including flakes that pass on retry and leave no trace. */
+    trace: 'on',
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
@@ -361,7 +362,7 @@ export default defineConfig({
       // moved specs run only on the Basic leg where the setup's
       // admin session stays valid.
       dependencies: authDependencies,
-      use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
+      use: { ...devices['Desktop Chrome'], trace: 'on' },
       fullyParallel: false,
       workers: 1,
     },
