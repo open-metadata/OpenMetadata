@@ -255,24 +255,6 @@ describe('CustomizablePageHeader', () => {
       ).toBeInTheDocument();
     });
 
-    it('uses general-preferences subheader key when pageFqn is "general-preferences"', () => {
-      (useRequiredParams as jest.Mock).mockReturnValue({
-        pageFqn: 'general-preferences',
-      });
-
-      render(
-        <MemoryRouter>
-          <CustomizablePageHeader {...mockProps} />
-        </MemoryRouter>
-      );
-
-      expect(
-        screen.getByTestId(
-          'message.customize-your-general-preferences-subheader'
-        )
-      ).toBeInTheDocument();
-    });
-
     it('uses home-page subheader key for PageType.LandingPage', () => {
       (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
         currentPageType: PageType.LandingPage,

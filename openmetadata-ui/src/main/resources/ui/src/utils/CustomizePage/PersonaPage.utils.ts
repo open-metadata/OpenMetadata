@@ -31,12 +31,12 @@ import {
   PersonaPreferences,
 } from '../../generated/type/personaPreferences';
 
-export type PersonaGeneralPreferences = Pick<
+export type PersonaAppLayoutPreferences = Pick<
   PersonaPreferences,
   'appMode' | 'defaultLandingPage' | 'defaultViewModes'
 >;
 
-const GENERAL_PREFERENCE_KEYS: Array<keyof PersonaGeneralPreferences> = [
+const APP_LAYOUT_PREFERENCE_KEYS: Array<keyof PersonaAppLayoutPreferences> = [
   'appMode',
   'defaultLandingPage',
   'defaultViewModes',
@@ -133,14 +133,14 @@ export const getPersonaPreferences = (
   )?.find((entry) => entry.personaId === personaId);
 
 /**
- * Replaces the persona's general preferences. An undefined field is removed
+ * Replaces the persona's App Layout preferences. An undefined field is removed
  * rather than stored, so "no value" keeps meaning "fall through to the next
  * default" (see `resolveEffectiveAppMode` and `resolvePersonaLandingPage`).
  */
-export const updatePersonaGeneralPreferences = (
+export const updatePersonaAppLayout = (
   preferences: PersonaPreferences[],
   persona: Pick<Persona, 'id' | 'name'>,
-  changes: PersonaGeneralPreferences
+  changes: PersonaAppLayoutPreferences
 ): PersonaPreferences[] => {
   const values = omitBy(changes, isUndefined);
   const hasEntry = preferences.some((entry) => entry.personaId === persona.id);
@@ -156,7 +156,7 @@ export const updatePersonaGeneralPreferences = (
 
   return preferences.map((entry) =>
     entry.personaId === persona.id
-      ? { ...omit(entry, GENERAL_PREFERENCE_KEYS), ...values }
+      ? { ...omit(entry, APP_LAYOUT_PREFERENCE_KEYS), ...values }
       : entry
   );
 };

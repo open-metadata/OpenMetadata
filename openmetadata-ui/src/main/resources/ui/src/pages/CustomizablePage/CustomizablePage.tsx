@@ -46,9 +46,9 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
 import {
   normalizePersonaDocument,
-  PersonaGeneralPreferences,
+  PersonaAppLayoutPreferences,
+  updatePersonaAppLayout,
   updatePersonaDocumentPage,
-  updatePersonaGeneralPreferences,
 } from '../../utils/CustomizePage/PersonaPage.utils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getOwnHandler } from '../../utils/RecordUtils';
@@ -71,12 +71,12 @@ const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
   )
 );
 
-const PersonaGeneralPreferencesPage = withSuspenseFallback(
+const PersonaAppLayoutPage = withSuspenseFallback(
   lazy(() =>
     import(
-      '../platform/persona/PersonaGeneralPreferencesPage/PersonaGeneralPreferencesPage'
+      '../platform/persona/PersonaAppLayoutPage/PersonaAppLayoutPage'
     ).then((m) => ({
-      default: m.PersonaGeneralPreferencesPage,
+      default: m.PersonaAppLayoutPage,
     }))
   )
 );
@@ -95,9 +95,7 @@ interface CustomizePageRenderContext {
   onNavigationSave: (
     uiNavigation: UICustomization['navigation']
   ) => Promise<void>;
-  onGeneralPreferencesSave: (
-    preferences: PersonaGeneralPreferences
-  ) => Promise<void>;
+  onAppLayoutSave: (preferences: PersonaAppLayoutPreferences) => Promise<void>;
   onBackgroundColorUpdate: (color?: string) => Promise<void>;
 }
 
@@ -134,7 +132,7 @@ const getCustomizePageContent = (
     backgroundColor,
     onSaveLayout,
     onNavigationSave,
-    onGeneralPreferencesSave,
+    onAppLayoutSave,
     onBackgroundColorUpdate,
   } = ctx;
 
@@ -164,10 +162,10 @@ const getCustomizePageContent = (
         onSave={onNavigationSave}
       />
     ),
-    'general-preferences': () => (
-      <PersonaGeneralPreferencesPage
+    'app-layout': () => (
+      <PersonaAppLayoutPage
         personaDetails={personaDetails}
-        onSave={onGeneralPreferencesSave}
+        onSave={onAppLayoutSave}
       />
     ),
     askCollateSidebar: () => <CustomizeAppModeSidebarPage />,
@@ -409,8 +407,8 @@ const CustomizablePageContent = () => {
     }
   };
 
-  const handleGeneralPreferencesSave = async (
-    preferences: PersonaGeneralPreferences
+  const handleAppLayoutSave = async (
+    preferences: PersonaAppLayoutPreferences
   ) => {
     if (!document || !personaDetails) {
       return;
@@ -419,7 +417,7 @@ const CustomizablePageContent = () => {
       let response: Document;
       const newDoc = cloneDeep(document);
 
-      newDoc.data.personaPreferences = updatePersonaGeneralPreferences(
+      newDoc.data.personaPreferences = updatePersonaAppLayout(
         (newDoc.data.personaPreferences ?? []) as PersonaPreferences[],
         personaDetails,
         preferences
@@ -539,7 +537,7 @@ const CustomizablePageContent = () => {
     backgroundColor,
     onSaveLayout: handlePageCustomizeSave,
     onNavigationSave: handleNavigationSave,
-    onGeneralPreferencesSave: handleGeneralPreferencesSave,
+    onAppLayoutSave: handleAppLayoutSave,
     onBackgroundColorUpdate: handleBackgroundColorUpdate,
   });
 };

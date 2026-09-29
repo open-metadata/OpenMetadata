@@ -28,8 +28,8 @@ describe('PersonaUtils', () => {
           icon: 'svg-mock',
         }),
         expect.objectContaining({
-          key: 'general-preferences',
-          label: 'label.general-preferences',
+          key: 'app-layout',
+          label: 'label.app-layout',
           icon: 'svg-mock',
         }),
         expect.objectContaining({

@@ -60,8 +60,6 @@ export const CustomizablePageHeader = ({
     currentPageType === PageType.LandingPage ||
     currentPageType === PersonaCustomizePageFqn.Homepage;
   const isNavigationPage = pageFqn === PersonaCustomizePageFqn.Navigation;
-  const isGeneralPreferencesPage =
-    pageFqn === PersonaCustomizePageFqn.GeneralPreferences;
 
   // Navigate to an explicit URL (not navigate(-1)) so the parent's
   // NavigationBlocker can intercept the pushState and reliably land on the
@@ -104,14 +102,12 @@ export const CustomizablePageHeader = ({
   const subTitle = useMemo(() => {
     if (isNavigationPage) {
       return 'message.customize-your-navigation-subheader';
-    } else if (isGeneralPreferencesPage) {
-      return 'message.customize-your-general-preferences-subheader';
     } else if (isLandingPage) {
       return 'message.customize-home-page-page-header-for-persona';
     }
 
     return 'message.customize-entity-landing-page-header-for-persona';
-  }, [isNavigationPage, isGeneralPreferencesPage, isLandingPage]);
+  }, [isNavigationPage, isLandingPage]);
 
   return (
     <Card

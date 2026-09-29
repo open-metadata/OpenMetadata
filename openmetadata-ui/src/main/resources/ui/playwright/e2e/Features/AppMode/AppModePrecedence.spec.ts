@@ -64,7 +64,7 @@ type PersonaWithAppMode = {
 /**
  * Creates a persona + its docStore `UICustomization` doc with a single
  * `personaPreferences` entry forcing `appMode`. Mirrors what the admin persona
- * editor writes (see `CustomizablePage.tsx::handleGeneralPreferencesSave`).
+ * editor writes (see `CustomizablePage.tsx::handleAppLayoutSave`).
  */
 const createPersonaWithAppMode = async (
   apiContext: APIRequestContext,

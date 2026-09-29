@@ -13,6 +13,7 @@
 import { map, startCase } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
+import { ReactComponent as AppLayoutIcon } from '../assets/svg/app-layout.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification-colored-new.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
@@ -25,7 +26,6 @@ import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema-colo
 import { ReactComponent as DirectoryIcon } from '../assets/svg/directory-colored-new.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/domain-colored.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/file-colored-new.svg';
-import { ReactComponent as GeneralPreferencesIcon } from '../assets/svg/general-preferences.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as GovernIcon } from '../assets/svg/governance.svg';
 import { ReactComponent as HomepageIcon } from '../assets/svg/homepage.svg';
@@ -51,7 +51,7 @@ export type CustomizeIconKeys =
   | 'dataAssets'
   | 'navigation'
   | 'askCollateSidebar'
-  | 'general-preferences';
+  | 'app-layout';
 
 const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Table]: TableIcon,
@@ -73,7 +73,7 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.LandingPage]: HomepageIcon,
   ['navigation']: NavigationIcon,
   ['askCollateSidebar']: NavigationIcon,
-  ['general-preferences']: GeneralPreferencesIcon,
+  ['app-layout']: AppLayoutIcon,
   [PageType.APICollection]: APICollectionIcon,
   [PageType.APIEndpoint]: APIEndpointIcon,
   [PageType.MlModel]: MlModelIcon,
@@ -105,11 +105,11 @@ class PersonaClassBase {
         icon: entityIcons['navigation'],
       },
       {
-        key: 'general-preferences',
-        label: i18n.t('label.general-preferences'),
+        key: 'app-layout',
+        label: i18n.t('label.app-layout'),
         isBeta: false,
-        description: i18n.t('message.persona-general-preferences-description'),
-        icon: entityIcons['general-preferences'],
+        description: i18n.t('message.persona-app-layout-description'),
+        icon: entityIcons['app-layout'],
       },
       {
         key: 'askCollateSidebar',

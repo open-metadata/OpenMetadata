@@ -24,8 +24,8 @@ import {
   normalizePersonaDocument,
   resolvePersonaLandingPage,
   resolvePersonaViewMode,
+  updatePersonaAppLayout,
   updatePersonaDocumentPage,
-  updatePersonaGeneralPreferences,
 } from './PersonaPage.utils';
 
 const tablePage = {
@@ -123,7 +123,7 @@ describe('PersonaPage utilities', () => {
   });
 });
 
-describe('updatePersonaGeneralPreferences', () => {
+describe('updatePersonaAppLayout', () => {
   const persona = { id: 'persona-1', name: 'analytics' };
   const otherEntry: PersonaPreferences = {
     personaId: 'persona-2',
@@ -133,7 +133,7 @@ describe('updatePersonaGeneralPreferences', () => {
 
   it('adds an entry when the persona has none', () => {
     expect(
-      updatePersonaGeneralPreferences([otherEntry], persona, {
+      updatePersonaAppLayout([otherEntry], persona, {
         appMode: AppMode.AI,
         defaultLandingPage: '/explore',
       })
@@ -157,7 +157,7 @@ describe('updatePersonaGeneralPreferences', () => {
     };
 
     expect(
-      updatePersonaGeneralPreferences([entry, otherEntry], persona, {
+      updatePersonaAppLayout([entry, otherEntry], persona, {
         appMode: AppMode.AI,
         defaultLandingPage: '/glossary',
       })
@@ -176,7 +176,7 @@ describe('updatePersonaGeneralPreferences', () => {
       landingPageSettings: { headerColor: '#fff' },
     };
 
-    const [updated] = updatePersonaGeneralPreferences([entry], persona, {});
+    const [updated] = updatePersonaAppLayout([entry], persona, {});
 
     expect(updated).toEqual({
       personaId: 'persona-1',
@@ -188,9 +188,7 @@ describe('updatePersonaGeneralPreferences', () => {
   it('returns the same array when clearing a persona that has no entry', () => {
     const preferences = [otherEntry];
 
-    expect(updatePersonaGeneralPreferences(preferences, persona, {})).toBe(
-      preferences
-    );
+    expect(updatePersonaAppLayout(preferences, persona, {})).toBe(preferences);
   });
 });
 

@@ -16,7 +16,7 @@ import { PageType } from '../generated/system/ui/page';
 
 export enum PersonaCustomizePageFqn {
   Navigation = 'navigation',
-  GeneralPreferences = 'general-preferences',
+  AppLayout = 'app-layout',
   Homepage = 'homepage',
 }
 

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import {
   AppMode,
@@ -19,35 +20,7 @@ import {
   PersonaPreferences,
 } from '../../../../generated/type/personaPreferences';
 import { useCustomizeStore } from '../../../CustomizablePage/CustomizeStore';
-import { PersonaGeneralPreferencesPage } from './PersonaGeneralPreferencesPage';
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-jest.mock(
-  '../../../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader',
-  () => ({
-    CustomizablePageHeader: ({
-      onSave,
-      onReset,
-      disableSave,
-    }: {
-      onSave: () => void;
-      onReset: () => void;
-      disableSave: boolean;
-    }) => (
-      <div>
-        <button data-testid="save-btn" disabled={disableSave} onClick={onSave}>
-          save
-        </button>
-        <button data-testid="reset-btn" onClick={onReset}>
-          reset
-        </button>
-      </div>
-    ),
-  })
-);
+import { PersonaAppLayoutPage } from './PersonaAppLayoutPage';
 
 jest.mock('../../../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
@@ -91,11 +64,20 @@ const seedDoc = (
 
 const renderPage = (onSave = jest.fn().mockResolvedValue(undefined)) => {
   render(
-    <PersonaGeneralPreferencesPage personaDetails={persona} onSave={onSave} />
+    <MemoryRouter>
+      <PersonaAppLayoutPage personaDetails={persona} onSave={onSave} />
+    </MemoryRouter>
   );
 
   return onSave;
 };
+
+const getSaveButton = () => screen.getByTestId('save-button');
+
+const clickSave = () =>
+  act(async () => {
+    fireEvent.click(getSaveButton());
+  });
 
 const getRadio = (value: string) =>
   within(screen.getByTestId(`app-mode-option-${value}`)).getByRole(
@@ -113,7 +95,7 @@ const getViewOption = (page: string, view: string) =>
 const openAddPageMenu = () =>
   fireEvent.click(screen.getByTestId('add-view-mode-page'));
 
-describe('PersonaGeneralPreferencesPage', () => {
+describe('PersonaAppLayoutPage', () => {
   beforeEach(() => {
     seedDoc();
   });
@@ -243,7 +225,7 @@ describe('PersonaGeneralPreferencesPage', () => {
       );
       fireEvent.click(getViewOption('domains', 'label.tree'));
       fireEvent.click(screen.getByTestId('remove-view-mode-dataProducts'));
-      fireEvent.click(screen.getByTestId('save-btn'));
+      await clickSave();
 
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -255,32 +237,41 @@ describe('PersonaGeneralPreferencesPage', () => {
       );
     });
 
-    it('saves no view modes once every page is removed', () => {
+    it('saves no view modes once every page is removed', async () => {
       seedDoc({ defaultViewModes: { domains: PageViewMode.Card } });
       const onSave = renderPage();
 
       fireEvent.click(screen.getByTestId('remove-view-mode-domains'));
-      fireEvent.click(screen.getByTestId('save-btn'));
+      await clickSave();
 
       expect(onSave.mock.calls[0][0].defaultViewModes).toBeUndefined();
     });
   });
 
-  describe('Save and reset', () => {
-    it('disables save until something changes', () => {
+  describe('Save and discard', () => {
+    it('disables save and discard until something changes', () => {
       seedDoc({ appMode: AppMode.AI, defaultLandingPage: '/explore' });
       renderPage();
 
-      expect(
-        (screen.getByTestId('save-btn') as HTMLButtonElement).disabled
-      ).toBe(true);
+      expect(getSaveButton()).toBeDisabled();
+      expect(screen.getByTestId('discard-button')).toBeDisabled();
+      expect(screen.getByTestId('save-status')).toHaveTextContent(
+        'message.all-changes-saved'
+      );
+
+      fireEvent.click(getRadio(AppMode.Classic));
+
+      expect(getSaveButton()).toBeEnabled();
+      expect(screen.getByTestId('save-status')).toHaveTextContent(
+        'message.unsaved-changes'
+      );
     });
 
-    it('saves the selected app mode and keeps Home as unset', () => {
+    it('saves the selected app mode and keeps Home as unset', async () => {
       const onSave = renderPage();
 
       fireEvent.click(getRadio(AppMode.AI));
-      fireEvent.click(screen.getByTestId('save-btn'));
+      await clickSave();
 
       expect(onSave).toHaveBeenCalledWith({
         appMode: AppMode.AI,
@@ -297,7 +288,7 @@ describe('PersonaGeneralPreferencesPage', () => {
           name: /label\.data-product-plural/,
         })
       );
-      fireEvent.click(screen.getByTestId('save-btn'));
+      await clickSave();
 
       expect(onSave).toHaveBeenCalledWith({
         appMode: undefined,
@@ -305,12 +296,12 @@ describe('PersonaGeneralPreferencesPage', () => {
       });
     });
 
-    it('saves No default as an unset app mode', () => {
+    it('saves No default as an unset app mode', async () => {
       seedDoc({ appMode: AppMode.AI });
       const onSave = renderPage();
 
       fireEvent.click(getRadio('null'));
-      fireEvent.click(screen.getByTestId('save-btn'));
+      await clickSave();
 
       expect(onSave).toHaveBeenCalledWith({
         appMode: undefined,
@@ -318,7 +309,7 @@ describe('PersonaGeneralPreferencesPage', () => {
       });
     });
 
-    it('reset returns every setting to its default', () => {
+    it('discard reverts every unsaved change to the saved values', () => {
       seedDoc({
         appMode: AppMode.AI,
         defaultLandingPage: '/glossary',
@@ -326,13 +317,14 @@ describe('PersonaGeneralPreferencesPage', () => {
       });
       renderPage();
 
-      fireEvent.click(screen.getByTestId('reset-btn'));
+      fireEvent.click(getRadio(AppMode.Classic));
+      fireEvent.click(screen.getByTestId('remove-view-mode-domains'));
+      fireEvent.click(screen.getByTestId('discard-button'));
 
-      expect(getRadio('null').checked).toBe(true);
-      expect(getLandingPageTrigger()).toHaveTextContent('label.home-my-data');
-      expect(
-        screen.queryByTestId('view-mode-row-domains')
-      ).not.toBeInTheDocument();
+      expect(getRadio(AppMode.AI).checked).toBe(true);
+      expect(getLandingPageTrigger()).toHaveTextContent('label.glossary');
+      expect(getViewOption('domains', 'label.tree')).toBeChecked();
+      expect(getSaveButton()).toBeDisabled();
     });
   });
 });
