@@ -16,17 +16,29 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 public class ContextMemoryIndex implements TaggableIndex {
+
+  public static final String FIELD_STATUS = "status";
+
+  private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
+      Set.of(
+          ContextMemoryRepository.FIELD_PRIMARY_ENTITY,
+          ContextMemoryRepository.FIELD_RELATED_ENTITIES,
+          ContextMemoryRepository.FIELD_SOURCE_FILE);
+
   final ContextMemory memory;
 
   public ContextMemoryIndex(ContextMemory memory) {
@@ -44,6 +56,13 @@ public class ContextMemoryIndex implements TaggableIndex {
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.addAll(REINDEX_RELATIONSHIP_FIELDS);
+    return Set.copyOf(fields);
+  }
+
+  @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put("title", memory.getTitle());
     doc.put("summary", memory.getSummary());
@@ -52,7 +71,7 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("memoryType", memory.getMemoryType() != null ? memory.getMemoryType().value() : null);
     doc.put(
         "memoryScope", memory.getMemoryScope() != null ? memory.getMemoryScope().value() : null);
-    doc.put("status", memory.getStatus() != null ? memory.getStatus().value() : null);
+    doc.put(FIELD_STATUS, statusValue(memory));
     doc.put("pinned", Boolean.TRUE.equals(memory.getPinned()));
     doc.put("sourceType", memory.getSourceType() != null ? memory.getSourceType().value() : null);
     doc.put(
@@ -72,6 +91,10 @@ public class ContextMemoryIndex implements TaggableIndex {
     applyShareConfig(doc);
     applyEntityReferences(doc);
     return doc;
+  }
+
+  public static String statusValue(ContextMemory memory) {
+    return memory.getStatus() == null ? null : memory.getStatus().value();
   }
 
   private void applyShareConfig(Map<String, Object> doc) {
