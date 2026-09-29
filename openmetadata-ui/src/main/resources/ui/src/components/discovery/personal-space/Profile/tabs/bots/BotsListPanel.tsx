@@ -368,11 +368,12 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   );
 
   const initialFetchRef = useRef(true);
+  const initialParamsRef = useRef(hashState.params);
 
   useEffect(() => {
     if (initialFetchRef.current) {
       initialFetchRef.current = false;
-      const { cursor, cursorType } = hashState.params;
+      const { cursor, cursorType } = initialParamsRef.current;
       fetchBots(cursor && cursorType ? { [cursorType]: cursor } : undefined);
     } else {
       fetchBots();
