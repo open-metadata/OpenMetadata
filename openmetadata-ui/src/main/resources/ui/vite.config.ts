@@ -79,8 +79,52 @@ const injectCriticalPreloads = (): Plugin => {
   };
 };
 
+const TS_ENUM_IIFE = /\(function\([\w$]+\)\{return [^{}]*\}\)\(\{\}\)/g;
+
+/**
+ * Fails the build when a chunk holds nothing but TS enum objects. That means an
+ * enum module escaped the `app-enums` group: it imports something, or it does
+ * not follow the *.enum.ts / *.interface.ts / types.ts / src/enums convention.
+ * Fix the module; do not add an allowlist.
+ */
+const noEnumOnlyChunks = (): Plugin => ({
+  name: 'no-enum-only-chunks',
+  generateBundle(_opts, bundle) {
+    const offenders = Object.values(bundle).flatMap((chunk) => {
+      if (chunk.type !== 'chunk' || !chunk.code.match(TS_ENUM_IIFE)) {
+        return [];
+      }
+      const rest = chunk.code
+        .replace(/\/\/# sourceMappingURL=.*$/m, '')
+        .replace(/import(\{[^}]*\}from)?"[^"]+";/g, '')
+        .replace(/export\{[^}]*\}(from"[^"]+")?;?/g, '')
+        .replace(TS_ENUM_IIFE, '')
+        .replace(/(let|var|const)\s|[\w$]+=|[,;\s]/g, '');
+
+      return rest
+        ? []
+        : [
+            `${chunk.fileName} <- ${chunk.moduleIds
+              .map((id) => path.relative(__dirname, id))
+              .join(', ')}`,
+          ];
+    });
+
+    if (offenders.length) {
+      this.error(
+        `Enum-only chunks emitted; make the enum module import-free and name it *.enum.ts / *.interface.ts / types.ts:\n  ${offenders.join(
+          '\n  '
+        )}`
+      );
+    }
+  },
+});
+
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // `analyze` must emit the same bundle as `production` (minified, React prod
+  // build), otherwise the treemap reports sizes nobody ships.
+  const isProductionBundle = mode === 'production' || mode === 'analyze';
 
   // rollup-plugin-visualizer is ESM-only; CJS-import would crash Vite's config
   // loader. Dynamic-import only when we actually want it (analyze mode), so the
@@ -117,8 +161,74 @@ export default defineConfig(async ({ mode }) => {
   // source of truth. Return a string to force the module into that bucket, or
   // `undefined` to let the bundler auto-split at the nearest dynamic-import
   // boundary.
-  const classifyChunk = (id: string): string | undefined => {
+  type ModuleGraph = {
+    getModuleInfo: (id: string) => {
+      importers: readonly string[];
+      importedIds: readonly string[];
+      isEntry: boolean;
+    } | null;
+  };
+  const shellReachable = new Map<string, boolean>();
+  // Walks static importers only: a module is on the shell (entry) graph iff
+  // some chain of static imports leads back to an entry.
+  const isShellReachable = (id: string, graph: ModuleGraph): boolean => {
+    const cached = shellReachable.get(id);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const seen = new Set([id]);
+    const queue = [id];
+    let result = false;
+    while (queue.length && !result) {
+      const info = graph.getModuleInfo(queue.pop() as string);
+      if (!info) {
+        continue;
+      }
+      if (info.isEntry) {
+        result = true;
+        break;
+      }
+      for (const importer of info.importers) {
+        if (shellReachable.get(importer)) {
+          result = true;
+          break;
+        }
+        if (!seen.has(importer)) {
+          seen.add(importer);
+          queue.push(importer);
+        }
+      }
+    }
+    shellReachable.set(id, result);
+
+    return result;
+  };
+  // Type/enum modules by convention. At runtime they are only TS `enum`
+  // objects (interfaces/types erase), and each one used by several lazy routes
+  // otherwise becomes its own sub-1 KiB chunk.
+  const isEnumOnlyModule = (id: string) =>
+    id.includes('/src/generated/') ||
+    id.includes('/src/enums/') ||
+    /(\.enum|\.interface|\/types)\.ts$/.test(id);
+
+  const classifyChunk = (
+    id: string,
+    graph?: ModuleGraph
+  ): string | undefined => {
     const normalizedId = id.split('?')[0].replaceAll('\\', '/');
+
+    // Lazy-only enum modules share one chunk. Import-free only: a group also
+    // captures its members' dependencies, so an enum file importing a
+    // shell-used module would drag the whole group onto the entry graph.
+    if (
+      graph &&
+      !isPlaywrightBundle &&
+      isEnumOnlyModule(normalizedId) &&
+      graph.getModuleInfo(id)?.importedIds.length === 0 &&
+      !isShellReachable(id, graph)
+    ) {
+      return 'app-enums';
+    }
 
     if (isPlaywrightBundle) {
       if (
@@ -179,6 +289,13 @@ export default defineConfig(async ({ mode }) => {
     // in SsoScenarios.spec.
     if (packageName === 'oidc-client') {
       return 'vendor-oidc-client';
+    }
+
+    // Left to the auto-splitter, lodash-es fans out into one chunk per
+    // helper (~50 sub-1 KiB chunks). Only the functions we import survive
+    // tree-shaking, so one bucket stays small.
+    if (packageName === 'lodash-es') {
+      return 'vendor-lodash';
     }
 
     if (
@@ -260,6 +377,25 @@ export default defineConfig(async ({ mode }) => {
           return out === code ? null : { code: out, map: null };
         },
       },
+      // react-tour's UMD build does `require("lodash")`; through the global
+      // `lodash → lodash-es` alias that CJS interop materialises the whole
+      // lodash-es namespace (~520 modules) and it lands in the entry chunk.
+      // Hand react-tour the real CJS lodash so it stays in the tour's lazy chunk.
+      {
+        name: 'react-tour-cjs-lodash',
+        enforce: 'pre' as const,
+        resolveId(source: string, importer?: string) {
+          if (
+            source === 'lodash-es' &&
+            importer?.includes('/@deuex-solutions/react-tour/')
+          ) {
+            return path.resolve(__dirname, 'node_modules/lodash/lodash.js');
+          }
+
+          return null;
+        },
+      },
+      isProductionBundle && !isPlaywrightBundle && noEnumOnlyChunks(),
       {
         name: 'html-transform',
         transformIndexHtml(html: string) {
@@ -295,7 +431,7 @@ export default defineConfig(async ({ mode }) => {
           Buffer: true,
         },
       }),
-      mode === 'production' && injectCriticalPreloads(),
+      isProductionBundle && injectCriticalPreloads(),
       mode === 'production' &&
         viteCompression({
           algorithm: 'gzip',
@@ -443,7 +579,7 @@ export default defineConfig(async ({ mode }) => {
       // (see Linear's bundler-arc blog post). Bundle is typically 5-10% smaller
       // and the same browsers we already require keep working.
       target: ['chrome93', 'edge93', 'firefox91', 'safari16'],
-      minify: mode === 'production' ? 'esbuild' : false,
+      minify: isProductionBundle ? 'esbuild' : false,
       cssMinify: 'esbuild',
       cssCodeSplit: !isPlaywrightBundle,
       reportCompressedSize: false,
@@ -477,10 +613,7 @@ export default defineConfig(async ({ mode }) => {
           : {
               input: {
                 main: path.resolve(__dirname, 'index.html'),
-                silentCallback: path.resolve(
-                  __dirname,
-                  'silent-callback.html'
-                ),
+                silentCallback: path.resolve(__dirname, 'silent-callback.html'),
               },
             }),
         onwarn(warning, warn) {
@@ -572,7 +705,9 @@ export default defineConfig(async ({ mode }) => {
 
     define: {
       'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild),
-      'process.env.NODE_ENV': JSON.stringify(mode),
+      'process.env.NODE_ENV': JSON.stringify(
+        isProductionBundle ? 'production' : mode
+      ),
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'
       ),

@@ -12,10 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import DOMPurify from 'dompurify';
-import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
-import removeMarkdown from 'remove-markdown';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
 import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
@@ -159,21 +156,6 @@ export const getSafeHttpUrl = (url?: string): string | undefined => {
   } catch {
     return undefined;
   }
-};
-
-/**
- * Convert a template string into HTML DOM nodes.
- * Input is sanitized with DOMPurify before being parsed to prevent stored
- * XSS from stored user content (e.g. entity name/displayName) — see
- * GHSA-59gm-6h39-397f. DOMPurify's default profile preserves the benign
- * markup callers rely on (<span class>, <mark>, <em>, <ins>, <del>) while
- * stripping <iframe>, <script>, event handler attributes, and
- * javascript:/data: URLs.
- */
-export const stringToHTML = function (
-  strHTML: string
-): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;
 };
 
 /**
@@ -495,10 +477,6 @@ export function decodeHtmlEntities(text: string): string {
   const doc = new DOMParser().parseFromString(text, 'text/html');
 
   return doc.documentElement.textContent ?? text;
-}
-
-export function stripMarkdown(text: string): string {
-  return decodeHtmlEntities(removeMarkdown(text)).trim();
 }
 
 export function removeAttachmentsWithoutUrl(htmlString: string): string {

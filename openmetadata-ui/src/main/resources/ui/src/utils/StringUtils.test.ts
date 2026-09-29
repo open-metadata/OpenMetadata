@@ -45,9 +45,8 @@ import {
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
-  stringToHTML,
-  stripMarkdown,
 } from './StringUtils';
+import { stringToHTML, stripMarkdown } from './RichTextStringUtils';
 
 describe('StringUtils', () => {
   it('getEncodedFqn should return encoded Fqn', () => {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { UserManager } from 'oidc-client';
-import { getCandidateUserManagerConfig } from '../../../utils/AuthProvider.util';
+import { getCandidateUserManagerConfig } from './candidateUserManagerConfig';
 import { SSO_TEST_LOGIN_STORE_PREFIX } from '../../../utils/SsoTestLoginPopup';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
 

@@ -100,7 +100,7 @@ import {
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
-import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsSessionUtils';
 import Loader from '../../common/Loader/Loader';
 import {
   LazyAuth0Authenticator,

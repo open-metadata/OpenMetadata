@@ -17,7 +17,7 @@ import {
   TestLoginResult,
   testLoginValidateToken,
 } from '../../../rest/securityConfigAPI';
-import { getCandidateUserManagerConfig } from '../../../utils/AuthProvider.util';
+import { getCandidateUserManagerConfig } from './candidateUserManagerConfig';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
 import { SSO_TEST_LOGIN_CANDIDATE_KEY } from './ssoTestCallbackBootstrap';

@@ -30,7 +30,7 @@ import {
 } from '../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { stringToHTML } from '../../../utils/RichTextStringUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import Description from '../../common/EntityDescription/Description';
