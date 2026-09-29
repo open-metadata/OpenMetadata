@@ -11,6 +11,8 @@
 """Unit tests for the system metrics implementation registry."""
 
 import logging
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -42,7 +44,7 @@ def test_dialect_without_implementation_is_discovered_once(monkeypatch, caplog):
         imported.append(key)
         raise DynamicImportException(module=key, cause=ModuleNotFoundError(key))
 
-    monkeypatch.setattr(system_module, "import_from_module", failing_import)
+    monkeypatch.setattr(system_module, "import_side_effects", failing_import)
     dialect = SimpleNamespace(name="vertica")
 
     with caplog.at_level(logging.DEBUG, logger=system_module.logger.name):
@@ -61,7 +63,7 @@ def test_registered_dialect_is_returned_without_discovery(monkeypatch):
     def unexpected_import(key: str, *_args, **_kwargs):
         raise AssertionError(f"discovery should not run for a registered dialect: {key}")
 
-    monkeypatch.setattr(system_module, "import_from_module", unexpected_import)
+    monkeypatch.setattr(system_module, "import_side_effects", unexpected_import)
 
     class VerticaSystemMetrics:
         """Stand-in for a real system metrics implementation."""
@@ -69,3 +71,32 @@ def test_registered_dialect_is_returned_without_discovery(monkeypatch):
     SystemMetricsRegistry.register(SimpleNamespace(name="vertica"), VerticaSystemMetrics)
 
     assert SystemMetricsRegistry.get(SimpleNamespace(name="vertica")) is VerticaSystemMetrics
+
+
+_DISCOVERY_PROBE = """
+import warnings
+
+warnings.filterwarnings("ignore")
+from types import SimpleNamespace
+
+from metadata.profiler.metrics.system.system import SystemMetricsRegistry
+
+implementation = SystemMetricsRegistry.get(SimpleNamespace(name="redshift"))
+assert implementation is not None, "discovery found no implementation for redshift"
+assert isinstance(implementation, type), f"registry holds {implementation!r}, not a class"
+assert implementation.__name__ == "RedshiftSystemMetricsComputer", implementation.__name__
+print("OK")
+"""
+
+
+def test_dialect_with_implementation_is_resolved_by_discovery():
+    """Discovery on its own resolves a dialect that ships an implementation.
+
+    Fresh interpreter: the registry and the side-effect loader are both process-wide, so
+    in-process the implementation is already registered by whatever imported its profiler
+    interface, which means discovery is never exercised.
+    """
+    result = subprocess.run([sys.executable, "-c", _DISCOVERY_PROBE], capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, f"discovery probe failed:\n{result.stdout}\n{result.stderr}"
+    assert result.stdout.strip().endswith("OK")
