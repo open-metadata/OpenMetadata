@@ -714,7 +714,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 className="tw:max-w-52 tw:align-middle"
                 color="link-color"
                 href={isString(tableLink) ? tableLink : tableLink.pathname}
-                size="sm"
+                size="xs"
                 tooltip={getEntityName(columnSource.table)}>
                 {getEntityName(columnSource.table)}
               </CoreButton>
