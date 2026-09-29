@@ -108,6 +108,8 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const latestSearchRequest = useRef(0);
   const botsByUserNameRef = useRef<Map<string, Bot>>(new Map());
   const botMapLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const searchTermRef = useRef(searchTerm);
+  searchTermRef.current = searchTerm;
 
   const showPagination = useMemo(
     () => Boolean(paging.before || paging.after) || paging.total > pageSize,
@@ -245,7 +247,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         setPaging(newPaging);
         setBots(data);
 
-        const activeTerm = searchTerm.trim();
+        const activeTerm = searchTermRef.current.trim();
 
         if (activeTerm) {
           const searchRequestId = ++latestSearchRequest.current;
@@ -275,7 +277,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         }
       }
     },
-    [pageSize, showDeleted, searchTerm, searchBots]
+    [pageSize, showDeleted, searchBots]
   );
 
   const handleSearch = useCallback(
@@ -365,11 +367,24 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
     [updateParams]
   );
 
+  const initialFetchRef = useRef(true);
+
   useEffect(() => {
-    fetchBots();
+    if (initialFetchRef.current) {
+      initialFetchRef.current = false;
+      const { cursor, cursorType } = hashState.params;
+      fetchBots(cursor && cursorType ? { [cursorType]: cursor } : undefined);
+    } else {
+      fetchBots();
+    }
   }, [fetchBots, reloadKey, refreshKey]);
 
-  // ponytail: bot map loaded lazily on first search, not eagerly on mount
+  // Bot map loads lazily on first search; clear it when the showDeleted-dependent
+  // loader changes so search never filters against a stale-include map.
+  useEffect(() => {
+    botMapLoadPromiseRef.current = null;
+    botsByUserNameRef.current = new Map();
+  }, [loadBotsByUserNameMap]);
 
   const renderCell = useCallback(
     (bot: Bot, columnId: BotColumnId) => {

@@ -193,7 +193,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
 
   return (
     <HookForm
-      className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+      className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:justify-between"
       data-testid="bot-add-form"
       form={form}>
       <div className="tw:overflow-y-auto">
