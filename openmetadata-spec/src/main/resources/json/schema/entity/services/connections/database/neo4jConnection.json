@@ -1,0 +1,89 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/neo4jConnection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Neo4jConnection",
+  "description": "Neo4j Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.Neo4jConnection",
+  "definitions": {
+    "neo4jType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Neo4j"],
+      "default": "Neo4j"
+    },
+    "neo4jScheme": {
+      "description": "Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts and accepts self-signed certificates.",
+      "type": "string",
+      "enum": ["neo4j", "neo4j+s", "neo4j+ssc", "bolt", "bolt+s", "bolt+ssc"],
+      "default": "neo4j"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/neo4jType",
+      "default": "Neo4j"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
+      "$ref": "#/definitions/neo4jScheme",
+      "default": "neo4j"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use 7687.",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Neo4j. The user needs read access to the graph schema of the database.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Neo4j.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Neo4j database to extract metadata from. If left blank, the user's home database is used.",
+      "type": "string"
+    },
+    "includeRelationships": {
+      "title": "Include Relationships",
+      "description": "Also ingest relationship types as tables in the `relationships` schema, with their properties as columns.",
+      "type": "boolean",
+      "default": true
+    },
+    "propertyFilterPattern": {
+      "title": "Property Filter Pattern",
+      "description": "Regex to only include/exclude node and relationship properties (columns) that match the pattern, e.g. properties written back by graph algorithms.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "password"]
+}

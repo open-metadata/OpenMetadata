@@ -1,0 +1,185 @@
+{
+  "title": "Neo4jConnection",
+  "description": "Neo4j Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.Neo4jConnection",
+  "definitions": {
+    "neo4jType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Neo4j"
+      ],
+      "default": "Neo4j"
+    },
+    "neo4jScheme": {
+      "description": "Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts and accepts self-signed certificates.",
+      "type": "string",
+      "enum": [
+        "neo4j",
+        "neo4j+s",
+        "neo4j+ssc",
+        "bolt",
+        "bolt+s",
+        "bolt+ssc"
+      ],
+      "default": "neo4j"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Neo4j",
+      "type": "string",
+      "enum": [
+        "Neo4j"
+      ]
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
+      "default": "neo4j",
+      "type": "string",
+      "enum": [
+        "neo4j",
+        "neo4j+s",
+        "neo4j+ssc",
+        "bolt",
+        "bolt+s",
+        "bolt+ssc"
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use 7687.",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Neo4j. The user needs read access to the graph schema of the database.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Neo4j.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Neo4j database to extract metadata from. If left blank, the user's home database is used.",
+      "type": "string"
+    },
+    "includeRelationships": {
+      "title": "Include Relationships",
+      "description": "Also ingest relationship types as tables in the `relationships` schema, with their properties as columns.",
+      "type": "boolean",
+      "default": true
+    },
+    "propertyFilterPattern": {
+      "title": "Property Filter Pattern",
+      "description": "Regex to only include/exclude node and relationship properties (columns) that match the pattern, e.g. properties written back by graph algorithms.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "password"
+  ]
+}
