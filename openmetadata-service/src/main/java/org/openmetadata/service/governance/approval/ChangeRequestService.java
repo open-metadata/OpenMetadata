@@ -35,6 +35,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GovernanceDAOs.ChangeRequestDAO;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
@@ -115,21 +116,34 @@ public final class ChangeRequestService {
   }
 
   public static void cancelAllForEntity(UUID entityId, String reason) {
-    for (ChangeRequestStatus open : OPEN_STATUSES) {
-      dao()
-          .changeRequestDAO()
-          .listByEntityAndStatus(entityId, open.value())
-          .forEach(request -> finish(request.getId(), null, ChangeRequestStatus.CANCELLED, reason));
+    ChangeRequestDAO requests = changeRequests();
+    if (requests != null) {
+      for (ChangeRequestStatus open : OPEN_STATUSES) {
+        requests
+            .listByEntityAndStatus(entityId, open.value())
+            .forEach(
+                request -> finish(request.getId(), null, ChangeRequestStatus.CANCELLED, reason));
+      }
     }
   }
 
   public static void cancelAllForWorkflow(UUID workflowDefinitionId, String reason) {
-    for (ChangeRequestStatus open : OPEN_STATUSES) {
-      dao()
-          .changeRequestDAO()
-          .listByWorkflowAndStatus(workflowDefinitionId, open.value())
-          .forEach(request -> finish(request.getId(), null, ChangeRequestStatus.CANCELLED, reason));
+    ChangeRequestDAO requests = changeRequests();
+    if (requests != null) {
+      for (ChangeRequestStatus open : OPEN_STATUSES) {
+        requests
+            .listByWorkflowAndStatus(workflowDefinitionId, open.value())
+            .forEach(
+                request -> finish(request.getId(), null, ChangeRequestStatus.CANCELLED, reason));
+      }
     }
+  }
+
+  // Before the server wires its DAOs (and in DAO-less unit tests) no change request can exist, so
+  // lifecycle clean-up on delete has nothing to cancel.
+  private static ChangeRequestDAO changeRequests() {
+    CollectionDAO dao = dao();
+    return dao == null ? null : dao.changeRequestDAO();
   }
 
   private static ChangeRequest finishLocked(
