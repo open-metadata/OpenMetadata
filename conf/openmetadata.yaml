@@ -403,6 +403,7 @@ objectStorage:
   # For MinIO use provider "s3" and point s3.endpoint at the MinIO server.
   provider: ${ASSET_UPLOADER_PROVIDER:-s3}
   maxFileSize: ${ASSET_UPLOADER_MAX_FILE_SIZE:-5242880}
+  maxUploadsPerUserPerDay: ${ASSET_UPLOADER_MAX_UPLOADS_PER_USER_PER_DAY:-50}
   s3:
     endpoint: ${ASSET_UPLOADER_S3_ENDPOINT:-""}
     bucketName: ${ASSET_UPLOADER_S3_BUCKET_NAME:-"my-bucket"}

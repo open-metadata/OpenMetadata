@@ -347,6 +347,16 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return assetId != null && contextFileDAO.countByAssetId(assetId) > 0;
   }
 
+  /** The live documents that are views of this stored asset. */
+  public List<ContextFile> findByAsset(String assetId) {
+    if (assetId == null) {
+      return List.of();
+    }
+    return contextFileDAO.findByAssetId(assetId).stream()
+        .map(json -> JsonUtils.readValue(json, ContextFile.class))
+        .toList();
+  }
+
   public void validateNoDuplicateFileName(String fileName, EntityReference folder, UUID excludeId) {
     if (fileName == null || fileName.isBlank()) {
       return;

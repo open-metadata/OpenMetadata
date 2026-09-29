@@ -125,6 +125,20 @@ public interface KnowledgeAssetDAOs {
         connectionType = POSTGRES)
     int countByAssetId(@Bind("assetId") String assetId);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    List<String> findByAssetId(@Bind("assetId") String assetId);
+
     // Same lookup as above but for soft-deleted (archived) files. A soft-deleted file keeps its
     // nameHash, so it still reserves the name against the unique constraint even though the live
     // count ignores it (e.g. blocks a same-name upload until the archived copy is restored or
