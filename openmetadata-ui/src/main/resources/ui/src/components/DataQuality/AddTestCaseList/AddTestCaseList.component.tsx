@@ -50,7 +50,10 @@ import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  AddTestCaseListFilter,
+  getListTestCaseBySearch,
+} from '../../../rest/testAPI';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
@@ -186,10 +189,6 @@ export const AddTestCaseList = ({
 
     return normalized;
   }, [selectedTest]);
-
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-  };
 
   const fetchTableData = useCallback(async (search = WILD_CARD_CHAR) => {
     setIsTableOptionsLoading(true);
@@ -353,11 +352,34 @@ export const AddTestCaseList = ({
     ]
   );
 
+  // Snapshot of the active search/filter, shaped for the bulk `selectAll` payload so
+  // the backend resolves "all N" to the filtered subset (not every test case). Mirrors
+  // the request params built in fetchTestCases, including its `*term*` wildcard `q`.
+  const activeFilter = useMemo<AddTestCaseListFilter>(() => {
+    const filterTable = filterTables[0];
+    const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
+    const columnName =
+      filterColumns.length > 0
+        ? getColumnNameFromColumnFilterKey(filterColumns[0]) || undefined
+        : undefined;
+
+    return {
+      ...(searchTerm && { q: `*${searchTerm}*` }),
+      ...(filterStatus && { testCaseStatus: filterStatus }),
+      ...(filterTestType !== TestCaseType.all && {
+        testCaseType: filterTestType,
+      }),
+      ...(entityLink && { entityLink, includeAllTests: true }),
+      ...(columnName && { columnName }),
+    };
+  }, [searchTerm, filterStatus, filterTestType, filterTables, filterColumns]);
+
   const buildSubmitPayload = useCallback((): {
     selectAll: boolean;
     includeIds: string[];
     excludeIds: string[];
     testCases: TestCase[];
+    filter?: AddTestCaseListFilter;
   } => {
     if (selectAll) {
       return {
@@ -365,6 +387,7 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excludedIds],
         testCases: [],
+        filter: activeFilter,
       };
     }
     const cases = [...(selectedItems?.values() ?? [])];
@@ -375,7 +398,7 @@ export const AddTestCaseList = ({
       excludeIds: [],
       testCases: cases,
     };
-  }, [selectAll, excludedIds, selectedItems]);
+  }, [selectAll, excludedIds, selectedItems, activeFilter]);
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -383,8 +406,9 @@ export const AddTestCaseList = ({
       selectAll: sa,
       includeIds,
       excludeIds: excl,
+      filter,
     } = buildSubmitPayload();
-    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl });
+    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl, filter });
     setIsLoading(false);
   };
 
@@ -421,10 +445,29 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excluded],
         testCases: [],
+        filter: activeFilter,
       });
     },
-    [onChange]
+    [onChange, activeFilter]
   );
+
+  // A global "select all" means "all of the current filter". When the search or
+  // filters change it must not silently carry over — reset it so the emitted
+  // selection stays consistent with what the list shows (matters for the
+  // create-suite flow, which persists the emitted payload).
+  const resetGlobalSelection = useCallback(() => {
+    if (!selectAll) {
+      return;
+    }
+    setSelectAll(false);
+    setExcludedIds(new Set());
+    emitPartialSelection(selectedItems);
+  }, [selectAll, selectedItems, emitPartialSelection]);
+
+  const handleSearch = (value: string) => {
+    resetGlobalSelection();
+    setSearchTerm(value);
+  };
 
   const loadedItemIds = useMemo(
     () => items.map((i) => i.id).filter(Boolean) as string[],
@@ -520,12 +563,7 @@ export const AddTestCaseList = ({
           nextExcluded.add(id);
         }
         setExcludedIds(nextExcluded);
-        onChange?.({
-          selectAll: true,
-          includeIds: [],
-          excludeIds: [...nextExcluded],
-          testCases: [],
-        });
+        emitFullSelection(nextExcluded);
       } else if (selectedItems.has(id)) {
         const selectedItemMap = new Map<string, TestCase>();
         selectedItems.forEach(
@@ -556,7 +594,7 @@ export const AddTestCaseList = ({
         });
       }
     },
-    [selectAll, selectedItems, items, excludedIds, onChange]
+    [selectAll, selectedItems, items, excludedIds, onChange, emitFullSelection]
   );
 
   useEffect(() => {
@@ -720,6 +758,7 @@ export const AddTestCaseList = ({
 
   const handleFilterChange = useCallback(
     (values: SearchDropdownOption[], searchKey: AddTestCaseListFilterKey) => {
+      resetGlobalSelection();
       switch (searchKey) {
         case AddTestCaseListFilterKey.Status: {
           setFilterStatus(values[0]?.key as TestCaseStatus | undefined);
@@ -745,7 +784,7 @@ export const AddTestCaseList = ({
         }
       }
     },
-    []
+    [resetGlobalSelection]
   );
 
   const filterOptions = useMemo(
