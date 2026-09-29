@@ -1,10 +1,12 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -146,6 +148,65 @@ public class ContextMemoryAnchorIT {
     ContextMemoryService blocked = memoriesAs(createUser(ns, denyTableView(ns), null));
 
     assertEquals(orgWide.getId(), blocked.get(orgWide.getId().toString()).getId());
+  }
+
+  @Test
+  void versions_ofAMemoryWhoseAnchorTheCallerCannotView_areForbidden(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    ContextMemory anchored =
+        adminMemories()
+            .create(
+                entityMemory(ns, "anchored-history")
+                    .withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
+    ContextMemoryService reader = memoriesAs(createUser(ns, null, null));
+    ContextMemoryService blocked = memoriesAs(createUser(ns, denyTableView(ns), null));
+    String id = anchored.getId().toString();
+
+    assertEquals(anchored.getId(), reader.getVersion(id, anchored.getVersion()).getId());
+    assertThrows(ForbiddenException.class, () -> blocked.getVersionList(anchored.getId()));
+    assertThrows(ForbiddenException.class, () -> blocked.getVersion(id, anchored.getVersion()));
+  }
+
+  @Test
+  void listing_keepsItsCursorsAcrossRowsTheCallerCannotSee(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    EntityReference anchorRef = ref(Entity.TABLE, anchor.getId());
+    adminMemories().create(privateMemory(ns, "a-hidden").withPrimaryEntity(anchorRef));
+    adminMemories().create(privateMemory(ns, "b-hidden").withPrimaryEntity(anchorRef));
+    ContextMemory visible =
+        adminMemories().create(entityMemory(ns, "c-visible").withPrimaryEntity(anchorRef));
+    ContextMemoryService reader = memoriesAs(createUser(ns, null, null));
+
+    ListResponse<ContextMemory> firstPage = reader.list(pageOf(anchor, null));
+
+    assertTrue(firstPage.getData().isEmpty());
+    assertNotNull(firstPage.getPaging());
+    assertNotNull(firstPage.getPaging().getAfter());
+    assertEquals(List.of(visible.getId()), idsAcrossPages(reader, anchor));
+  }
+
+  private static CreateContextMemory privateMemory(TestNamespace ns, String name) {
+    return entityMemory(ns, name)
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+  }
+
+  private static ListParams pageOf(Table anchor, String after) {
+    ListParams params =
+        new ListParams().setLimit(1).addFilter("primaryEntityId", anchor.getId().toString());
+    return after == null ? params : params.setAfter(after);
+  }
+
+  private static List<UUID> idsAcrossPages(ContextMemoryService memories, Table anchor) {
+    List<UUID> ids = new ArrayList<>();
+    String after = null;
+    int pages = 0;
+    do {
+      ListResponse<ContextMemory> page = memories.list(pageOf(anchor, after));
+      page.getData().forEach(memory -> ids.add(memory.getId()));
+      after = page.getPaging() == null ? null : page.getPaging().getAfter();
+      pages++;
+    } while (after != null && pages < 10);
+    return ids;
   }
 
   private static Role denyTableView(TestNamespace ns) {
