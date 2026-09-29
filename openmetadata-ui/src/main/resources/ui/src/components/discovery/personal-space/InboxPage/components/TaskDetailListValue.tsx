@@ -84,13 +84,18 @@ const TaskDetailListValue: React.FC<TaskDetailListValueProps> = ({
               // Nothing to pick: choosing an item only follows its link.
               selectionMode="none"
               onAction={openItem}>
+              {/* The item's own `label` truncates; a long nested column path
+                  must stay readable here, so the name wraps instead. */}
               {items.map((item) => (
                 <Dropdown.Item
                   data-testid={`task-detail-list-item-${item.label}`}
                   id={item.label}
                   key={item.label}
-                  label={item.label}
-                />
+                  textValue={item.label}>
+                  <span className="tw:block tw:whitespace-normal tw:break-all">
+                    {item.label}
+                  </span>
+                </Dropdown.Item>
               ))}
             </Dropdown.Menu>
           </Dropdown.Popover>
