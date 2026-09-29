@@ -381,6 +381,57 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     assertEquals(List.of(expired.getId()), idsForStatus(entityLink, AnnouncementStatus.Expired));
   }
 
+  /**
+   * `status` and `active` have to compose. They used to travel different paths: a custom DAO query
+   * took over whenever `active` was set and read the stored `status` column, so once the resource
+   * moved status onto its own filter param the predicate was silently dropped and
+   * {@code ?active=true&status=Scheduled} returned every active announcement.
+   */
+  @Test
+  void testListAnnouncementsByStatusAndActiveTogether(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    long day = 86400000L;
+    String entityLink = "<#E::table::" + ns.prefix("service.db.schema.statusactive") + ">";
+
+    createEntity(
+        new CreateAnnouncement()
+            .withName(ns.prefix("combo-active"))
+            .withDescription("Active announcement")
+            .withEntityLink(entityLink)
+            .withStartTime(now - day)
+            .withEndTime(now + day));
+    Announcement scheduled =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("combo-scheduled"))
+                .withDescription("Scheduled announcement")
+                .withEntityLink(entityLink)
+                .withStartTime(now + day)
+                .withEndTime(now + 2 * day));
+
+    // Contradictory by construction: nothing is both currently active and scheduled.
+    assertEquals(List.of(), idsForStatusAndActive(entityLink, AnnouncementStatus.Active, false));
+    assertEquals(List.of(), idsForStatusAndActive(entityLink, AnnouncementStatus.Scheduled, true));
+    // And the agreeing combination still narrows to the one announcement.
+    assertEquals(
+        List.of(scheduled.getId()),
+        idsForStatusAndActive(entityLink, AnnouncementStatus.Scheduled, false));
+  }
+
+  private List<UUID> idsForStatusAndActive(
+      String entityLink, AnnouncementStatus status, boolean active) {
+    return listEntities(
+            new ListParams()
+                .addQueryParam("status", status.value())
+                .addQueryParam("active", String.valueOf(active))
+                .addQueryParam("entityLink", entityLink)
+                .setLimit(100))
+        .getData()
+        .stream()
+        .map(Announcement::getId)
+        .toList();
+  }
+
   private List<UUID> idsForStatus(String entityLink, AnnouncementStatus status) {
     return listEntities(
             new ListParams()
