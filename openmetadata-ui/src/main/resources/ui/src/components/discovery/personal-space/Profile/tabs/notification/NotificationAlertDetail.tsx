@@ -19,8 +19,11 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 as Delete, Edit01 as Edit } from '@openmetadata/ui-core-components/icons';
-import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01 as Edit,
+  RefreshCw01,
+  Trash01 as Delete,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';

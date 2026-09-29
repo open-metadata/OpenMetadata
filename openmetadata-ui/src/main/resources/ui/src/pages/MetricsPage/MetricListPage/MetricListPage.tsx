@@ -32,11 +32,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-import {
   BarChart03,
   ChevronDown,
   ChevronRight,
@@ -57,6 +52,11 @@ import {
   User01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';

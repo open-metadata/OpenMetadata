@@ -12,10 +12,10 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-components/icons';
 import {
   Bell01,
   Key01,
+  PermissionDebugger as AccessControlIcon,
   Settings02,
   ShieldTick,
   User01,

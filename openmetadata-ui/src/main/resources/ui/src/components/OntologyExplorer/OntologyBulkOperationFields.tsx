@@ -19,7 +19,10 @@ import {
   Select,
   TextArea,
 } from '@openmetadata/ui-core-components';
-import { Download01, UploadCloud01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  UploadCloud01,
+} from '@openmetadata/ui-core-components/icons';
 import { FieldPath, FieldPathValue } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {

@@ -28,7 +28,11 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Settings01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Plus,
+  Settings01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

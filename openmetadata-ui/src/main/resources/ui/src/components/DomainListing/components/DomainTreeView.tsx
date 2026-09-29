@@ -22,8 +22,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Globe01 as DomainIcon,
-  Plus as Expand,
   NoSearch,
+  Plus as Expand,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';

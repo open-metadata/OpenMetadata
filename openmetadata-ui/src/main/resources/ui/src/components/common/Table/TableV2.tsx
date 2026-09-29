@@ -48,7 +48,11 @@ import {
   Table as UntitledTable,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronRight, Search } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronDown,
+  ChevronRight,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import type { ComponentProps } from 'react';

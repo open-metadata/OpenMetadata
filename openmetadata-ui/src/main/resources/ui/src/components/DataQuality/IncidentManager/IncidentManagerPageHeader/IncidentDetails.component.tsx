@@ -12,7 +12,10 @@
  */
 
 import { BadgeWithDot, Button } from '@openmetadata/ui-core-components';
-import { AlertTriangle, ArrowUpRight } from '@openmetadata/ui-core-components/icons';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

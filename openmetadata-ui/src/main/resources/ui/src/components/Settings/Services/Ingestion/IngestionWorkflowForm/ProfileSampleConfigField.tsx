@@ -19,8 +19,8 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FieldProps } from '@rjsf/utils';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { FieldProps } from '@rjsf/utils';
 import { Form, Switch } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

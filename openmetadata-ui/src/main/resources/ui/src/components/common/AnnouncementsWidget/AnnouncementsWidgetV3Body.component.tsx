@@ -18,7 +18,11 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Announcement02, ChevronLeft, ChevronRight } from '@openmetadata/ui-core-components/icons';
+import {
+  Announcement02,
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';

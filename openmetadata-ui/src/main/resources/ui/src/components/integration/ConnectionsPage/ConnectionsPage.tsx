@@ -18,7 +18,11 @@ import {
   Input,
   PageLayout,
 } from '@openmetadata/ui-core-components';
-import { LayoutGrid01, List, Search } from '@openmetadata/ui-core-components/icons';
+import {
+  LayoutGrid01,
+  List,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

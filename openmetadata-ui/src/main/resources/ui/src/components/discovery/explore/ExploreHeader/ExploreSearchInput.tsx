@@ -19,8 +19,8 @@ import {
   SelectPopover,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { isAppleDevice } from '@react-aria/utils';
 import { Search } from '@openmetadata/ui-core-components/icons';
+import { isAppleDevice } from '@react-aria/utils';
 import classNames from 'classnames';
 import type { FormEvent, RefObject } from 'react';
 import { lazy, Suspense } from 'react';

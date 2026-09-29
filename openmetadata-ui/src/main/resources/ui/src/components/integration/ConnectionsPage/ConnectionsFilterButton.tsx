@@ -17,7 +17,11 @@ import {
   Input,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Check, ChevronDown, Search } from '@openmetadata/ui-core-components/icons';
+import {
+  Check,
+  ChevronDown,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 

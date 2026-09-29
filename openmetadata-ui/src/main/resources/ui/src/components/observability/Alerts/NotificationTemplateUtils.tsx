@@ -12,7 +12,10 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { AlertCircle, CheckCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  AlertCircle,
+  CheckCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import type { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';

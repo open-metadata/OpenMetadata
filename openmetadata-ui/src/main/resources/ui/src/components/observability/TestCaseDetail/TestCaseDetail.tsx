@@ -17,8 +17,8 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useQuery } from '@tanstack/react-query';
 import { Copy01, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ReactNode, useCallback, useMemo } from 'react';

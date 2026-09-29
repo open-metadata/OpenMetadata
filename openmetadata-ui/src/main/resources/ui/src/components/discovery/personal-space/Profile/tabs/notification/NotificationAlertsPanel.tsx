@@ -22,7 +22,10 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 as Delete, Edit01 as Edit } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01 as Edit,
+  Trash01 as Delete,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, {

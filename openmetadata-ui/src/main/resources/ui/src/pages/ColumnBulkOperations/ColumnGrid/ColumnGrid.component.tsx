@@ -26,17 +26,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  ArrowRight,
+  ChevronRight,
   NoFilterFunnel,
   NoSearch,
   PendingChanges,
-  TotalOccurrences,
-  TotalUniqueColumn,
-} from '@openmetadata/ui-core-components/icons';
-import {
-  ArrowRight,
-  ChevronRight,
   Search,
   Table as TableIcon,
+  TotalOccurrences,
+  TotalUniqueColumn,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';

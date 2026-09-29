@@ -20,7 +20,10 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlignLeft, LinkExternal02 } from '@openmetadata/ui-core-components/icons';
+import {
+  AlignLeft,
+  LinkExternal02,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

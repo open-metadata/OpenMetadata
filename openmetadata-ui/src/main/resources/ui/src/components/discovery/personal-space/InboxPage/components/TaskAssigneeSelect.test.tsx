@@ -112,9 +112,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@openmetadata/ui-core-components/icons', () => ({ User03: () => null }), {
-  virtual: true,
-});
+jest.mock(
+  '@openmetadata/ui-core-components/icons',
+  () => ({ User03: () => null }),
+  {
+    virtual: true,
+  }
+);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

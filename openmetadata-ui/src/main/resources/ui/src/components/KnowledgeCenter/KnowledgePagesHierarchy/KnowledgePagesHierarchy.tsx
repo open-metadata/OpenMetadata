@@ -23,9 +23,11 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { File06 as Articles } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';

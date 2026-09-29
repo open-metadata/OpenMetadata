@@ -20,8 +20,8 @@ import {
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FieldProps } from '@rjsf/utils';
 import { ChevronRight, Eye } from '@openmetadata/ui-core-components/icons';
+import { FieldProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

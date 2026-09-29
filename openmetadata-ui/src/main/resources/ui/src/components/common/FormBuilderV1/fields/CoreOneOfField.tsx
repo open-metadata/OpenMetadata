@@ -12,12 +12,12 @@
  */
 
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
+import { Hexagon01 } from '@openmetadata/ui-core-components/icons';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
-import { Hexagon01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';

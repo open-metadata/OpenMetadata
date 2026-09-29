@@ -12,7 +12,11 @@
  */
 
 import { Button, ButtonUtility, Input } from '@openmetadata/ui-core-components';
-import { ArrowRight, Search, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowRight,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';

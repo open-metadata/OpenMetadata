@@ -19,8 +19,8 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useQuery } from '@tanstack/react-query';
 import { Check, Search, XClose } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
 import type { FC, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

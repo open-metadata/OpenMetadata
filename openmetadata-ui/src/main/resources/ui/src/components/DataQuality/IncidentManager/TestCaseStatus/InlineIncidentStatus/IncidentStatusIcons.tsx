@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { Check as CheckIcon, XClose as CloseIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Check as CheckIcon,
+  XClose as CloseIcon,
+} from '@openmetadata/ui-core-components/icons';
 
 /** Close (X) — dark icon for secondary/utility surfaces. */
 export const BlackCloseIcon = ({ className }: { className?: string }) => (

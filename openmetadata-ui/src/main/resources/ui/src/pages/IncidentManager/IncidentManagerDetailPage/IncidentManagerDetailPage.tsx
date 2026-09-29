@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { useQuery } from '@tanstack/react-query';
 import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';

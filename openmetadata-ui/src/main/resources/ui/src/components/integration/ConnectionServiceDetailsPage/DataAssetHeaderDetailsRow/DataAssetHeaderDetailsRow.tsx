@@ -21,7 +21,11 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Database01, Globe01, User03 } from '@openmetadata/ui-core-components/icons';
+import {
+  Database01,
+  Globe01,
+  User03,
+} from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
