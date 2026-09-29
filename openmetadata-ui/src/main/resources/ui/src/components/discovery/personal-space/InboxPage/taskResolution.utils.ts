@@ -22,7 +22,7 @@ import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { isTaskOpen } from './inbox.utils';
 import type { TaskResolveAction } from './taskResolve.utils';
 
-export type TaskStatusTone = 'success' | 'error' | 'warning' | 'gray';
+export type TaskStatusTone = 'brand' | 'success' | 'error' | 'gray';
 
 // A task status enum value ("InProgress") → its kebab i18n label key
 // ("label.in-progress"). Generic over any TaskStatus, so the status badge needs
@@ -30,8 +30,8 @@ export type TaskStatusTone = 'success' | 'error' | 'warning' | 'gray';
 const toStatusLabelKey = (status: string): string =>
   `label.${status.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}`;
 
-// An approval-shaped end state reads green, a denial-shaped one red, in-flight
-// amber; end states that are neither (expiry, withdrawal) stay neutral.
+// An approval-shaped end state reads green, a denial-shaped one red; work in
+// flight and end states that are neither (expiry, withdrawal) stay neutral.
 const STATUS_TONE: Partial<Record<TaskStatus, TaskStatusTone>> = {
   [TaskStatus.Approved]: 'success',
   [TaskStatus.Granted]: 'success',
@@ -39,10 +39,10 @@ const STATUS_TONE: Partial<Record<TaskStatus, TaskStatusTone>> = {
   [TaskStatus.Rejected]: 'error',
   [TaskStatus.Revoked]: 'error',
   [TaskStatus.Failed]: 'error',
-  [TaskStatus.Open]: 'warning',
-  [TaskStatus.Pending]: 'warning',
-  [TaskStatus.InProgress]: 'warning',
-  [TaskStatus.ManualRevoke]: 'warning',
+  [TaskStatus.Open]: 'gray',
+  [TaskStatus.Pending]: 'gray',
+  [TaskStatus.InProgress]: 'gray',
+  [TaskStatus.ManualRevoke]: 'gray',
   [TaskStatus.Expired]: 'gray',
   [TaskStatus.Cancelled]: 'gray',
 };
@@ -168,18 +168,18 @@ export const getTaskStatusLabel = (
   }
 
   if (isTaskPendingViewer(task, actions, currentUserIds)) {
-    return { label: t('label.pending-your-approval'), tone: 'warning' };
+    return { label: t('label.pending-approval'), tone: 'brand' };
   }
   // Nobody can act on it yet: the workflow's own stage name beats a generic
   // "assigned", which says nothing a viewer can use.
   if (task.workflowStageDisplayName) {
-    return { label: task.workflowStageDisplayName, tone: 'warning' };
+    return { label: task.workflowStageDisplayName, tone: 'gray' };
   }
 
   return {
     label: REVIEW_CATEGORIES.has(task.category)
       ? t('label.awaiting-review')
       : t('label.assigned'),
-    tone: 'warning',
+    tone: 'gray',
   };
 };

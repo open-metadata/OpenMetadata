@@ -40,7 +40,6 @@ import {
   TaskType,
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
@@ -74,6 +73,7 @@ import {
   TaskResolveAction,
 } from '../taskResolve.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
+import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
 import ClampedText from './ClampedText';
@@ -279,7 +279,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
     useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
-  const { currentUser } = useApplicationStore();
   const { extensionRegistry } = useApplicationsProvider();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
@@ -609,17 +608,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const { about, isLoading: isAboutLoading } = useTaskAboutEntity(task);
 
-  // The viewer's own id plus their teams': a task assigned to a team is theirs
-  // to act on, so both decide whether the status reads "pending your approval".
-  const currentUserIds = useMemo(
-    () =>
-      new Set(
-        [currentUser?.id, ...(currentUser?.teams ?? []).map((team) => team.id)]
-          .filter(Boolean)
-          .map(String)
-      ),
-    [currentUser?.id, currentUser?.teams]
-  );
+  const currentUserIds = useCurrentUserIds();
 
   if (!task || !descriptor) {
     return isLoading ? (

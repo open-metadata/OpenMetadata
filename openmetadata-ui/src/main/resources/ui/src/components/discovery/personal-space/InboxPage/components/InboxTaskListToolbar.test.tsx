@@ -83,6 +83,10 @@ jest.mock('react-i18next', () => ({
 }));
 
 import { Task, TaskType } from '../../../../../generated/entity/tasks/task';
+import {
+  DEFAULT_TASK_STATUS_BUCKETS,
+  TaskStatusBucket,
+} from '../taskList.utils';
 import InboxTaskListToolbar from './InboxTaskListToolbar';
 
 const TASKS = [
@@ -92,7 +96,8 @@ const TASKS = [
 ] as unknown as Task[];
 
 const props = {
-  statusFilter: <div data-testid="status-filter" />,
+  statusFilter: DEFAULT_TASK_STATUS_BUCKETS,
+  onStatusFilterChange: jest.fn(),
   search: '',
   onSearchChange: jest.fn(),
   grouping: 'type' as const,
@@ -181,10 +186,36 @@ describe('InboxTaskListToolbar', () => {
     );
   });
 
-  it('heads the list with the status control', () => {
+  it('offers the five statuses, in order, with the open ones chosen', () => {
     render(<InboxTaskListToolbar {...props} />);
 
-    expect(screen.getByTestId('status-filter')).toBeInTheDocument();
+    const statusFilter = screen.getByTestId('inbox-tasks-status-filter');
+
+    expect(
+      Array.from(statusFilter.querySelectorAll('button')).map(
+        (option) => option.textContent
+      )
+    ).toEqual([
+      'label.open',
+      'label.pending-approval',
+      'label.in-review',
+      'label.approved',
+      'label.rejected',
+    ]);
+    expect(statusFilter).toHaveAttribute(
+      'data-selected',
+      'open,pending-approval,in-review'
+    );
+  });
+
+  it('reports a chosen status', () => {
+    render(<InboxTaskListToolbar {...props} />);
+
+    fireEvent.click(screen.getByTestId('inbox-tasks-status-filter-approved'));
+
+    expect(props.onStatusFilterChange).toHaveBeenCalledWith([
+      TaskStatusBucket.Approved,
+    ]);
   });
 
   // The trigger reads "Group: Type" while the menu rows stay bare.

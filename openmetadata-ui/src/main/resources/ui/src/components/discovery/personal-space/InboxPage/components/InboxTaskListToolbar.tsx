@@ -17,18 +17,22 @@ import {
   Input,
   SearchInputIcon,
 } from '@openmetadata/ui-core-components';
-import { FilterFunnel01, FilterLines } from '@untitledui/icons';
-import React, { ReactNode, useMemo } from 'react';
+import { FilterLines } from '@untitledui/icons';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getTaskTypeBadge, getTaskTypeKey } from '../taskDetail.utils';
+import {
+  TaskStatusBucket,
+  TASK_STATUS_BUCKET_OPTIONS,
+} from '../taskList.utils';
 
 /** How the loaded tasks are broken up in the list. */
 export type InboxTaskGrouping = 'none' | 'type';
 
 export interface InboxTaskListToolbarProps {
-  /** The All / Open / Closed control, sharing the first row with grouping. */
-  statusFilter: ReactNode;
+  statusFilter: TaskStatusBucket[];
+  onStatusFilterChange: (value: TaskStatusBucket[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
   grouping: InboxTaskGrouping;
@@ -41,14 +45,15 @@ export interface InboxTaskListToolbarProps {
 }
 
 /**
- * The list column's controls: status and grouping on one row, search and the
- * type filter on the next.
+ * The list column's controls: grouping on one row, then search with the status
+ * and type filters.
  *
  * The type options come from the tasks on screen rather than the full enum, so
  * the filter never offers a type the queue does not contain.
  */
 const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
   statusFilter,
+  onStatusFilterChange,
   search,
   onSearchChange,
   grouping,
@@ -69,6 +74,15 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       ].map((option) => ({
         ...option,
         textValue: t('label.group-with-value', { value: option.label }),
+      })),
+    [t]
+  );
+
+  const statusOptions = useMemo(
+    () =>
+      TASK_STATUS_BUCKET_OPTIONS.map(({ value, labelKey }) => ({
+        value,
+        label: t(labelKey),
       })),
     [t]
   );
@@ -95,8 +109,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       className="tw:shrink-0 tw:gap-3 tw:px-4 tw:pt-4 tw:pb-3"
       data-testid="inbox-tasks-toolbar"
       direction="col">
-      <Box align="center" className="tw:justify-between tw:gap-2">
-        {statusFilter}
+      <Box align="center" className="tw:justify-end tw:gap-2">
         {/* A grouping always has a value, so FilterSelect's "active filter"
             brand tint would be permanent; keep the trigger neutral. */}
         <FilterSelect
@@ -127,12 +140,23 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
         />
         <FilterSelect
           bordered
+          data-testid="inbox-tasks-status-filter"
+          label={t('label.status')}
+          options={statusOptions}
+          selectedValues={statusFilter}
+          selectionMode="multiple"
+          triggerVariant="button"
+          onChange={(values) =>
+            onStatusFilterChange(values as TaskStatusBucket[])
+          }
+        />
+        <FilterSelect
+          bordered
           data-testid="inbox-tasks-type-filter"
-          label={t('label.filter')}
+          label={t('label.type')}
           options={typeOptions}
           selectedValues={typeFilter}
           selectionMode="multiple"
-          triggerIcon={FilterFunnel01}
           triggerVariant="button"
           onChange={onTypeFilterChange}
         />
