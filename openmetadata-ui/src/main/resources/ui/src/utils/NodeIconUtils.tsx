@@ -23,6 +23,7 @@ import {
   WorkflowSetAction,
   WorkflowStart,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import React from 'react';
 
 import { ReactComponent as StarIcon } from '../assets/svg/ic_star.svg';
@@ -82,31 +83,46 @@ const NODE_ICON_COLOR_MAP: Partial<Record<NodeSubType, string>> = {
   [NodeSubType.SinkTask]: ICON_COLOR.sink,
 };
 
+const ICON_SIZE_CLASS = {
+  sm: 'tw:size-4',
+  md: 'tw:size-8',
+} as const;
+
+interface NodeIconOptions {
+  className?: string;
+  size?: keyof typeof ICON_SIZE_CLASS;
+}
+
+const renderNodeIcon = (
+  Icon: SvgIcon,
+  subType: NodeSubType | undefined,
+  { className, size = 'md' }: NodeIconOptions = {}
+): React.ReactElement => (
+  <Icon
+    className={classNames(
+      ICON_SIZE_CLASS[size],
+      (subType && NODE_ICON_COLOR_MAP[subType]) ?? ICON_COLOR.fallback,
+      className
+    )}
+  />
+);
+
 export const getCanvasNodeIcon = (
   subType: NodeSubType | undefined,
-  props?: React.SVGProps<SVGSVGElement>
-): React.ReactElement => {
-  const defaultProps = {
-    className: (subType && NODE_ICON_COLOR_MAP[subType]) ?? ICON_COLOR.fallback,
-    style: { width: '32px', height: '32px' },
-    ...props,
-  };
-  // Fallback to legacy icon if canvas icon doesn't exist
-  const Icon = (subType && CANVAS_NODE_ICON_MAP[subType]) ?? StarIcon;
-
-  return <Icon {...defaultProps} />;
-};
+  options?: NodeIconOptions
+): React.ReactElement =>
+  renderNodeIcon(
+    (subType && CANVAS_NODE_ICON_MAP[subType]) ?? StarIcon,
+    subType,
+    options
+  );
 
 export const getNodeIcon = (
   subType: NodeSubType | undefined,
-  props?: React.SVGProps<SVGSVGElement>
-): React.ReactElement => {
-  const defaultProps = {
-    className: (subType && NODE_ICON_COLOR_MAP[subType]) ?? ICON_COLOR.fallback,
-    style: { width: '32px', height: '32px' },
-    ...props,
-  };
-  const Icon = (subType && NODE_ICON_MAP[subType]) ?? StarIcon;
-
-  return <Icon {...defaultProps} />;
-};
+  options?: NodeIconOptions
+): React.ReactElement =>
+  renderNodeIcon(
+    (subType && NODE_ICON_MAP[subType]) ?? StarIcon,
+    subType,
+    options
+  );
