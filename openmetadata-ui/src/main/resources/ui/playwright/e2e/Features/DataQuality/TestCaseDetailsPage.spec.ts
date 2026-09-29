@@ -697,13 +697,13 @@ test.describe(
           await detailsTable.addTestCaseResult(apiContext, abortedTestCaseFqn, {
             duration: 30000,
             errorDetails: {
-              errorType: 'QueryTimeoutError',
-              message: 'Connection to the warehouse timed out',
+              errorType: 'QueryCanceled',
+              message: 'canceling statement due to statement timeout',
               stackTrace: [
                 'Traceback (most recent call last):',
                 '  File "/ingestion/validator.py", line 42, in run',
                 '    rows = session.execute(query)',
-                'QueryTimeoutError: Connection to the warehouse timed out',
+                'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout',
               ].join('\n'),
             },
             result: 'Error computing tableRowCountToEqual',
@@ -762,15 +762,15 @@ test.describe(
       await expect(card.getByTestId('run-details-found')).toHaveText('—');
       await expect(card.getByTestId('run-details-comparison')).toHaveCount(0);
       await expect(card.getByTestId('run-execution-error-type')).toHaveText(
-        'QueryTimeoutError'
+        'QueryCanceled'
       );
       await expect(card.getByTestId('run-execution-error-message')).toHaveText(
-        'Connection to the warehouse timed out'
+        'canceling statement due to statement timeout'
       );
       await expect(
         card.getByTestId('run-execution-error-traceback')
       ).toContainText(
-        'QueryTimeoutError: Connection to the warehouse timed out'
+        'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout'
       );
 
       // Both aborted runs get a point on the chart despite recording no value.

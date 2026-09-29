@@ -40,6 +40,13 @@ const COMPLETED_STATUSES = new Set<TestCaseStatus | undefined>([
 
 const TIMEOUT_ERROR = /time(d)?[\s_-]?out/i;
 
+/**
+ * errorType is the driver's exception when a query failed (ingestion follows
+ * SQLAlchemy's wrapper down to it), and a statement timeout surfaces there
+ * under a name that does not say "timeout".
+ */
+const TIMEOUT_ERROR_TYPES = new Set(['QueryCanceled']);
+
 const format = (value: number) => value.toLocaleString();
 
 const withSign = (value: string, number: number) =>
@@ -209,4 +216,5 @@ export const formatRunDuration = (milliseconds: number) => {
 };
 
 export const isTimeoutError = (errorType?: string) =>
+  TIMEOUT_ERROR_TYPES.has(errorType ?? '') ||
   TIMEOUT_ERROR.test(errorType ?? '');

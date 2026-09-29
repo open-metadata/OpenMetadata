@@ -251,6 +251,7 @@ describe('RunDetailsCard utils', () => {
   it.each([
     ['TimeoutError', true],
     ['QueryTimedOut', true],
+    ['QueryCanceled', true],
     ['OperationalError', false],
     [undefined, false],
   ])('treats %s as a timeout: %s', (errorType, expected) => {
