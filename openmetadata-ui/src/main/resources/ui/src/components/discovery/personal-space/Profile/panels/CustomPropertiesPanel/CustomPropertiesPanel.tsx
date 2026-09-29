@@ -89,22 +89,6 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     }
 
     if (parsedHash.entityFqn === resolvedFqnRef.current) {
-      setSubView((prev) => {
-        if (prev.type === 'landing') {
-          return prev;
-        }
-
-        if (parsedHash.action === 'add' && prev.type !== 'add') {
-          return { type: 'add', entityType: prev.entityType };
-        }
-
-        if (parsedHash.action === 'detail' && prev.type !== 'detail') {
-          return { type: 'detail', entityType: prev.entityType };
-        }
-
-        return prev;
-      });
-
       return;
     }
 
@@ -115,22 +99,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         if (resolvedFqnRef.current !== requestedFqn) {
           return;
         }
-
-        if (parsedHash.action === 'add') {
-          setSubView({ type: 'add', entityType });
-        } else if (parsedHash.action === 'edit' && parsedHash.propertyName) {
-          const property = entityType.customProperties?.find(
-            (p) => p.name === parsedHash.propertyName
-          );
-
-          if (property) {
-            setSubView({ type: 'edit', entityType, property });
-          } else {
-            setSubView({ type: 'detail', entityType });
-          }
-        } else {
-          setSubView({ type: 'detail', entityType });
-        }
+        setSubView({ type: 'detail', entityType });
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
