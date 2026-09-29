@@ -48,6 +48,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -108,6 +109,44 @@ class WorkflowEventConsumerTest {
       assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_SkipsBotUserEvents() {
+    ChangeEvent event = createChangeEvent("ingestion-bot", EventType.ENTITY_UPDATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq("ingestion-bot"), any()))
+          .thenReturn(new User().withName("ingestion-bot").withIsBot(true));
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotImpersonatingUserIsTheUsersChange() {
+    ChangeEvent event = createChangeEvent("alice", EventType.ENTITY_UPDATED);
+    event.setImpersonatedBy("ingestion-bot");
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq("alice"), any()))
+          .thenReturn(new User().withName("alice").withIsBot(false));
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1)).triggerWithSignal(eq("table-entityUpdated"), anyMap());
     }
   }
 

@@ -14,22 +14,23 @@
 package org.openmetadata.service.governance.approval;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isBotChange;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.type.ApiStatus;
@@ -72,13 +73,15 @@ public final class ApprovalGate {
           "incrementalChangeDescription",
           "changeSummary");
   private static final String TAGS = WorkflowTriggerFields.TAGS.value();
+  private static final String EXTENSION = WorkflowTriggerFields.EXTENSION.value();
+  private static final String EXTENSION_PREFIX = EXTENSION + Entity.SEPARATOR;
 
   private ApprovalGate() {}
 
   public static Optional<StagedChange> admit(
       EntityInterface original, EntityInterface updated, String user, String impersonatedBy) {
     Optional<StagedChange> staged = Optional.empty();
-    if (original != null && original.getId() != null && !isExemptActor(user, impersonatedBy)) {
+    if (original != null && original.getId() != null && !isBotChange(user, impersonatedBy)) {
       staged = stageIfGated(original, updated, user, impersonatedBy);
     }
     return staged;
@@ -108,7 +111,7 @@ public final class ApprovalGate {
   public static List<BulkResponse> refuseGatedAssets(
       List<EntityReference> assets, String field, String user) {
     List<BulkResponse> refused = new ArrayList<>();
-    if (assets != null && !isExemptActor(user, null)) {
+    if (assets != null && !isBotChange(user, null)) {
       Iterator<EntityReference> candidates = assets.iterator();
       while (candidates.hasNext()) {
         EntityReference asset = candidates.next();
@@ -170,18 +173,6 @@ public final class ApprovalGate {
     return value == null ? 0 : value;
   }
 
-  // Workflow automation writes as the acting user with governance-bot as impersonator, and a bot on
-  // its own behalf writes as itself; both publish as they would without approval workflows. Any
-  // other impersonation is a bot acting for a user and is gated as that user.
-  private static boolean isExemptActor(String user, String impersonatedBy) {
-    boolean exempt = GOVERNANCE_BOT.equals(impersonatedBy);
-    if (!exempt && impersonatedBy == null) {
-      User actor = Entity.findByNameOrNull(Entity.USER, user, Include.NON_DELETED);
-      exempt = actor != null && Boolean.TRUE.equals(actor.getIsBot());
-    }
-    return exempt;
-  }
-
   private static Optional<StagedChange> stageIfGated(
       EntityInterface original, EntityInterface updated, String user, String impersonatedBy) {
     String entityType = Entity.getEntityTypeFromObject(updated);
@@ -203,11 +194,10 @@ public final class ApprovalGate {
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(updated);
     Set<String> changed = changedFields(base, proposed);
-    List<GatedBy> gating = gatingWorkflows(rules, updated, changed);
+    List<GatedBy> gating = gatingWorkflows(rules, updated, triggerNames(base, proposed, changed));
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
-      rejectUnstageable(changed);
       rejectMutuallyExclusiveTags(updated, changed);
       GatedBy review = gating.get(0);
       staged =
@@ -226,7 +216,7 @@ public final class ApprovalGate {
   }
 
   private static List<GatedBy> gatingWorkflows(
-      List<GatingRule> rules, EntityInterface updated, Set<String> changed) {
+      List<GatingRule> rules, EntityInterface updated, Map<String, List<String>> changed) {
     List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
       Set<String> fields =
@@ -274,26 +264,49 @@ public final class ApprovalGate {
     return clearsScalar || (!cleared && MutationPlanner.differs(oldValue, newValue));
   }
 
-  private static Set<String> gatedFields(GatingRule rule, Set<String> changed) {
-    Set<String> gated = new HashSet<>();
+  // Custom properties trigger per property ("extension.<name>"), matching the names the change
+  // description records for them; every other field triggers under its own name.
+  private static Map<String, List<String>> triggerNames(
+      JsonNode base, JsonNode proposed, Set<String> changed) {
+    Map<String, List<String>> names = new HashMap<>();
     for (String field : changed) {
-      if (STAGEABLE_FIELDS.contains(field)
-          && WorkflowTriggerFilters.fieldTriggers(
-              field, rule.includedFields(), rule.excludedFields())) {
-        gated.add(field);
-      }
+      names.put(
+          field,
+          EXTENSION.equals(field)
+              ? changedProperties(base.path(EXTENSION), proposed.path(EXTENSION))
+              : List.of(field));
     }
-    return gated;
+    return names;
   }
 
-  private static void rejectUnstageable(Set<String> changed) {
-    Set<String> unstageable = new TreeSet<>(changed);
-    unstageable.removeAll(STAGEABLE_FIELDS);
-    if (!unstageable.isEmpty()) {
-      throw new BadRequestException(
-          "Fields %s cannot be submitted together with a change that requires approval; submit them separately"
-              .formatted(unstageable));
+  private static List<String> changedProperties(JsonNode base, JsonNode proposed) {
+    Set<String> keys = new TreeSet<>();
+    base.fieldNames().forEachRemaining(keys::add);
+    proposed.fieldNames().forEachRemaining(keys::add);
+    List<String> names = new ArrayList<>();
+    for (String key : keys) {
+      if (MutationPlanner.differs(base.get(key), proposed.get(key))) {
+        names.add(EXTENSION_PREFIX + key);
+      }
     }
+    return names;
+  }
+
+  private static Set<String> gatedFields(GatingRule rule, Map<String, List<String>> changed) {
+    Set<String> gated = new HashSet<>();
+    changed.forEach(
+        (field, names) -> {
+          boolean triggers =
+              names.stream()
+                  .anyMatch(
+                      name ->
+                          WorkflowTriggerFilters.fieldTriggers(
+                              name, rule.includedFields(), rule.excludedFields()));
+          if (STAGEABLE_FIELDS.contains(field) && triggers) {
+            gated.add(field);
+          }
+        });
+    return gated;
   }
 
   private static void rejectMutuallyExclusiveTags(EntityInterface updated, Set<String> changed) {

@@ -4275,6 +4275,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
+    // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
+    updated.setId(original.getId());
     Optional<StagedChange> staged =
         ApprovalGate.admit(original, updated, updatedBy, impersonatedBy);
     return staged
@@ -4334,6 +4336,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
+    // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
+    updated.setId(original.getId());
     Optional<StagedChange> staged =
         ApprovalGate.admit(original, updated, updatedBy, impersonatedBy);
     return staged

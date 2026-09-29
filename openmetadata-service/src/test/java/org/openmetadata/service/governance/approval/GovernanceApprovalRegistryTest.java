@@ -16,17 +16,33 @@ package org.openmetadata.service.governance.approval;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
 
 /**
@@ -200,5 +216,266 @@ class GovernanceApprovalRegistryTest {
     WorkflowDefinition wd =
         workflow(trigger("\"table\"", "\"description\"", "", "{}"), STATUS_NODE, HOOK);
     assertEquals(1, rulesFor("table", wd).size());
+  }
+
+  /**
+   * {@link ApprovalGate#admit} against rules resolved from hook workflows: which requests are held,
+   * that a held request carries every changed field, and which actors are exempt.
+   */
+  @Nested
+  class ApprovalGateAdmission {
+    private static final UUID WORKFLOW_A = UUID.randomUUID();
+    private static final UUID WORKFLOW_B = UUID.randomUUID();
+
+    private Glossary published() {
+      return new Glossary()
+          .withId(UUID.randomUUID())
+          .withName("g")
+          .withFullyQualifiedName("g")
+          .withDisplayName("published name")
+          .withDescription("published")
+          .withVersion(0.1);
+    }
+
+    private Glossary edited(Glossary original) {
+      return JsonUtils.deepCopy(original, Glossary.class);
+    }
+
+    private GatingRule rule(UUID workflowId, List<String> include, List<String> exclude) {
+      return new GatingRule(workflowId, "wf-" + workflowId, include, exclude, null);
+    }
+
+    private Optional<StagedChange> admit(
+        List<GatingRule> rules,
+        Glossary original,
+        Glossary updated,
+        String user,
+        String impersonatedBy,
+        boolean userIsBot) {
+      try (MockedStatic<GovernanceApprovalRegistry> registry =
+              mockStatic(GovernanceApprovalRegistry.class);
+          MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+        registry
+            .when(() -> GovernanceApprovalRegistry.gatingRules(Entity.GLOSSARY))
+            .thenReturn(rules);
+        entity.when(() -> Entity.getEntityTypeFromObject(any())).thenReturn(Entity.GLOSSARY);
+        entity
+            .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq(user), any()))
+            .thenReturn(new User().withName(user).withIsBot(userIsBot));
+        return ApprovalGate.admit(original, updated, user, impersonatedBy);
+      }
+    }
+
+    private Optional<StagedChange> admitAsHuman(
+        List<GatingRule> rules, Glossary original, Glossary updated) {
+      return admit(rules, original, updated, "alice", null, false);
+    }
+
+    private static Set<String> fields(StagedChange change) {
+      return MutationPlanner.fieldsOf(change.ops());
+    }
+
+    private static Set<String> gatedFields(StagedChange change) {
+      return change.ops().stream()
+          .filter(op -> Boolean.TRUE.equals(op.getGated()))
+          .map(MutationOp::getField)
+          .collect(Collectors.toSet());
+    }
+
+    @Test
+    void gatedFieldChangeIsHeld() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed");
+      StagedChange change =
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())), original, updated)
+              .orElseThrow();
+      assertEquals(Set.of("description"), fields(change));
+      assertEquals(WORKFLOW_A, change.workflowDefinitionId());
+      assertEquals("alice", change.requestedBy());
+      assertEquals(original.getId(), change.entityId());
+    }
+
+    @Test
+    void ungatedOnlyChangePublishes() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDisplayName("new name");
+      assertTrue(
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())), original, updated)
+              .isEmpty());
+    }
+
+    @Test
+    void noHookWorkflowMeansNothingIsHeld() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed");
+      assertTrue(admitAsHuman(List.of(), original, updated).isEmpty());
+    }
+
+    @Test
+    void newEntityIsNeverHeld() {
+      Glossary updated = published().withDescription("proposed");
+      assertTrue(
+          admitAsHuman(List.of(rule(WORKFLOW_A, List.of("description"), List.of())), null, updated)
+              .isEmpty());
+    }
+
+    @Test
+    void heldRequestCarriesEveryChangedFieldIncludingIdentityAndLifecycle() {
+      Glossary original = published().withEntityStatus(EntityStatus.APPROVED);
+      Glossary updated =
+          edited(original)
+              .withDescription("proposed")
+              .withDisplayName("new name")
+              .withName("renamed")
+              .withEntityStatus(EntityStatus.DRAFT);
+      StagedChange change =
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())), original, updated)
+              .orElseThrow();
+      assertEquals(Set.of("description", "displayName", "entityStatus", "name"), fields(change));
+      assertEquals(Set.of("description"), gatedFields(change));
+    }
+
+    @Test
+    void emptyIncludeGatesEveryFieldNotExcluded() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDisplayName("new name");
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of(), List.of("description")));
+      assertEquals(
+          Set.of("displayName"), gatedFields(admitAsHuman(rules, original, updated).orElseThrow()));
+      Glossary descriptionOnly = edited(original).withDescription("proposed");
+      assertTrue(admitAsHuman(rules, original, descriptionOnly).isEmpty());
+    }
+
+    @Test
+    void customPropertyIsGatedPerProperty() {
+      Glossary original = published().withExtension(Map.of("other", "kept"));
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of("extension.gated"), List.of()));
+
+      Glossary gatedProperty =
+          edited(original).withExtension(Map.of("other", "kept", "gated", "x"));
+      assertEquals(
+          Set.of("extension"),
+          gatedFields(admitAsHuman(rules, original, gatedProperty).orElseThrow()));
+
+      Glossary otherProperty = edited(original).withExtension(Map.of("other", "changed"));
+      assertTrue(admitAsHuman(rules, original, otherProperty).isEmpty());
+    }
+
+    @Test
+    void wholeExtensionIncludeGatesAnyCustomProperty() {
+      Glossary original = published().withExtension(Map.of("a", "1"));
+      Glossary updated = edited(original).withExtension(Map.of("a", "2"));
+      assertTrue(
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("extension"), List.of())), original, updated)
+              .isPresent());
+    }
+
+    @Test
+    void excludedCustomPropertyIsNotGated() {
+      Glossary original = published().withExtension(Map.of("free", "1", "held", "1"));
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of(), List.of("extension.free")));
+      Glossary freeOnly = edited(original).withExtension(Map.of("free", "2", "held", "1"));
+      assertTrue(admitAsHuman(rules, original, freeOnly).isEmpty());
+      Glossary heldToo = edited(original).withExtension(Map.of("free", "2", "held", "2"));
+      assertTrue(admitAsHuman(rules, original, heldToo).isPresent());
+    }
+
+    @Test
+    void removingACustomPropertyIsAChange() {
+      Glossary original = published().withExtension(Map.of("gated", "x"));
+      Glossary updated = edited(original).withExtension(Map.of());
+      assertTrue(
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("extension.gated"), List.of())),
+                  original,
+                  updated)
+              .isPresent());
+    }
+
+    @Test
+    void changeGatedByTwoWorkflowsIsRejected() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed").withDisplayName("new name");
+      List<GatingRule> rules =
+          List.of(
+              rule(WORKFLOW_A, List.of("description"), List.of()),
+              rule(WORKFLOW_B, List.of("displayName"), List.of()));
+      BadRequestException error =
+          assertThrows(BadRequestException.class, () -> admitAsHuman(rules, original, updated));
+      assertTrue(error.getMessage().contains("different approval workflows"), error.getMessage());
+    }
+
+    @Test
+    void requestIsReviewedByTheWorkflowGatingItsFields() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDisplayName("new name");
+      List<GatingRule> rules =
+          List.of(
+              rule(WORKFLOW_A, List.of("description"), List.of()),
+              rule(WORKFLOW_B, List.of("displayName"), List.of()));
+      assertEquals(
+          WORKFLOW_B, admitAsHuman(rules, original, updated).orElseThrow().workflowDefinitionId());
+    }
+
+    @Test
+    void botChangeIsNotHeld() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("by bot");
+      assertTrue(
+          admit(
+                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())),
+                  original,
+                  updated,
+                  "ingestion-bot",
+                  null,
+                  true)
+              .isEmpty());
+    }
+
+    @Test
+    void workflowAutomationIsNotHeld() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("by workflow");
+      assertTrue(
+          admit(
+                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())),
+                  original,
+                  updated,
+                  "alice",
+                  "governance-bot",
+                  false)
+              .isEmpty());
+    }
+
+    @Test
+    void botImpersonatingAHumanIsHeldAsThatHuman() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("by bot for alice");
+      StagedChange change =
+          admit(
+                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())),
+                  original,
+                  updated,
+                  "alice",
+                  "mcp-bot",
+                  false)
+              .orElseThrow();
+      assertEquals("alice", change.requestedBy());
+      assertEquals("mcp-bot", change.impersonatedBy());
+    }
+
+    @Test
+    void unchangedValuesAndBookkeepingAreNotChanges() {
+      Glossary original = published();
+      Glossary updated =
+          edited(original).withVersion(0.2).withUpdatedAt(42L).withUpdatedBy("alice");
+      assertTrue(
+          admitAsHuman(List.of(rule(WORKFLOW_A, List.of(), List.of())), original, updated)
+              .isEmpty());
+    }
   }
 }

@@ -22,6 +22,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -158,13 +159,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       return;
     }
 
-    // Skip events from governance-bot to prevent infinite loops
-    // These are system-initiated workflow changes that shouldn't trigger new workflows
-    if (GOVERNANCE_BOT.equals(event.getUserName())
-        || (event.getImpersonatedBy() != null
-            && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
+    if (isBotChange(event.getUserName(), event.getImpersonatedBy())) {
       LOG.debug(
-          "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
+          "Skipping bot change by {} for entity {} of type: {}",
+          event.getUserName(),
           event.getEntityFullyQualifiedName(),
           event.getEntityType());
       return;
@@ -206,6 +204,20 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  /**
+   * Bot changes are excluded from governance workflows: any change whose updatedBy user is a bot,
+   * and workflow automation, which writes as the acting user with governance-bot as impersonator. A
+   * bot impersonating a user records that user as updatedBy, so the change is the user's.
+   */
+  public static boolean isBotChange(String userName, String impersonatedBy) {
+    boolean botChange = GOVERNANCE_BOT.equals(userName) || GOVERNANCE_BOT.equals(impersonatedBy);
+    if (!botChange && userName != null) {
+      User actor = Entity.findByNameOrNull(Entity.USER, userName, Include.NON_DELETED);
+      botChange = actor != null && Boolean.TRUE.equals(actor.getIsBot());
+    }
+    return botChange;
   }
 
   public static Map<String, Object> defaultHandler(ChangeEvent event) {

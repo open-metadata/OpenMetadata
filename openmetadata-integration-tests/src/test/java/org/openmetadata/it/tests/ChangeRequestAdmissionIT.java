@@ -102,18 +102,19 @@ class ChangeRequestAdmissionIT {
   }
 
   @Test
-  void gatedChangeCombinedWithStructuralChangeIsRejected(TestNamespace ns) {
+  void gatedChangeCombinedWithRenameIsStagedWhole(TestNamespace ns) {
     Glossary glossary = gated(ns);
-    InvalidRequestException error =
-        assertThrows(
-            InvalidRequestException.class,
-            () ->
-                patch(
-                    glossary.getId(),
-                    "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"d\"},"
-                        + "{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"renamed\"}]"));
-    assertTrue(error.getMessage().contains("name"));
-    assertTrue(requestsFor(glossary.getId()).isEmpty());
+    patch(
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"d\"},"
+            + "{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"renamed\"}]");
+    Glossary after = fetch(glossary.getId());
+    assertEquals(PUBLISHED, after.getDescription());
+    assertEquals(glossary.getName(), after.getName());
+    assertEquals(
+        Set.of("description", "name"),
+        MutationPlanner.fieldsOf(
+            onlyPendingRequest(glossary.getId()).getActiveRevision().getOps()));
   }
 
   @Test
